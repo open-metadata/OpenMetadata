@@ -383,7 +383,8 @@ export const getFirstLevelGlossaryTermsPaginated = async (
 
 export const getGlossaryTermChildrenLazy = async (
   parentFQN: string,
-  limit = 50
+  limit = 50,
+  after?: string
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -398,6 +399,7 @@ export const getGlossaryTermChildrenLazy = async (
         TabSpecificField.REVIEWERS,
       ],
       limit,
+      after,
     },
   });
 

@@ -21,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
+import static org.openmetadata.service.resources.EntityResourceTest.GLOSSARY1_TERM1_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -1452,6 +1455,108 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       } catch (Exception e) {
         LOG.warn("Failed to cleanup test table {}: {}", table.getName(), e.getMessage());
       }
+    }
+  }
+
+  @Test
+  void testClassificationAndGlossaryTagsAggregations() throws IOException {
+    String testPrefix = "tag_aggregation_test_" + System.currentTimeMillis();
+
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(testPrefix)
+            .withName(testPrefix + "_table")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
+                        .withOrdinalPosition(1),
+                    new Column()
+                        .withName("name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(100)
+                        .withTags(List.of(GLOSSARY1_TERM1_LABEL))
+                        .withOrdinalPosition(2)))
+            .withTableConstraints(null);
+
+    Table testTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertNotNull(testTable);
+
+    TestUtils.simulateWork(5);
+
+    try {
+      Response response = searchWithQuery(testPrefix, "table_search_index");
+      assertEquals(200, response.getStatus(), "Search should succeed");
+
+      String responseBody = (String) response.getEntity();
+      assertNotNull(responseBody);
+
+      ObjectMapper objectMapper = new ObjectMapper();
+      JsonNode jsonResponse = objectMapper.readTree(responseBody);
+
+      assertTrue(jsonResponse.has("aggregations"), "Response should have aggregations field");
+      JsonNode aggregations = jsonResponse.get("aggregations");
+
+      JsonNode classificationTagsAgg = null;
+      if (aggregations.has("classificationTags")) {
+        classificationTagsAgg = aggregations.get("classificationTags");
+      } else if (aggregations.has("sterms#classificationTags")) {
+        classificationTagsAgg = aggregations.get("sterms#classificationTags");
+      }
+
+      JsonNode glossaryTagsAgg = null;
+      if (aggregations.has("glossaryTags")) {
+        glossaryTagsAgg = aggregations.get("glossaryTags");
+      } else if (aggregations.has("sterms#glossaryTags")) {
+        glossaryTagsAgg = aggregations.get("sterms#glossaryTags");
+      }
+
+      assertNotNull(
+          classificationTagsAgg,
+          "Aggregations should have classificationTags field (field-based, not scripted)");
+      assertNotNull(
+          glossaryTagsAgg,
+          "Aggregations should have glossaryTags field (field-based, not scripted)");
+
+      assertTrue(
+          classificationTagsAgg.has("buckets"),
+          "classificationTags aggregation should have buckets");
+      assertTrue(glossaryTagsAgg.has("buckets"), "glossaryTags aggregation should have buckets");
+
+      JsonNode classificationBuckets = classificationTagsAgg.get("buckets");
+      JsonNode glossaryBuckets = glossaryTagsAgg.get("buckets");
+
+      assertTrue(classificationBuckets.isArray(), "Classification buckets should be an array");
+      assertTrue(glossaryBuckets.isArray(), "Glossary buckets should be an array");
+
+      Set<String> classificationTagsFound = new HashSet<>();
+      for (JsonNode bucket : classificationBuckets) {
+        assertTrue(bucket.has("key"), "Each classification bucket should have a key field");
+        assertTrue(
+            bucket.has("doc_count"), "Each classification bucket should have a doc_count field");
+        String tagFQN = bucket.get("key").asText();
+        long docCount = bucket.get("doc_count").asLong();
+        classificationTagsFound.add(tagFQN);
+        LOG.info("Found classification tag: {} with count: {}", tagFQN, docCount);
+      }
+
+      Set<String> glossaryTagsFound = new HashSet<>();
+      for (JsonNode bucket : glossaryBuckets) {
+        assertTrue(bucket.has("key"), "Each glossary bucket should have a key field");
+        assertTrue(bucket.has("doc_count"), "Each glossary bucket should have a doc_count field");
+        String tagFQN = bucket.get("key").asText();
+        long docCount = bucket.get("doc_count").asLong();
+        glossaryTagsFound.add(tagFQN);
+        LOG.info("Found glossary tag: {} with count: {}", tagFQN, docCount);
+      }
+
+      LOG.info("Classification tags found: {}", classificationTagsFound);
+      LOG.info("Glossary tags found: {}", glossaryTagsFound);
+
+    } finally {
+      tableResourceTest.deleteEntity(testTable.getId(), ADMIN_AUTH_HEADERS);
     }
   }
 }

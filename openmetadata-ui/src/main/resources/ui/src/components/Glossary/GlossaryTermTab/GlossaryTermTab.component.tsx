@@ -90,6 +90,7 @@ import {
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import {
   getEntityBulkEditPath,
   getEntityName,
@@ -100,7 +101,6 @@ import {
   findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
-  StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
@@ -200,10 +200,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleSearch,
   ]);
 
-  const fetchChildTerms = async (parentFQN: string) => {
+  const fetchChildTerms = async (parentFQN: string, after?: string) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
     try {
-      const { data } = await getGlossaryTermChildrenLazy(parentFQN, 1000); // Get all children
+      const response = await getGlossaryTermChildrenLazy(parentFQN, 50, after);
+      const { data, paging } = response;
 
       // Validate glossaryChildTerms is an array
       if (!Array.isArray(glossaryChildTerms)) {
@@ -216,9 +217,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       ): ModifiedGlossary[] => {
         return terms.map((term) => {
           if (term.fullyQualifiedName === parentFQN) {
+            const existingChildren = after ? term.children ?? [] : [];
+            const newChildren = data as GlossaryTermWithChildren[];
+
             return {
               ...term,
-              children: data as GlossaryTermWithChildren[],
+              children: [...existingChildren, ...newChildren],
+              hasMoreChildren: !!paging?.after,
+              childrenPagingAfter: paging?.after,
             };
           }
 
@@ -237,7 +243,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       };
 
       const updatedTerms = updateNestedTerms(glossaryChildTerms);
-      setGlossaryChildTerms(updatedTerms);
+      setGlossaryChildTerms(updatedTerms as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -614,16 +620,20 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             term.children as ModifiedGlossary[],
             targetFqn,
             newStatus
-          ) as ModifiedGlossaryTerm[],
+          ),
         };
       }
 
       return term;
-    });
+    }) as ModifiedGlossary[];
   };
 
   const updateTaskData = useCallback(
-    async (data: ResolveTask, taskId: string, glossaryTermFqn: string) => {
+    async (
+      data: ResolveTask,
+      taskId: string | number,
+      glossaryTermFqn: string
+    ) => {
       try {
         if (!taskId) {
           return;
@@ -669,7 +679,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const handleApproveGlossaryTerm = useCallback(
-    (taskId: string, glossaryTermFqn: string) => {
+    (taskId: string | number, glossaryTermFqn: string) => {
       const data = { newValue: 'approved' } as ResolveTask;
       updateTaskData(data, taskId, glossaryTermFqn);
     },
@@ -677,11 +687,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const handleRejectGlossaryTerm = useCallback(
-    (taskId: string, glossaryTermFqn: string) => {
+    (taskId: string | number, glossaryTermFqn: string) => {
       const data = { newValue: 'rejected' } as ResolveTask;
       updateTaskData(data, taskId, glossaryTermFqn);
     },
     [updateTaskData]
+  );
+
+  const handleLoadMoreChildren = useCallback(
+    (record: ModifiedGlossaryTerm) => {
+      if (record.childrenPagingAfter) {
+        fetchChildTerms(
+          record.fullyQualifiedName || '',
+          record.childrenPagingAfter
+        );
+      }
+    },
+    [fetchChildTerms]
   );
 
   const columns = useMemo(() => {
@@ -694,6 +716,39 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ellipsis: true,
         width: tableColumnsWidth.name,
         render: (_, record) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            const parentRecord = (
+              record as ModifiedGlossaryTerm & {
+                parentRecord?: ModifiedGlossaryTerm;
+              }
+            ).parentRecord;
+            const isLoading =
+              loadingChildren[parentRecord?.fullyQualifiedName || ''];
+
+            const loadedCount = parentRecord?.children?.length ?? 0;
+            const totalCount = parentRecord?.childrenCount ?? 0;
+            const remainingCount = totalCount - loadedCount;
+
+            return (
+              <Button
+                className="text-primary"
+                data-testid="load-more-children-button"
+                loading={isLoading}
+                size="small"
+                type="link"
+                onClick={() =>
+                  parentRecord && handleLoadMoreChildren(parentRecord)
+                }>
+                {t('label.view-more-count', {
+                  countValue: remainingCount,
+                })}
+              </Button>
+            );
+          }
+
           const name = getEntityName(record);
 
           return (
@@ -723,8 +778,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: tableColumnsWidth.description,
-        render: (description: string) =>
-          description.trim() ? (
+        render: (description: string, record) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
+          return description.trim() ? (
             <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
@@ -732,7 +794,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
+          );
+        },
       },
       {
         title: t('label.status'),
@@ -744,6 +807,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           width: tableColumnsWidth.status,
         }),
         render: (_, record) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
           const status = record.entityStatus ?? EntityStatus.Approved;
           const termFQN = record.fullyQualifiedName ?? '';
           const { permission, taskId } = permissionForApproveOrReject(
@@ -774,7 +844,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <StatusBadge
                   dataTestId={termFQN + '-status'}
                   label={status}
-                  status={StatusClass[status as keyof typeof StatusClass]}
+                  status={EntityStatusClass[status]}
                 />
               </div>
             </Popover>
@@ -787,23 +857,39 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         width: tableColumnsWidth.reviewers,
-        render: (reviewers: EntityReference[]) => (
-          <OwnerLabel
-            isCompactView={false}
-            owners={reviewers}
-            placeHolder={t('label.no-entity', {
-              entity: t('label.reviewer-plural'),
-            })}
-            showLabel={false}
-          />
-        ),
+        render: (reviewers: EntityReference[], record) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
+          return (
+            <OwnerLabel
+              isCompactView={false}
+              owners={reviewers}
+              placeHolder={t('label.no-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+              showLabel={false}
+            />
+          );
+        },
       },
       {
         title: t('label.synonym-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
         width: tableColumnsWidth.synonyms,
-        render: (synonyms: string[]) => {
+        render: (synonyms: string[], record) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
           ) : (
@@ -819,7 +905,19 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           );
         },
       },
-      ...ownerTableObject<ModifiedGlossaryTerm>(),
+      ...ownerTableObject<ModifiedGlossaryTerm>().map((col) => ({
+        ...col,
+        render: (owners: EntityReference[], record: ModifiedGlossaryTerm) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
+          return col.render ? col.render(owners, record, 0) : null;
+        },
+      })),
     ];
     if (permissions.Create) {
       data.push({
@@ -827,6 +925,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         render: (_, record) => {
+          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
+            .isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
           const status = record.entityStatus ?? EntityStatus.Approved;
           const allowAddTerm = status === EntityStatus.Approved;
 
@@ -878,6 +983,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     termTaskThreads,
     handleApproveGlossaryTerm,
     handleRejectGlossaryTerm,
+    handleLoadMoreChildren,
+    loadingChildren,
   ]);
 
   const handleCheckboxChange = useCallback(
@@ -1105,9 +1212,27 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     );
   };
 
+  const getRowClassName = useCallback(
+    (record: ModifiedGlossaryTerm) => {
+      const isNested = (record.level ?? 0) > 0;
+      const isExpanded = expandedRowKeys.includes(
+        record.fullyQualifiedName || ''
+      );
+
+      return isNested || isExpanded ? 'glossary-nested-row' : '';
+    },
+    [expandedRowKeys]
+  );
+
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
       expandIcon: ({ expanded, onExpand, record }) => {
+        const isLoadMoreRow = (record as ModifiedGlossaryTerm).isLoadMoreButton;
+
+        if (isLoadMoreRow) {
+          return <span className="expand-cell-empty-icon-container" />;
+        }
+
         const { children, childrenCount } = record;
         const isLoading = loadingChildren[record.fullyQualifiedName || ''];
 
@@ -1158,6 +1283,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             prev.filter((key) => key !== record.fullyQualifiedName)
           );
         }
+      },
+      rowExpandable: (record) => {
+        const rec = record as ModifiedGlossaryTerm;
+        const isLoadMoreRow = rec.isLoadMoreButton;
+
+        return (
+          !isLoadMoreRow &&
+          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
+        );
       },
     }),
     [
@@ -1246,20 +1380,61 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return !isEmpty(activeGlossary.reviewers);
   }, [movedGlossaryTerm, activeGlossary]);
 
+  const processTermsWithLoadMore = useCallback(
+    (terms: ModifiedGlossaryTerm[], level = 0): ModifiedGlossaryTerm[] => {
+      return terms.map((term) => {
+        let processedTerm: ModifiedGlossaryTerm = { ...term, level };
+
+        if (term.children && term.children.length > 0) {
+          processedTerm = {
+            ...processedTerm,
+            children: processTermsWithLoadMore(
+              term.children as ModifiedGlossaryTerm[],
+              level + 1
+            ),
+          };
+        }
+
+        if (term.hasMoreChildren) {
+          const loadMoreItem: ModifiedGlossaryTerm = {
+            id: `${term.fullyQualifiedName}-load-more`,
+            name: 'load-more-placeholder',
+            fullyQualifiedName: `${term.fullyQualifiedName}-load-more`,
+            description: '',
+            displayName: '',
+            entityStatus: term.entityStatus,
+            isLoadMoreButton: true,
+            parentRecord: term,
+            level: level + 1,
+          } as ModifiedGlossaryTerm;
+
+          processedTerm = {
+            ...processedTerm,
+            children: [...(processedTerm.children ?? []), loadMoreItem],
+          };
+        }
+
+        return processedTerm;
+      });
+    },
+    []
+  );
+
   const filteredGlossaryTerms = useMemo(() => {
     if (!Array.isArray(glossaryTerms)) {
       return [];
     }
 
-    // Only filter by status on client side, search is handled server-side
-    return glossaryTerms.filter((term) => {
+    const filtered = glossaryTerms.filter((term) => {
       const matchesStatus = selectedStatus.includes(
         term.entityStatus as string
       );
 
       return matchesStatus;
     });
-  }, [glossaryTerms, selectedStatus]);
+
+    return processTermsWithLoadMore(filtered);
+  }, [glossaryTerms, selectedStatus, processTermsWithLoadMore]);
 
   useEffect(() => {
     if (!tableContainerRef.current) {
@@ -1339,6 +1514,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 extraTableFilters={extraTableFilters}
                 loading={isTableLoading || isExpandingAll}
                 pagination={false}
+                rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
@@ -1386,6 +1562,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 ),
               }}
               pagination={false}
+              rowClassName={getRowClassName}
               rowKey="fullyQualifiedName"
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
@@ -1447,7 +1624,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                       className="p-x-xs p-y-xss"
                       dataTestId=""
                       label={EntityStatus.InReview}
-                      status={StatusClass[EntityStatus.InReview]}
+                      status={EntityStatusClass[EntityStatus.InReview]}
                     />
                   </span>
                 </span>

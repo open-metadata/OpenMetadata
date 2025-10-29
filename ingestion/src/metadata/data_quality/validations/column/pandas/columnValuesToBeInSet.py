@@ -13,6 +13,7 @@
 Validator for column value to be in set test case
 """
 
+from collections import defaultdict
 from typing import List, Optional
 
 import pandas as pd
@@ -20,6 +21,7 @@ import pandas as pd
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
+    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
     BaseColumnValuesToBeInSetValidator,
@@ -99,6 +101,16 @@ class ColumnValuesToBeInSetValidator(
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
+        Follows the iterate pattern from the Mean metric's df_fn method to handle
+        multiple dataframes efficiently without concatenating them in memory.
+
+        Memory-efficient approach: Instead of concatenating all dataframes (which creates
+        a full copy in memory), we iterate over them and accumulate aggregates. This is
+        especially important for large parquet files split across many chunks.
+
+        For in-set validation, we accumulate counts across dataframes to accurately
+        track how many values are in the allowed set per dimension.
+
         Args:
             column: The column being validated
             dimension_col: Single SQALikeColumn object corresponding to the dimension column
@@ -115,24 +127,35 @@ class ColumnValuesToBeInSetValidator(
             match_enum = test_params["match_enum"]
 
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
-            df = dfs[0]
 
-            grouped = df.groupby(dimension_col.name, dropna=False)
+            dimension_aggregates = defaultdict(
+                lambda: {"count_in_set": 0, "row_count": 0}
+            )
+
+            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
+            for df in dfs:
+                grouped = df.groupby(dimension_col.name, dropna=False)
+
+                for dimension_value, group_df in grouped:
+                    dimension_value = self.format_dimension_value(dimension_value)
+
+                    count_in_set = group_df[column.name].isin(allowed_values).sum()
+                    dimension_aggregates[dimension_value][
+                        "count_in_set"
+                    ] += count_in_set
+                    dimension_aggregates[dimension_value]["row_count"] += len(group_df)
+
             results_data = []
+            for dimension_value, agg in dimension_aggregates.items():
+                count_in_set = agg["count_in_set"]
+                row_count = agg["row_count"]
 
-            for dimension_value, group_df in grouped:
-                dimension_value = self.format_dimension_value(dimension_value)
-
-                count_in_set = group_df[column.name].isin(allowed_values).sum()
-
-                # Use enum names as keys
                 if match_enum:
-                    row_count = len(group_df)
                     failed_count = row_count - count_in_set
 
                     results_data.append(
                         {
-                            "dimension": dimension_value,
+                            DIMENSION_VALUE_KEY: dimension_value,
                             Metrics.COUNT_IN_SET.name: count_in_set,
                             Metrics.ROW_COUNT.name: row_count,
                             DIMENSION_TOTAL_COUNT_KEY: row_count,
@@ -142,7 +165,7 @@ class ColumnValuesToBeInSetValidator(
                 else:
                     results_data.append(
                         {
-                            "dimension": dimension_value,
+                            DIMENSION_VALUE_KEY: dimension_value,
                             Metrics.COUNT_IN_SET.name: count_in_set,
                             DIMENSION_TOTAL_COUNT_KEY: count_in_set,
                             DIMENSION_FAILED_COUNT_KEY: 0,
@@ -160,25 +183,19 @@ class ColumnValuesToBeInSetValidator(
 
                 results_df = aggregate_others_pandas(
                     results_df,
-                    dimension_column="dimension",
+                    dimension_column=DIMENSION_VALUE_KEY,
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
                 for row_dict in results_df.to_dict("records"):
-                    # Rename dimension column to dimension_value for helper methods
-                    row_dict["dimension_value"] = row_dict.pop("dimension")
-
-                    # Build metric_values dict using helper method
                     metric_values = self._build_metric_values_from_row(
                         row_dict, metrics_to_compute, test_params
                     )
 
-                    # Evaluate test condition
                     evaluation = self._evaluate_test_condition(
                         metric_values, test_params
                     )
 
-                    # Create dimension result using helper method
                     dimension_result = self._create_dimension_result(
                         row_dict,
                         dimension_col.name,
