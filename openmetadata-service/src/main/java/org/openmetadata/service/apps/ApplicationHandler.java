@@ -436,7 +436,12 @@ public class ApplicationHandler {
       }
       IngestionPipeline original = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
       pipeline.setSourceConfig(
-          pipeline.getSourceConfig().withConfig(appPipeline.withAppPrivateConfig(encryptedConfig)));
+          pipeline
+              .getSourceConfig()
+              .withConfig(
+                  appPipeline
+                      .withAppPrivateConfig(encryptedConfig)
+                      .withApplicationFqn(app.getFullyQualifiedName())));
       ingestionPipelineRepository.update(null, original, pipeline, "admin");
       LOG.info("Updated ingestion pipeline private config for app {}", app.getName());
     } catch (EntityNotFoundException e) {
