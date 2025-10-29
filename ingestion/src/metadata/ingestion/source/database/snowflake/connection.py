@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_TEST_GET_VIEWS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -72,6 +73,12 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
         if not engine_wrapper.database_name:
             databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
             for database in databases:
+                if filter_by_database(
+                    engine_wrapper.service_connection.databaseFilterPattern,
+                    database.name,
+                ):
+                    continue
+
                 engine_wrapper.database_name = database.name
                 break
     else:
