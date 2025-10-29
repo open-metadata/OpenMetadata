@@ -12,11 +12,11 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { useRuleEnforcement } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
+import { useRuleEnforcementProvider } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { EntityType } from '../enums/entity.enum';
 
 interface UseEntityRulesOptions {
-  entityType: EntityType | string;
+  entityType: EntityType;
   autoFetch?: boolean;
 }
 
@@ -32,7 +32,7 @@ export const useEntityRules = ({
     getRulesForEntity,
     getUIHintsForEntity,
     isLoading,
-  } = useRuleEnforcement();
+  } = useRuleEnforcementProvider();
 
   // Auto-fetch rules for entity type if enabled
   useEffect(() => {

@@ -689,8 +689,8 @@ export const DataAssetsHeader = ({
               isCompactView={false}
               maxVisibleOwners={4}
               multiple={{
-                user: uiHints.canAddMultipleOwners,
-                team: uiHints.canAddTeamOwner,
+                user: uiHints.canAddMultipleUserOwners,
+                team: uiHints.canAddMultipleTeamOwner,
               }}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}

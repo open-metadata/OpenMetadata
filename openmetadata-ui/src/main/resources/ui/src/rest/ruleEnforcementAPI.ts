@@ -18,14 +18,12 @@ import APIClient from './index';
 
 const BASE_URL = '/system/settings/entityRulesSettings';
 
-export const getEntityRules = async (
-  entityType: EntityType | string
-): Promise<AxiosResponse<EntityRule[]>> => {
+export const getEntityRules = async (entityType: EntityType | string) => {
   const response = await APIClient.get<EntityRule[]>(
     `${BASE_URL}/${entityType.toLowerCase()}`
   );
 
-  return response;
+  return response.data;
 };
 
 export const getAllEntityRules = async (): Promise<
@@ -39,11 +37,11 @@ export const getAllEntityRules = async (): Promise<
 export const updateEntityRules = async (
   entityType: EntityType | string,
   rules: EntityRule[]
-): Promise<AxiosResponse<EntityRule[]>> => {
+) => {
   const response = await APIClient.put<EntityRule[]>(
     `${BASE_URL}/${entityType.toLowerCase()}`,
     rules
   );
 
-  return response;
+  return response.data;
 };

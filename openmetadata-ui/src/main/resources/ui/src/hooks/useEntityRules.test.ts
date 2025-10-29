@@ -34,8 +34,8 @@ describe('useEntityRules', () => {
     jest.clearAllMocks();
     mockGetRulesForEntity.mockReturnValue([]);
     mockGetUIHintsForEntity.mockReturnValue({
-      canAddMultipleOwners: true,
-      canAddTeamOwner: true,
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
       canAddMultipleDomains: true,
       canAddMultipleDataProducts: true,
       canAddMultipleGlossaryTermTable: true,

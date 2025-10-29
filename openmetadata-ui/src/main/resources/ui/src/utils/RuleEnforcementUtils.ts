@@ -22,49 +22,38 @@ import {
  * Parse a rule string into a structured object
  */
 export const parseRule = (rule: EntityRule): ParsedRule => {
-  try {
-    const ruleObj = JSON.parse(rule.rule);
+  const ruleObj = JSON.parse(rule.rule);
 
-    // Determine rule type from the parsed object
-    let ruleType = 'custom';
+  // Determine rule type from the parsed object
+  let ruleType = 'custom';
 
-    if (ruleObj.multipleUsersOrSingleTeamOwnership) {
-      ruleType = RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP;
-    } else if (ruleObj['<='] && JSON.stringify(ruleObj).includes('domains')) {
-      ruleType = RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED;
-    } else if (
-      ruleObj['<='] &&
-      JSON.stringify(ruleObj).includes('dataProducts')
-    ) {
-      ruleType = RuleType.MULTIPLE_DATA_PRODUCTS_NOT_ALLOWED;
-    } else if (ruleObj.validateDataProductDomainMatch) {
-      ruleType = RuleType.DATA_PRODUCT_DOMAIN_VALIDATION;
-    } else if (
-      ruleObj['<='] &&
-      JSON.stringify(ruleObj).includes('filterTagsBySource') &&
-      JSON.stringify(ruleObj).includes('Glossary')
-    ) {
-      ruleType = RuleType.SINGLE_GLOSSARY_TERM_FOR_TABLE;
-    }
-
-    return {
-      type: ruleType,
-      condition: ruleObj,
-      enabled: rule.enabled,
-      ignoredEntities: rule.ignoredEntities,
-      description: rule.description,
-      name: rule.name,
-    };
-  } catch (error) {
-    return {
-      type: 'invalid',
-      condition: {},
-      enabled: false,
-      ignoredEntities: rule.ignoredEntities,
-      description: rule.description,
-      name: rule.name,
-    };
+  if (ruleObj.multipleUsersOrSingleTeamOwnership) {
+    ruleType = RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP;
+  } else if (ruleObj['<='] && JSON.stringify(ruleObj).includes('domains')) {
+    ruleType = RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED;
+  } else if (
+    ruleObj['<='] &&
+    JSON.stringify(ruleObj).includes('dataProducts')
+  ) {
+    ruleType = RuleType.MULTIPLE_DATA_PRODUCTS_NOT_ALLOWED;
+  } else if (ruleObj.validateDataProductDomainMatch) {
+    ruleType = RuleType.DATA_PRODUCT_DOMAIN_VALIDATION;
+  } else if (
+    ruleObj['<='] &&
+    JSON.stringify(ruleObj).includes('filterTagsBySource') &&
+    JSON.stringify(ruleObj).includes('Glossary')
+  ) {
+    ruleType = RuleType.SINGLE_GLOSSARY_TERM_FOR_TABLE;
   }
+
+  return {
+    type: ruleType,
+    condition: ruleObj,
+    enabled: rule.enabled,
+    ignoredEntities: rule.ignoredEntities,
+    description: rule.description,
+    name: rule.name,
+  };
 };
 
 /**
@@ -75,8 +64,8 @@ export const getUIHints = (
   entityType: EntityType | string
 ) => {
   const hints = {
-    canAddMultipleOwners: true,
-    canAddTeamOwner: true,
+    canAddMultipleUserOwners: true,
+    canAddMultipleTeamOwner: true,
     canAddMultipleDomains: true,
     canAddMultipleDataProducts: true,
     maxDomains: Infinity,
@@ -87,17 +76,14 @@ export const getUIHints = (
   };
 
   rules.forEach((rule) => {
-    if (
-      rule.ignoredEntities.includes(entityType.toLowerCase()) ||
-      !rule.enabled
-    ) {
+    if (rule.ignoredEntities.includes(entityType) || !rule.enabled) {
       return;
     }
 
     switch (rule.type) {
       case RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP:
-        hints.canAddMultipleOwners = false;
-        hints.canAddTeamOwner = false;
+        hints.canAddMultipleUserOwners = true;
+        hints.canAddMultipleTeamOwner = false;
         hints.warnings.push(
           'Entity must have either multiple user owners or a single team owner'
         );

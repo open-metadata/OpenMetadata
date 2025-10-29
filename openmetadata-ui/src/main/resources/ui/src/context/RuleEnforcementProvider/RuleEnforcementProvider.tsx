@@ -27,63 +27,53 @@ import { getUIHints, parseRule } from '../../utils/RuleEnforcementUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface RuleEnforcementContextType {
-  rules: Record<string, ParsedRule[]>;
+  rules: Record<EntityType, ParsedRule[]>;
   isLoading: boolean;
-  error: string | null;
-  fetchRulesForEntity: (entityType: EntityType | string) => Promise<void>;
-  getRulesForEntity: (entityType: EntityType | string) => ParsedRule[];
+  fetchRulesForEntity: (entityType: EntityType) => Promise<void>;
+  getRulesForEntity: (entityType: EntityType) => ParsedRule[];
   getUIHintsForEntity: (
-    entityType: EntityType | string
+    entityType: EntityType
   ) => ReturnType<typeof getUIHints>;
-  refreshRules: () => Promise<void>;
 }
 
-const RuleEnforcementContext = createContext<
-  RuleEnforcementContextType | undefined
->(undefined);
-
+const RuleEnforcementContext = createContext<RuleEnforcementContextType>(
+  {} as RuleEnforcementContextType
+);
 interface RuleEnforcementProviderProps {
   children: React.ReactNode;
-  initialEntityTypes?: (EntityType | string)[];
+  initialEntityTypes?: EntityType[];
 }
 
 export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
   ({ children, initialEntityTypes = [] }) => {
     const [rules, setRules] = useState<Record<string, ParsedRule[]>>({});
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [loadedEntityTypes, setLoadedEntityTypes] = useState<Set<string>>(
       new Set()
     );
 
     const fetchRulesForEntity = useCallback(
-      async (entityType: EntityType | string) => {
-        const entityKey = entityType.toLowerCase();
-
+      async (entityType: EntityType) => {
         // Skip if already loaded
-        if (loadedEntityTypes.has(entityKey)) {
+        if (loadedEntityTypes.has(entityType)) {
           return;
         }
 
         setIsLoading(true);
-        setError(null);
 
         try {
           const response = await getEntityRules(entityType);
-          const entityRules = response.data;
-
-          const parsedRules = entityRules.map(parseRule);
+          const parsedRules = response.map(parseRule);
 
           setRules((prev) => ({
             ...prev,
-            [entityKey]: parsedRules,
+            [entityType]: parsedRules,
           }));
 
-          setLoadedEntityTypes((prev) => new Set([...prev, entityKey]));
+          setLoadedEntityTypes((prev) => new Set([...prev, entityType]));
         } catch (err) {
           const error = err as AxiosError;
           const errorMessage = `Failed to fetch rules for ${entityType}`;
-          setError(errorMessage);
           showErrorToast(error, errorMessage);
         } finally {
           setIsLoading(false);
@@ -93,30 +83,20 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
     );
 
     const getRulesForEntity = useCallback(
-      (entityType: EntityType | string): ParsedRule[] => {
-        return rules[entityType.toLowerCase()] || [];
+      (entityType: EntityType): ParsedRule[] => {
+        return rules[entityType] || [];
       },
       [rules]
     );
 
     const getUIHintsForEntity = useCallback(
-      (entityType: EntityType | string) => {
+      (entityType: EntityType) => {
         const entityRules = getRulesForEntity(entityType);
 
         return getUIHints(entityRules, entityType);
       },
       [getRulesForEntity]
     );
-
-    const refreshRules = useCallback(async () => {
-      // Clear loaded types to force refresh
-      setLoadedEntityTypes(new Set());
-      setRules({});
-
-      // Reload rules for all previously loaded entity types
-      const typesToReload = Array.from(loadedEntityTypes);
-      await Promise.all(typesToReload.map(fetchRulesForEntity));
-    }, [loadedEntityTypes, fetchRulesForEntity]);
 
     // Load initial entity types on mount
     useEffect(() => {
@@ -129,20 +109,16 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
       () => ({
         rules,
         isLoading,
-        error,
         fetchRulesForEntity,
         getRulesForEntity,
         getUIHintsForEntity,
-        refreshRules,
       }),
       [
         rules,
         isLoading,
-        error,
         fetchRulesForEntity,
         getRulesForEntity,
         getUIHintsForEntity,
-        refreshRules,
       ]
     );
 
@@ -153,15 +129,7 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
     );
   };
 
-export const useRuleEnforcement = (): RuleEnforcementContextType => {
-  const context = useContext(RuleEnforcementContext);
-  if (!context) {
-    throw new Error(
-      'useRuleEnforcement must be used within a RuleEnforcementProvider'
-    );
-  }
-
-  return context;
-};
+export const useRuleEnforcementProvider = () =>
+  useContext(RuleEnforcementContext);
 
 export default RuleEnforcementProvider;

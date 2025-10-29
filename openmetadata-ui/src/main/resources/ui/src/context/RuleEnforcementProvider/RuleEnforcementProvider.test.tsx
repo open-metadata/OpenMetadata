@@ -12,7 +12,6 @@
  */
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { AxiosError } from 'axios';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { RuleType } from '../../generated/system/entityRules';
@@ -105,23 +104,6 @@ describe('RuleEnforcementProvider', () => {
 
       expect(mockGetEntityRules).not.toHaveBeenCalled();
     });
-
-    it('should handle API errors', async () => {
-      const error = new Error('API Error') as AxiosError;
-      mockGetEntityRules.mockRejectedValue(error);
-
-      const { result } = renderHook(() => useRuleEnforcement(), { wrapper });
-
-      await act(async () => {
-        await result.current.fetchRulesForEntity(EntityType.TABLE);
-      });
-
-      expect(mockShowErrorToast).toHaveBeenCalledWith(
-        error,
-        'Failed to fetch rules for table'
-      );
-      expect(result.current.error).toBe('Failed to fetch rules for table');
-    });
   });
 
   describe('getUIHintsForEntity', () => {
@@ -158,42 +140,6 @@ describe('RuleEnforcementProvider', () => {
       expect(hints.warnings).toContain(
         'Tables can only have a single Glossary Term'
       );
-    });
-  });
-
-  describe('refreshRules', () => {
-    it('should clear and reload all rules', async () => {
-      const mockRules = [
-        {
-          name: 'Test Rule',
-          description: 'Test',
-          rule: JSON.stringify({ test: true }),
-          enabled: true,
-          ignoredEntities: [],
-          provider: 'system' as const,
-        },
-      ];
-
-      mockGetEntityRules.mockResolvedValue({ data: mockRules } as any);
-
-      const { result } = renderHook(() => useRuleEnforcement(), { wrapper });
-
-      await act(async () => {
-        await result.current.fetchRulesForEntity(EntityType.TABLE);
-        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
-      });
-
-      expect(mockGetEntityRules).toHaveBeenCalledTimes(2);
-
-      mockGetEntityRules.mockClear();
-
-      await act(async () => {
-        await result.current.refreshRules();
-      });
-
-      await waitFor(() => {
-        expect(mockGetEntityRules).toHaveBeenCalledTimes(2);
-      });
     });
   });
 
