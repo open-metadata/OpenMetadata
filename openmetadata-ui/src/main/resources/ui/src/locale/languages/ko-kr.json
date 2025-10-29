@@ -1930,6 +1930,7 @@
     "alerts-source-description": "알림을 활성화할 소스를 지정하세요.",
     "alerts-trigger-description": "'스키마 변경' 또는 '테스트 실패'와 같은 중요한 트리거 이벤트를 선택하여 알림을 생성하세요.",
     "all-charts-are-mapped": "모든 차트가 기존 KPI와 매핑되었습니다.",
+    "all-values-unique-no-distribution-available": "이 열의 모든 값이 고유합니다. 분포를 사용할 수 없습니다.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "이미 사용자이신가요?",
     "and-followed-owned-by-name": "그리고 당신이 팔로우하는 팀은 {{userName}}이(가) 소유하고 있습니다",

@@ -1930,6 +1930,7 @@
     "alerts-source-description": "Specify the source that will activate the alert.",
     "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "Todos os gráficos estão mapeados com KPIs existentes.",
+    "all-values-unique-no-distribution-available": "Todos os valores desta coluna são únicos. Nenhuma distribuição disponível.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Já é um utilizador?",
     "and-followed-owned-by-name": "e a equipa que você está seguindo é de propriedade de {{userName}}",

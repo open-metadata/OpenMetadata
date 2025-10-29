@@ -1930,6 +1930,7 @@
     "alerts-source-description": "Geben Sie die Quelle an, die den Alarm auslösen wird.",
     "alerts-trigger-description": "Wählen Sie wichtige Auslöser wie „Schemaänderung“ oder „Testfehler“, um einen Alarm zu erzeugen.",
     "all-charts-are-mapped": "Alle Diagramme sind mit vorhandenen KPIs verknüpft.",
+    "all-values-unique-no-distribution-available": "Alle Werte in dieser Spalte sind eindeutig. Keine Verteilung verfügbar.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Bereits ein Benutzer?",
     "and-followed-owned-by-name": "und das von Ihnen verfolgte Team gehört {{userName}}",

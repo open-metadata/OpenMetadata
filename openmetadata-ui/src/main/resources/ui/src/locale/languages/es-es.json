@@ -1930,6 +1930,7 @@
     "alerts-source-description": "Especifique la fuente que activará la alerta.",
     "alerts-trigger-description": "Seleccione eventos de activación importantes como 'Cambio de esquema' o 'Fallo de prueba' para generar una alerta.",
     "all-charts-are-mapped": "Todos los gráficos están asignados con KPI existentes.",
+    "all-values-unique-no-distribution-available": "Todos los valores en esta columna son únicos. No hay distribución disponible.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "¿Ya es usuario?",
     "and-followed-owned-by-name": "y el equipo al que estás siguiendo es propiedad de {{userName}}",

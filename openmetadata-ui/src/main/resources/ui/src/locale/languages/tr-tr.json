@@ -1930,6 +1930,7 @@
     "alerts-source-description": "Uyarıyı etkinleştirecek kaynağı belirtin.",
     "alerts-trigger-description": "Bir uyarı oluşturmak için 'Şema Değişikliği' veya 'Test Başarısızlığı' gibi önemli tetikleyici olayları seçin.",
     "all-charts-are-mapped": "Tüm grafikler mevcut KPI'larla eşleştirilmiştir.",
+    "all-values-unique-no-distribution-available": "Bu sütundaki tüm değerler benzersizdir. Dağıtım mevcut değil.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Zaten bir kullanıcı mısınız?",
     "and-followed-owned-by-name": "ve takip ettiğiniz takım {{userName}} adlı kullanıcıya ait",

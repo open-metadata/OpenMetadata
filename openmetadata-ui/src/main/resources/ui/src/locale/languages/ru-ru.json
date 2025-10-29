@@ -1930,6 +1930,7 @@
     "alerts-source-description": "Выберите источник оповещения.",
     "alerts-trigger-description": "Какое действие должно активировать оповещение?",
     "all-charts-are-mapped": "Диаграммы строятся на основе актуальных KPI.",
+    "all-values-unique-no-distribution-available": "Все значения в этом столбце уникальны. Распределение недоступно.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Уже зарегистрированы?",
     "and-followed-owned-by-name": ", а команда, на которую вы подписаны, принадлежит {{userName}}",

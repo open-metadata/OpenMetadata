@@ -1930,6 +1930,7 @@
     "alerts-source-description": "アラートをトリガーするソースを指定します。",
     "alerts-trigger-description": "「スキーマの変更」や「テスト失敗」など、重要なトリガーイベントを選択してアラートを生成します。",
     "all-charts-are-mapped": "すべてのチャートは KPI にマッピングされています。",
+    "all-values-unique-no-distribution-available": "この列のすべての値は一意です。分布は利用できません。",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "すでにユーザーですか？",
     "and-followed-owned-by-name": "フォロー中のチームは {{userName}} が所有しています",

@@ -1930,6 +1930,7 @@
     "alerts-source-description": "Specifiez la source qui déclenchera l'alerte.",
     "alerts-trigger-description": "Selectionnez les évènements déclencheurs importants comme 'Modification de Schema' ou 'Echec du Test' pour générer une alerte.",
     "all-charts-are-mapped": "Tous les graphiques sont associés à un KPI.",
+    "all-values-unique-no-distribution-available": "Toutes les valeurs de cette colonne sont uniques. Aucune distribution disponible.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Déjà Utilisateur?",
     "and-followed-owned-by-name": "et l'équipe suivante appartient à {{userName}}",
