@@ -225,7 +225,13 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await followEntity(page, EntityTypeEndpoint.DataProduct);
+
+      // Wait for the search query that will populate the following widget
+      const followingSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await redirectToHomePage(page);
+      await followingSearchResponse;
 
       // Check that the followed data product is shown in the following widget
       await expect(
@@ -265,6 +271,8 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
       await checkAssetsCount(page, 0);
     });
 
@@ -283,7 +291,15 @@ test.describe('Domains', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
+
+    // Wait for the search query that will populate the following widget
+    const followingSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?*index=all*'
+    );
     await redirectToHomePage(page);
+    await followingSearchResponse;
+
+    await page.waitForLoadState('networkidle');
 
     // Check that the followed domain is shown in the following widget
     await expect(
@@ -391,6 +407,7 @@ test.describe('Domains', () => {
     // The domain FQN should be properly escaped in the query
     // The actual format uses escaped hyphens, not URL encoding
     const fqn = (domain.data.fullyQualifiedName ?? '')
+      .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
       .replace(/-/g, '\\-');
 
@@ -460,7 +477,13 @@ test.describe('Domains', () => {
       await verifyDomain(page, subDomain.data, domain.data, false);
       // Follow domain
       await followEntity(page, EntityTypeEndpoint.Domain);
+
+      // Wait for the search query that will populate the following widget
+      const followingSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await redirectToHomePage(page);
+      await followingSearchResponse;
       await page.waitForLoadState('networkidle');
 
       // Check that the followed domain is shown in the following widget
@@ -632,11 +655,11 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct.data);
 
       await expect(
-        page.getByTestId('domain-owner-name').getByTestId('owner-label')
+        page.getByTestId(user1.responseData.displayName)
       ).toContainText(user1.responseData.displayName);
 
       await expect(
-        page.getByTestId('domain-expert-name').getByTestId('owner-label')
+        page.getByTestId(user2.responseData.displayName)
       ).toContainText(user2.responseData.displayName);
     } finally {
       await dataProduct?.delete(apiContext);
@@ -830,7 +853,10 @@ test.describe('Domains', () => {
         await addCustomPropertiesForEntity({
           page,
           propertyName,
-          customPropertyData: { description: 'Test domain custom property' },
+          customPropertyData: {
+            description: 'Test domain custom property',
+            entityApiType: 'domains',
+          },
           customType: 'String',
         });
       });

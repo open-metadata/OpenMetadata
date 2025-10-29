@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/ic-column.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-info-circle.svg';
-import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/ic-table-test.svg';
 import i18n from '../../../../utils/i18next/LocalUtil';
-import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
 import IncidentsTab from './IncidentsTab/IncidentsTab.component';
 import { QualityTab } from './QualityTab/QualityTab.component';
@@ -23,7 +19,7 @@ import { TableProfilerChartProps } from './TableProfiler.interface';
 import TableProfilerChart from './TableProfilerChart/TableProfilerChart';
 
 export type GetProfilerTabsType = Record<
-  TableProfilerTab,
+  ProfilerTabPath,
   ((data: TableProfilerChartProps) => JSX.Element) | (() => JSX.Element)
 >;
 
@@ -35,10 +31,10 @@ export type GetProfilerTabOptionsType = {
 class ProfilerClassBase {
   public getProfilerTabs(): GetProfilerTabsType {
     return {
-      [TableProfilerTab.DATA_QUALITY]: QualityTab,
-      [TableProfilerTab.COLUMN_PROFILE]: ColumnProfileTable,
-      [TableProfilerTab.TABLE_PROFILE]: TableProfilerChart,
-      [TableProfilerTab.INCIDENTS]: IncidentsTab,
+      [ProfilerTabPath.DATA_QUALITY]: QualityTab,
+      [ProfilerTabPath.COLUMN_PROFILE]: ColumnProfileTable,
+      [ProfilerTabPath.TABLE_PROFILE]: TableProfilerChart,
+      [ProfilerTabPath.INCIDENTS]: IncidentsTab,
     } as GetProfilerTabsType;
   }
 
@@ -48,39 +44,31 @@ class ProfilerClassBase {
         label: i18n.t('label.table-entity-text', {
           entityText: i18n.t('label.profile'),
         }),
-        key: TableProfilerTab.TABLE_PROFILE,
-
-        icon: TableProfileIcon,
+        key: ProfilerTabPath.TABLE_PROFILE,
       },
       {
         label: i18n.t('label.column-entity', {
           entity: i18n.t('label.profile'),
         }),
-        key: TableProfilerTab.COLUMN_PROFILE,
-
-        icon: ColumnProfileIcon,
+        key: ProfilerTabPath.COLUMN_PROFILE,
       },
       {
         label: i18n.t('label.data-entity', {
           entity: i18n.t('label.quality'),
         }),
-        key: TableProfilerTab.DATA_QUALITY,
-
-        icon: DataQualityIcon,
+        key: ProfilerTabPath.DATA_QUALITY,
       },
       {
         label: i18n.t('label.incident-plural'),
-        key: TableProfilerTab.INCIDENTS,
-
-        icon: IncidentIcon,
+        key: ProfilerTabPath.INCIDENTS,
       },
     ];
   }
 
-  public getDefaultTabKey(isTourOpen: boolean): TableProfilerTab {
+  public getDefaultTabKey(isTourOpen: boolean): ProfilerTabPath {
     return isTourOpen
-      ? TableProfilerTab.COLUMN_PROFILE
-      : TableProfilerTab.TABLE_PROFILE;
+      ? ProfilerTabPath.COLUMN_PROFILE
+      : ProfilerTabPath.TABLE_PROFILE;
   }
 }
 

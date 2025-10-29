@@ -292,7 +292,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   // Get all plugin routes that should be in AUTHENTICATED_ROUTE position
   const pluginRoutes = useMemo(() => {
-    return plugins.flatMap((plugin) => {
+    return plugins?.flatMap((plugin) => {
       const routes = plugin.getRoutes?.() || [];
 
       // Filter routes that don't have position or have AUTHENTICATED_ROUTE position
@@ -727,6 +727,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<ClassificationRouter />} path="/tags/*" />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
+      <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_SUB_TAB} />
       <Route element={<GlossaryRouter />} path="/glossary/*" />
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />

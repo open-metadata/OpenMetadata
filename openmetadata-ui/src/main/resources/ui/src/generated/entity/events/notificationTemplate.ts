@@ -20,11 +20,6 @@ export interface NotificationTemplate {
      */
     changeDescription?: ChangeDescription;
     /**
-     * Checksum of the default template to detect if updates are available. Only applicable to
-     * system templates.
-     */
-    defaultTemplateChecksum?: string;
-    /**
      * When `true` indicates the template has been soft deleted.
      */
     deleted?: boolean;
@@ -48,6 +43,10 @@ export interface NotificationTemplate {
      * Unique identifier of this template instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -74,7 +73,7 @@ export interface NotificationTemplate {
     /**
      * Handlebars template for the email subject line with placeholders.
      */
-    templateSubject?: string;
+    templateSubject: string;
     /**
      * Last update time corresponding to the new version of the template.
      */

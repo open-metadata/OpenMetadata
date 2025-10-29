@@ -260,6 +260,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "tier": {
         "properties": {
           "tagFQN": {
@@ -285,6 +288,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

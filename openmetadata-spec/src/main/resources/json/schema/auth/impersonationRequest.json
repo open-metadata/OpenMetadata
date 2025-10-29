@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/auth/impersonationRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ImpersonationRequest",
+  "description": "Request to generate an impersonation token for a bot to act on behalf of a user",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.ImpersonationRequest",
+  "properties": {
+    "targetUser": {
+      "description": "Username of the user to impersonate",
+      "type": "string"
+    },
+    "expirySeconds": {
+      "description": "Token expiry in seconds (default 3600, max 86400)",
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 86400,
+      "default": 3600
+    }
+  },
+  "required": ["targetUser"],
+  "additionalProperties": false
+}

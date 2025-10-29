@@ -378,7 +378,7 @@ test('Classification Page', async ({ page }) => {
       await clickOutside(page);
 
       const suggestTag = page.waitForResponse(
-        'api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*'
+        'api/v1/search/query?q=*&index=tag_search_index*'
       );
       await page.click('[data-testid="tag-selector"]');
       await page.keyboard.type(tag);
@@ -657,7 +657,7 @@ test('Verify Owner Add Delete', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(
-    page.locator(`[data-testid="tag-owner-name"]`).getByTestId(OWNER1)
+    page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
   ).toBeVisible();
 
   await classification1.visitPage(page);
