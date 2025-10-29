@@ -195,6 +195,65 @@ const DomainDetails = ({
     }
   };
 
+  const fetchDataProducts = async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
+
+        setDataProductsCount(res.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.data-product-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  };
+
+  const fetchSubDomainsCount = useCallback(async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
+
+        const totalCount = res.hits.total.value ?? 0;
+        setSubDomainsCount(totalCount);
+      } catch (error) {
+        setSubDomainsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.sub-domain-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  }, [isVersionsView, encodedFqn]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey === 'assets') {
       // refresh domain count when assets tab is selected
@@ -243,6 +302,7 @@ const DomainDetails = ({
               patchEntity: patchDataProduct,
               onSuccess: () => {
                 fetchDataProducts();
+                dataProductsTabRef.current?.refreshDataProducts();
                 handleTabChange(EntityTabs.DATA_PRODUCTS);
                 onUpdate?.(domain);
                 closeDataProductDrawer();
@@ -410,37 +470,6 @@ const DomainDetails = ({
       : []),
   ];
 
-  const fetchSubDomainsCount = useCallback(async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'parent.fullyQualifiedName.keyword':
-              domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DOMAIN,
-          trackTotalHits: true,
-        });
-
-        const totalCount = res.hits.total.value ?? 0;
-        setSubDomainsCount(totalCount);
-      } catch (error) {
-        setSubDomainsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
-  }, [isVersionsView, encodedFqn]);
-
   const addSubDomain = useCallback(
     async (formData: CreateDomain) => {
       const data = {
@@ -485,34 +514,6 @@ const DomainDetails = ({
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
     navigate(path);
-  };
-
-  const fetchDataProducts = async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DATA_PRODUCT,
-        });
-
-        setDataProductsCount(res.hits.total.value ?? 0);
-      } catch (error) {
-        setDataProductsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.data-product-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
   };
 
   const fetchDomainPermission = async () => {
@@ -757,7 +758,7 @@ const DomainDetails = ({
                     domain.style as Style & {
                       coverImage?: { position?: string };
                     }
-                  ).coverImage!.position!,
+                  )?.coverImage?.position,
                 }
               : undefined
           }
