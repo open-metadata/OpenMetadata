@@ -872,10 +872,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       int totalEntityRecords = getTotalEntityRecords(entityType);
-      int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
+      int currentBatchSize = batchSize.get();
+      int loadPerThread = calculateNumberOfThreads(totalEntityRecords, currentBatchSize);
 
       if (totalEntityRecords > 0) {
-        submitBatchTasks(entityType, loadPerThread, producerLatch);
+        submitBatchTasks(entityType, loadPerThread, currentBatchSize, producerLatch);
       }
 
       if (jobLogger != null) {
@@ -887,10 +888,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void submitBatchTasks(
-      String entityType, int loadPerThread, CountDownLatch producerLatch) {
+      String entityType, int loadPerThread, int fixedBatchSize, CountDownLatch producerLatch) {
     for (int i = 0; i < loadPerThread; i++) {
       LOG.debug("Submitting virtual thread producer task for batch {}/{}", i + 1, loadPerThread);
-      int currentOffset = i * batchSize.get();
+      int currentOffset = i * fixedBatchSize;
       producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
     }
   }
@@ -1732,11 +1733,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return entities.size();
     }
 
+    int currentBatchSize = batchSize.get();
     return entities.stream()
         .mapToInt(
             entityType -> {
               int totalRecords = getTotalEntityRecords(entityType);
-              return calculateNumberOfThreads(totalRecords);
+              return calculateNumberOfThreads(totalRecords, currentBatchSize);
             })
         .sum();
   }
@@ -1876,12 +1878,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     updateStats(entityType, new StepStats().withSuccessRecords(0).withFailedRecords(failedCount));
   }
 
-  private int calculateNumberOfThreads(int totalEntityRecords) {
-    int mod = totalEntityRecords % batchSize.get();
+  private int calculateNumberOfThreads(int totalEntityRecords, int fixedBatchSize) {
+    int mod = totalEntityRecords % fixedBatchSize;
     if (mod == 0) {
-      return totalEntityRecords / batchSize.get();
+      return totalEntityRecords / fixedBatchSize;
     } else {
-      return (totalEntityRecords / batchSize.get()) + 1;
+      return (totalEntityRecords / fixedBatchSize) + 1;
     }
   }
 
