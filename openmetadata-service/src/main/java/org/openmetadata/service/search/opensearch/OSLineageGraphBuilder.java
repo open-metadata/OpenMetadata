@@ -206,7 +206,7 @@ public class OSLineageGraphBuilder {
       Map<String, String> hasToFqnMap,
       int remainingDepth)
       throws IOException {
-    if (remainingDepth <= 1 || hasToFqnMap.isEmpty()) {
+    if (remainingDepth <= 0 || hasToFqnMap.isEmpty()) {
       return;
     }
 
@@ -321,7 +321,6 @@ public class OSLineageGraphBuilder {
           getDownstreamLineage(
               lineageRequest
                   .withDirection(LineageDirection.DOWNSTREAM)
-                  .withDownstreamDepth(lineageRequest.getDownstreamDepth() + 1)
                   .withDirectionValue(
                       getLineageDirection(
                           lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
@@ -376,7 +375,6 @@ public class OSLineageGraphBuilder {
             getDownstreamLineage(
                 lineageRequest
                     .withDirection(LineageDirection.DOWNSTREAM)
-                    .withDownstreamDepth(lineageRequest.getDownstreamDepth() + 1)
                     .withDirectionValue(
                         getLineageDirection(
                             lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
