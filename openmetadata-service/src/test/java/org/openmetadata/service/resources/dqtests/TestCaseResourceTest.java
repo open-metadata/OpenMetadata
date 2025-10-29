@@ -4600,7 +4600,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     int deletedCount =
         org.openmetadata.service.Entity.getCollectionDAO()
             .testCaseResultTimeSeriesDao()
-            .deleteTestCaseResultsBeforeCutOff(cutoffTs, limit);
+            .deleteRecordsBeforeCutOff(cutoffTs, limit);
 
     ResultList<TestCaseResult> remainingResults =
         getTestCaseResults(

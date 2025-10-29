@@ -546,8 +546,8 @@ public interface EntityTimeSeriesDAO {
   @ConnectionAwareSqlUpdate(
       value =
           "DELETE FROM <table> "
-              + "WHERE id IN ( "
-              + "  SELECT id FROM <table> "
+              + "WHERE json->>'id' IN ( "
+              + "  SELECT json->>'id' FROM <table> "
               + "  WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit "
               + ")",
       connectionType = POSTGRES)
@@ -557,11 +557,11 @@ public interface EntityTimeSeriesDAO {
             DELETE FROM <table> WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit
             """,
       connectionType = MYSQL)
-  int deleteTestCaseResultsBeforeCutOff(
+  int deleteRecordsBeforeCutOff(
       @Define("table") String table, @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
 
-  default int deleteTestCaseResultsBeforeCutOff(long cutoffTs, int limit) {
-    return deleteTestCaseResultsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
+  default int deleteRecordsBeforeCutOff(long cutoffTs, int limit) {
+    return deleteRecordsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
   }
 
   /** @deprecated */

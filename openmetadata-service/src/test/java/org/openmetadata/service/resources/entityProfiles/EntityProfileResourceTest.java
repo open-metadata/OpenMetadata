@@ -496,7 +496,7 @@ public class EntityProfileResourceTest extends OpenMetadataApplicationTest {
 
     Entity.getCollectionDAO()
         .profilerDataTimeSeriesDao()
-        .deleteTestCaseResultsBeforeCutOff(cutoffTs, limit);
+        .deleteRecordsBeforeCutOff(cutoffTs, limit);
 
     ResultList<EntityProfile> remainingProfiles =
         getEntityProfiles(

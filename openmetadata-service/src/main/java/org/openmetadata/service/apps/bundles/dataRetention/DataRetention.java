@@ -244,7 +244,7 @@ public class DataRetention extends AbstractNativeApplication {
 
     executeWithStatsTracking(
         "test_case_results",
-        () -> testCaseResultsDAO.deleteTestCaseResultsBeforeCutOff(cutoffMillis, BATCH_SIZE));
+        () -> testCaseResultsDAO.deleteRecordsBeforeCutOff(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Test case results cleanup complete.");
   }
@@ -255,8 +255,7 @@ public class DataRetention extends AbstractNativeApplication {
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
     executeWithStatsTracking(
-        "profile_data",
-        () -> profileDataDAO.deleteTestCaseResultsBeforeCutOff(cutoffMillis, BATCH_SIZE));
+        "profile_data", () -> profileDataDAO.deleteRecordsBeforeCutOff(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Profile data cleanup complete.");
   }
