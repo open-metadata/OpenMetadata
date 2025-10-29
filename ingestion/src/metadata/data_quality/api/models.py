@@ -19,6 +19,7 @@ multiple test cases per workflow.
 from typing import List, Optional
 
 from pydantic import Field
+from typing_extensions import Self
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
@@ -27,6 +28,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.utils import entity_link
 
 
 class TestCaseDefinition(ConfigModel):
@@ -39,6 +41,29 @@ class TestCaseDefinition(ConfigModel):
     columnName: Optional[str] = None
     parameterValues: Optional[List[TestCaseParameterValue]] = None
     computePassedFailedRowCount: Optional[bool] = False
+
+    @classmethod
+    def from_test_case(cls, test_case: TestCase) -> Self:
+        test_definition_name = test_case.testDefinition.name
+        assert (
+            test_definition_name is not None
+        ), f"Test definition name for {test_case.fullyQualifiedName!r} not found"
+
+        link = test_case.entityLink
+        assert (
+            link is not None
+        ), f"Entity link for {test_case.fullyQualifiedName!r} not found"
+        column_name = entity_link.maybe_get_column_from(link.root)
+
+        return cls(
+            name=test_case.name.root,
+            displayName=test_case.displayName,
+            description=test_case.description,
+            testDefinitionName=test_definition_name,
+            columnName=column_name,
+            parameterValues=test_case.parameterValues,
+            computePassedFailedRowCount=test_case.computePassedFailedRowCount,
+        )
 
 
 class TestSuiteProcessorConfig(ConfigModel):
