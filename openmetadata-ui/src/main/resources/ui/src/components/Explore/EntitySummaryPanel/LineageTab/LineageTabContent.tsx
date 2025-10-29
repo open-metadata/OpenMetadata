@@ -48,7 +48,7 @@ const getTruncatedPath = (path: string) => {
   // If there are more than 2 parts, show first ... last
   if (parts.length > 2) {
     const firstPart = parts[0];
-    const lastPart = parts[parts.length - 1];
+    const lastPart = parts.at(-1);
 
     return `${firstPart} > ... > ${lastPart}`;
   }

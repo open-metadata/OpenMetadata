@@ -125,6 +125,92 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     }
   };
 
+  const renderLoadingState = () => (
+    <div className="glossary-terms-loading-container">
+      <div className="glossary-terms-loading-spinner">
+        <div className="loading-spinner" />
+      </div>
+    </div>
+  );
+
+  const renderEditingState = () => (
+    <div className="inline-edit-container">
+      <TagSelectForm
+        defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
+        fetchApi={fetchGlossaryList}
+        key={`glossary-terms-${entityId}`}
+        placeholder={t('label.add-a-entity', {
+          entity: t('label.glossary-term'),
+        })}
+        tagType={TagSource.Glossary}
+        onCancel={handleCancel}
+        onSubmit={handleGlossaryTermSelection}
+      />
+    </div>
+  );
+
+  const renderEmptyContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return (
+      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+    );
+  };
+
+  const renderGlossaryTermsDisplay = () => (
+    <div className="glossary-terms-display">
+      <div className="glossary-terms-list">
+        {(showAllTerms
+          ? glossaryTerms
+          : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
+        ).map((glossaryTerm, index) => (
+          <div
+            className="glossary-term-item"
+            data-testid={`tag-${
+              glossaryTerm.tagFQN ||
+              (glossaryTerm as any).name ||
+              (glossaryTerm as any).displayName ||
+              index
+            }`}
+            key={glossaryTerm.tagFQN}>
+            <GlossaryIcon className="glossary-term-icon" />
+            <span className="glossary-term-name">
+              {getEntityName(glossaryTerm)}
+            </span>
+          </div>
+        ))}
+        {glossaryTerms.length > maxVisibleGlossaryTerms && (
+          <button
+            className="show-more-terms-button"
+            type="button"
+            onClick={() => setShowAllTerms(!showAllTerms)}>
+            {showAllTerms
+              ? t('label.less')
+              : `+${glossaryTerms.length - maxVisibleGlossaryTerms} ${t(
+                  'label.more-lowercase'
+                )}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderGlossaryTermsContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return renderGlossaryTermsDisplay();
+  };
+
   if (!glossaryTerms?.length) {
     return (
       <div
@@ -135,46 +221,28 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             {t('label.glossary-term-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="edit-icon" onClick={handleEditClick}>
+            <button
+              className="edit-icon"
+              type="button"
+              onClick={handleEditClick}>
               <EditIcon />
-            </span>
+            </button>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cancel-icon" onClick={handleCancel}>
+              <button
+                className="cancel-icon"
+                type="button"
+                onClick={handleCancel}>
                 <CloseIcon />
-              </span>
+              </button>
             </div>
           )}
         </div>
         <div
           className="glossary-terms-content"
           data-testid="glossary-container">
-          {isLoading ? (
-            <div className="glossary-terms-loading-container">
-              <div className="glossary-terms-loading-spinner">
-                <div className="loading-spinner" />
-              </div>
-            </div>
-          ) : isEditing ? (
-            <div className="inline-edit-container">
-              <TagSelectForm
-                defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
-                fetchApi={fetchGlossaryList}
-                key={`glossary-terms-${entityId}`}
-                placeholder={t('label.add-a-entity', {
-                  entity: t('label.glossary-term'),
-                })}
-                tagType={TagSource.Glossary}
-                onCancel={handleCancel}
-                onSubmit={handleGlossaryTermSelection}
-              />
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-data-found')}
-            </span>
-          )}
+          {renderEmptyContent()}
         </div>
       </div>
     );
@@ -189,76 +257,23 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           {t('label.glossary-term-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="edit-icon" onClick={handleEditClick}>
+          <button className="edit-icon" type="button" onClick={handleEditClick}>
             <EditIcon />
-          </span>
+          </button>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cancel-icon" onClick={handleCancel}>
+            <button
+              className="cancel-icon"
+              type="button"
+              onClick={handleCancel}>
               <CloseIcon />
-            </span>
+            </button>
           </div>
         )}
       </div>
       <div className="glossary-terms-content" data-testid="glossary-container">
-        {isLoading ? (
-          <div className="glossary-terms-loading-container">
-            <div className="glossary-terms-loading-spinner">
-              <div className="loading-spinner" />
-            </div>
-          </div>
-        ) : isEditing ? (
-          <div className="inline-edit-container">
-            <TagSelectForm
-              defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
-              fetchApi={fetchGlossaryList}
-              key={`glossary-terms-${entityId}`}
-              placeholder={t('label.add-a-entity', {
-                entity: t('label.glossary-term'),
-              })}
-              tagType={TagSource.Glossary}
-              onCancel={handleCancel}
-              onSubmit={handleGlossaryTermSelection}
-            />
-          </div>
-        ) : (
-          <div className="glossary-terms-display">
-            <div className="glossary-terms-list">
-              {(showAllTerms
-                ? glossaryTerms
-                : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
-              ).map((glossaryTerm, index) => (
-                <div
-                  className="glossary-term-item"
-                  data-testid={`tag-${
-                    glossaryTerm.tagFQN ||
-                    (glossaryTerm as any).name ||
-                    (glossaryTerm as any).displayName ||
-                    index
-                  }`}
-                  key={index}>
-                  <GlossaryIcon className="glossary-term-icon" />
-                  <span className="glossary-term-name">
-                    {getEntityName(glossaryTerm)}
-                  </span>
-                </div>
-              ))}
-              {glossaryTerms.length > maxVisibleGlossaryTerms && (
-                <button
-                  className="show-more-terms-button"
-                  type="button"
-                  onClick={() => setShowAllTerms(!showAllTerms)}>
-                  {showAllTerms
-                    ? t('label.less')
-                    : `+${glossaryTerms.length - maxVisibleGlossaryTerms} ${t(
-                        'label.more-lowercase'
-                      )}`}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        {renderGlossaryTermsContent()}
       </div>
     </div>
   );

@@ -19,7 +19,10 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
-import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
@@ -54,7 +57,6 @@ import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { patchTopicDetails } from '../../rest/topicsAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
-import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
