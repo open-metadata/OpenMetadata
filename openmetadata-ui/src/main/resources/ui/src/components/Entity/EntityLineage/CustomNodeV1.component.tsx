@@ -25,8 +25,6 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import DownloadIcon from '@mui/icons-material/SaveAlt';
 
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
-
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -42,7 +40,6 @@ import {
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
 import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
-import { Button } from 'antd';
 
 const NodeHandles = memo(
   ({
@@ -176,13 +173,6 @@ const MeatballMenu = () => {
       </IconButton>
 
       <Menu
-        PaperProps={{
-          elevation: 2,
-          sx: {
-            mt: 1,
-            minWidth: 150,
-          },
-        }}
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'top',
@@ -191,6 +181,19 @@ const MeatballMenu = () => {
         className="manage-node-menu"
         id="menu"
         open={open}
+        sx={{
+          '.MuiPaper-root': {
+            width: 'max-content',
+            marginLeft: '6px',
+            marginTop: 0,
+            '.MuiMenuItem-root': {
+              fontWeight: 400,
+              svg: {
+                fontSize: 20,
+              },
+            },
+          },
+        }}
         transformOrigin={{
           vertical: 'top',
           horizontal: 'left',
