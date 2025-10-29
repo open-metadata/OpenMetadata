@@ -79,6 +79,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Classification } from '../../generated/entity/classification/classification';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
@@ -87,7 +88,12 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { searchQuery } from '../../rest/searchAPI';
-import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
+import {
+  deleteTag,
+  getClassificationById,
+  getTagByFqn,
+  patchTag,
+} from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -120,6 +126,8 @@ const TagPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
+  const [parentClassification, setParentClassification] =
+    useState<Classification | null>(null);
 
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
@@ -206,8 +214,11 @@ const TagPage = () => {
   );
 
   const showDisableOption = useMemo(
-    () => tagPermissions.EditAll && !tagItem?.deleted,
-    [tagPermissions.EditAll, tagItem?.deleted]
+    () =>
+      tagPermissions.EditAll &&
+      !tagItem?.deleted &&
+      !parentClassification?.disabled,
+    [tagPermissions.EditAll, tagItem?.deleted, parentClassification?.disabled]
   );
 
   const fetchCurrentTagPermission = async () => {
@@ -225,6 +236,18 @@ const TagPage = () => {
     }
   };
 
+  const fetchClassificationDetails = async (classificationId: string) => {
+    if (!classificationId) {
+      return;
+    }
+    try {
+      const response = await getClassificationById(classificationId);
+      setParentClassification(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const getTagData = async () => {
     try {
       setIsLoading(true);
@@ -237,6 +260,8 @@ const TagPage = () => {
           ],
         });
         setTagItem(response);
+
+        fetchClassificationDetails(response.classification?.id || '');
       }
     } catch (e) {
       showErrorToast(e as AxiosError);

@@ -375,7 +375,6 @@ const ClassificationDetails = forwardRef(
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
-                      className="h-10"
                       data-testid="add-new-tag-button"
                       disabled={isClassificationDisabled}
                       type="primary"

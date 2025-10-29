@@ -195,7 +195,7 @@ export const getTagsTableColumn = ({
           );
 
         return (
-          <Space align="center" size={8}>
+          <Space align="center" size={4}>
             <Tooltip
               placement="topRight"
               title={
@@ -211,9 +211,9 @@ export const getTagsTableColumn = ({
                 icon={
                   <EditIcon
                     data-testid="editTagDescription"
-                    height={14}
+                    height={16}
                     name="edit"
-                    width={14}
+                    width={16}
                   />
                 }
                 size="small"
@@ -228,7 +228,7 @@ export const getTagsTableColumn = ({
               placement="topRight"
               title={disableDeleteButton && disabledDeleteMessage}>
               <Button
-                className="p-0 flex-center"
+                className="tag-delete-button"
                 data-testid="delete-tag"
                 disabled={disableDeleteButton}
                 icon={getDeleteIcon({
