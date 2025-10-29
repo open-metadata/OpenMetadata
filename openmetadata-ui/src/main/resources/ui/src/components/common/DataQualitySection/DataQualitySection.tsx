@@ -168,8 +168,12 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             <div className="legend-item">
               <span className="legend-dot aborted" />
               <span className="legend-text">
-                {t('label.-with-colon', { text: t('label.aborted') })}{' '}
-                {abortedTests}
+                <Typography.Text className="legend-text-label">
+                  {t('label.-with-colon', { text: t('label.aborted') })}{' '}
+                </Typography.Text>
+                <Typography.Text className="legend-text-value">
+                  {abortedTests}
+                </Typography.Text>
               </span>
             </div>
           )}
@@ -177,8 +181,12 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             <div className="legend-item">
               <span className="legend-dot failed" />
               <span className="legend-text">
-                {t('label.-with-colon', { text: t('label.failed') })}{' '}
-                {failedTests}
+                <Typography.Text className="legend-text-label">
+                  {t('label.-with-colon', { text: t('label.failed') })}{' '}
+                </Typography.Text>
+                <Typography.Text className="legend-text-value">
+                  {failedTests}
+                </Typography.Text>
               </span>
             </div>
           )}

@@ -126,7 +126,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
     return (
       <>
-        <Avatar className="assignee-avatar" size="small">
+        <Avatar className="assignee-avatar" size={18}>
           {avatarText}
         </Avatar>
         <Typography.Text className="assignee-name">

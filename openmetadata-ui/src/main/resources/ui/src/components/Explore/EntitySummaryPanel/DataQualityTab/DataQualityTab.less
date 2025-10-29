@@ -73,7 +73,6 @@
 
     .data-quality-tab-count {
       border-radius: 6px;
-      padding: 2px 6px;
       background-color: @grey-9;
       border: 1px solid @grey-38;
       color: @grey-700;
@@ -378,8 +377,11 @@
             .assignee-avatar {
               background-color: @primary-7;
               color: @white;
-              font-size: 10px;
+              font-size: 13px !important;
               font-weight: 600;
+              .ant-avatar-string {
+                line-height: 16px !important;
+              }
             }
 
             .assignee-name {
