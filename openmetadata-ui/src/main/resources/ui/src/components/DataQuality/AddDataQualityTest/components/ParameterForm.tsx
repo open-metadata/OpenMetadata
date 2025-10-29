@@ -472,6 +472,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   <Select
                     allowClear
                     showSearch
+                    data-testid={`${data.name}-select`}
                     disabled={isDisabled}
                     getPopupContainer={getPopupContainer}
                     options={columnOptions}

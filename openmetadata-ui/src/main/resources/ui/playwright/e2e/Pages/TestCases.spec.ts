@@ -176,15 +176,43 @@ test('Table difference test case', async ({ page }) => {
         `Edit ${testCase.name}`
       );
 
+      // Wait for form to finish loading (isLoading becomes false)
+      await expect(page.getByTestId('edit-test-form')).toBeVisible();
+
+      // Verify Table 1's keyColumns is enabled and populated in edit mode
+      const table1KeyColumnsEditInput = page.locator(
+        '#tableTestForm_params_keyColumns_0_value'
+      );
+
+      // Wait for the input to be visible and enabled, and then check its value
+      await expect(table1KeyColumnsEditInput).toBeVisible();
+      await expect(table1KeyColumnsEditInput).not.toBeDisabled();
+
+      // Wait for the value to be populated
+      // Use data-testid to find the select component
+      const columnName = table1.entity?.columns[0].name;
+      const table1Select = page.getByTestId('keyColumns-select');
+
+      // Wait for the select to be visible and verify the selected value is displayed
+      await expect(table1Select).toBeVisible();
+      await expect(table1Select.getByText(columnName)).toBeVisible();
+
       // Verify table2.keyColumns is enabled and populated in edit mode
       const table2KeyColumnsEditInput = page.locator(
         '#tableTestForm_params_table2\\.keyColumns_0_value'
       );
 
+      // Wait for the input to be visible and enabled, and then check its value
+      await expect(table2KeyColumnsEditInput).toBeVisible();
       await expect(table2KeyColumnsEditInput).not.toBeDisabled();
-      await expect(table2KeyColumnsEditInput).toHaveValue(
-        table2.entity?.columns[0].name
-      );
+
+      // Wait for the value to be populated
+      const table2ColumnName = table2.entity?.columns[0].name;
+      const table2Select = page.getByTestId('table2.keyColumns-select');
+
+      // Wait for the select to be visible and verify the selected value is displayed
+      await expect(table2Select).toBeVisible();
+      await expect(table2Select.getByText(table2ColumnName)).toBeVisible();
 
       await page
         .locator('label')
