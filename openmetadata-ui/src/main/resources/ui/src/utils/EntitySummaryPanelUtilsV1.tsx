@@ -362,7 +362,7 @@ const ContainerFieldCardsV1: React.FC<{
 
   if (isEmpty(columns)) {
     return (
-      <div className="no-data-container">
+      <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
       </div>
     );

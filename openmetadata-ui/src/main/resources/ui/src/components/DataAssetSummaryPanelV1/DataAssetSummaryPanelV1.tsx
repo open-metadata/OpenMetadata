@@ -47,6 +47,7 @@ import {
 } from '../../rest/databaseAPI';
 import { patchDataModelDetails } from '../../rest/dataModelsAPI';
 import { patchDataProduct } from '../../rest/dataProductAPI';
+import { patchGlossaries, patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchMlModelDetails } from '../../rest/mlModelAPI';
 import { patchPipelineDetails } from '../../rest/pipelineAPI';
@@ -71,8 +72,6 @@ import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/Summar
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
 import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import GlossaryTermSummary from '../Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
-import TagsSummary from '../Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component';
 
 interface TestCaseStatusCounts {
   success: number;
@@ -139,6 +138,10 @@ export const DataAssetSummaryPanelV1 = ({
         return patchSearchIndexDetails;
       case EntityType.DATA_PRODUCT:
         return patchDataProduct;
+      case EntityType.GLOSSARY:
+        return patchGlossaries;
+      case EntityType.GLOSSARY_TERM:
+        return patchGlossaryTerm;
       default:
         // For entity types without specific patch APIs, throw an error
         throw new Error(
@@ -381,6 +384,10 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.FILE:
       case EntityType.SPREADSHEET:
       case EntityType.WORKSHEET:
+      case EntityType.GOVERN:
+      case EntityType.GLOSSARY:
+      case EntityType.GLOSSARY_TERM:
+      case EntityType.TAG:
         return (
           <>
             {entityType === EntityType.TABLE && (
@@ -597,23 +604,23 @@ export const DataAssetSummaryPanelV1 = ({
             </div>
           </>
         );
-      case EntityType.GLOSSARY_TERM:
-        return (
-          <>
-            <span data-testid="GlossaryTermSummary" />
-            <GlossaryTermSummary
-              entityDetails={dataAsset as any}
-              isLoading={false}
-            />
-          </>
-        );
-      case EntityType.TAG:
-        return (
-          <>
-            <span data-testid="TagSummary" />
-            <TagsSummary entityDetails={dataAsset as any} isLoading={false} />
-          </>
-        );
+      //   case EntityType.GLOSSARY_TERM:
+      //     return (
+      //       <>
+      //         <span data-testid="GlossaryTermSummary" />
+      //         <GlossaryTermSummary
+      //           entityDetails={dataAsset as any}
+      //           isLoading={false}
+      //         />
+      //       </>
+      //     );
+      //   case EntityType.TAG:
+      //     return (
+      //       <>
+      //         <span data-testid="TagSummary" />
+      //         <TagsSummary entityDetails={dataAsset as any} isLoading={false} />
+      //       </>
+      //     );
       default:
         return null;
     }

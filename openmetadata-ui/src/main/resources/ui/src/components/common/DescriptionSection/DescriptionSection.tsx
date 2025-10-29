@@ -52,7 +52,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       }
       // Check if the element's scroll height is greater than its client height
       // This indicates that the text is being truncated by CSS
-      const isTruncated = measureNode.scrollHeight > measureNode.clientHeight;
+      // Add a small threshold (1px) to account for sub-pixel rendering differences
+      const isTruncated =
+        measureNode.scrollHeight > measureNode.clientHeight + 1;
       setShouldShowButton(isTruncated);
     }
   }, []);
@@ -80,13 +82,19 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
   // Check if text is truncated when description changes or component mounts
   useEffect(() => {
-    if (description && !isEditDescription) {
-      // Use setTimeout to ensure the DOM has been updated
-      // Delay slightly to allow markdown to render fully
-      const id = setTimeout(checkIfTextIsTruncated, 50);
-
-      return () => clearTimeout(id);
+    if (!description || isEditDescription) {
+      return;
     }
+
+    // Reset expanded state and button visibility when description changes
+    setIsExpanded(false);
+    setShouldShowButton(false);
+
+    // Use setTimeout to ensure the DOM has been updated
+    // Delay slightly to allow markdown to render fully
+    const id = setTimeout(checkIfTextIsTruncated, 100);
+
+    return () => clearTimeout(id);
   }, [description, isEditDescription, checkIfTextIsTruncated]);
 
   // Recalculate when container resizes or becomes visible after tab switch

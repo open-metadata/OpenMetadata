@@ -61,6 +61,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           EntityType.SEARCH_INDEX,
           EntityType.DASHBOARD_DATA_MODEL,
           EntityType.API_ENDPOINT,
+          EntityType.CONTAINER,
         ].includes(entityType)
       ) {
         items.push({

@@ -739,6 +739,11 @@ export default function EntitySummaryPanel({
     }
   }, [id]);
 
+  // Reset activeTab to OVERVIEW when entity changes
+  useEffect(() => {
+    setActiveTab(EntityRightPanelTab.OVERVIEW);
+  }, [entityDetails?.details?.id]);
+
   useEffect(() => {
     if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
       fetchEntityData();
