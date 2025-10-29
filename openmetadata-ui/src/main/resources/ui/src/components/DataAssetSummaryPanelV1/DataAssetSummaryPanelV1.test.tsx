@@ -522,7 +522,7 @@ describe('DataAssetSummaryPanelV1', () => {
     it('should not render sections for unsupported entity types', async () => {
       const unsupportedProps = {
         ...defaultProps,
-        entityType: EntityType.GLOSSARY_TERM,
+        entityType: EntityType.USER as any, // USER entity type is not supported
       };
 
       await act(async () => {
