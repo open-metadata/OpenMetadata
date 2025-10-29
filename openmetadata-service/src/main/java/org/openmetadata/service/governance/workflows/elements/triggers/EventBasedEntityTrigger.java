@@ -9,7 +9,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -119,34 +119,45 @@ public class EventBasedEntityTrigger implements TriggerInterface {
 
   private void setStartEvents(
       String workflowTriggerId, EventBasedEntityTriggerDefinition triggerDefinition) {
-    ListIterator<Event> eventsIterator =
-        triggerDefinition.getConfig().getEvents().stream().toList().listIterator();
 
-    while (eventsIterator.hasNext()) {
-      int index = eventsIterator.nextIndex();
-      Event event = eventsIterator.next();
+    List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
+    Set<Event> events = triggerDefinition.getConfig().getEvents();
 
-      Signal signal =
-          new SignalBuilder()
-              .id(
-                  getEntitySignalId(
-                      triggerDefinition.getConfig().getEntityType(), event.toString()))
-              .build();
+    for (String entityType : entityTypes) {
+      for (Event event : events) {
 
-      SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
-      signalEventDefinition.setSignalRef(signal.getId());
+        String eventId = event.toString(); // or event.getName()
+        String signalId = getEntitySignalId(entityType, eventId);
 
-      StartEvent startEvent =
-          new StartEventBuilder()
-              .id(
-                  getFlowableElementId(
-                      workflowTriggerId, String.format("%s-%s", "startEvent", index)))
-              .build();
-      startEvent.getEventDefinitions().add(signalEventDefinition);
+        Signal signal = new SignalBuilder().id(signalId).build();
 
-      this.startEvents.add(startEvent);
-      this.signals.add(signal);
+        SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
+        signalEventDefinition.setSignalRef(signal.getId());
+
+        // Create start event with proper ID
+        String startEventId =
+            getFlowableElementId(
+                workflowTriggerId, String.format("%s-%s-%s", entityType, eventId, "start"));
+
+        StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
+
+        startEvent.getEventDefinitions().add(signalEventDefinition);
+
+        this.startEvents.add(startEvent);
+        this.signals.add(signal);
+      }
     }
+  }
+
+  private List<String> getEntityTypesFromConfig(Object configObj) {
+    Map<String, Object> configMap = JsonUtils.getMap(configObj);
+    @SuppressWarnings("unchecked")
+    List<String> entityTypes = (List<String>) configMap.get("entityTypes");
+    if (entityTypes != null && !entityTypes.isEmpty()) {
+      return entityTypes;
+    }
+    LOG.debug("No entityTypes found in workflow trigger configuration, returning empty list");
+    return new ArrayList<>();
   }
 
   private CallActivity getWorkflowTrigger(
@@ -210,8 +221,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
                 .build();
         serviceTask.getFieldExtensions().add(excludedFilterExpr);
       }
-      if (triggerConfig.getFilter() != null && !triggerConfig.getFilter().trim().isEmpty()) {
-        // Use JSON Logic path
+      if (triggerConfig.getFilter() != null) {
+        // Filter is now a map of entity-specific filters
         FieldExtension filterExpr =
             new FieldExtensionBuilder()
                 .fieldName("filterExpr")

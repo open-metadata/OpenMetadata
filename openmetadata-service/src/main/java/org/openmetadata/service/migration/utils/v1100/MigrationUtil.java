@@ -17,6 +17,9 @@ public class MigrationUtil {
   private final Handle handle;
   private final ConnectionType connectionType;
 
+  private static final String ADMIN_USER_NAME = "admin";
+  private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
+
   public MigrationUtil(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
     this.connectionType = connectionType;

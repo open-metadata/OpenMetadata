@@ -22,6 +22,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 
+@Deprecated
 public class SetGlossaryTermStatusTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
