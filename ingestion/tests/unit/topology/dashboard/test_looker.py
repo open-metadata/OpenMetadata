@@ -78,7 +78,7 @@ MOCK_LOOKER_CONFIG = {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
             "securityConfig": {"jwtToken": "token"},
-            "enableVersionValidation": False
+            "enableVersionValidation": False,
         },
     },
 }
