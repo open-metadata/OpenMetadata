@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/llm/vertexAIConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VertexAIConnection",
+  "description": "Google Cloud Vertex AI LLM Service Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.llm.VertexAIConnection",
+  "definitions": {
+    "vertexAIType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": ["VertexAI"],
+      "default": "VertexAI"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/vertexAIType",
+      "default": "VertexAI"
+    },
+    "projectId": {
+      "title": "Project ID",
+      "description": "GCP Project ID",
+      "type": "string"
+    },
+    "location": {
+      "title": "Location",
+      "description": "GCP region/location (e.g., us-central1)",
+      "type": "string",
+      "default": "us-central1"
+    },
+    "credentials": {
+      "title": "GCP Credentials",
+      "description": "GCP service account credentials JSON",
+      "type": "string",
+      "format": "password"
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Request timeout in seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for failed requests",
+      "type": "integer",
+      "default": 3
+    },
+    "modelFilterPattern": {
+      "description": "Regex to only fetch models with names matching the pattern",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["projectId", "credentials"]
+}
