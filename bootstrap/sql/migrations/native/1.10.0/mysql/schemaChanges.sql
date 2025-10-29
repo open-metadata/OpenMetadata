@@ -113,6 +113,9 @@ ALTER TABLE stored_procedure_entity
 ADD COLUMN databaseSchemaHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
 GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnHash, '.', 3)) STORED;
 
+
+CREATE INDEX idx_stored_procedure_entity_deleted_name_id ON stored_procedure_entity(deleted, name, id);
+
 ALTER TABLE stored_procedure_entity
 DROP INDEX idx_stored_procedure_entity_deleted_name_id;
 
