@@ -159,7 +159,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
-      return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);

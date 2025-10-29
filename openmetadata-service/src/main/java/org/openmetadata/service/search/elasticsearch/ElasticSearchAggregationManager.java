@@ -161,7 +161,18 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
 
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
-      return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+
+      // Serialize entire response to JSON
+      JsonpMapper jsonpMapper = client._transport().jsonpMapper();
+      jakarta.json.spi.JsonProvider provider = jsonpMapper.jsonProvider();
+      java.io.StringWriter stringWriter = new java.io.StringWriter();
+      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
+
+      searchResponse.serialize(generator, jsonpMapper);
+      generator.close();
+
+      String responseJson = stringWriter.toString();
+      return Response.status(Response.Status.OK).entity(responseJson).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
