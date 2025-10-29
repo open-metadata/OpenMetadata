@@ -179,9 +179,62 @@ export const LDAP_UI_SCHEMA = {
       'ui:title': 'Auth Reassign Roles',
       'ui:placeholder': 'Enter value (e.g. Admin, DataSteward) and press ENTER',
     },
-    // Hide trustStore fields as they are not commonly used
-    truststoreConfigType: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    trustStoreConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    // Show truststoreConfigType when SSL is enabled
+    truststoreConfigType: {
+      'ui:title': 'Trust Store Config Type',
+    },
+    trustStoreConfig: {
+      'ui:title': 'Trust Store Configuration',
+      customTrustManagerConfig: {
+        'ui:title':
+          'Custom Trust Store Settings (Use when Trust Store Config Type = CustomTrustStore)',
+        trustStoreFilePath: {
+          'ui:title': 'Trust Store File Path',
+          'ui:placeholder': '/opt/openmetadata/certs/ldap-truststore.jks',
+        },
+        trustStoreFilePassword: {
+          'ui:title': 'Trust Store Password',
+          'ui:widget': 'password',
+        },
+        trustStoreFileFormat: {
+          'ui:title': 'Trust Store Format',
+          'ui:placeholder': 'JKS',
+        },
+        verifyHostname: {
+          'ui:title': 'Verify Hostname',
+        },
+        examineValidityDates: {
+          'ui:title': 'Check Certificate Validity',
+        },
+      },
+      hostNameConfig: {
+        'ui:title':
+          'Hostname Settings (Use when Trust Store Config Type = HostName)',
+        allowWildCards: {
+          'ui:title': 'Allow Wildcards',
+        },
+        acceptableHostNames: {
+          'ui:title': 'Acceptable Host Names',
+          'ui:options': {
+            addable: true,
+          },
+        },
+      },
+      trustAllConfig: {
+        'ui:title':
+          'Trust All Settings (Use when Trust Store Config Type = TrustAll)',
+        examineValidityDates: {
+          'ui:title': 'Check Certificate Validity',
+        },
+      },
+      jvmDefaultConfig: {
+        'ui:title':
+          'JVM Default Settings (Use when Trust Store Config Type = JVMDefault)',
+        verifyHostname: {
+          'ui:title': 'Verify Hostname',
+        },
+      },
+    },
   },
   // Hide other provider configs for LDAP
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -489,6 +542,10 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   auth0: { 'ui:widget': 'hidden', 'ui:hideError': true },
   basic: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
+  azure: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  okta: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Provider-specific field removal mapping for cleanup
@@ -567,12 +624,16 @@ export const SAML_SECURITY_FIELDS_TO_REMOVE = [
   'keyStorePassword',
 ];
 
-// Providers that should NOT include bot principals (only Azure and Okta should)
+// Providers that should NOT include bot principals (deprecated field - no provider should have it)
 export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
   'google',
   'auth0',
   'basic',
   'aws-cognito',
+  'azure',
+  'okta',
+  'ldap',
+  'saml',
 ];
 
 // Main SSO UI Schema generator

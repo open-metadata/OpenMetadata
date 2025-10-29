@@ -43,11 +43,14 @@ import TablesSchemaImg from '../../assets/img/widgets/tables-schema.png';
 import TagsImg from '../../assets/img/widgets/tags.png';
 import TermsImg from '../../assets/img/widgets/Terms.png';
 import TopicSchemaImg from '../../assets/img/widgets/topic-schema.png';
+import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
   WidgetWidths,
 } from '../../enums/CustomizeDetailPage.enum';
+import { EntityTabs } from '../../enums/entity.enum';
+import i18n from '../i18next/LocalUtil';
 
 class CustomizeDetailPageClassBase {
   public getGlossaryWidgetImageFromKey(
@@ -146,6 +149,12 @@ class CustomizeDetailPageClassBase {
       default:
         return '';
     }
+  }
+
+  public getTabLabelFromId(tab: EntityTabs): string {
+    const labelKey = TAB_LABEL_MAP[tab];
+
+    return labelKey ? i18n.t(labelKey) : tab;
   }
 }
 

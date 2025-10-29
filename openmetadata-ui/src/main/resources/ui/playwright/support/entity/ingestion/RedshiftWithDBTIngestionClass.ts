@@ -255,8 +255,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Verify Data Quality
       await page.click('[data-testid="profiler"]');
 
-      await page.waitForSelector('[data-testid="profiler-tab-left-panel"]');
-      await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
 
       await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
         DBT.dataQualityTest1
