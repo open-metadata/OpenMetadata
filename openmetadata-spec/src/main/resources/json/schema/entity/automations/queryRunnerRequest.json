@@ -38,6 +38,21 @@
     "authType": {
       "description": "Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth, etc.). Used to determine which credential field to use from user config.",
       "type": "string"
+    },
+    "role": {
+      "description": "Optional role to use for query execution (selected by user in QueryRunner Studio). Service-specific (e.g., Snowflake role).",
+      "type": "string",
+      "default": null
+    },
+    "database": {
+      "description": "Optional database/dataset to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake database).",
+      "type": "string",
+      "default": null
+    },
+    "schema": {
+      "description": "Optional schema to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake schema).",
+      "type": "string",
+      "default": null
     }
   },
   "additionalProperties": false
