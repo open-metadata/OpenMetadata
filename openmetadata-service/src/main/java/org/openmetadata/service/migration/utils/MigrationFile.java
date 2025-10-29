@@ -28,9 +28,9 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public final Boolean isExtension;
   public final String dbPackageName;
 
-  private final MigrationDAO migrationDAO;
-  private final List<String> schemaChanges;
-  private final List<String> postDDLScripts;
+  protected final MigrationDAO migrationDAO;
+  protected final List<String> schemaChanges;
+  protected final List<String> postDDLScripts;
   public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
       "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
@@ -70,6 +70,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
     if (connectionType == ConnectionType.MYSQL) {
       parser = new MySQLParser(configuration, parsingContext);
     }
+
     if (new File(getSchemaChangesFile()).isFile()) {
       try (SqlStatementIterator schemaChangesIterator =
           parser.parse(
@@ -80,18 +81,24 @@ public class MigrationFile implements Comparable<MigrationFile> {
             schemaChanges.add(sqlStatement);
           }
         }
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Failed to parse schema changes file: " + getSchemaChangesFile(), e);
       }
     }
     if (new File(getPostDDLScriptFile()).isFile()) {
-      try (SqlStatementIterator schemaChangesIterator =
+      try (SqlStatementIterator postDDLIterator =
           parser.parse(
               new FileSystemResource(null, getPostDDLScriptFile(), StandardCharsets.UTF_8, true))) {
-        while (schemaChangesIterator.hasNext()) {
-          String sqlStatement = schemaChangesIterator.next().getSql();
+        while (postDDLIterator.hasNext()) {
+          String sqlStatement = postDDLIterator.next().getSql();
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
             postDDLScripts.add(sqlStatement);
           }
         }
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Failed to parse post DDL script file: " + getPostDDLScriptFile(), e);
       }
     }
   }
@@ -188,8 +195,13 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   private boolean checkIfQueryPreviouslyRan(String query) {
-    String checksum = EntityUtil.hash(query);
-    String sqlStatement = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-    return sqlStatement != null;
+    try {
+      String checksum = EntityUtil.hash(query);
+      String sqlStatement = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+      return sqlStatement != null;
+    } catch (Exception e) {
+      // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
+      return false;
+    }
   }
 }

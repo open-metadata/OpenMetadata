@@ -427,6 +427,17 @@ public final class Entity {
 
   public static EntityReference getEntityReferenceById(
       @NonNull String entityType, @NonNull UUID id, Include include) {
+    // Check if this is a time-series entity
+    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
+      // For time-series entities, create a minimal EntityReference
+      // since they don't have full entity repositories
+      return new EntityReference()
+          .withId(id)
+          .withType(entityType)
+          .withFullyQualifiedName(entityType + "." + id);
+    }
+
+    // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReference(id, include);
@@ -434,6 +445,20 @@ public final class Entity {
 
   public static List<EntityReference> getEntityReferencesByIds(
       @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
+    // Check if this is a time-series entity
+    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
+      // For time-series entities, create minimal EntityReferences
+      return ids.stream()
+          .map(
+              id ->
+                  new EntityReference()
+                      .withId(id)
+                      .withType(entityType)
+                      .withFullyQualifiedName(entityType + "." + id))
+          .collect(Collectors.toList());
+    }
+
+    // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReferences(ids, include);
@@ -474,6 +499,9 @@ public final class Entity {
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
+    if (ref == null) {
+      return null;
+    }
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
