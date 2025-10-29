@@ -17,7 +17,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDa
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,13 +63,12 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
-import org.openmetadata.service.search.RecreateIndexHandler.ReindexContext;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -262,7 +260,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
       success = jobData != null && jobData.getStatus() == EventPublisherJob.Status.COMPLETED;
       handleJobCompletion();
     } finally {
-      finalizeRecreateIndexes(success);
+      finalizeAllEntityReindex(success);
+    }
+  }
+
+  private void finalizeAllEntityReindex(boolean finalSuccess) {
+    try {
+      recreateContext
+          .getEntities()
+          .forEach(
+              entityType -> {
+                try {
+                  // Always promote indices regardless of failures
+                  // This handles common scenarios like partial deletions and corrupted data
+                  finalizeEntityReindex(entityType, true);
+                } catch (Exception ex) {
+                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+                }
+              });
+    } finally {
+      recreateContext = null;
     }
   }
 
@@ -374,17 +391,36 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return Optional.empty();
   }
 
-  private void finalizeRecreateIndexes(boolean success) {
+  private void finalizeEntityReindex(String entityType, boolean success) {
     if (recreateIndexHandler == null || recreateContext == null) {
       return;
     }
 
+    String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
+    String activeIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String stagedIndex = recreateContext.getStagedIndex(entityType).orElse(null);
+    String canonicalAlias = recreateContext.getCanonicalAlias(entityType).orElse(null);
+    Set<String> existingAliases = recreateContext.getExistingAliases(entityType);
+    Set<String> parentAliases =
+        new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType)));
+
+    EntityReindexContext entityReindexContext =
+        EntityReindexContext.builder()
+            .entityType(entityType)
+            .originalIndex(originalIndex)
+            .canonicalIndex(canonicalIndex)
+            .activeIndex(activeIndex)
+            .stagedIndex(stagedIndex)
+            .canonicalAliases(canonicalAlias)
+            .existingAliases(existingAliases)
+            .parentAliases(parentAliases)
+            .build();
+
     try {
-      recreateIndexHandler.finalizeReindex(recreateContext, success);
+      recreateIndexHandler.finalizeReindex(entityReindexContext, success);
     } catch (Exception ex) {
       LOG.error("Failed to finalize index recreation flow", ex);
-    } finally {
-      recreateContext = null;
     }
   }
 
@@ -1379,20 +1415,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private List<String> getSearchIndexFields(String entityType) {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
+      return List.of(); // Empty list for time series
     }
-
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    Set<String> searchDerivedFields = repository.getSearchDerivedFields();
-
-    // Excludes search-derived fields during reindexing to avoid circular dependencies.
-    if (!searchDerivedFields.isEmpty()) {
-      Fields fieldsWithExclusions =
-          EntityUtil.Fields.createWithExcludedFields(
-              repository.getAllowedFieldsCopy(), searchDerivedFields);
-      return new ArrayList<>(fieldsWithExclusions.getFieldList());
-    }
-
     return List.of("*");
   }
 

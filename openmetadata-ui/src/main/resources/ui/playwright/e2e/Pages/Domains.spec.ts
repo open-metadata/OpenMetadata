@@ -407,6 +407,7 @@ test.describe('Domains', () => {
     // The domain FQN should be properly escaped in the query
     // The actual format uses escaped hyphens, not URL encoding
     const fqn = (domain.data.fullyQualifiedName ?? '')
+      .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
       .replace(/-/g, '\\-');
 
@@ -654,11 +655,11 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct.data);
 
       await expect(
-        page.getByTestId('domain-owner-name').getByTestId('owner-label')
+        page.getByTestId(user1.responseData.displayName)
       ).toContainText(user1.responseData.displayName);
 
       await expect(
-        page.getByTestId('domain-expert-name').getByTestId('owner-label')
+        page.getByTestId(user2.responseData.displayName)
       ).toContainText(user2.responseData.displayName);
     } finally {
       await dataProduct?.delete(apiContext);

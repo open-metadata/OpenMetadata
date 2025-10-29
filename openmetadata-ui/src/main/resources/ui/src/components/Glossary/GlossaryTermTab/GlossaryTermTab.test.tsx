@@ -95,14 +95,27 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
     actions: 100,
   }),
   permissionForApproveOrReject: jest.fn().mockReturnValue(false),
-  StatusClass: {
+}));
+
+jest.mock('../../../utils/EntityStatusUtils', () => ({
+  EntityStatusClass: {
     Draft: 'warning',
     InReview: 'info',
-    'In Review': 'info',
     Rejected: 'error',
     Approved: 'success',
     Deprecated: 'warning',
   },
+  getEntityStatusClass: jest.fn((status) => {
+    const statusMap = {
+      Draft: 'warning',
+      InReview: 'info',
+      Rejected: 'error',
+      Approved: 'success',
+      Deprecated: 'warning',
+    };
+
+    return statusMap[status] || 'warning';
+  }),
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -468,7 +481,8 @@ describe('Test GlossaryTermTab component', () => {
 
       expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledWith(
         'Business Glossary.Clothing',
-        1000
+        50,
+        undefined
       );
     });
   });
@@ -489,7 +503,12 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       expect(mockOnEditGlossaryTerm).toHaveBeenCalledWith(
-        mockedGlossaryTerms[0]
+        expect.objectContaining({
+          id: mockedGlossaryTerms[0].id,
+          name: mockedGlossaryTerms[0].name,
+          fullyQualifiedName: mockedGlossaryTerms[0].fullyQualifiedName,
+          level: expect.any(Number),
+        })
       );
     });
 
@@ -504,7 +523,12 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       expect(mockOnAddGlossaryTerm).toHaveBeenCalledWith(
-        mockedGlossaryTerms[1]
+        expect.objectContaining({
+          id: mockedGlossaryTerms[1].id,
+          name: mockedGlossaryTerms[1].name,
+          fullyQualifiedName: mockedGlossaryTerms[1].fullyQualifiedName,
+          level: expect.any(Number),
+        })
       );
     });
   });

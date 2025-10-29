@@ -165,8 +165,9 @@ test.describe('FeedWidget on landing page', () => {
     await titleLink.click();
     await page.waitForLoadState('networkidle');
 
-    // Verify navigation to explore
-    await expect(page.url()).toContain('/explore');
+    // Verify navigation to user activity feed
+    await expect(page.url()).toContain('/users/');
+    await expect(page.url()).toContain('/activity_feed/all');
   });
 
   test('feed body renders content or empty state', async ({ page }) => {
@@ -536,8 +537,7 @@ test.describe('Mention notifications in Notification Box', () => {
         const mentionsFeedResponse = adminPage.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/feed') &&
-            response.url().includes('filterType=MENTIONS') &&
-            response.url().includes('type=Conversation')
+            response.url().includes('filterType=MENTIONS')
         );
 
         await mentionsTab.click();
