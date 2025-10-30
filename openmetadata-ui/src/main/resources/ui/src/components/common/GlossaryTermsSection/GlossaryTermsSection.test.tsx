@@ -74,9 +74,9 @@ jest.mock('../../../assets/svg/book.svg', () => ({
 
 // Mock GlossaryTermSelectableListV1
 jest.mock(
-  '../GlossaryTermSelectableList/GlossaryTermSelectableList.v1.component',
+  '../GlossaryTermSelectableList/GlossaryTermSelectableList.component',
   () => ({
-    GlossaryTermSelectableListV1: jest
+    GlossaryTermSelectableList: jest
       .fn()
       .mockImplementation(
         ({

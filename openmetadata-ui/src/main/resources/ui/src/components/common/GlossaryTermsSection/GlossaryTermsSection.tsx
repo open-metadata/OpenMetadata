@@ -19,7 +19,7 @@ import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { GlossaryTermSelectableListV1 } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
+import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import './GlossaryTermsSection.less';
 
 interface GlossaryTermsSectionProps {
@@ -122,7 +122,7 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
   );
 
   const renderEditingState = () => (
-    <GlossaryTermSelectableListV1
+    <GlossaryTermSelectableList
       popoverProps={{
         placement: 'bottomLeft',
         open: popoverOpen,
@@ -146,7 +146,7 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
           </div>
         )}
       </div>
-    </GlossaryTermSelectableListV1>
+    </GlossaryTermSelectableList>
   );
 
   const renderEmptyContent = () => {
