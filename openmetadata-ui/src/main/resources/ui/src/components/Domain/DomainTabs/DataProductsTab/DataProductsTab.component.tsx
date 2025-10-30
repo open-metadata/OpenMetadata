@@ -111,6 +111,7 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <DomainEmptyState
+          className="p-lg"
           createLabel={t('label.add-entity', {
             entity: t('label.data-product'),
           })}
