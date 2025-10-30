@@ -818,7 +818,7 @@ const DomainDetails = ({
               }}>
               {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
-                  className="m-l-xs h-10"
+                  className="m-l-xs"
                   data-testid="domain-details-add-button-menu"
                   menu={{
                     items: addButtonContent,
