@@ -179,7 +179,7 @@ test.describe('Widgets', () => {
         page,
         widgetKey,
         'Activity Feed',
-        '/explore'
+        `/users/${adminUser.responseData.name}/activity_feed/all`
       );
     });
 
