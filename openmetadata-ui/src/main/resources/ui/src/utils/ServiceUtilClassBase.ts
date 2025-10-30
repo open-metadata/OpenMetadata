@@ -147,7 +147,11 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { ConfigData, ServicesType } from '../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+  ServicesType,
+} from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -285,7 +289,7 @@ class ServiceUtilClassBase {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public getServiceExtraInfo(_data?: ServicesType) {
+  public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
   }
 

@@ -22,6 +22,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         self.mock_test_case.computePassedFailedRowCount = True
         self.mock_test_case.parameterValues = []
         self.mock_test_case.fullyQualifiedName = "test.case"
+        self.mock_test_case.dimensionColumns = None
         self.mock_execution_date = int(datetime.now().timestamp())
 
         self.validator = TableCustomSQLQueryValidator(

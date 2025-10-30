@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
@@ -401,6 +401,13 @@ test.describe('Persona customization', () => {
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
 
+        await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+        await adminPage
+          .getByRole('dialog')
+          .getByRole('textbox')
+          .fill('Custom Tab');
+
         await adminPage
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' })
@@ -431,10 +438,10 @@ test.describe('Persona customization', () => {
         });
 
         await expect(
-          userPage.getByRole('tab', { name: 'New Tab' })
+          userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
 
-        await userPage.getByRole('tab', { name: 'New Tab' }).click();
+        await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
         const visibleDescription = userPage
           .getByTestId(/KnowledgePanel.Description-/)
@@ -510,6 +517,11 @@ test.describe('Persona customization', () => {
 
         await adminPage
           .getByRole('dialog')
+          .getByRole('textbox')
+          .fill('Custom Tab');
+
+        await adminPage
+          .getByRole('dialog')
           .getByRole('button', { name: 'Add' })
           .click();
         await adminPage.getByTestId('add-widget-button').click();
@@ -536,9 +548,9 @@ test.describe('Persona customization', () => {
           state: 'detached',
         });
 
-        expect(userPage.getByRole('tab', { name: 'New Tab' })).toBeVisible();
+        expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
 
-        await userPage.getByRole('tab', { name: 'New Tab' }).click();
+        await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
         const visibleDescription = userPage
           .getByTestId(/KnowledgePanel.Description-/)

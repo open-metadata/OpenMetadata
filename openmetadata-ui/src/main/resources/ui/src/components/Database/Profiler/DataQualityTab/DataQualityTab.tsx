@@ -16,8 +16,8 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Typography as MuiTypography,
   Skeleton,
+  Typography as MuiTypography,
 } from '@mui/material';
 import { Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
@@ -204,12 +204,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
-        title: 'Failed/aborted Reason',
+        title: t('label.failed-slash-aborted-reason'),
         dataIndex: 'testCaseResult',
-        key: 'Reason',
+        key: 'reason',
         width: 200,
-        render: (result: TestCaseResult) => {
-          return result?.result ? (
+        render: (result: TestCaseResult, record: TestCase) => {
+          return result?.result &&
+            record.testCaseStatus !== TestCaseStatus.Success ? (
             <MuiTypography
               sx={{
                 wordBreak: 'break-word',

@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Badge,
   Button,
   Collapse,
   Divider,
@@ -106,9 +107,19 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 : 'white',
             }}>
             <div className="d-flex items-center justify-between">
-              <Typography.Text data-testid="field-name">
-                {field.fieldName}
-              </Typography.Text>
+              <div className="d-flex items-center gap-2">
+                <Typography.Text data-testid="field-name">
+                  {field.fieldName}
+                </Typography.Text>
+                {field.fieldName.startsWith('extension.') && (
+                  <Badge
+                    className="custom-property-badge"
+                    color="blue"
+                    count={t('label.custom')}
+                    data-testid="custom-property-badge"
+                  />
+                )}
+              </div>
               <Button
                 className="delete-search-field"
                 data-testid="delete-search-field"

@@ -9,7 +9,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_H
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
-import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
@@ -30,9 +29,6 @@ import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
-import es.org.elasticsearch.client.indices.GetMappingsRequest;
-import es.org.elasticsearch.client.indices.GetMappingsResponse;
-import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
@@ -40,20 +36,14 @@ import es.org.elasticsearch.index.query.BoolQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
-import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchHits;
-import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.BucketOrder;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
@@ -69,6 +59,7 @@ import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -76,10 +67,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -88,7 +77,6 @@ import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
@@ -113,7 +101,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
-import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
@@ -126,15 +113,11 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
-import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
@@ -147,19 +130,6 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorFactory;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchLineChartAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -194,6 +164,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ElasticSearchIndexManager indexManager;
   private final ElasticSearchEntityManager entityManager;
   private final ElasticSearchGenericManager genericManager;
+  private final ElasticSearchDataInsightAggregatorManager dataInsightAggregatorManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -238,6 +209,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
+    dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
     nlqService = null;
   }
 
@@ -1697,7 +1669,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     entityManager.updateLineage(indexName, fieldAndValue, lineageData);
   }
 
-  /** */
+  /**
+   *
+   */
   @Override
   public void close() {}
 
@@ -1739,364 +1713,25 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       String queryFilter,
       String dataReportIndex)
       throws IOException {
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        buildSearchRequest(
-            startTs,
-            endTs,
-            tier,
-            team,
-            dataInsightChartName,
-            size,
-            from,
-            queryFilter,
-            dataReportIndex);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return Response.status(OK)
-        .entity(processDataInsightChartResult(searchResponse, dataInsightChartName))
-        .build();
-  }
-
-  private static DataInsightChartResult processDataInsightChartResult(
-      SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    DataInsightAggregatorInterface processor =
-        createDataAggregator(searchResponse, dataInsightChartType);
-    return processor.process(dataInsightChartType);
-  }
-
-  private static DataInsightAggregatorInterface createDataAggregator(
-      SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
-      throws IllegalArgumentException {
-    return switch (dataInsightChartType) {
-      case DAILY_ACTIVE_USERS -> new ElasticSearchDailyActiveUsersAggregator(
-          aggregations.getAggregations());
-      case PAGE_VIEWS_BY_ENTITIES -> new ElasticSearchPageViewsByEntitiesAggregator(
-          aggregations.getAggregations());
-      case MOST_ACTIVE_USERS -> new ElasticSearchMostActiveUsersAggregator(
-          aggregations.getAggregations());
-      case MOST_VIEWED_ENTITIES -> new ElasticSearchMostViewedEntitiesAggregator(
-          aggregations.getAggregations());
-      case UNUSED_ASSETS -> new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
-      case AGGREGATED_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUnusedAssetsSizeAggregator(
-          aggregations.getAggregations());
-      case AGGREGATED_UNUSED_ASSETS_COUNT -> new ElasticSearchAggregatedUnusedAssetsCountAggregator(
-          aggregations.getAggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT -> new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(
-          aggregations.getAggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
-          aggregations.getAggregations());
-    };
-  }
-
-  private static es.org.elasticsearch.action.search.SearchRequest buildSearchRequest(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex) {
-    SearchSourceBuilder searchSourceBuilder =
-        buildQueryFilter(startTs, endTs, tier, team, queryFilter, dataInsightChartName.value());
-    if (!dataInsightChartName
-        .toString()
-        .equalsIgnoreCase(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString())) {
-      AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
-      searchSourceBuilder.aggregation(aggregationBuilder);
-      searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    } else {
-      // get raw doc for unused assets
-      searchSourceBuilder.fetchSource(true);
-      searchSourceBuilder.from(from);
-      searchSourceBuilder.size(size);
-      searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
-    }
-
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(dataReportIndex));
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
-  }
-
-  private static SearchSourceBuilder buildQueryFilter(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      String queryFilter,
-      String dataInsightChartName) {
-
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    es.org.elasticsearch.index.query.BoolQueryBuilder searchQueryFiler =
-        new es.org.elasticsearch.index.query.BoolQueryBuilder();
-
-    // Add team filter
-    if (team != null
-        && DataInsightChartRepository.SUPPORTS_TEAM_FILTER.contains(dataInsightChartName)) {
-      List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
-
-      es.org.elasticsearch.index.query.BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
-      // Charts that use webAnalyticEntityViewReportData store owner in data.owner field
-      // Charts that use entityReportData store owner in data.team field
-      String teamField =
-          DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
-              ? DataInsightChartRepository.DATA_OWNER
-              : DataInsightChartRepository.DATA_TEAM;
-      teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
-      searchQueryFiler.must(teamQueryFilter);
-    }
-
-    // Add tier filter
-    if (tier != null
-        && DataInsightChartRepository.SUPPORTS_TIER_FILTER.contains(dataInsightChartName)) {
-      List<String> tierArray = Arrays.asList(tier.split("\\s*,\\s*"));
-
-      es.org.elasticsearch.index.query.BoolQueryBuilder tierQueryFilter = QueryBuilders.boolQuery();
-      tierQueryFilter.should(
-          QueryBuilders.termsQuery(DataInsightChartRepository.DATA_ENTITY_TIER, tierArray));
-      searchQueryFiler.must(tierQueryFilter);
-    }
-
-    // Add date range filter
-    if (!DataInsightChartRepository.SUPPORTS_NULL_DATE_RANGE.contains(dataInsightChartName)) {
-      if (startTs == null || endTs == null) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Start and End date are required for chart type %s ", dataInsightChartName));
-      }
-      RangeQueryBuilder dateQueryFilter =
-          QueryBuilders.rangeQuery(DataInsightChartRepository.TIMESTAMP).gte(startTs).lte(endTs);
-      searchQueryFiler.must(dateQueryFilter);
-    }
-
-    searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
-
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-
-    return searchSourceBuilder;
+    return dataInsightAggregatorManager.listDataInsightChartResult(
+        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
   }
 
   @Override
   public List<Map<String, String>> fetchDIChartFields() {
-    List<Map<String, String>> fields = new ArrayList<>();
-    for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
-      // This function is being used for creating custom charts in Data Insights
-      try {
-        GetMappingsRequest request =
-            new GetMappingsRequest()
-                .indices(
-                    DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
-                        + "-"
-                        + type.toLowerCase());
-
-        // Execute request
-        GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-
-        // Get mappings for the index
-        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-          // Get fields for the index
-          Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-          getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields, type);
-        }
-      } catch (Exception exception) {
-        LOG.error(exception.getMessage());
-      }
-    }
-    return fields;
+    return dataInsightAggregatorManager.fetchDIChartFields();
   }
 
-  void getFieldNames(
-      @NotNull Map<String, Object> fields,
-      String prefix,
-      List<Map<String, String>> fieldList,
-      String entityType) {
-    for (Map.Entry<String, Object> entry : fields.entrySet()) {
-      String postfix = "";
-      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
-      if (type != null && type.equals("text")) {
-        postfix = ".keyword";
-      }
-
-      String fieldName = prefix + entry.getKey() + postfix;
-      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
-
-      if (entry.getValue() instanceof Map) {
-        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
-        if (subFields.containsKey("properties")) {
-          getFieldNames(
-              (Map<String, Object>) subFields.get("properties"),
-              fieldName + ".",
-              fieldList,
-              entityType);
-        } else {
-          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
-            Map<String, String> map = new HashMap<>();
-            map.put("name", fieldName);
-            map.put("displayName", fieldNameOriginal);
-            map.put("type", type);
-            map.put("entityType", entityType);
-            fieldList.add(map);
-          }
-        }
-      }
-    }
-  }
-
+  @Override
   public DataInsightCustomChartResultList buildDIChart(
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
-    ElasticSearchDynamicChartAggregatorInterface aggregator =
-        ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
-    if (aggregator != null) {
-      List<FormulaHolder> formulas = new ArrayList<>();
-      Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
-          new HashMap<>();
-      es.org.elasticsearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      return aggregator.processSearchResponse(
-          diChart, searchResponse, formulas, metricFormulaHolder);
-    }
-    return null;
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
+  @Override
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
-    QueryCostRecordsAggregator queryCostRecordsAggregator = new QueryCostRecordsAggregator();
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        queryCostRecordsAggregator.getQueryCostRecords(serviceName);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
-  }
-
-  private static AggregationBuilder buildQueryAggregation(
-      DataInsightChartResult.DataInsightChartType dataInsightChartName)
-      throws IllegalArgumentException {
-    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-        AggregationBuilders.dateHistogram(DataInsightChartRepository.TIMESTAMP)
-            .field(DataInsightChartRepository.TIMESTAMP)
-            .calendarInterval(DateHistogramInterval.DAY);
-
-    TermsAggregationBuilder termsAggregationBuilder;
-
-    switch (dataInsightChartName) {
-      case AGGREGATED_UNUSED_ASSETS_SIZE, AGGREGATED_UNUSED_ASSETS_COUNT:
-        boolean isSize =
-            dataInsightChartName.equals(
-                DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
-        String[] types = new String[] {"frequentlyUsedDataAssets", "unusedDataAssets"};
-        String fieldType = isSize ? "size" : "count";
-
-        for (String type : types) {
-          SumAggregationBuilder threeDaysAgg =
-              AggregationBuilders.sum(String.format("%sThreeDays", type))
-                  .field(String.format("data.%s.%s.threeDays", type, fieldType));
-          SumAggregationBuilder sevenDaysAgg =
-              AggregationBuilders.sum(String.format("%sSevenDays", type))
-                  .field(String.format("data.%s.%s.sevenDays", type, fieldType));
-          SumAggregationBuilder fourteenDaysAgg =
-              AggregationBuilders.sum(String.format("%sFourteenDays", type))
-                  .field(String.format("data.%s.%s.fourteenDays", type, fieldType));
-          SumAggregationBuilder thirtyDaysAgg =
-              AggregationBuilders.sum(String.format("%sThirtyDays", type))
-                  .field(String.format("data.%s.%s.thirtyDays", type, fieldType));
-          SumAggregationBuilder sixtyDaysAgg =
-              AggregationBuilders.sum(String.format("%sSixtyDays", type))
-                  .field(String.format("data.%s.%s.sixtyDays", type, fieldType));
-
-          dateHistogramAggregationBuilder
-              .subAggregation(threeDaysAgg)
-              .subAggregation(sevenDaysAgg)
-              .subAggregation(fourteenDaysAgg)
-              .subAggregation(thirtyDaysAgg)
-              .subAggregation(sixtyDaysAgg);
-        }
-
-        return dateHistogramAggregationBuilder;
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE, AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
-        boolean isSizeReport =
-            dataInsightChartName.equals(
-                DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);
-        String totalFieldString = isSizeReport ? "totalSize" : "totalCount";
-        SumAggregationBuilder totalUnusedAssets =
-            AggregationBuilders.sum("totalUnused")
-                .field(String.format("data.unusedDataAssets.%s", totalFieldString));
-        SumAggregationBuilder totalUsedAssets =
-            AggregationBuilders.sum("totalUsed")
-                .field(String.format("data.frequentlyUsedDataAssets.%s", totalFieldString));
-        return dateHistogramAggregationBuilder
-            .subAggregation(totalUnusedAssets)
-            .subAggregation(totalUsedAssets);
-      case DAILY_ACTIVE_USERS:
-        return dateHistogramAggregationBuilder;
-      case PAGE_VIEWS_BY_ENTITIES:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        SumAggregationBuilder sumPageViewsByEntityTypes =
-            AggregationBuilders.sum(DataInsightChartRepository.PAGE_VIEWS)
-                .field(DataInsightChartRepository.DATA_VIEWS);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder.subAggregation(sumPageViewsByEntityTypes));
-      case MOST_VIEWED_ENTITIES:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_FQN)
-                .field(DataInsightChartRepository.DATA_ENTITY_FQN)
-                .size(10)
-                .order(BucketOrder.aggregation(DataInsightChartRepository.PAGE_VIEWS, false));
-
-        TermsAggregationBuilder ownerTermsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.OWNER)
-                .field(DataInsightChartRepository.DATA_OWNER);
-        TermsAggregationBuilder entityTypeTermsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE);
-        TermsAggregationBuilder entityHrefAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_HREF)
-                .field(DataInsightChartRepository.DATA_ENTITY_HREF);
-        SumAggregationBuilder sumEntityPageViewsAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.PAGE_VIEWS)
-                .field(DataInsightChartRepository.DATA_VIEWS);
-
-        return termsAggregationBuilder
-            .subAggregation(sumEntityPageViewsAggregationBuilder)
-            .subAggregation(ownerTermsAggregationBuilder)
-            .subAggregation(entityTypeTermsAggregationBuilder)
-            .subAggregation(entityHrefAggregationBuilder);
-      case MOST_ACTIVE_USERS:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.USER_NAME)
-                .field(DataInsightChartRepository.DATA_USER_NAME)
-                .size(10)
-                .order(BucketOrder.aggregation(DataInsightChartRepository.SESSIONS, false));
-        TermsAggregationBuilder teamTermsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.TEAM)
-                .field(DataInsightChartRepository.DATA_TEAM);
-        SumAggregationBuilder sumSessionAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.SESSIONS)
-                .field(DataInsightChartRepository.DATA_SESSIONS);
-        SumAggregationBuilder sumUserPageViewsAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.PAGE_VIEWS)
-                .field(DataInsightChartRepository.DATA_PAGE_VIEWS);
-        MaxAggregationBuilder lastSessionAggregationBuilder =
-            AggregationBuilders.max(DataInsightChartRepository.LAST_SESSION)
-                .field(DataInsightChartRepository.DATA_LAST_SESSION);
-        SumAggregationBuilder sumSessionDurationAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.SESSION_DURATION)
-                .field(DataInsightChartRepository.DATA_TOTAL_SESSION_DURATION);
-        return termsAggregationBuilder
-            .subAggregation(sumSessionAggregationBuilder)
-            .subAggregation(sumUserPageViewsAggregationBuilder)
-            .subAggregation(lastSessionAggregationBuilder)
-            .subAggregation(sumSessionDurationAggregationBuilder)
-            .subAggregation(teamTermsAggregationBuilder);
-      default:
-        throw new IllegalArgumentException(
-            String.format("Invalid dataInsightChartType name %s", dataInsightChartName));
-    }
+    return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
 
   public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
@@ -2106,33 +1741,57 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
             RestClient.builder(
                 new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
 
-        if (StringUtils.isNotEmpty(esConfig.getUsername())
-            && StringUtils.isNotEmpty(esConfig.getPassword())) {
-          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-          credentialsProvider.setCredentials(
-              AuthScope.ANY,
-              new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-          SSLContext sslContext = createElasticSearchSSLContext(esConfig);
-          restClientBuilder.setHttpClientConfigCallback(
-              httpAsyncClientBuilder -> {
+        // Configure connection pooling
+        restClientBuilder.setHttpClientConfigCallback(
+            httpAsyncClientBuilder -> {
+              // Set connection pool sizes
+              if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+              }
+              if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+              }
+
+              // Configure authentication if provided
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword()));
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-                if (sslContext != null) {
-                  httpAsyncClientBuilder.setSSLContext(sslContext);
-                }
-                // Enable TCP keep alive strategy
-                if (esConfig.getKeepAliveTimeoutSecs() != null
-                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                  httpAsyncClientBuilder.setKeepAliveStrategy(
-                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-                }
-                return httpAsyncClientBuilder;
-              });
-        }
+              }
+
+              // Configure SSL if needed
+              SSLContext sslContext = null;
+              try {
+                sslContext = createElasticSearchSSLContext(esConfig);
+              } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+              }
+              if (sslContext != null) {
+                httpAsyncClientBuilder.setSSLContext(sslContext);
+              }
+
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null
+                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
+
+              return httpAsyncClientBuilder;
+            });
+
+        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+
+        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
 
         // Build client without default headers first to check version
@@ -2455,71 +2114,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       int size,
       boolean deleted)
       throws IOException {
-    SearchSchemaEntityRelationshipResult result = new SearchSchemaEntityRelationshipResult();
-    result.setData(
-        new SearchEntityRelationshipResult()
-            .withNodes(new TreeMap<>())
-            .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>()));
-    SearchEntityRelationshipRequest request =
-        new SearchEntityRelationshipRequest()
-            .withUpstreamDepth(0) // Node + Immediate Upstream
-            .withDownstreamDepth(1) // Node + Immediate Downstream
-            .withQueryFilter(queryFilter)
-            .withIncludeDeleted(deleted)
-            .withLayerFrom(from)
-            .withLayerSize(size)
-            .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields));
-    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
-    String tableIndex = Entity.getSearchRepository().getIndexOrAliasName(TABLE_SEARCH_INDEX);
-    SearchResponse searchResponse =
-        EsUtils.searchEntitiesWithLimitOffset(tableIndex, finalQueryFilter, offset, limit, deleted);
-    int total = 0;
-    if (searchResponse == null
-        || searchResponse.getHits() == null
-        || searchResponse.getHits().getTotalHits() == null) {
-      result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
-      return result;
-    }
-    for (SearchHit hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> source = hit.getSourceAsMap();
-      Object fqn = source.get(FQN_FIELD);
-      if (fqn != null) {
-        String fqnString = fqn.toString();
-        request.withFqn(fqnString);
-        SearchEntityRelationshipResult tableER = this.searchEntityRelationship(request);
-        // Find the table Node
-        Map.Entry<String, org.openmetadata.schema.type.entityRelationship.NodeInformation>
-            tableNode =
-                tableER.getNodes().entrySet().stream()
-                    .filter(e -> fqn.toString().equals(e.getKey()))
-                    .findFirst()
-                    .orElse(null);
-        result
-            .getData()
-            .getNodes()
-            .putIfAbsent(fqnString, Objects.requireNonNull(tableNode).getValue());
-        result.getData().getUpstreamEdges().putAll(tableER.getUpstreamEdges());
-        result.getData().getDownstreamEdges().putAll(tableER.getDownstreamEdges());
-      }
-    }
-    total = (int) searchResponse.getHits().getTotalHits().value;
-    result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
-    return result;
-  }
-
-  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
-    String schemaFqnWildcardClause =
-        String.format(
-            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
-            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
-    String innerBoolFilter;
-    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(queryFilter)
-        && !"{}".equals(queryFilter)) {
-      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
-    } else {
-      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
-    }
-    return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
+    return entityManager.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
 }

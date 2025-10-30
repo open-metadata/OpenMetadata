@@ -110,7 +110,6 @@ const MyTaskWidget = ({
         sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
         title={t('label.my-task-plural')}
         widgetKey={widgetKey}
-        widgetWidth={myTaskData?.w}
         onSortChange={(key) => handleSortByClick(key as MyTaskFilter)}
         onTitleClick={() => {
           if (currentUser?.name) {
