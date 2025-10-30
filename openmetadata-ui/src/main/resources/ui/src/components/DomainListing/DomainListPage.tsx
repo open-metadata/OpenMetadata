@@ -223,6 +223,7 @@ const DomainListPage = () => {
           <Box sx={{ px: 6, pb: 6 }}>
             <DomainTreeView
               refreshToken={treeRefreshToken}
+              searchQuery={domainListing.urlState.searchQuery}
               onDomainMutated={refreshAllDomains}
             />
           </Box>

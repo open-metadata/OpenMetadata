@@ -30,15 +30,22 @@ import {
   listDomainHierarchy,
   patchDomains,
   removeFollower,
+  searchDomains,
 } from '../../../rest/domainAPI';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getDecodedFqn,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import Loader from '../../common/Loader/Loader';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
 
 interface DomainTreeViewProps {
+  searchQuery?: string;
   onDomainMutated?: () => void;
   refreshToken?: number;
 }
@@ -49,6 +56,7 @@ type DomainParentMap = Record<string, string | undefined>;
 const TREE_CONTAINER_MIN_WIDTH = 320;
 
 const DomainTreeView = ({
+  searchQuery,
   onDomainMutated,
   refreshToken = 0,
 }: DomainTreeViewProps) => {
@@ -134,6 +142,47 @@ const DomainTreeView = ({
     []
   );
 
+  const applySelection = useCallback(
+    (domains: Domain[]) => {
+      const { map, parents } = buildHierarchyMaps(domains);
+      setParentMap(parents);
+
+      const existingSelection = selectedFqnRef.current;
+
+      const initialFqn =
+        domains[0]?.fullyQualifiedName || domains[0]?.name || domains[0]?.id;
+
+      if (existingSelection && map[existingSelection]) {
+        updateExpansionForFqn(existingSelection, parents);
+      } else if (initialFqn) {
+        setSelectedFqn(initialFqn);
+        updateExpansionForFqn(initialFqn, parents);
+      }
+    },
+    [buildHierarchyMaps]
+  );
+
+  const searchDomain = async (value: string) => {
+    try {
+      setIsHierarchyLoading(true);
+      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+      const results: Domain[] = await searchDomains(encodedValue);
+
+      const updatedTreeData = convertDomainsToTreeOptions(results);
+      setHierarchy(updatedTreeData as Domain[]);
+      applySelection(updatedTreeData as Domain[]);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.domain-plural'),
+        })
+      );
+    } finally {
+      setIsHierarchyLoading(false);
+    }
+  };
+
   const fetchHierarchy = useCallback(async () => {
     setIsHierarchyLoading(true);
     try {
@@ -152,21 +201,7 @@ const DomainTreeView = ({
       const domains = response.data ?? [];
 
       setHierarchy(domains);
-      const { map, parents } = buildHierarchyMaps(domains);
-      setParentMap(parents);
-
-      const existingSelection = selectedFqnRef.current;
-
-      if (existingSelection && map[existingSelection]) {
-        updateExpansionForFqn(existingSelection, parents);
-      } else if (!existingSelection && domains[0]) {
-        const initialFqn =
-          domains[0].fullyQualifiedName || domains[0].name || domains[0].id;
-        if (initialFqn) {
-          setSelectedFqn(initialFqn);
-          updateExpansionForFqn(initialFqn, parents);
-        }
-      }
+      applySelection(domains);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -216,8 +251,13 @@ const DomainTreeView = ({
   );
 
   useEffect(() => {
-    fetchHierarchy();
-  }, [fetchHierarchy, refreshToken]);
+    if (searchQuery) {
+      searchDomain(searchQuery);
+    } else {
+      setSelectedFqn(null);
+      fetchHierarchy();
+    }
+  }, [fetchHierarchy, refreshToken, searchQuery]);
 
   useEffect(() => {
     if (selectedFqn) {

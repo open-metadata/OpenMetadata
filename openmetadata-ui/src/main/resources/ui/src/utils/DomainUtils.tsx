@@ -319,6 +319,7 @@ export const convertDomainsToTreeOptions = (
       name: option.name,
       label: option.name,
       key: option.fullyQualifiedName,
+      fullyQualifiedName: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
           {level === 0 ? (
