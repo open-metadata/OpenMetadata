@@ -78,9 +78,9 @@ class TestEvaluation(TypedDict, total=False):
     """
 
     matched: bool
-    passed_rows: int
-    failed_rows: int
-    total_rows: int
+    passed_rows: Optional[int]
+    failed_rows: Optional[int]
+    total_rows: Optional[int]
 
 
 class DimensionInfo(TypedDict):
