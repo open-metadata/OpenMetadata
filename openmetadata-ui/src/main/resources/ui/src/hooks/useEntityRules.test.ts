@@ -11,92 +11,343 @@
  *  limitations under the License.
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react-hooks';
+import { useRuleEnforcementProvider } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { EntityType } from '../enums/entity.enum';
-import { RuleType } from '../generated/system/entityRules';
+import { ParsedRule, RuleType } from '../generated/system/entityRules';
 import { useEntityRules } from './useEntityRules';
 
-const mockFetchRulesForEntity = jest.fn();
-const mockGetRulesForEntity = jest.fn();
-const mockGetUIHintsForEntity = jest.fn();
-
 jest.mock('../context/RuleEnforcementProvider/RuleEnforcementProvider', () => ({
-  useRuleEnforcement: () => ({
-    fetchRulesForEntity: mockFetchRulesForEntity,
-    getRulesForEntity: mockGetRulesForEntity,
-    getUIHintsForEntity: mockGetUIHintsForEntity,
-    isLoading: false,
-  }),
+  useRuleEnforcementProvider: jest.fn(),
 }));
 
 describe('useEntityRules', () => {
+  const mockFetchRulesForEntity = jest.fn();
+  const mockGetRulesForEntity = jest.fn();
+  const mockGetUIHintsForEntity = jest.fn();
+
+  const mockParsedRules: ParsedRule[] = [
+    {
+      type: RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP,
+      condition: { multipleUsersOrSingleTeamOwnership: true },
+      enabled: true,
+      ignoredEntities: [],
+      description: 'Test rule description',
+      name: 'Test Rule',
+    },
+  ];
+
+  const mockUIHints = {
+    canAddMultipleUserOwners: true,
+    canAddMultipleTeamOwner: false,
+    canAddMultipleDomains: true,
+    canAddMultipleDataProducts: true,
+    maxDomains: Infinity,
+    maxDataProducts: Infinity,
+    canAddMultipleGlossaryTermTable: true,
+    requireDomainForDataProduct: false,
+    warnings: [
+      'Entity must have either multiple user owners or a single team owner',
+    ],
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetRulesForEntity.mockReturnValue([]);
-    mockGetUIHintsForEntity.mockReturnValue({
-      canAddMultipleUserOwners: true,
-      canAddMultipleTeamOwner: true,
-      canAddMultipleDomains: true,
-      canAddMultipleDataProducts: true,
-      canAddMultipleGlossaryTermTable: true,
-      maxDomains: Infinity,
-      maxDataProducts: Infinity,
-      requireDomainForDataProduct: false,
-      warnings: [],
+    (useRuleEnforcementProvider as jest.Mock).mockReturnValue({
+      fetchRulesForEntity: mockFetchRulesForEntity,
+      getRulesForEntity: mockGetRulesForEntity,
+      getUIHintsForEntity: mockGetUIHintsForEntity,
+      isLoading: false,
+    });
+    mockGetRulesForEntity.mockReturnValue(mockParsedRules);
+    mockGetUIHintsForEntity.mockReturnValue(mockUIHints);
+  });
+
+  describe('Basic functionality', () => {
+    it('should return rules for the specified entity type', () => {
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
+      );
+
+      expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
+      expect(result.current.rules).toEqual(mockParsedRules);
+    });
+
+    it('should return entity rules (UI hints) for the specified entity type', () => {
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
+      );
+
+      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(EntityType.TABLE);
+      expect(result.current.entityRules).toEqual(mockUIHints);
+    });
+
+    it('should return loading state from provider', () => {
+      (useRuleEnforcementProvider as jest.Mock).mockReturnValue({
+        fetchRulesForEntity: mockFetchRulesForEntity,
+        getRulesForEntity: mockGetRulesForEntity,
+        getUIHintsForEntity: mockGetUIHintsForEntity,
+        isLoading: true,
+      });
+
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
+      );
+
+      expect(result.current.isLoading).toBe(true);
     });
   });
 
-  describe('auto-fetch behavior', () => {
-    it('should auto-fetch rules by default', async () => {
-      renderHook(() =>
-        useEntityRules({
-          entityType: EntityType.TABLE,
-        })
-      );
+  describe('Auto-fetch behavior', () => {
+    it('should auto-fetch rules when autoFetch is true (default)', () => {
+      renderHook(() => useEntityRules({ entityType: EntityType.TABLE }));
 
-      await waitFor(() => {
-        expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
-      });
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
+      expect(mockFetchRulesForEntity).toHaveBeenCalledTimes(1);
     });
 
-    it('should not auto-fetch when autoFetch is false', () => {
+    it('should auto-fetch rules when autoFetch is explicitly set to true', () => {
       renderHook(() =>
-        useEntityRules({
-          entityType: EntityType.TABLE,
-          autoFetch: false,
-        })
+        useEntityRules({ entityType: EntityType.TABLE, autoFetch: true })
+      );
+
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
+      expect(mockFetchRulesForEntity).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not fetch rules when autoFetch is false', () => {
+      renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE, autoFetch: false })
       );
 
       expect(mockFetchRulesForEntity).not.toHaveBeenCalled();
     });
   });
 
-  describe('returned values', () => {
-    it('should return rules, hints, validation, and helper functions', () => {
-      const mockRules = [
+  describe('Entity type changes', () => {
+    it('should fetch rules for new entity type when entityType changes', () => {
+      const { rerender } = renderHook(
+        ({ entityType }) => useEntityRules({ entityType }),
         {
-          type: RuleType.SINGLE_GLOSSARY_TERM_FOR_TABLE,
-          condition: {},
+          initialProps: { entityType: EntityType.TABLE },
+        }
+      );
+
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
+      expect(mockFetchRulesForEntity).toHaveBeenCalledTimes(1);
+
+      rerender({ entityType: EntityType.DASHBOARD });
+
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(
+        EntityType.DASHBOARD
+      );
+      expect(mockFetchRulesForEntity).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return updated rules when entity type changes', () => {
+      const dashboardRules: ParsedRule[] = [
+        {
+          type: RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED,
+          condition: { '<=': 1 },
           enabled: true,
           ignoredEntities: [],
-          description: 'Test rule',
-          name: 'Test',
+          description: 'Dashboard rule',
+          name: 'Dashboard Rule',
         },
       ];
 
-      mockGetRulesForEntity.mockReturnValue(mockRules);
+      mockGetRulesForEntity.mockImplementation((entityType: EntityType) => {
+        return entityType === EntityType.TABLE
+          ? mockParsedRules
+          : dashboardRules;
+      });
+
+      const { result, rerender } = renderHook(
+        ({ entityType }) => useEntityRules({ entityType }),
+        {
+          initialProps: { entityType: EntityType.TABLE },
+        }
+      );
+
+      expect(result.current.rules).toEqual(mockParsedRules);
+
+      rerender({ entityType: EntityType.DASHBOARD });
+
+      expect(result.current.rules).toEqual(dashboardRules);
+    });
+  });
+
+  describe('Memoization', () => {
+    it('should memoize rules and return the same reference when dependencies do not change', () => {
+      const { result, rerender } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
+      );
+
+      const firstRulesReference = result.current.rules;
+
+      rerender();
+
+      expect(result.current.rules).toBe(firstRulesReference);
+    });
+
+    it('should memoize entityRules and return the same reference when dependencies do not change', () => {
+      const { result, rerender } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
+      );
+
+      const firstEntityRulesReference = result.current.entityRules;
+
+      rerender();
+
+      expect(result.current.entityRules).toBe(firstEntityRulesReference);
+    });
+
+    it('should recompute rules when entity type changes', () => {
+      const tableRules = mockParsedRules;
+      const dashboardRules: ParsedRule[] = [
+        {
+          type: RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED,
+          condition: { '<=': 1 },
+          enabled: true,
+          ignoredEntities: [],
+          description: 'Dashboard rule',
+          name: 'Dashboard Rule',
+        },
+      ];
+
+      mockGetRulesForEntity.mockImplementation((entityType: EntityType) => {
+        return entityType === EntityType.TABLE ? tableRules : dashboardRules;
+      });
+
+      const { result, rerender } = renderHook(
+        ({ entityType }) => useEntityRules({ entityType }),
+        {
+          initialProps: { entityType: EntityType.TABLE },
+        }
+      );
+
+      const firstRulesReference = result.current.rules;
+
+      expect(firstRulesReference).toBe(tableRules);
+
+      rerender({ entityType: EntityType.DASHBOARD });
+
+      expect(result.current.rules).not.toBe(firstRulesReference);
+      expect(result.current.rules).toBe(dashboardRules);
+    });
+  });
+
+  describe('Different entity types', () => {
+    it('should work with DASHBOARD entity type', () => {
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.DASHBOARD })
+      );
+
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(
+        EntityType.DASHBOARD
+      );
+      expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.DASHBOARD);
+      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(
+        EntityType.DASHBOARD
+      );
+      expect(result.current.rules).toEqual(mockParsedRules);
+    });
+
+    it('should work with TOPIC entity type', () => {
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TOPIC })
+      );
+
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
+      expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
+      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
+      expect(result.current.rules).toEqual(mockParsedRules);
+    });
+
+    it('should work with CONTAINER entity type', () => {
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.CONTAINER })
+      );
+
+      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(
+        EntityType.CONTAINER
+      );
+      expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.CONTAINER);
+      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(
+        EntityType.CONTAINER
+      );
+      expect(result.current.rules).toEqual(mockParsedRules);
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should handle empty rules array', () => {
+      mockGetRulesForEntity.mockReturnValue([]);
 
       const { result } = renderHook(() =>
-        useEntityRules({
-          entityType: EntityType.TABLE,
-          autoFetch: false,
-        })
+        useEntityRules({ entityType: EntityType.TABLE })
       );
 
-      expect(result.current.rules).toEqual(mockRules);
-      expect(result.current.uiHints).toHaveProperty(
-        'canAddMultipleGlossaryTermTable'
+      expect(result.current.rules).toEqual([]);
+    });
+
+    it('should handle when getUIHintsForEntity returns default hints', () => {
+      const defaultHints = {
+        canAddMultipleUserOwners: true,
+        canAddMultipleTeamOwner: true,
+        canAddMultipleDomains: true,
+        canAddMultipleDataProducts: true,
+        maxDomains: Infinity,
+        maxDataProducts: Infinity,
+        canAddMultipleGlossaryTermTable: true,
+        requireDomainForDataProduct: false,
+        warnings: [],
+      };
+      mockGetUIHintsForEntity.mockReturnValue(defaultHints);
+
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
       );
+
+      expect(result.current.entityRules).toEqual(defaultHints);
+    });
+
+    it('should handle multiple rules with different types', () => {
+      const multipleRules: ParsedRule[] = [
+        {
+          type: RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP,
+          condition: { multipleUsersOrSingleTeamOwnership: true },
+          enabled: true,
+          ignoredEntities: [],
+          description: 'Ownership rule',
+          name: 'Ownership Rule',
+        },
+        {
+          type: RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED,
+          condition: { '<=': 1 },
+          enabled: true,
+          ignoredEntities: [],
+          description: 'Domain rule',
+          name: 'Domain Rule',
+        },
+        {
+          type: RuleType.DATA_PRODUCT_DOMAIN_VALIDATION,
+          condition: { validateDataProductDomainMatch: true },
+          enabled: true,
+          ignoredEntities: [],
+          description: 'Data product rule',
+          name: 'Data Product Rule',
+        },
+      ];
+
+      mockGetRulesForEntity.mockReturnValue(multipleRules);
+
+      const { result } = renderHook(() =>
+        useEntityRules({ entityType: EntityType.TABLE })
+      );
+
+      expect(result.current.rules).toEqual(multipleRules);
+      expect(result.current.rules).toHaveLength(3);
     });
   });
 });

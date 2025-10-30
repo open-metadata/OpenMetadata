@@ -34,6 +34,18 @@ export const useEntityRules = ({
     isLoading,
   } = useRuleEnforcementProvider();
 
+  // Get rules for current entity type
+  const rules = useMemo(
+    () => getRulesForEntity(entityType),
+    [entityType, getRulesForEntity]
+  );
+
+  // Get UI Component Hints/ EntityRules for current entity
+  const entityRules = useMemo(
+    () => getUIHintsForEntity(entityType),
+    [entityType, getUIHintsForEntity]
+  );
+
   // Auto-fetch rules for entity type if enabled
   useEffect(() => {
     if (autoFetch && entityType) {
@@ -41,21 +53,9 @@ export const useEntityRules = ({
     }
   }, [entityType, autoFetch, fetchRulesForEntity]);
 
-  // Get rules for current entity type
-  const rules = useMemo(
-    () => getRulesForEntity(entityType),
-    [entityType, getRulesForEntity]
-  );
-
-  // Get UI hints for current entity
-  const uiHints = useMemo(
-    () => getUIHintsForEntity(entityType),
-    [entityType, getUIHintsForEntity]
-  );
-
   return {
     rules,
-    uiHints,
+    entityRules,
     isLoading,
   };
 };

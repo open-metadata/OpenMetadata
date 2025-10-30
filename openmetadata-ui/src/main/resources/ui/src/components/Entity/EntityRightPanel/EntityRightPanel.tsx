@@ -63,9 +63,8 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editDataProductPermission,
   onDataProductUpdate,
 }: EntityRightPanelProps<T>) => {
-  const { uiHints } = useEntityRules({
+  const { entityRules } = useEntityRules({
     entityType,
-    entityData: {},
   });
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
@@ -89,7 +88,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
               activeDomains={domains}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
-              multiple={uiHints.canAddMultipleDataProducts}
+              multiple={entityRules.canAddMultipleDataProducts}
               onSave={onDataProductUpdate}
             />
           </div>

@@ -147,8 +147,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
-
-  const { uiHints } = useEntityRules({
+  const { entityRules } = useEntityRules({
     entityType: entityType,
   });
 
@@ -708,7 +707,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
                   hasPermission={editDomainPermission}
-                  multiple={uiHints.canAddMultipleDomains}
+                  multiple={entityRules.canAddMultipleDomains}
                   textClassName="render-domain-lebel-style"
                 />
                 <Divider
@@ -724,8 +723,8 @@ export const DataAssetsHeader = ({
               isCompactView={false}
               maxVisibleOwners={4}
               multiple={{
-                user: uiHints.canAddMultipleUserOwners,
-                team: uiHints.canAddMultipleTeamOwner,
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
               }}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}

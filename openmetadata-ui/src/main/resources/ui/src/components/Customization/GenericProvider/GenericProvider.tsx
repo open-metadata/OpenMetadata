@@ -57,7 +57,7 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
   muiTags?: boolean;
-  uiHints: DataAssetRuleValidation;
+  entityRules: DataAssetRuleValidation;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -75,7 +75,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
   muiTags: boolean;
-  uiHints: DataAssetRuleValidation;
+  entityRules: DataAssetRuleValidation;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -112,7 +112,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     string | null
   >(null);
 
-  const { uiHints } = useEntityRules({
+  const { entityRules } = useEntityRules({
     entityType: type,
   });
 
@@ -230,7 +230,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const values = useMemo(
     () => ({
       data,
-      uiHints,
+      entityRules,
       type,
       onUpdate,
       isVersionView,
@@ -246,7 +246,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }),
     [
       data,
-      uiHints,
+      entityRules,
       type,
       onUpdate,
       isVersionView,

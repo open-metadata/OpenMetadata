@@ -11,184 +11,575 @@
  *  limitations under the License.
  */
 
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
-import { RuleType } from '../../generated/system/entityRules';
+import { EntityRule, RuleType } from '../../generated/system/entityRules';
 import { getEntityRules } from '../../rest/ruleEnforcementAPI';
+import { getUIHints, parseRule } from '../../utils/RuleEnforcementUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   RuleEnforcementProvider,
-  useRuleEnforcement,
+  useRuleEnforcementProvider,
 } from './RuleEnforcementProvider';
 
-jest.mock('../../rest/ruleEnforcementAPI');
-jest.mock('../../utils/ToastUtils');
+jest.mock('../../rest/ruleEnforcementAPI', () => ({
+  getEntityRules: jest.fn(),
+}));
 
-const mockGetEntityRules = getEntityRules as jest.MockedFunction<
-  typeof getEntityRules
->;
-const mockShowErrorToast = showErrorToast as jest.MockedFunction<
-  typeof showErrorToast
->;
+jest.mock('../../utils/RuleEnforcementUtils', () => ({
+  parseRule: jest.fn(),
+  getUIHints: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const mockEntityRules: EntityRule[] = [
+  {
+    name: 'Test Rule',
+    description: 'Test rule description',
+    rule: JSON.stringify({ multipleUsersOrSingleTeamOwnership: true }),
+    enabled: true,
+    ignoredEntities: [],
+    provider: 'system',
+  },
+];
+
+const mockParsedRules = [
+  {
+    type: RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP,
+    condition: { multipleUsersOrSingleTeamOwnership: true },
+    enabled: true,
+    ignoredEntities: [],
+    description: 'Test rule description',
+    name: 'Test Rule',
+  },
+];
+
+const mockUIHints = {
+  canAddMultipleUserOwners: true,
+  canAddMultipleTeamOwner: false,
+  canAddMultipleDomains: true,
+  canAddMultipleDataProducts: true,
+  maxDomains: Infinity,
+  maxDataProducts: Infinity,
+  canAddMultipleGlossaryTermTable: true,
+  requireDomainForDataProduct: false,
+  warnings: [
+    'Entity must have either multiple user owners or a single team owner',
+  ],
+};
 
 describe('RuleEnforcementProvider', () => {
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
-  );
-
   beforeEach(() => {
     jest.clearAllMocks();
+    (getEntityRules as jest.Mock).mockResolvedValue(mockEntityRules);
+    (parseRule as jest.Mock).mockImplementation((rule) => ({
+      type: RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP,
+      condition: JSON.parse(rule.rule),
+      enabled: rule.enabled,
+      ignoredEntities: rule.ignoredEntities,
+      description: rule.description,
+      name: rule.name,
+    }));
+    (getUIHints as jest.Mock).mockReturnValue(mockUIHints);
+  });
+
+  describe('Provider rendering', () => {
+    it('should render children correctly', () => {
+      const { getByTestId } = render(
+        <RuleEnforcementProvider>
+          <div data-testid="test-child">Test Child</div>
+        </RuleEnforcementProvider>
+      );
+
+      expect(getByTestId('test-child')).toBeInTheDocument();
+    });
+
+    it('should provide context value to consumers', () => {
+      const TestConsumer = () => {
+        const context = useRuleEnforcementProvider();
+
+        return (
+          <div>
+            <span data-testid="has-context">
+              {context ? 'Has Context' : 'No Context'}
+            </span>
+          </div>
+        );
+      };
+
+      const { getByTestId } = render(
+        <RuleEnforcementProvider>
+          <TestConsumer />
+        </RuleEnforcementProvider>
+      );
+
+      expect(getByTestId('has-context')).toHaveTextContent('Has Context');
+    });
   });
 
   describe('fetchRulesForEntity', () => {
-    it('should fetch and parse rules for entity type', async () => {
-      const mockRules = [
-        {
-          name: 'Glossary Rule',
-          description: 'Tables can only have a single Glossary Term',
-          rule: JSON.stringify({
-            '<=': [
-              {
-                length: [{ filterTagsBySource: [{ var: 'tags' }, 'Glossary'] }],
-              },
-              1,
-            ],
-          }),
-          enabled: true,
-          ignoredEntities: [],
-          provider: 'system' as const,
-        },
-      ];
+    it('should fetch rules for an entity type', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
 
-      mockGetEntityRules.mockResolvedValue({ data: mockRules } as any);
-
-      const { result } = renderHook(() => useRuleEnforcement(), { wrapper });
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
 
       await act(async () => {
         await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        expect(getEntityRules).toHaveBeenCalledWith(EntityType.TABLE);
+        expect(parseRule).toHaveBeenCalledTimes(mockEntityRules.length);
+      });
+    });
+
+    it('should update loading state while fetching', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      expect(result.current.isLoading).toBe(false);
+
+      const fetchPromise = act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await fetchPromise;
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+    });
+
+    it('should not fetch rules if already loaded', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        expect(getEntityRules).toHaveBeenCalledTimes(1);
+      });
+
+      (getEntityRules as jest.Mock).mockClear();
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      expect(getEntityRules).not.toHaveBeenCalled();
+    });
+
+    it('should handle API errors gracefully', async () => {
+      const mockError = new Error('API Error');
+      (getEntityRules as jest.Mock).mockRejectedValueOnce(mockError);
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(
+          mockError,
+          'Failed to fetch rules for table'
+        );
+        expect(result.current.isLoading).toBe(false);
+      });
+    });
+
+    it('should store parsed rules in state', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        const rules = result.current.getRulesForEntity(EntityType.TABLE);
+
+        expect(rules).toHaveLength(mockEntityRules.length);
+        expect(rules[0].type).toBe(
+          RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP
+        );
+      });
+    });
+
+    it('should fetch rules for multiple entity types independently', async () => {
+      const dashboardRules: EntityRule[] = [
+        {
+          name: 'Dashboard Rule',
+          description: 'Dashboard rule description',
+          rule: JSON.stringify({ '<=': 1 }),
+          enabled: true,
+          ignoredEntities: [],
+          provider: 'system',
+        },
+      ];
+
+      (getEntityRules as jest.Mock).mockImplementation((entityType) => {
+        if (entityType === EntityType.TABLE) {
+          return Promise.resolve(mockEntityRules);
+        }
+
+        return Promise.resolve(dashboardRules);
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
+      });
+
+      await waitFor(() => {
+        expect(getEntityRules).toHaveBeenCalledWith(EntityType.TABLE);
+        expect(getEntityRules).toHaveBeenCalledWith(EntityType.DASHBOARD);
+        expect(getEntityRules).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  describe('getRulesForEntity', () => {
+    it('should return empty array for entity type with no rules', () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
       });
 
       const rules = result.current.getRulesForEntity(EntityType.TABLE);
 
-      expect(rules).toHaveLength(1);
-      expect(rules[0].type).toBe(RuleType.SINGLE_GLOSSARY_TERM_FOR_TABLE);
-      expect(rules[0].enabled).toBe(true);
+      expect(rules).toEqual([]);
     });
 
-    it('should not fetch rules if already loaded', async () => {
-      const mockRules = [
-        {
-          name: 'Test Rule',
-          description: 'Test',
-          rule: JSON.stringify({ test: true }),
-          enabled: true,
-          ignoredEntities: [],
-          provider: 'system' as const,
-        },
-      ];
+    it('should return rules for entity type after fetching', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
 
-      mockGetEntityRules.mockResolvedValue({ data: mockRules } as any);
-
-      const { result } = renderHook(() => useRuleEnforcement(), { wrapper });
-
-      await act(async () => {
-        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
       });
-
-      mockGetEntityRules.mockClear();
-
-      await act(async () => {
-        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
-      });
-
-      expect(mockGetEntityRules).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('getUIHintsForEntity', () => {
-    it('should return UI hints for glossary term rule', async () => {
-      const mockRules = [
-        {
-          name: 'Glossary Rule',
-          description: 'Tables can only have a single Glossary Term',
-          rule: JSON.stringify({
-            '<=': [
-              {
-                length: [{ filterTagsBySource: [{ var: 'tags' }, 'Glossary'] }],
-              },
-              1,
-            ],
-          }),
-          enabled: true,
-          ignoredEntities: [],
-          provider: 'system' as const,
-        },
-      ];
-
-      mockGetEntityRules.mockResolvedValue({ data: mockRules } as any);
-
-      const { result } = renderHook(() => useRuleEnforcement(), { wrapper });
 
       await act(async () => {
         await result.current.fetchRulesForEntity(EntityType.TABLE);
       });
 
-      const hints = result.current.getUIHintsForEntity(EntityType.TABLE);
+      await waitFor(() => {
+        const rules = result.current.getRulesForEntity(EntityType.TABLE);
 
-      expect(hints.canAddMultipleGlossaryTermTable).toBe(false);
-      expect(hints.warnings).toContain(
-        'Tables can only have a single Glossary Term'
-      );
+        expect(rules).toHaveLength(mockEntityRules.length);
+        expect(rules).toEqual(mockParsedRules);
+      });
     });
-  });
 
-  describe('initialEntityTypes', () => {
-    it('should load initial entity types on mount', async () => {
-      const mockRules = [
+    it('should return different rules for different entity types', async () => {
+      const dashboardRules: EntityRule[] = [
         {
-          name: 'Test Rule',
-          description: 'Test',
-          rule: JSON.stringify({ test: true }),
+          name: 'Dashboard Rule',
+          description: 'Dashboard rule description',
+          rule: JSON.stringify({ '<=': 1 }),
           enabled: true,
           ignoredEntities: [],
-          provider: 'system' as const,
+          provider: 'system',
         },
       ];
 
-      mockGetEntityRules.mockResolvedValue({ data: mockRules } as any);
+      (getEntityRules as jest.Mock).mockImplementation((entityType) => {
+        if (entityType === EntityType.TABLE) {
+          return Promise.resolve(mockEntityRules);
+        }
 
-      const wrapperWithInitial = ({
-        children,
-      }: {
-        children: React.ReactNode;
-      }) => (
-        <RuleEnforcementProvider
-          initialEntityTypes={[EntityType.TABLE, EntityType.DASHBOARD]}>
-          {children}
-        </RuleEnforcementProvider>
+        return Promise.resolve(dashboardRules);
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
       );
 
-      renderHook(() => useRuleEnforcement(), { wrapper: wrapperWithInitial });
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
+      });
 
       await waitFor(() => {
-        expect(mockGetEntityRules).toHaveBeenCalledWith(EntityType.TABLE);
-        expect(mockGetEntityRules).toHaveBeenCalledWith(EntityType.DASHBOARD);
+        const tableRules = result.current.getRulesForEntity(EntityType.TABLE);
+        const dashboardRulesResult = result.current.getRulesForEntity(
+          EntityType.DASHBOARD
+        );
+
+        expect(tableRules).toHaveLength(1);
+        expect(dashboardRulesResult).toHaveLength(1);
+        expect(tableRules[0].name).toBe('Test Rule');
+        expect(dashboardRulesResult[0].name).toBe('Dashboard Rule');
       });
     });
   });
 
-  describe('context error handling', () => {
-    it('should throw error when used outside provider', () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
+  describe('getUIHintsForEntity', () => {
+    it('should return UI hints for entity type with no rules', () => {
+      (getUIHints as jest.Mock).mockReturnValue({
+        canAddMultipleUserOwners: true,
+        canAddMultipleTeamOwner: true,
+        canAddMultipleDomains: true,
+        canAddMultipleDataProducts: true,
+        maxDomains: Infinity,
+        maxDataProducts: Infinity,
+        canAddMultipleGlossaryTermTable: true,
+        requireDomainForDataProduct: false,
+        warnings: [],
+      });
 
-      expect(() => {
-        renderHook(() => useRuleEnforcement());
-      }).toThrow(
-        'useRuleEnforcement must be used within a RuleEnforcementProvider'
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
       );
 
-      consoleError.mockRestore();
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      const hints = result.current.getUIHintsForEntity(EntityType.TABLE);
+
+      expect(hints.canAddMultipleUserOwners).toBe(true);
+      expect(hints.warnings).toEqual([]);
+    });
+
+    it('should return UI hints based on loaded rules', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        const hints = result.current.getUIHintsForEntity(EntityType.TABLE);
+
+        expect(getUIHints).toHaveBeenCalledWith(
+          mockParsedRules,
+          EntityType.TABLE
+        );
+        expect(hints).toEqual(mockUIHints);
+      });
+    });
+
+    it('should call getUIHints with correct entity type', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
+      });
+
+      await waitFor(() => {
+        result.current.getUIHintsForEntity(EntityType.DASHBOARD);
+
+        expect(getUIHints).toHaveBeenCalledWith(
+          expect.any(Array),
+          EntityType.DASHBOARD
+        );
+      });
+    });
+  });
+
+  describe('initialEntityTypes', () => {
+    it('should fetch rules for initial entity types on mount', async () => {
+      render(
+        <RuleEnforcementProvider
+          initialEntityTypes={[EntityType.TABLE, EntityType.DASHBOARD]}>
+          <div data-testid="test-child">Test Child</div>
+        </RuleEnforcementProvider>
+      );
+
+      await waitFor(() => {
+        expect(getEntityRules).toHaveBeenCalledWith(EntityType.TABLE);
+        expect(getEntityRules).toHaveBeenCalledWith(EntityType.DASHBOARD);
+      });
+    });
+
+    it('should not fetch rules when no initial entity types provided', () => {
+      render(
+        <RuleEnforcementProvider>
+          <div data-testid="test-child">Test Child</div>
+        </RuleEnforcementProvider>
+      );
+
+      expect(getEntityRules).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors when fetching initial entity types', async () => {
+      (getEntityRules as jest.Mock).mockRejectedValue(new Error('Fetch error'));
+
+      render(
+        <RuleEnforcementProvider initialEntityTypes={[EntityType.TABLE]}>
+          <div data-testid="test-child">Test Child</div>
+        </RuleEnforcementProvider>
+      );
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Context memoization', () => {
+    it('should memoize context value', () => {
+      const TestConsumer = () => {
+        const context1 = useRuleEnforcementProvider();
+        const context2 = useRuleEnforcementProvider();
+
+        return (
+          <div data-testid="same-context">
+            {context1 === context2 ? 'Same' : 'Different'}
+          </div>
+        );
+      };
+
+      const { getByTestId } = render(
+        <RuleEnforcementProvider>
+          <TestConsumer />
+        </RuleEnforcementProvider>
+      );
+
+      expect(getByTestId('same-context')).toHaveTextContent('Same');
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should handle concurrent fetch requests for same entity type', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await Promise.all([
+          result.current.fetchRulesForEntity(EntityType.TABLE),
+          result.current.fetchRulesForEntity(EntityType.TABLE),
+          result.current.fetchRulesForEntity(EntityType.TABLE),
+        ]);
+      });
+
+      await waitFor(() => {
+        expect(getEntityRules).toHaveBeenCalled();
+
+        const rules = result.current.getRulesForEntity(EntityType.TABLE);
+
+        expect(rules).toHaveLength(mockEntityRules.length);
+      });
+    });
+
+    it('should handle empty rules response', async () => {
+      (getEntityRules as jest.Mock).mockResolvedValueOnce([]);
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        const rules = result.current.getRulesForEntity(EntityType.TABLE);
+
+        expect(rules).toEqual([]);
+      });
+    });
+
+    it('should update rules state correctly after multiple fetches', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
+      );
+
+      const { result } = renderHook(() => useRuleEnforcementProvider(), {
+        wrapper,
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.TABLE);
+      });
+
+      await waitFor(() => {
+        expect(result.current.getRulesForEntity(EntityType.TABLE)).toHaveLength(
+          1
+        );
+      });
+
+      await act(async () => {
+        await result.current.fetchRulesForEntity(EntityType.DASHBOARD);
+      });
+
+      await waitFor(() => {
+        expect(result.current.getRulesForEntity(EntityType.TABLE)).toHaveLength(
+          1
+        );
+        expect(
+          result.current.getRulesForEntity(EntityType.DASHBOARD)
+        ).toHaveLength(1);
+      });
     });
   });
 });
