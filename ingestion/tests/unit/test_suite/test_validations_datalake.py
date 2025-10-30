@@ -842,11 +842,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             ],
         ),
         (
-<<<<<<< HEAD
             "test_case_column_value_max_to_be_between_dimensional_without_max",
-=======
-            "test_case_column_value_max_to_be_between_dimensional_without_min",
->>>>>>> @{-1}
             "columnValueMaxToBeBetween",
             "COLUMN",
             (
@@ -866,7 +862,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0),
                 ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0),
                 ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
-<<<<<<< HEAD
             ],
         ),
         (
@@ -913,8 +908,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
                 ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
                 ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
-=======
->>>>>>> @{-1}
             ],
         ),
     ],
