@@ -174,6 +174,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final OpenSearchGenericManager genericManager;
   private final OpenSearchAggregationManager aggregationManager;
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
+  private final OpenSearchSearchManager searchManager;
 
   // Singleton factory to avoid object creation on every request
   private volatile OpenSearchSourceBuilderFactory searchBuilderFactory = null;
@@ -237,6 +238,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
     aggregationManager = new OpenSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
+    searchManager = new OpenSearchSearchManager(newClient);
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -908,15 +910,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    return Response.status(OK).entity(response).build();
+    return searchManager.searchBySourceUrl(sourceUrl);
   }
 
   @Override
@@ -1350,18 +1344,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    BoolQueryBuilder query =
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
-            .filter(QueryBuilders.termQuery("deleted", deleted));
-    searchSourceBuilder.query(query);
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    return Response.status(OK).entity(response).build();
+    return searchManager.searchByField(fieldName, fieldValue, index, deleted);
   }
 
   @Override

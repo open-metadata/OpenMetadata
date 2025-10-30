@@ -157,6 +157,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ElasticSearchGenericManager genericManager;
   private final ElasticSearchAggregationManager aggregationManager;
   private final ElasticSearchDataInsightAggregatorManager dataInsightAggregatorManager;
+  private final ElasticSearchSearchManager searchManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -203,6 +204,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
+    searchManager = new ElasticSearchSearchManager(newClient);
     nlqService = null;
   }
 
@@ -1231,32 +1233,13 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    return Response.status(OK).entity(response).build();
+    return searchManager.searchBySourceUrl(sourceUrl);
   }
 
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    BoolQueryBuilder query =
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
-            .filter(QueryBuilders.termQuery("deleted", deleted));
-    searchSourceBuilder.query(query);
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    return Response.status(OK).entity(response).build();
+    return searchManager.searchByField(fieldName, fieldValue, index, deleted);
   }
 
   @Override
