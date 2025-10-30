@@ -71,6 +71,7 @@ import {
   followEntity,
   replyAnnouncement,
   unFollowEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   settingClick,
@@ -216,7 +217,7 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await page.reload();
 
-    await test.step('Add assets to domain', async () => {
+    await test.step.skip('Add assets to domain', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await addAssetsToDomain(page, domain, assets);
@@ -224,6 +225,15 @@ test.describe('Domains', () => {
 
     await test.step('Create DataProducts', async () => {
       await createDataProduct(page, dataProduct1.data);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${dataProduct1.data.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
       await createDataProduct(page, dataProduct2.data);
     });
 

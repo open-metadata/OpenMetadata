@@ -44,7 +44,7 @@ const MUICreateErrorPlaceHolder = ({
         className,
         'h-full flex-center border-default border-radius-sm bg-white w-full p-8'
       )}
-      data-testid={`create-error-placeholder-${heading}`}
+      data-testid="no-data-placeholder"
       style={{ paddingTop: 0 }}>
       <Box sx={{ textAlign: 'center' }}>
         {icon && <div className="m-b-xs">{icon}</div>}
