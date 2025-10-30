@@ -82,7 +82,10 @@ import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import {
+  LineageSettings,
+  PipelineViewMode,
+} from '../../generated/configuration/lineageSettings';
 import { Table } from '../../generated/entity/data/table';
 import { LineageLayer } from '../../generated/settings/settings';
 import {
@@ -210,6 +213,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     upstreamDepth: 3,
     downstreamDepth: 3,
     nodesPerLayer: 50,
+    pipelineViewMode: PipelineViewMode.Node,
   });
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
@@ -405,7 +409,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         setLineageData(res);
 
-        const { nodes, edges, entity } = parseLineageData(res, '', entityFqn);
+        const { nodes, edges, entity } = parseLineageData(
+          res,
+          '',
+          entityFqn,
+          config?.pipelineViewMode
+        );
         const updatedEntityLineage = {
           nodes,
           edges,
@@ -449,7 +458,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
         setLineageData(res);
 
-        const { nodes, edges, entity } = parseLineageData(res, fqn, entityFqn);
+        const { nodes, edges, entity } = parseLineageData(
+          res,
+          fqn,
+          entityFqn,
+          config?.pipelineViewMode
+        );
         const updatedEntityLineage = {
           nodes,
           edges,
@@ -497,7 +511,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const exportLineageData = useCallback(async () => {
     return exportLineageAsync(
       entityFqn,
-      entityType,
+      entityType ?? '',
       lineageConfig,
       queryFilter
     );
@@ -548,6 +562,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
             downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
             nodesPerLayer: lineageConfig.nodesPerLayer,
+            pipelineViewMode: lineageConfig.pipelineViewMode,
           }, // load only one level of child nodes
           queryFilter,
           direction,
@@ -1592,6 +1607,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setLineageConfig({
         upstreamDepth: defaultLineageConfig.upstreamDepth,
         downstreamDepth: defaultLineageConfig.downstreamDepth,
+        pipelineViewMode: defaultLineageConfig.pipelineViewMode,
         nodesPerLayer: 50,
       });
 

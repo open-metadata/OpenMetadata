@@ -347,7 +347,7 @@ export class TableClass extends EntityClass {
     const testCase = await apiContext
       .post('/api/v1/dataQuality/testCases', {
         data: {
-          name: `pw-test-case-${uuid()}`,
+          name: `pw%test$case#${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
           parameterValues: [
@@ -370,7 +370,9 @@ export class TableClass extends EntityClass {
     testCaseResult: unknown
   ) {
     const testCaseResultResponse = await apiContext.post(
-      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
+      `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+        testCaseFqn
+      )}`,
       { data: testCaseResult }
     );
 
