@@ -15,11 +15,14 @@ import { Box, Chip, Typography, useTheme } from '@mui/material';
 import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ArrowCircleDown } from '../../../assets/svg/arrow-circle-down.svg';
+import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -43,11 +46,13 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import Loader from '../../common/Loader/Loader';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
+import DomainEmptyState from '../../Domain/DomainEmptyState';
 
 interface DomainTreeViewProps {
   searchQuery?: string;
   onDomainMutated?: () => void;
   refreshToken?: number;
+  openAddDomainDrawer?: () => void;
 }
 
 type DomainHierarchyMap = Record<string, Domain>;
@@ -59,6 +64,7 @@ const DomainTreeView = ({
   searchQuery,
   onDomainMutated,
   refreshToken = 0,
+  openAddDomainDrawer,
 }: DomainTreeViewProps) => {
   const theme = useTheme();
   const outlineColor =
@@ -68,6 +74,7 @@ const DomainTreeView = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { permissions } = usePermissionProvider();
 
   const [hierarchy, setHierarchy] = useState<Domain[]>([]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -643,6 +650,22 @@ const DomainTreeView = ({
       </SimpleTreeView>
     );
   };
+  if (!isHierarchyLoading && isEmpty(hierarchy)) {
+    return (
+      <DomainEmptyState
+        createLabel={t('label.add-entity', {
+          entity: t('label.domain'),
+        })}
+        icon={<FolderEmptyIcon />}
+        message={t('message.no-data-message', {
+          entity: t('label.domain-lowercase-plural'),
+        })}
+        showCreate={permissions.domain?.Create}
+        testId="domain-add-button"
+        onCreate={openAddDomainDrawer}
+      />
+    );
+  }
 
   return (
     <Box

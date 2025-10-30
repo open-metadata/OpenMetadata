@@ -196,6 +196,19 @@ const DomainListPage = () => {
   });
 
   const renderContent = () => {
+    if (isTreeView) {
+      return (
+        <Box sx={{ px: 6, pb: 6 }}>
+          <DomainTreeView
+            openAddDomainDrawer={openDrawer}
+            refreshToken={treeRefreshToken}
+            searchQuery={domainListing.urlState.searchQuery}
+            onDomainMutated={refreshAllDomains}
+          />
+        </Box>
+      );
+    }
+
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       return (
         <DomainEmptyState
@@ -210,18 +223,6 @@ const DomainListPage = () => {
           testId="domain-add-button"
           onCreate={openDrawer}
         />
-      );
-    }
-
-    if (isTreeView) {
-      return (
-        <Box sx={{ px: 6, pb: 6 }}>
-          <DomainTreeView
-            refreshToken={treeRefreshToken}
-            searchQuery={domainListing.urlState.searchQuery}
-            onDomainMutated={refreshAllDomains}
-          />
-        </Box>
       );
     }
 
