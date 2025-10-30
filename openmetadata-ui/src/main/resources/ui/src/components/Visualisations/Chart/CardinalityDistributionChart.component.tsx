@@ -182,6 +182,8 @@ const CardinalityDistributionChart = ({
           'MMM dd, yyyy'
         );
 
+        const containerHeight = Math.max(350, graphData.length * 30);
+
         return (
           <Box
             key={key}
@@ -211,11 +213,17 @@ const CardinalityDistributionChart = ({
                 })}: ${cardinalityData.categories?.length || 0}`}
               </DataPill>
             </Box>
-            <Box sx={{ flex: 1, minHeight: 350 }}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 350,
+                overflowX: 'hidden',
+              }}>
               <ResponsiveContainer
                 debounce={200}
+                height={containerHeight}
                 id={`${key}-cardinality`}
-                minHeight={300}>
+                width="100%">
                 <BarChart
                   className="w-full"
                   data={graphData}
@@ -257,6 +265,7 @@ const CardinalityDistributionChart = ({
                     }}
                   />
                   <Bar
+                    barSize={22}
                     dataKey="percentage"
                     fill={CHART_BLUE_1}
                     radius={[0, 8, 8, 0]}
