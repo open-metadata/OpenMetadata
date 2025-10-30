@@ -15,7 +15,7 @@ Validator for column value mean to be between test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, case, func, inspect
+from sqlalchemy import Column, case, func
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,

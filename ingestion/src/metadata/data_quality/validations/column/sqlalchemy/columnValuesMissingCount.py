@@ -15,7 +15,7 @@ Validator for column value missing count to be equal test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,

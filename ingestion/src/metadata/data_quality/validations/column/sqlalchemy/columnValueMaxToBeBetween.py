@@ -14,7 +14,7 @@ Validator for column value max to be between test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, func, inspect
+from sqlalchemy import Column, func
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,

@@ -15,7 +15,7 @@ Validator for column values to match regex test case
 
 from typing import Optional, Tuple
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (

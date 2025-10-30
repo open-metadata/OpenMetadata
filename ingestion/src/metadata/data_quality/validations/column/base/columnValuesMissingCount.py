@@ -48,7 +48,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             TestCaseResult: The test case result for the overall validation
         """
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             null_res = self._run_results(
                 Metrics.NULL_MISSING_COUNT,
                 column,

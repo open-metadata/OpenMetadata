@@ -58,7 +58,7 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             max_value = self._run_results(Metrics.MAX, column)
 
             metric_values = {

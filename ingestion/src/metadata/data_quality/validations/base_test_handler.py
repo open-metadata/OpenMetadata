@@ -217,7 +217,7 @@ class BaseTestValidator(ABC):
             if not dimension_columns:
                 return []
 
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
 
             test_params = self._get_test_parameters()
             metrics_to_compute = self._get_metrics_to_compute(test_params)
@@ -225,7 +225,7 @@ class BaseTestValidator(ABC):
             dimension_results = []
             for dimension_column in dimension_columns:
                 try:
-                    dimension_col = self._get_column_name(dimension_column)
+                    dimension_col = self.get_column(dimension_column)
 
                     single_dimension_results = self._execute_dimensional_validation(
                         column, dimension_col, metrics_to_compute, test_params
@@ -273,18 +273,20 @@ class BaseTestValidator(ABC):
         """
         return {}
 
-    def _get_column_name(self, column_name: Optional[str] = None) -> Union[SQALikeColumn, Column]:
+    def get_column(
+        self, column_name: Optional[str] = None
+    ) -> Union[SQALikeColumn, Column]:
         """Get column object from column_name. If no column_name is present,
         it returns the main column for the test.
-        
+
         Uses cooperative multiple inheritance. Implementation provided by
         SQAValidatorMixin or PandasValidatorMixin via MRO chain.
         Concrete validators must inherit from one of these mixins.
-        
+
         Returns:
             Column object (sqlalchemy.Column or SQALikeColumn depending on mixin)
         """
-        return super()._get_column_name(column_name) # type: ignore
+        return super().get_column(column_name)  # type: ignore
 
     def _execute_dimensional_validation(
         self,
@@ -572,7 +574,7 @@ class BaseTestValidator(ABC):
         if not self.is_dimensional_test():
             return False  # No dimensions to validate
 
-        if not hasattr(self, "_get_column_name"):
+        if not hasattr(self, "get_column"):
             logger.warning("Validator does not support dimensional column validation")
             return False
 
@@ -580,7 +582,7 @@ class BaseTestValidator(ABC):
             missing_columns = []
             for dim_col in self.test_case.dimensionColumns:
                 try:
-                    self._get_column_name(dim_col)  # type: ignore[attr-defined] - Delegates to child class
+                    self.get_column(dim_col)  # type: ignore[attr-defined] - Delegates to child class
                 except ValueError:
                     missing_columns.append(dim_col)
                 except NotImplementedError:

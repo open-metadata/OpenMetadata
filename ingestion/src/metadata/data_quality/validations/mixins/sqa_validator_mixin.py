@@ -15,7 +15,7 @@ Validator Mixin for SQA tests cases
 
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, case, func, select, text, inspect, Table
+from sqlalchemy import Column, Table, case, func, inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
@@ -31,12 +31,12 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_impact_score_expression,
 )
+from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
-from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 
 logger = test_suite_logger()
 
@@ -61,8 +61,10 @@ DIMENSION_GROUP_LABEL = "dimension_group"
 
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
-    
-    def _get_column_name(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:
+
+    def get_column(
+        self: HasValidatorContext, column_name: Optional[str] = None
+    ) -> Column:
         """Get column object for the given column name
 
         Args:
@@ -81,23 +83,6 @@ class SQAValidatorMixin:
             column_name,
             table.c,
         )
-        
-    def get_column_name(self, entity_link: str, columns: List) -> Column:
-        """Given a column name get the column object
-
-        Args:
-            column_name (str): Column name
-        Returns:
-            Column: Column object
-        """
-        column = get_decoded_column(entity_link)
-        column_obj = next(
-            (col for col in columns if col.name == column),
-            None,
-        )
-        if column_obj is None:
-            raise ValueError(f"Cannot find column {column}")
-        return column_obj
 
     @staticmethod
     def get_column_from_list(entity_link: str, columns: List) -> Column:

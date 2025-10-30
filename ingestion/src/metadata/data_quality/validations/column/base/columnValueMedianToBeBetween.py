@@ -47,7 +47,7 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
             TestCaseResult: The test case result for the overall validation
         """
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             res = self._run_results(Metrics.MEDIAN, column)
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore

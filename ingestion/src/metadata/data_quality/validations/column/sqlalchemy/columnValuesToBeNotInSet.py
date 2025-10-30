@@ -15,7 +15,7 @@ Validator for column value to be not in set test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.column.base.columnValuesToBeNotInSet import (
     BaseColumnValuesToBeNotInSetValidator,

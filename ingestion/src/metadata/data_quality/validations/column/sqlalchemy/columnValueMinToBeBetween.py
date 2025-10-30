@@ -14,7 +14,7 @@ Validator for column value min to be between test case
 """
 from typing import List, Optional
 
-from sqlalchemy import Column, func, inspect
+from sqlalchemy import Column, func
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
@@ -37,7 +37,7 @@ class ColumnValueMinToBeBetweenValidator(
     BaseColumnValueMinToBeBetweenValidator, SQAValidatorMixin
 ):
     """Validator for column value min to be between test case"""
-    
+
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case
 

@@ -52,7 +52,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             str,
         )
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             not_match_count = self._run_results(
                 Metrics.NOT_REGEX_COUNT, column, expression=forbidden_regex
             )
@@ -106,4 +106,4 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name())
+        return self.compute_row_count(self.get_column())

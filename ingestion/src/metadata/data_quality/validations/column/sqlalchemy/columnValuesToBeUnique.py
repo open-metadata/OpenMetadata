@@ -16,7 +16,7 @@ Validator for column values to be unique test case
 import logging
 from typing import List, Optional
 
-from sqlalchemy import Column, func, inspect, literal_column, select
+from sqlalchemy import Column, func, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (

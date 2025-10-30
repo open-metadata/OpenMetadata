@@ -30,7 +30,6 @@ class ColumnValueStdDevToBeBetweenValidator(
 ):
     """Validator for column value stddev to be between test case"""
 
-
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
 

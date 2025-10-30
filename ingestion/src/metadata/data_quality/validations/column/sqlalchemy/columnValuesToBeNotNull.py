@@ -15,7 +15,7 @@ Validator for column values to be not null test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.column.base.columnValuesToBeNotNull import (
     BaseColumnValuesToBeNotNullValidator,

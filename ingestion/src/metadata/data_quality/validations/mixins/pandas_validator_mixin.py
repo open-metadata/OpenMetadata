@@ -28,18 +28,20 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_volume_factor,
 )
+from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 
 
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
-    
-    def _get_column_name(self: HasValidatorContext, column_name: Optional[str] = None) -> SQALikeColumn:
+
+    def get_column(
+        self: HasValidatorContext, column_name: Optional[str] = None
+    ) -> SQALikeColumn:
         """Get column object for the given column name
 
         If column_name is None, returns the main column being validated.
@@ -61,18 +63,6 @@ class PandasValidatorMixin:
                 column_name,
                 cast(List[pd.DataFrame], self.runner),
             )
-
-    def get_column_name(self, entity_link: str, dfs) -> SQALikeColumn:
-        # we'll use the first dataframe chunk to get the column name.
-        column = dfs[0][get_decoded_column(entity_link)]
-        _type = GenericDataFrameColumnParser.fetch_col_types(
-            dfs[0], get_decoded_column(entity_link)
-        )
-        sqa_like_column = SQALikeColumn(
-            name=column.name,
-            type=_type,
-        )
-        return sqa_like_column
 
     @staticmethod
     def get_column_from_list(entity_link: str, dfs) -> SQALikeColumn:

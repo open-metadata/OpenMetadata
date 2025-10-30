@@ -46,32 +46,6 @@ class ColumnValueMaxToBeBetweenValidator(
 ):
     """Validator for column value max to be between test case"""
 
-<<<<<<< HEAD
-=======
-    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            SQALikeColumn: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                self.runner,
-            )
-        else:
-            return self.get_column_name(
-                column_name,
-                self.runner,
-            )
-
->>>>>>> @{-1}
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
 
@@ -109,22 +83,10 @@ class ColumnValueMaxToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-<<<<<<< HEAD
         checker = self._get_validation_checker(test_params)
         dimension_results = []
 
         try:
-=======
-        dimension_results = []
-
-        try:
-            min_bound = test_params["minValueForMaxInCol"]
-            max_bound = test_params["maxValueForMaxInCol"]
-
-            def is_violation_max(value: object) -> bool:
-                return not (min_bound <= value <= max_bound)
-
->>>>>>> @{-1}
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
@@ -155,11 +117,7 @@ class ColumnValueMaxToBeBetweenValidator(
 
                 max_value = max(maxes_list)
 
-<<<<<<< HEAD
                 failed_count = total_rows if checker.check_pandas(max_value) else 0
-=======
-                failed_count = total_rows if is_violation_max(max_value) else 0
->>>>>>> @{-1}
 
                 results_data.append(
                     {
@@ -185,11 +143,7 @@ class ColumnValueMaxToBeBetweenValidator(
                     agg_functions={Metrics.MAX.name: "max"},
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metric=Metrics.MAX.name,
-<<<<<<< HEAD
                     violation_predicate=checker.check_pandas,
-=======
-                    violation_predicate=lambda v: is_violation_max(v),
->>>>>>> @{-1}
                 )
 
                 for row_dict in results_df.to_dict("records"):

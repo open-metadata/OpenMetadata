@@ -147,7 +147,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             count = self._run_results(Metrics.COUNT, column)
             unique_count = self._get_unique_count(Metrics.UNIQUE_COUNT, column)
 

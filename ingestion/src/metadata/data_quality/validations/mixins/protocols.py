@@ -12,10 +12,11 @@
 """
 Protocols used byt he Mixins
 """
-from typing import Protocol, runtime_checkable, TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Protocol, Union, runtime_checkable
 
 if TYPE_CHECKING:
     from pandas import DataFrame
+
     from metadata.generated.schema.tests.testCase import TestCase
     from metadata.profiler.processor.runner import QueryRunner
 
@@ -23,5 +24,6 @@ if TYPE_CHECKING:
 @runtime_checkable
 class HasValidatorContext(Protocol):
     """Contract: Classes using validaotr Mixings must provide context"""
+
     runner: "Union[QueryRunner, List[DataFrame]]"
     test_case: "TestCase"

@@ -15,7 +15,7 @@ Validator for column value to be in set test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, inspect, literal
+from sqlalchemy import Column, literal
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,

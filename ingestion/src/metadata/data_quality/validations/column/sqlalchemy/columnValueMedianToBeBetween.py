@@ -15,7 +15,7 @@ Validator for column value median to be between test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.column.base.columnValueMedianToBeBetween import (
     BaseColumnValueMedianToBeBetweenValidator,

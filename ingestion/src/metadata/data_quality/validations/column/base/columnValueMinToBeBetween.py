@@ -58,7 +58,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             min_value = self._run_results(Metrics.MIN, column)
 
             metric_values = {Metrics.MIN.name: min_value}

@@ -182,7 +182,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             count_in_set = self._run_results(
                 Metrics.COUNT_IN_SET, column, values=test_params["allowed_values"]
             )
@@ -310,4 +310,4 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name())
+        return self.compute_row_count(self.get_column())

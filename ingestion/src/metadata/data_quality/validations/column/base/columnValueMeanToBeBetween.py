@@ -58,7 +58,7 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             mean_value = self._run_results(Metrics.MEAN, column)
 
             metric_values = {
