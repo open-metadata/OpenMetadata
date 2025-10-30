@@ -4441,6 +4441,56 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  @Order(999)
+  void delete_testCaseResults_verifyDeletionByTimestamp(TestInfo testInfo)
+      throws IOException, ParseException {
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(TABLE_LINK)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    long baseTimestamp = dateToTimestamp("2024-03-01");
+    long dayInMs = 24 * 60 * 60 * 1000L;
+
+    for (int i = 0; i < 5; i++) {
+      CreateTestCaseResult createTestCaseResult =
+          new CreateTestCaseResult()
+              .withResult("result " + i)
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(baseTimestamp + (i * dayInMs));
+      postTestCaseResult(
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    long cutoffTs = baseTimestamp + (3 * dayInMs);
+    int limit = 10000;
+
+    int deletedCount =
+        org.openmetadata.service.Entity.getCollectionDAO()
+            .testCaseResultTimeSeriesDao()
+            .deleteRecordsBeforeCutOff(cutoffTs, limit);
+
+    ResultList<TestCaseResult> remainingResults =
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            baseTimestamp,
+            baseTimestamp + (5 * dayInMs),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(remainingResults);
+
+    for (TestCaseResult result : remainingResults.getData()) {
+      long resultTimestamp = result.getTimestamp();
+      assertTrue(
+          resultTimestamp >= cutoffTs,
+          "All remaining test case results should have timestamps >= cutoff");
+    }
+  }
+
+  @Test
   void test_testCaseFollowerInheritance(TestInfo testInfo)
       throws IOException, InterruptedException {
     // Create a table with a follower
