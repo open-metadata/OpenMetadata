@@ -26,6 +26,7 @@ interface Props {
     name: string;
     fullyQualifiedName?: string;
     deleted?: boolean;
+    id?: string;
   };
   entityType?: EntityType;
   icon: ReactNode;
@@ -80,6 +81,8 @@ export const EntityHeader = ({
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         displayNameClassName={displayNameClassName}
+        entityFqn={entityData.fullyQualifiedName}
+        entityId={entityData.id}
         handleFollowingClick={handleFollowingClick}
         icon={icon}
         isFollowing={isFollowing}
