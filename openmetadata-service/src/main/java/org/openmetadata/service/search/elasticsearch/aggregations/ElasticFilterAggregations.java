@@ -1,81 +1,56 @@
 package org.openmetadata.service.search.elasticsearch.aggregations;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import es.co.elastic.clients.json.JsonpMapper;
-import java.io.StringReader;
-import java.util.HashMap;
+import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
+import es.org.elasticsearch.index.query.QueryBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
+import es.org.elasticsearch.xcontent.XContentType;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.SearchAggregationNode;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 @Setter
 @Getter
-@Slf4j
 public class ElasticFilterAggregations implements ElasticAggregations {
-  private String aggregationName;
-  private Aggregation aggregation;
-  private Map<String, Aggregation> subAggregations = new HashMap<>();
-  private JsonpMapper mapper;
-  private Query filterQuery;
-  private ObjectMapper objectMapper;
-
-  public ElasticFilterAggregations() {}
-
-  public ElasticFilterAggregations(JsonpMapper mapper) {
-    this.mapper = mapper;
-    this.objectMapper = new ObjectMapper();
-  }
+  static final String aggregationType = "filter";
+  AggregationBuilder elasticAggregationBuilder;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     String queryJson = params.get("query");
-    this.aggregationName = node.getName();
 
     try {
-      if (mapper == null) {
-        throw new IllegalStateException("JsonpMapper is required for filter aggregations");
-      }
+      var queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(
+                  EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryJson);
+      QueryBuilder filterQuery =
+          es.org.elasticsearch.index.query.AbstractQueryBuilder.parseInnerQueryBuilder(queryParser);
 
-      String queryToProcess = queryJson;
-      if (queryJson != null && !queryJson.equals("{}")) {
-        try {
-          JsonNode rootNode = objectMapper.readTree(queryJson);
-          JsonNode queryNode = rootNode.get("query");
-          if (queryNode != null) {
-            queryToProcess = queryNode.toString();
-          }
-        } catch (Exception e) {
-          // If parsing fails, use original query string
-          LOG.error(
-              "Failed to parse query, fallback to query string passed: {}", e.getMessage(), e);
-        }
-      }
-
-      final String finalQueryToProcess = queryToProcess;
-      this.filterQuery = Query.of(q -> q.withJson(new StringReader(finalQueryToProcess)));
-      this.aggregation = Aggregation.of(a -> a.filter(this.filterQuery));
+      AggregationBuilder aggregationBuilders =
+          AggregationBuilders.filter(node.getName(), filterQuery);
+      setElasticAggregationBuilder(aggregationBuilders);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid filter query JSON: " + queryJson, e);
     }
   }
 
   @Override
-  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
-    this.subAggregations = subAggregations;
-    if (!subAggregations.isEmpty() && this.filterQuery != null) {
-      this.aggregation =
-          Aggregation.of(a -> a.filter(this.filterQuery).aggregations(subAggregations));
+  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
     }
   }
 
   @Override
-  public Boolean supportsSubAggregationsNatively() {
-    return true;
+  public void setSubAggregation(AggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
+    }
   }
 }
