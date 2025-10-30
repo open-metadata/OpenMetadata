@@ -163,7 +163,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Download blob reports from GitHub Actions Artifacts
         uses: actions/download-artifact@v4
@@ -180,4 +180,4 @@ jobs:
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
           npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
-          npx playwright-slack-report -c playwright/salck-cli.config.json -j merged_tests_results.json > slack_report.json
+          npx playwright-slack-report -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json
