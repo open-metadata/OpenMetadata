@@ -71,7 +71,7 @@ export const getEntityRulesValidation = (
     canAddMultipleDataProducts: true,
     maxDomains: Infinity,
     maxDataProducts: Infinity,
-    canAddMultipleGlossaryTermTable: true,
+    canAddMultipleGlossaryTerm: true,
     requireDomainForDataProduct: false,
     warnings: [] as string[],
   };
@@ -112,7 +112,7 @@ export const getEntityRulesValidation = (
       case RuleType.SINGLE_GLOSSARY_TERM_FOR_TABLE:
         // Check if entity is a table and limit glossary terms
         if (entityType.toLowerCase() === 'table') {
-          hints.canAddMultipleGlossaryTermTable = false;
+          hints.canAddMultipleGlossaryTerm = false;
           hints.warnings.push('Tables can only have a single Glossary Term');
         }
 

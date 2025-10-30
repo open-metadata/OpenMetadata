@@ -253,7 +253,7 @@ describe('RuleEnforcementUtils', () => {
           canAddMultipleDataProducts: true,
           maxDomains: Infinity,
           maxDataProducts: Infinity,
-          canAddMultipleGlossaryTermTable: true,
+          canAddMultipleGlossaryTerm: true,
           requireDomainForDataProduct: false,
           warnings: [],
         });
@@ -368,7 +368,7 @@ describe('RuleEnforcementUtils', () => {
 
         const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
-        expect(hints.canAddMultipleGlossaryTermTable).toBe(false);
+        expect(hints.canAddMultipleGlossaryTerm).toBe(false);
         expect(hints.warnings).toContain(
           'Tables can only have a single Glossary Term'
         );
@@ -388,7 +388,7 @@ describe('RuleEnforcementUtils', () => {
 
         const hints = getEntityRulesValidation(rules, EntityType.DASHBOARD);
 
-        expect(hints.canAddMultipleGlossaryTermTable).toBe(true);
+        expect(hints.canAddMultipleGlossaryTerm).toBe(true);
         expect(hints.warnings).toEqual([]);
       });
 
@@ -406,7 +406,7 @@ describe('RuleEnforcementUtils', () => {
 
         const hints = getEntityRulesValidation(rules, 'TABLE' as EntityType);
 
-        expect(hints.canAddMultipleGlossaryTermTable).toBe(false);
+        expect(hints.canAddMultipleGlossaryTerm).toBe(false);
       });
     });
 
@@ -605,7 +605,7 @@ describe('RuleEnforcementUtils', () => {
           canAddMultipleDataProducts: true,
           maxDomains: Infinity,
           maxDataProducts: Infinity,
-          canAddMultipleGlossaryTermTable: true,
+          canAddMultipleGlossaryTerm: true,
           requireDomainForDataProduct: false,
           warnings: [],
         });

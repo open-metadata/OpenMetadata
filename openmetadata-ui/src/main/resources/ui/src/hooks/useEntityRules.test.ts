@@ -24,7 +24,7 @@ jest.mock('../context/RuleEnforcementProvider/RuleEnforcementProvider', () => ({
 describe('useEntityRules', () => {
   const mockFetchRulesForEntity = jest.fn();
   const mockGetRulesForEntity = jest.fn();
-  const mockGetUIHintsForEntity = jest.fn();
+  const mockGetEntityRuleValidation = jest.fn();
 
   const mockParsedRules: ParsedRule[] = [
     {
@@ -44,7 +44,7 @@ describe('useEntityRules', () => {
     canAddMultipleDataProducts: true,
     maxDomains: Infinity,
     maxDataProducts: Infinity,
-    canAddMultipleGlossaryTermTable: true,
+    canAddMultipleGlossaryTerm: true,
     requireDomainForDataProduct: false,
     warnings: [
       'Entity must have either multiple user owners or a single team owner',
@@ -56,11 +56,11 @@ describe('useEntityRules', () => {
     (useRuleEnforcementProvider as jest.Mock).mockReturnValue({
       fetchRulesForEntity: mockFetchRulesForEntity,
       getRulesForEntity: mockGetRulesForEntity,
-      getUIHintsForEntity: mockGetUIHintsForEntity,
+      getEntityRuleValidation: mockGetEntityRuleValidation,
       isLoading: false,
     });
     mockGetRulesForEntity.mockReturnValue(mockParsedRules);
-    mockGetUIHintsForEntity.mockReturnValue(mockUIHints);
+    mockGetEntityRuleValidation.mockReturnValue(mockUIHints);
   });
 
   describe('Basic functionality', () => {
@@ -78,7 +78,9 @@ describe('useEntityRules', () => {
         useEntityRules({ entityType: EntityType.TABLE })
       );
 
-      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(EntityType.TABLE);
+      expect(mockGetEntityRuleValidation).toHaveBeenCalledWith(
+        EntityType.TABLE
+      );
       expect(result.current.entityRules).toEqual(mockUIHints);
     });
 
@@ -86,7 +88,7 @@ describe('useEntityRules', () => {
       (useRuleEnforcementProvider as jest.Mock).mockReturnValue({
         fetchRulesForEntity: mockFetchRulesForEntity,
         getRulesForEntity: mockGetRulesForEntity,
-        getUIHintsForEntity: mockGetUIHintsForEntity,
+        getEntityRuleValidation: mockGetEntityRuleValidation,
         isLoading: true,
       });
 
@@ -247,7 +249,7 @@ describe('useEntityRules', () => {
         EntityType.DASHBOARD
       );
       expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.DASHBOARD);
-      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(
+      expect(mockGetEntityRuleValidation).toHaveBeenCalledWith(
         EntityType.DASHBOARD
       );
       expect(result.current.rules).toEqual(mockParsedRules);
@@ -260,7 +262,9 @@ describe('useEntityRules', () => {
 
       expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
       expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
-      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
+      expect(mockGetEntityRuleValidation).toHaveBeenCalledWith(
+        EntityType.TOPIC
+      );
       expect(result.current.rules).toEqual(mockParsedRules);
     });
 
@@ -273,7 +277,7 @@ describe('useEntityRules', () => {
         EntityType.CONTAINER
       );
       expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.CONTAINER);
-      expect(mockGetUIHintsForEntity).toHaveBeenCalledWith(
+      expect(mockGetEntityRuleValidation).toHaveBeenCalledWith(
         EntityType.CONTAINER
       );
       expect(result.current.rules).toEqual(mockParsedRules);
@@ -291,7 +295,7 @@ describe('useEntityRules', () => {
       expect(result.current.rules).toEqual([]);
     });
 
-    it('should handle when getUIHintsForEntity returns default hints', () => {
+    it('should handle when getEntityRuleValidation returns default hints', () => {
       const defaultHints = {
         canAddMultipleUserOwners: true,
         canAddMultipleTeamOwner: true,
@@ -299,11 +303,11 @@ describe('useEntityRules', () => {
         canAddMultipleDataProducts: true,
         maxDomains: Infinity,
         maxDataProducts: Infinity,
-        canAddMultipleGlossaryTermTable: true,
+        canAddMultipleGlossaryTerm: true,
         requireDomainForDataProduct: false,
         warnings: [],
       };
-      mockGetUIHintsForEntity.mockReturnValue(defaultHints);
+      mockGetEntityRuleValidation.mockReturnValue(defaultHints);
 
       const { result } = renderHook(() =>
         useEntityRules({ entityType: EntityType.TABLE })

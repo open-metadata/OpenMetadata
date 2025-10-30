@@ -36,7 +36,7 @@ export interface DataAssetRuleValidation {
   canAddMultipleDataProducts: boolean;
   maxDomains: number;
   maxDataProducts: number;
-  canAddMultipleGlossaryTermTable: boolean;
+  canAddMultipleGlossaryTerm: boolean;
   requireDomainForDataProduct: boolean;
   warnings: string[];
 }
