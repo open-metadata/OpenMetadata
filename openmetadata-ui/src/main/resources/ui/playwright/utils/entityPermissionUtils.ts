@@ -391,9 +391,18 @@ export const testPipelineSpecificOperations = async (
   });
 
   if (effect === 'allow') {
+    await testUserPage.getByTestId('lineage-config').click();
+
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await testUserPage.getByTestId('lineage-config').click();
+
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+
+    await testUserPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
   }
 };
 
@@ -446,9 +455,18 @@ export const testDashboardDataModelSpecificOperations = async (
   });
 
   if (effect === 'allow') {
+    await testUserPage.getByTestId('lineage-config').click();
+
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await testUserPage.getByTestId('lineage-config').click();
+
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+
+    await testUserPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
   }
 };
 
