@@ -30,7 +30,6 @@ import {
 } from '../../utils/EntityLineageUtils';
 import Loader from '../common/Loader/Loader';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import EntityLineageSidebar from '../Entity/EntityLineage/EntityLineageSidebar.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
@@ -168,13 +167,6 @@ const Lineage = ({
                 {showMiniMap && (
                   <MiniMap pannable zoomable position="bottom-right" />
                 )}
-
-                <Panel position="top-left">
-                  <EntityLineageSidebar
-                    // newAddedNode={newAddedNode}
-                    show={isEditMode}
-                  />
-                </Panel>
 
                 <Panel
                   className={classNames({ 'edit-mode': isEditMode })}
