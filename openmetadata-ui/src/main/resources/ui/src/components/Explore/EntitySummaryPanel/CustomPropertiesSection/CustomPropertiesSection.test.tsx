@@ -180,7 +180,7 @@ describe('CustomPropertiesSection', () => {
       expect(
         container.querySelector('.entity-summary-panel-tab-content')
       ).toBeInTheDocument();
-      expect(container.querySelector('.text-center')).toBeInTheDocument();
+      expect(container.querySelector('.text-justify')).toBeInTheDocument();
       expect(container.querySelector('.text-grey-muted')).toBeInTheDocument();
     });
   });
