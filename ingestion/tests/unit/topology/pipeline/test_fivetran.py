@@ -14,7 +14,8 @@ Test fivetran using the topology
 import json
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+from uuid import uuid4
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -149,5 +150,139 @@ class FivetranUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right
-        assert pipline == EXPECTED_CREATED_PIPELINES
+        pipeline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[
+            0
+        ].right
+        assert pipeline == EXPECTED_CREATED_PIPELINES
+
+    def test_get_pipeline_name_returns_display_name(self):
+        result = self.fivetran.get_pipeline_name(EXPECTED_FIVETRAN_DETAILS)
+        assert result == "test <> postgres_rds"
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    def test_yield_lineage_skips_disabled_schemas(self, mock_get_services):
+        mock_get_services.return_value = ["postgres_service"]
+
+        self.client.get_connector_schema_details.return_value = {
+            "disabled_schema": {
+                "enabled": False,
+                "name_in_destination": "disabled_schema",
+                "tables": {"table1": {"enabled": True}},
+            }
+        }
+
+        result = list(
+            self.fivetran.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)
+        )
+
+        assert len(result) == 0
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    def test_yield_lineage_skips_disabled_tables(self, mock_get_services):
+        mock_get_services.return_value = ["postgres_service"]
+
+        self.client.get_connector_schema_details.return_value = {
+            "public": {
+                "enabled": True,
+                "name_in_destination": "public",
+                "tables": {
+                    "disabled_table": {
+                        "enabled": False,
+                        "name_in_destination": "disabled_table",
+                    }
+                },
+            }
+        }
+
+        result = list(
+            self.fivetran.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)
+        )
+
+        assert len(result) == 0
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    @patch("metadata.utils.fqn.build")
+    def test_yield_lineage_finds_tables_in_different_services(
+        self, mock_build, mock_get_services
+    ):
+        mock_get_services.return_value = ["postgres_service", "snowflake_service"]
+
+        mock_source_table = Mock()
+        mock_source_table.id = str(uuid4())
+        mock_dest_table = Mock()
+        mock_dest_table.id = str(uuid4())
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = str(uuid4())
+
+        def build_side_effect(metadata, entity_type, **kwargs):
+            service = kwargs.get("service_name", "")
+            database = kwargs.get("database_name", "")
+            schema = kwargs.get("schema_name", "")
+            table = kwargs.get("table_name", "")
+            return ".".join(
+                str(part) for part in [service, database, schema, table] if part
+            )
+
+        mock_build.side_effect = build_side_effect
+
+        def get_by_name_side_effect(entity, fqn):
+            fqn_str = str(fqn)
+            if (
+                "snowflake_service" in fqn_str
+                and "users" in fqn_str
+                and "users_dest" not in fqn_str
+            ):
+                return mock_source_table
+            elif "postgres_service" in fqn_str and "users_dest" in fqn_str:
+                return mock_dest_table
+            elif "pipeline" in fqn_str or "fivetran" in fqn_str:
+                return mock_pipeline
+            return None
+
+        original_metadata = self.fivetran.metadata
+        mock_metadata = Mock()
+        mock_metadata.get_by_name = Mock(side_effect=get_by_name_side_effect)
+        self.fivetran.metadata = mock_metadata
+
+        try:
+            self.client.get_connector_schema_details.return_value = {
+                "public": {
+                    "enabled": True,
+                    "name_in_destination": "public_dest",
+                    "tables": {
+                        "users": {
+                            "enabled": True,
+                            "name_in_destination": "users_dest",
+                        }
+                    },
+                }
+            }
+
+            self.client.get_connector_column_lineage.return_value = {}
+
+            result = list(
+                self.fivetran.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)
+            )
+
+            assert len(result) == 1
+            assert result[0].right is not None
+
+            lineage = result[0].right
+            assert str(lineage.edge.fromEntity.id.root) == mock_source_table.id
+            assert str(lineage.edge.toEntity.id.root) == mock_dest_table.id
+            assert lineage.edge.fromEntity.type == "table"
+            assert lineage.edge.toEntity.type == "table"
+
+            assert (
+                str(lineage.edge.lineageDetails.pipeline.id.root)
+                == mock_pipeline.id.root
+            )
+            assert lineage.edge.lineageDetails.pipeline.type == "pipeline"
+        finally:
+            self.fivetran.metadata = original_metadata

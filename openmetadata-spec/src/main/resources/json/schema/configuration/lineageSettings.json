@@ -10,12 +10,15 @@
       "javaType": "org.openmetadata.schema.api.lineage.LineageLayer",
       "description": "Lineage Layers",
       "type": "string",
-      "enum": [
-        "EntityLineage",
-        "ColumnLevelLineage",
-        "DataObservability"
-      ],
+      "enum": ["EntityLineage", "ColumnLevelLineage", "DataObservability"],
       "default": "EntityLineage"
+    },
+    "pipelineViewMode": {
+      "javaType": "org.openmetadata.schema.api.lineage.PipelineViewMode",
+      "description": "Determines the view mode for pipelines in lineage.",
+      "type": "string",
+      "enum": ["Edge", "Node"],
+      "default": "Node"
     }
   },
   "properties": {
@@ -36,8 +39,17 @@
     "lineageLayer": {
       "description": "Lineage Layer.",
       "$ref": "#/definitions/lineageLayer"
+    },
+    "pipelineViewMode": {
+      "description": "Pipeline View Mode for Lineage.",
+      "$ref": "#/definitions/pipelineViewMode"
     }
   },
-  "required": ["upstreamDepth", "downstreamDepth", "lineageLayer"],
+  "required": [
+    "upstreamDepth",
+    "downstreamDepth",
+    "lineageLayer",
+    "pipelineViewMode"
+  ],
   "additionalProperties": false
 }

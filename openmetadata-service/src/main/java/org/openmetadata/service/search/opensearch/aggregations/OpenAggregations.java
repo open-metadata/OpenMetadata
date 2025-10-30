@@ -1,8 +1,8 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import java.util.Map;
 import org.openmetadata.service.search.SearchAggregationNode;
-import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.search.aggregations.AggregationBuilder;
+import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 
 public interface OpenAggregations {
   void createAggregation(SearchAggregationNode node);
@@ -11,17 +11,19 @@ public interface OpenAggregations {
     return false;
   }
 
-  default Boolean supportsSubAggregationsNatively() {
-    return false;
-  }
+  default void setAggregation(AggregationBuilder aggregation) {}
 
-  default void setSubAggregations(Map<String, Aggregation> subAggregations) {}
+  default void setSubAggregation(AggregationBuilder subAggregation) {}
 
-  default Aggregation getAggregation() {
+  default void setAggregation(PipelineAggregationBuilder aggregation) {}
+
+  default void setSubAggregation(PipelineAggregationBuilder subAggregation) {}
+
+  default AggregationBuilder getElasticAggregationBuilder() {
     return null;
   }
 
-  default String getAggregationName() {
+  default PipelineAggregationBuilder getElasticPipelineAggregationBuilder() {
     return null;
   }
 }

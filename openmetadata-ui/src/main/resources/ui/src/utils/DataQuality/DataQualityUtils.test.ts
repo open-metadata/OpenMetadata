@@ -16,6 +16,7 @@ import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
   TestDataType,
   TestDefinition,
+  TestPlatform,
 } from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
@@ -75,7 +76,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: 1234567890,
         startTimestamp: 1234567890,
         entityLink: 'table1',
-        testPlatforms: ['DBT'],
+        testPlatforms: [TestPlatform.Dbt],
       } as ListTestCaseParamsBySearch;
       const filters = ['lastRunRange', 'tableFqn'];
 
@@ -213,7 +214,7 @@ describe('DataQualityUtils', () => {
       testCaseType: 'column',
       testCaseStatus: 'Success',
       searchValue: 'between',
-      testPlatforms: ['DBT', 'Deequ'],
+      testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
       lastRunRange: {
         startTs: '1720417883445',
         endTs: '1721022683445',
@@ -243,7 +244,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
         entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         testCaseType: 'column',
         testCaseStatus: 'Success',
         tags: ['PII.None'],
@@ -263,7 +264,7 @@ describe('DataQualityUtils', () => {
       const selectedFilter = ['testPlatforms', 'lastRunRange'];
 
       const expected = {
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
       };
@@ -281,14 +282,14 @@ describe('DataQualityUtils', () => {
         testCaseType: 'column',
         testCaseStatus: 'Success',
         searchValue: 'between',
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
         tier: 'Tier.Tier1',
       } as unknown as TestCaseSearchParams;
       const selectedFilter = ['testPlatforms', 'tags', 'testCaseStatus'];
 
       const expected = {
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
         testCaseStatus: 'Success',
       };
@@ -531,7 +532,7 @@ describe('DataQualityUtils', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
           serviceName: 'test-service',
-          testPlatforms: ['DBT'],
+          testPlatforms: [TestPlatform.Dbt],
         },
       });
 
@@ -543,7 +544,7 @@ describe('DataQualityUtils', () => {
         },
         {
           terms: {
-            testPlatforms: ['DBT'],
+            testPlatforms: [TestPlatform.Dbt],
           },
         },
         {

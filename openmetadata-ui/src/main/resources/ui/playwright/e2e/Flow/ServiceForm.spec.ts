@@ -13,6 +13,7 @@
 
 import { expect } from '@playwright/test';
 import {
+  lookerFormDetails,
   supersetFormDetails1,
   supersetFormDetails2,
   supersetFormDetails3,
@@ -23,8 +24,9 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
 import { test } from '../fixtures/pages';
 
-const NEW_SERVICE = {
-  name: `PlaywrightService_${uuid()}`,
+const SERVICE_NAMES = {
+  service1: `PlaywrightService_${uuid()}`,
+  service2: `PlaywrightService_${uuid()}`,
 };
 
 test.describe('Service form functionality', async () => {
@@ -196,7 +198,7 @@ test.describe('Service form functionality', async () => {
       );
 
       await page.getByTestId('service-name').click();
-      await page.getByTestId('service-name').fill(`${NEW_SERVICE.name}`);
+      await page.getByTestId('service-name').fill(`${SERVICE_NAMES.service1}`);
       await page.getByTestId('next-button').click();
       await page.getByTestId('submit-btn').click();
       await page.getByTestId('submit-btn').click();
@@ -215,7 +217,7 @@ test.describe('Service form functionality', async () => {
       await page.getByTestId('next-button').click();
 
       await page.getByTestId('service-name').click();
-      await page.getByTestId('service-name').fill(`${NEW_SERVICE.name}`);
+      await page.getByTestId('service-name').fill(`${SERVICE_NAMES.service1}`);
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#name_help')).toContainText(
@@ -225,7 +227,7 @@ test.describe('Service form functionality', async () => {
       await page.getByRole('link', { name: 'Database Services' }).click();
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId(`service-name-${NEW_SERVICE.name}`).click();
+      await page.getByTestId(`service-name-${SERVICE_NAMES.service1}`).click();
       await page.waitForLoadState('networkidle');
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
@@ -234,7 +236,71 @@ test.describe('Service form functionality', async () => {
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByTestId('alert-message')).toContainText(
-        `Delete operation initiated for ${NEW_SERVICE.name}`
+        `Delete operation initiated for ${SERVICE_NAMES.service1}`
+      );
+    });
+  });
+
+  test.describe('Looker', () => {
+    test('Verify if string input inside oneOf config works properly', async ({
+      page,
+    }) => {
+      await page.goto('/dashboardServices/add-service');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('Looker').click();
+      await page.getByTestId('next-button').click();
+      await page.getByTestId('next-button').click();
+
+      await page.getByTestId('service-name').click();
+      await page.getByTestId('service-name').fill(`${SERVICE_NAMES.service2}`);
+      await page.getByTestId('next-button').click();
+
+      await page.locator('#root\\/clientId').clear();
+      await page.fill('#root\\/clientId', lookerFormDetails.clientId);
+
+      await page.locator('#root\\/clientSecret').clear();
+      await page.fill('#root\\/clientSecret', lookerFormDetails.clientSecret);
+
+      await page.locator('#root\\/hostPort').clear();
+      await page.fill('#root\\/hostPort', lookerFormDetails.hostPort);
+
+      await page
+        .getByTestId('select-widget-root/gitCredentials__oneof_select')
+        .click();
+      await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
+
+      await page.waitForSelector('#root\\/gitCredentials', {
+        state: 'visible',
+      });
+
+      await page.locator('#root\\/gitCredentials').clear();
+      await page.fill(
+        '#root\\/gitCredentials',
+        lookerFormDetails.gitCredentials
+      );
+
+      const testConnectionResponse = page.waitForResponse(
+        'api/v1/automations/workflows'
+      );
+
+      await page.getByTestId('test-connection-btn').click();
+
+      const testConnection = await (await testConnectionResponse).json();
+
+      // Verify form details submission
+      expect(testConnection.request.connection.config.clientId).toEqual(
+        lookerFormDetails.clientId
+      );
+      expect(testConnection.request.connection.config.hostPort).toEqual(
+        lookerFormDetails.hostPort
+      );
+      expect(testConnection.request.connection.config.type).toEqual(
+        lookerFormDetails.type
+      );
+      expect(testConnection.request.connection.config.gitCredentials).toEqual(
+        lookerFormDetails.gitCredentials
       );
     });
   });

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TestCaseParameterDefinition } from '../../generated/tests/testDefinition';
 import {
+  getColumnSet,
+  getSelectedColumnsSet,
   validateEquals,
   validateGreaterThanOrEquals,
   validateLessThanOrEquals,
@@ -111,6 +114,201 @@ describe('ParameterFormUtils', () => {
       await expect(validateEquals(fieldValue, value)).rejects.toThrow(
         'message.value-should-equal-to-value'
       );
+    });
+  });
+
+  describe('getColumnSet', () => {
+    it('should return empty Set when field value is undefined', () => {
+      const mockGetFieldValue = jest.fn().mockReturnValue(undefined);
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set());
+      expect(mockGetFieldValue).toHaveBeenCalledWith(['params', 'keyColumns']);
+    });
+
+    it('should return empty Set when field value is null', () => {
+      const mockGetFieldValue = jest.fn().mockReturnValue(null);
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set());
+    });
+
+    it('should return empty Set when field value is not an array', () => {
+      const mockGetFieldValue = jest.fn().mockReturnValue('not-an-array');
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set());
+    });
+
+    it('should return empty Set when field value is an empty array', () => {
+      const mockGetFieldValue = jest.fn().mockReturnValue([]);
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set());
+    });
+
+    it('should return Set with column values from array of objects', () => {
+      const mockGetFieldValue = jest
+        .fn()
+        .mockReturnValue([
+          { value: 'col1' },
+          { value: 'col2' },
+          { value: 'col3' },
+        ]);
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set(['col1', 'col2', 'col3']));
+      expect(result.size).toBe(3);
+    });
+
+    it('should handle objects with undefined value property', () => {
+      const mockGetFieldValue = jest
+        .fn()
+        .mockReturnValue([
+          { value: 'col1' },
+          { value: undefined },
+          { value: 'col2' },
+        ]);
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set(['col1', undefined, 'col2']));
+    });
+
+    it('should remove duplicates from column values', () => {
+      const mockGetFieldValue = jest
+        .fn()
+        .mockReturnValue([
+          { value: 'col1' },
+          { value: 'col2' },
+          { value: 'col1' },
+        ]);
+      const result = getColumnSet(mockGetFieldValue, 'keyColumns');
+
+      expect(result).toEqual(new Set(['col1', 'col2']));
+      expect(result.size).toBe(2);
+    });
+  });
+
+  describe('getSelectedColumnsSet', () => {
+    const mockGetFieldValue = jest.fn();
+
+    beforeEach(() => {
+      mockGetFieldValue.mockClear();
+    });
+
+    it('should return only table2.keyColumns for table2.keyColumns field', () => {
+      mockGetFieldValue.mockImplementation((path) => {
+        if (path[1] === 'table2.keyColumns') {
+          return [{ value: 't2col1' }, { value: 't2col2' }];
+        }
+
+        return [];
+      });
+
+      const data = { name: 'table2.keyColumns' } as TestCaseParameterDefinition;
+      const result = getSelectedColumnsSet(data, mockGetFieldValue);
+
+      expect(result).toEqual(new Set(['t2col1', 't2col2']));
+      expect(result.size).toBe(2);
+    });
+
+    it('should return merged keyColumns and useColumns for keyColumns field', () => {
+      mockGetFieldValue.mockImplementation((path) => {
+        if (path[1] === 'keyColumns') {
+          return [{ value: 'col1' }, { value: 'col2' }];
+        }
+        if (path[1] === 'useColumns') {
+          return [{ value: 'col3' }, { value: 'col4' }];
+        }
+
+        return [];
+      });
+
+      const data = { name: 'keyColumns' } as TestCaseParameterDefinition;
+      const result = getSelectedColumnsSet(data, mockGetFieldValue);
+
+      expect(result).toEqual(new Set(['col1', 'col2', 'col3', 'col4']));
+      expect(result.size).toBe(4);
+    });
+
+    it('should return merged keyColumns and useColumns for useColumns field', () => {
+      mockGetFieldValue.mockImplementation((path) => {
+        if (path[1] === 'keyColumns') {
+          return [{ value: 'col1' }];
+        }
+        if (path[1] === 'useColumns') {
+          return [{ value: 'col2' }];
+        }
+
+        return [];
+      });
+
+      const data = { name: 'useColumns' } as TestCaseParameterDefinition;
+      const result = getSelectedColumnsSet(data, mockGetFieldValue);
+
+      expect(result).toEqual(new Set(['col1', 'col2']));
+    });
+
+    it('should handle empty arrays for keyColumns field', () => {
+      mockGetFieldValue.mockReturnValue([]);
+
+      const data = { name: 'keyColumns' } as TestCaseParameterDefinition;
+      const result = getSelectedColumnsSet(data, mockGetFieldValue);
+
+      expect(result).toEqual(new Set());
+    });
+
+    it('should handle undefined values for table2.keyColumns field', () => {
+      mockGetFieldValue.mockReturnValue(undefined);
+
+      const data = { name: 'table2.keyColumns' } as TestCaseParameterDefinition;
+      const result = getSelectedColumnsSet(data, mockGetFieldValue);
+
+      expect(result).toEqual(new Set());
+    });
+
+    it('should remove duplicates when merging keyColumns and useColumns', () => {
+      mockGetFieldValue.mockImplementation((path) => {
+        if (path[1] === 'keyColumns') {
+          return [{ value: 'col1' }, { value: 'col2' }];
+        }
+        if (path[1] === 'useColumns') {
+          return [{ value: 'col2' }, { value: 'col3' }];
+        }
+
+        return [];
+      });
+
+      const data = { name: 'keyColumns' } as TestCaseParameterDefinition;
+      const result = getSelectedColumnsSet(data, mockGetFieldValue);
+
+      expect(result).toEqual(new Set(['col1', 'col2', 'col3']));
+      expect(result.size).toBe(3);
+    });
+
+    it('should handle table2.keyColumns being independent from other columns', () => {
+      mockGetFieldValue.mockImplementation((path) => {
+        if (path[1] === 'keyColumns') {
+          return [{ value: 'col1' }];
+        }
+        if (path[1] === 'table2.keyColumns') {
+          return [{ value: 't2col1' }];
+        }
+        if (path[1] === 'useColumns') {
+          return [{ value: 'col2' }];
+        }
+
+        return [];
+      });
+
+      const dataTable2 = {
+        name: 'table2.keyColumns',
+      } as TestCaseParameterDefinition;
+      const resultTable2 = getSelectedColumnsSet(dataTable2, mockGetFieldValue);
+
+      expect(resultTable2).toEqual(new Set(['t2col1']));
+      expect(resultTable2).not.toContain('col1');
+      expect(resultTable2).not.toContain('col2');
     });
   });
 });

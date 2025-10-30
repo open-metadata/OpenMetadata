@@ -1,8 +1,8 @@
 package org.openmetadata.service.search.elasticsearch.aggregations;
 
-import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
-import es.co.elastic.clients.elasticsearch._types.aggregations.MinAggregation;
-import java.util.HashMap;
+import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,20 +12,27 @@ import org.openmetadata.service.search.SearchAggregationNode;
 @Getter
 public class ElasticMinAggregations implements ElasticAggregations {
   static final String aggregationType = "min";
-  private String aggregationName;
-  private Aggregation aggregation;
-  private Map<String, Aggregation> subAggregations = new HashMap<>();
+  AggregationBuilder elasticAggregationBuilder;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
-    this.aggregationName = node.getName();
-    this.aggregation =
-        Aggregation.of(a -> a.min(MinAggregation.of(min -> min.field(params.get("field")))));
+    AggregationBuilder aggregationBuilders =
+        AggregationBuilders.min(node.getName()).field(params.get("field"));
+    setElasticAggregationBuilder(aggregationBuilders);
   }
 
   @Override
-  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
-    this.subAggregations = subAggregations;
+  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
+    }
+  }
+
+  @Override
+  public void setSubAggregation(AggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
+    }
   }
 }

@@ -179,7 +179,7 @@ export interface ConfigObject {
      */
     username?: string;
     /**
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */

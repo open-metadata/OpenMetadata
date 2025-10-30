@@ -168,7 +168,6 @@ const DataAssetsWidget = ({
         sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
         title={t('label.data-asset-plural')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />

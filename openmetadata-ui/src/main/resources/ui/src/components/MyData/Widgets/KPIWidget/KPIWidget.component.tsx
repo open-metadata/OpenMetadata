@@ -438,7 +438,6 @@ const KPIWidget = ({
         isEditView={isEditView}
         title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onTitleClick={handleTitleClick}
       />
     ),

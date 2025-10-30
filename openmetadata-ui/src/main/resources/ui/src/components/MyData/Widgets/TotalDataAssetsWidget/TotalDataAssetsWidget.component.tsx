@@ -347,7 +347,6 @@ const TotalDataAssetsWidget = ({
         sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
         title={t('label.data-insight-total-entity-summary')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => setSelectedSortBy(key)}
         onTitleClick={() => navigate(ROUTES.DATA_INSIGHT)}
       />

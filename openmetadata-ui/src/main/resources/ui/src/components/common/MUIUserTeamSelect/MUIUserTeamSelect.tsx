@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import { Autocomplete, Box, Chip, TextField, useTheme } from '@mui/material';
+import {
+  Autocomplete,
+  AutocompleteRenderGetTagProps,
+  Box,
+  Chip,
+  TextField,
+  useTheme,
+} from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { debounce } from 'lodash';
 import {
+  ComponentPropsWithoutRef,
   FC,
+  HTMLAttributes,
   SyntheticEvent,
   useCallback,
   useEffect,
@@ -290,7 +299,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     return opts;
   };
 
-  const renderOption = (props: any, option: OptionType) => {
+  const renderOption = (
+    props: HTMLAttributes<HTMLLIElement>,
+    option: OptionType
+  ) => {
     const { entity, isTeam } = option;
 
     return (
@@ -314,7 +326,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     );
   };
 
-  const renderTags = (value: OptionType[], getTagProps: any) => {
+  const renderTags = (
+    value: OptionType[],
+    getTagProps: AutocompleteRenderGetTagProps
+  ) => {
     return value.map((option, index) => {
       const { entity, isTeam } = option;
       const tagProps = getTagProps({ index });
@@ -375,11 +390,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       disableCloseOnSelect
       freeSolo
       // Force listbox to remount when options change to fix async search not updating dropdown
-      // Using 'as any' because key is not in MUI's ListboxProps type definition
       ListboxProps={
         {
           key: `listbox-${allOptions.length}`,
-        } as any
+        } as Partial<ComponentPropsWithoutRef<'ul'>> & { key: string }
       }
       autoFocus={autoFocus}
       filterOptions={filterOptions}

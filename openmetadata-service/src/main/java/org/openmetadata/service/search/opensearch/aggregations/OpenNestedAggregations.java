@@ -1,32 +1,31 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
-import os.org.opensearch.client.opensearch._types.aggregations.NestedAggregation;
+import os.org.opensearch.search.aggregations.AggregationBuilder;
+import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.bucket.nested.NestedAggregationBuilder;
 
 @Setter
 @Getter
 public class OpenNestedAggregations implements OpenAggregations {
   public static final String aggregationType = "nested";
-  private String aggregationName;
-  private Aggregation aggregation;
-  private Map<String, Aggregation> subAggregations = new HashMap<>();
+  AggregationBuilder elasticAggregationBuilder;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
-    this.aggregationName = node.getName();
-    this.aggregation =
-        Aggregation.of(
-            a -> a.nested(NestedAggregation.of(nested -> nested.path(params.get("path")))));
+    NestedAggregationBuilder aggregationBuilders =
+        AggregationBuilders.nested(params.get("path"), params.get("path"));
+    setElasticAggregationBuilder(aggregationBuilders);
   }
 
   @Override
-  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
-    this.subAggregations = subAggregations;
+  public void setSubAggregation(AggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
+    }
   }
 }

@@ -233,7 +233,6 @@ const DomainsWidget = ({
         sortOptions={DOMAIN_SORT_BY_OPTIONS}
         title={t('label.domain-plural')}
         widgetKey={widgetKey}
-        widgetWidth={2}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />

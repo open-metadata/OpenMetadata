@@ -16,11 +16,16 @@
   padding: 12px 20px 12px 20px;
   box-shadow: 0px 4px 8px -4px rgba(10, 13, 18, 0.08);
   z-index: 1;
+  height: 60px;
 
   .header-title-icon {
     svg {
       color: @grey-600;
     }
+  }
+
+  .widget-header-left-col {
+    min-width: 0;
   }
 
   .widget-title {
@@ -29,6 +34,11 @@
     font-size: 16px;
     line-height: 24px;
     color: @grey-700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
 
   .widget-header-options {

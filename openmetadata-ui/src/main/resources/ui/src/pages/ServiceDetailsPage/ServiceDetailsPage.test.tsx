@@ -1135,7 +1135,7 @@ describe('ServiceDetailsPage', () => {
 
     it('should pass ingestion runner name to TestConnection component', async () => {
       const ingestionRunnerName = 'IngestionRunner1';
-      mockServiceUtil.getServiceExtraInfo.mockReturnValue({
+      (mockServiceUtil.getServiceExtraInfo as jest.Mock).mockReturnValue({
         name: ingestionRunnerName,
       });
       (useRequiredParams as jest.Mock).mockImplementation(() => ({

@@ -56,3 +56,15 @@ SET json = json::jsonb || json_build_object(
     'version', 0.2
 )::jsonb
 WHERE name = 'tableDiff';
+
+UPDATE installed_apps
+SET json = jsonb_set(
+    jsonb_set(
+        json,
+        '{appConfiguration, testCaseResultsRetentionPeriod}',
+        '1440'
+    ),
+    '{appConfiguration, profileDataRetentionPeriod}',
+    '1440'
+)
+WHERE json->>'name' = 'DataRetentionApplication';

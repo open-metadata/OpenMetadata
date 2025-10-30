@@ -18,5 +18,6 @@ public class Migration extends MigrationProcessImpl {
     MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.MYSQL);
     migrationUtil.migrateEntityStatusForExistingEntities();
     migrationUtil.cleanupOrphanedDataContracts();
+    migrationUtil.removeStoredProcedureIndex();
   }
 }

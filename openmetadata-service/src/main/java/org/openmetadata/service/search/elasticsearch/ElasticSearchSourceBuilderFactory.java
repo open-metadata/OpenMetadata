@@ -38,7 +38,11 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.*;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
+import org.openmetadata.service.search.indexes.UserIndex;
 
 public class ElasticSearchSourceBuilderFactory
     implements SearchSourceBuilderFactory<
@@ -79,7 +83,7 @@ public class ElasticSearchSourceBuilderFactory
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
+            .fuzziness(Fuzziness.ONE)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
             .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -271,7 +275,7 @@ public class ElasticSearchSourceBuilderFactory
         .fields(fields)
         .defaultOperator(Operator.AND)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
         .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -388,7 +392,7 @@ public class ElasticSearchSourceBuilderFactory
       MultiMatchQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
               .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
+              .fuzziness(Fuzziness.ONE)
               .maxExpansions(10)
               .prefixLength(1)
               .operator(Operator.OR)
@@ -429,7 +433,7 @@ public class ElasticSearchSourceBuilderFactory
   private MultiMatchQueryBuilder createStandardFuzzyQuery(String query) {
     return QueryBuilders.multiMatchQuery(query)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .maxExpansions(10)
         .prefixLength(1)
         .operator(Operator.OR)

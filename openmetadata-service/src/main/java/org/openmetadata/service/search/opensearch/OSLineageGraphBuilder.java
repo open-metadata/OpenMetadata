@@ -321,7 +321,6 @@ public class OSLineageGraphBuilder {
           getDownstreamLineage(
               lineageRequest
                   .withDirection(LineageDirection.DOWNSTREAM)
-                  .withDownstreamDepth(lineageRequest.getDownstreamDepth() + 1)
                   .withDirectionValue(
                       getLineageDirection(
                           lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
@@ -376,7 +375,6 @@ public class OSLineageGraphBuilder {
             getDownstreamLineage(
                 lineageRequest
                     .withDirection(LineageDirection.DOWNSTREAM)
-                    .withDownstreamDepth(lineageRequest.getDownstreamDepth() + 1)
                     .withDirectionValue(
                         getLineageDirection(
                             lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));

@@ -199,7 +199,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindList("names") List<String> names,
       @Define("cond") String cond);
 
-  @SqlQuery("SELECT count(<nameHashColumn>) FROM <table> <cond>")
+  @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
@@ -207,7 +207,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("cond") String cond);
 
   @ConnectionAwareSqlQuery(
-      value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",
+      value = "SELECT count(*) FROM <table> <mysqlCond>",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value = "SELECT count(*) FROM <table> <postgresCond>",
@@ -273,9 +273,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("afterName") String afterName,
       @Bind("afterId") String afterId);
 
-  @ConnectionAwareSqlQuery(
-      value = "SELECT count(<nameHashColumn>) FROM <table>",
-      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table>", connectionType = MYSQL)
   @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table>", connectionType = POSTGRES)
   int listTotalCount(
       @Define("table") String table, @Define("nameHashColumn") String nameHashColumn);
