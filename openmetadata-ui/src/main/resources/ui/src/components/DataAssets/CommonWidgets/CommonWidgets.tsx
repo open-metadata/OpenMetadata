@@ -78,7 +78,7 @@ interface GenericEntity
       | 'tags'
     > {
   changeDescription: ChangeDescription;
-  uiHints: DataAssetRuleValidation;
+  entityRules: DataAssetRuleValidation;
 }
 
 interface CommonWidgetsProps {
@@ -92,7 +92,7 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, uiHints, onUpdate, permissions, isVersionView } =
+  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
     useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
@@ -281,7 +281,7 @@ export const CommonWidgets = ({
         activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
-        multiple={uiHints.canAddMultipleDataProducts}
+        multiple={entityRules.canAddMultipleDataProducts}
         onSave={handleDataProductsSave}
       />
     );
@@ -324,7 +324,7 @@ export const CommonWidgets = ({
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
-        multiSelect={uiHints.canAddMultipleGlossaryTermTable}
+        multiSelect={entityRules.canAddMultipleGlossaryTermTable}
         permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
         showTaskHandler={showTaskHandler && !isVersionView}

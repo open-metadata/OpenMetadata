@@ -23,7 +23,10 @@ import React, {
 import { EntityType } from '../../enums/entity.enum';
 import { ParsedRule } from '../../generated/system/entityRules';
 import { getEntityRules } from '../../rest/ruleEnforcementAPI';
-import { getUIHints, parseRule } from '../../utils/RuleEnforcementUtils';
+import {
+  getEntityRulesValidation,
+  parseRule,
+} from '../../utils/RuleEnforcementUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 export interface DataAssetRuleValidation {
@@ -43,9 +46,7 @@ interface RuleEnforcementContextType {
   isLoading: boolean;
   fetchRulesForEntity: (entityType: EntityType) => Promise<void>;
   getRulesForEntity: (entityType: EntityType) => ParsedRule[];
-  getUIHintsForEntity: (
-    entityType: EntityType
-  ) => ReturnType<typeof getUIHints>;
+  getEntityRuleValidation: (entityType: EntityType) => DataAssetRuleValidation;
 }
 
 const RuleEnforcementContext = createContext<RuleEnforcementContextType>(
@@ -101,11 +102,11 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
       [rules]
     );
 
-    const getUIHintsForEntity = useCallback(
+    const getEntityRuleValidation = useCallback(
       (entityType: EntityType) => {
         const entityRules = getRulesForEntity(entityType);
 
-        return getUIHints(entityRules, entityType);
+        return getEntityRulesValidation(entityRules, entityType);
       },
       [getRulesForEntity]
     );
@@ -123,14 +124,14 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
         isLoading,
         fetchRulesForEntity,
         getRulesForEntity,
-        getUIHintsForEntity,
+        getEntityRuleValidation,
       }),
       [
         rules,
         isLoading,
         fetchRulesForEntity,
         getRulesForEntity,
-        getUIHintsForEntity,
+        getEntityRuleValidation,
       ]
     );
 

@@ -16,7 +16,10 @@ import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityRule, RuleType } from '../../generated/system/entityRules';
 import { getEntityRules } from '../../rest/ruleEnforcementAPI';
-import { getUIHints, parseRule } from '../../utils/RuleEnforcementUtils';
+import {
+  getEntityRulesValidation,
+  parseRule,
+} from '../../utils/RuleEnforcementUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   RuleEnforcementProvider,
@@ -29,7 +32,7 @@ jest.mock('../../rest/ruleEnforcementAPI', () => ({
 
 jest.mock('../../utils/RuleEnforcementUtils', () => ({
   parseRule: jest.fn(),
-  getUIHints: jest.fn(),
+  getEntityRulesValidation: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -84,7 +87,7 @@ describe('RuleEnforcementProvider', () => {
       description: rule.description,
       name: rule.name,
     }));
-    (getUIHints as jest.Mock).mockReturnValue(mockUIHints);
+    (getEntityRulesValidation as jest.Mock).mockReturnValue(mockUIHints);
   });
 
   describe('Provider rendering', () => {
@@ -361,9 +364,9 @@ describe('RuleEnforcementProvider', () => {
     });
   });
 
-  describe('getUIHintsForEntity', () => {
+  describe('getEntityRuleValidation', () => {
     it('should return UI hints for entity type with no rules', () => {
-      (getUIHints as jest.Mock).mockReturnValue({
+      (getEntityRulesValidation as jest.Mock).mockReturnValue({
         canAddMultipleUserOwners: true,
         canAddMultipleTeamOwner: true,
         canAddMultipleDomains: true,
@@ -383,7 +386,7 @@ describe('RuleEnforcementProvider', () => {
         wrapper,
       });
 
-      const hints = result.current.getUIHintsForEntity(EntityType.TABLE);
+      const hints = result.current.getEntityRuleValidation(EntityType.TABLE);
 
       expect(hints.canAddMultipleUserOwners).toBe(true);
       expect(hints.warnings).toEqual([]);
@@ -403,9 +406,9 @@ describe('RuleEnforcementProvider', () => {
       });
 
       await waitFor(() => {
-        const hints = result.current.getUIHintsForEntity(EntityType.TABLE);
+        const hints = result.current.getEntityRuleValidation(EntityType.TABLE);
 
-        expect(getUIHints).toHaveBeenCalledWith(
+        expect(getEntityRulesValidation).toHaveBeenCalledWith(
           mockParsedRules,
           EntityType.TABLE
         );
@@ -413,7 +416,7 @@ describe('RuleEnforcementProvider', () => {
       });
     });
 
-    it('should call getUIHints with correct entity type', async () => {
+    it('should call getEntityRulesValidation with correct entity type', async () => {
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <RuleEnforcementProvider>{children}</RuleEnforcementProvider>
       );
@@ -427,9 +430,9 @@ describe('RuleEnforcementProvider', () => {
       });
 
       await waitFor(() => {
-        result.current.getUIHintsForEntity(EntityType.DASHBOARD);
+        result.current.getEntityRuleValidation(EntityType.DASHBOARD);
 
-        expect(getUIHints).toHaveBeenCalledWith(
+        expect(getEntityRulesValidation).toHaveBeenCalledWith(
           expect.any(Array),
           EntityType.DASHBOARD
         );

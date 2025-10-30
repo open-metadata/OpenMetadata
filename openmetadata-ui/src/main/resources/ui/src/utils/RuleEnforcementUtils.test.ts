@@ -17,7 +17,7 @@ import {
   ParsedRule,
   RuleType,
 } from '../generated/system/entityRules';
-import { getUIHints, parseRule } from './RuleEnforcementUtils';
+import { getEntityRulesValidation, parseRule } from './RuleEnforcementUtils';
 
 describe('RuleEnforcementUtils', () => {
   describe('parseRule', () => {
@@ -241,10 +241,10 @@ describe('RuleEnforcementUtils', () => {
     });
   });
 
-  describe('getUIHints', () => {
+  describe('getEntityRulesValidation', () => {
     describe('Default hints', () => {
       it('should return default hints when no rules are provided', () => {
-        const hints = getUIHints([], EntityType.TABLE);
+        const hints = getEntityRulesValidation([], EntityType.TABLE);
 
         expect(hints).toEqual({
           canAddMultipleUserOwners: true,
@@ -260,7 +260,7 @@ describe('RuleEnforcementUtils', () => {
       });
 
       it('should return default hints when rules are empty array', () => {
-        const hints = getUIHints([], EntityType.DASHBOARD);
+        const hints = getEntityRulesValidation([], EntityType.DASHBOARD);
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(true);
@@ -281,7 +281,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(false);
@@ -304,7 +304,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleDomains).toBe(false);
         expect(hints.maxDomains).toBe(1);
@@ -324,7 +324,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleDataProducts).toBe(false);
         expect(hints.maxDataProducts).toBe(1);
@@ -344,7 +344,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.requireDomainForDataProduct).toBe(true);
         expect(hints.warnings).toContain(
@@ -366,7 +366,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleGlossaryTermTable).toBe(false);
         expect(hints.warnings).toContain(
@@ -386,7 +386,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.DASHBOARD);
+        const hints = getEntityRulesValidation(rules, EntityType.DASHBOARD);
 
         expect(hints.canAddMultipleGlossaryTermTable).toBe(true);
         expect(hints.warnings).toEqual([]);
@@ -404,7 +404,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, 'TABLE' as EntityType);
+        const hints = getEntityRulesValidation(rules, 'TABLE' as EntityType);
 
         expect(hints.canAddMultipleGlossaryTermTable).toBe(false);
       });
@@ -423,7 +423,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(true);
@@ -444,7 +444,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleDomains).toBe(true);
         expect(hints.maxDomains).toBe(Infinity);
@@ -462,7 +462,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleDomains).toBe(false);
         expect(hints.maxDomains).toBe(1);
@@ -498,7 +498,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(false);
@@ -534,7 +534,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleDomains).toBe(false);
         expect(hints.canAddMultipleDataProducts).toBe(true);
@@ -568,7 +568,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.warnings).toHaveLength(3);
         expect(hints.warnings).toContain(
@@ -596,7 +596,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TABLE);
+        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints).toEqual({
           canAddMultipleUserOwners: true,
@@ -625,7 +625,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.DASHBOARD);
+        const hints = getEntityRulesValidation(rules, EntityType.DASHBOARD);
 
         expect(hints.canAddMultipleDomains).toBe(false);
         expect(hints.maxDomains).toBe(1);
@@ -643,7 +643,7 @@ describe('RuleEnforcementUtils', () => {
           },
         ];
 
-        const hints = getUIHints(rules, EntityType.TOPIC);
+        const hints = getEntityRulesValidation(rules, EntityType.TOPIC);
 
         expect(hints.canAddMultipleDataProducts).toBe(false);
         expect(hints.maxDataProducts).toBe(1);

@@ -60,7 +60,10 @@ export const parseRule = (rule: EntityRule): ParsedRule => {
 /**
  * Get UI hints for specific rules (e.g., disable buttons, show warnings)
  */
-export const getUIHints = (rules: ParsedRule[], entityType: EntityType) => {
+export const getEntityRulesValidation = (
+  rules: ParsedRule[],
+  entityType: EntityType
+) => {
   const hints: DataAssetRuleValidation = {
     canAddMultipleUserOwners: true,
     canAddMultipleTeamOwner: true,

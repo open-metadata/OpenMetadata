@@ -30,7 +30,7 @@ export const useEntityRules = ({
   const {
     fetchRulesForEntity,
     getRulesForEntity,
-    getUIHintsForEntity,
+    getEntityRuleValidation,
     isLoading,
   } = useRuleEnforcementProvider();
 
@@ -42,8 +42,8 @@ export const useEntityRules = ({
 
   // Get UI Component Hints/ EntityRules for current entity
   const entityRules = useMemo(
-    () => getUIHintsForEntity(entityType),
-    [entityType, getUIHintsForEntity]
+    () => getEntityRuleValidation(entityType),
+    [entityType]
   );
 
   // Auto-fetch rules for entity type if enabled
