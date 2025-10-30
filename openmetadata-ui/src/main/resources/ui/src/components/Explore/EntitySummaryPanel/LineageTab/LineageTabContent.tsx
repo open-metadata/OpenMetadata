@@ -16,7 +16,7 @@ import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoDataIcon } from '../../../../assets/svg/ic-task-empty.svg';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
 import { LineageData } from '../../../../components/Lineage/Lineage.interface';
@@ -31,6 +31,7 @@ import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlace
 import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './LineageTabContent.less';
+
 interface LineageTabContentProps {
   entityFqn: string;
   filter: 'upstream' | 'downstream';
@@ -282,13 +283,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </div>
           ))
         ) : (
-          <ErrorPlaceHolderNew
-            icon={<NoDataIcon height={140} width={140} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph className="text-center text-grey-muted m-t-sm">
-              {t('label.no-data-found')}
-            </Typography.Paragraph>
-          </ErrorPlaceHolderNew>
+          <div className="lineage-items-list empty-state">
+            <ErrorPlaceHolderNew
+              className="text-grey-14"
+              icon={<AddPlaceHolderIcon height={100} width={100} />}
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <Typography.Paragraph className="text-center text-grey-muted m-t-sm">
+                {t('label.no-data-found')}
+              </Typography.Paragraph>
+            </ErrorPlaceHolderNew>
+          </div>
         )}
       </div>
     </div>
