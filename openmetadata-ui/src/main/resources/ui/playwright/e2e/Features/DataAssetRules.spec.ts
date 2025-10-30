@@ -14,8 +14,22 @@ import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { FileClass } from '../../support/entity/FileClass';
+import { MetricClass } from '../../support/entity/MetricClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -35,6 +49,25 @@ import {
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
+const entities = [
+  ApiEndpointClass,
+  TableClass,
+  StoredProcedureClass,
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
+  MetricClass,
+  ChartClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
+] as const;
+
 const user = new UserClass();
 const user2 = new UserClass();
 const team = new TeamClass();
@@ -49,145 +82,150 @@ const glossary = new Glossary();
 const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
-test.describe('Data Asset Rules', () => {
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.create(apiContext);
-    await user2.create(apiContext);
-    await team.create(apiContext);
-    await table.create(apiContext);
-    await table2.create(apiContext);
-    await table3.create(apiContext);
-    await domain.create(apiContext);
-    await domain2.create(apiContext);
-    for (const dp of testDataProducts) {
-      await dp.create(apiContext);
-      createdDataProducts.push(dp);
-    }
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await glossaryTerm2.create(apiContext);
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await user.create(apiContext);
+  await user2.create(apiContext);
+  await team.create(apiContext);
+  await table.create(apiContext);
+  await table2.create(apiContext);
+  await table3.create(apiContext);
+  await domain.create(apiContext);
+  await domain2.create(apiContext);
+  for (const dp of testDataProducts) {
+    await dp.create(apiContext);
+    createdDataProducts.push(dp);
+  }
+  await glossary.create(apiContext);
+  await glossaryTerm.create(apiContext);
+  await glossaryTerm2.create(apiContext);
 
-    await afterAction();
-  });
+  await afterAction();
+});
 
+test.describe.serial('Data Asset Rules', () => {
   test.beforeEach('Redirect to Home Page', async ({ page }) => {
     await redirectToHomePage(page);
   });
 
-  test('Platform Rules', async ({ page }) => {
-    try {
-      await test.step('Platform Default Rules Enabled', async () => {
-        await table.visitEntityPage(page);
+  try {
+    test('Platform Rules Enabled', async ({ page, browser }) => {
+      test.setTimeout(360000);
 
-        // If after adding single team it closes then default rule is working. Single team or multiple users
-        await addOwner({
-          page,
-          owner: team.responseData.displayName,
-          type: 'Teams',
-          endpoint: EntityTypeEndpoint.Table,
-          dataTestId: 'data-assets-header',
+      await test.step('Enable all data asset rules', async () => {
+        const rulesResponse = page.waitForResponse(
+          '/api/v1/system/settings/entityRulesSettings'
+        );
+        await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
+        await rulesResponse;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
         });
 
-        // Single Domain Add Check
-        await assignSingleSelectDomain(page, domain.responseData);
+        // Enable both rules
+        const ruleEnabledResponse = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
 
-        // Multiple DataProduct Add Check, since default single select is off
-        await assignDataProduct(page, domain.responseData, [
-          createdDataProducts[0].responseData,
-          createdDataProducts[1].responseData,
-        ]);
+        await page
+          .getByRole('row', { name: 'Multiple Data Products are' })
+          .getByRole('switch')
+          .click();
 
-        // Add Multiple GlossaryTerm to Table
-        await assignGlossaryTerm(page, glossaryTerm.responseData);
-        await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+        await ruleEnabledResponse;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse2 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+
+        await page
+          .getByRole('row', { name: 'Tables can only have a single' })
+          .getByRole('switch')
+          .click();
+
+        await ruleEnabledResponse2;
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
       });
 
-      await test.step(
-        'Enable Multiple DataProduct not allowed and Table having single Glossary Term',
-        async () => {
-          const rulesResponse = page.waitForResponse(
-            '/api/v1/system/settings/entityRulesSettings'
-          );
-          await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
-          await rulesResponse;
+      for (const EntityClass of entities) {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const entity = new EntityClass();
+        const entityName = entity.getType();
+        await entity.create(apiContext);
+        await afterAction();
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+        await test.step(
+          `Verify the ${entityName} Entity Action items after rules is Enabled`,
+          async () => {
+            await entity.visitEntityPage(page);
 
-          // Enable both rules
-          const ruleEnabledResponse = page.waitForResponse(
-            '/api/v1/system/settings'
-          );
+            // If after adding single team it closes then default rule is working. Single team or multiple users
+            await addOwner({
+              page,
+              owner: team.responseData.displayName,
+              type: 'Teams',
+              endpoint: entity.endpoint,
+              dataTestId: 'data-assets-header',
+            });
 
-          await page
-            .getByRole('row', { name: 'Multiple Data Products are' })
-            .getByRole('switch')
-            .click();
+            // Single Domain Add Check
+            await assignSingleSelectDomain(page, domain.responseData);
 
-          await ruleEnabledResponse;
+            // Here the createdDataProducts[1] will only be available due to single select type is enabled
+            await assignDataProduct(page, domain.responseData, [
+              createdDataProducts[0].responseData,
+            ]);
+            await assignDataProduct(
+              page,
+              domain.responseData,
+              [createdDataProducts[1].responseData],
+              'Edit'
+            );
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+            await expect(
+              page
+                .getByTestId('KnowledgePanel.DataProducts')
+                .getByTestId('data-products-list')
+                .getByTestId(
+                  `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
+                )
+            ).not.toBeVisible();
 
-          const ruleEnabledResponse2 = page.waitForResponse(
-            '/api/v1/system/settings'
-          );
+            if (entityName === 'Table') {
+              // Only glossaryTerm2.responseData data will be available due to single select type is enabled
+              await assignGlossaryTerm(page, glossaryTerm.responseData);
+              await assignGlossaryTerm(
+                page,
+                glossaryTerm2.responseData,
+                'Edit'
+              );
 
-          await page
-            .getByRole('row', { name: 'Tables can only have a single' })
-            .getByRole('switch')
-            .click();
+              await expect(
+                page
+                  .getByTestId('KnowledgePanel.GlossaryTerms')
+                  .getByTestId('glossary-container')
+                  .getByTestId(
+                    `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+                  )
+              ).not.toBeVisible();
+            }
+          }
+        );
+      }
+    });
 
-          await ruleEnabledResponse2;
-
-          await page.reload();
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-
-          // Move to entity page and test if rules are working
-          await table2.visitEntityPage(page);
-
-          await assignSingleSelectDomain(page, domain.responseData);
-
-          // Here the createdDataProducts[1] will only be available due to single select type is enabled
-          await assignDataProduct(page, domain.responseData, [
-            createdDataProducts[0].responseData,
-          ]);
-          await assignDataProduct(
-            page,
-            domain.responseData,
-            [createdDataProducts[1].responseData],
-            'Edit'
-          );
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.DataProducts')
-              .getByTestId('data-products-list')
-              .getByTestId(
-                `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
-              )
-          ).not.toBeVisible();
-
-          // Only glossaryTerm2.responseData, GlossaryTerm will only be available due to single select type is enabled
-          await assignGlossaryTerm(page, glossaryTerm.responseData);
-          await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.GlossaryTerms')
-              .getByTestId('glossary-container')
-              .getByTestId(
-                `tag-${glossaryTerm.responseData.fullyQualifiedName}`
-              )
-          ).not.toBeVisible();
-        }
-      );
+    test('Platform Rules Disabled', async ({ page, browser }) => {
+      test.setTimeout(600000);
 
       await test.step('Disable all data asset rules ', async () => {
         const rulesResponse = page.waitForResponse(
@@ -253,135 +291,153 @@ test.describe('Data Asset Rules', () => {
           .click();
 
         await ruleEnabledResponse4;
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
       });
 
-      await test.step(
-        'Verify the entity item action after rules disabled',
-        async () => {
-          await page.reload();
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+      for (const EntityClass of entities) {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const entity = new EntityClass();
+        const entityName = entity.getType();
+        await entity.create(apiContext);
+        await afterAction();
 
-          await table3.visitEntityPage(page);
+        await test.step(
+          `Verify the ${entityName} entity item action after rules disabled`,
+          async () => {
+            await entity.visitEntityPage(page);
 
-          // Assign and Team and User both owner together
-          const teamName = team.responseData.displayName;
-          await addMultiOwner({
-            page,
-            ownerNames: [user.getUserName(), user2.getUserName()],
-            activatorBtnDataTestId: 'edit-owner',
-            resultTestId: 'data-assets-header',
-            endpoint: EntityTypeEndpoint.Table,
-            type: 'Users',
-          });
+            // Assign and Team and User both owner together
+            const teamName = team.responseData.displayName;
+            await addMultiOwner({
+              page,
+              ownerNames: [user.getUserName(), user2.getUserName()],
+              activatorBtnDataTestId: 'edit-owner',
+              resultTestId: 'data-assets-header',
+              endpoint: entity.endpoint,
+              type: 'Users',
+            });
 
-          await page.click(`[data-testid="edit-owner"]`);
+            await page.click(`[data-testid="edit-owner"]`);
 
-          await expect(
-            page.locator("[data-testid='select-owner-tabs']")
-          ).toBeVisible();
-
-          await page.waitForSelector(
-            '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-            { state: 'detached' }
-          );
-
-          await page
-            .locator("[data-testid='select-owner-tabs']")
-            .getByRole('tab', { name: 'Teams' })
-            .click();
-
-          await page.waitForSelector(
-            '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-            { state: 'detached' }
-          );
-
-          const searchUser = page.waitForResponse(
-            `/api/v1/search/query?q=*${encodeURIComponent(teamName)}*`
-          );
-          await page
-            .getByTestId(`owner-select-teams-search-bar`)
-            .fill(teamName);
-          await searchUser;
-
-          const ownerItem = page.getByRole('listitem', {
-            name: teamName,
-            exact: true,
-          });
-
-          await ownerItem.waitFor({ state: 'visible' });
-          await ownerItem.click();
-          const patchRequest = page.waitForResponse(
-            `/api/v1/${EntityTypeEndpoint.Table}/*`
-          );
-          await page
-            .locator('#rc-tabs-2-panel-teams')
-            .getByTestId('selectable-list-update-btn')
-            .click();
-          await patchRequest;
-
-          await expect(
-            page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-          ).toBeVisible();
-
-          for (const name of [
-            user.getUserName(),
-            user2.getUserName(),
-            teamName,
-          ]) {
             await expect(
-              page.getByTestId('data-assets-header').getByTestId(`${name}`)
+              page.locator("[data-testid='select-owner-tabs']")
             ).toBeVisible();
+
+            await page.waitForSelector(
+              '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+              { state: 'detached' }
+            );
+
+            await page
+              .locator("[data-testid='select-owner-tabs']")
+              .getByRole('tab', { name: 'Teams' })
+              .click();
+
+            await page.waitForSelector(
+              '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+              { state: 'detached' }
+            );
+
+            const searchUser = page.waitForResponse(
+              `/api/v1/search/query?q=*${encodeURIComponent(teamName)}*`
+            );
+            await page
+              .getByTestId(`owner-select-teams-search-bar`)
+              .fill(teamName);
+            await searchUser;
+
+            const ownerItem = page.getByRole('listitem', {
+              name: teamName,
+              exact: true,
+            });
+
+            await ownerItem.waitFor({ state: 'visible' });
+            await ownerItem.click();
+            const patchRequest = page.waitForResponse(
+              `/api/v1/${entity.endpoint}/*`
+            );
+            await page
+              .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+              .getByTestId('selectable-list-update-btn')
+              .click();
+            await patchRequest;
+
+            await expect(
+              page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
+            ).toBeVisible();
+
+            for (const name of [
+              user.getUserName(),
+              user2.getUserName(),
+              teamName,
+            ]) {
+              await expect(
+                page.getByTestId('data-assets-header').getByTestId(`${name}`)
+              ).toBeVisible();
+            }
+
+            await assignDomain(page, domain.responseData);
+            await assignDomain(page, domain2.responseData, false);
+
+            await expect(page.getByTestId('domain-count-button')).toBeVisible();
+
+            // Add Multiple DataProduct, since default single select is off
+            await assignDataProduct(page, domain.responseData, [
+              createdDataProducts[0].responseData,
+              createdDataProducts[1].responseData,
+            ]);
+
+            // Add Multiple GlossaryTerm to Table
+            await assignGlossaryTerm(page, glossaryTerm.responseData);
+            await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
           }
-
-          await assignDomain(page, domain.responseData);
-          await assignDomain(page, domain2.responseData, false);
-
-          await expect(page.getByTestId('domain-count-button')).toBeVisible();
-        }
+        );
+      }
+    });
+  } finally {
+    test('Reset Data Asset Rules to Default', async ({ page }) => {
+      const rulesResponse = page.waitForResponse(
+        '/api/v1/system/settings/entityRulesSettings'
       );
-    } finally {
-      test.step('Reset Data Asset Rules to Default', async () => {
-        const rulesResponse = page.waitForResponse(
-          '/api/v1/system/settings/entityRulesSettings'
-        );
-        await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
-        await rulesResponse;
+      await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
+      await rulesResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        const ruleEnabledResponse1 = page.waitForResponse(
-          '/api/v1/system/settings'
-        );
-
-        await page
-          .getByRole('row', { name: 'Multiple Users or Single Team' })
-          .getByRole('switch')
-          .click();
-
-        await ruleEnabledResponse1;
-
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        const ruleEnabledResponse2 = page.waitForResponse(
-          '/api/v1/system/settings'
-        );
-        await page
-          .getByRole('row', { name: 'Multiple Domains are not' })
-          .getByRole('switch')
-          .click();
-        await ruleEnabledResponse2;
-
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
       });
-    }
-  });
+
+      const ruleEnabledResponse1 = page.waitForResponse(
+        '/api/v1/system/settings'
+      );
+
+      await page
+        .getByRole('row', { name: 'Multiple Users or Single Team' })
+        .getByRole('switch')
+        .click();
+
+      await ruleEnabledResponse1;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const ruleEnabledResponse2 = page.waitForResponse(
+        '/api/v1/system/settings'
+      );
+      await page
+        .getByRole('row', { name: 'Multiple Domains are not' })
+        .getByRole('switch')
+        .click();
+      await ruleEnabledResponse2;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+    });
+  }
 });
