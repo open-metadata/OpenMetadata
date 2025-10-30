@@ -181,9 +181,7 @@ class TestEntityLink(TestCase):
         ]
 
         for keyword in reserved_keywords:
-            link = (
-                f"<#E::table::service.db.schema.table::columns::{keyword}>"
-            )
+            link = f"<#E::table::service.db.schema.table::columns::{keyword}>"
             parts = entity_link.split(link)
             self.assertEqual(
                 parts,
@@ -195,9 +193,7 @@ class TestEntityLink(TestCase):
         """Test entity links with multiple field levels"""
 
         # Nested column with description
-        link = (
-            "<#E::table::db.schema.table::columns::nested.col::description>"
-        )
+        link = "<#E::table::db.schema.table::columns::nested.col::description>"
         parts = entity_link.split(link)
         self.assertEqual(
             parts,
@@ -213,9 +209,7 @@ class TestEntityLink(TestCase):
         # Column with tags
         link = "<#E::table::db.schema.table::columns::type::tags>"
         parts = entity_link.split(link)
-        self.assertEqual(
-            parts, ["table", "db.schema.table", "columns", "type", "tags"]
-        )
+        self.assertEqual(parts, ["table", "db.schema.table", "columns", "type", "tags"])
 
     def test_entity_link_special_characters(self):
         """Test entity links with special characters in names"""
@@ -223,23 +217,17 @@ class TestEntityLink(TestCase):
         # Column with hyphen
         link = "<#E::table::db.schema.table::columns::my-column>"
         parts = entity_link.split(link)
-        self.assertEqual(
-            parts, ["table", "db.schema.table", "columns", "my-column"]
-        )
+        self.assertEqual(parts, ["table", "db.schema.table", "columns", "my-column"])
 
         # Column with underscore
         link = "<#E::table::db.schema.table::columns::my_column>"
         parts = entity_link.split(link)
-        self.assertEqual(
-            parts, ["table", "db.schema.table", "columns", "my_column"]
-        )
+        self.assertEqual(parts, ["table", "db.schema.table", "columns", "my_column"])
 
         # Column with numbers
         link = "<#E::table::db.schema.table::columns::column123>"
         parts = entity_link.split(link)
-        self.assertEqual(
-            parts, ["table", "db.schema.table", "columns", "column123"]
-        )
+        self.assertEqual(parts, ["table", "db.schema.table", "columns", "column123"])
 
     def test_entity_link_unicode(self):
         """Test entity links with unicode characters"""
@@ -302,9 +290,7 @@ class TestEntityLink(TestCase):
         # Column named 'dashboard' in a table
         link = "<#E::table::db.schema.table::columns::dashboard>"
         parts = entity_link.split(link)
-        self.assertEqual(
-            parts, ["table", "db.schema.table", "columns", "dashboard"]
-        )
+        self.assertEqual(parts, ["table", "db.schema.table", "columns", "dashboard"])
 
     def test_entity_link_spaces_in_fqn(self):
         """Test entity links with spaces in FQN (from Scout24 case)"""
@@ -326,9 +312,7 @@ class TestEntityLink(TestCase):
         )
 
         # Multiple spaces
-        link = (
-            "<#E::table::My Database.my schema.my table::columns::my column>"
-        )
+        link = "<#E::table::My Database.my schema.my table::columns::my column>"
         parts = entity_link.split(link)
         self.assertEqual(
             parts,
@@ -467,4 +451,3 @@ class TestEntityLink(TestCase):
         for link, expected_parts in test_cases:
             parts = entity_link.split(link)
             self.assertEqual(parts, expected_parts, f"Failed for: {link}")
-

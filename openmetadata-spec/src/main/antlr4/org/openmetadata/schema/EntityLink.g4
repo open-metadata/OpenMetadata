@@ -28,5 +28,9 @@ RESERVED_START
     ;
 
 SEGMENT
+    : SEGMENT_PART ( '>' SEGMENT_PART )*
+    ;
+
+fragment SEGMENT_PART
     : ( ~[:>] | ':' ~[:] )+
     ;

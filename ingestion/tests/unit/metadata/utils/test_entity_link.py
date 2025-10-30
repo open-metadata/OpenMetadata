@@ -113,8 +113,11 @@ def test_get_decoded_column(entity_link, expected):
             id="valid_entity_link12",
         ),
         pytest.param(
-            "<#E::table::rds.dev.dbt_jaffle.customers::columns::grea:>hdfwsd>",
-            "rds.dev.dbt_jaffle.customers.grea:>hdfwsd",
+            (
+                "<#E::table::rds.dev.dbt_jaffle.customers::"
+                "columns::grea__reserved__colon__>hdfwsd>"
+            ),
+            "rds.dev.dbt_jaffle.customers.grea__reserved__colon__>hdfwsd",
             id="valid_entity_link13",
         ),
     ],
@@ -134,7 +137,7 @@ def test_valid_get_table_or_column_fqn(entity_link, fqn):
     [
         pytest.param(
             "<#E::table::rds.dev.dbt_jaffle.customers::foo::number_of_orders>",
-            ParseCancellationException,
+            ValueError,
             id="invalid_entity_link1",
         ),
         pytest.param(
