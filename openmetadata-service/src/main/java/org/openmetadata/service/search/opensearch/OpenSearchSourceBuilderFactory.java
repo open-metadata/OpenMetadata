@@ -93,7 +93,7 @@ public class OpenSearchSourceBuilderFactory
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
+            .fuzziness(Fuzziness.ONE)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
             .tieBreaker(0.5f);
@@ -285,7 +285,7 @@ public class OpenSearchSourceBuilderFactory
         .fields(fields)
         .defaultOperator(Operator.AND)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
         .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -404,10 +404,11 @@ public class OpenSearchSourceBuilderFactory
       MultiMatchQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
               .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
+              .fuzziness(Fuzziness.ONE)
               .maxExpansions(10)
               .prefixLength(1)
-              .operator(Operator.AND)
+              .operator(Operator.OR)
+              .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
               .tieBreaker(DEFAULT_TIE_BREAKER);
       fields.forEach(fuzzyQueryBuilder::field);
       combinedQuery.should(fuzzyQueryBuilder.boost(multiplier));
@@ -444,7 +445,7 @@ public class OpenSearchSourceBuilderFactory
   private MultiMatchQueryBuilder createStandardFuzzyQuery(String query) {
     return QueryBuilders.multiMatchQuery(query)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .maxExpansions(10)
         .prefixLength(1)
         .operator(Operator.OR)

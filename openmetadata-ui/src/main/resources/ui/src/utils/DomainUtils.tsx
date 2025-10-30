@@ -15,11 +15,13 @@ import { Box, Tooltip as MUITooltip } from '@mui/material';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -319,6 +321,7 @@ export const convertDomainsToTreeOptions = (
       name: option.name,
       label: option.name,
       key: option.fullyQualifiedName,
+      fullyQualifiedName: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
           {level === 0 ? (
@@ -397,6 +400,8 @@ export const getDomainDetailTabs = ({
   handleAssetClick,
   handleAssetSave,
   setShowAddSubDomainModal,
+  feedCount,
+  onFeedUpdate,
 }: DomainDetailPageTabProps) => {
   return [
     {
@@ -441,9 +446,33 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.DATA_PRODUCTS,
             children: (
               <DataProductsTab
+                domainFqn={domain.fullyQualifiedName}
                 permissions={domainPermission}
                 ref={dataProductsTabRef}
                 onAddDataProduct={onAddDataProduct}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                count={feedCount?.totalCount ?? 0}
+                id={EntityTabs.ACTIVITY_FEED}
+                isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+                name={t('label.activity-feed-and-task-plural')}
+              />
+            ),
+            key: EntityTabs.ACTIVITY_FEED,
+            children: (
+              <ActivityFeedTab
+                refetchFeed
+                entityFeedTotalCount={feedCount?.totalCount ?? 0}
+                entityType={EntityType.DOMAIN}
+                feedCount={feedCount}
+                layoutType={ActivityFeedLayoutType.THREE_PANEL}
+                owners={domain.owners}
+                onFeedUpdate={onFeedUpdate ?? noop}
+                onUpdateEntityDetails={noop}
               />
             ),
           },
@@ -508,6 +537,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
               <CustomPropertyTable<EntityType.DOMAIN>
+                className="p-lg"
                 entityType={EntityType.DOMAIN}
                 hasEditAccess={getPrioritizedEditPermission(
                   domainPermission,
