@@ -808,6 +808,7 @@ const DataProductsDetailsPage = ({
       />
 
       <AnnouncementDrawer
+        showToastInSnackbar
         createPermission={editAllPermission}
         entityFQN={dataProduct.fullyQualifiedName ?? ''}
         entityType={EntityType.DATA_PRODUCT}
