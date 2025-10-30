@@ -13,10 +13,13 @@
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
@@ -36,6 +39,7 @@ import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import DomainTreeView from './components/DomainTreeView';
@@ -192,6 +196,56 @@ const DomainListPage = () => {
     },
   });
 
+  const renderContent = () => {
+    if (isTreeView) {
+      return (
+        <Box sx={{ px: 6, pb: 6 }}>
+          <DomainTreeView
+            openAddDomainDrawer={openDrawer}
+            refreshToken={treeRefreshToken}
+            searchQuery={domainListing.urlState.searchQuery}
+            onDomainMutated={refreshAllDomains}
+          />
+        </Box>
+      );
+    }
+
+    if (!domainListing.loading && isEmpty(domainListing.entities)) {
+      return (
+        <ErrorPlaceHolder
+          buttonId="domain-add-button"
+          buttonTitle={t('label.add-entity', {
+            entity: t('label.domain'),
+          })}
+          className="border-none"
+          heading={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.domain?.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={openDrawer}
+        />
+      );
+    }
+
+    if (view === 'table') {
+      return (
+        <>
+          {dataTable}
+          {paginationControls}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cardView}
+        {paginationControls}
+      </>
+    );
+  };
+
   return (
     <>
       {breadcrumbs}
@@ -218,20 +272,7 @@ const DomainListPage = () => {
           </Box>
           {filterSelectionDisplay}
         </Box>
-
-        {isTreeView ? (
-          <Box sx={{ px: 6, pb: 6 }}>
-            <DomainTreeView
-              refreshToken={treeRefreshToken}
-              onDomainMutated={refreshAllDomains}
-            />
-          </Box>
-        ) : (
-          <>
-            {view === 'table' ? dataTable : cardView}
-            {paginationControls}
-          </>
-        )}
+        {renderContent()}
       </TableContainer>
       {deleteModal}
       {formDrawer}

@@ -321,6 +321,7 @@ export const convertDomainsToTreeOptions = (
       name: option.name,
       label: option.name,
       key: option.fullyQualifiedName,
+      fullyQualifiedName: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
           {level === 0 ? (
@@ -445,6 +446,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.DATA_PRODUCTS,
             children: (
               <DataProductsTab
+                domainFqn={domain.fullyQualifiedName}
                 permissions={domainPermission}
                 ref={dataProductsTabRef}
                 onAddDataProduct={onAddDataProduct}
@@ -535,6 +537,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
               <CustomPropertyTable<EntityType.DOMAIN>
+                className="p-lg"
                 entityType={EntityType.DOMAIN}
                 hasEditAccess={getPrioritizedEditPermission(
                   domainPermission,
