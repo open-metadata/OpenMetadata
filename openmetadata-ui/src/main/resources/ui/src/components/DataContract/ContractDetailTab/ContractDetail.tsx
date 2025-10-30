@@ -61,7 +61,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
@@ -439,10 +439,9 @@ const ContractDetail: React.FC<{
                 <Divider className="contract-dash-separator" />
               </div>
 
-              <RichTextEditorPreviewerNew
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant
                 markdown={contract.description ?? ''}
-                maxLineLength="3"
               />
             </Col>
           )}
@@ -457,10 +456,9 @@ const ContractDetail: React.FC<{
                 <Divider className="contract-dash-separator" />
               </div>
 
-              <RichTextEditorPreviewerNew
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant
                 markdown={contract.termsOfUse ?? ''}
-                maxLineLength="3"
               />
             </Col>
           )}
