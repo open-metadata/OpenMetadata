@@ -133,7 +133,7 @@ def integrating_with_openmetadata_example():
     print(f"Validation: {'PASSED' if result.success else 'FAILED'}")
 
     # Publish the results back to Open Metadata
-    result.publish_to_openmetadata("DbService.database_name.schema_name.table_name")
+    result.publish_to_openmetadata("DbService.database_name.schema_name.dwh_table")
 
     if result.success:
         df.to_parquet("s3://some_bucket/dwh_table.parquet")
@@ -141,6 +141,9 @@ def integrating_with_openmetadata_example():
 
 def processing_big_data_with_chunks_example():
     """Processing big data with chunks."""
+
+    configure(host="http://localhost:8585/api", jwt_token="your jwt token")
+
     validator = DataFrameValidator()
     validator.add_openmetadata_table_tests(
         "DbService.database_name.schema_name.dwh_table"
@@ -152,12 +155,14 @@ def processing_big_data_with_chunks_example():
     def rollback(_df: pd.DataFrame, _result: ValidationResult):
         """Clears data previously loaded"""
 
-    validator.run(
+    results = validator.run(
         pd.read_csv("somefile.csv", chunksize=1000),
         on_success=load_df_to_destination,
         on_failure=rollback,
         mode=FailureMode.SHORT_CIRCUIT,
     )
+
+    results.publish_to_openmetadata("DbService.database_name.schema_name.dwh_table")
 
 
 def validation_failure_example():

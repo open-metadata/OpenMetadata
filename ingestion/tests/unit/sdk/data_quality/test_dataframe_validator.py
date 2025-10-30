@@ -17,7 +17,8 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
-from metadata.generated.schema.tests.basic import TestCaseStatus
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.sdk.data_quality import (
     ColumnValuesToBeNotNull,
     ColumnValuesToBeUnique,
@@ -378,3 +379,183 @@ class TestValidatorRun:
 
         with pytest.warns(WholeTableTestsWarning, match=expected_warning_match):
             validator.run(dfs, on_success_callback, on_failure_callback)
+
+    def test_run_returns_merged_validation_result(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        dfs = (pd.DataFrame({"id": [i + 1, i + 2, i + 3]}) for i in range(0, 9, 3))
+
+        result = validator.run(dfs, on_success_callback, on_failure_callback)
+
+        assert isinstance(result, ValidationResult)
+        assert result.success is True
+
+    def test_merged_result_has_correct_aggregated_metrics(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        dfs = [
+            pd.DataFrame({"id": [1, 2, 3]}),
+            pd.DataFrame({"id": [4, 5, 6]}),
+            pd.DataFrame({"id": [7, 8, 9]}),
+        ]
+
+        result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
+
+        assert result.total_tests == 1
+        assert result.passed_tests == 1
+        assert result.failed_tests == 0
+        assert result.success is True
+
+    def test_merged_result_aggregates_failures_correctly(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        dfs = [
+            pd.DataFrame({"id": [1, 2, 3]}),
+            pd.DataFrame({"id": [None]}),
+        ]
+
+        result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
+
+        assert result.total_tests == 1
+        assert result.passed_tests == 0
+        assert result.failed_tests == 1
+        assert result.success is False
+
+    def test_merged_result_contains_aggregated_test_case_results(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        validator.add_test(ColumnValuesToBeUnique(column="id"))
+
+        dfs = [
+            pd.DataFrame({"id": [1, 2, 3]}),
+            pd.DataFrame({"id": [4, 5, 6]}),
+        ]
+
+        with pytest.warns(WholeTableTestsWarning):
+            result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
+
+        assert len(result.test_cases_and_results) == 2
+        assert all(
+            isinstance(test_case, TestCase) and isinstance(test_result, TestCaseResult)
+            for test_case, test_result in result.test_cases_and_results
+        )
+        _, aggregated_not_null_result = result.test_cases_and_results[0]
+        assert aggregated_not_null_result.passedRows == 6
+
+    def test_merged_result_sums_execution_times(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        dfs = [
+            pd.DataFrame({"id": [1, 2, 3]}),
+            pd.DataFrame({"id": [4, 5, 6]}),
+            pd.DataFrame({"id": [7, 8, 9]}),
+        ]
+
+        result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
+
+        assert result.execution_time_ms > 0
+        individual_times = [
+            call[1].execution_time_ms for call in on_success_callback.calls
+        ]
+        assert result.execution_time_ms == sum(individual_times)
+
+    def test_merged_result_with_mixed_success_and_failure(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        def generate_mixed_data() -> Generator[DataFrame, None, None]:
+            yield pd.DataFrame({"id": [1, 2, 3]})
+            yield pd.DataFrame({"id": [4, 5, 6]})
+            yield pd.DataFrame({"id": [None]})
+
+        result = validator.run(
+            generate_mixed_data(), on_success_callback, on_failure_callback
+        )
+
+        assert result.total_tests == 1
+        assert result.passed_tests == 0
+        assert result.failed_tests == 1
+        assert result.success is False
+        assert len(result.test_cases_and_results) == 1
+
+    def test_merged_result_aggregates_multiple_tests_per_batch(
+        self,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        validator = DataFrameValidator(Mock())
+        validator.add_tests(
+            ColumnValuesToBeNotNull(column="id"),
+            ColumnValuesToBeUnique(column="id"),
+            TableRowCountToBeBetween(min_count=1, max_count=10),
+        )
+
+        dfs = [
+            pd.DataFrame({"id": [1, 2, 3]}),
+            pd.DataFrame({"id": [4, 5, 6]}),
+        ]
+
+        with pytest.warns(WholeTableTestsWarning):
+            result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
+
+        assert result.total_tests == 3
+        assert result.passed_tests == 3
+        assert result.failed_tests == 0
+        assert result.success is True
+
+    def test_merged_result_with_short_circuit_on_failure(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        def generate_data() -> Generator[DataFrame, None, None]:
+            yield pd.DataFrame({"id": [None]})
+            yield pd.DataFrame({"id": [1, 2, 3]})
+            yield pd.DataFrame({"id": [4, 5, 6]})
+
+        result = validator.run(
+            generate_data(), on_success_callback, on_failure_callback
+        )
+
+        assert result.total_tests == 1
+        assert result.passed_tests == 0
+        assert result.failed_tests == 1
+        assert result.success is False
+
+    def test_merged_result_reflects_all_batches_processed(
+        self,
+        validator: DataFrameValidator,
+        on_success_callback: TracksValidationCallbacks,
+        on_failure_callback: TracksValidationCallbacks,
+    ) -> None:
+        batch_count = 5
+        dfs = [
+            pd.DataFrame({"id": [i + 1, i + 2, i + 3]})
+            for i in range(0, batch_count * 3, 3)
+        ]
+
+        result = validator.run(iter(dfs), on_success_callback, on_failure_callback)
+
+        assert result.total_tests == 1
+        assert len(result.test_cases_and_results) == 1
+        assert on_success_callback.times_called == batch_count
+        _, aggregated_result = result.test_cases_and_results[0]
+        assert aggregated_result.passedRows == batch_count * 3

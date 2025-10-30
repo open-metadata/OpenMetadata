@@ -85,3 +85,128 @@ class ValidationResult(BaseModel):
             client: OpenMetadata client
         """
         return push_validation_results(table_fqn, self, client=client)
+
+    @classmethod
+    def merge(cls, *results: "ValidationResult") -> "ValidationResult":
+        """Merge multiple ValidationResult objects into one.
+
+        Aggregates results from multiple validation runs, useful when validating
+        DataFrames in batches. When the same test case is run multiple times across
+        batches, results are aggregated by test case FQN.
+
+        Args:
+            *results: Variable number of ValidationResult objects to merge
+
+        Returns:
+            A new ValidationResult with aggregated test case results
+
+        Raises:
+            ValueError: If no results are provided to merge
+        """
+        if not results:
+            raise ValueError("At least one ValidationResult must be provided to merge")
+
+        from collections import defaultdict
+
+        aggregated_results: dict[
+            str, List[Tuple[TestCase, TestCaseResult]]
+        ] = defaultdict(list)
+        total_execution_time = 0.0
+
+        for result in results:
+            for test_case, test_result in result.test_cases_and_results:
+                fqn = test_case.fullyQualifiedName
+                if fqn is None:
+                    raise ValueError(
+                        "Cannot merge results with test cases that have no fullyQualifiedName"
+                    )
+                aggregated_results[str(fqn)].append((test_case, test_result))
+            total_execution_time += result.execution_time_ms
+
+        merged_test_cases_and_results: List[Tuple[TestCase, TestCaseResult]] = []
+        for fqn, test_cases_and_results_for_fqn in aggregated_results.items():
+            test_case = test_cases_and_results_for_fqn[0][0]
+            results_for_test = [result for _, result in test_cases_and_results_for_fqn]
+
+            merged_result = cls._aggregate_test_case_results(results_for_test)
+            merged_test_cases_and_results.append((test_case, merged_result))
+
+        total = len(merged_test_cases_and_results)
+        passed = sum(
+            1
+            for _, test_result in merged_test_cases_and_results
+            if test_result.testCaseStatus is TestCaseStatus.Success
+        )
+        failed = total - passed
+
+        return cls(
+            success=failed == 0,
+            total_tests=total,
+            passed_tests=passed,
+            failed_tests=failed,
+            test_cases_and_results=merged_test_cases_and_results,
+            execution_time_ms=total_execution_time,
+        )
+
+    @staticmethod
+    def _aggregate_test_case_results(
+        results: List[TestCaseResult],
+    ) -> TestCaseResult:
+        """Aggregate multiple TestCaseResult objects for the same test case.
+
+        Combines metrics from multiple test runs by summing passed/failed rows
+        and determining overall status.
+
+        Args:
+            results: List of TestCaseResult objects from different batch runs
+
+        Returns:
+            A single aggregated TestCaseResult
+        """
+        if not results:
+            raise ValueError("At least one TestCaseResult must be provided")
+
+        if len(results) == 1:
+            return results[0]
+
+        total_passed_rows = sum(r.passedRows or 0 for r in results)
+        total_failed_rows = sum(r.failedRows or 0 for r in results)
+        total_rows = total_passed_rows + total_failed_rows
+
+        passed_rows_percentage = (
+            (total_passed_rows / total_rows * 100) if total_rows > 0 else None
+        )
+        failed_rows_percentage = (
+            (total_failed_rows / total_rows * 100) if total_rows > 0 else None
+        )
+
+        overall_status = TestCaseStatus.Success
+        if any(r.testCaseStatus == TestCaseStatus.Aborted for r in results):
+            overall_status = TestCaseStatus.Aborted
+        elif any(r.testCaseStatus == TestCaseStatus.Failed for r in results):
+            overall_status = TestCaseStatus.Failed
+
+        first_result = results[0]
+        merged_result_messages = [r.result for r in results if r.result]
+
+        return TestCaseResult(
+            id=None,
+            testCaseFQN=first_result.testCaseFQN,
+            timestamp=first_result.timestamp,
+            testCaseStatus=overall_status,
+            result=(
+                "; ".join(merged_result_messages) if merged_result_messages else None
+            ),
+            sampleData=None,
+            testResultValue=None,
+            passedRows=total_passed_rows if total_rows > 0 else None,
+            failedRows=total_failed_rows if total_rows > 0 else None,
+            passedRowsPercentage=passed_rows_percentage,
+            failedRowsPercentage=failed_rows_percentage,
+            incidentId=None,
+            maxBound=first_result.maxBound,
+            minBound=first_result.minBound,
+            testCase=first_result.testCase,
+            testDefinition=first_result.testDefinition,
+            dimensionResults=None,
+        )

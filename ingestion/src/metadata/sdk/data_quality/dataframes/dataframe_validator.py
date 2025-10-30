@@ -149,7 +149,7 @@ class DataFrameValidator:
         on_success: ValidatorCallback,
         on_failure: ValidatorCallback,
         mode: FailureMode = FailureMode.SHORT_CIRCUIT,
-    ) -> None:
+    ) -> ValidationResult:
         """Execute all configured tests on the DataFrame and call callbacks.
 
         Useful for running validation based on chunks, for example:
@@ -165,7 +165,7 @@ class DataFrameValidator:
             "Clears data previously loaded"
             ...
 
-        validator.run(
+        result = validator.run(
             pandas.read_csv('somefile.csv', chunksize=1000),
             on_success=load_df_to_destination,
             on_failure=rollback,
@@ -180,12 +180,15 @@ class DataFrameValidator:
             mode: Validation mode (`FailureMode.ShortCircuit` stops on first failure)
 
         Returns:
-            None
+            Merged ValidationResult aggregating all batch validations
         """
         self._check_full_table_tests_included()
 
+        results: List[ValidationResult] = []
+
         for df in data:
             validation_result = self.validate(df, mode)
+            results.append(validation_result)
 
             if validation_result.success:
                 on_success(df, validation_result)
@@ -194,3 +197,5 @@ class DataFrameValidator:
 
                 if mode is FailureMode.SHORT_CIRCUIT:
                     break
+
+        return ValidationResult.merge(*results)
