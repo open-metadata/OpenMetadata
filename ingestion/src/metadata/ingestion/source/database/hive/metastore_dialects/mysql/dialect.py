@@ -55,8 +55,9 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         )
 
         query = f"""
-            WITH regular_columns AS (
-                SELECT 
+            -- Combine regular and partition columns
+            SELECT * FROM
+             ( SELECT 
                     col.COLUMN_NAME,
                     col.TYPE_NAME, 
                     col.COMMENT
@@ -66,8 +67,10 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
                 JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
                     AND tbsl.TBL_NAME = '{table_name}'
                             {schema_join}
-                        ),
-                        partition_columns AS (
+             ) AS regular_columns
+            UNION ALL
+            SELECT * FROM 
+            (
                 SELECT 
                     pk.PKEY_NAME as COLUMN_NAME,
                     pk.PKEY_TYPE as TYPE_NAME,
@@ -76,11 +79,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
                 JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
                     AND tbsl.TBL_NAME = '{table_name}'
                 {schema_join}
-            )
-            -- Combine regular and partition columns
-            SELECT * FROM regular_columns
-            UNION ALL
-            SELECT * FROM partition_columns
+            ) AS partition_columns
         """
 
         return connection.execute(query).fetchall()
