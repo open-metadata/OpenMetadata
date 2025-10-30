@@ -13,7 +13,8 @@
 import { APIRequestContext } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getCIJobId, resetSeed } from '../../utils/common';
+// import { getCIJobId, resetSeed } from '../../utils/common';
+import { uuid } from '../../utils/common';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
@@ -53,11 +54,13 @@ import { TopicClass } from './TopicClass';
 import { WorksheetClass } from './WorksheetClass';
 
 // Reset seed before initializing entities to ensure deterministic data across all workers
-resetSeed();
+// resetSeed();
 
 // Get unique identifier for this test execution (only used in CI to avoid conflicts)
-const JOB_ID = getCIJobId();
-const SUFFIX = JOB_ID ? `-${JOB_ID}` : ''; // Only add suffix in CI
+// const JOB_ID = getCIJobId();
+// const SUFFIX = JOB_ID ? `-${JOB_ID}` : ''; // Only add suffix in CI
+
+const randomUUID = uuid();
 
 export class EntityDataClass {
   static readonly domain1 = new Domain();
@@ -67,34 +70,34 @@ export class EntityDataClass {
   static readonly glossaryTerm1 = new GlossaryTerm(this.glossary1);
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
   static readonly user1 = new UserClass({
-    email: `pw.user.one${SUFFIX}@example.com`,
+    email: `pw.user.one${randomUUID}@example.com`,
     firstName: 'PWUser',
-    lastName: `One${SUFFIX}`,
+    lastName: `One`,
     password: 'User@OMD123',
   });
   static readonly user2 = new UserClass({
-    email: `pw.user.two${SUFFIX}@example.com`,
+    email: `pw.user.two${randomUUID}@example.com`,
     firstName: 'PWUser',
-    lastName: `Two${SUFFIX}`,
+    lastName: `Two`,
     password: 'User@OMD123',
   });
   static readonly user3 = new UserClass({
-    email: `pw.user.three${SUFFIX}@example.com`,
+    email: `pw.user.three${randomUUID}@example.com`,
     firstName: 'PWUser',
-    lastName: `Three${SUFFIX}`,
+    lastName: `Three`,
     password: 'User@OMD123',
   });
   static readonly team1 = new TeamClass({
-    name: `PW%team-1${SUFFIX}`,
-    displayName: `PW Team 1${SUFFIX}`,
+    name: `PW%team-1${randomUUID}`,
+    displayName: `PW Team 1`,
     description: 'playwright team 1 description',
     teamType: 'Group',
     users: [],
     policies: [],
   });
   static readonly team2 = new TeamClass({
-    name: `PW%team-2${SUFFIX}`,
-    displayName: `PW Team 2${SUFFIX}`,
+    name: `PW%team-2${randomUUID}`,
+    displayName: `PW Team 2`,
     description: 'playwright team 2 description',
     teamType: 'Group',
     users: [],
