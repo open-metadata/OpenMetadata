@@ -339,8 +339,13 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts
-      expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
+      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
+      expect(
+        screen.getByTestId('right-arrow-icon-container')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
     });
 
     it('should render direction icon for upstream items', () => {
@@ -387,7 +392,13 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
       // Path is truncated to "service > ... > schema" when there are more than 2 parts
-      expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
+      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
+      expect(
+        screen.getByTestId('right-arrow-icon-container')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
     });
 
     it('should render downstream direction text', () => {
@@ -449,8 +460,18 @@ describe('LineageTabContent', () => {
     it('should render entity path when available', () => {
       render(<LineageTabContent {...defaultProps} />);
 
+      expect(
+        screen.getByTitle('service > database > schema')
+      ).toBeInTheDocument();
+      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
+      expect(
+        screen.getByTestId('right-arrow-icon-container')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
       // Path is truncated to "service > ... > schema" when there are more than 2 parts
-      expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
+      //   expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
     });
 
     it('should render entity display name or name', () => {
@@ -605,8 +626,18 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      // Path is truncated to "service > ... > table" when there are more than 2 parts
-      expect(screen.getByText('service > ... > table')).toBeInTheDocument();
+      expect(
+        screen.getByTitle('service > database > schema > table')
+      ).toBeInTheDocument();
+      expect(screen.getByText('service')).toBeInTheDocument();
+      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
+      expect(
+        screen.getByTestId('right-arrow-icon-container')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
+      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
+      expect(screen.getByText('table')).toBeInTheDocument();
     });
 
     it('should handle entities without fullyQualifiedName', () => {

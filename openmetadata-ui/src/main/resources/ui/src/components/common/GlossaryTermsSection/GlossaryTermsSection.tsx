@@ -50,11 +50,18 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const [editingGlossaryTerms, setEditingGlossaryTerms] = useState<TagLabel[]>(
     []
   );
+  const [displayTags, setDisplayTags] = useState<TagLabel[]>(tags);
   const [isLoading, setIsLoading] = useState(false);
   const [showAllTerms, setShowAllTerms] = useState(false);
 
+  React.useEffect(() => {
+    setDisplayTags(tags);
+  }, [tags]);
+
   // Filter only glossary terms from tags
-  const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
+  const glossaryTerms = displayTags.filter(
+    (tag) => tag.source === TagSource.Glossary
+  );
 
   const handleEditClick = () => {
     setEditingGlossaryTerms(glossaryTerms);
@@ -101,10 +108,13 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       });
 
       // Create updated tags array by replacing glossary terms
-      const nonGlossaryTags = tags.filter(
+      const nonGlossaryTags = displayTags.filter(
         (tag) => tag.source !== TagSource.Glossary
       );
       const updatedTags = [...nonGlossaryTags, ...newGlossaryTerms];
+
+      // Update display immediately
+      setDisplayTags(updatedTags);
 
       // Call the callback to update parent component
       if (onGlossaryTermsUpdate) {
@@ -133,21 +143,17 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   );
 
   const renderEditingState = () => (
-    <div className="inline-edit-container">
-      <div className="glossary-term-selector">
-        <TagSelectForm
-          defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
-          fetchApi={fetchGlossaryList}
-          key={`glossary-terms-${entityId}`}
-          placeholder={t('label.add-a-entity', {
-            entity: t('label.glossary-term'),
-          })}
-          tagType={TagSource.Glossary}
-          onCancel={handleCancel}
-          onSubmit={handleGlossaryTermSelection}
-        />
-      </div>
-    </div>
+    <TagSelectForm
+      defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
+      fetchApi={fetchGlossaryList}
+      key={`glossary-terms-${entityId}`}
+      placeholder={t('label.add-a-entity', {
+        entity: t('label.glossary-term'),
+      })}
+      tagType={TagSource.Glossary}
+      onCancel={handleCancel}
+      onSubmit={handleGlossaryTermSelection}
+    />
   );
 
   const renderEmptyContent = () => {

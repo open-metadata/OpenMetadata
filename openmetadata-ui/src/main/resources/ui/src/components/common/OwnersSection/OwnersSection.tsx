@@ -60,8 +60,13 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editingOwners, setEditingOwners] = useState<EntityReference[]>([]);
+  const [displayOwners, setDisplayOwners] = useState<EntityReference[]>(owners);
   const [isLoading, setIsLoading] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+
+  React.useEffect(() => {
+    setDisplayOwners(owners);
+  }, [owners]);
 
   // Function to get the appropriate patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
@@ -105,7 +110,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   };
 
   const handleEditClick = () => {
-    setEditingOwners(owners);
+    setEditingOwners(displayOwners);
     setIsEditing(true);
     setPopoverOpen(true);
   };
@@ -135,7 +140,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         setIsLoading(true);
 
         // Create JSON patch by comparing the owners arrays
-        const currentData = { owners };
+        const currentData = { owners: displayOwners };
         const updatedData = { owners: ownersToSave };
         const jsonPatch = compare(currentData, updatedData);
 
@@ -149,6 +154,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         // Make the API call using the correct patch API for the entity type
         const patchAPI = getPatchAPI(entityType);
         await patchAPI(idToUse, jsonPatch);
+
+        // Update display immediately
+        setDisplayOwners(ownersToSave);
 
         // Show success message
         showSuccessToast(
@@ -178,7 +186,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         );
       }
     },
-    [entityId, entityType, owners, onOwnerUpdate, t]
+    [entityId, entityType, displayOwners, onOwnerUpdate, t]
   );
 
   const handleOwnerSelection = async (selectedOwners?: EntityReference[]) => {
@@ -194,7 +202,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     if (!open) {
       // When popover is closed, exit editing mode
       setIsEditing(false);
-      setEditingOwners(owners);
+      setEditingOwners(displayOwners);
     }
   };
 
@@ -207,39 +215,31 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   );
 
   const renderEditingState = () => (
-    <div className="inline-edit-container">
-      <UserTeamSelectableList
-        hasPermission={hasPermission}
-        multiple={{ user: true, team: true }}
-        owner={editingOwners}
-        popoverProps={{
-          placement: 'bottomLeft',
-          open: popoverOpen,
-          onOpenChange: handlePopoverOpenChange,
-        }}
-        onClose={() => handlePopoverOpenChange(false)}
-        onUpdate={handleOwnerSelection}>
-        <div className="owner-selector-display">
-          {editingOwners.length > 0 ? (
-            <div className="selected-owners-list">
-              {editingOwners.map((owner) => (
-                <div className="selected-owner-chip" key={owner.id}>
-                  <span className="owner-name">
-                    {owner.displayName || owner.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span className="owner-placeholder">
-              {t('label.select-entity', {
-                entity: t('label.owner-plural'),
-              })}
-            </span>
-          )}
-        </div>
-      </UserTeamSelectableList>
-    </div>
+    <UserTeamSelectableList
+      hasPermission={hasPermission}
+      multiple={{ user: true, team: true }}
+      owner={editingOwners}
+      popoverProps={{
+        placement: 'bottomLeft',
+        open: popoverOpen,
+        onOpenChange: handlePopoverOpenChange,
+      }}
+      onClose={() => handlePopoverOpenChange(false)}
+      onUpdate={handleOwnerSelection}>
+      <div className="owner-selector-display">
+        {editingOwners.length > 0 && (
+          <div className="selected-owners-list">
+            {editingOwners.map((owner) => (
+              <div className="selected-owner-chip" key={owner.id}>
+                <span className="owner-name">
+                  {owner.displayName || owner.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </UserTeamSelectableList>
   );
 
   const renderEmptyContent = () => {
@@ -263,7 +263,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         hasPermission={hasPermission}
         isCompactView={false}
         maxVisibleOwners={4}
-        owners={owners}
+        owners={displayOwners}
         showLabel={false}
       />
     </div>
@@ -280,7 +280,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     return renderOwnersDisplay();
   };
 
-  if (!owners.length) {
+  if (!displayOwners.length) {
     return (
       <div className="owners-section">
         <div className="owners-header">

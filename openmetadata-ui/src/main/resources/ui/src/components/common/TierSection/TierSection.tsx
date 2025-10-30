@@ -16,7 +16,6 @@ import { compare } from 'fast-json-patch';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -55,10 +54,14 @@ const TierSection: React.FC<TierSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
+  const [displayTier, setDisplayTier] = useState<TagLabel | undefined>(tier);
   const [isLoading, setIsLoading] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  // Function to get the appropriate patch API based on entity type
+  React.useEffect(() => {
+    setDisplayTier(tier);
+  }, [tier]);
+
   const getPatchAPI = (entityType?: EntityType) => {
     switch (entityType) {
       case EntityType.TABLE:
@@ -161,16 +164,17 @@ const TierSection: React.FC<TierSectionProps> = ({
         const patchAPI = getPatchAPI(entityType);
         await patchAPI(idToUse, jsonPatch);
 
+        const newTier = updatedTags.find((tag) =>
+          tag.tagFQN.startsWith('Tier.')
+        );
+
+        setDisplayTier(newTier);
+
         // Show success message
         showSuccessToast(
           t('server.update-entity-success', {
             entity: t('label.tier'),
           })
-        );
-
-        // Extract the new tier from updated tags
-        const newTier = updatedTags.find((tag) =>
-          tag.tagFQN.startsWith('Tier.')
         );
 
         // Call the callback to update parent component with the new tier
@@ -230,51 +234,45 @@ const TierSection: React.FC<TierSectionProps> = ({
             </div>
           </div>
         ) : isEditing ? (
-          <div className="inline-edit-container">
-            <TierCard
-              currentTier={tier?.tagFQN}
-              footerActionButtonsClassName="tier-card-footer-action-buttons"
-              popoverProps={{ open: popoverOpen }}
-              tierCardClassName="tier-card-popover"
-              updateTier={handleTierSelection}
-              onClose={handleCancel}>
-              <div className="tier-selector-display">
-                {tier ? (
-                  <div className="d-flex flex-col gap-2">
-                    <TagsV1
-                      hideIcon
-                      startWith={TAG_START_WITH.SOURCE_ICON}
-                      tag={tier}
-                      tagProps={{
-                        'data-testid': 'Tier',
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <span className="tier-placeholder">
-                    {t('label.select-entity', {
-                      entity: t('label.tier'),
-                    })}
-                  </span>
-                )}
-              </div>
-            </TierCard>
-          </div>
+          <TierCard
+            currentTier={displayTier?.tagFQN}
+            footerActionButtonsClassName="tier-card-footer-action-buttons"
+            popoverProps={{ open: popoverOpen }}
+            tierCardClassName="tier-card-popover"
+            updateTier={handleTierSelection}
+            onClose={handleCancel}>
+            <div className="tier-selector-display">
+              {displayTier && (
+                <div className="d-flex flex-col gap-2">
+                  <TagsV1
+                    hideIcon
+                    startWith={TAG_START_WITH.SOURCE_ICON}
+                    tag={displayTier}
+                    tagProps={{
+                      'data-testid': 'Tier',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </TierCard>
         ) : (
           <div className="tier-display">
-            {tier ? (
+            {displayTier ? (
               <div className="d-flex flex-col gap-2">
                 <TagsV1
                   hideIcon
                   startWith={TAG_START_WITH.SOURCE_ICON}
-                  tag={tier}
+                  tag={displayTier}
                   tagProps={{
                     'data-testid': 'Tier',
                   }}
                 />
               </div>
             ) : (
-              <span className="no-data-placeholder">{NO_DATA_PLACEHOLDER}</span>
+              <span className="no-data-placeholder">
+                {t('label.no-data-found')}
+              </span>
             )}
           </div>
         )}

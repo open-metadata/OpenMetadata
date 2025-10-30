@@ -55,8 +55,14 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
+  const [displayDataProducts, setDisplayDataProducts] =
+    useState<EntityReference[]>(dataProducts);
   const [isLoading, setIsLoading] = useState(false);
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
+
+  React.useEffect(() => {
+    setDisplayDataProducts(dataProducts);
+  }, [dataProducts]);
 
   // Function to get the correct patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
@@ -130,7 +136,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
         );
 
         // Create JSON patch by comparing the data products arrays
-        const currentData = { dataProducts };
+        const currentData = { dataProducts: displayDataProducts };
         const updatedData = { dataProducts: updatedDataProducts };
         const jsonPatch = compare(currentData, updatedData);
 
@@ -144,6 +150,9 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
         // Make the API call using the correct patch API for the entity type
         const patchAPI = getPatchAPI(entityType);
         await patchAPI(idToUse, jsonPatch);
+
+        // Update display immediately
+        setDisplayDataProducts(updatedDataProducts);
 
         // Show success message
         showSuccessToast(
@@ -172,7 +181,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
         );
       }
     },
-    [entityId, dataProducts, onDataProductsUpdate, t]
+    [entityId, entityType, displayDataProducts, onDataProductsUpdate, t]
   );
 
   const handleCancel = () => {
@@ -192,7 +201,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
       <div className="data-products-selector">
         <DataProductsSelectList
           open
-          defaultValue={(dataProducts || []).map(
+          defaultValue={(displayDataProducts || []).map(
             (item) => item?.fullyQualifiedName ?? ''
           )}
           fetchOptions={fetchAPI}
@@ -231,8 +240,8 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     <div className="data-products-display">
       <div className="data-products-list">
         {(showAllDataProducts
-          ? dataProducts
-          : dataProducts.slice(0, maxVisibleDataProducts)
+          ? displayDataProducts
+          : displayDataProducts.slice(0, maxVisibleDataProducts)
         ).map((dataProduct) => (
           <div
             className="data-product-item"
@@ -247,14 +256,14 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
             </div>
           </div>
         ))}
-        {dataProducts.length > maxVisibleDataProducts && (
+        {displayDataProducts.length > maxVisibleDataProducts && (
           <button
             className="show-more-data-products-button"
             type="button"
             onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
             {showAllDataProducts
               ? t('label.less')
-              : `+${dataProducts.length - maxVisibleDataProducts} ${t(
+              : `+${displayDataProducts.length - maxVisibleDataProducts} ${t(
                   'label.more-lowercase'
                 )}`}
           </button>
@@ -274,7 +283,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     return renderDataProductsDisplay();
   };
 
-  if (!dataProducts?.length) {
+  if (!displayDataProducts?.length) {
     return (
       <div className="data-products-section">
         <div className="data-products-header">

@@ -76,16 +76,21 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   const [showAllTags, setShowAllTags] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTags, setEditingTags] = useState<TagItem[]>([]);
+  const [displayTags, setDisplayTags] = useState<TagLabel[]>(tags);
   const [isLoading, setIsLoading] = useState(false);
+
+  React.useEffect(() => {
+    setDisplayTags(tags);
+  }, [tags]);
 
   const getTagFqn = (tag: TagLabel) =>
     (tag.tagFQN || tag.name || tag.displayName || '').toString();
 
   // Split current tags into Tier.* and non-tier tags
-  const nonTierTags: TagLabel[] = (tags || []).filter(
+  const nonTierTags: TagLabel[] = (displayTags || []).filter(
     (t) => !getTagFqn(t).startsWith('Tier.')
   );
-  const tierTags: TagLabel[] = (tags || []).filter((t) =>
+  const tierTags: TagLabel[] = (displayTags || []).filter((t) =>
     getTagFqn(t).startsWith('Tier.')
   );
   const getTagDisplayName = (tag: TagLabel) => {
@@ -195,7 +200,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         // Merge back Tier tags unchanged so tier changes do not affect this section
         const updatedTags: TagLabel[] = [...tierTags, ...updatedNonTier];
         // Create JSON patch by comparing the tags arrays
-        const currentData = { tags };
+        const currentData = { tags: displayTags };
         const updatedData = { tags: updatedTags };
         const jsonPatch = compare(currentData, updatedData);
 
@@ -209,6 +214,9 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         // Make the API call using the correct patch API for the entity type
         const patchAPI = getPatchAPI(entityType);
         await patchAPI(idToUse, jsonPatch);
+
+        // Update display immediately
+        setDisplayTags(updatedTags);
 
         // Show success message
         showSuccessToast(
@@ -237,7 +245,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         );
       }
     },
-    [entityId, entityType, tags, onTagsUpdate, t]
+    [entityId, entityType, displayTags, tierTags, onTagsUpdate, t]
   );
 
   // Save now happens via selection change; no explicit save button
