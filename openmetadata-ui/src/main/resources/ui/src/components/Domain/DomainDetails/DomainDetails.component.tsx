@@ -854,17 +854,17 @@ const DomainDetails = ({
               titleColor={domain.style?.color}
             />
           </Box>
-          <Box sx={{ width: '320px' }}>
+          <Box>
             <Box
               sx={{
                 display: 'flex',
                 gap: 3,
                 justifyContent: 'flex-end',
+                alignItems: 'center',
                 pb: '4px',
               }}>
               {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
-                  className="m-l-xs h-10"
                   data-testid="domain-details-add-button-menu"
                   menu={{
                     items: addButtonContent,
@@ -939,18 +939,15 @@ const DomainDetails = ({
                   </Dropdown>
                 )}
               </ButtonGroup>
+              {activeAnnouncement && (
+                <AnnouncementCard
+                  announcement={activeAnnouncement}
+                  onClick={handleOpenAnnouncementDrawer}
+                />
+              )}
             </Box>
           </Box>
         </Box>
-
-        {activeAnnouncement && (
-          <Box sx={{ mx: 5 }}>
-            <AnnouncementCard
-              announcement={activeAnnouncement}
-              onClick={handleOpenAnnouncementDrawer}
-            />
-          </Box>
-        )}
 
         <GenericProvider<Domain>
           muiTags

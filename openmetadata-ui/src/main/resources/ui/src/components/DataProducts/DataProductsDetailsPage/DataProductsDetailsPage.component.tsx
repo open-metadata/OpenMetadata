@@ -84,7 +84,6 @@ import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumb
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
-
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -629,12 +628,13 @@ const DataProductsDetailsPage = ({
               titleColor={dataProduct.style?.color}
             />
           </Box>
-          <Box sx={{ width: '320px' }}>
+          <Box>
             <Box
               sx={{
                 display: 'flex',
                 gap: 3,
                 justifyContent: 'flex-end',
+                alignItems: 'center',
                 pb: '4px',
               }}>
               {!isVersionsView && dataProductPermission.Create && (
@@ -706,18 +706,16 @@ const DataProductsDetailsPage = ({
                   </Dropdown>
                 )}
               </ButtonGroup>
+
+              {activeAnnouncement && (
+                <AnnouncementCard
+                  announcement={activeAnnouncement}
+                  onClick={handleOpenAnnouncementDrawer}
+                />
+              )}
             </Box>
           </Box>
         </Box>
-
-        {activeAnnouncement && (
-          <Box sx={{ mx: 5 }}>
-            <AnnouncementCard
-              announcement={activeAnnouncement}
-              onClick={handleOpenAnnouncementDrawer}
-            />
-          </Box>
-        )}
 
         <GenericProvider<DataProduct>
           muiTags
