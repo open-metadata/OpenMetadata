@@ -23,6 +23,7 @@ import { ReactComponent as ArrowCircleDown } from '../../../assets/svg/arrow-cir
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -44,9 +45,9 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
-import DomainEmptyState from '../../Domain/DomainEmptyState';
 
 interface DomainTreeViewProps {
   searchQuery?: string;
@@ -652,17 +653,19 @@ const DomainTreeView = ({
   };
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
     return (
-      <DomainEmptyState
-        createLabel={t('label.add-entity', {
+      <ErrorPlaceHolder
+        buttonId="domain-add-button"
+        buttonTitle={t('label.add-entity', {
           entity: t('label.domain'),
         })}
-        icon={<FolderEmptyIcon />}
-        message={t('message.no-data-message', {
+        className="border-none"
+        heading={t('message.no-data-message', {
           entity: t('label.domain-lowercase-plural'),
         })}
-        showCreate={permissions.domain?.Create}
-        testId="domain-add-button"
-        onCreate={openAddDomainDrawer}
+        icon={<FolderEmptyIcon />}
+        permission={permissions.domain?.Create}
+        type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+        onClick={openAddDomainDrawer}
       />
     );
   }

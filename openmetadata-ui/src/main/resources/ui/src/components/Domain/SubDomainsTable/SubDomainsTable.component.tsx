@@ -16,6 +16,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -26,7 +27,7 @@ import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../../common/atoms/table/useCardView';
 import { useDataTable } from '../../common/atoms/table/useDataTable';
-import DomainEmptyState from '../DomainEmptyState';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
@@ -116,17 +117,17 @@ const SubDomainsTable = ({
   const renderContent = () => {
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
       return (
-        <DomainEmptyState
-          createLabel={t('label.add-entity', {
-            entity: t('label.sub-domain'),
-          })}
-          icon={<FolderEmptyIcon />}
-          message={t('message.no-data-message', {
+        <ErrorPlaceHolder
+          buttonId="subdomain-add-button"
+          buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
+          className="border-none"
+          heading={t('message.no-data-message', {
             entity: t('label.sub-domain-lowercase-plural'),
           })}
-          showCreate={permissions.Create}
-          testId="subdomain-add-button"
-          onCreate={onAddSubDomain}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={onAddSubDomain}
         />
       );
     }

@@ -19,6 +19,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
@@ -38,8 +39,8 @@ import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
-import DomainEmptyState from '../Domain/DomainEmptyState';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import DomainTreeView from './components/DomainTreeView';
 import { useDomainListingData } from './hooks/useDomainListingData';
@@ -211,17 +212,19 @@ const DomainListPage = () => {
 
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       return (
-        <DomainEmptyState
-          createLabel={t('label.add-entity', {
+        <ErrorPlaceHolder
+          buttonId="domain-add-button"
+          buttonTitle={t('label.add-entity', {
             entity: t('label.domain'),
           })}
-          icon={<FolderEmptyIcon />}
-          message={t('message.no-data-message', {
+          className="border-none"
+          heading={t('message.no-data-message', {
             entity: t('label.domain-lowercase-plural'),
           })}
-          showCreate={permissions.domain?.Create}
-          testId="domain-add-button"
-          onCreate={openDrawer}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.domain?.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={openDrawer}
         />
       );
     }

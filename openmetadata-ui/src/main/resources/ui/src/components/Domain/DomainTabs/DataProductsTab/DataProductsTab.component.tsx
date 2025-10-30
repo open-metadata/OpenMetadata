@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
@@ -33,12 +34,12 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import DomainEmptyState from '../../DomainEmptyState';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
@@ -107,18 +108,18 @@ const DataProductsTab = forwardRef(
 
     if (isEmpty(dataProducts.data) && !loading) {
       return (
-        <DomainEmptyState
-          className="p-lg"
-          createLabel={t('label.add-entity', {
+        <ErrorPlaceHolder
+          buttonId="data-product-add-button"
+          buttonTitle={t('label.add-entity', {
             entity: t('label.data-product'),
           })}
-          icon={<FolderEmptyIcon />}
-          message={t('message.no-data-message', {
+          heading={t('message.no-data-message', {
             entity: t('label.data-product-lowercase-plural'),
           })}
-          showCreate={permissions.Create}
-          testId="data-product-add-button"
-          onCreate={onAddDataProduct}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={onAddDataProduct}
         />
       );
     }

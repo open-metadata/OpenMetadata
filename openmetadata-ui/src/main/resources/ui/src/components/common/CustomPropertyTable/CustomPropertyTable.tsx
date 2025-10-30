@@ -37,7 +37,6 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import DomainEmptyState from '../../Domain/DomainEmptyState';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import './custom-property-table.less';
@@ -234,27 +233,27 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   ) {
     return (
       <div className="h-full p-x-lg flex-center border-default border-radius-sm">
-        <DomainEmptyState
+        <ErrorPlaceHolder
+          className="border-none"
           contentMaxWidth="24rem"
           icon={<CustomPropertyEmpty />}
-          message={
-            <Transi18next
-              i18nKey="message.no-custom-properties-entity"
-              renderElement={
-                <a
-                  href={CUSTOM_PROPERTIES_DOCS}
-                  rel="noreferrer"
-                  target="_blank"
-                  title="Custom properties documentation"
-                />
-              }
-              values={{
-                docs: t('label.doc-plural-lowercase'),
-                entity: startCase(entityType),
-              }}
-            />
-          }
-        />
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          <Transi18next
+            i18nKey="message.no-custom-properties-entity"
+            renderElement={
+              <a
+                href={CUSTOM_PROPERTIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Custom properties documentation"
+              />
+            }
+            values={{
+              docs: t('label.doc-plural-lowercase'),
+              entity: startCase(entityType),
+            }}
+          />
+        </ErrorPlaceHolder>
       </div>
     );
   }
