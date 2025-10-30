@@ -822,6 +822,8 @@ export interface RequestConnection {
  *
  * Snowplow Pipeline Connection Config
  *
+ * Dataflow Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -2194,6 +2196,10 @@ export interface ConfigObject {
      * Snowplow deployment type (BDP for managed or Community for self-hosted)
      */
     deployment?: SnowplowDeployment;
+    /**
+     * GCP region for Dataflow jobs. If not specified, will attempt to discover from jobs.
+     */
+    region?: string;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -4523,6 +4529,7 @@ export enum ConfigType {
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
+    Dataflow = "Dataflow",
     Datalake = "Datalake",
     Db2 = "Db2",
     DeltaLake = "DeltaLake",

@@ -724,6 +724,7 @@ export enum PipelineServiceType {
     Dagster = "Dagster",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
+    Dataflow = "Dataflow",
     DomoPipeline = "DomoPipeline",
     Fivetran = "Fivetran",
     Flink = "Flink",
