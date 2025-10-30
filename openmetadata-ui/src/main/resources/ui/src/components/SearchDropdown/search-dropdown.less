@@ -19,6 +19,10 @@
 @update-btn-hover-bg: #e2e2e2;
 
 .custom-dropdown-render {
+  position: absolute;
+  right: 0px;
+  flex-direction: row-reverse;
+  bottom: 10px;
   .ant-dropdown-menu {
     box-shadow: none;
     padding: 0px;
@@ -36,14 +40,14 @@
   }
 
   .update-btn {
-    background-color: @trigger-btn-hover-bg;
-    border-color: @trigger-btn-hover-bg;
+    background-color: @primary-color;
+    border-color: @primary-color;
+    color: @white;
   }
 
   .update-btn:hover {
-    background-color: @update-btn-hover-bg;
-    border-color: @update-btn-hover-bg;
-    color: inherit;
+    background-color: @primary-7;
+    color: @white;
   }
 
   mark {

@@ -36,46 +36,40 @@
   .tags-content {
     padding-left: 14px;
     padding-right: 14px;
-    .inline-edit-container {
-      .tag-selector {
-        padding: 4px;
+
+    .tag-selector-display {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      cursor: pointer;
+
+      .selected-tags-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
         width: 100%;
 
-        .ant-select {
-          width: 100% !important;
-        }
-
-        .ant-select-selector {
-          min-height: 40px !important;
-          border-radius: 6px !important;
-          border: 1px solid @grey-22 !important;
-          background-color: @white !important;
-          padding: 4px 8px !important;
-        }
-
-        .ant-select-selection-placeholder {
-          color: @grey-10 !important;
-          font-size: 14px !important;
-        }
-
-        .ant-select-selection-search {
-          .ant-select-selection-search-input {
-            font-size: 14px !important;
+        .selected-tag-chip {
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          border-radius: 8px;
+          padding: 5px 6px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          height: 26px;
+          .tag-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
           }
-        }
 
-        .ant-select-selection-item {
-          background-color: @light-border-color !important;
-          border: 1px solid @grey-22 !important;
-          border-radius: 16px !important;
-          padding: 2px 8px !important;
-          margin: 2px !important;
-          font-size: 12px !important;
-        }
-
-        .ant-select-selection-item-remove {
-          color: @grey-10 !important;
-          font-size: 10px !important;
+          .tag-name {
+            font-weight: 400;
+            font-size: 12px;
+            color: @tag-text;
+          }
         }
       }
     }
@@ -177,7 +171,15 @@
   }
 }
 
-// Dropdown styles
+.tags-select-container {
+  min-width: 450px;
+  width: 100%;
+
+  .tag-selector {
+    width: 100%;
+  }
+}
+
 .dropdown-item {
   padding: 8px 12px;
   cursor: pointer;
@@ -198,23 +200,11 @@
     }
   }
 }
-.ant-tag.tag-chip-content.new-chip-style {
-  .ant-select-selection-item {
-    border: 1px solid #e3e8f0;
-    border-radius: 16px;
-    background-color: #f9fafc;
-    height: 30px;
-  }
-
-  .ant-select-selection-item {
-    display: flex;
-    align-items: center;
-  }
-  border: 1px solid #e3e8f0;
-  background-color: #f9fafc;
-  margin-top: 4px;
-  .tags-label {
-    color: #21263c;
-    font-weight: 500;
+.tag-select-popover {
+  padding-bottom: 0;
+  width: 285px;
+  .ant-popover-inner-content {
+    padding: 8px 12px;
+    padding-bottom: 0;
   }
 }

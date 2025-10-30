@@ -16,16 +16,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import TagSelectForm from '../../Tag/TagsSelectForm/TagsSelectForm.component';
+import { GlossaryTermSelectableListV1 } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import './GlossaryTermsSection.less';
 
 interface GlossaryTermsSectionProps {
@@ -37,7 +31,7 @@ interface GlossaryTermsSectionProps {
   maxVisibleGlossaryTerms?: number;
 }
 
-const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
+const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
   showEditButton = true,
   hasPermission = false,
@@ -53,10 +47,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const [displayTags, setDisplayTags] = useState<TagLabel[]>(tags);
   const [isLoading, setIsLoading] = useState(false);
   const [showAllTerms, setShowAllTerms] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   React.useEffect(() => {
     setDisplayTags((prev) => {
-      // Only update if different
       if (JSON.stringify(prev) !== JSON.stringify(tags)) {
         return tags;
       }
@@ -65,7 +59,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     });
   }, [tags]);
 
-  // Filter only glossary terms from tags
   const glossaryTerms = displayTags.filter(
     (tag) => tag.source === TagSource.Glossary
   );
@@ -73,63 +66,29 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const handleEditClick = () => {
     setEditingGlossaryTerms(glossaryTerms);
     setIsEditing(true);
+    setPopoverOpen(true);
   };
 
-  // Save now happens via selection submit; no explicit save button
-
-  const handleCancel = () => {
-    setEditingGlossaryTerms(glossaryTerms);
-    setIsEditing(false);
-  };
-
-  const handleGlossaryTermSelection = async (selectedOptions: unknown) => {
+  const handleGlossaryTermSelection = async (selectedTerms: TagLabel[]) => {
     try {
       setIsLoading(true);
-      // TagSelectForm returns the selected options directly
-      const options = Array.isArray(selectedOptions)
-        ? selectedOptions
-        : [selectedOptions];
 
-      const newGlossaryTerms = options.map((option: unknown) => {
-        const optionObj = option as Record<string, unknown>;
-
-        let tagData: any = {
-          tagFQN: (optionObj.value || option) as string,
-          source: TagSource.Glossary,
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-        };
-
-        // Extract additional data from option.data if available (same as TagsContainerV2)
-        if (optionObj.data) {
-          tagData = {
-            ...tagData,
-            name: (optionObj.data as any)?.name,
-            displayName: (optionObj.data as any)?.displayName,
-            description: (optionObj.data as any)?.description,
-            style: (optionObj.data as any)?.style ?? {},
-          };
-        }
-
-        return tagData;
-      });
-
-      // Create updated tags array by replacing glossary terms
       const nonGlossaryTags = displayTags.filter(
         (tag) => tag.source !== TagSource.Glossary
       );
-      const updatedTags = [...nonGlossaryTags, ...newGlossaryTerms];
+      const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
-      // Update display immediately
       setDisplayTags(updatedTags);
 
-      // Call the callback to update parent component
       if (onGlossaryTermsUpdate) {
         await Promise.resolve(onGlossaryTermsUpdate(updatedTags));
       }
 
-      setIsEditing(false);
-      setIsLoading(false);
+      setTimeout(() => {
+        setIsEditing(false);
+        setIsLoading(false);
+        setPopoverOpen(false);
+      }, 500);
     } catch (error) {
       setIsLoading(false);
       showErrorToast(
@@ -141,6 +100,19 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     }
   };
 
+  const handlePopoverOpenChange = (open: boolean) => {
+    setPopoverOpen(open);
+    if (!open) {
+      setIsEditing(false);
+      setEditingGlossaryTerms(glossaryTerms);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingGlossaryTerms(glossaryTerms);
+    setIsEditing(false);
+  };
+
   const renderLoadingState = () => (
     <div className="glossary-terms-loading-container">
       <div className="glossary-terms-loading-spinner">
@@ -150,17 +122,31 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   );
 
   const renderEditingState = () => (
-    <TagSelectForm
-      defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
-      fetchApi={fetchGlossaryList}
-      key={`glossary-terms-${entityId}`}
-      placeholder={t('label.add-a-entity', {
-        entity: t('label.glossary-term'),
-      })}
-      tagType={TagSource.Glossary}
+    <GlossaryTermSelectableListV1
+      popoverProps={{
+        placement: 'bottomLeft',
+        open: popoverOpen,
+        onOpenChange: handlePopoverOpenChange,
+        overlayClassName: 'glossary-term-select-popover',
+      }}
+      selectedTerms={editingGlossaryTerms}
       onCancel={handleCancel}
-      onSubmit={handleGlossaryTermSelection}
-    />
+      onUpdate={handleGlossaryTermSelection}>
+      <div className="d-none glossary-term-selector-display">
+        {editingGlossaryTerms.length > 0 && isEditing && (
+          <div className="selected-glossary-terms-list">
+            {editingGlossaryTerms.map((term) => (
+              <div className="selected-glossary-term-chip" key={term.tagFQN}>
+                <GlossaryIcon className="glossary-term-icon" />
+                <span className="glossary-term-name">
+                  {getEntityName(term)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </GlossaryTermSelectableListV1>
   );
 
   const renderEmptyContent = () => {
@@ -273,4 +259,4 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   );
 };
 
-export default GlossaryTermsSection;
+export default GlossaryTermsSectionV1;

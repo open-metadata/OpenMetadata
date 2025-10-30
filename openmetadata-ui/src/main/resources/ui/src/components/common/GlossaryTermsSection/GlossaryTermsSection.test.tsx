@@ -14,6 +14,30 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TagSource } from '../../../generated/type/tagLabel';
 import GlossaryTermsSection from './GlossaryTermsSection';
 
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+  useParams: jest.fn().mockReturnValue({}),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+// Mock custom location hook
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+}));
+
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -38,60 +62,90 @@ jest.mock('../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">Tick</div>,
 }));
 jest.mock('../../../assets/svg/glossary.svg', () => ({
-  ReactComponent: () => <div data-testid="glossary-icon">G</div>,
+  ReactComponent: ({ className }: { className?: string }) => (
+    <div className={className} data-testid="glossary-icon">
+      G
+    </div>
+  ),
+}));
+jest.mock('../../../assets/svg/book.svg', () => ({
+  ReactComponent: () => <div data-testid="book-icon">Book</div>,
 }));
 
-// TagSelectForm mock
-const tagSelectFormMock = jest
-  .fn()
-  .mockImplementation(
-    ({ onCancel, onSubmit, defaultValue, placeholder, tagType }) => (
-      <div
-        data-default={Array.isArray(defaultValue) ? defaultValue.join(',') : ''}
-        data-placeholder={placeholder}
-        data-tagtype={tagType}
-        data-testid="tag-select-form">
-        <button data-testid="tsf-cancel" onClick={() => onCancel?.()}>
-          Cancel
-        </button>
-        <button
-          data-testid="tsf-submit-strings"
-          onClick={() => onSubmit?.(['g.term.1', 'g.term.2'])}>
-          SubmitStrings
-        </button>
-        <button
-          data-testid="tsf-submit-objects"
-          onClick={() =>
-            onSubmit?.([
-              {
-                value: 'g.term.obj',
-                data: {
-                  name: 'term',
-                  displayName: 'Term',
-                  description: 'desc',
-                  style: { color: 'red' },
-                },
-              },
-            ])
-          }>
-          SubmitObjects
-        </button>
-      </div>
-    )
-  );
+// Mock GlossaryTermSelectableListV1
+jest.mock(
+  '../GlossaryTermSelectableList/GlossaryTermSelectableList.v1.component',
+  () => ({
+    GlossaryTermSelectableListV1: jest
+      .fn()
+      .mockImplementation(
+        ({
+          onCancel,
+          onUpdate,
+          selectedTerms,
+          children,
+          popoverProps,
+        }: {
+          onCancel?: () => void;
+          onUpdate?: (terms: any[]) => void;
+          selectedTerms: any[];
+          children: any;
+          popoverProps?: any;
+        }) => {
+          const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
 
-interface TagSelectFormProps {
-  onCancel?: () => void;
-  onSubmit?: (values: unknown[]) => void;
-  defaultValue?: string[];
-  placeholder?: string;
-  tagType?: string;
-}
-
-jest.mock('../../Tag/TagsSelectForm/TagsSelectForm.component', () => ({
-  __esModule: true,
-  default: (props: TagSelectFormProps) => tagSelectFormMock(props),
-}));
+          return (
+            <div data-default={defaultValue} data-testid="tag-select-form">
+              <button data-testid="tsf-cancel" onClick={() => onCancel?.()}>
+                Cancel
+              </button>
+              <button
+                data-testid="tsf-submit-strings"
+                onClick={() =>
+                  onUpdate?.([
+                    {
+                      tagFQN: 'g.term.1',
+                      name: 'term.1',
+                      source: TagSource.Glossary,
+                      labelType: 'Manual' as const,
+                      state: 'Confirmed' as const,
+                    },
+                    {
+                      tagFQN: 'g.term.2',
+                      name: 'term.2',
+                      source: TagSource.Glossary,
+                      labelType: 'Manual' as const,
+                      state: 'Confirmed' as const,
+                    },
+                  ])
+                }>
+                SubmitStrings
+              </button>
+              <button
+                data-testid="tsf-submit-objects"
+                onClick={() =>
+                  onUpdate?.([
+                    {
+                      tagFQN: 'g.term.obj',
+                      name: 'term',
+                      displayName: 'Term',
+                      description: 'desc',
+                      style: { color: 'red' },
+                      source: TagSource.Glossary,
+                      labelType: 'Manual' as const,
+                      state: 'Confirmed' as const,
+                    },
+                  ])
+                }>
+                SubmitObjects
+              </button>
+              {children}
+            </div>
+          );
+        }
+      ),
+  })
+);
 
 // Utils mocks
 jest.mock('../../../utils/TagsUtils', () => ({
@@ -154,7 +208,6 @@ const clickHeaderEdit = () => {
 describe('GlossaryTermsSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    tagSelectFormMock.mockClear();
   });
 
   describe('Rendering - No Terms', () => {
@@ -206,7 +259,7 @@ describe('GlossaryTermsSection', () => {
         container.querySelector('.glossary-terms-list')
       ).toBeInTheDocument();
       expect(getEntityName).toHaveBeenCalled();
-      expect(screen.getAllByTestId('glossary-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('book-icon').length).toBeGreaterThan(0);
 
       expect(screen.getByText('Customer')).toBeInTheDocument();
       expect(screen.getByText('Order')).toBeInTheDocument();

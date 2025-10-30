@@ -19,7 +19,32 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import DataProductsSection from './DataProductsSection';
+
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+  useParams: jest.fn().mockReturnValue({}),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+// Mock custom location hook
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+}));
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -72,14 +97,27 @@ jest.mock('../../../assets/svg/ic-data-product.svg', () => ({
   ReactComponent: () => <div data-testid="data-product-icon">DP</div>,
 }));
 
-// Mock DataProductsSelectList inline to avoid TDZ
+// Mock DataProductsSelectListV1 inline to avoid TDZ
 jest.mock(
-  '../../DataProducts/DataProductsSelectList/DataProductsSelectList',
-  () => {
-    return jest
+  '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1',
+  () => ({
+    DataProductsSelectListV1: jest
       .fn()
       .mockImplementation(
-        ({ onCancel, onSubmit, defaultValue, fetchOptions, ...props }: any) => (
+        ({
+          onCancel,
+          onUpdate,
+          selectedDataProducts,
+          fetchOptions,
+          children,
+          ...props
+        }: {
+          onCancel?: () => void;
+          onUpdate?: (items: EntityReference[]) => void;
+          selectedDataProducts?: EntityReference[];
+          fetchOptions?: (searchText: string, after?: number) => void;
+          children?: React.ReactNode;
+        }) => (
           <div data-testid="data-products-select-list" {...props}>
             <button data-testid="dps-cancel" onClick={() => onCancel?.()}>
               Cancel
@@ -87,12 +125,13 @@ jest.mock(
             <button
               data-testid="dps-submit"
               onClick={() =>
-                onSubmit?.([
+                onUpdate?.([
                   {
                     id: 'dp-2',
                     fullyQualifiedName: 'domain.dp2',
                     name: 'dp2',
                     displayName: 'DP 2',
+                    type: 'dataProduct',
                   },
                 ])
               }>
@@ -104,12 +143,17 @@ jest.mock(
               Fetch
             </button>
             <div data-testid="dps-default-values">
-              {Array.isArray(defaultValue) ? defaultValue.join(',') : ''}
+              {Array.isArray(selectedDataProducts)
+                ? selectedDataProducts
+                    .map((i: EntityReference) => i.fullyQualifiedName)
+                    .join(',')
+                : ''}
             </div>
+            {children}
           </div>
         )
-      );
-  }
+      ),
+  })
 );
 
 // Mock ToastUtils
@@ -295,27 +339,30 @@ describe('DataProductsSection', () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
 
       // Override the select list to return same items
-      const SelectMock = jest.requireMock(
-        '../../DataProducts/DataProductsSelectList/DataProductsSelectList'
+      const { DataProductsSelectListV1 } = jest.requireMock(
+        '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1'
       );
-      SelectMock.mockImplementationOnce(({ onSubmit, ...props }: any) => (
-        <div data-testid="data-products-select-list" {...props}>
-          <button
-            data-testid="dps-submit"
-            onClick={() =>
-              onSubmit?.([
-                {
-                  id: 'dp-1',
-                  fullyQualifiedName: 'domain.dp1',
-                  name: 'dp1',
-                  displayName: 'DP 1',
-                },
-              ])
-            }>
-            Submit
-          </button>
-        </div>
-      ));
+      DataProductsSelectListV1.mockImplementationOnce(
+        ({ onUpdate, ...props }: any) => (
+          <div data-testid="data-products-select-list" {...props}>
+            <button
+              data-testid="dps-submit"
+              onClick={() =>
+                onUpdate?.([
+                  {
+                    id: 'dp-1',
+                    fullyQualifiedName: 'domain.dp1',
+                    name: 'dp1',
+                    displayName: 'DP 1',
+                    type: 'dataProduct',
+                  },
+                ])
+              }>
+              Submit
+            </button>
+          </div>
+        )
+      );
 
       const { container } = render(
         <DataProductsSection
@@ -338,9 +385,11 @@ describe('DataProductsSection', () => {
     it('shows loading spinner while saving', async () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
 
-      patchTableDetails.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
+      let resolvePromise: (() => void) | undefined;
+      const promise = new Promise<void>((resolve) => {
+        resolvePromise = resolve;
+      });
+      patchTableDetails.mockReturnValue(promise);
 
       const { container } = render(
         <DataProductsSection
@@ -353,13 +402,28 @@ describe('DataProductsSection', () => {
       if (editIcon) {
         fireEvent.click(editIcon);
       }
+
+      // Wait for edit mode to be active
+      await waitFor(() => {
+        expect(screen.getByTestId('dps-submit')).toBeInTheDocument();
+      });
+
       fireEvent.click(screen.getByTestId('dps-submit'));
 
-      await waitFor(() => {
-        expect(
-          document.querySelector('.data-products-loading-container')
-        ).toBeInTheDocument();
-      });
+      // Wait for loading state to appear
+      await waitFor(
+        () => {
+          expect(
+            document.querySelector('.data-products-loading-container')
+          ).toBeInTheDocument();
+        },
+        { timeout: 1000 }
+      );
+
+      // Resolve the promise to finish the test
+      if (resolvePromise) {
+        resolvePromise();
+      }
     });
   });
 

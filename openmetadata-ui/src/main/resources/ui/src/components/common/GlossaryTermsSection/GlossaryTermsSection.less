@@ -61,6 +61,50 @@
     padding-left: 14px;
     padding-right: 14px;
     padding-bottom: 16px;
+
+    .glossary-term-selector-display {
+      background-color: @white;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      cursor: pointer;
+
+      &:hover {
+        border-color: @primary-color;
+      }
+
+      .selected-glossary-terms-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+
+        .selected-glossary-term-chip {
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          border-radius: 8px;
+          padding: 5px 6px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          height: 26px;
+
+          .glossary-term-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
+          }
+
+          .glossary-term-name {
+            font-weight: 400;
+            font-size: 12px;
+            color: @tag-text;
+          }
+        }
+      }
+    }
+
     .glossary-terms-loading-container {
       display: flex;
       justify-content: center;
@@ -116,9 +160,9 @@
           background-color: @blue-29;
           border: 1px solid @blue-30;
           .glossary-term-icon {
-            width: 14px;
-            height: 14px;
-            color: #6b7280;
+            width: 12px;
+            height: 12px;
+            color: @tag-text;
             flex-shrink: 0;
           }
 
@@ -166,5 +210,19 @@
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+// Container for glossary terms select dropdown
+.glossary-terms-select-container {
+  min-width: 450px;
+  width: 100%;
+}
+.glossary-term-select-popover {
+  width: 285px;
+  padding-bottom: 0;
+  .ant-popover-inner-content {
+    padding: 8px 12px;
+    padding-bottom: 0;
   }
 }

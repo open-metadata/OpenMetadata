@@ -53,6 +53,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
   const [showAllDomains, setShowAllDomains] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // Sync activeDomains with domains prop, similar to DomainLabel
   useEffect(() => {
@@ -130,6 +131,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         // Only proceed if there are changes
         if (jsonPatch.length === 0) {
           setIsLoading(false);
+          setPopoverOpen(false);
 
           return;
         }
@@ -155,6 +157,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         }
 
         setIsLoading(false);
+        setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
         showErrorToast(
@@ -232,13 +235,26 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           editIconClassName="edit-icon"
           hasPermission={hasPermission}
           overlayClassName="domain-popover"
+          popoverProps={{
+            open: popoverOpen,
+            onOpenChange: setPopoverOpen,
+          }}
           selectedDomain={activeDomains}
           wrapInButton={false}
+          onCancel={() => {
+            setPopoverOpen(false);
+          }}
           onUpdate={handleDomainSave}
         />
       )
     );
-  }, [showEditButton, hasPermission, activeDomains, handleDomainSave]);
+  }, [
+    showEditButton,
+    hasPermission,
+    activeDomains,
+    handleDomainSave,
+    popoverOpen,
+  ]);
 
   if (isLoading) {
     return (

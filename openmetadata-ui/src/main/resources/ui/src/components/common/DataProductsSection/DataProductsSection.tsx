@@ -20,16 +20,29 @@ import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-p
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
+import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import { patchChartDetails } from '../../../rest/chartsAPI';
 import { patchDashboardDetails } from '../../../rest/dashboardAPI';
-import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
+import {
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from '../../../rest/databaseAPI';
+import { patchDataModelDetails } from '../../../rest/dataModelsAPI';
+import {
+  fetchDataProductsElasticSearch,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
 import { patchMlModelDetails } from '../../../rest/mlModelAPI';
 import { patchPipelineDetails } from '../../../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../../../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../../../rest/storageAPI';
+import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
 import { patchTableDetails } from '../../../rest/tableAPI';
 import { patchTopicDetails } from '../../../rest/topicsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import DataProductsSelectList from '../../DataProducts/DataProductsSelectList/DataProductsSelectList';
+import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1';
 import './DataProductsSection.less';
 
 interface DataProductsSectionProps {
@@ -43,7 +56,7 @@ interface DataProductsSectionProps {
   maxVisibleDataProducts?: number;
 }
 
-const DataProductsSection: React.FC<DataProductsSectionProps> = ({
+const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   dataProducts = [],
   activeDomains = [],
   showEditButton = true,
@@ -55,14 +68,19 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
+  const [editingDataProducts, setEditingDataProducts] = useState<DataProduct[]>(
+    []
+  );
   const [displayDataProducts, setDisplayDataProducts] =
     useState<EntityReference[]>(dataProducts);
   const [isLoading, setIsLoading] = useState(false);
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [displayActiveDomains, setDisplayActiveDomains] =
+    useState<EntityReference[]>(activeDomains);
 
   React.useEffect(() => {
     setDisplayDataProducts((prev) => {
-      // Only update if different
       if (JSON.stringify(prev) !== JSON.stringify(dataProducts)) {
         return dataProducts;
       }
@@ -71,7 +89,16 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     });
   }, [dataProducts]);
 
-  // Function to get the correct patch API based on entity type
+  React.useEffect(() => {
+    setDisplayActiveDomains((prev) => {
+      if (JSON.stringify(prev) !== JSON.stringify(activeDomains)) {
+        return activeDomains;
+      }
+
+      return prev;
+    });
+  }, [activeDomains]);
+
   const getPatchAPI = (entityType?: EntityType) => {
     switch (entityType) {
       case EntityType.TABLE:
@@ -86,25 +113,55 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
         return patchMlModelDetails;
       case EntityType.CHART:
         return patchChartDetails;
+      case EntityType.API_COLLECTION:
+        return patchApiCollection;
+      case EntityType.API_ENDPOINT:
+        return patchApiEndPoint;
+      case EntityType.DATABASE:
+        return patchDatabaseDetails;
+      case EntityType.DATABASE_SCHEMA:
+        return patchDatabaseSchemaDetails;
+      case EntityType.STORED_PROCEDURE:
+        return patchStoredProceduresDetails;
+      case EntityType.CONTAINER:
+        return patchContainerDetails;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return patchDataModelDetails;
+      case EntityType.SEARCH_INDEX:
+        return patchSearchIndexDetails;
+      case EntityType.DATA_PRODUCT:
+        return patchDataProduct;
       default:
-        // Default to table API for backward compatibility
         return patchTableDetails;
     }
   };
 
   const handleEditClick = () => {
+    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
+      id: dp.id,
+      name: dp.name || '',
+      displayName: dp.displayName || dp.name,
+      fullyQualifiedName: dp.fullyQualifiedName || '',
+      description: dp.description,
+      type: 'dataProduct',
+    })) as DataProduct[];
+
+    setEditingDataProducts(dpList);
     setIsEditing(true);
+    setPopoverOpen(true);
   };
 
   const fetchAPI = useCallback(
     async (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
       const domainFQNs =
-        activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
+        displayActiveDomains?.map(
+          (domain) => domain.fullyQualifiedName ?? ''
+        ) ?? [];
 
       return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [activeDomains]
+    [displayActiveDomains]
   );
 
   const handleSaveWithDataProducts = useCallback(
@@ -131,7 +188,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
       try {
         setIsLoading(true);
 
-        // Convert DataProduct[] to EntityReference[] format
         const updatedDataProducts: EntityReference[] = dataProductsToSave.map(
           (dp) => ({
             id: dp.id,
@@ -142,41 +198,35 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
           })
         );
 
-        // Create JSON patch by comparing the data products arrays
         const currentData = { dataProducts: displayDataProducts };
         const updatedData = { dataProducts: updatedDataProducts };
         const jsonPatch = compare(currentData, updatedData);
 
-        // Only proceed if there are actual changes
         if (jsonPatch.length === 0) {
           setIsLoading(false);
 
           return;
         }
 
-        // Make the API call using the correct patch API for the entity type
         const patchAPI = getPatchAPI(entityType);
         await patchAPI(idToUse, jsonPatch);
 
-        // Update display immediately
         setDisplayDataProducts(updatedDataProducts);
 
-        // Show success message
         showSuccessToast(
           t('server.update-entity-success', {
             entity: t('label.data-product-plural'),
           })
         );
 
-        // Call the callback to update parent component with the new data products
         if (onDataProductsUpdate) {
           onDataProductsUpdate(updatedDataProducts);
         }
 
-        // Keep loading state for a brief moment to ensure smooth transition
         setTimeout(() => {
           setIsEditing(false);
           setIsLoading(false);
+          setPopoverOpen(false);
         }, 500);
       } catch (error) {
         setIsLoading(false);
@@ -191,8 +241,20 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     [entityId, entityType, displayDataProducts, onDataProductsUpdate, t]
   );
 
-  const handleCancel = () => {
-    setIsEditing(false);
+  const handlePopoverOpenChange = (open: boolean) => {
+    setPopoverOpen(open);
+    if (!open) {
+      setIsEditing(false);
+      const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
+        id: dp.id,
+        name: dp.name || '',
+        displayName: dp.displayName || dp.name,
+        fullyQualifiedName: dp.fullyQualifiedName || '',
+        description: dp.description,
+        type: 'dataProduct',
+      })) as DataProduct[];
+      setEditingDataProducts(dpList);
+    }
   };
 
   const renderLoadingState = () => (
@@ -204,21 +266,21 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
   );
 
   const renderEditingState = () => (
-    <div className="inline-edit-container">
-      <div className="data-products-selector">
-        <DataProductsSelectList
-          open
-          defaultValue={(displayDataProducts || []).map(
-            (item) => item?.fullyQualifiedName ?? ''
-          )}
-          fetchOptions={fetchAPI}
-          mode="multiple"
-          placeholder={t('label.data-product-plural')}
-          onCancel={handleCancel}
-          onSubmit={handleSaveWithDataProducts}
-        />
-      </div>
-    </div>
+    <DataProductsSelectListV1
+      fetchOptions={fetchAPI}
+      popoverProps={{
+        placement: 'bottomLeft',
+        open: popoverOpen,
+        onOpenChange: handlePopoverOpenChange,
+      }}
+      selectedDataProducts={editingDataProducts}
+      onCancel={() => {
+        setPopoverOpen(false);
+        setIsEditing(false);
+      }}
+      onUpdate={handleSaveWithDataProducts}>
+      <div className="data-product-selector-trigger" />
+    </DataProductsSelectListV1>
   );
 
   const renderEmptyContent = () => {
@@ -229,8 +291,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
       return renderEditingState();
     }
 
-    // Show message if no domain is selected
-    if (!activeDomains || activeDomains.length === 0) {
+    if (!displayActiveDomains || displayActiveDomains.length === 0) {
       return (
         <Typography.Text className="text-sm text-grey-muted">
           {t('message.select-domain-to-add-data-product')}
@@ -284,7 +345,9 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
       return renderLoadingState();
     }
     if (isEditing) {
-      return renderEditingState();
+      return (
+        <div className="data-product-edit-wrapper">{renderEditingState()}</div>
+      );
     }
 
     return renderDataProductsDisplay();
@@ -301,8 +364,8 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
             hasPermission &&
             !isEditing &&
             !isLoading &&
-            activeDomains &&
-            activeDomains.length > 0 && (
+            displayActiveDomains &&
+            displayActiveDomains.length > 0 && (
               <button
                 className="edit-icon"
                 type="button"
@@ -326,8 +389,8 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
           hasPermission &&
           !isEditing &&
           !isLoading &&
-          activeDomains &&
-          activeDomains.length > 0 && (
+          displayActiveDomains &&
+          displayActiveDomains.length > 0 && (
             <button
               className="edit-icon"
               type="button"
@@ -336,9 +399,19 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
             </button>
           )}
       </div>
-      <div className="data-products-content">{renderDataProductsContent()}</div>
+      <div className="data-products-content">
+        {isLoading ? (
+          renderLoadingState()
+        ) : isEditing ? (
+          <div className="data-product-edit-wrapper">
+            {renderEditingState()}
+          </div>
+        ) : (
+          renderDataProductsContent()
+        )}
+      </div>
     </div>
   );
 };
 
-export default DataProductsSection;
+export default DataProductsSectionV1;

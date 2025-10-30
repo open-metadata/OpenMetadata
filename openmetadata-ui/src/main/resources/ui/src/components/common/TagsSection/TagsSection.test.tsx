@@ -12,9 +12,43 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import TagsSection from './TagsSection';
+
+// Mock @react-awesome-query-builder/antd
+jest.mock('@react-awesome-query-builder/antd', () => ({
+  Config: {},
+  Utils: {
+    loadFromJsonLogic: jest.fn(),
+    loadTree: jest.fn(),
+  },
+}));
+
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+  useParams: jest.fn().mockReturnValue({}),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+// Mock custom location hook
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+}));
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -76,30 +110,75 @@ jest.mock('../../../assets/svg/classification.svg', () => ({
   ),
 }));
 
-// Mock AsyncSelectList component
-jest.mock('../AsyncSelectList/AsyncSelectList', () => {
-  return jest
+// Mock TagSelectableList component
+jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
+  TagSelectableList: jest
     .fn()
-    .mockImplementation(({ onChange, value, placeholder, ...props }) => (
-      <div data-testid="async-select-list" {...props}>
-        <input
-          data-testid="tag-selector-input"
-          placeholder={placeholder}
-          value={Array.isArray(value) ? value.join(', ') : value}
-          onChange={(e) => {
-            const values = e.target.value.split(', ').filter(Boolean);
-            onChange?.(
-              values.map((v) => ({
-                value: v,
-                label: v,
-                data: { displayName: v },
-              }))
-            );
-          }}
-        />
-      </div>
-    ));
-});
+    .mockImplementation(
+      ({
+        onCancel,
+        onUpdate,
+        selectedTags,
+        children,
+      }: {
+        onCancel?: () => void;
+        onUpdate?: (tags: TagLabel[]) => void;
+        selectedTags: TagLabel[];
+        children: React.ReactNode;
+      }) => {
+        const [inputValue, setInputValue] = React.useState(
+          selectedTags.map((t) => t.tagFQN).join(', ')
+        );
+
+        return (
+          <div data-testid="tag-selectable-list">
+            <div className="tag-selector" data-testid="async-select-list">
+              <input
+                data-testid="tag-selector-input"
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  const tagFQNs = e.target.value
+                    .split(',')
+                    .map((t: string) => t.trim())
+                    .filter(Boolean);
+                  const newTags = tagFQNs.map((fqn: string) => ({
+                    tagFQN: fqn,
+                    name: fqn,
+                    displayName: fqn,
+                    source: TagSource.Classification,
+                    labelType: 'Manual' as const,
+                    state: 'Confirmed' as const,
+                  }));
+                  onUpdate?.(newTags);
+                }}
+              />
+            </div>
+            <button data-testid="tag-cancel" onClick={() => onCancel?.()}>
+              Cancel
+            </button>
+            <button
+              data-testid="tag-update"
+              onClick={() =>
+                onUpdate?.([
+                  {
+                    tagFQN: 'newTag',
+                    name: 'New Tag',
+                    displayName: 'New Tag',
+                    source: TagSource.Classification,
+                    labelType: 'Manual' as const,
+                    state: 'Confirmed' as const,
+                  },
+                ])
+              }>
+              Update
+            </button>
+            {children}
+          </div>
+        );
+      }
+    ),
+}));
 
 // Mock utility functions
 jest.mock('../../../utils/TagClassBase', () => ({

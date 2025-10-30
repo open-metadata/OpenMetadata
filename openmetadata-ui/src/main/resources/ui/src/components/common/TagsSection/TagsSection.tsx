@@ -18,12 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { EntityType } from '../../../enums/entity.enum';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import { patchChartDetails } from '../../../rest/chartsAPI';
@@ -41,10 +36,8 @@ import { patchContainerDetails } from '../../../rest/storageAPI';
 import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
 import { patchTableDetails } from '../../../rest/tableAPI';
 import { patchTopicDetails } from '../../../rest/topicsAPI';
-import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import AsyncSelectList from '../AsyncSelectList/AsyncSelectList';
-import { SelectOption } from '../AsyncSelectList/AsyncSelectList.interface';
+import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import './TagsSection.less';
 
 interface TagsSectionProps {
@@ -57,13 +50,7 @@ interface TagsSectionProps {
   onTagsUpdate?: (updatedTags: TagLabel[]) => void;
 }
 
-interface TagItem {
-  id: string;
-  name: string;
-  displayName: string;
-}
-
-const TagsSection: React.FC<TagsSectionProps> = ({
+const TagsSectionV1: React.FC<TagsSectionProps> = ({
   tags = [],
   showEditButton = true,
   maxVisibleTags = 3,
@@ -75,13 +62,13 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   const { t } = useTranslation();
   const [showAllTags, setShowAllTags] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingTags, setEditingTags] = useState<TagItem[]>([]);
+  const [editingTags, setEditingTags] = useState<TagLabel[]>([]);
   const [displayTags, setDisplayTags] = useState<TagLabel[]>(tags);
   const [isLoading, setIsLoading] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   React.useEffect(() => {
     setDisplayTags((prev) => {
-      // Only update if different
       if (JSON.stringify(prev) !== JSON.stringify(tags)) {
         return tags;
       }
@@ -93,38 +80,17 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   const getTagFqn = (tag: TagLabel) =>
     (tag.tagFQN || tag.name || tag.displayName || '').toString();
 
-  // Split current tags into Tier.* and non-tier tags
   const nonTierTags: TagLabel[] = (displayTags || []).filter(
     (t) => !getTagFqn(t).startsWith('Tier.')
   );
   const tierTags: TagLabel[] = (displayTags || []).filter((t) =>
     getTagFqn(t).startsWith('Tier.')
   );
+
   const getTagDisplayName = (tag: TagLabel) => {
     return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
   };
 
-  const convertToTagItems = (tags: TagLabel[]): TagItem[] => {
-    return tags.map((tag) => ({
-      id: tag.tagFQN || tag.displayName || '',
-      name: tag.tagFQN || tag.displayName || '',
-      displayName: tag.displayName || tag.tagFQN || '',
-    }));
-  };
-
-  const convertToSelectOptions = (tags: TagItem[]): SelectOption[] => {
-    return tags.map((tag) => ({
-      label: tag.displayName,
-      value: tag.name,
-      data: {
-        fullyQualifiedName: tag.name,
-        name: tag.displayName,
-        displayName: tag.displayName,
-      } as unknown as SelectOption['data'],
-    }));
-  };
-
-  // Function to get the appropriate patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
     switch (entityType) {
       case EntityType.TABLE:
@@ -158,7 +124,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
       case EntityType.DATA_PRODUCT:
         return patchDataProduct;
       default:
-        // For entity types without specific patch APIs, throw an error
         throw new Error(
           `No patch API available for entity type: ${entityType}`
         );
@@ -166,12 +131,13 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   };
 
   const handleEditClick = () => {
-    setEditingTags(convertToTagItems(nonTierTags));
+    setEditingTags(nonTierTags);
     setIsEditing(true);
+    setPopoverOpen(true);
   };
 
   const handleSaveWithTags = useCallback(
-    async (tagsToSave: TagItem[]) => {
+    async (tagsToSave: TagLabel[]) => {
       const idToUse = entityId;
 
       if (!idToUse) {
@@ -194,53 +160,36 @@ const TagsSection: React.FC<TagsSectionProps> = ({
       try {
         setIsLoading(true);
 
-        // Convert TagItem[] to TagLabel[] format
-        const updatedNonTier: TagLabel[] = tagsToSave.map((tag) => ({
-          tagFQN: tag.name,
-          displayName: tag.displayName,
-          name: tag.displayName,
-          source: TagSource.Classification,
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-        }));
-
-        // Merge back Tier tags unchanged so tier changes do not affect this section
-        const updatedTags: TagLabel[] = [...tierTags, ...updatedNonTier];
-        // Create JSON patch by comparing the tags arrays
+        const updatedTags: TagLabel[] = [...tierTags, ...tagsToSave];
         const currentData = { tags: displayTags };
         const updatedData = { tags: updatedTags };
         const jsonPatch = compare(currentData, updatedData);
 
-        // Only proceed if there are actual changes
         if (jsonPatch.length === 0) {
           setIsLoading(false);
 
           return;
         }
 
-        // Make the API call using the correct patch API for the entity type
         const patchAPI = getPatchAPI(entityType);
         await patchAPI(idToUse, jsonPatch);
 
-        // Update display immediately
         setDisplayTags(updatedTags);
 
-        // Show success message
         showSuccessToast(
           t('server.update-entity-success', {
             entity: t('label.tag-plural'),
           })
         );
 
-        // Call the callback to update parent component with the new tags
         if (onTagsUpdate) {
           onTagsUpdate(updatedTags);
         }
 
-        // Keep loading state for a brief moment to ensure smooth transition
         setTimeout(() => {
           setIsEditing(false);
           setIsLoading(false);
+          setPopoverOpen(false);
         }, 500);
       } catch (error) {
         setIsLoading(false);
@@ -255,24 +204,106 @@ const TagsSection: React.FC<TagsSectionProps> = ({
     [entityId, entityType, displayTags, tierTags, onTagsUpdate, t]
   );
 
-  // Save now happens via selection change; no explicit save button
-
-  const handleCancel = () => {
-    setEditingTags(convertToTagItems(nonTierTags));
-    setIsEditing(false);
+  const handleTagSelection = async (selectedTags: TagLabel[]) => {
+    setEditingTags(selectedTags);
+    await handleSaveWithTags(selectedTags);
   };
 
-  const handleTagSelection = async (selectedOptions: unknown) => {
-    const options = Array.isArray(selectedOptions)
-      ? selectedOptions
-      : [selectedOptions];
-    const newTags = options.map((option: any) => ({
-      id: option.value,
-      name: option.value,
-      displayName: option.data?.displayName || option.label,
-    }));
-    setEditingTags(newTags);
-    await handleSaveWithTags(newTags);
+  const handlePopoverOpenChange = (open: boolean) => {
+    setPopoverOpen(open);
+    if (!open) {
+      setIsEditing(false);
+      setEditingTags(nonTierTags);
+    }
+  };
+
+  const renderLoadingState = () => (
+    <div className="tags-loading-container">
+      <div className="tags-loading-spinner">
+        <div className="loading-spinner" />
+      </div>
+    </div>
+  );
+
+  const renderEditingState = () => (
+    <TagSelectableList
+      hasPermission={hasPermission}
+      popoverProps={{
+        placement: 'bottomLeft',
+        open: popoverOpen,
+        onOpenChange: handlePopoverOpenChange,
+        overlayClassName: 'tag-select-popover',
+      }}
+      selectedTags={editingTags}
+      onCancel={() => {
+        setPopoverOpen(false);
+        setIsEditing(false);
+      }}
+      onUpdate={handleTagSelection}>
+      <div className="d-none tag-selector-display">
+        {editingTags.length > 0 && (
+          <div className="selected-tags-list">
+            {editingTags.map((tag) => (
+              <div className="selected-tag-chip" key={tag.tagFQN}>
+                <ClassificationIcon className="tag-icon" />
+                <span className="tag-name">{getTagDisplayName(tag)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </TagSelectableList>
+  );
+
+  const renderEmptyContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return (
+      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+    );
+  };
+
+  const renderTagsDisplay = () => (
+    <div className="tags-display">
+      <div className="tags-list">
+        {(showAllTags ? nonTierTags : nonTierTags.slice(0, maxVisibleTags)).map(
+          (tag, index) => (
+            <div className="tag-item" key={index}>
+              <ClassificationIcon className="tag-icon" />
+              <span className="tag-name">{getTagDisplayName(tag)}</span>
+            </div>
+          )
+        )}
+        {nonTierTags.length > maxVisibleTags && (
+          <button
+            className="show-more-tags-button"
+            type="button"
+            onClick={() => setShowAllTags(!showAllTags)}>
+            {showAllTags
+              ? t('label.less')
+              : `+${nonTierTags.length - maxVisibleTags} ${t(
+                  'label.more-lowercase'
+                )}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderTagsContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return renderTagsDisplay();
   };
 
   if (!nonTierTags.length) {
@@ -291,36 +322,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
             </span>
           )}
         </div>
-        <div className="tags-content">
-          {isLoading ? (
-            <div className="tags-loading-container">
-              <div className="tags-loading-spinner">
-                <div className="loading-spinner" />
-              </div>
-            </div>
-          ) : isEditing ? (
-            <div className="inline-edit-container">
-              <AsyncSelectList
-                newLook
-                open
-                className="tag-selector"
-                fetchOptions={tagClassBase.getTags}
-                initialOptions={convertToSelectOptions(editingTags)}
-                mode="multiple"
-                placeholder={t('label.add-a-entity', {
-                  entity: t('label.tag'),
-                })}
-                value={editingTags.map((tag) => tag.name)}
-                onCancel={handleCancel}
-                onChange={handleTagSelection}
-              />
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-data-found')}
-            </span>
-          )}
-        </div>
+        <div className="tags-content">{renderEmptyContent()}</div>
       </div>
     );
   }
@@ -340,60 +342,9 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           </span>
         )}
       </div>
-      <div className="tags-content">
-        {isLoading ? (
-          <div className="tags-loading-container">
-            <div className="tags-loading-spinner">
-              <div className="loading-spinner" />
-            </div>
-          </div>
-        ) : isEditing ? (
-          <div className="inline-edit-container">
-            <AsyncSelectList
-              newLook
-              open
-              className="tag-selector"
-              fetchOptions={tagClassBase.getTags}
-              initialOptions={convertToSelectOptions(editingTags)}
-              mode="multiple"
-              placeholder={t('label.add-a-entity', {
-                entity: t('label.tag'),
-              })}
-              value={editingTags.map((tag) => tag.name)}
-              onCancel={handleCancel}
-              onChange={handleTagSelection}
-            />
-          </div>
-        ) : (
-          <div className="tags-display">
-            <div className="tags-list">
-              {(showAllTags
-                ? nonTierTags
-                : nonTierTags.slice(0, maxVisibleTags)
-              ).map((tag, index) => (
-                <div className="tag-item" key={index}>
-                  <ClassificationIcon className="tag-icon" />
-                  <span className="tag-name">{getTagDisplayName(tag)}</span>
-                </div>
-              ))}
-              {nonTierTags.length > maxVisibleTags && (
-                <button
-                  className="show-more-tags-button"
-                  type="button"
-                  onClick={() => setShowAllTags(!showAllTags)}>
-                  {showAllTags
-                    ? t('label.less')
-                    : `+${nonTierTags.length - maxVisibleTags} ${t(
-                        'label.more-lowercase'
-                      )}`}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      <div className="tags-content">{renderTagsContent()}</div>
     </div>
   );
 };
 
-export default TagsSection;
+export default TagsSectionV1;

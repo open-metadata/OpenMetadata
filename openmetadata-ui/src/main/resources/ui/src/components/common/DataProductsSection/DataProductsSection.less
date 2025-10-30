@@ -87,6 +87,13 @@
       font-size: 13px;
     }
 
+    .data-product-selector-trigger {
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .data-products-display {
       .data-products-list {
         display: flex;
@@ -178,5 +185,13 @@
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+.data-product-select-popover {
+  width: 285px;
+  padding-bottom: 0 !important;
+  .ant-popover-inner-content {
+    padding: 8px 12px;
+    padding-bottom: 0;
   }
 }
