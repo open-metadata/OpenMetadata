@@ -12,8 +12,10 @@
  */
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -24,10 +26,15 @@ import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../../common/atoms/table/useCardView';
 import { useDataTable } from '../../common/atoms/table/useDataTable';
+import DomainEmptyState from '../DomainEmptyState';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
-const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
+const SubDomainsTable = ({
+  domainFqn,
+  permissions,
+  onAddSubDomain,
+}: SubDomainsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const subdomainListing = useSubdomainListingData({
@@ -106,6 +113,41 @@ const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
     },
   });
 
+  const renderContent = () => {
+    if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
+      return (
+        <DomainEmptyState
+          createLabel={t('label.add-entity', {
+            entity: t('label.sub-domain'),
+          })}
+          icon={<FolderEmptyIcon />}
+          message={t('message.no-data-message', {
+            entity: t('label.sub-domain-lowercase-plural'),
+          })}
+          showCreate={permissions.Create}
+          testId="subdomain-add-button"
+          onCreate={onAddSubDomain}
+        />
+      );
+    }
+
+    if (view === 'table') {
+      return (
+        <>
+          {dataTable}
+          {paginationControls}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cardView}
+        {paginationControls}
+      </>
+    );
+  };
+
   return (
     <>
       <TableContainer component={Paper} sx={{ mb: 5 }}>
@@ -129,10 +171,7 @@ const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
           </Box>
           {filterSelectionDisplay}
         </Box>
-
-        {view === 'table' ? dataTable : cardView}
-
-        {paginationControls}
+        {renderContent()}
       </TableContainer>
       {deleteModal}
     </>

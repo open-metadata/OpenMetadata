@@ -18,6 +18,7 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as CustomPropertyEmpty } from '../../../assets/svg/custom-property-empty.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -36,6 +37,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import DomainEmptyState from '../../Domain/DomainEmptyState';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import './custom-property-table.less';
@@ -232,9 +234,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   ) {
     return (
       <div className="h-full p-x-lg flex-center border-default border-radius-sm">
-        <ErrorPlaceHolder
-          className={classNames(className)}
-          placeholderText={
+        <DomainEmptyState
+          contentMaxWidth="24rem"
+          icon={<CustomPropertyEmpty />}
+          message={
             <Transi18next
               i18nKey="message.no-custom-properties-entity"
               renderElement={

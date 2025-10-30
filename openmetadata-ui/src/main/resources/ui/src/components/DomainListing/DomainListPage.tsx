@@ -13,9 +13,11 @@
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
@@ -37,6 +39,7 @@ import { usePaginationControls } from '../common/atoms/pagination/usePaginationC
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
+import DomainEmptyState from '../Domain/DomainEmptyState';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import DomainTreeView from './components/DomainTreeView';
 import { useDomainListingData } from './hooks/useDomainListingData';
@@ -192,6 +195,53 @@ const DomainListPage = () => {
     },
   });
 
+  const renderContent = () => {
+    if (!domainListing.loading && isEmpty(domainListing.entities)) {
+      return (
+        <DomainEmptyState
+          createLabel={t('label.add-entity', {
+            entity: t('label.domain'),
+          })}
+          icon={<FolderEmptyIcon />}
+          message={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
+          showCreate={permissions.domain?.Create}
+          testId="domain-add-button"
+          onCreate={openDrawer}
+        />
+      );
+    }
+
+    if (isTreeView) {
+      return (
+        <Box sx={{ px: 6, pb: 6 }}>
+          <DomainTreeView
+            refreshToken={treeRefreshToken}
+            searchQuery={domainListing.urlState.searchQuery}
+            onDomainMutated={refreshAllDomains}
+          />
+        </Box>
+      );
+    }
+
+    if (view === 'table') {
+      return (
+        <>
+          {dataTable}
+          {paginationControls}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cardView}
+        {paginationControls}
+      </>
+    );
+  };
+
   return (
     <>
       {breadcrumbs}
@@ -218,21 +268,7 @@ const DomainListPage = () => {
           </Box>
           {filterSelectionDisplay}
         </Box>
-
-        {isTreeView ? (
-          <Box sx={{ px: 6, pb: 6 }}>
-            <DomainTreeView
-              refreshToken={treeRefreshToken}
-              searchQuery={domainListing.urlState.searchQuery}
-              onDomainMutated={refreshAllDomains}
-            />
-          </Box>
-        ) : (
-          <>
-            {view === 'table' ? dataTable : cardView}
-            {paginationControls}
-          </>
-        )}
+        {renderContent()}
       </TableContainer>
       {deleteModal}
       {formDrawer}

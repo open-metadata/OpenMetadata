@@ -12,7 +12,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Checkbox,
@@ -41,14 +40,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
@@ -75,7 +73,6 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -97,6 +94,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
+import DomainEmptyState from '../../../Domain/DomainEmptyState';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -475,61 +473,16 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <ErrorPlaceHolderNew
-            className="p-lg"
-            icon={
-              <AddPlaceHolderIcon
-                className="text-grey-14"
-                height={140}
-                width={140}
-              />
-            }
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph>
-              {noDataPlaceholder ??
-                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: t('label.asset'),
-                })}
-            </Typography.Paragraph>
-            <Typography.Paragraph>
-              <Transi18next
-                i18nKey="message.refer-to-our-doc"
-                renderElement={
-                  <a
-                    href={GLOSSARIES_DOCS}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
-                values={{
-                  doc: t('label.doc-plural-lowercase'),
-                }}
-              />
-            </Typography.Paragraph>
-
-            {permissions.Create && (
-              <Tooltip
-                placement="top"
-                title={
-                  isEntityDeleted
-                    ? t(
-                        'message.this-action-is-not-allowed-for-deleted-entities'
-                      )
-                    : t('label.add')
-                }>
-                <Button
-                  ghost
-                  data-testid="add-placeholder-button"
-                  disabled={isEntityDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={onAddAsset}>
-                  {t('label.add')}
-                </Button>
-              </Tooltip>
-            )}
-          </ErrorPlaceHolderNew>
+          <DomainEmptyState
+            createLabel={t('label.add-entity', { entity: t('label.asset') })}
+            icon={<FolderEmptyIcon />}
+            message={t('message.no-data-message', {
+              entity: t('label.data-asset-lowercase-plural'),
+            })}
+            showCreate={permissions.Create}
+            testId="data-assets-add-button"
+            onCreate={onAddAsset}
+          />
         );
       }
     }, [

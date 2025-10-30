@@ -22,9 +22,9 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
@@ -33,12 +33,12 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
+import DomainEmptyState from '../../DomainEmptyState';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
@@ -110,15 +110,17 @@ const DataProductsTab = forwardRef(
 
     if (isEmpty(dataProducts.data) && !loading) {
       return (
-        <ErrorPlaceHolder
-          className="p-lg"
-          heading={t('label.data-product')}
-          permission={permissions.Create}
-          permissionValue={t('label.create-entity', {
+        <DomainEmptyState
+          createLabel={t('label.add-entity', {
             entity: t('label.data-product'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={onAddDataProduct}
+          icon={<FolderEmptyIcon />}
+          message={t('message.no-data-message', {
+            entity: t('label.data-product-lowercase-plural'),
+          })}
+          showCreate={permissions.Create}
+          testId="data-product-add-button"
+          onCreate={onAddDataProduct}
         />
       );
     }
