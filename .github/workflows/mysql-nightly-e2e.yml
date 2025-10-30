@@ -146,6 +146,7 @@ jobs:
           name: playwright-HTML-report-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 1
+          compression-level: 9
 
       - name: Clean Up
         run: |
