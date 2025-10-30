@@ -1748,7 +1748,7 @@ export interface ConfigObject {
      * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
      * Admin role for full metadata extraction.
      *
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */
