@@ -77,10 +77,17 @@
         margin-left: @size-xxs;
         width: @size-sm;
         height: @size-sm;
+        content: '';
+      }
 
+      &.collapsed::after {
         background: no-repeat center / contain
           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-        content: '';
+      }
+
+      &.expanded::after {
+        background: no-repeat center / contain
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'/></svg>");
       }
     }
 
