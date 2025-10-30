@@ -22,6 +22,7 @@ import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -34,6 +35,7 @@ import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -45,6 +47,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
@@ -56,8 +59,9 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -70,7 +74,7 @@ import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -92,9 +96,12 @@ import {
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
+
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -176,6 +183,12 @@ const DomainDetails = ({
   const [assetCount, setAssetCount] = useState<number>(0);
   const [dataProductsCount, setDataProductsCount] = useState<number>(0);
   const [subDomainsCount, setSubDomainsCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
+    useState<boolean>(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
@@ -232,6 +245,18 @@ const DomainDetails = ({
         navigate(getDomainDetailsPath(domainFqn, activeKey));
       }
     }
+  };
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DOMAIN,
+      domain.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
   };
 
   const {
@@ -330,6 +355,33 @@ const DomainDetails = ({
   const closeAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(false);
   }, []);
+
+  const fetchActiveAnnouncement = async () => {
+    try {
+      const announcements = await getActiveAnnouncement(
+        getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
+      );
+      if (!isEmpty(announcements.data)) {
+        setActiveAnnouncement(announcements.data[0]);
+      } else {
+        setActiveAnnouncement(undefined);
+      }
+    } catch (error) {
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
+    }
+  };
+
+  const handleOpenAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(true);
+  };
+
+  const handleCloseAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(false);
+    fetchActiveAnnouncement();
+  };
 
   const [name, displayName] = useMemo(() => {
     if (isVersionsView) {
@@ -602,6 +654,26 @@ const DomainDetails = ({
   );
 
   const manageButtonContent: ItemType[] = [
+    ...(domainPermission?.EditAll
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
+            ),
+            key: 'announcement-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleOpenAnnouncementDrawer();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(editDisplayNamePermission
       ? ([
           {
@@ -701,6 +773,8 @@ const DomainDetails = ({
       onAddSubDomain: addSubDomain,
       showAddSubDomainModal: false,
       labelMap: tabLabelMap,
+      feedCount,
+      onFeedUpdate: getEntityFeedCount,
     });
 
     return getDetailsTabWithNewLabel(
@@ -719,6 +793,7 @@ const DomainDetails = ({
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
+    feedCount,
     openAssetDrawer,
     fetchDomainAssets,
     handleTabChange,
@@ -728,6 +803,8 @@ const DomainDetails = ({
     fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
+    getEntityFeedCount();
+    fetchActiveAnnouncement();
   }, [domain.fullyQualifiedName]);
 
   useEffect(() => {
@@ -808,17 +885,17 @@ const DomainDetails = ({
               titleColor={domain.style?.color}
             />
           </Box>
-          <Box sx={{ width: '320px' }}>
+          <Box>
             <Box
               sx={{
                 display: 'flex',
                 gap: 3,
                 justifyContent: 'flex-end',
+                alignItems: 'center',
                 pb: '4px',
               }}>
               {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
-                  className="m-l-xs"
                   data-testid="domain-details-add-button-menu"
                   menu={{
                     items: addButtonContent,
@@ -893,6 +970,12 @@ const DomainDetails = ({
                   </Dropdown>
                 )}
               </ButtonGroup>
+              {activeAnnouncement && (
+                <AnnouncementCard
+                  announcement={activeAnnouncement}
+                  onClick={handleOpenAnnouncementDrawer}
+                />
+              )}
             </Box>
           </Box>
         </Box>
@@ -975,6 +1058,15 @@ const DomainDetails = ({
         onSubmit={onStyleSave}
       />
       {subDomainDrawer}
+
+      <AnnouncementDrawer
+        showToastInSnackbar
+        createPermission={domainPermission?.EditAll}
+        entityFQN={domain.fullyQualifiedName ?? ''}
+        entityType={EntityType.DOMAIN}
+        open={isAnnouncementDrawerOpen}
+        onClose={handleCloseAnnouncementDrawer}
+      />
     </>
   );
 
@@ -986,4 +1078,4 @@ const DomainDetails = ({
   );
 };
 
-export default DomainDetails;
+export default withActivityFeed(DomainDetails);

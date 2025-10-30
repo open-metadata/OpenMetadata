@@ -37,6 +37,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -57,6 +58,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -774,5 +776,22 @@ public class SystemResource {
       @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
+  }
+
+  @GET
+  @Path("/cache/stats")
+  @Operation(
+      operationId = "getCacheStats",
+      summary = "Get cache statistics",
+      description = "Get cache statistics including hit rates and sizes",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Cache statistics"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response getCacheStats(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+
+    Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
+    return Response.ok(stats).build();
   }
 }

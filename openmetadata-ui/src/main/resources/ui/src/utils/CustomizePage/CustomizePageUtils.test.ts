@@ -60,6 +60,18 @@ describe('CustomizePageUtils', () => {
 
       expect(typeof result).toBe('string');
     });
+
+    it("should return name if it's not predefined", () => {
+      const tab: Tab = {
+        id: EntityTabs.OVERVIEW,
+        name: 'custom-tab-name' as EntityTabs,
+        layout: [],
+      };
+
+      const result = getTabDisplayName(tab);
+
+      expect(result).toBe('custom-tab-name');
+    });
   });
 
   describe('sortTabs', () => {
@@ -104,7 +116,7 @@ describe('CustomizePageUtils', () => {
     it('should return empty string for invalid tab id', () => {
       const result = getTabLabelFromId('invalid-tab' as EntityTabs);
 
-      expect(result).toBe('');
+      expect(result).toBe('invalid-tab');
     });
   });
 
