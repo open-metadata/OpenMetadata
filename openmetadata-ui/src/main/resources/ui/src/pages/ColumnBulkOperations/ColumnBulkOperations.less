@@ -1,0 +1,182 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.column-bulk-operations-container {
+  padding: 20px 24px;
+}
+
+.column-bulk-operations-header {
+  margin-bottom: 20px;
+
+  .ant-typography {
+    &.ant-typography-h3 {
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 28px;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+  }
+
+  .ant-typography-paragraph {
+    font-size: 14px;
+    line-height: 20px;
+    color: #6b7280;
+    margin-bottom: 0;
+  }
+}
+
+.column-bulk-operations-tabs {
+  .ant-tabs-nav {
+    margin-bottom: 24px;
+  }
+}
+
+.column-search-filters {
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+}
+
+.column-occurrence-table {
+  margin-top: 16px;
+
+  .occurrence-count {
+    font-weight: 600;
+    color: #7147e8;
+  }
+}
+
+.column-preview-diff {
+  .diff-added {
+    background-color: #f0fdf4;
+    color: #166534;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  .diff-removed {
+    background-color: #fef2f2;
+    color: #991b1b;
+    text-decoration: line-through;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  .diff-unchanged {
+    color: #37352f;
+  }
+}
+
+.csv-upload-area {
+  margin-top: 16px;
+  padding: 40px;
+  border: 2px dashed #dce1e7;
+  border-radius: 8px;
+  text-align: center;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    border-color: #7147e8;
+    background-color: #f5f2ff;
+  }
+
+  .upload-icon {
+    font-size: 48px;
+    color: #7147e8;
+    margin-bottom: 16px;
+  }
+}
+
+.bulk-update-preview-modal {
+  .ant-modal-body {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .preview-summary {
+    background-color: #f5f2ff;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+
+    .summary-stat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+
+      .stat-value {
+        font-weight: 600;
+        font-size: 20px;
+        color: #7147e8;
+      }
+    }
+  }
+
+  .preview-item {
+    border: 1px solid #dce1e7;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+
+    &.has-changes {
+      border-left: 4px solid #7147e8;
+    }
+
+    &.no-changes {
+      opacity: 0.6;
+    }
+
+    .column-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
+      .column-name {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .column-path {
+        color: #6b7280;
+        font-size: 12px;
+      }
+    }
+
+    .changes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+
+      .change-section {
+        .section-label {
+          font-size: 12px;
+          color: #6b7280;
+          margin-bottom: 4px;
+        }
+
+        .section-value {
+          font-size: 13px;
+          padding: 8px;
+          background-color: #f9fafb;
+          border-radius: 4px;
+          min-height: 36px;
+        }
+      }
+    }
+  }
+}
