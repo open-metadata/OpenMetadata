@@ -17,11 +17,12 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, toString } from 'lodash';
+import { cloneDeep, isEmpty, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -42,6 +43,7 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
@@ -49,6 +51,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
   getEntityDeleteMessage,
@@ -63,7 +66,7 @@ import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBas
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -81,6 +84,9 @@ import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumb
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
+
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -136,6 +142,9 @@ const DataProductsDetailsPage = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
+    useState<boolean>(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -156,6 +165,36 @@ const DataProductsDetailsPage = ({
   const closeAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(false);
   }, []);
+
+  const fetchActiveAnnouncement = async () => {
+    try {
+      const announcements = await getActiveAnnouncement(
+        getEntityFeedLink(
+          EntityType.DATA_PRODUCT,
+          dataProduct.fullyQualifiedName ?? ''
+        )
+      );
+      if (!isEmpty(announcements.data)) {
+        setActiveAnnouncement(announcements.data[0]);
+      } else {
+        setActiveAnnouncement(undefined);
+      }
+    } catch (error) {
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
+    }
+  };
+
+  const handleOpenAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(true);
+  };
+
+  const handleCloseAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(false);
+    fetchActiveAnnouncement();
+  };
 
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
     const items: BreadcrumbItem[] = [];
@@ -278,6 +317,26 @@ const DataProductsDetailsPage = ({
   }, [dataProduct, enqueueSnackbar]);
 
   const manageButtonContent: ItemType[] = [
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
+            ),
+            key: 'announcement-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleOpenAnnouncementDrawer();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(editDisplayNamePermission
       ? ([
           {
@@ -488,6 +547,7 @@ const DataProductsDetailsPage = ({
     fetchDataProductPermission();
     fetchDataProductAssets();
     getEntityFeedCount();
+    fetchActiveAnnouncement();
   }, [dataProductFqn]);
 
   const toggleTabExpanded = () => {
@@ -650,6 +710,15 @@ const DataProductsDetailsPage = ({
           </Box>
         </Box>
 
+        {activeAnnouncement && (
+          <Box sx={{ mx: 5 }}>
+            <AnnouncementCard
+              announcement={activeAnnouncement}
+              onClick={handleOpenAnnouncementDrawer}
+            />
+          </Box>
+        )}
+
         <GenericProvider<DataProduct>
           muiTags
           currentVersionData={dataProduct}
@@ -736,6 +805,14 @@ const DataProductsDetailsPage = ({
         style={dataProduct.style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
+      />
+
+      <AnnouncementDrawer
+        createPermission={editAllPermission}
+        entityFQN={dataProduct.fullyQualifiedName ?? ''}
+        entityType={EntityType.DATA_PRODUCT}
+        open={isAnnouncementDrawerOpen}
+        onClose={handleCloseAnnouncementDrawer}
       />
     </>
   );
