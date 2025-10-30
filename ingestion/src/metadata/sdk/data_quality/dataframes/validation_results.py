@@ -12,11 +12,14 @@
 """DataFrame validation result models."""
 
 from enum import Enum
-from typing import List
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.sdk import OpenMetadata
+from metadata.sdk.data_quality.dataframes.open_metadata import push_validation_results
 
 
 class FailureMode(Enum):
@@ -39,7 +42,7 @@ class ValidationResult(BaseModel):
     total_tests: int
     passed_tests: int
     failed_tests: int
-    test_results: List[TestCaseResult]
+    test_cases_and_results: List[Tuple[TestCase, TestCaseResult]]
     execution_time_ms: float
 
     @property
@@ -67,3 +70,18 @@ class ValidationResult(BaseModel):
             for result in self.test_results
             if result.testCaseStatus == TestCaseStatus.Success
         ]
+
+    @property
+    def test_results(self) -> List[TestCaseResult]:
+        """Get all test results."""
+        return [result for _, result in self.test_cases_and_results]
+
+    def publish_to_openmetadata(
+        self, table_fqn: str, client: Optional[OpenMetadata] = None
+    ) -> None:
+        """Publish test results to OpenMetadata.
+        Args:
+            table_fqn: Fully qualified table name
+            client: OpenMetadata client
+        """
+        return push_validation_results(table_fqn, self, client=client)

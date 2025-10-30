@@ -10,28 +10,31 @@
 #  limitations under the License.
 
 """Orchestration engine for DataFrame validation execution."""
-
+import logging
 import time
-from typing import List
+from datetime import datetime
+from typing import List, Tuple, Type
 
 from pandas import DataFrame
 
-from metadata.data_quality.api.models import TestCaseDefinition
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.sdk.data_quality.dataframes.dataframe_validator_adapter import (
-    DataFrameValidatorAdapter,
-)
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.sdk.data_quality.dataframes.validation_results import (
     FailureMode,
     ValidationResult,
 )
+from metadata.sdk.data_quality.dataframes.validators import VALIDATOR_REGISTRY
+
+logger = logging.getLogger(__name__)
 
 
 class DataFrameValidationEngine:
     """Orchestrates execution of multiple validators on a DataFrame."""
 
-    def __init__(self, test_definitions: List[TestCaseDefinition]):
-        self.test_definitions: List[TestCaseDefinition] = test_definitions
+    def __init__(self, test_cases: List[TestCase]):
+        self.test_cases: List[TestCase] = test_cases
 
     def execute(
         self,
@@ -47,12 +50,12 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with outcomes for all tests
         """
-        results: List[TestCaseResult] = []
+        results: List[Tuple[TestCase, TestCaseResult]] = []
         start_time = time.time()
 
-        for test_def in self.test_definitions:
-            test_result = self._execute_single_test(df, test_def)
-            results.append(test_result)
+        for test_case in self.test_cases:
+            test_result = self._execute_single_test(df, test_case)
+            results.append((test_case, test_result))
 
             if mode is FailureMode.SHORT_CIRCUIT and test_result.testCaseStatus in (
                 TestCaseStatus.Failed,
@@ -64,22 +67,38 @@ class DataFrameValidationEngine:
         return self._build_validation_result(results, execution_time)
 
     def _execute_single_test(
-        self, df: DataFrame, test_definition: TestCaseDefinition
+        self, df: DataFrame, test_case: TestCase
     ) -> TestCaseResult:
-        """Execute a single test via adapter.
-
-        Args:
-            df: DataFrame to validate
-            test_definition: Test configuration
+        """Execute validation and return structured result.
 
         Returns:
-            TestCaseResult for this test
+            TestValidationResult with validation outcome
         """
-        adapter = DataFrameValidatorAdapter(df, test_definition)
-        return adapter.run_validation()
+        validator_class = self._get_validator_class(test_case)
 
+        validator = validator_class(
+            runner=[df],
+            test_case=test_case,
+            execution_date=Timestamp(root=int(datetime.now().timestamp() * 1000)),
+        )
+
+        try:
+            return validator.run_validation()
+        except Exception as err:
+            message = (
+                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
+            )
+            logger.exception(message)
+            return validator.get_test_case_result_object(
+                validator.execution_date,
+                TestCaseStatus.Aborted,
+                message,
+                [],
+            )
+
+    @staticmethod
     def _build_validation_result(
-        self, test_results: List[TestCaseResult], execution_time_ms: float
+        test_results: List[Tuple[TestCase, TestCaseResult]], execution_time_ms: float
     ) -> ValidationResult:
         """Build aggregated validation result.
 
@@ -91,7 +110,7 @@ class DataFrameValidationEngine:
             ValidationResult with aggregated outcomes
         """
         passed = sum(
-            1 for r in test_results if r.testCaseStatus == TestCaseStatus.Success
+            1 for _, r in test_results if r.testCaseStatus == TestCaseStatus.Success
         )
         failed = len(test_results) - passed
         success = failed == 0
@@ -101,6 +120,26 @@ class DataFrameValidationEngine:
             total_tests=len(test_results),
             passed_tests=passed,
             failed_tests=failed,
-            test_results=test_results,
+            test_cases_and_results=test_results,
             execution_time_ms=execution_time_ms,
         )
+
+    @staticmethod
+    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:
+        """Resolve validator class from test definition name.
+
+        Returns:
+            Validator class for the test definition
+
+        Raises:
+            ValueError: If test definition is not supported
+        """
+        validator_class = VALIDATOR_REGISTRY.get(
+            test_case.testDefinition.fullyQualifiedName  # pyright: ignore[reportArgumentType]
+        )
+        if not validator_class:
+            raise ValueError(
+                f"Unknown test definition: {test_case.testDefinition.fullyQualifiedName}"
+            )
+
+        return validator_class

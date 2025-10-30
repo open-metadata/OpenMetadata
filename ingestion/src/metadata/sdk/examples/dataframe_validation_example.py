@@ -11,9 +11,11 @@
 
 """Examples demonstrating DataFrame validation with OpenMetadata SDK."""
 # pyright: reportUnknownVariableType=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
+# pyright: reportUnusedCallResult=false
 # pylint: disable=W5001
 import pandas as pd
 
+from metadata.sdk import configure
 from metadata.sdk.data_quality import (
     ColumnValuesToBeBetween,
     ColumnValuesToBeNotNull,
@@ -106,6 +108,56 @@ def multiple_tests_example():
         if test_result.failed_rows > 0:
             percentage = test_result.failed_rows / test_result.total_rows * 100
             print(f"  Failed: {test_result.failed_rows} rows ({percentage:.1f}%)")
+
+
+def integrating_with_openmetadata_example():
+    """Integrating with OpenMetadata."""
+
+    def transform_to_dwh_table(raw_df: pd.DataFrame) -> pd.DataFrame:
+        """Transform the dataframe to dwh table."""
+        return raw_df
+
+    configure(host="http://localhost:8585/api", jwt_token="your jwt token")
+
+    df = pd.read_parquet("s3://some_bucket/raw_table.parquet")
+
+    df = transform_to_dwh_table(df)
+
+    # Instantiate validator and load the executable test suite for a table
+    validator = DataFrameValidator()
+    validator.add_openmetadata_table_tests(
+        "DbService.database_name.schema_name.dwh_table"
+    )
+
+    result = validator.validate(df)
+    print(f"Validation: {'PASSED' if result.success else 'FAILED'}")
+
+    # Publish the results back to Open Metadata
+    result.publish_to_openmetadata("DbService.database_name.schema_name.table_name")
+
+    if result.success:
+        df.to_parquet("s3://some_bucket/dwh_table.parquet")
+
+
+def processing_big_data_with_chunks_example():
+    """Processing big data with chunks."""
+    validator = DataFrameValidator()
+    validator.add_openmetadata_table_tests(
+        "DbService.database_name.schema_name.dwh_table"
+    )
+
+    def load_df_to_destination(_df: pd.DataFrame, _result: ValidationResult):
+        """Loads data into destination."""
+
+    def rollback(_df: pd.DataFrame, _result: ValidationResult):
+        """Clears data previously loaded"""
+
+    validator.run(
+        pd.read_csv("somefile.csv", chunksize=1000),
+        on_success=load_df_to_destination,
+        on_failure=rollback,
+        mode=FailureMode.SHORT_CIRCUIT,
+    )
 
 
 def validation_failure_example():

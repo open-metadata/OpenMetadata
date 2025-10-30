@@ -38,13 +38,13 @@ class TestDataFrameValidator:
         """Test validator can be created."""
         validator = DataFrameValidator(Mock())
         assert validator is not None
-        assert validator._test_definitions == []
+        assert validator._test_cases == []
 
     def test_add_single_test(self):
         """Test adding a single test definition."""
         validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
-        assert len(validator._test_definitions) == 1
+        assert len(validator._test_cases) == 1
 
     def test_add_multiple_tests(self):
         """Test adding multiple test definitions at once."""
@@ -54,7 +54,7 @@ class TestDataFrameValidator:
             ColumnValuesToBeUnique(column="id"),
             TableRowCountToBeBetween(min_count=1, max_count=100),
         )
-        assert len(validator._test_definitions) == 3
+        assert len(validator._test_cases) == 3
 
 
 class TestValidationSuccess:

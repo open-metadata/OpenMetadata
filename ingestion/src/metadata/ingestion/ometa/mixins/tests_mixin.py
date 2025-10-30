@@ -170,7 +170,7 @@ class OMetaTestsMixin:
         test_definition_fqn: Optional[str] = None,
         test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
         description: Optional[str] = None,
-    ):
+    ) -> TestCase:
         """Get or create a test case
 
         Args:
@@ -202,6 +202,34 @@ class OMetaTestsMixin:
             )  # type: ignore
         )
         return test_case
+
+    def get_executable_test_suite(self, table_fqn: str) -> Optional[TestSuite]:
+        """Given an entity fqn, retrieve the link test suite if it exists
+
+        Args:
+            table_fqn (str): entity fully qualified name
+
+        Returns:
+            An instance of TestSuite or None
+        """
+        table_entity = self.get_by_name(
+            entity=Table, fqn=table_fqn, fields=["testSuite"]
+        )
+        if not table_entity:
+            raise RuntimeError(
+                f"Unable to find table {table_fqn} in OpenMetadata. "
+                "This could be because the table has not been ingested yet or your JWT Token is expired or missing."
+            )
+
+        if not table_entity.testSuite:
+            return None
+
+        return self.get_by_name(
+            entity=TestSuite,
+            fqn=table_entity.testSuite.fullyQualifiedName,
+            fields=["tests"],
+            nullable=False,
+        )
 
     def get_or_create_executable_test_suite(
         self, entity_fqn: str
@@ -379,3 +407,13 @@ class OMetaTestsMixin:
             data=inspection_query,
         )
         return TestCase(**resp)
+
+    def delete_test_case(self, test_case_fqn: str) -> None:
+        """Delete a test case
+        Args:
+            test_case_fqn: Fully qualified name of the test case to delete
+        """
+        url = f"{self.get_suffix(TestCase)}/name/{quote(test_case_fqn)}"
+        url += f"?recursive=true"
+        url += f"&hardDelete=true"
+        self.client.delete(url)
