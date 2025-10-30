@@ -37,7 +37,11 @@ import { getColumnContent } from '../CustomNode.utils';
 import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
-const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
+const NodeChildren = ({
+  node,
+  isConnectable,
+  isColumnsListExpanded,
+}: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
   const {
@@ -124,13 +128,24 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   const isColumnVisible = useCallback(
     (record: Column) => {
-      if (expandAllColumns || isEditMode || showAllColumns) {
+      if (
+        expandAllColumns ||
+        isEditMode ||
+        showAllColumns ||
+        isColumnsListExpanded
+      ) {
         return true;
       }
 
       return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
     },
-    [isEditMode, columnsHavingLineage, expandAllColumns, showAllColumns]
+    [
+      isEditMode,
+      columnsHavingLineage,
+      expandAllColumns,
+      showAllColumns,
+      isColumnsListExpanded,
+    ]
   );
 
   useEffect(() => {
@@ -288,7 +303,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       .filter(Boolean);
   }, [filteredColumns, renderColumnsData]);
 
-  if (supportsColumns && (isColumnLayerEnabled || showDataObservability)) {
+  if (
+    supportsColumns &&
+    (isColumnLayerEnabled || showDataObservability || isColumnsListExpanded)
+  ) {
     return (
       <div className="column-container">
         <div className="d-flex justify-between items-center">
@@ -297,7 +315,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           )}
         </div>
 
-        {isColumnLayerEnabled && (
+        {(isColumnLayerEnabled || isColumnsListExpanded) && (
           <div className="m-t-md">
             <div className="search-box">
               <Input
@@ -307,6 +325,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 suffix={<SearchOutlined color={BORDER_COLOR} />}
                 value={searchValue}
                 onChange={handleSearchChange}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
 

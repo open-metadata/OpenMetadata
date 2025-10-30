@@ -25,9 +25,12 @@ import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './lineage-node-label.less';
 import { capitalize } from 'lodash';
+import classNames from 'classnames';
 
 interface LineageNodeLabelProps {
   node: SourceType;
+  isColumnsListExpanded?: boolean;
+  toggleColumnsList?: () => void;
 }
 
 interface LineageNodeLabelPropsExtended
@@ -93,7 +96,11 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   );
 };
 
-const EntityFooter = ({ node }: LineageNodeLabelPropsExtended) => {
+const EntityFooter = ({
+  isColumnsListExpanded,
+  node,
+  toggleColumnsList,
+}: LineageNodeLabelPropsExtended) => {
   const { t } = useTranslation();
 
   const columnsCount = node.columnNames?.length ?? 0;
@@ -103,6 +110,7 @@ const EntityFooter = ({ node }: LineageNodeLabelPropsExtended) => {
 
   const handleClickColumnInfoDropdown = (e: React.MouseEvent) => {
     e.stopPropagation();
+    toggleColumnsList?.();
   };
 
   const handleClickNodeMapping = (e: React.MouseEvent) => {
@@ -112,7 +120,10 @@ const EntityFooter = ({ node }: LineageNodeLabelPropsExtended) => {
   return (
     <Box className="m-t-xs flex justify-between entity-footer">
       <Button
-        className="columns-info-dropdown-label"
+        className={classNames(
+          'columns-info-dropdown-label',
+          isColumnsListExpanded ? 'expanded' : 'collapsed'
+        )}
         variant="outlined"
         onClick={handleClickColumnInfoDropdown}>
         {columnsInfoDropdownLabel}
@@ -122,11 +133,19 @@ const EntityFooter = ({ node }: LineageNodeLabelPropsExtended) => {
   );
 };
 
-const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
+const LineageNodeLabelV1 = ({
+  node,
+  isColumnsListExpanded,
+  toggleColumnsList,
+}: LineageNodeLabelProps) => {
   return (
     <Box className="custom-node-label-container m-0 p-x-md p-y-xs">
       <EntityLabel node={node} />
-      <EntityFooter node={node} />
+      <EntityFooter
+        isColumnsListExpanded={isColumnsListExpanded}
+        node={node}
+        toggleColumnsList={toggleColumnsList}
+      />
     </Box>
   );
 };
