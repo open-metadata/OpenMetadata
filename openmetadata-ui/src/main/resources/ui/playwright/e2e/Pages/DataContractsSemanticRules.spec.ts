@@ -2258,11 +2258,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
         await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2316,11 +2314,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       });
 
       await removeDataProduct(page, createdDataProducts[0].responseData);
-      await assignDataProduct(
-        page,
-        domain.responseData,
-        createdDataProducts[1].responseData
-      );
+      await assignDataProduct(page, domain.responseData, [
+        createdDataProducts[1].responseData,
+      ]);
 
       await page.click('[data-testid="contract"]');
       await page.waitForSelector('[data-testid="loader"]', {
@@ -2370,11 +2366,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
         await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2433,11 +2427,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         });
 
         await removeDataProduct(page, createdDataProducts[1].responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
 
         await page.click('[data-testid="contract"]');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -2488,11 +2480,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
         await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2551,11 +2541,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         });
 
         await removeDataProduct(page, createdDataProducts[1].responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
 
         await page.click('[data-testid="contract"]');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -2605,11 +2593,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
         await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2667,11 +2653,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         });
 
         await removeDataProduct(page, createdDataProducts[1].responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
 
         await page.click('[data-testid="contract"]');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -2722,11 +2706,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
         await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2878,11 +2860,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
           await assignDomain(page, domain.responseData);
 
-          await assignDataProduct(
-            page,
-            domain.responseData,
-            createdDataProducts[1].responseData
-          );
+          await assignDataProduct(page, domain.responseData, [
+            createdDataProducts[1].responseData,
+          ]);
 
           await page.click('[data-testid="contract"]');
           await page.waitForSelector('[data-testid="loader"]', {

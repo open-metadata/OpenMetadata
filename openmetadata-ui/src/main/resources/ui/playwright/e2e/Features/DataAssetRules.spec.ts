@@ -1,0 +1,387 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { DataProduct } from '../../support/domain/DataProduct';
+import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import {
+  assignDataProduct,
+  assignDomain,
+  assignSingleSelectDomain,
+  redirectToHomePage,
+} from '../../utils/common';
+import {
+  addMultiOwner,
+  addOwner,
+  assignGlossaryTerm,
+} from '../../utils/entity';
+import { settingClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
+
+const user = new UserClass();
+const user2 = new UserClass();
+const team = new TeamClass();
+const table = new TableClass();
+const table2 = new TableClass();
+const table3 = new TableClass();
+const domain = new Domain();
+const domain2 = new Domain();
+const testDataProducts = [new DataProduct([domain]), new DataProduct([domain])];
+const createdDataProducts: DataProduct[] = [];
+const glossary = new Glossary();
+const glossaryTerm = new GlossaryTerm(glossary);
+const glossaryTerm2 = new GlossaryTerm(glossary);
+
+test.describe('Data Asset Rules', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.create(apiContext);
+    await user2.create(apiContext);
+    await team.create(apiContext);
+    await table.create(apiContext);
+    await table2.create(apiContext);
+    await table3.create(apiContext);
+    await domain.create(apiContext);
+    await domain2.create(apiContext);
+    for (const dp of testDataProducts) {
+      await dp.create(apiContext);
+      createdDataProducts.push(dp);
+    }
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await glossaryTerm2.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.beforeEach('Redirect to Home Page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('Platform Rules', async ({ page }) => {
+    try {
+      await test.step('Platform Default Rules Enabled', async () => {
+        await table.visitEntityPage(page);
+
+        // If after adding single team it closes then default rule is working. Single team or multiple users
+        await addOwner({
+          page,
+          owner: team.responseData.displayName,
+          type: 'Teams',
+          endpoint: EntityTypeEndpoint.Table,
+          dataTestId: 'data-assets-header',
+        });
+
+        // Single Domain Add Check
+        await assignSingleSelectDomain(page, domain.responseData);
+
+        // Multiple DataProduct Add Check, since default single select is off
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+          createdDataProducts[1].responseData,
+        ]);
+
+        // Add Multiple GlossaryTerm to Table
+        await assignGlossaryTerm(page, glossaryTerm.responseData);
+        await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+      });
+
+      await test.step(
+        'Enable Multiple DataProduct not allowed and Table having single Glossary Term',
+        async () => {
+          const rulesResponse = page.waitForResponse(
+            '/api/v1/system/settings/entityRulesSettings'
+          );
+          await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
+          await rulesResponse;
+
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          // Enable both rules
+          const ruleEnabledResponse = page.waitForResponse(
+            '/api/v1/system/settings'
+          );
+
+          await page
+            .getByRole('row', { name: 'Multiple Data Products are' })
+            .getByRole('switch')
+            .click();
+
+          await ruleEnabledResponse;
+
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          const ruleEnabledResponse2 = page.waitForResponse(
+            '/api/v1/system/settings'
+          );
+
+          await page
+            .getByRole('row', { name: 'Tables can only have a single' })
+            .getByRole('switch')
+            .click();
+
+          await ruleEnabledResponse2;
+
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          // Move to entity page and test if rules are working
+          await table2.visitEntityPage(page);
+
+          await assignSingleSelectDomain(page, domain.responseData);
+
+          // Here the createdDataProducts[1] will only be available due to single select type is enabled
+          await assignDataProduct(page, domain.responseData, [
+            createdDataProducts[0].responseData,
+          ]);
+          await assignDataProduct(
+            page,
+            domain.responseData,
+            [createdDataProducts[1].responseData],
+            'Edit'
+          );
+
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.DataProducts')
+              .getByTestId('data-products-list')
+              .getByTestId(
+                `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
+              )
+          ).not.toBeVisible();
+
+          // Only glossaryTerm2.responseData, GlossaryTerm will only be available due to single select type is enabled
+          await assignGlossaryTerm(page, glossaryTerm.responseData);
+          await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.GlossaryTerms')
+              .getByTestId('glossary-container')
+              .getByTestId(
+                `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+              )
+          ).not.toBeVisible();
+        }
+      );
+
+      await test.step('Disable all data asset rules ', async () => {
+        const rulesResponse = page.waitForResponse(
+          '/api/v1/system/settings/entityRulesSettings'
+        );
+        await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
+        await rulesResponse;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse1 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+
+        await page
+          .getByRole('row', { name: 'Multiple Users or Single Team' })
+          .getByRole('switch')
+          .click();
+
+        await ruleEnabledResponse1;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse2 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+        await page
+          .getByRole('row', { name: 'Multiple Domains are not' })
+          .getByRole('switch')
+          .click();
+        await ruleEnabledResponse2;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse3 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+
+        await page
+          .getByRole('row', { name: 'Multiple Data Products are' })
+          .getByRole('switch')
+          .click();
+
+        await ruleEnabledResponse3;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse4 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+
+        await page
+          .getByRole('row', { name: 'Tables can only have a single' })
+          .getByRole('switch')
+          .click();
+
+        await ruleEnabledResponse4;
+      });
+
+      await test.step(
+        'Verify the entity item action after rules disabled',
+        async () => {
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await table3.visitEntityPage(page);
+
+          // Assign and Team and User both owner together
+          const teamName = team.responseData.displayName;
+          await addMultiOwner({
+            page,
+            ownerNames: [user.getUserName(), user2.getUserName()],
+            activatorBtnDataTestId: 'edit-owner',
+            resultTestId: 'data-assets-header',
+            endpoint: EntityTypeEndpoint.Table,
+            type: 'Users',
+          });
+
+          await page.click(`[data-testid="edit-owner"]`);
+
+          await expect(
+            page.locator("[data-testid='select-owner-tabs']")
+          ).toBeVisible();
+
+          await page.waitForSelector(
+            '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+            { state: 'detached' }
+          );
+
+          await page
+            .locator("[data-testid='select-owner-tabs']")
+            .getByRole('tab', { name: 'Teams' })
+            .click();
+
+          await page.waitForSelector(
+            '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+            { state: 'detached' }
+          );
+
+          const searchUser = page.waitForResponse(
+            `/api/v1/search/query?q=*${encodeURIComponent(teamName)}*`
+          );
+          await page
+            .getByTestId(`owner-select-teams-search-bar`)
+            .fill(teamName);
+          await searchUser;
+
+          const ownerItem = page.getByRole('listitem', {
+            name: teamName,
+            exact: true,
+          });
+
+          await ownerItem.waitFor({ state: 'visible' });
+          await ownerItem.click();
+          const patchRequest = page.waitForResponse(
+            `/api/v1/${EntityTypeEndpoint.Table}/*`
+          );
+          await page
+            .locator('#rc-tabs-2-panel-teams')
+            .getByTestId('selectable-list-update-btn')
+            .click();
+          await patchRequest;
+
+          await expect(
+            page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
+          ).toBeVisible();
+
+          for (const name of [
+            user.getUserName(),
+            user2.getUserName(),
+            teamName,
+          ]) {
+            await expect(
+              page.getByTestId('data-assets-header').getByTestId(`${name}`)
+            ).toBeVisible();
+          }
+
+          await assignDomain(page, domain.responseData);
+          await assignDomain(page, domain2.responseData, false);
+
+          await expect(page.getByTestId('domain-count-button')).toBeVisible();
+        }
+      );
+    } finally {
+      test.step('Reset Data Asset Rules to Default', async () => {
+        const rulesResponse = page.waitForResponse(
+          '/api/v1/system/settings/entityRulesSettings'
+        );
+        await settingClick(page, GlobalSettingOptions.DATA_ASSET_RULES);
+        await rulesResponse;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse1 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+
+        await page
+          .getByRole('row', { name: 'Multiple Users or Single Team' })
+          .getByRole('switch')
+          .click();
+
+        await ruleEnabledResponse1;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ruleEnabledResponse2 = page.waitForResponse(
+          '/api/v1/system/settings'
+        );
+        await page
+          .getByRole('row', { name: 'Multiple Domains are not' })
+          .getByRole('switch')
+          .click();
+        await ruleEnabledResponse2;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+      });
+    }
+  });
+});
