@@ -17,7 +17,7 @@ export interface DataProductsTabRef {
 }
 
 export interface DataProductsTabProps {
-  domainName?: string;
+  domainFqn?: string;
   onAddDataProduct: () => void;
   permissions: OperationPermission;
 }

@@ -442,7 +442,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.DATA_PRODUCTS,
             children: (
               <DataProductsTab
-                domainName={domain.fullyQualifiedName}
+                domainFqn={domain.fullyQualifiedName}
                 permissions={domainPermission}
                 ref={dataProductsTabRef}
                 onAddDataProduct={onAddDataProduct}

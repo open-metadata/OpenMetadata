@@ -42,12 +42,9 @@ import DomainEmptyState from '../../DomainEmptyState';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
-  (
-    { permissions, onAddDataProduct, domainName }: DataProductsTabProps,
-    ref
-  ) => {
+  ({ permissions, onAddDataProduct, domainFqn }: DataProductsTabProps, ref) => {
     const { t } = useTranslation();
-    const { fqn: domainFqn } = useFqn();
+    const { fqn: urlDomainFqn } = useFqn();
     const [dataProducts, setDataProducts] = useState<
       PagingResponse<DataProduct[]>
     >({
@@ -66,7 +63,7 @@ const DataProductsTab = forwardRef(
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domainFqn || domainName || '',
+            'domains.fullyQualifiedName': urlDomainFqn || domainFqn || '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
@@ -102,7 +99,7 @@ const DataProductsTab = forwardRef(
 
     useEffect(() => {
       fetchDataProducts();
-    }, [domainFqn]);
+    }, [urlDomainFqn]);
 
     if (loading) {
       return <Loader />;
