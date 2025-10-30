@@ -161,7 +161,9 @@ export const DataAssetSummaryPanelV1 = ({
         // Create the JSON patch for description update
         const jsonPatch = [
           {
-            op: 'replace' as const,
+            op: (dataAsset.description ? 'replace' : 'add') as
+              | 'replace'
+              | 'add',
             path: '/description',
             value: newDescription,
           },
@@ -169,7 +171,7 @@ export const DataAssetSummaryPanelV1 = ({
 
         // Make the API call using the correct patch API for the entity type
         const patchAPI = getPatchAPI(entityType);
-        await patchAPI(dataAsset.id, jsonPatch);
+        const response = await patchAPI(dataAsset.id, jsonPatch);
 
         // Show success message
         showSuccessToast(
@@ -178,9 +180,9 @@ export const DataAssetSummaryPanelV1 = ({
           })
         );
 
-        // Update the parent component with the new description
+        // Update the parent component with the new description from response
         if (onDescriptionUpdate) {
-          onDescriptionUpdate(newDescription);
+          onDescriptionUpdate(response.description || newDescription);
         }
       } catch (error) {
         showErrorToast(
@@ -191,7 +193,7 @@ export const DataAssetSummaryPanelV1 = ({
         );
       }
     },
-    [dataAsset.id, entityType, t, onDescriptionUpdate]
+    [dataAsset.id, dataAsset.description, entityType, t, onDescriptionUpdate]
   );
 
   const [additionalInfo, setAdditionalInfo] = useState<

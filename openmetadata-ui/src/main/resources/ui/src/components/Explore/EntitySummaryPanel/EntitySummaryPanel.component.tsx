@@ -687,7 +687,15 @@ export default function EntitySummaryPanel({
   const handleDescriptionUpdate = useCallback(
     (updatedDescription: string) => {
       setEntityData((prevData: any) => {
-        if (!prevData || prevData.id !== entityDetails.details.id) {
+        // If no prevData, create new data object from entityDetails
+        if (!prevData) {
+          return {
+            ...entityDetails.details,
+            description: updatedDescription,
+          };
+        }
+
+        if (prevData.id !== entityDetails.details.id) {
           return prevData;
         }
 
