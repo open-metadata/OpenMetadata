@@ -10,16 +10,25 @@
 #  limitations under the License.
 
 """DataFrame validation result models."""
-
+import logging
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.sdk import OpenMetadata
-from metadata.sdk.data_quality.dataframes.open_metadata import push_validation_results
+from metadata.sdk import client as get_client
+from metadata.sdk.data_quality.dataframes.models import MockTestCase
+from metadata.utils.entity_link import (
+    get_entity_link,  # pyright: ignore[reportUnknownVariableType]
+)
+from metadata.utils.entity_link import maybe_get_column_from
+
+logger = logging.getLogger(__name__)
 
 
 class FailureMode(Enum):
@@ -76,15 +85,37 @@ class ValidationResult(BaseModel):
         """Get all test results."""
         return [result for _, result in self.test_cases_and_results]
 
-    def publish_to_openmetadata(
-        self, table_fqn: str, client: Optional[OpenMetadata] = None
-    ) -> None:
+    def publish(self, table_fqn: str, client: Optional[OpenMetadata] = None) -> None:
         """Publish test results to OpenMetadata.
         Args:
             table_fqn: Fully qualified table name
             client: OpenMetadata client
         """
-        return push_validation_results(table_fqn, self, client=client)
+        if client is None:
+            client = get_client()
+
+        metadata = client.ometa
+
+        for test_case, result in self.test_cases_and_results:
+            if isinstance(test_case, MockTestCase):
+                test_case = metadata.get_or_create_test_case(
+                    test_case_fqn=f"{table_fqn}.{test_case.name.root}",
+                    entity_link=get_entity_link(
+                        Table,
+                        table_fqn,
+                        column_name=maybe_get_column_from(test_case.entityLink.root),
+                    ),
+                    test_definition_fqn=test_case.testDefinition.fullyQualifiedName,
+                    test_case_parameter_values=test_case.parameterValues,
+                    description=getattr(test_case.description, "root", None),
+                )
+
+            res = metadata.add_test_case_results(
+                result,
+                cast(FullyQualifiedEntityName, test_case.fullyQualifiedName).root,
+            )
+
+            logger.debug(f"Result: {res}")
 
     @classmethod
     def merge(cls, *results: "ValidationResult") -> "ValidationResult":

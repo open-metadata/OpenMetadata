@@ -17,6 +17,7 @@ To be used by OpenMetadata class
 import traceback
 from datetime import datetime
 from typing import List, Optional, Type, Union
+from urllib.parse import urlencode, urljoin
 from uuid import UUID
 
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
@@ -408,12 +409,24 @@ class OMetaTestsMixin:
         )
         return TestCase(**resp)
 
-    def delete_test_case(self, test_case_fqn: str) -> None:
+    def delete_test_case(
+        self,
+        test_case_fqn: str,
+        recursive: bool = False,
+        hard: bool = False,
+    ) -> None:
         """Delete a test case
         Args:
             test_case_fqn: Fully qualified name of the test case to delete
+            recursive (bool, optional): delete children if true
+            hard (bool, optional): hard delete if true
         """
+        params = urlencode(
+            dict(
+                recursive="true" if recursive else "false",
+                hardDelete="true" if hard else "false",
+            )
+        )
         url = f"{self.get_suffix(TestCase)}/name/{quote(test_case_fqn)}"
-        url += f"?recursive=true"
-        url += f"&hardDelete=true"
-        self.client.delete(url)
+
+        self.client.delete(urljoin(url, "?" + params))

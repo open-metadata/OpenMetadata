@@ -133,7 +133,7 @@ def integrating_with_openmetadata_example():
     print(f"Validation: {'PASSED' if result.success else 'FAILED'}")
 
     # Publish the results back to Open Metadata
-    result.publish_to_openmetadata("DbService.database_name.schema_name.dwh_table")
+    result.publish("DbService.database_name.schema_name.dwh_table")
 
     if result.success:
         df.to_parquet("s3://some_bucket/dwh_table.parquet")
@@ -162,7 +162,7 @@ def processing_big_data_with_chunks_example():
         mode=FailureMode.SHORT_CIRCUIT,
     )
 
-    results.publish_to_openmetadata("DbService.database_name.schema_name.dwh_table")
+    results.publish("DbService.database_name.schema_name.dwh_table")
 
 
 def validation_failure_example():

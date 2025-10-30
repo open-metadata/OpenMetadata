@@ -196,10 +196,10 @@ class TestFullUseCase:
 
         # Publish results
         with patch(
-            "metadata.sdk.data_quality.dataframes.open_metadata.get_client",
+            "metadata.sdk.data_quality.dataframes.validation_results.get_client",
             return_value=Mock(ometa=metadata),
         ) as mock_client:
-            result.publish_to_openmetadata(
+            result.publish(
                 table_fqn,
             )
 
@@ -249,5 +249,7 @@ class TestFullUseCase:
 
         # Clean up code test
         metadata.delete_test_case(
-            f"{table_fqn}.score.column_value_min_to_be_between_90_and_100"
+            f"{table_fqn}.score.column_value_min_to_be_between_90_and_100",
+            recursive=True,
+            hard=True,
         )
