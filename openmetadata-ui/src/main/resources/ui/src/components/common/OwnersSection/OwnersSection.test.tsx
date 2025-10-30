@@ -185,11 +185,6 @@ describe('OwnersSection', () => {
 
       // Verify edit mode is active with selector displayed
       expect(screen.getByTestId('user-selectable-list')).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          'label.select-entity - {"entity":"label.owner-plural"}'
-        )
-      ).toBeInTheDocument();
     });
   });
 

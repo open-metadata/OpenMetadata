@@ -61,7 +61,14 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
 
   React.useEffect(() => {
-    setDisplayDataProducts(dataProducts);
+    setDisplayDataProducts((prev) => {
+      // Only update if different
+      if (JSON.stringify(prev) !== JSON.stringify(dataProducts)) {
+        return dataProducts;
+      }
+
+      return prev;
+    });
   }, [dataProducts]);
 
   // Function to get the correct patch API based on entity type

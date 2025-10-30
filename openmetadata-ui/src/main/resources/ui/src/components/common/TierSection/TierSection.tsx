@@ -59,7 +59,14 @@ const TierSection: React.FC<TierSectionProps> = ({
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   React.useEffect(() => {
-    setDisplayTier(tier);
+    setDisplayTier((prev) => {
+      // Only update if different
+      if (JSON.stringify(prev) !== JSON.stringify(tier)) {
+        return tier;
+      }
+
+      return prev;
+    });
   }, [tier]);
 
   const getPatchAPI = (entityType?: EntityType) => {

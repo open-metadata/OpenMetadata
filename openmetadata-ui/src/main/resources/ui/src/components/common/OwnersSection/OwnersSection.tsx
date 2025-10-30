@@ -65,7 +65,14 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   React.useEffect(() => {
-    setDisplayOwners(owners);
+    setDisplayOwners((prev) => {
+      // Only update if different
+      if (JSON.stringify(prev) !== JSON.stringify(owners)) {
+        return owners;
+      }
+
+      return prev;
+    });
   }, [owners]);
 
   // Function to get the appropriate patch API based on entity type

@@ -55,7 +55,14 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const [showAllTerms, setShowAllTerms] = useState(false);
 
   React.useEffect(() => {
-    setDisplayTags(tags);
+    setDisplayTags((prev) => {
+      // Only update if different
+      if (JSON.stringify(prev) !== JSON.stringify(tags)) {
+        return tags;
+      }
+
+      return prev;
+    });
   }, [tags]);
 
   // Filter only glossary terms from tags
