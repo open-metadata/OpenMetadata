@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover } from 'antd';
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
@@ -23,9 +22,62 @@ import {
 } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import { TagListItemRenderer } from '../../../utils/TagsUtils';
-import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
-import { SelectableList } from '../SelectableList/SelectableList.component';
+import { EntitySelectableList } from '../EntitySelectableList/EntitySelectableList.component';
+import { EntitySelectableListConfig } from '../EntitySelectableList/EntitySelectableList.interface';
 import { TagSelectableListProps } from './TagSelectableList.interface';
+
+const convertTagsToEntityReferences = (tags: TagLabel[]): EntityReference[] => {
+  return tags.map((tag) => ({
+    id: tag.tagFQN || '',
+    name: tag.name || tag.tagFQN || '',
+    displayName: tag.displayName || tag.name || tag.tagFQN,
+    type: 'tag',
+    fullyQualifiedName: tag.tagFQN,
+    description: tag.description,
+  }));
+};
+
+const convertEntityReferencesToTags = (refs: EntityReference[]): TagLabel[] => {
+  return refs.map((ref) => ({
+    tagFQN: ref.fullyQualifiedName || ref.id,
+    displayName: ref.displayName || ref.name,
+    name: ref.name,
+    source: TagSource.Classification,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    description: ref.description,
+  }));
+};
+
+const fetchTagOptions = async (searchText: string, after?: string) => {
+  try {
+    const afterPage = after ? parseInt(after, 10) : 1;
+    const response = await tagClassBase.getTags(searchText, afterPage);
+    const tags = response.data || [];
+
+    const entityRefs: EntityReference[] = tags.map((tag) => ({
+      id: tag.value,
+      name: tag.data?.name || tag.label,
+      displayName: tag.data?.displayName || tag.label,
+      type: 'tag',
+      fullyQualifiedName: tag.value,
+      description: tag.data?.description,
+    }));
+
+    return {
+      data: entityRefs,
+      paging: {
+        total: response.paging?.total || tags.length,
+        after:
+          tags.length > 0 && afterPage * 10 < (response.paging?.total || 0)
+            ? String(afterPage + 1)
+            : undefined,
+      },
+    };
+  } catch (error) {
+    return { data: [], paging: { total: 0 } };
+  }
+};
 
 export const TagSelectableList = ({
   onCancel,
@@ -35,100 +87,32 @@ export const TagSelectableList = ({
   popoverProps,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
 }: TagSelectableListProps & { listHeight?: number }) => {
-  const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
 
-  const convertTagsToEntityReferences = (
-    tags: TagLabel[]
-  ): EntityReference[] => {
-    return tags.map((tag) => ({
-      id: tag.tagFQN || '',
-      name: tag.name || tag.tagFQN || '',
-      displayName: tag.displayName || tag.name || tag.tagFQN,
-      type: 'tag',
-      fullyQualifiedName: tag.tagFQN,
-      description: tag.description,
-    }));
-  };
-
-  const convertEntityReferencesToTags = (
-    refs: EntityReference[]
-  ): TagLabel[] => {
-    return refs.map((ref) => ({
-      tagFQN: ref.fullyQualifiedName || ref.id,
-      displayName: ref.displayName || ref.name,
-      name: ref.name,
-      source: TagSource.Classification,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-      description: ref.description,
-    }));
-  };
-
-  const fetchTagOptions = async (searchText: string, after?: string) => {
-    try {
-      const afterPage = after ? parseInt(after, 10) : 1;
-      const response = await tagClassBase.getTags(searchText, afterPage);
-      const tags = response.data || [];
-
-      const entityRefs: EntityReference[] = tags.map((tag) => ({
-        id: tag.value,
-        name: tag.data?.name || tag.label,
-        displayName: tag.data?.displayName || tag.label,
-        type: 'tag',
-        fullyQualifiedName: tag.value,
-        description: tag.data?.description,
-      }));
-
-      return {
-        data: entityRefs,
-        paging: {
-          total: response.paging?.total || tags.length,
-          after:
-            tags.length > 0 && afterPage * 10 < (response.paging?.total || 0)
-              ? String(afterPage + 1)
-              : undefined,
-        },
-      };
-    } catch (error) {
-      return { data: [], paging: { total: 0 } };
-    }
-  };
-
-  const handleUpdate = async (updateItems: EntityReference[]) => {
-    const updatedTags = convertEntityReferencesToTags(updateItems);
-    await onUpdate(updatedTags);
-    setPopupVisible(false);
-  };
+  const config: EntitySelectableListConfig<TagLabel> = useMemo(
+    () => ({
+      toEntityReference: convertTagsToEntityReferences,
+      fromEntityReference: convertEntityReferencesToTags,
+      fetchOptions: fetchTagOptions,
+      customTagRenderer: TagListItemRenderer,
+      searchPlaceholder: t('label.search-for-type', {
+        type: t('label.tag'),
+      }),
+      searchBarDataTestId: 'tag-select-search-bar',
+      overlayClassName: 'tag-select-popover',
+    }),
+    [t]
+  );
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
-        <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
-          <SelectableList
-            multiSelect
-            customTagRenderer={TagListItemRenderer}
-            fetchOptions={fetchTagOptions}
-            height={listHeight}
-            searchBarDataTestId="tag-select-search-bar"
-            searchPlaceholder={t('label.search-for-type', {
-              type: t('label.tag'),
-            })}
-            selectedItems={convertTagsToEntityReferences(selectedTags)}
-            onCancel={onCancel}
-            onUpdate={handleUpdate}
-          />
-        </FocusTrapWithContainer>
-      }
-      open={popupVisible}
-      overlayClassName={`tag-select-popover ${popoverProps?.overlayClassName}`}
-      placement="top"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
+    <EntitySelectableList
+      config={config}
+      listHeight={listHeight}
+      popoverProps={popoverProps}
+      selectedItems={selectedTags}
+      onCancel={onCancel}
+      onUpdate={onUpdate}>
       {children}
-    </Popover>
+    </EntitySelectableList>
   );
 };

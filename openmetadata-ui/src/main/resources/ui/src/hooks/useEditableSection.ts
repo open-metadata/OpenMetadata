@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEqual } from 'lodash';
 import { useEffect, useState } from 'react';
 
 interface UseEditableSectionReturn<T> {
@@ -35,7 +36,7 @@ export const useEditableSection = <T>(
 
   useEffect(() => {
     setDisplayData((prev) => {
-      if (JSON.stringify(prev) !== JSON.stringify(initialData)) {
+      if (!isEqual(prev, initialData)) {
         return initialData;
       }
 

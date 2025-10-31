@@ -33,5 +33,5 @@ export interface StatusBadgeProps {
   dataTestId?: string;
   className?: string;
   externalIcon?: SvgComponent;
-  hideIcon?: boolean;
+  showIcon?: boolean;
 }

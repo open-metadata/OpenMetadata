@@ -61,7 +61,16 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
   useEffect(() => {
     setDisplayActiveDomains((prev) => {
-      if (JSON.stringify(prev) !== JSON.stringify(activeDomains)) {
+      const prevIds = prev
+        .map((item) => item.id)
+        .sort()
+        .join(',');
+      const newIds = activeDomains
+        .map((item) => item.id)
+        .sort()
+        .join(',');
+
+      if (prevIds !== newIds) {
         return activeDomains;
       }
 

@@ -26,3 +26,22 @@ export interface DataQualitySectionProps {
   activeFilter?: FilterStatus;
   onFilterChange?: (filter: FilterStatus) => void;
 }
+export type DataQualityType = 'success' | 'aborted' | 'failed';
+export interface DataQualityLegendItemProps {
+  count: number;
+  label: string;
+  type: DataQualityType;
+}
+
+export interface DataQualityProgressSegmentProps {
+  percent: number;
+  type: DataQualityType;
+}
+
+export interface DataQualityStatCardProps {
+  count: number;
+  label: string;
+  type: DataQualityType;
+  isActive: boolean;
+  onClick: () => void;
+}

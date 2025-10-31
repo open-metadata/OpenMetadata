@@ -12,7 +12,6 @@
  */
 import { EntityTags } from 'Models';
 import { EntityType } from '../../enums/entity.enum';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -35,7 +34,7 @@ export type DataAssetSummaryPanelProps = {
   onTierUpdate?: (updatedTier?: TagLabel) => void;
   onTagsUpdate?: (updatedTags: TagLabel[]) => void;
   onDataProductsUpdate?: (updatedDataProducts: EntityReference[]) => void;
-  onGlossaryTermsUpdate?: (updatedGlossaryTerms: GlossaryTerm[]) => void;
+  onGlossaryTermsUpdate?: (updatedGlossaryTerms: TagLabel[]) => void;
   onDescriptionUpdate?: (updatedDescription: string) => void;
 };
 

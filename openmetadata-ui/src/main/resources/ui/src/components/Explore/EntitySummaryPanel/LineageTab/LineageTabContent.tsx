@@ -13,7 +13,7 @@
 
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -43,21 +43,29 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
-    [
-      ...Object.values(lineageData.downstreamEdges || {}),
-      ...Object.values(lineageData.upstreamEdges || {}),
-    ],
-    Object.values(lineageData.nodes || {}).map((nodeData) => nodeData.entity),
-    entityFqn
-  );
+  const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
+    useMemo(() => {
+      const { upstreamNodes: upstream, downstreamNodes: downstream } =
+        getUpstreamDownstreamNodesEdges(
+          [
+            ...Object.values(lineageData.downstreamEdges || {}),
+            ...Object.values(lineageData.upstreamEdges || {}),
+          ],
+          Object.values(lineageData.nodes || {}).map(
+            (nodeData) => nodeData.entity
+          ),
+          entityFqn
+        );
 
-  // Calculate counts for each filter
-  const upstreamCount = upstreamNodes.length;
-  const downstreamCount = downstreamNodes.length;
+      return {
+        upstreamNodes: upstream,
+        downstreamNodes: downstream,
+        upstreamCount: upstream.length,
+        downstreamCount: downstream.length,
+      };
+    }, [lineageData, entityFqn]);
 
-  // Get filtered lineage items
-  const getFilteredLineageItems = () => {
+  const lineageItems = useMemo(() => {
     const items: Array<{
       entity: EntityReference & {
         serviceType?: FormattedDatabaseServiceType;
@@ -69,13 +77,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       owners?: EntityReference[];
     }> = [];
 
-    // Add upstream items
     if (filter === 'upstream') {
       for (const entity of upstreamNodes) {
         if (entity.fullyQualifiedName !== entityFqn) {
           const pathParts = entity.fullyQualifiedName?.split('.') || [];
           const path = pathParts.slice(0, -1).join(' > ');
-          // Get owners from the node data if available
           const nodeData = lineageData.nodes?.[entity.id];
           const owners = (
             nodeData?.entity as EntityReference & {
@@ -92,13 +98,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       }
     }
 
-    // Add downstream items
     if (filter === 'downstream') {
       for (const entity of downstreamNodes) {
         if (entity.fullyQualifiedName !== entityFqn) {
           const pathParts = entity.fullyQualifiedName?.split('.') || [];
           const path = pathParts.slice(0, -1).join(' > ');
-          // Get owners from the node data if available
           const nodeData = lineageData.nodes?.[entity.id];
           const owners = (
             nodeData?.entity as EntityReference & {
@@ -116,9 +120,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     }
 
     return items;
-  };
-
-  const lineageItems = getFilteredLineageItems();
+  }, [filter, upstreamNodes, downstreamNodes, lineageData, entityFqn]);
 
   return (
     <div className="lineage-tab-content">

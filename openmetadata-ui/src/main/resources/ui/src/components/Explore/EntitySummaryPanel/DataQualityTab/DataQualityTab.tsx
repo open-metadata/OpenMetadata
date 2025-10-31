@@ -175,8 +175,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           </div>
           <div className="test-case-status-section">
             <StatusBadgeV2
-              hideIcon={isIncidentMode}
               label={status || 'Unknown'}
+              showIcon={!isIncidentMode}
               status={statusBadgeType}
             />
           </div>

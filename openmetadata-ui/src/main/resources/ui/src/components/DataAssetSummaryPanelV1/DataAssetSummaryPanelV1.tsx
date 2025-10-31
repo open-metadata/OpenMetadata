@@ -71,15 +71,10 @@ import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
-import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-
-interface TestCaseStatusCounts {
-  success: number;
-  failed: number;
-  aborted: number;
-  ack: number;
-  total: number;
-}
+import {
+  DataAssetSummaryPanelProps,
+  TestCaseStatusCounts,
+} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -606,23 +601,6 @@ export const DataAssetSummaryPanelV1 = ({
             </div>
           </>
         );
-      //   case EntityType.GLOSSARY_TERM:
-      //     return (
-      //       <>
-      //         <span data-testid="GlossaryTermSummary" />
-      //         <GlossaryTermSummary
-      //           entityDetails={dataAsset as any}
-      //           isLoading={false}
-      //         />
-      //       </>
-      //     );
-      //   case EntityType.TAG:
-      //     return (
-      //       <>
-      //         <span data-testid="TagSummary" />
-      //         <TagsSummary entityDetails={dataAsset as any} isLoading={false} />
-      //       </>
-      //     );
       default:
         return null;
     }

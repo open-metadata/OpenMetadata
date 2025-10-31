@@ -17,8 +17,11 @@ import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
 import '../OverviewSection/OverviewSection.less';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
+import { DataQualityLegendItem } from './DataQualityLegendItem';
+import { DataQualityProgressSegment } from './DataQualityProgressSegment';
 import { DataQualitySectionProps } from './DataQualitySection.interface';
 import './DataQualitySection.less';
+import { DataQualityStatCard } from './DataQualityStatCard';
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   tests,
@@ -64,57 +67,39 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
 
   return isDataQualityTab ? (
     <div className="data-quality-stats-container">
-      <button
-        className={`data-quality-stat-card success-card ${
-          activeFilter === 'success' ? 'active' : ''
-        }`}
-        type="button"
-        onClick={() => onFilterChange?.('success')}>
-        <Typography.Text className="stat-count success">
-          {successTests}
-        </Typography.Text>
-        <Typography.Text className="stat-label success">
-          {t('label.passed')}
-        </Typography.Text>
-      </button>
+      <DataQualityStatCard
+        count={successTests}
+        isActive={activeFilter === 'success'}
+        label={t('label.passed')}
+        type="success"
+        onClick={() => onFilterChange?.('success')}
+      />
       <Divider
         flexItem
         className="vertical-divider"
         orientation="vertical"
         variant="middle"
       />
-      <button
-        className={`data-quality-stat-card aborted-card ${
-          activeFilter === 'aborted' ? 'active' : ''
-        }`}
-        type="button"
-        onClick={() => onFilterChange?.('aborted')}>
-        <Typography.Text className="stat-count aborted">
-          {abortedTests}
-        </Typography.Text>
-        <Typography.Text className="stat-label aborted">
-          {t('label.aborted')}
-        </Typography.Text>
-      </button>
+      <DataQualityStatCard
+        count={abortedTests}
+        isActive={activeFilter === 'aborted'}
+        label={t('label.aborted')}
+        type="aborted"
+        onClick={() => onFilterChange?.('aborted')}
+      />
       <Divider
         flexItem
         className="vertical-divider"
         orientation="vertical"
         variant="middle"
       />
-      <button
-        className={`data-quality-stat-card failed-card ${
-          activeFilter === 'failed' ? 'active' : ''
-        }`}
-        type="button"
-        onClick={() => onFilterChange?.('failed')}>
-        <Typography.Text className="stat-count failed">
-          {failedTests}
-        </Typography.Text>
-        <Typography.Text className="stat-label failed">
-          {t('label.failed')}
-        </Typography.Text>
-      </button>
+      <DataQualityStatCard
+        count={failedTests}
+        isActive={activeFilter === 'failed'}
+        label={t('label.failed')}
+        type="failed"
+        onClick={() => onFilterChange?.('failed')}
+      />
     </div>
   ) : (
     <SectionWithEdit
@@ -136,67 +121,34 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         <div className="data-quality-header" />
         <div className="data-quality-progress">
           <div className="data-quality-progress-segments">
-            {successPercent > 0 && (
-              <div
-                className="progress-segment success"
-                style={{ width: `${successPercent}%` }}
-              />
-            )}
-            {abortedPercent > 0 && (
-              <div
-                className="progress-segment aborted"
-                style={{ width: `${abortedPercent}%` }}
-              />
-            )}
-            {failedPercent > 0 && (
-              <div
-                className="progress-segment failed"
-                style={{ width: `${failedPercent}%` }}
-              />
-            )}
+            <DataQualityProgressSegment
+              percent={successPercent}
+              type="success"
+            />
+            <DataQualityProgressSegment
+              percent={abortedPercent}
+              type="aborted"
+            />
+            <DataQualityProgressSegment percent={failedPercent} type="failed" />
           </div>
         </div>
 
         <div className="data-quality-legend">
-          {successTests > 0 && (
-            <div className="legend-item">
-              <span className="legend-dot success" />
-              <span className="legend-text">
-                <Typography.Text className="legend-text-label">
-                  {t('label.-with-colon', { text: t('label.success') })}{' '}
-                </Typography.Text>
-                <Typography.Text className="legend-text-value">
-                  {successTests}
-                </Typography.Text>
-              </span>
-            </div>
-          )}
-          {abortedTests > 0 && (
-            <div className="legend-item">
-              <span className="legend-dot aborted" />
-              <span className="legend-text">
-                <Typography.Text className="legend-text-label">
-                  {t('label.-with-colon', { text: t('label.aborted') })}{' '}
-                </Typography.Text>
-                <Typography.Text className="legend-text-value">
-                  {abortedTests}
-                </Typography.Text>
-              </span>
-            </div>
-          )}
-          {failedTests > 0 && (
-            <div className="legend-item">
-              <span className="legend-dot failed" />
-              <span className="legend-text">
-                <Typography.Text className="legend-text-label">
-                  {t('label.-with-colon', { text: t('label.failed') })}{' '}
-                </Typography.Text>
-                <Typography.Text className="legend-text-value">
-                  {failedTests}
-                </Typography.Text>
-              </span>
-            </div>
-          )}
+          <DataQualityLegendItem
+            count={successTests}
+            label={t('label.-with-colon', { text: t('label.success') })}
+            type="success"
+          />
+          <DataQualityLegendItem
+            count={abortedTests}
+            label={t('label.-with-colon', { text: t('label.aborted') })}
+            type="aborted"
+          />
+          <DataQualityLegendItem
+            count={failedTests}
+            label={t('label.-with-colon', { text: t('label.failed') })}
+            type="failed"
+          />
         </div>
       </div>
     </SectionWithEdit>

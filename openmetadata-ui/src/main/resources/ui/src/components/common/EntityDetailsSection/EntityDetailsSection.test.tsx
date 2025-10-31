@@ -42,8 +42,8 @@ describe('EntityDetailsSection', () => {
     jest.clearAllMocks();
   });
 
-  it('returns null when loading', () => {
-    const { container } = render(
+  it('shows loader when loading', () => {
+    render(
       <EntityDetailsSection
         isLoading
         dataAsset={baseDataAsset}
@@ -51,13 +51,7 @@ describe('EntityDetailsSection', () => {
       />
     );
 
-    expect(container.firstChild).toBeNull();
-    expect(getEntityChildDetailsV1).toHaveBeenCalledWith(
-      EntityType.TABLE,
-      baseDataAsset,
-      undefined,
-      true
-    );
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('returns null when dataAsset is empty', () => {

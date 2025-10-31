@@ -22,7 +22,6 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 
 type IconButtonPropsInternal = ButtonProps & {
   newLook?: boolean;
-  editIconClassName?: string;
 };
 
 export const EditIconButton = ({
@@ -30,14 +29,13 @@ export const EditIconButton = ({
   className,
   size,
   newLook,
-  editIconClassName,
   ...props
 }: IconButtonPropsInternal) => {
   return (
     <Tooltip title={title}>
       {newLook ? (
         <Button
-          className={classNames('bordered', className, editIconClassName)}
+          className={classNames('bordered', className)}
           icon={<EditIcon />}
           size={size}
           {...props}

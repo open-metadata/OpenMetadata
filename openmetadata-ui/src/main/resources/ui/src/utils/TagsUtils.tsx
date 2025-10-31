@@ -659,7 +659,7 @@ export const TagListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       <ClassificationIcon className="d-block'" height={22} width={16} />
-      <Typography.Text>{props.displayName || props.name}</Typography.Text>
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
     </Space>
   );
 };

@@ -80,33 +80,28 @@ jest.mock('../../../utils/Assets/AssetsUtils', () => ({
 // DomainSelectableList mock: exposes onUpdate and renders children with edit button
 const domainSelectableListMock = jest
   .fn()
-  .mockImplementation(
-    ({ children, onUpdate, editIconClassName }: DomainSelectableListProps) => (
-      <div data-testid="domain-selectable-list">
-        {/* Render the edit button with the className passed from parent */}
-        <button
-          className={editIconClassName || 'edit-icon'}
-          data-testid="edit-icon"
-          type="button">
-          <div data-testid="edit-icon-svg">Edit</div>
-        </button>
-        {children}
-        <button
-          data-testid="domain-select-submit"
-          onClick={() =>
-            onUpdate([
-              { id: 'd1', name: 'd1', displayName: 'Domain 1' },
-              { id: 'd2', name: 'd2', displayName: 'Domain 2' },
-            ] as EntityReference[])
-          }>
-          Submit Domains
-        </button>
-        <button data-testid="domain-select-clear" onClick={() => onUpdate([])}>
-          Clear Domains
-        </button>
-      </div>
-    )
-  );
+  .mockImplementation(({ children, onUpdate }: DomainSelectableListProps) => (
+    <div data-testid="domain-selectable-list">
+      {/* Render the edit button with the className passed from parent */}
+      <button className="edit-icon" data-testid="edit-icon" type="button">
+        <div data-testid="edit-icon-svg">Edit</div>
+      </button>
+      {children}
+      <button
+        data-testid="domain-select-submit"
+        onClick={() =>
+          onUpdate([
+            { id: 'd1', name: 'd1', displayName: 'Domain 1' },
+            { id: 'd2', name: 'd2', displayName: 'Domain 2' },
+          ] as EntityReference[])
+        }>
+        Submit Domains
+      </button>
+      <button data-testid="domain-select-clear" onClick={() => onUpdate([])}>
+        Clear Domains
+      </button>
+    </div>
+  ));
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   __esModule: true,
   default: (props: DomainSelectableListProps) =>

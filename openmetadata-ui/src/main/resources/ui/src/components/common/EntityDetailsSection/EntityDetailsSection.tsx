@@ -13,6 +13,7 @@
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
+import Loader from '../Loader/Loader';
 import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
 
@@ -31,7 +32,11 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     );
   }, [dataAsset, entityType, highlights, isLoading]);
 
-  if (isLoading || isEmpty(dataAsset)) {
+  if (isLoading) {
+    return <Loader size="small" />;
+  }
+
+  if (isEmpty(dataAsset)) {
     return null;
   }
 
