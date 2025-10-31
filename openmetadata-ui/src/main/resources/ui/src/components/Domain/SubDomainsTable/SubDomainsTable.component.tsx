@@ -13,7 +13,7 @@
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -35,6 +35,7 @@ const SubDomainsTable = ({
   domainFqn,
   permissions,
   onAddSubDomain,
+  subDomainsCount,
 }: SubDomainsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -113,6 +114,12 @@ const SubDomainsTable = ({
       subdomainListing.refetch();
     },
   });
+
+  useEffect(() => {
+    if (subDomainsCount) {
+      subdomainListing.refetch();
+    }
+  }, [subDomainsCount]);
 
   const renderContent = () => {
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
