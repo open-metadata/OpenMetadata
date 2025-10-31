@@ -103,32 +103,6 @@ describe('useEntityRules', () => {
     });
   });
 
-  describe('Auto-fetch behavior', () => {
-    it('should auto-fetch rules when autoFetch is true (default)', () => {
-      renderHook(() => useEntityRules({ entityType: EntityType.TABLE }));
-
-      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
-      expect(mockFetchRulesForEntity).toHaveBeenCalledTimes(1);
-    });
-
-    it('should auto-fetch rules when autoFetch is explicitly set to true', () => {
-      renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE, autoFetch: true })
-      );
-
-      expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
-      expect(mockFetchRulesForEntity).toHaveBeenCalledTimes(1);
-    });
-
-    it('should not fetch rules when autoFetch is false', () => {
-      renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE, autoFetch: false })
-      );
-
-      expect(mockFetchRulesForEntity).not.toHaveBeenCalled();
-    });
-  });
-
   describe('Entity type changes', () => {
     it('should fetch rules for new entity type when entityType changes', () => {
       const { rerender } = renderHook(

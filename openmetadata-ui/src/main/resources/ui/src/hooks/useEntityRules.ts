@@ -23,10 +23,7 @@ interface UseEntityRulesOptions {
 /**
  * Hook to easily use rule enforcement in components
  */
-export const useEntityRules = ({
-  entityType,
-  autoFetch = true,
-}: UseEntityRulesOptions) => {
+export const useEntityRules = ({ entityType }: UseEntityRulesOptions) => {
   const {
     rules: allEntityRules,
     fetchRulesForEntity,
@@ -49,10 +46,10 @@ export const useEntityRules = ({
 
   // Auto-fetch rules for entity type if enabled
   useEffect(() => {
-    if (autoFetch && entityType) {
+    if (entityType) {
       fetchRulesForEntity(entityType);
     }
-  }, [entityType, autoFetch, fetchRulesForEntity]);
+  }, [entityType, fetchRulesForEntity]);
 
   return {
     rules,
