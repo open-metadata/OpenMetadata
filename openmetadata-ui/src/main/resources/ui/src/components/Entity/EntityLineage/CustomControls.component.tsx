@@ -423,6 +423,7 @@ const CustomControls: FC<{
     isEditMode,
     onLineageEditClick,
     deleted,
+    hasEditAccess,
     platformView,
     entityType,
   ]);

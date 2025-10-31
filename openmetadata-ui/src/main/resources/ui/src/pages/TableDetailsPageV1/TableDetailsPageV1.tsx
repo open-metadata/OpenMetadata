@@ -786,7 +786,7 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails();
       getEntityFeedCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
+  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
   useEffect(() => {
     if (tableDetails) {

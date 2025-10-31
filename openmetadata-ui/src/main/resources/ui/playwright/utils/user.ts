@@ -567,7 +567,9 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await page.getByTestId('lineage-config').click();
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).not.toBeVisible();
 
   await page
     .getByRole('dialog')
@@ -671,7 +673,9 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check if edit lineage option is available
   await page.getByTestId('lineage-config').click();
 
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).toBeVisible();
 };
 
 export const addUser = async (

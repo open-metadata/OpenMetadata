@@ -29,6 +29,7 @@ import {
   getEntityTypeSearchIndexMapping,
   toastNotification,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
 
 type LineageCSVRecord = {
@@ -94,9 +95,13 @@ export const activateColumnLayer = async (page: Page) => {
 export const editLineageClick = async (page: Page) => {
   await page.getByTestId('lineage-config').click();
 
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).toBeVisible({
+    timeout: 10000,
+  });
 
-  await page.getByTestId('edit-lineage').click();
+  await page.getByRole('menuitem', { name: 'Edit Lineage' }).click();
 };
 
 export const editLineage = async (page: Page) => {
@@ -511,6 +516,7 @@ export const visitLineageTab = async (page: Page) => {
   await page.click('[data-testid="lineage"]');
   await lineageRes;
   await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addPipelineBetweenNodes = async (

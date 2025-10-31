@@ -1539,7 +1539,9 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   if (deleted) {
     await page.getByTestId('lineage-config').click();
 
-    await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(
+      page.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).not.toBeVisible();
 
     await page
       .getByRole('dialog')
@@ -1548,7 +1550,9 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   } else {
     await page.getByTestId('lineage-config').click();
 
-    await expect(page.getByTestId('edit-lineage')).toBeVisible();
+    await expect(
+      page.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).toBeVisible();
   }
 };
 

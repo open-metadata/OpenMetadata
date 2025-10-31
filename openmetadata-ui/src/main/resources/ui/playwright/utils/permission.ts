@@ -185,7 +185,9 @@ export const validateViewPermissions = async (
 
   await page.getByTestId('lineage-config').click();
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).not.toBeVisible();
 
   await page
     .getByRole('dialog')
