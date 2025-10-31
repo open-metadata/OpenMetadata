@@ -22,18 +22,14 @@ import {
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
 
-// OIDC-specific default values
-export const OIDC_SSO_DEFAULTS = {
-  tokenValidity: 3600,
-  serverUrl: getServerUrl(),
-  sessionExpiry: 604800,
-};
-
 // Google-specific default values
 export const GOOGLE_SSO_DEFAULTS = {
   authority: 'https://accounts.google.com',
   publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
   discoveryUri: 'https://accounts.google.com/.well-known/openid-configuration',
+  tokenValidity: 3600,
+  sessionExpiry: 604800,
+  serverUrl: getServerUrl(),
 };
 
 // SAML-specific default values
@@ -438,7 +434,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
     tokenValidity: {
       'ui:title': 'OIDC Token Validity',
-      'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
+      'ui:placeholder': `Default: ${GOOGLE_SSO_DEFAULTS.tokenValidity}`,
     },
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true }, // Hide tenant for Google (not applicable)
@@ -451,7 +447,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: {
       'ui:title': 'OIDC Session Expiry',
-      'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.sessionExpiry}`,
+      'ui:placeholder': `Default: ${GOOGLE_SSO_DEFAULTS.sessionExpiry}`,
     },
   },
   // For public client mode

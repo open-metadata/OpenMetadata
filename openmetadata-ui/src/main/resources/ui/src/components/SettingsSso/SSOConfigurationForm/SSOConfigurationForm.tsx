@@ -36,7 +36,6 @@ import {
   DEFAULT_CONTAINER_REQUEST_FILTER,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
-  OIDC_SSO_DEFAULTS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
   SAML_SSO_DEFAULTS,
@@ -292,7 +291,7 @@ const SSOConfigurationFormRJSF = ({
                   },
                   security: {
                     strictMode: false,
-                    tokenValidity: OIDC_SSO_DEFAULTS.tokenValidity,
+                    tokenValidity: 3600,
                     wantAssertionsSigned: false,
                     wantMessagesSigned: false,
                     sendSignedAuthRequest: false,
@@ -318,14 +317,18 @@ const SSOConfigurationFormRJSF = ({
                   disablePkce: false,
                   maxClockSkew: 0,
                   clientAuthenticationMethod: 'client_secret_post',
-                  tokenValidity: OIDC_SSO_DEFAULTS.tokenValidity,
+                  tokenValidity: isGoogle
+                    ? GOOGLE_SSO_DEFAULTS.tokenValidity
+                    : 0,
                   customParams: {},
                   tenant: '',
-                  serverUrl: OIDC_SSO_DEFAULTS.serverUrl,
+                  serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
                   callbackUrl: DEFAULT_CALLBACK_URL,
                   maxAge: 0,
                   prompt: '',
-                  sessionExpiry: OIDC_SSO_DEFAULTS.sessionExpiry,
+                  sessionExpiry: isGoogle
+                    ? GOOGLE_SSO_DEFAULTS.sessionExpiry
+                    : 0,
                 },
               }
             : !isSaml
@@ -1293,9 +1296,9 @@ const SSOConfigurationFormRJSF = ({
           if (isGoogle) {
             oidcConfig.type = AuthProvider.Google;
             oidcConfig.discoveryUri = GOOGLE_SSO_DEFAULTS.discoveryUri;
-            oidcConfig.tokenValidity = OIDC_SSO_DEFAULTS.tokenValidity;
-            oidcConfig.sessionExpiry = OIDC_SSO_DEFAULTS.sessionExpiry;
-            oidcConfig.serverUrl = OIDC_SSO_DEFAULTS.serverUrl;
+            oidcConfig.tokenValidity = GOOGLE_SSO_DEFAULTS.tokenValidity;
+            oidcConfig.sessionExpiry = GOOGLE_SSO_DEFAULTS.sessionExpiry;
+            oidcConfig.serverUrl = GOOGLE_SSO_DEFAULTS.serverUrl;
             // Set default values for other required OIDC fields
             oidcConfig.scope = oidcConfig.scope || 'openid email profile';
             oidcConfig.useNonce = oidcConfig.useNonce ?? false;
@@ -1698,14 +1701,14 @@ const SSOConfigurationFormRJSF = ({
                 disablePkce: false,
                 maxClockSkew: 0,
                 clientAuthenticationMethod: 'client_secret_post',
-                tokenValidity: OIDC_SSO_DEFAULTS.tokenValidity,
+                tokenValidity: isGoogle ? GOOGLE_SSO_DEFAULTS.tokenValidity : 0,
                 customParams: {},
                 tenant: '',
-                serverUrl: OIDC_SSO_DEFAULTS.serverUrl,
+                serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
                 callbackUrl: DEFAULT_CALLBACK_URL,
                 maxAge: 0,
                 prompt: '',
-                sessionExpiry: OIDC_SSO_DEFAULTS.sessionExpiry,
+                sessionExpiry: isGoogle ? GOOGLE_SSO_DEFAULTS.sessionExpiry : 0,
               },
             }
           : {
