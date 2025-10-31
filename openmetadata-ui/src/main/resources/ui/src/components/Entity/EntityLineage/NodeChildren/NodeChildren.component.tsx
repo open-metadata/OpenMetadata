@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Collapse, Input, Space } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import { Collapse, Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,6 +36,63 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getColumnContent } from '../CustomNode.utils';
 import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
+import { IconButton, Stack, Typography, Pagination } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+
+const CustomPaginatedList = ({ items }) => {
+  const ITEMS_PER_PAGE = 5;
+  const [page, setPage] = useState(1);
+
+  const count = Math.ceil(items.length / ITEMS_PER_PAGE);
+  const start = (page - 1) * ITEMS_PER_PAGE;
+  const paginatedItems = items.slice(start, start + ITEMS_PER_PAGE);
+
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    setPage((p) => Math.max(p - 1, 1));
+  };
+  const handleNext = (e) => {
+    e.stopPropagation();
+    setPage((p) => Math.min(p + 1, count));
+  };
+
+  return (
+    <>
+      <Stack spacing={1}>
+        {paginatedItems.map((item, i) => (
+          <div key={i}>{item}</div>
+        ))}
+      </Stack>
+
+      <Stack
+        alignItems="center"
+        direction="row"
+        justifyContent="center"
+        mt={2}
+        spacing={1}>
+        <IconButton disabled={page === 1} size="small" onClick={handlePrev}>
+          <ChevronLeftIcon />
+        </IconButton>
+
+        <Typography variant="body2">
+          {page} / {count}
+        </Typography>
+
+        <IconButton disabled={page === count} size="small" onClick={handleNext}>
+          <ChevronRightIcon />
+        </IconButton>
+      </Stack>
+
+      <Pagination
+        count={count}
+        page={page}
+        sx={{ display: 'none' }} // hides default UI
+        onChange={(e, value) => setPage(value)}
+      />
+    </>
+  );
+};
 
 const NodeChildren = ({
   node,
@@ -335,7 +392,7 @@ const NodeChildren = ({
                   className={classNames('rounded-4 overflow-hidden', {
                     border: !showAllColumns,
                   })}>
-                  {renderedColumns}
+                  <CustomPaginatedList items={renderedColumns} />
                 </div>
               </section>
             )}
