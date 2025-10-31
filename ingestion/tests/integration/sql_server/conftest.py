@@ -1,8 +1,10 @@
 import os
 import shutil
 import tempfile
+import uuid
 
 import pytest
+from docker.errors import ImageNotFound
 from sqlalchemy import create_engine, text
 from testcontainers.mssql import SqlServerContainer
 
@@ -29,6 +31,10 @@ def db_name():
 
 
 class CustomSqlServerContainer(SqlServerContainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._custom_image = f"openmetadata/sqlserver-{uuid.uuid4().hex}"
+
     def start(self) -> "DbContainer":
         dockerfile = f"""
             FROM {self.image}
@@ -37,17 +43,25 @@ class CustomSqlServerContainer(SqlServerContainer):
             RUN chown mssql /data
             USER mssql
             """
-        temp_dir = os.path.join(tempfile.gettempdir(), "mssql")
-        os.makedirs(temp_dir, exist_ok=True)
+        temp_dir = tempfile.mkdtemp(prefix="openmetadata_mssql_")
         temp_dockerfile_path = os.path.join(temp_dir, "Dockerfile")
         with open(temp_dockerfile_path, "w") as temp_dockerfile:
             temp_dockerfile.write(dockerfile)
-        self.get_docker_client().build(temp_dir, tag=self.image)
+        self.get_docker_client().build(temp_dir, tag=self._custom_image)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        self.image = self._custom_image
         return super().start()
 
     def _configure(self) -> None:
         super()._configure()
         self.with_env("SQL_SA_PASSWORD", self.password)
+
+    def stop(self, force: bool = True, delete_volume: bool = True) -> None:
+        super().stop(force=force, delete_volume=delete_volume)
+        try:
+            self._docker.client.images.remove(self._custom_image, force=True)
+        except ImageNotFound:
+            pass
 
 
 @pytest.fixture(scope="session")

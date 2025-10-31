@@ -27,7 +27,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMlModelService import (
     CreateMlModelServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     FeatureSourceDataType,
@@ -59,6 +58,7 @@ from metadata.generated.schema.entity.services.mlmodelService import (
     MlModelService,
     MlModelServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -66,6 +66,8 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import get_create_entity
 
 
 class OMetaModelTest(TestCase):
@@ -85,10 +87,14 @@ class OMetaModelTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+            )
+        ]
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateMlModelServiceRequest(
         name="test-model-service",

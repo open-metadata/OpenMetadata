@@ -22,7 +22,6 @@ from metadata.generated.schema.api.domains.createDomain import CreateDomainReque
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain, DomainType
@@ -37,12 +36,15 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardService,
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import get_create_entity
 
 
 class OMetaDomainTest(TestCase):
@@ -64,10 +66,14 @@ class OMetaDomainTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+            )
+        ]
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateDashboardServiceRequest(
         name="test-service-dashboard",
