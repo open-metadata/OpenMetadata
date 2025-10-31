@@ -13,13 +13,13 @@
 
 import { Box, Card, Divider, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   TooltipProps,
@@ -52,6 +52,8 @@ const CardinalityDistributionChart = ({
 }: CardinalityDistributionChartProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   const showSingleGraph =
     isUndefined(data.firstDayData?.cardinalityDistribution) ||
     isUndefined(data.currentDayData?.cardinalityDistribution);
@@ -152,6 +154,52 @@ const CardinalityDistributionChart = ({
     ([, columnProfile]) => !isUndefined(columnProfile?.cardinalityDistribution)
   );
 
+  const handleCategoryClick = (categoryName: string) => {
+    setSelectedCategory((prev) =>
+      prev === categoryName ? null : categoryName
+    );
+  };
+
+  const CustomYAxisTick = (props: {
+    x?: number;
+    y?: number;
+    payload?: { value: string };
+  }) => {
+    const { x, y, payload } = props;
+    if (!payload) {
+      return null;
+    }
+
+    const categoryName = payload.value;
+    const isSelected = selectedCategory === categoryName;
+    const isHighlighted = selectedCategory && selectedCategory !== categoryName;
+
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          cursor="pointer"
+          dy={4}
+          fill={
+            isSelected
+              ? theme.palette.primary.main
+              : isHighlighted
+              ? theme.palette.grey[400]
+              : theme.palette.grey[700]
+          }
+          fontSize={12}
+          fontWeight={isSelected ? 600 : 400}
+          opacity={isHighlighted ? 0.5 : 1}
+          textAnchor="end"
+          x={-8}
+          onClick={() => handleCategoryClick(categoryName)}>
+          {categoryName.length > 15
+            ? `${categoryName.slice(0, 15)}...`
+            : categoryName}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <Box
       data-testid="chart-container"
@@ -182,6 +230,8 @@ const CardinalityDistributionChart = ({
           'MMM dd, yyyy'
         );
 
+        const containerHeight = Math.max(350, graphData.length * 30);
+
         return (
           <Box
             key={key}
@@ -211,16 +261,18 @@ const CardinalityDistributionChart = ({
                 })}: ${cardinalityData.categories?.length || 0}`}
               </DataPill>
             </Box>
-            <Box sx={{ flex: 1, minHeight: 350 }}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 350,
+                overflowX: 'hidden',
+              }}>
               <ResponsiveContainer
                 debounce={200}
+                height={containerHeight}
                 id={`${key}-cardinality`}
-                minHeight={300}>
-                <BarChart
-                  className="w-full"
-                  data={graphData}
-                  layout="vertical"
-                  margin={{ left: 16 }}>
+                width="100%">
+                <BarChart className="w-full" data={graphData} layout="vertical">
                   <CartesianGrid
                     horizontal={renderHorizontalGridLine}
                     stroke={GRAPH_BACKGROUND_COLOR}
@@ -240,15 +292,11 @@ const CardinalityDistributionChart = ({
                     axisLine={false}
                     dataKey="name"
                     padding={{ top: 16, bottom: 16 }}
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value: string) =>
-                      value?.length > 15 ? `${value.slice(0, 15)}...` : value
-                    }
+                    tick={<CustomYAxisTick />}
                     tickLine={false}
                     type="category"
                     width={120}
                   />
-                  <Legend />
                   <Tooltip
                     content={renderTooltip}
                     cursor={{
@@ -256,11 +304,29 @@ const CardinalityDistributionChart = ({
                       strokeDasharray: '3 3',
                     }}
                   />
-                  <Bar
-                    dataKey="percentage"
-                    fill={CHART_BLUE_1}
-                    radius={[0, 8, 8, 0]}
-                  />
+                  <Bar barSize={22} dataKey="percentage" radius={[0, 8, 8, 0]}>
+                    {graphData.map((entry) => {
+                      const isSelected = selectedCategory === entry.name;
+                      const isHighlighted =
+                        selectedCategory && selectedCategory !== entry.name;
+
+                      return (
+                        <Cell
+                          cursor="pointer"
+                          fill={
+                            isSelected
+                              ? theme.palette.primary.main
+                              : isHighlighted
+                              ? theme.palette.grey[300]
+                              : CHART_BLUE_1
+                          }
+                          key={`cell-${entry.name}`}
+                          opacity={isHighlighted ? 0.3 : 1}
+                          onClick={() => handleCategoryClick(entry.name)}
+                        />
+                      );
+                    })}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </Box>
