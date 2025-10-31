@@ -26,8 +26,6 @@ import { isNil } from 'lodash';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
-  COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
-  COMMON_AUTH_FIELD_TO_REMOVE,
   DEFAULT_AUTHORIZER_CLASS_NAME,
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
@@ -464,10 +462,6 @@ const cleanupAuthenticationConfig = (
   authConfig: AuthenticationConfiguration,
   provider: string
 ): void => {
-  delete authConfig[
-    COMMON_AUTH_FIELD_TO_REMOVE as keyof AuthenticationConfiguration
-  ];
-
   if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
     authConfig.clientType = ClientType.Public;
   }
@@ -496,10 +490,6 @@ const cleanupAuthorizerConfig = (
   authorizerConfig: AuthorizerConfiguration,
   provider: string
 ): void => {
-  for (const field of COMMON_AUTHORIZER_FIELDS_TO_REMOVE) {
-    delete authorizerConfig[field as keyof AuthorizerConfiguration];
-  }
-
   if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
     delete authorizerConfig.botPrincipals;
   }

@@ -596,33 +596,11 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
   ],
 };
 
-// Common fields to always remove from authentication configuration
-export const COMMON_AUTH_FIELD_TO_REMOVE = 'responseType';
-
 // Hardcoded authorizer values
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
   'org.openmetadata.service.security.DefaultAuthorizer';
 export const DEFAULT_CONTAINER_REQUEST_FILTER =
   'org.openmetadata.service.security.JwtFilter';
-
-// Common fields to always remove from authorizer configuration
-export const COMMON_AUTHORIZER_FIELDS_TO_REMOVE = [
-  'testPrincipals',
-  'allowedEmailRegistrationDomains',
-  'allowedDomains',
-  'useRolesFromProvider',
-];
-
-// SAML security fields to remove
-export const SAML_SECURITY_FIELDS_TO_REMOVE = [
-  'validateXml',
-  'sendEncryptedNameId',
-  'signSpMetadata',
-  'wantAssertionEncrypted',
-  'keyStoreFilePath',
-  'keyStoreAlias',
-  'keyStorePassword',
-];
 
 // Providers that should NOT include bot principals (deprecated field - no provider should have it)
 export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
