@@ -16,15 +16,17 @@ import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
 import { LineageData } from '../../../../components/Lineage/Lineage.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityType } from '../../../../generated/api/tests/createTestDefinition';
+import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
+import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
@@ -203,84 +205,97 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       <div className="lineage-items-list">
         {lineageItems.length > 0 ? (
           lineageItems.map((item) => (
-            <div
-              className="lineage-item-card"
+            <Link
+              className="lineage-item-link"
               key={
                 item.entity.id ||
                 item.entity.fullyQualifiedName ||
                 `${item.direction}-${item.path}`
-              }>
-              <div className="lineage-item-header">
-                <div className="d-flex align-items-center gap-1">
-                  <div className="service-icon">
-                    {getServiceLogo(
-                      capitalize(item.entity.serviceType) ?? '',
-                      'service-icon-lineage'
-                    )}
-                  </div>
-                  <div className="item-path-container">
-                    {item.path && (
-                      <Typography.Text
-                        className="item-path-text"
-                        title={item.path}>
-                        {getTruncatedPath(item.path)}
-                      </Typography.Text>
-                    )}
-                  </div>
-                </div>
-                <div className="lineage-item-direction">
-                  {item.direction === 'upstream' ? (
-                    <UpstreamIcon />
-                  ) : (
-                    <DownstreamIcon />
-                  )}
-                </div>
-              </div>
-              <div className="lineage-card-content">
-                <Typography.Text className="item-name-text">
-                  {item.entity.displayName || item.entity.name}
-                </Typography.Text>
-                <div className="d-flex align-items-center gap-1 lineage-info-container">
-                  {item.entity.entityType && (
-                    <>
-                      {searchClassBase.getEntityIcon(
-                        item.entity.entityType ?? ''
-                      ) && (
-                        <span className="w-4 d-inline-flex align-middle entity-type-icon">
-                          {searchClassBase.getEntityIcon(
-                            item.entity.entityType ?? ''
-                          )}
-                        </span>
+              }
+              target="_blank"
+              to={getEntityLinkFromType(
+                item.entity.fullyQualifiedName ?? '',
+                item.entity.entityType as EntityType
+              )}>
+              <div
+                className="lineage-item-card"
+                key={
+                  item.entity.id ||
+                  item.entity.fullyQualifiedName ||
+                  `${item.direction}-${item.path}`
+                }>
+                <div className="lineage-item-header">
+                  <div className="d-flex align-items-center gap-1">
+                    <div className="service-icon">
+                      {getServiceLogo(
+                        capitalize(item.entity.serviceType) ?? '',
+                        'service-icon-lineage'
                       )}
-                      <Typography.Text className="item-entity-type-text">
-                        {capitalize(item.entity.entityType)}
-                      </Typography.Text>
-                    </>
-                  )}
-                  <span className="item-bullet-separator">
-                    {BULLET_SEPARATOR}
-                  </span>
-                  {item.entity.owners && item.entity.owners.length > 0 ? (
-                    <OwnerLabel
-                      isCompactView
-                      avatarSize={16}
-                      className="item-owner-label-text"
-                      owners={item.entity.owners}
-                      showLabel={false}
-                    />
-                  ) : (
-                    <NoOwnerFound
-                      isCompactView
-                      showLabel
-                      className="item-owner-label-text"
-                      multiple={{ user: false, team: false }}
-                      owners={[]}
-                      showDashPlaceholder={false}
-                    />
-                  )}
+                    </div>
+                    <div className="item-path-container">
+                      {item.path && (
+                        <Typography.Text
+                          className="item-path-text"
+                          title={item.path}>
+                          {getTruncatedPath(item.path)}
+                        </Typography.Text>
+                      )}
+                    </div>
+                  </div>
+                  <div className="lineage-item-direction">
+                    {item.direction === 'upstream' ? (
+                      <UpstreamIcon />
+                    ) : (
+                      <DownstreamIcon />
+                    )}
+                  </div>
+                </div>
+                <div className="lineage-card-content">
+                  <Typography.Text className="item-name-text">
+                    {item.entity.displayName || item.entity.name}
+                  </Typography.Text>
+                  <div className="d-flex align-items-center gap-1 lineage-info-container">
+                    {item.entity.entityType && (
+                      <>
+                        {searchClassBase.getEntityIcon(
+                          item.entity.entityType ?? ''
+                        ) && (
+                          <span className="w-4 d-inline-flex align-middle entity-type-icon">
+                            {searchClassBase.getEntityIcon(
+                              item.entity.entityType ?? ''
+                            )}
+                          </span>
+                        )}
+                        <Typography.Text className="item-entity-type-text">
+                          {capitalize(item.entity.entityType)}
+                        </Typography.Text>
+                      </>
+                    )}
+                    <span className="item-bullet-separator">
+                      {BULLET_SEPARATOR}
+                    </span>
+                    {item.entity.owners && item.entity.owners.length > 0 ? (
+                      <OwnerLabel
+                        isCompactView
+                        avatarSize={16}
+                        className="item-owner-label-text"
+                        owners={item.entity.owners}
+                        showLabel={false}
+                      />
+                    ) : (
+                      <NoOwnerFound
+                        isCompactView
+                        showLabel
+                        className="item-owner-label-text"
+                        multiple={{ user: false, team: false }}
+                        owners={[]}
+                        showDashPlaceholder={false}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))
         ) : (
           <div className="lineage-items-list empty-state">
