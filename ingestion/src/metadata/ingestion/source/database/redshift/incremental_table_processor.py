@@ -111,15 +111,16 @@ class RedshiftIncrementalTableProcessor:
 
     def _query_for_changes(self, database: str, start_date: datetime) -> Iterable[str]:
         """Queries the Redshift database for the Table Changes."""
-        for row in (
-            self.connection.execute(
-                self.table_changes_query.format(
-                    database=database, start_date=start_date
+        with self.connection.engine.connect() as conn:
+            for row in (
+                conn.execute(
+                    self.table_changes_query.format(
+                        database=database, start_date=start_date
+                    )
                 )
-            )
-            or []
-        ):
-            yield row[0]
+                or []
+            ):
+                yield row[0]
 
     def _clean_statement(self, statement: str) -> str:
         """Gets rid of unwanted characters"""
