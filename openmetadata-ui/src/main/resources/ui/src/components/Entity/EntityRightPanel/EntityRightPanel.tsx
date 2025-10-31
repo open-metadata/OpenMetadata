@@ -10,19 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Space } from 'antd';
 import { EntityTags } from 'Models';
-import React, { useState } from 'react';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../../generated/entity/type';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
+import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
+import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
-import './EntityRightPanel.less';
-import EntityRightPanelContent from './EntityRightPanelContent';
-import EntityRightPanelVerticalNav, {
-  EntityRightPanelTab,
-} from './EntityRightPanelVerticalNav';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   editTagPermission: boolean;
   editGlossaryTermsPermission: boolean;
@@ -38,8 +44,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   editCustomAttributePermission?: boolean;
   editDataProductPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
-  entityDetails?: React.ReactNode;
-  showVerticalNav?: boolean;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
@@ -57,46 +61,77 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editCustomAttributePermission,
   editDataProductPermission,
   onDataProductUpdate,
-  entityDetails,
-  showVerticalNav = true,
 }: EntityRightPanelProps<T>) => {
-  const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
-    EntityRightPanelTab.OVERVIEW
-  );
+  const KnowledgeArticles =
+    entityRightPanelClassBase.getKnowLedgeArticlesWidget();
+  const { fqn: entityFQN } = useFqn();
+  const { data } = useGenericContext<{
+    domains: EntityReference[];
+    dataProducts: EntityReference[];
+    id: string;
+  }>();
 
-  const handleTabChange = (tab: EntityRightPanelTab) => {
-    setActiveTab(tab);
-  };
+  const { domains, dataProducts, id: entityId } = data ?? {};
 
   return (
-    <div className="entity-right-panel-container">
-      <EntityRightPanelContent
-        activeTab={activeTab}
-        afterSlot={afterSlot}
-        beforeSlot={beforeSlot}
-        customProperties={customProperties}
-        editCustomAttributePermission={editCustomAttributePermission}
-        editDataProductPermission={editDataProductPermission}
-        editGlossaryTermsPermission={editGlossaryTermsPermission}
-        editTagPermission={editTagPermission}
-        entityDetails={entityDetails}
-        entityType={entityType}
-        selectedTags={selectedTags}
-        showDataProductContainer={showDataProductContainer}
-        showTaskHandler={showTaskHandler}
-        showVerticalNav={showVerticalNav}
-        viewAllPermission={viewAllPermission}
-        onDataProductUpdate={onDataProductUpdate}
-        onTagSelectionChange={onTagSelectionChange}
-      />
-      {showVerticalNav && (
-        <EntityRightPanelVerticalNav
-          activeTab={activeTab}
-          entityType={entityType}
-          onTabChange={handleTabChange}
-        />
-      )}
-    </div>
+    <>
+      {beforeSlot}
+      <Space className="w-full" direction="vertical" size="large">
+        {showDataProductContainer && (
+          <div data-testid="KnowledgePanel.DataProducts">
+            <DataProductsContainer
+              newLook
+              activeDomains={domains}
+              dataProducts={dataProducts}
+              hasPermission={editDataProductPermission ?? false}
+              onSave={onDataProductUpdate}
+            />
+          </div>
+        )}
+
+        <div data-testid="KnowledgePanel.Tags">
+          <TagsContainerV2
+            newLook
+            displayType={DisplayType.READ_MORE}
+            entityFqn={entityFQN}
+            entityType={entityType}
+            permission={editTagPermission}
+            selectedTags={selectedTags}
+            showTaskHandler={showTaskHandler}
+            tagType={TagSource.Classification}
+            onSelectionChange={onTagSelectionChange}
+          />
+        </div>
+
+        <div data-testid="KnowledgePanel.GlossaryTerms">
+          <TagsContainerV2
+            newLook
+            displayType={DisplayType.READ_MORE}
+            entityFqn={entityFQN}
+            entityType={entityType}
+            permission={editGlossaryTermsPermission}
+            selectedTags={selectedTags}
+            showTaskHandler={showTaskHandler}
+            tagType={TagSource.Glossary}
+            onSelectionChange={onTagSelectionChange}
+          />
+        </div>
+        {KnowledgeArticles && (
+          <KnowledgeArticles entityId={entityId} entityType={entityType} />
+        )}
+        {customProperties && (
+          <CustomPropertyTable<T>
+            isRenderedInRightPanel
+            entityType={entityType as T}
+            hasEditAccess={Boolean(editCustomAttributePermission)}
+            hasPermission={Boolean(viewAllPermission)}
+            maxDataCap={5}
+          />
+        )}
+        <PartitionedKeys />
+      </Space>
+      {afterSlot}
+    </>
   );
 };
 

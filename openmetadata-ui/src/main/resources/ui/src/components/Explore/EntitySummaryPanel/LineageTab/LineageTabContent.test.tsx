@@ -25,8 +25,19 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...props }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  )),
+}));
+
 // Mock antd components
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, className, size, ...props }) => (
