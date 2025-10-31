@@ -58,6 +58,17 @@ export const getAllClassifications = async (params?: ListParams) => {
   return response.data;
 };
 
+export const getClassificationById = async (
+  id: string,
+  params?: ListParams
+) => {
+  const response = await APIClient.get<Classification>(`${BASE_URL}/${id}`, {
+    params,
+  });
+
+  return response.data;
+};
+
 export const addAssetsToTags = async (
   tagId: string,
   assets: EntityReference[],

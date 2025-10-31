@@ -128,8 +128,12 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Use context providers for feature-specific shared state (e.g., `ApplicationsProvider`)
 
 ### Styling
-- Use Ant Design components as the primary UI library
-- Custom styles in `.less` files with component-specific naming
+- **MUI Migration**: The project is gradually migrating from Ant Design to Material-UI (MUI)
+- **Preferred Approach**: Use MUI components and styles wherever possible for new features
+- **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
+- **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
+- **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- Custom styles in `.less` files with component-specific naming (legacy pattern)
 - Follow BEM naming convention for custom CSS classes
 - Use CSS modules where appropriate
 

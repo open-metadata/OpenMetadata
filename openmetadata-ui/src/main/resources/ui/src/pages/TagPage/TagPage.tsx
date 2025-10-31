@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
+import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
@@ -78,6 +79,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Classification } from '../../generated/entity/classification/classification';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
@@ -86,7 +88,12 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { searchQuery } from '../../rest/searchAPI';
-import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
+import {
+  deleteTag,
+  getClassificationById,
+  getTagByFqn,
+  patchTag,
+} from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -119,6 +126,8 @@ const TagPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
+  const [parentClassification, setParentClassification] =
+    useState<Classification | null>(null);
 
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
@@ -204,6 +213,14 @@ const TagPage = () => {
     [tagFqn]
   );
 
+  const showDisableOption = useMemo(
+    () =>
+      tagPermissions.EditAll &&
+      !tagItem?.deleted &&
+      !parentClassification?.disabled,
+    [tagPermissions.EditAll, tagItem?.deleted, parentClassification?.disabled]
+  );
+
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
       return;
@@ -214,6 +231,18 @@ const TagPage = () => {
         tagItem?.id
       );
       setTagPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchClassificationDetails = async (classificationId: string) => {
+    if (!classificationId) {
+      return;
+    }
+    try {
+      const response = await getClassificationById(classificationId);
+      setParentClassification(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -231,6 +260,8 @@ const TagPage = () => {
           ],
         });
         setTagItem(response);
+
+        fetchClassificationDetails(response.classification?.id || '');
       }
     } catch (e) {
       showErrorToast(e as AxiosError);
@@ -301,6 +332,16 @@ const TagPage = () => {
       setIsStyleEditing(false);
     }
   };
+
+  const handleEnableDisableTagClick = useCallback(async () => {
+    if (tagItem) {
+      const updatedTag = {
+        ...tagItem,
+        disabled: !tagItem.disabled,
+      };
+      await updateTag(updatedTag);
+    }
+  }, [tagItem, updateTag]);
 
   const handleTagDelete = async (id: string) => {
     try {
@@ -417,6 +458,32 @@ const TagPage = () => {
             onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
               e.domEvent.stopPropagation();
               setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+        ]
+      : []),
+    ...(showDisableOption
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={
+                  tagItem?.disabled
+                    ? t('message.enable-tag-description')
+                    : t('message.disable-tag-description')
+                }
+                icon={IconDisableTag}
+                id="enable-disable-tag"
+                name={
+                  tagItem?.disabled ? t('label.enable') : t('label.disable')
+                }
+              />
+            ),
+            key: 'disable-button',
+            onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
+              e.domEvent.stopPropagation();
+              handleEnableDisableTagClick();
               setShowActions(false);
             },
           },
