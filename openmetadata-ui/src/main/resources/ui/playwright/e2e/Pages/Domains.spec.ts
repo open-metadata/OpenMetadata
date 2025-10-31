@@ -217,6 +217,15 @@ test.describe('Domains', () => {
 
     await test.step('Create DataProducts', async () => {
       await createDataProduct(page, dataProduct1.data);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${dataProduct1.data.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
       await createDataProduct(page, dataProduct2.data);
     });
 
