@@ -1096,7 +1096,8 @@ const announcementForm = async (
     startDate: string;
     endDate: string;
     description: string;
-  }
+  },
+  hideAlert = true
 ) => {
   await page.fill('#title', data.title);
 
@@ -1117,12 +1118,15 @@ const announcementForm = async (
   await page.click('#announcement-submit');
   await announcementSubmit;
   await page.click('[data-testid="announcement-close"]');
-  await page.click('[data-testid="alert-icon-close"]');
+  if (hideAlert) {
+    await page.click('[data-testid="alert-icon-close"]');
+  }
 };
 
 export const createAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  hideAlert?: boolean
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1142,7 +1146,7 @@ export const createAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate });
+  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
   await page.reload();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
@@ -1315,7 +1319,8 @@ export const editAnnouncement = async (
 
 export const createInactiveAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  hideAlert?: boolean
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1334,7 +1339,7 @@ export const createInactiveAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate });
+  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
   await page.getByTestId('inActive-announcements').isVisible();
   await page.reload();
 };

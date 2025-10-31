@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.type.TableConstraint.ConstraintType;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.TestUtils;
@@ -468,6 +470,50 @@ public class EntityProfileResourceTest extends OpenMetadataApplicationTest {
                 ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         "table instance for nonexistent.table not found");
+  }
+
+  @Test
+  @Order(9999)
+  void delete_profileData_verifyDeletionByTimestamp() throws HttpResponseException, ParseException {
+    long baseTimestamp = dateToTimestamp("2024-02-01");
+    long dayInMs = 24 * 60 * 60 * 1000L;
+
+    for (int i = 0; i < 5; i++) {
+      ColumnProfile columnProfile =
+          new ColumnProfile().withName("age").withValuesCount(100.0 + i).withNullCount(10.0);
+
+      CreateEntityProfile createProfile =
+          new CreateEntityProfile()
+              .withTimestamp(baseTimestamp + (i * dayInMs))
+              .withProfileData(columnProfile)
+              .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN);
+
+      createEntityProfile(TEST_TABLE.getId(), createProfile, ADMIN_AUTH_HEADERS);
+    }
+
+    long cutoffTs = baseTimestamp + (3 * dayInMs);
+    int limit = 10000;
+
+    Entity.getCollectionDAO()
+        .profilerDataTimeSeriesDao()
+        .deleteRecordsBeforeCutOff(cutoffTs, limit);
+
+    ResultList<EntityProfile> remainingProfiles =
+        getEntityProfiles(
+            TEST_TABLE.getFullyQualifiedName(),
+            "table",
+            baseTimestamp,
+            baseTimestamp + (5 * dayInMs),
+            CreateEntityProfile.ProfileTypeEnum.COLUMN,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(remainingProfiles);
+
+    for (EntityProfile profile : remainingProfiles.getData()) {
+      long profileTimestamp = profile.getTimestamp();
+      assertTrue(
+          profileTimestamp >= cutoffTs, "All remaining profiles should have timestamps >= cutoff");
+    }
   }
 
   private void addSampleProfileData(UUID tableId) throws HttpResponseException, ParseException {

@@ -42,6 +42,8 @@ public class IngestionPipelineIndex implements SearchIndex {
             : ingestionPipeline.getDisplayName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("pipelineStatuses", ingestionPipeline.getPipelineStatuses());
     doc.put("service", getEntityWithDisplayName(ingestionPipeline.getService()));
     // Add only 'scheduleInterval' to avoid exposing sensitive info in 'airflowConfig'
