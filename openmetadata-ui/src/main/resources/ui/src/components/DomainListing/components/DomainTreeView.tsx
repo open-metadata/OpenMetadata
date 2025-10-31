@@ -525,7 +525,7 @@ const DomainTreeView = ({
 
     return (
       <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
-        {t('message.no-entity-selected', {
+        {t('label.no-entity-selected', {
           entity: t('label.domain'),
         })}
       </Typography>
@@ -540,7 +540,7 @@ const DomainTreeView = ({
     if (hierarchy.length === 0) {
       return (
         <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
-          {t('message.no-entity-available', {
+          {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}
         </Typography>

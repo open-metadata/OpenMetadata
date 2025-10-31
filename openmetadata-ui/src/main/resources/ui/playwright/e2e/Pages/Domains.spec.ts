@@ -71,6 +71,7 @@ import {
   followEntity,
   replyAnnouncement,
   unFollowEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   settingClick,
@@ -1400,5 +1401,107 @@ test.describe('Domain Access with noDomain() Rule', () => {
     );
 
     await userAfterAction();
+  });
+});
+
+test.describe('Domain Tree View Functionality', () => {
+  const domain = new Domain();
+  let subDomain: SubDomain;
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.create(apiContext);
+    subDomain = new SubDomain(domain);
+    await subDomain.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await subDomain.delete(apiContext);
+    await domain.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should render the domain tree view with correct details', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByRole('button', { name: 'tree' }).click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByRole('treeitem', { name: domain.data.displayName })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('listitem')
+        .filter({ hasText: domain.data.fullyQualifiedName })
+        .getByTestId('breadcrumb-link')
+    ).toBeVisible();
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      domain.data.displayName
+    );
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      domain.data.name
+    );
+    await expect(
+      page.getByTestId('documentation').getByText('Documentation')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('subdomains').getByText('Sub Domains')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('data_products').getByText('Data Products')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('activity_feed').getByText('Activity Feeds & Tasks')
+    ).toBeVisible();
+    await expect(page.getByTestId('assets').getByText('Assets')).toBeVisible();
+    await expect(
+      page.getByTestId('custom_properties').getByText('Custom Properties')
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('asset-description-container')
+        .getByText(domain.data.description)
+    ).toBeVisible();
+    await expect(page.getByTestId('domain-details-add-button')).toBeVisible();
+
+    await page.getByTestId('data_products').getByText('Data Products').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page.getByTestId('no-data-placeholder').getByRole('paragraph')
+    ).toContainText("Looks like you haven't added any data products yet.");
+    await expect(page.getByTestId('data-product-add-button')).toBeVisible();
+
+    await expect(
+      page.getByTestId('subdomains').getByTestId('count')
+    ).toContainText('1');
+
+    await page.getByTestId('subdomains').getByText('Sub Domains').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId(subDomain.data.name)
+        .getByText(subDomain.data.displayName)
+    ).toBeVisible();
   });
 });

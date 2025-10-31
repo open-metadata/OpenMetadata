@@ -430,6 +430,7 @@ export const getDomainDetailTabs = ({
               <SubDomainsTable
                 domainFqn={domain.fullyQualifiedName ?? ''}
                 permissions={domainPermission}
+                subDomainsCount={subDomainsCount}
                 onAddSubDomain={() => setShowAddSubDomainModal(true)}
               />
             ),
