@@ -317,7 +317,13 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
 
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
       try {
-        Query customFilter = Query.of(q -> q.wrapper(w -> w.query(queryFilter)));
+        Query customFilter;
+        if (queryFilter.trim().startsWith("{")) {
+          String queryToProcess = OsUtils.parseJsonQuery(queryFilter);
+          customFilter = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        } else {
+          customFilter = Query.of(q -> q.queryString(qs -> qs.query(queryFilter)));
+        }
         boolQueryBuilder.filter(customFilter);
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
