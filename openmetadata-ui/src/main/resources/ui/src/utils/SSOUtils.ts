@@ -434,28 +434,6 @@ const cleanupOidcConfiguration = (
 };
 
 /**
- * Removes provider-specific fields based on client type
- */
-const removeProviderFields = (
-  authConfig: AuthenticationConfiguration,
-  fieldsToRemove: string[],
-  isPublicClient: boolean
-): void => {
-  if (isPublicClient) {
-    for (const field of fieldsToRemove) {
-      delete authConfig[field as keyof AuthenticationConfiguration];
-    }
-    delete authConfig.secret;
-  } else {
-    for (const field of fieldsToRemove.filter(
-      (field) => field !== 'oidcConfiguration'
-    )) {
-      delete authConfig[field as keyof AuthenticationConfiguration];
-    }
-  }
-};
-
-/**
  * Cleans authentication configuration
  */
 const cleanupAuthenticationConfig = (
@@ -473,7 +451,18 @@ const cleanupAuthenticationConfig = (
   ];
 
   const isPublicClient = authConfig.clientType === ClientType.Public;
-  removeProviderFields(authConfig, fieldsToRemove, isPublicClient);
+  if (isPublicClient) {
+    for (const field of fieldsToRemove) {
+      delete authConfig[field as keyof AuthenticationConfiguration];
+    }
+    delete authConfig.secret;
+  } else {
+    for (const field of fieldsToRemove.filter(
+      (field) => field !== 'oidcConfiguration'
+    )) {
+      delete authConfig[field as keyof AuthenticationConfiguration];
+    }
+  }
 
   if (!isPublicClient && authConfig.oidcConfiguration) {
     const oidcConfig = authConfig.oidcConfiguration;
