@@ -44,6 +44,8 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.FILE,
   EntityType.SPREADSHEET,
   EntityType.WORKSHEET,
+  EntityType.DATA_PRODUCT,
+  EntityType.DOMAIN,
 ];
 
 /* 

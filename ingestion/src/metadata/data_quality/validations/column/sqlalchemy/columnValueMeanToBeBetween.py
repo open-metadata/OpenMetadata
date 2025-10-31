@@ -19,7 +19,6 @@ from typing import List, Optional
 from sqlalchemy import Column, case, func, inspect, literal, or_
 
 from metadata.data_quality.validations.base_test_handler import (
-    DIMENSION_SUM_VALUE_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValueMeanToBeBetween import (
@@ -101,14 +100,15 @@ class ColumnValueMeanToBeBetweenValidator(
             max_bound = test_params["maxValueForMeanInCol"]
 
             metric_expressions = {
-                DIMENSION_SUM_VALUE_KEY: func.sum(column),
+                Metrics.SUM.name: Metrics.SUM(column).fn(),
+                Metrics.COUNT.name: Metrics.COUNT(column).fn(),
+                Metrics.MEAN.name: Metrics.MEAN(column).fn(),
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                Metrics.MEAN.name: func.avg(column),
             }
 
-            def build_failed_count(cte1):
-                mean_col = getattr(cte1.c, Metrics.MEAN.name)
-                count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
+            def build_failed_count(cte):
+                mean_col = getattr(cte.c, Metrics.MEAN.name)
+                count_col = getattr(cte.c, DIMENSION_TOTAL_COUNT_KEY)
 
                 conditions = []
                 if not math.isinf(min_bound):
@@ -137,8 +137,8 @@ class ColumnValueMeanToBeBetweenValidator(
                         )
                     ],
                     else_=(
-                        func.sum(getattr(cte.c, DIMENSION_SUM_VALUE_KEY))
-                        / func.sum(getattr(cte.c, DIMENSION_TOTAL_COUNT_KEY))
+                        func.sum(getattr(cte.c, Metrics.SUM.name))
+                        / func.sum(getattr(cte.c, Metrics.COUNT.name))
                     ),
                 )
 
@@ -147,7 +147,7 @@ class ColumnValueMeanToBeBetweenValidator(
                 metric_expressions,
                 build_failed_count,
                 final_metric_builders={Metrics.MEAN.name: build_mean_final},
-                exclude_from_final=[DIMENSION_SUM_VALUE_KEY],
+                exclude_from_results=[Metrics.SUM.name, Metrics.COUNT.name],
                 top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
             )
 

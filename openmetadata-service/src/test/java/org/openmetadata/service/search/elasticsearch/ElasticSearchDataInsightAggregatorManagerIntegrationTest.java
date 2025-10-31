@@ -98,7 +98,8 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
           testIndexPrefix + "_chart_test",
           testIndexPrefix + "_fields_test",
           testIndexPrefix + "_list_result_test",
-          testIndexPrefix + "_query_cost_test"
+          testIndexPrefix + "_query_cost_test",
+          testIndexPrefix + "_query_filter_test"
         };
 
         for (String indexName : indicesToDelete) {
@@ -562,6 +563,150 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
     } catch (Exception e) {
       LOG.debug("Failed to cleanup DI index", e);
     }
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithQueryFilterHavingWrapper() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String queryFilterWithWrapper =
+        """
+        {
+          "query": {
+            "term": {
+              "data.entityType": "table"
+            }
+          }
+        }
+        """;
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            queryFilterWithWrapper,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK with query wrapper");
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithQueryFilterWithoutWrapper() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String queryFilterWithoutWrapper =
+        """
+        {
+          "term": {
+            "data.entityType": "table"
+          }
+        }
+        """;
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            queryFilterWithoutWrapper,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK without query wrapper");
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithComplexBoolQuery() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String complexBoolQuery =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"term": {"data.entityType": "table"}},
+                {"term": {"data.team": "TestTeam"}}
+              ]
+            }
+          }
+        }
+        """;
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            complexBoolQuery,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK with complex bool query");
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithQueryStringFilter() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String queryString = "data.entityType:table";
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            queryString,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK with query string");
   }
 
   private void createDataInsightTestIndex(String indexName) {

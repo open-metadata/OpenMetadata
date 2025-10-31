@@ -16,6 +16,7 @@ import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -321,7 +322,13 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
 
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
       try {
-        Query customFilter = Query.of(q -> q.wrapper(w -> w.query(queryFilter)));
+        Query customFilter;
+        if (queryFilter.trim().startsWith("{")) {
+          String queryToProcess = EsUtils.parseJsonQuery(queryFilter);
+          customFilter = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
+        } else {
+          customFilter = Query.of(q -> q.queryString(qs -> qs.query(queryFilter)));
+        }
         boolQueryBuilder.filter(customFilter);
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
