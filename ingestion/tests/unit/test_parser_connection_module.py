@@ -9,45 +9,48 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Unit tests for parser.get_connection_class() to ensure correct module name generation
-Tests for Issue #22920 - SAS connection casing bug
+Unit tests for parser.get_connection_class()
+Tests for Issue #22920 - Connection module import handling
 
 ISSUE #22920 - Root Cause Analysis
 ===================================
 
-The Bug:
---------
-Schema generation creates some service files with all-lowercase names:
-  - SAS     -> sasConnection.py     (not sASConnection.py)
-  - SQLite  -> sqliteConnection.py  (not sQLiteConnection.py)
-  - SSAS    -> ssasConnection.py    (not sSASConnection.py)
+The Schema Generation Pattern:
+-------------------------------
+Most service connection files use camelCase naming:
+  - BigQuery    -> bigQueryConnection.py    (first char lower, rest same)
+  - AzureSQL    -> azureSQLConnection.py    (first char lower, rest same)
+  - DynamoDB    -> dynamoDBConnection.py    (first char lower, rest same)
+  - MariaDB     -> mariaDBConnection.py     (first char lower, rest same)
 
-The original code used: source_type[0].lower() + source_type[1:] + "Connection"
-For "SAS", this produced "sASConnection" (wrong casing).
+Three exceptions use all-lowercase:
+  - SAS         -> sasConnection.py         (all lowercase)
+  - SQLite      -> sqliteConnection.py      (all lowercase)
+  - SSAS        -> ssasConnection.py        (all lowercase)
 
-On case-insensitive file systems (macOS), this worked by accident.
-On case-sensitive file systems (Linux/Docker), imports failed with:
+The Original Bug:
+-----------------
+The code only used: source_type[0].lower() + source_type[1:] + "Connection"
+This worked for most services but FAILED for the 3 lowercase exceptions:
+  - "SAS" produced "sASConnection" but file is "sasConnection.py"
+
+On case-insensitive filesystems (macOS), this worked by accident.
+On case-sensitive filesystems (Linux/Docker), imports failed:
   ModuleNotFoundError: No module named '...sASConnection'
 
 The Solution:
 -------------
 The current implementation uses a try-except pattern:
-1. Try standard camelCase: "BigQuery" -> "bigQueryConnection" (44 services)
-2. Fallback to lowercase: "SAS" -> "sasConnection" (3 services)
+1. Try standard camelCase: "BigQuery" -> "bigQueryConnection" (most services)
+2. Fallback to lowercase: "SAS" -> "sasConnection" (3 exceptions)
 
-This automatically handles both naming conventions without maintaining hardcoded lists.
+This handles both naming patterns without hardcoded lists.
 
 Performance Impact:
 -------------------
 - Standard services (44): Single import, ~5-10ms
-- Irregular services (3): First import fails + fallback succeeds, ~12-20ms
-- Negligible impact: Only 3 out of 47 services use the fallback path
-
-Why These Services Are Different:
-----------------------------------
-Most services follow camelCase: "BigQuery" -> bigQueryConnection.json
-But SAS, SQLite, and SSAS use all-lowercase: "SAS" -> sasConnection.json
-This inconsistency likely arose from early development or special handling of acronyms.
+- Exceptional services (3): First import fails + fallback, ~12-20ms
+- Negligible impact: Only 3 out of 47 services use fallback
 """
 import pytest
 
@@ -68,8 +71,8 @@ class TestGetConnectionClass:
     in the generated module name.
     """
 
-    # Services that were broken before the fix (19 total)
-    BROKEN_SERVICES = [
+    # Services that use camelCase in file names (most services)
+    CAMELCASE_SERVICES = [
         "AzureSQL",
         "BigQuery",
         "BigTable",
@@ -80,10 +83,6 @@ class TestGetConnectionClass:
         "MariaDB",
         "MongoDB",
         "PinotDB",
-        "QueryLog",
-        "SAS",  # Original issue report
-        "SQLite",
-        "SSAS",
         "SapErp",
         "SapHana",
         "ServiceNow",
@@ -91,8 +90,15 @@ class TestGetConnectionClass:
         "UnityCatalog",
     ]
 
-    # Services that worked even with the bug (31 total)
-    WORKING_SERVICES = [
+    # Services that use all-lowercase in file names (exceptions)
+    LOWERCASE_SERVICES = [
+        "SAS",  # sasConnection.py
+        "SQLite",  # sqliteConnection.py
+        "SSAS",  # ssasConnection.py
+    ]
+
+    # Services that worked with simple casing (first char lowercase only)
+    SIMPLE_CASE_SERVICES = [
         "Athena",
         "Cassandra",
         "Clickhouse",
@@ -101,7 +107,6 @@ class TestGetConnectionClass:
         "Databricks",
         "Datalake",
         "Db2",
-        "Dbt",
         "Doris",
         "Druid",
         "Epic",
@@ -126,16 +131,15 @@ class TestGetConnectionClass:
         "Vertica",
     ]
 
-    @pytest.mark.parametrize("service_name", BROKEN_SERVICES)
-    def test_previously_broken_services(self, service_name):
+    @pytest.mark.parametrize("service_name", CAMELCASE_SERVICES)
+    def test_camelcase_services(self, service_name):
         """
-        Test that previously broken services (with mixed-case names) now work correctly.
+        Test services that use camelCase in their module file names.
 
-        These services failed before the fix because the buggy formula:
-            source_type[0].lower() + source_type[1:] + "Connection"
-        only lowercased the first character, preserving uppercase in the rest.
-
-        Example: "SAS" → "sASConnection" (wrong) instead of "sasConnection" (correct)
+        These services have capital letters beyond the first character:
+        - BigQuery -> bigQueryConnection.py
+        - AzureSQL -> azureSQLConnection.py
+        - DynamoDB -> dynamoDBConnection.py
         """
         try:
             connection_class = get_connection_class(service_name, DatabaseConnection)
@@ -152,30 +156,30 @@ class TestGetConnectionClass:
                 f"got '{connection_class.__name__}'"
             )
 
-            # Verify the module path is correct (all lowercase)
-            expected_module_suffix = f".{service_name.lower()}Connection"
-            assert connection_class.__module__.endswith(expected_module_suffix), (
-                f"Expected module to end with '{expected_module_suffix}', "
+            # Generate expected camelCase module name
+            # (first char lowercase, rest unchanged)
+            expected_module_name = (
+                service_name[0].lower() + service_name[1:] + "Connection"
+            )
+            assert expected_module_name in connection_class.__module__, (
+                f"Expected module to contain '{expected_module_name}', "
                 f"got '{connection_class.__module__}'"
             )
 
         except ModuleNotFoundError as e:
-            pytest.fail(
-                f"Failed to import connection class for {service_name}: {e}\n"
-                f"This indicates the bug fix is not working correctly."
-            )
+            pytest.fail(f"Failed to import connection class for {service_name}: {e}")
         except Exception as e:
             pytest.fail(f"Unexpected error for {service_name}: {e}")
 
-    @pytest.mark.parametrize("service_name", WORKING_SERVICES)
-    def test_previously_working_services(self, service_name):
+    @pytest.mark.parametrize("service_name", LOWERCASE_SERVICES)
+    def test_lowercase_services(self, service_name):
         """
-        Test that services which worked before the fix still work after the fix.
+        Test services that use all-lowercase in their module file names.
 
-        These services worked by luck because their names naturally result in
-        lowercase after the first character (e.g., "Mysql" → "mysqlConnection").
-
-        The fix should maintain backward compatibility with these services.
+        These are exceptions: SAS, SQLite, SSAS
+        - SAS -> sasConnection.py (not sASConnection.py)
+        - SQLite -> sqliteConnection.py (not sQLiteConnection.py)
+        - SSAS -> ssasConnection.py (not sSASConnection.py)
         """
         try:
             connection_class = get_connection_class(service_name, DatabaseConnection)
@@ -192,33 +196,75 @@ class TestGetConnectionClass:
                 f"got '{connection_class.__name__}'"
             )
 
-            # Verify the module path is correct (all lowercase)
-            expected_module_suffix = f".{service_name.lower()}Connection"
-            assert connection_class.__module__.endswith(expected_module_suffix), (
-                f"Expected module to end with '{expected_module_suffix}', "
+            # Generate expected lowercase module name
+            expected_module_name = service_name.lower() + "Connection"
+            assert expected_module_name in connection_class.__module__, (
+                f"Expected module to contain '{expected_module_name}', "
                 f"got '{connection_class.__module__}'"
             )
 
         except ModuleNotFoundError as e:
-            pytest.fail(
-                f"Failed to import connection class for {service_name}: {e}\n"
-                f"This indicates the fix broke backward compatibility."
+            pytest.fail(f"Failed to import connection class for {service_name}: {e}")
+        except Exception as e:
+            pytest.fail(f"Unexpected error for {service_name}: {e}")
+
+    @pytest.mark.parametrize("service_name", SIMPLE_CASE_SERVICES)
+    def test_simple_case_services(self, service_name):
+        """
+        Test services where simple first-char lowercase works.
+
+        These services naturally work with: first char lowercase, rest same
+        - Mysql -> mysqlConnection.py
+        - Athena -> athenaConnection.py
+        """
+        try:
+            connection_class = get_connection_class(service_name, DatabaseConnection)
+
+            # Verify we got a valid class
+            assert (
+                connection_class is not None
+            ), f"get_connection_class returned None for {service_name}"
+
+            # Verify class name follows expected pattern
+            expected_class_name = f"{service_name}Connection"
+            assert connection_class.__name__ == expected_class_name, (
+                f"Expected class name '{expected_class_name}', "
+                f"got '{connection_class.__name__}'"
             )
+
+            # Generate expected simple-case module name
+            expected_module_name = (
+                service_name[0].lower() + service_name[1:] + "Connection"
+            )
+            assert expected_module_name in connection_class.__module__, (
+                f"Expected module to contain '{expected_module_name}', "
+                f"got '{connection_class.__module__}'"
+            )
+
+        except ModuleNotFoundError as e:
+            pytest.fail(f"Failed to import connection class for {service_name}: {e}")
         except Exception as e:
             pytest.fail(f"Unexpected error for {service_name}: {e}")
 
     def test_all_database_services(self):
         """
-        Test that ALL database service types can successfully import their connection classes.
+        Test that database service types with connection classes
+        can successfully import them.
 
-        This is a comprehensive test that validates the fix works for every
-        database service type defined in DatabaseServiceType enum.
+        Note: QueryLog and Dbt are in DatabaseServiceType but don't
+        have connection modules (they're metadata-only services).
         """
         failed_services = []
         success_count = 0
+        skipped_services = ["QueryLog", "Dbt"]  # No connection modules
 
         for service in DatabaseServiceType:
             service_name = service.value
+
+            # Skip services without connection modules
+            if service_name in skipped_services:
+                continue
+
             try:
                 connection_class = get_connection_class(
                     service_name, DatabaseConnection
@@ -229,29 +275,32 @@ class TestGetConnectionClass:
                 failed_services.append((service_name, str(e)))
 
         # Report results
-        total_services = len(list(DatabaseServiceType))
+        total_testable = len(list(DatabaseServiceType)) - len(skipped_services)
 
         if failed_services:
             failure_details = "\n".join(
                 f"  - {name}: {error}" for name, error in failed_services
             )
             pytest.fail(
-                f"Failed to import {len(failed_services)} out of {total_services} services:\n"
+                f"Failed to import {len(failed_services)} out of "
+                f"{total_testable} services:\n"
                 f"{failure_details}\n\n"
                 f"Successfully imported {success_count} services."
             )
 
         # If we get here, all services passed
-        assert (
-            success_count == total_services
-        ), f"Expected {total_services} services, but only {success_count} succeeded"
+        assert success_count == total_testable, (
+            f"Expected {total_testable} services, "
+            f"but only {success_count} succeeded"
+        )
 
     def test_sas_connection_specific(self):
         """
-        Specific test for SAS connection (the original issue report in #22920).
+        Specific test for SAS connection (the original issue #22920).
 
-        Before fix: Tried to import "sASConnection" module → ModuleNotFoundError
-        After fix:  Correctly imports "sasConnection" module → Success
+        SAS is one of the exceptions that uses all-lowercase:
+        - File: sasConnection.py
+        - Uses fallback import path
         """
         try:
             connection_class = get_connection_class("SAS", DatabaseConnection)
@@ -260,92 +309,108 @@ class TestGetConnectionClass:
             assert connection_class.__name__ == "SASConnection"
             assert "sasConnection" in connection_class.__module__
 
-            # Verify it's the correct class by checking it has expected attributes
-            # (SAS connections should have certain fields)
+            # Verify it has expected attributes
             assert hasattr(connection_class, "model_fields") or hasattr(
                 connection_class, "__fields__"
             )
 
         except ModuleNotFoundError as e:
             pytest.fail(
-                f"SAS connection import failed with ModuleNotFoundError: {e}\n"
+                f"SAS connection import failed with "
+                f"ModuleNotFoundError: {e}\n"
                 f"This is the exact bug reported in Issue #22920.\n"
-                f"The fix should resolve this by lowercasing the entire service name."
+                f"The fix should use fallback to lowercase."
             )
 
     def test_bigquery_connection_specific(self):
         """
-        Specific test for BigQuery connection (another affected service).
+        Specific test for BigQuery connection.
 
-        Before fix: Tried to import "bIGQueryConnection" → ModuleNotFoundError
-        After fix:  Correctly imports "bigqueryConnection" → Success
+        BigQuery uses camelCase in the module file:
+        - File: bigQueryConnection.py (NOT bigqueryConnection.py)
+        - Standard import path works
         """
         try:
             connection_class = get_connection_class("BigQuery", DatabaseConnection)
 
             assert connection_class.__name__ == "BigQueryConnection"
-            assert "bigqueryConnection" in connection_class.__module__
+            # Expect camelCase module name
+            assert "bigQueryConnection" in connection_class.__module__
 
         except ModuleNotFoundError as e:
             pytest.fail(
                 f"BigQuery connection import failed: {e}\n"
-                f"Expected module 'bigqueryConnection', got error trying to import it."
+                f"Expected module 'bigQueryConnection' (camelCase)."
             )
 
     def test_azuresql_connection_specific(self):
         """
-        Specific test for AzureSQL connection (another affected service).
+        Specific test for AzureSQL connection.
 
-        Before fix: Tried to import "aZureSQLConnection" → ModuleNotFoundError
-        After fix:  Correctly imports "azuresqlConnection" → Success
+        AzureSQL uses camelCase in the module file:
+        - File: azureSQLConnection.py (NOT azuresqlConnection.py)
+        - Standard import path works
         """
         try:
             connection_class = get_connection_class("AzureSQL", DatabaseConnection)
 
             assert connection_class.__name__ == "AzureSQLConnection"
-            assert "azuresqlConnection" in connection_class.__module__
+            # Expect camelCase module name
+            assert "azureSQLConnection" in connection_class.__module__
 
         except ModuleNotFoundError as e:
             pytest.fail(
                 f"AzureSQL connection import failed: {e}\n"
-                f"Expected module 'azuresqlConnection', got error trying to import it."
+                f"Expected module 'azureSQLConnection' (camelCase)."
             )
 
     def test_dynamodb_connection_specific(self):
         """
-        Specific test for DynamoDB connection (another affected service).
+        Specific test for DynamoDB connection.
 
-        Before fix: Tried to import "dYnamoDDBConnection" → ModuleNotFoundError
-        After fix:  Correctly imports "dynamodbConnection" → Success
+        DynamoDB uses camelCase in the module file:
+        - File: dynamoDBConnection.py (NOT dynamodbConnection.py)
+        - Standard import path works
         """
         try:
             connection_class = get_connection_class("DynamoDB", DatabaseConnection)
 
             assert connection_class.__name__ == "DynamoDBConnection"
-            assert "dynamodbConnection" in connection_class.__module__
+            # Expect camelCase module name
+            assert "dynamoDBConnection" in connection_class.__module__
 
         except ModuleNotFoundError as e:
             pytest.fail(
                 f"DynamoDB connection import failed: {e}\n"
-                f"Expected module 'dynamodbConnection', got error trying to import it."
+                f"Expected module 'dynamoDBConnection' (camelCase)."
             )
 
     def test_module_name_generation_formula(self):
         """
-        Test the exact formula used to generate connection module names.
+        Test the formula used to generate connection module names.
 
         This test documents the expected behavior:
-        - Input: service type name (e.g., "SAS", "BigQuery")
-        - Output: module name should be lowercase + "Connection"
 
-        Buggy formula:  source_type[0].lower() + source_type[1:] + "Connection"
-        Correct formula: source_type.lower() + "Connection"
+        Most services use camelCase (first char lowercase, rest same):
+        - BigQuery -> bigQueryConnection.py
+        - AzureSQL -> azureSQLConnection.py
+        - DynamoDB -> dynamoDBConnection.py
+
+        Three exceptions use all-lowercase:
+        - SAS -> sasConnection.py (not sASConnection.py)
+        - SQLite -> sqliteConnection.py (not sQLiteConnection.py)
+        - SSAS -> ssasConnection.py (not sSASConnection.py)
         """
         test_cases = {
+            # All-lowercase exceptions (use fallback)
             "SAS": "sasConnection",
-            "BigQuery": "bigqueryConnection",
-            "AzureSQL": "azuresqlConnection",
-            "DynamoDB": "dynamodbConnection",
+            "SQLite": "sqliteConnection",
+            "SSAS": "ssasConnection",
+            # CamelCase services (standard path)
+            "BigQuery": "bigQueryConnection",
+            "AzureSQL": "azureSQLConnection",
+            "DynamoDB": "dynamoDBConnection",
+            # Simple lowercase services
             "Mysql": "mysqlConnection",
             "Glue": "glueConnection",
             "Db2": "db2Connection",
@@ -357,7 +422,7 @@ class TestGetConnectionClass:
                     service_name, DatabaseConnection
                 )
 
-                # Extract just the module filename from the full module path
+                # Extract just the module filename
                 actual_module_name = connection_class.__module__.split(".")[-1]
 
                 assert actual_module_name == expected_module_name, (
