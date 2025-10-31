@@ -56,14 +56,16 @@ jest.mock('../constants/SSO.constant', () => ({
   DEFAULT_CONTAINER_REQUEST_FILTER:
     'org.openmetadata.service.security.JwtFilter',
   DEFAULT_CALLBACK_URL: 'http://localhost:8585/callback',
+  OIDC_SSO_DEFAULTS: {
+    tokenValidity: 3600,
+    sessionExpiry: 604800,
+    serverUrl: 'http://localhost:8585',
+  },
   GOOGLE_SSO_DEFAULTS: {
     authority: 'https://accounts.google.com',
     publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
     discoveryUri:
       'https://accounts.google.com/.well-known/openid-configuration',
-    tokenValidity: 3600,
-    sessionExpiry: 604800,
-    serverUrl: 'http://localhost:8585',
   },
   SAML_SSO_DEFAULTS: {
     authority: 'http://localhost:8585/api/v1/auth/login',
