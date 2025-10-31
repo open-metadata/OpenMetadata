@@ -353,15 +353,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           JsonValue sourceValue = jsonObject.get("_source");
           if (sourceValue instanceof JsonObject) {
             JsonObject sourceObj = (JsonObject) sourceValue;
-            if (sourceObj.containsKey("includes")) {
+            if (sourceObj.containsKey("include")) {
               includes =
-                  sourceObj.getJsonArray("includes").stream()
+                  sourceObj.getJsonArray("include").stream()
                       .map(v -> ((JsonString) v).getString())
                       .toArray(String[]::new);
             }
-            if (sourceObj.containsKey("excludes")) {
+            if (sourceObj.containsKey("exclude")) {
               excludes =
-                  sourceObj.getJsonArray("excludes").stream()
+                  sourceObj.getJsonArray("exclude").stream()
                       .map(v -> ((JsonString) v).getString())
                       .toArray(String[]::new);
             }

@@ -357,15 +357,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           JsonValue sourceValue = jsonObject.get("_source");
           if (sourceValue instanceof JsonObject) {
             JsonObject sourceObject = (JsonObject) sourceValue;
-            if (sourceObject.containsKey("includes")) {
-              JsonArray includesArray = sourceObject.getJsonArray("includes");
+            if (sourceObject.containsKey("include")) {
+              JsonArray includesArray = sourceObject.getJsonArray("include");
               includes = new String[includesArray.size()];
               for (int i = 0; i < includesArray.size(); i++) {
                 includes[i] = includesArray.getString(i);
               }
             }
-            if (sourceObject.containsKey("excludes")) {
-              jakarta.json.JsonArray excludesArray = sourceObject.getJsonArray("excludes");
+            if (sourceObject.containsKey("exclude")) {
+              jakarta.json.JsonArray excludesArray = sourceObject.getJsonArray("exclude");
               excludes = new String[excludesArray.size()];
               for (int i = 0; i < excludesArray.size(); i++) {
                 excludes[i] = excludesArray.getString(i);
