@@ -203,7 +203,6 @@ function SchemaTablesTab({
   const getSchemaTables = useCallback(
     async (params?: TableListParams) => {
       setTableDataLoading(true);
-      handlePageChange(INITIAL_PAGING_VALUE);
       try {
         const res = await getTableList({
           ...params,

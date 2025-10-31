@@ -116,7 +116,6 @@ const StoredProcedureTab = () => {
     async (params?: Partial<Paging>) => {
       try {
         setIsLoading(true);
-        handlePageChange(INITIAL_PAGING_VALUE);
         const { data, paging } = await getStoredProceduresList({
           databaseSchema: decodedDatabaseSchemaFQN,
           include: showDeletedStoredProcedures
