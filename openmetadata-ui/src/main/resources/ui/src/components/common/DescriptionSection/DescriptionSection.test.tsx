@@ -137,12 +137,7 @@ describe('DescriptionSection', () => {
     it('opens modal on edit and cancels back to view', () => {
       render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
 
-      const editTrigger = document.querySelector(
-        '.description-header .edit-icon'
-      ) as HTMLElement;
-      if (!editTrigger) {
-        throw new Error('Edit icon not found');
-      }
+      const editTrigger = screen.getByTestId('edit-description');
       fireEvent.click(editTrigger);
 
       expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
@@ -159,12 +154,7 @@ describe('DescriptionSection', () => {
 
       render(<DescriptionSection onDescriptionUpdate={onUpdate} />);
 
-      const editTrigger = document.querySelector(
-        '.description-header .edit-icon'
-      ) as HTMLElement;
-      if (!editTrigger) {
-        throw new Error('Edit icon not found');
-      }
+      const editTrigger = screen.getByTestId('edit-description');
       fireEvent.click(editTrigger);
 
       const saveBtn = screen.getByTestId('save');
@@ -204,12 +194,7 @@ describe('DescriptionSection', () => {
         />
       );
 
-      const editTrigger = document.querySelector(
-        '.description-header .edit-icon'
-      ) as HTMLElement;
-      if (!editTrigger) {
-        throw new Error('Edit icon not found');
-      }
+      const editTrigger = screen.getByTestId('edit-description');
       fireEvent.click(editTrigger);
 
       expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
