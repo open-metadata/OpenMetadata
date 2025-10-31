@@ -13,10 +13,9 @@
 Validator for column value mean to be between test case
 """
 
-import math
 from typing import List, Optional
 
-from sqlalchemy import Column, case, func, inspect, literal, or_
+from sqlalchemy import Column, case, func
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
@@ -41,25 +40,6 @@ class ColumnValueMeanToBeBetweenValidator(
     BaseColumnValueMeanToBeBetweenValidator, SQAValidatorMixin
 ):
     """Validator for column value mean to be between test case"""
-
-    def _get_column_name(self, column_name: Optional[str] = None) -> Column:
-        """Get column object for the given column name
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            Column: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                inspect(self.runner.dataset).c,
-            )
-        return self.get_column_name(
-            column_name,
-            inspect(self.runner.dataset).c,
-        )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case
@@ -96,36 +76,12 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_results = []
 
         try:
-            min_bound = test_params["minValueForMeanInCol"]
-            max_bound = test_params["maxValueForMeanInCol"]
-
             metric_expressions = {
                 Metrics.SUM.name: Metrics.SUM(column).fn(),
                 Metrics.COUNT.name: Metrics.COUNT(column).fn(),
                 Metrics.MEAN.name: Metrics.MEAN(column).fn(),
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
             }
-
-            def build_failed_count(cte):
-                mean_col = getattr(cte.c, Metrics.MEAN.name)
-                count_col = getattr(cte.c, DIMENSION_TOTAL_COUNT_KEY)
-
-                conditions = []
-                if not math.isinf(min_bound):
-                    conditions.append(mean_col < min_bound)
-                if not math.isinf(max_bound):
-                    conditions.append(mean_col > max_bound)
-
-                if not conditions:
-                    return literal(0)
-
-                violation = or_(*conditions) if len(conditions) > 1 else conditions[0]
-
-                return case(
-                    (mean_col.is_(None), literal(0)),
-                    (violation, count_col),
-                    else_=literal(0),
-                )
 
             def build_mean_final(cte):
                 return case(
@@ -145,7 +101,9 @@ class ColumnValueMeanToBeBetweenValidator(
             result_rows = self._execute_with_others_aggregation_statistical(
                 dimension_col,
                 metric_expressions,
-                build_failed_count,
+                self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
+                    Metrics.MEAN.name, DIMENSION_TOTAL_COUNT_KEY
+                ),
                 final_metric_builders={Metrics.MEAN.name: build_mean_final},
                 exclude_from_results=[Metrics.SUM.name, Metrics.COUNT.name],
                 top_dimensions_count=DEFAULT_TOP_DIMENSIONS,

@@ -13,7 +13,7 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -28,6 +28,7 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_volume_factor,
 )
+from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
@@ -38,7 +39,33 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
 
-    def get_column_name(self, entity_link: str, dfs) -> SQALikeColumn:
+    def get_column(
+        self: HasValidatorContext, column_name: Optional[str] = None
+    ) -> SQALikeColumn:
+        """Get column object for the given column name
+
+        If column_name is None, returns the main column being validated.
+        If column_name is provided, returns the column object for that specific column.
+
+        Args:
+            column_name: Optional column name. If None, returns the main validation column.
+
+        Returns:
+            SQALikeColumn: Column object
+        """
+        if column_name is None:
+            return PandasValidatorMixin.get_column_from_list(
+                self.test_case.entityLink.root,
+                cast(List[pd.DataFrame], self.runner),
+            )
+        else:
+            return PandasValidatorMixin.get_column_from_list(
+                column_name,
+                cast(List[pd.DataFrame], self.runner),
+            )
+
+    @staticmethod
+    def get_column_from_list(entity_link: str, dfs) -> SQALikeColumn:
         # we'll use the first dataframe chunk to get the column name.
         column = dfs[0][get_decoded_column(entity_link)]
         _type = GenericDataFrameColumnParser.fetch_col_types(

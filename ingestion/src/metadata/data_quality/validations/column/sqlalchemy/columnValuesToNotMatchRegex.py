@@ -15,7 +15,7 @@ Validator for column values to not match regex test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 from metadata.data_quality.validations.column.base.columnValuesToNotMatchRegex import (
@@ -34,17 +34,6 @@ class ColumnValuesToNotMatchRegexValidator(
     BaseColumnValuesToNotMatchRegexValidator, SQAValidatorMixin
 ):
     """Validator for column values to not match regex test case"""
-
-    def _get_column_name(self) -> Column:
-        """Get column name from the test case entity link
-
-        Returns:
-            SQALikeColumn: column
-        """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            inspect(self.runner.dataset).c,
-        )
 
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
         """compute result of the test case

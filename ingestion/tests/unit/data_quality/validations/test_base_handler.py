@@ -74,8 +74,8 @@ class MockTestValidator(BaseTestValidator):
         # Default implementation returns empty list
         return []
 
-    def _get_column_name(self, column_name=None):
-        """Mock implementation of _get_column_name"""
+    def get_column(self, column_name=None):
+        """Mock implementation of get_column"""
         # For testing purposes, accept any column name that's provided
         # This simulates that all dimension columns exist
         if column_name:

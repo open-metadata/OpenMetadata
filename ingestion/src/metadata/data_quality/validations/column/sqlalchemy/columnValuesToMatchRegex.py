@@ -15,7 +15,7 @@ Validator for column values to match regex test case
 
 from typing import Optional, Tuple
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
@@ -34,17 +34,6 @@ class ColumnValuesToMatchRegexValidator(
     BaseColumnValuesToMatchRegexValidator, SQAValidatorMixin
 ):
     """Validator for column values to match regex test case"""
-
-    def _get_column_name(self) -> Column:
-        """Get column name from the test case entity link
-
-        Returns:
-            Column: column
-        """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            inspect(self.runner.dataset).c,
-        )
 
     def _run_results(
         self, metric: Tuple[Metrics], column: Column, **kwargs

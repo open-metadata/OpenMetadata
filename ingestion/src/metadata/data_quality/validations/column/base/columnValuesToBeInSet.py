@@ -182,7 +182,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             count_in_set = self._run_results(
                 Metrics.COUNT_IN_SET, column, values=test_params["allowed_values"]
             )
@@ -227,51 +227,6 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             row_count=row_count,
             passed_rows=evaluation["passed_rows"],
         )
-
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for column values to be in set
-
-        The new approach runs separate queries for each dimension column instead of
-        combining them with GROUP BY. For example, if dimensionColumns = ["region", "age"],
-        this method will:
-        1. Run one query: GROUP BY region -> {"mumbai": result1, "delhi": result2}
-        2. Run another query: GROUP BY age -> {"25": result3, "30": result4}
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
-
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
-
-            test_params = self._get_test_parameters()
-            metrics_to_compute = self._get_metrics_to_compute(test_params)
-
-            dimension_results = []
-            for dimension_column in dimension_columns:
-                try:
-                    dimension_col = self._get_column_name(dimension_column)
-
-                    single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute, test_params
-                    )
-
-                    dimension_results.extend(single_dimension_results)
-
-                except Exception as exc:
-                    logger.warning(
-                        f"Error executing dimensional query for column {dimension_column}: {exc}"
-                    )
-                    continue
-
-            return dimension_results
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
-            return []
 
     def _create_dimension_result(
         self,
@@ -332,10 +287,6 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_column_name(self, column_name: Optional[str] = None):
-        raise NotImplementedError
-
-    @abstractmethod
     def _run_results(
         self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
     ):
@@ -359,4 +310,4 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name())
+        return self.compute_row_count(self.get_column())

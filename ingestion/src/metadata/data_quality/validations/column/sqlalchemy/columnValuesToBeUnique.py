@@ -16,7 +16,7 @@ Validator for column values to be unique test case
 import logging
 from typing import List, Optional
 
-from sqlalchemy import Column, func, inspect, literal_column, select
+from sqlalchemy import Column, func, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -41,31 +41,6 @@ class ColumnValuesToBeUniqueValidator(
     BaseColumnValuesToBeUniqueValidator, SQAValidatorMixin
 ):
     """Validator for column values to be unique test case"""
-
-    def _get_column_name(self, column_name: Optional[str] = None) -> Column:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            Column: Column object
-        """
-        if column_name is None:
-            # Get the main column being validated (original behavior)
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                inspect(self.runner.dataset).c,
-            )
-        else:
-            # Get a specific column by name (for dimension columns)
-            return self.get_column_name(
-                column_name,
-                inspect(self.runner.dataset).c,
-            )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case

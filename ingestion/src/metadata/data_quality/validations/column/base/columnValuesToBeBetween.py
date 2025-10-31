@@ -65,7 +65,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             TestCaseResult: The test case result for the overall validation
         """
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             min_res = self._run_results(Metrics.MIN, column)
             max_res = self._run_results(Metrics.MAX, column)
         except (ValueError, RuntimeError) as exc:
@@ -131,10 +131,6 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _get_column_name(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
         raise NotImplementedError
 
@@ -164,4 +160,4 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name(), min_bound, max_bound)
+        return self.compute_row_count(self.get_column(), min_bound, max_bound)
