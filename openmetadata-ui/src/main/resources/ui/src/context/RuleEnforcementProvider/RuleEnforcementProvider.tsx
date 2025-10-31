@@ -21,33 +21,16 @@ import React, {
   useState,
 } from 'react';
 import { EntityType } from '../../enums/entity.enum';
-import { ParsedRule } from '../../generated/system/entityRules';
 import { getEntityRules } from '../../rest/ruleEnforcementAPI';
 import {
   getEntityRulesValidation,
   parseRule,
 } from '../../utils/RuleEnforcementUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-export interface DataAssetRuleValidation {
-  canAddMultipleUserOwners: boolean;
-  canAddMultipleTeamOwner: boolean;
-  canAddMultipleDomains: boolean;
-  canAddMultipleDataProducts: boolean;
-  maxDomains: number;
-  maxDataProducts: number;
-  canAddMultipleGlossaryTerm: boolean;
-  requireDomainForDataProduct: boolean;
-  warnings: string[];
-}
-
-interface RuleEnforcementContextType {
-  rules: Record<EntityType, ParsedRule[]>;
-  isLoading: boolean;
-  fetchRulesForEntity: (entityType: EntityType) => Promise<void>;
-  getRulesForEntity: (entityType: EntityType) => ParsedRule[];
-  getEntityRuleValidation: (entityType: EntityType) => DataAssetRuleValidation;
-}
+import {
+  ParsedRule,
+  RuleEnforcementContextType,
+} from './RuleEnforcementProvider.interface';
 
 const RuleEnforcementContext = createContext<RuleEnforcementContextType>(
   {} as RuleEnforcementContextType

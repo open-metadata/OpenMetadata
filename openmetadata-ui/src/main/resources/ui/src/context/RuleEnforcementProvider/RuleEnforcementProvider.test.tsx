@@ -14,7 +14,6 @@
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
-import { EntityRule, RuleType } from '../../generated/system/entityRules';
 import { getEntityRules } from '../../rest/ruleEnforcementAPI';
 import {
   getEntityRulesValidation,
@@ -25,6 +24,7 @@ import {
   RuleEnforcementProvider,
   useRuleEnforcementProvider,
 } from './RuleEnforcementProvider';
+import { EntityRule, RuleType } from './RuleEnforcementProvider.interface';
 
 jest.mock('../../rest/ruleEnforcementAPI', () => ({
   getEntityRules: jest.fn(),

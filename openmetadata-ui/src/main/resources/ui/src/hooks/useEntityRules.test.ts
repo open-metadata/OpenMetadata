@@ -13,8 +13,11 @@
 
 import { renderHook } from '@testing-library/react-hooks';
 import { useRuleEnforcementProvider } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
+import {
+  ParsedRule,
+  RuleType,
+} from '../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { EntityType } from '../enums/entity.enum';
-import { ParsedRule, RuleType } from '../generated/system/entityRules';
 import { useEntityRules } from './useEntityRules';
 
 jest.mock('../context/RuleEnforcementProvider/RuleEnforcementProvider', () => ({

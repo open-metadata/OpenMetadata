@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { DataAssetRuleValidation } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
-import { EntityType } from '../enums/entity.enum';
 import {
+  DataAssetRuleValidation,
   EntityRule,
   ParsedRule,
   RuleType,
-} from '../generated/system/entityRules';
+} from '../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
+import { EntityType } from '../enums/entity.enum';
 
 /**
  * Parse a rule string into a structured object
