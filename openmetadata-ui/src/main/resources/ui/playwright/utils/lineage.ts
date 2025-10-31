@@ -25,6 +25,7 @@ import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import {
+  clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
   toastNotification,
@@ -80,11 +81,11 @@ export type LineageEdge = {
 };
 
 export const verifyColumnLayerInactive = async (page: Page) => {
-  await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
+  await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
   await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"]:not(.active)'
+    '[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)'
   );
-  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
+  await clickOutside(page); // close Layer popover
 };
 
 export const activateColumnLayer = async (page: Page) => {
@@ -191,7 +192,8 @@ export const dragConnection = async (
 };
 
 export const rearrangeNodes = async (page: Page) => {
-  await page.getByTestId('rearrange').click();
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (

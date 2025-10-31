@@ -35,6 +35,7 @@ import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { centerNodePosition } from '../../../../utils/EntityLineageUtils';
 import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
 
 const LineageControlButtons: FC<{
@@ -84,27 +85,33 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
+    const currentZoom = reactFlowInstance?.getZoom() ?? 1;
     reactFlowInstance?.fitView({ padding: 0.2 });
+    reactFlowInstance?.zoomTo(currentZoom);
+
+    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
   const handleRearrange = useCallback(() => {
     redraw?.();
+    setLineageViewOptionsAnchorEl(null);
   }, [redraw]);
 
   const handleRefocusSelected = useCallback(() => {
-    const selectedElements = reactFlowInstance
+    const selectedElement = reactFlowInstance
       ?.getNodes()
-      .filter((el) => el.selected);
-    if (selectedElements && selectedElements.length > 0) {
-      reactFlowInstance?.fitView({
-        padding: 0.2,
-        nodes: selectedElements,
-      });
-    }
+      .find((el) => el.selected);
+
+    selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
+    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
   const handleRefocusHome = useCallback(() => {
-    reactFlowInstance?.setCenter(0, 0, { zoom: 1 });
+    const selectedElement = reactFlowInstance
+      ?.getNodes()
+      .find((el) => el.data.isRootNode);
+    selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
+    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
   return (
