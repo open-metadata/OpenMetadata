@@ -72,6 +72,10 @@ export interface IngestionPipeline {
      */
     id?: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -927,6 +931,11 @@ export interface Pipeline {
      */
     overrideMetadata?: boolean;
     /**
+     * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+     * Database, Schema, Table) with custom mappings and inheritance rules.
+     */
+    ownerConfig?: OwnerConfiguration;
+    /**
      * Configuration to tune how far we want to look back in query logs to process Stored
      * Procedures results.
      *
@@ -1426,6 +1435,8 @@ export interface Pipeline {
  *
  * Search Indexing App.
  *
+ * Cache Warmup Application Configuration.
+ *
  * Configuration for the Collate AI Quality Agent.
  *
  * Configuration for the AutoPilot Application.
@@ -1467,6 +1478,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events processed at a time (Default 100).
      *
      * Maximum number of events sent in a batch (Default 100).
+     *
+     * Number of entities to process in each batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -1485,10 +1498,14 @@ export interface CollateAIAppConfig {
     autoTune?: boolean;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
+     *
+     * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
      */
     entities?: string[];
     /**
@@ -1517,6 +1534,8 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
+     *
+     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
@@ -1527,6 +1546,10 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Force cache warmup even if another instance is detected (use with caution).
+     */
+    force?: boolean;
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
@@ -1941,9 +1964,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -2237,6 +2282,7 @@ export enum SearchIndexMappingLanguage {
 export enum CollateAIAppConfigType {
     AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
+    CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
@@ -2367,7 +2413,7 @@ export interface DBTConfigurationSource {
      * Details of the bucket where the dbt files are stored
      */
     dbtPrefixConfig?:   DBTPrefixConfig;
-    dbtSecurityConfig?: DbtSecurityConfigClass;
+    dbtSecurityConfig?: Credentials;
 }
 
 /**
@@ -2411,7 +2457,7 @@ export interface DBTPrefixConfig {
  *
  * GCP Credentials for Google Drive API
  */
-export interface DbtSecurityConfigClass {
+export interface Credentials {
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -2704,6 +2750,45 @@ export enum OperationType {
 }
 
 /**
+ * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+ * Database, Schema, Table) with custom mappings and inheritance rules.
+ *
+ * Configuration for assigning owners to ingested entities following topology hierarchy with
+ * inheritance support
+ */
+export interface OwnerConfiguration {
+    /**
+     * Owner for database entities. Can be a single owner for all databases, or a map of
+     * database names to owner(s).
+     */
+    database?: { [key: string]: string[] | string } | string;
+    /**
+     * Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs
+     * to owner(s).
+     */
+    databaseSchema?: { [key: string]: string[] | string } | string;
+    /**
+     * Default owner applied to all entities when no specific owner is configured (user or team
+     * name/email)
+     */
+    default?: string;
+    /**
+     * Enable child entities to inherit owner from parent entities when they don't have a
+     * specific owner configured
+     */
+    enableInheritance?: boolean;
+    /**
+     * Owner for the service level
+     */
+    service?: string;
+    /**
+     * Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to
+     * owner(s).
+     */
+    table?: { [key: string]: string[] | string } | string;
+}
+
+/**
  * Processing Engine Configuration. If not provided, the Native Engine will be used by
  * default.
  *
@@ -2839,6 +2924,8 @@ export interface ServiceConnection {
  *
  * Grafana Connection Config
  *
+ * Hex Connection Config
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -2876,6 +2963,8 @@ export interface ServiceConnection {
  * Oracle Database Connection Config
  *
  * Postgres Database Connection Config
+ *
+ * TimescaleDB Database Connection Config
  *
  * Presto Database Connection Config
  *
@@ -2962,6 +3051,8 @@ export interface ServiceConnection {
  * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
+ *
+ * AWS Kinesis Firehose Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
  *
@@ -3053,9 +3144,11 @@ export interface ConfigObject {
      *
      * token to connect to Qlik Cloud.
      *
-     * Generated Token to connect to Databricks.
+     * Hex API token for authentication. Can be personal or workspace token.
      *
      * To Connect to Dagster Cloud
+     *
+     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -3128,7 +3221,7 @@ export interface ConfigObject {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: GitHubCredentials;
+    gitCredentials?: NoGitCredentialsClass | string;
     /**
      * URL to the Looker instance.
      *
@@ -3160,6 +3253,8 @@ export interface ConfigObject {
      *
      * URL to the Grafana instance.
      *
+     * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
      * BigQuery APIs URL.
      *
      * Host and port of the AzureSQL service.
@@ -3187,6 +3282,8 @@ export interface ConfigObject {
      * Host and port of the Oracle service.
      *
      * Host and port of the source service.
+     *
+     * Host and port of the TimescaleDB service.
      *
      * Host and port of the Presto service.
      *
@@ -3263,7 +3360,7 @@ export interface ConfigObject {
      *
      * API key to authenticate with the SAP ERP APIs.
      *
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */
@@ -3377,6 +3474,9 @@ export interface ConfigObject {
      *
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
+     *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
      *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
@@ -3512,6 +3612,8 @@ export interface ConfigObject {
     apiVersion?: string;
     /**
      * Types of methods used to authenticate to the tableau instance
+     *
+     * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
      *
@@ -3665,6 +3767,16 @@ export interface ConfigObject {
      */
     pageSize?: number;
     /**
+     * Whether to import Hex project categories as OpenMetadata tags
+     *
+     * Include Tags for Indexing
+     */
+    includeTags?: boolean;
+    /**
+     * Type of token to use for authentication
+     */
+    tokenType?: TokenType;
+    /**
      * Billing Project ID
      */
     billingProjectId?: string;
@@ -3803,6 +3915,9 @@ export interface ConfigObject {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
+     *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
@@ -3938,6 +4053,8 @@ export interface ConfigObject {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
     sslMode?:            SSLMode;
@@ -4278,10 +4395,6 @@ export interface ConfigObject {
      */
     includeTables?: boolean;
     /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
-    /**
      * Include Teams for Indexing
      */
     includeTeams?: boolean;
@@ -4333,6 +4446,9 @@ export interface ConfigObject {
     entity_type?: string;
     /**
      * service type of the messaging source
+     *
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
      *
      * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
      * e.g. local_kafka
@@ -4620,6 +4736,16 @@ export enum AuthMechanismEnum {
  *
  * Access Token Auth Credentials
  *
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -4673,8 +4799,35 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
-    awsConfig?:                 AWSCredentials;
-    azureConfig?:               AzureCredentials;
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
+    awsConfig?:     AWSCredentials;
+    azureConfig?:   AzureCredentials;
     /**
      * JWT to connect to source.
      */
@@ -4997,7 +5150,7 @@ export interface OAuth2Credential {
  * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
  */
 export interface IcebergFileSystem {
-    type?: Credentials | null;
+    type?: AWSCredentialsClass | null;
 }
 
 /**
@@ -5009,7 +5162,7 @@ export interface IcebergFileSystem {
  *
  * Azure Credentials
  */
-export interface Credentials {
+export interface AWSCredentialsClass {
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -5184,7 +5337,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: DbtSecurityConfigClass;
+    securityConfig?: Credentials;
     /**
      * Account Name of your storage account
      */
@@ -5766,9 +5919,6 @@ export enum FHIRVersion {
 }
 
 /**
- * Credentials to extract the .lkml files from a repository. This is required to get all the
- * lineage and definitions.
- *
  * Do not set any credentials. Note that credentials are required to extract .lkml views and
  * their lineage.
  *
@@ -5778,14 +5928,22 @@ export enum FHIRVersion {
  *
  * Credentials for a Gitlab repository
  */
-export interface GitHubCredentials {
+export interface NoGitCredentialsClass {
+    /**
+     * GitHub instance URL. For GitHub.com, use https://github.com
+     *
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     *
+     * Gitlab instance URL. For Gitlab.com, use https://gitlab.com
+     */
+    gitHostURL?:      string;
     repositoryName?:  string;
     repositoryOwner?: string;
     token?:           string;
     /**
      * Credentials Type
      */
-    type?: GitHubCredentialsType;
+    type?: NoGitCredentialsType;
     /**
      * Main production branch of the repository. E.g., `main`
      */
@@ -5801,7 +5959,7 @@ export interface GitHubCredentials {
  *
  * Gitlab Credentials type
  */
-export enum GitHubCredentialsType {
+export enum NoGitCredentialsType {
     BitBucket = "BitBucket",
     GitHub = "GitHub",
     Gitlab = "Gitlab",
@@ -6056,7 +6214,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      DbtSecurityConfigClass;
+    securityConfig?:      Credentials;
 }
 
 /**
@@ -6288,6 +6446,14 @@ export enum TransactionMode {
 }
 
 /**
+ * Type of token to use for authentication
+ */
+export enum TokenType {
+    Personal = "personal",
+    Workspace = "workspace",
+}
+
+/**
  * REST API Type
  *
  * REST API type
@@ -6425,12 +6591,14 @@ export enum PurpleType {
     GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
+    Hex = "Hex",
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
@@ -6485,6 +6653,7 @@ export enum PurpleType {
     Tableau = "Tableau",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
@@ -6515,7 +6684,7 @@ export interface StorageMetadataConfigurationSource {
      */
     manifestHttpPath?: string;
     prefixConfig?:     StorageMetadataBucketDetails;
-    securityConfig?:   DbtSecurityConfigClass;
+    securityConfig?:   Credentials;
 }
 
 /**

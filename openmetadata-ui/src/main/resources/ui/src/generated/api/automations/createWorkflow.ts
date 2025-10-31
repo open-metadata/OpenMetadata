@@ -226,6 +226,8 @@ export interface RequestConnection {
  *
  * Postgres Database Connection Config
  *
+ * TimescaleDB Database Connection Config
+ *
  * Presto Database Connection Config
  *
  * Redshift  Connection Config
@@ -320,6 +322,8 @@ export interface RequestConnection {
  *
  * Grafana Connection Config
  *
+ * Hex Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -336,6 +340,8 @@ export interface RequestConnection {
  * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
+ *
+ * AWS Kinesis Firehose Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
  *
@@ -437,11 +443,13 @@ export interface ConfigObject {
     /**
      * Generated Token to connect to OpenAPI Schema.
      *
-     * Generated Token to connect to Databricks.
-     *
      * token to connect to Qlik Cloud.
      *
+     * Hex API token for authentication. Can be personal or workspace token.
+     *
      * To Connect to Dagster Cloud
+     *
+     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -526,6 +534,8 @@ export interface ConfigObject {
      *
      * Host and port of the source service.
      *
+     * Host and port of the TimescaleDB service.
+     *
      * Host and port of the Presto service.
      *
      * Host and port of the Redshift service.
@@ -585,6 +595,8 @@ export interface ConfigObject {
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
      * URL to the Grafana instance.
+     *
+     * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Pipeline Service Management/UI URI.
      *
@@ -728,6 +740,9 @@ export interface ConfigObject {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
+     *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
@@ -839,6 +854,9 @@ export interface ConfigObject {
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
      *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
+     *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
      *
@@ -944,6 +962,18 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     *
+     * Types of methods used to authenticate to the tableau instance
+     *
+     * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -1026,16 +1056,6 @@ export interface ConfigObject {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Choose Auth Config Type.
-     *
-     * Types of methods used to authenticate to the tableau instance
-     *
-     * Types of methods used to authenticate to the alation instance
-     *
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -1055,6 +1075,8 @@ export interface ConfigObject {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
     sslMode?:            SSLMode;
@@ -1284,7 +1306,7 @@ export interface ConfigObject {
      * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
      * Admin role for full metadata extraction.
      *
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */
@@ -1368,7 +1390,7 @@ export interface ConfigObject {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: GitHubCredentials;
+    gitCredentials?: NoGitCredentialsClass | string;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
@@ -1513,6 +1535,16 @@ export interface ConfigObject {
      */
     pageSize?: number;
     /**
+     * Whether to import Hex project categories as OpenMetadata tags
+     *
+     * Include Tags for Indexing
+     */
+    includeTags?: boolean;
+    /**
+     * Type of token to use for authentication
+     */
+    tokenType?: TokenType;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1597,6 +1629,16 @@ export interface ConfigObject {
      */
     packageConnection?: S3Connection | string;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     *
+     * service type of the messaging source
+     */
+    messagingServiceName?: string[] | string;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -1654,13 +1696,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     *
-     * service type of the messaging source
-     */
-    messagingServiceName?: string[] | string;
     /**
      * ID of your DBT cloud account
      */
@@ -1813,10 +1848,6 @@ export interface ConfigObject {
      * Include Tables for Indexing
      */
     includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
     /**
      * Include Teams for Indexing
      */
@@ -2071,6 +2102,16 @@ export enum AuthProvider {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -2103,7 +2144,34 @@ export enum AuthProvider {
  *
  * Configuration for connecting to Ranger Basic Auth.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      *
@@ -2454,7 +2522,7 @@ export interface OAuth2Credential {
  * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
  */
 export interface IcebergFileSystem {
-    type?: Credentials | null;
+    type?: AWSCredentialsClass | null;
 }
 
 /**
@@ -2466,7 +2534,7 @@ export interface IcebergFileSystem {
  *
  * Azure Credentials
  */
-export interface Credentials {
+export interface AWSCredentialsClass {
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -2671,7 +2739,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: SecurityConfigClass;
+    securityConfig?: Credentials;
     /**
      * Account Name of your storage account
      */
@@ -2757,7 +2825,7 @@ export interface ConfigSourceConnection {
  *
  * AWS credentials configs.
  */
-export interface SecurityConfigClass {
+export interface Credentials {
     /**
      * Account Name of your storage account
      */
@@ -3041,7 +3109,7 @@ export interface ConfigConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -3112,7 +3180,7 @@ export interface ConfigConnection {
  *
  * Azure Database Connection Config
  */
-export interface ConnectionAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -3457,9 +3525,6 @@ export enum FHIRVersion {
 }
 
 /**
- * Credentials to extract the .lkml files from a repository. This is required to get all the
- * lineage and definitions.
- *
  * Do not set any credentials. Note that credentials are required to extract .lkml views and
  * their lineage.
  *
@@ -3469,14 +3534,22 @@ export enum FHIRVersion {
  *
  * Credentials for a Gitlab repository
  */
-export interface GitHubCredentials {
+export interface NoGitCredentialsClass {
+    /**
+     * GitHub instance URL. For GitHub.com, use https://github.com
+     *
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     *
+     * Gitlab instance URL. For Gitlab.com, use https://gitlab.com
+     */
+    gitHostURL?:      string;
     repositoryName?:  string;
     repositoryOwner?: string;
     token?:           string;
     /**
      * Credentials Type
      */
-    type?: GitHubCredentialsType;
+    type?: NoGitCredentialsType;
     /**
      * Main production branch of the repository. E.g., `main`
      */
@@ -3492,7 +3565,7 @@ export interface GitHubCredentials {
  *
  * Gitlab Credentials type
  */
-export enum GitHubCredentialsType {
+export enum NoGitCredentialsType {
     BitBucket = "BitBucket",
     GitHub = "GitHub",
     Gitlab = "Gitlab",
@@ -3531,7 +3604,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -3747,7 +3820,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      SecurityConfigClass;
+    securityConfig?:      Credentials;
 }
 
 /**
@@ -4036,6 +4109,14 @@ export enum TransactionMode {
 }
 
 /**
+ * Type of token to use for authentication
+ */
+export enum TokenType {
+    Personal = "personal",
+    Workspace = "workspace",
+}
+
+/**
  * REST API Type
  *
  * REST API type
@@ -4173,12 +4254,14 @@ export enum ConfigType {
     GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
+    Hex = "Hex",
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
@@ -4233,6 +4316,7 @@ export enum ConfigType {
     Tableau = "Tableau",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
@@ -4390,9 +4474,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

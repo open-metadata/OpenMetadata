@@ -114,3 +114,64 @@ DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = textwrap.dedent(
         AND event_time >= current_date() - INTERVAL 90 DAYS
     """
 )
+
+# Test connection queries
+TEST_VIEW_DEFINITIONS = textwrap.dedent(
+    """
+    SELECT
+        TABLE_NAME,
+        TABLE_SCHEMA,
+        VIEW_DEFINITION
+    FROM INFORMATION_SCHEMA.VIEWS
+    WHERE VIEW_DEFINITION IS NOT NULL
+    LIMIT 1
+    """
+)
+
+TEST_CATALOG_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.catalog_tags
+    WHERE 1=0
+    """
+)
+
+TEST_SCHEMA_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.schema_tags
+    WHERE 1=0
+    """
+)
+
+TEST_TABLE_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.table_tags
+    WHERE 1=0
+    """
+)
+
+TEST_COLUMN_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.column_tags
+    WHERE 1=0
+    """
+)
+
+TEST_TABLE_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM system.access.table_lineage
+    WHERE 1=0
+    """
+)
+
+TEST_COLUMN_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM system.access.column_lineage
+    WHERE 1=0
+    """
+)

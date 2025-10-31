@@ -1,6 +1,5 @@
 package org.openmetadata.service.util;
 
-import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -25,7 +24,6 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
-import java.io.File;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -40,8 +38,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.flywaydb.core.Flyway;
-import org.flywaydb.core.api.MigrationVersion;
+import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -66,6 +63,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -100,8 +98,11 @@ import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -125,7 +126,6 @@ import picocli.CommandLine.Option;
 public class OpenMetadataOperations implements Callable<Integer> {
 
   private OpenMetadataApplicationConfig config;
-  private Flyway flyway;
   private Jdbi jdbi;
   private SearchRepository searchRepository;
   private String nativeSQLScriptRootPath;
@@ -148,58 +148,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
-  }
-
-  @Command(
-      name = "info",
-      description =
-          "Shows the list of migrations applied and the pending migration "
-              + "waiting to be applied on the target database")
-  public Integer info() {
-    try {
-      parseConfig();
-      LOG.info(dumpToAsciiTable(flyway.info().all()));
-      return 0;
-    } catch (Exception e) {
-      LOG.error("Failed due to ", e);
-      return 1;
-    }
-  }
-
-  @Command(
-      name = "validate",
-      description =
-          "Checks if the all the migrations haven been applied " + "on the target database.")
-  public Integer validate() {
-    try {
-      parseConfig();
-      flyway.validate();
-      return 0;
-    } catch (Exception e) {
-      LOG.error("Database migration validation failed due to ", e);
-      return 1;
-    }
-  }
-
-  @Command(
-      name = "repair",
-      description =
-          "Repairs the DATABASE_CHANGE_LOG table which is used to track"
-              + "all the migrations on the target database This involves removing entries for the failed migrations and update"
-              + "the checksum of migrations already applied on the target database")
-  public Integer repair() {
-    try {
-      parseConfig();
-      flyway.repair();
-      return 0;
-    } catch (Exception e) {
-      LOG.error("Repair of CHANGE_LOG failed due to ", e);
-      return 1;
-    }
   }
 
   @Command(
@@ -360,6 +312,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean force) {
     try {
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
       if (!force && isAppInstalled(appRepository, appName)) {
@@ -390,6 +344,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String appName) {
     try {
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       if (deleteApplication(appRepository, appName)) {
         LOG.info("App deleted.");
@@ -432,17 +388,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
       }
-      initializeCollectionRegistry();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       try {
         userRepository.getByEmail(null, email, EntityUtil.Fields.EMPTY_FIELDS);
-        LOG.error("User {} already exists.", email);
-        return 1;
+        LOG.info("User {} already exists.", email);
+        return 0;
       } catch (EntityNotFoundException ex) {
         // Expected – continue to create the user.
       }
@@ -470,6 +427,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } finally {
       // Restore the original logging level.
       rootLogger.setLevel(originalLevel);
+    }
+  }
+
+  private void initializeSecurityConfig() {
+    try {
+      var authConfig =
+          Entity.getSystemRepository()
+              .getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (authConfig != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(
+                JsonUtils.convertValue(
+                    authConfig.getConfigValue(),
+                    org.openmetadata.schema.api.security.AuthenticationConfiguration.class));
+      } else if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
+    } catch (Exception e) {
+      if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
     }
   }
 
@@ -533,7 +513,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer checkConnection() {
     try {
       parseConfig();
-      flyway.getConfiguration().getDataSource().getConnection();
+      jdbi.open().getConnection();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to check connection due to ", e);
@@ -551,9 +531,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       promptUserForDelete();
       parseConfig();
       LOG.info("Deleting all the OpenMetadata tables.");
-      flyway.clean();
-      LOG.info("Creating the OpenMetadata Schema.");
-      flyway.migrate();
+      dropAllTables();
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
@@ -588,6 +566,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
+      initializeSecurityConfig();
 
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
@@ -632,7 +611,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
-      flyway.migrate();
       validateAndRunSystemDataMigrations(force);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
@@ -1407,7 +1385,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
-        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+        IndexMapping entityIndexMapping = searchRepository.getIndexMapping(entityType);
+        Set<String> allEntityIndices =
+            searchRepository
+                .getSearchClient()
+                .listIndicesByPrefix(
+                    entityIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+        for (String oldIndex : allEntityIndices) {
+          try {
+            if (searchRepository.getSearchClient().indexExists(oldIndex)) {
+              searchRepository.getSearchClient().deleteIndex(oldIndex);
+              LOG.info("Cleaned up old index '{}' for entity '{}'.", oldIndex, entityType);
+            }
+          } catch (Exception deleteEx) {
+            LOG.warn(
+                "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
+          }
+        }
       }
 
       // Drop data streams and data quality indexes created by DataInsightsApp
@@ -1417,6 +1411,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "create-indexes", description = "Creates Indexes for Elastic/OpenSearch")
+  public Integer createIndexes() {
+    try {
+      LOG.info("Creating indexes for search engine...");
+      parseConfig();
+      searchRepository.createIndexes();
+      createDataInsightsIndexes();
+      Entity.cleanup();
+      LOG.info("All indexes created successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop create due to ", e);
       return 1;
     }
   }
@@ -1441,6 +1451,68 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
       LOG.debug("Data Insights index cleanup error details: ", e);
     }
+  }
+
+  private void createDataInsightsIndexes() {
+    try {
+      LOG.info("Create Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Create/Update data assets data streams...");
+      dataInsightsApp.createOrUpdateDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Create/Updated data quality indexes...");
+      dataInsightsApp.createDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams created successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to create some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index creation error details: ", e);
+    }
+  }
+
+  private Set<String> getAllIndices() {
+    Set<String> indices = new HashSet<>();
+    try {
+      SearchClient<?> searchClient = searchRepository.getSearchClient();
+
+      if (searchClient instanceof ElasticSearchClient) {
+        es.org.elasticsearch.client.Request request =
+            new es.org.elasticsearch.client.Request("GET", "/_cat/indices?format=json");
+        es.org.elasticsearch.client.RestClient lowLevelClient =
+            (es.org.elasticsearch.client.RestClient) searchClient.getLowLevelClient();
+        es.org.elasticsearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      } else if (searchClient instanceof OpenSearchClient) {
+        os.org.opensearch.client.Request request =
+            new os.org.opensearch.client.Request("GET", "/_cat/indices?format=json");
+        os.org.opensearch.client.RestClient lowLevelClient =
+            (os.org.opensearch.client.RestClient) searchClient.getLowLevelClient();
+        os.org.opensearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve all indices", e);
+    }
+    return indices;
   }
 
   @Command(
@@ -1603,30 +1675,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               dataSourceFactory.setPassword(token);
             });
 
-    String jdbcUrl = dataSourceFactory.getUrl();
-    String user = dataSourceFactory.getUser();
-    String password = dataSourceFactory.getPassword();
-    assert user != null && password != null;
-    String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
-    String location =
-        "filesystem:"
-            + flywayRootPath
-            + File.separator
-            + config.getDataSourceFactory().getDriverClass();
-    flyway =
-        Flyway.configure()
-            .encoding(StandardCharsets.UTF_8)
-            .table("DATABASE_CHANGE_LOG")
-            .sqlMigrationPrefix("v")
-            .validateOnMigrate(false)
-            .outOfOrder(false)
-            .baselineOnMigrate(true)
-            .baselineVersion(MigrationVersion.fromVersion("000"))
-            .cleanOnValidationError(false)
-            .locations(location)
-            .dataSource(jdbcUrl, user, password)
-            .cleanDisabled(false)
-            .load();
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
 
@@ -1649,6 +1697,43 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
+  }
+
+  // This was before handled via flyway's clean command.
+  private void dropAllTables() {
+    try (Handle handle = jdbi.open()) {
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      if (connType == ConnectionType.MYSQL) {
+        handle.execute("SET FOREIGN_KEY_CHECKS = 0");
+        handle
+            .createQuery("SHOW TABLES")
+            .mapTo(String.class)
+            .list()
+            .forEach(
+                tableName -> {
+                  try {
+                    handle.execute("DROP TABLE IF EXISTS " + tableName);
+                  } catch (Exception e) {
+                    LOG.warn("Failed to drop table: " + tableName, e);
+                  }
+                });
+        handle.execute("SET FOREIGN_KEY_CHECKS = 1");
+      } else if (connType == ConnectionType.POSTGRES) {
+        handle
+            .createQuery(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+            .mapTo(String.class)
+            .list()
+            .forEach(
+                tableName -> {
+                  try {
+                    handle.execute("DROP TABLE IF EXISTS \"" + tableName + "\" CASCADE");
+                  } catch (Exception e) {
+                    LOG.warn("Failed to drop table: " + tableName, e);
+                  }
+                });
+      }
+    }
   }
 
   private void promptUserForDelete() {
@@ -1675,7 +1760,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
+            jdbi,
+            nativeSQLScriptRootPath,
+            connType,
+            extensionSQLScriptRootPath,
+            config.getMigrationConfiguration().getFlywayPath(),
+            config,
+            force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows(true);

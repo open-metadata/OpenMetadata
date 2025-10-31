@@ -12,6 +12,11 @@
  */
 import type { Components, Theme } from "@mui/material/styles";
 import { shadows } from "./shadows";
+import {
+  BODY_FONT_SIZES,
+  BODY_LINE_HEIGHTS,
+  COMPONENT_FONT_SIZES,
+} from './typography-constants';
 
 export const dataDisplayTheme = (
   colors: any
@@ -48,7 +53,7 @@ export const dataDisplayTheme = (
     styleOverrides: {
       root: {
         borderRadius: "12px",
-        fontSize: "0.875rem",
+        fontSize: "1rem",
         backgroundColor: colors.white,
         border: `1px solid ${colors.gray[300]}`,
         color: colors.gray[900],
@@ -124,15 +129,15 @@ export const dataDisplayTheme = (
 
       sizeSmall: {
         padding: "2px 6px",
-        fontSize: "0.75rem",
+        fontSize: BODY_FONT_SIZES.CAPTION,
         fontWeight: 500,
-        lineHeight: "1rem",
+        lineHeight: BODY_LINE_HEIGHTS.CAPTION,
       },
       sizeMedium: {
         padding: "2px 8px",
-        fontSize: "0.875rem",
+        fontSize: "1rem",
         fontWeight: 500,
-        lineHeight: "1.25rem",
+        lineHeight: BODY_LINE_HEIGHTS.BODY2,
       },
 
       colorPrimary: {
@@ -184,7 +189,7 @@ export const dataDisplayTheme = (
         props: { variant: "filled" as any, size: "small" as any },
         style: {
           padding: "2px 8px",
-          fontSize: "0.75rem",
+          fontSize: BODY_FONT_SIZES.CAPTION,
           fontWeight: 500,
           borderRadius: "9999px",
         },
@@ -235,10 +240,10 @@ export const dataDisplayTheme = (
         props: { size: "large" as any },
         style: {
           padding: "4px 8px",
-          fontSize: "0.875rem",
+          fontSize: "1rem",
           fontWeight: 500,
           borderRadius: "8px",
-          lineHeight: "1.25rem", // 20px line height to achieve 30px total height
+          lineHeight: BODY_LINE_HEIGHTS.BODY2, // 20px line height to achieve 30px total height
         },
       },
       {
@@ -249,9 +254,18 @@ export const dataDisplayTheme = (
           color: colors.gray[750],
           fontWeight: 400,
           fontSize: "12px",
+          borderRadius: "8px",
         },
       },
     ],
+  },
+  MuiAvatar: {
+    styleOverrides: {
+      root: {
+        backgroundColor: colors.blue[50],
+        color: colors.blue[600],
+      },
+    },
   },
   MuiDivider: {
     styleOverrides: {
@@ -273,9 +287,9 @@ export const dataDisplayTheme = (
         backgroundColor: colors.white,
         color: colors.gray[700],
         padding: "8px 12px",
-        fontSize: "0.75rem",
+        fontSize: BODY_FONT_SIZES.CAPTION,
         fontWeight: 600,
-        lineHeight: "1rem",
+        lineHeight: BODY_LINE_HEIGHTS.CAPTION,
 
         boxShadow:
           shadows.lg ||
@@ -332,8 +346,8 @@ export const dataDisplayTheme = (
       root: {
         ".MuiDialog-root &, .MuiModal-root:not(.MuiPopover-root) &": {
           backgroundColor: "rgba(10, 13, 18, 0.7)",
-          backdropFilter: "blur(6px)",
-          WebkitBackdropFilter: "blur(6px)",
+          backdropFilter: "blur(0px)",
+          WebkitBackdropFilter: "blur(0px)",
         },
 
         ".MuiPopover-root &": {
@@ -378,7 +392,7 @@ export const dataDisplayTheme = (
   MuiDialogTitle: {
     styleOverrides: {
       root: {
-        fontSize: "1rem",
+        fontSize: COMPONENT_FONT_SIZES.INPUT,
         fontWeight: 600,
         color: colors.gray[900],
         padding: "20px 16px 0 16px",
@@ -394,7 +408,7 @@ export const dataDisplayTheme = (
     styleOverrides: {
       root: {
         padding: "8px 16px 0 16px",
-        fontSize: "0.875rem",
+        fontSize: "1rem",
         color: colors.gray[600],
         margin: 0,
 
@@ -457,7 +471,7 @@ export const dataDisplayTheme = (
         },
         "& .MuiTableCell-root": {
           padding: "8px 24px",
-          fontSize: "0.75rem",
+          fontSize: BODY_FONT_SIZES.CAPTION,
           fontWeight: 500,
           color: colors.gray[500],
           whiteSpace: "nowrap" as const,
@@ -547,7 +561,7 @@ export const dataDisplayTheme = (
       },
       head: {
         padding: "8px 24px",
-        fontSize: "0.75rem",
+        fontSize: BODY_FONT_SIZES.CAPTION,
         fontWeight: 600,
         color: colors.gray[500],
         whiteSpace: "nowrap" as const,
@@ -570,9 +584,9 @@ export const dataDisplayTheme = (
         padding: "16px 24px",
         fontFamily:
           'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
-        fontSize: "0.875rem", // text-sm
+        fontSize: "1rem", // text-sm
         fontWeight: 400,
-        lineHeight: "1.25rem", // line-height for text-sm
+        lineHeight: BODY_LINE_HEIGHTS.BODY2, // line-height for text-sm
         letterSpacing: "0%",
         color: "#181D27", // --Component-colors-Utility-Gray-utility-gray-900
         position: "relative" as const,

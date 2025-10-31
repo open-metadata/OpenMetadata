@@ -198,6 +198,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "type": "keyword"
       },
@@ -225,6 +228,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

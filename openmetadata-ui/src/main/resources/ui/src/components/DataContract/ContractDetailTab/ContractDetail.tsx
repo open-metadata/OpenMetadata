@@ -33,9 +33,8 @@ import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-c
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
-import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-
 import {
   CONTRACT_DATE_TIME_FORMAT,
   DataContractMode,
@@ -56,12 +55,13 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
@@ -255,6 +255,7 @@ const ContractDetail: React.FC<{
 
               <Dropdown
                 destroyPopupOnHide
+                getPopupContainer={getPopupContainer}
                 menu={{
                   items: contractActionsItems,
                   onClick: handleContractAction,
@@ -438,10 +439,9 @@ const ContractDetail: React.FC<{
                 <Divider className="contract-dash-separator" />
               </div>
 
-              <RichTextEditorPreviewerNew
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant
                 markdown={contract.description ?? ''}
-                maxLineLength="3"
               />
             </Col>
           )}
@@ -456,10 +456,9 @@ const ContractDetail: React.FC<{
                 <Divider className="contract-dash-separator" />
               </div>
 
-              <RichTextEditorPreviewerNew
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant
                 markdown={contract.termsOfUse ?? ''}
-                maxLineLength="3"
               />
             </Col>
           )}
@@ -482,6 +481,9 @@ const ContractDetail: React.FC<{
 
               <ContractSchemaTable
                 contractStatus={constraintStatus['schema']}
+                latestSchemaValidationResult={
+                  latestContractResults?.schemaValidation
+                }
                 schemaDetail={schemaDetail}
               />
             </Col>

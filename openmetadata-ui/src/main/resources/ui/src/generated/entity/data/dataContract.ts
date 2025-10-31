@@ -76,6 +76,10 @@ export interface DataContract {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Incremental change description of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -217,6 +221,10 @@ export interface ContractUpdate {
      * Description of changes made to the contract.
      */
     changeDescription?: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Timestamp when the contract was updated.
      */
@@ -440,6 +448,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -809,9 +818,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

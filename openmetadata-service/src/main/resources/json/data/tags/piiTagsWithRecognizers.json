@@ -64,6 +64,24 @@
           "target": "content"
         },
         {
+          "name": "SpacyRecognizer",
+          "displayName": "Recognizer using spaCy NLP model",
+          "description": "Recognize PII entities using a spaCy NLP model.",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "predefined",
+            "name": "SpacyRecognizer",
+            "supportedEntities": [
+              "DATE_TIME",
+              "NRP",
+              "LOCATION"
+            ]
+          },
+          "confidenceThreshold": 0.6,
+          "target": "content"
+        },
+        {
           "displayName": "Date time column name",
           "name": "date_time",
           "description": "A regex recognizer for column names",
@@ -391,7 +409,7 @@
           {
             "name": "AuAcnRecognizer",
             "displayName": "Au Acn Recognizer",
-            "description": "Recognizes Australian Company Number (\"ACN'.<br/><br/>The Australian Company Number (ACN) is a nine digit number with the last digit being a check digit calculated using a modified modulus 10 calculation.<br/><br/>This recognizer identifies ACN using regex, context words, and checksum.<br/><br/>Reference: https://asic.gov.au/",
+            "description": "Recognizes Australian Company Number (\"ACN\").<br/><br/>The Australian Company Number (ACN) is a nine digit number with the last digit being a check digit calculated using a modified modulus 10 calculation.<br/><br/>This recognizer identifies ACN using regex, context words, and checksum.<br/><br/>Reference: https://asic.gov.au/",
             "enabled": true,
             "isSystemDefault": true,
             "recognizerConfig": {
@@ -405,7 +423,7 @@
           {
             "name": "AuTfnRecognizer",
             "displayName": "Au Tfn Recognizer",
-            "description": "Recognizes Australian Tax File Numbers (\"TFN'.<br/><br/>The tax file number (TFN) is a unique identifier issued by the Australian Taxation Office to each taxpaying entity \\u2014 an individual, company,<br/><br/>superannuation fund, partnership, or trust.<br/><br/>The TFN consists of a nine digit number, usually presented in the format NNN NNN NNN.<br/><br/>TFN includes a check digit for detecting erroneous number based on simple modulo 11.<br/><br/>This recognizer uses regex, context words,<br/><br/>and checksum to identify TFN.<br/><br/>Reference: https://www.ato.gov.au/individuals/tax-file-number/",
+            "description": "Recognizes Australian Tax File Numbers (\"TFN\").<br/><br/>The tax file number (TFN) is a unique identifier issued by the Australian Taxation Office to each taxpaying entity \\u2014 an individual, company,<br/><br/>superannuation fund, partnership, or trust.<br/><br/>The TFN consists of a nine digit number, usually presented in the format NNN NNN NNN.<br/><br/>TFN includes a check digit for detecting erroneous number based on simple modulo 11.<br/><br/>This recognizer uses regex, context words,<br/><br/>and checksum to identify TFN.<br/><br/>Reference: https://www.ato.gov.au/individuals/tax-file-number/",
             "enabled": true,
             "isSystemDefault": true,
             "recognizerConfig": {
@@ -433,7 +451,7 @@
           {
             "name": "InPanRecognizer",
             "displayName": "In Pan Recognizer",
-            "description": "Recognizes Indian Permanent Account Number (\"PAN'.<br/><br/>The Permanent Account Number (PAN) is a ten digit alpha-numeric code with the last digit being a check digit calculated using a modified modulus 10 calculation.<br/><br/>This recognizer identifies PAN using regex and context words.<br/><br/>Reference: https://en.wikipedia.org/wiki/Permanent_account_number\nhttps://incometaxindia.gov.in/Forms/tps/1.Permanent%20Account%20Number%20(PAN).pdf",
+            "description": "Recognizes Indian Permanent Account Number (\"PAN\").<br/><br/>The Permanent Account Number (PAN) is a ten digit alpha-numeric code with the last digit being a check digit calculated using a modified modulus 10 calculation.<br/><br/>This recognizer identifies PAN using regex and context words.<br/><br/>Reference: https://en.wikipedia.org/wiki/Permanent_account_number\nhttps://incometaxindia.gov.in/Forms/tps/1.Permanent%20Account%20Number%20(PAN).pdf",
             "enabled": true,
             "isSystemDefault": true,
             "recognizerConfig": {
@@ -724,7 +742,10 @@
             "isSystemDefault": true,
             "recognizerConfig": {
               "type": "predefined",
-              "name": "SpacyRecognizer"
+              "name": "SpacyRecognizer",
+              "supportedEntities": [
+                "PERSON"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"

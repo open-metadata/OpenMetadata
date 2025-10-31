@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Box, Tooltip as MUITooltip } from '@mui/material';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -52,6 +56,7 @@ import {
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
 import { getPrioritizedEditPermission } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
@@ -192,6 +197,29 @@ export const domainTypeTooltipDataRender = () => (
       </Fragment>
     ))}
   </Space>
+);
+
+export const iconTooltipDataRender = () => (
+  <MUITooltip arrow placement="top" title={t('message.icon-aspect-ratio')}>
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        cursor: 'help',
+        lineHeight: 0,
+        pointerEvents: 'auto',
+      }}>
+      <InfoOutlinedIcon
+        data-testid="mui-helper-icon"
+        sx={{
+          fontSize: 16,
+          color: 'text.secondary',
+          pointerEvents: 'auto',
+        }}
+      />
+    </Box>
+  </MUITooltip>
 );
 
 export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
@@ -371,6 +399,8 @@ export const getDomainDetailTabs = ({
   handleAssetClick,
   handleAssetSave,
   setShowAddSubDomainModal,
+  feedCount,
+  onFeedUpdate,
 }: DomainDetailPageTabProps) => {
   return [
     {
@@ -418,6 +448,29 @@ export const getDomainDetailTabs = ({
                 permissions={domainPermission}
                 ref={dataProductsTabRef}
                 onAddDataProduct={onAddDataProduct}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                count={feedCount?.totalCount ?? 0}
+                id={EntityTabs.ACTIVITY_FEED}
+                isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+                name={t('label.activity-feed-and-task-plural')}
+              />
+            ),
+            key: EntityTabs.ACTIVITY_FEED,
+            children: (
+              <ActivityFeedTab
+                refetchFeed
+                entityFeedTotalCount={feedCount?.totalCount ?? 0}
+                entityType={EntityType.DOMAIN}
+                feedCount={feedCount}
+                layoutType={ActivityFeedLayoutType.THREE_PANEL}
+                owners={domain.owners}
+                onFeedUpdate={onFeedUpdate ?? noop}
+                onUpdateEntityDetails={noop}
               />
             ),
           },
@@ -513,15 +566,17 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 };
 
 export const getDomainIcon = (iconURL?: string) => {
-  if (iconURL) {
-    return (
-      <img
-        alt="domain icon"
-        className="domain-icon-url h-6 w-6"
-        src={iconURL}
-      />
-    );
+  // Try to render the icon using the utility (handles both URLs and icon names)
+  const iconElement = renderIcon(iconURL, {
+    size: 24,
+    className: 'domain-icon-url h-6 w-6',
+  });
+
+  // If we got an icon element, return it
+  if (iconElement) {
+    return iconElement;
   }
 
+  // Otherwise return the default domain icon
   return <DomainIcon className="domain-default-icon" />;
 };

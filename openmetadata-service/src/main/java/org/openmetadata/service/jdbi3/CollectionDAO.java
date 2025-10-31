@@ -221,6 +221,9 @@ public interface CollectionDAO {
   TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseDimensionResultTimeSeriesDAO testCaseDimensionResultTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -1812,6 +1815,19 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    // Fetch ALL relationships for a single entity (both FROM and TO) - fixes N+1 problem
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'from' as direction "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :entityId AND fromEntity = :entityType AND deleted = FALSE "
+            + "UNION ALL "
+            + "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'to' as direction "
+            + "FROM entity_relationship "
+            + "WHERE toId = :entityId AND toEntity = :entityType AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findAllRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId, @Bind("entityType") String entityType);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -3541,6 +3557,14 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash);
 
+    @SqlQuery("SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :concatFqnhash ")
+    int countNestedTerms(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
+
     @SqlQuery(
         "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
     int getGlossaryTermCountIgnoreCase(
@@ -4102,32 +4126,15 @@ public interface CollectionDAO {
       return "nameHash";
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            ""
-                + "SELECT t.classificationHash, COUNT(*) AS termCount "
-                + "FROM tag t "
-                + "JOIN JSON_TABLE("
-                + "    :jsonHashes, "
-                + "    '$[*]' COLUMNS (classificationHash VARCHAR(64) PATH '$')"
-                + ") AS h "
-                + "  ON t.classificationHash = h.classificationHash "
-                + "WHERE t.deleted = FALSE "
-                + "GROUP BY t.classificationHash",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            ""
-                + "SELECT t.classificationHash, COUNT(*) AS termCount "
-                + "FROM tag t "
-                + "JOIN UNNEST(:hashArray::text[]) AS h(classificationHash) "
-                + "  ON t.classificationHash = h.classificationHash "
-                + "WHERE t.deleted = FALSE "
-                + "GROUP BY t.classificationHash",
-        connectionType = POSTGRES)
+    // Much more efficient: Use IN clause with proper index usage
+    @SqlQuery(
+        "SELECT classificationHash, COUNT(*) AS termCount "
+            + "FROM tag "
+            + "WHERE classificationHash IN (<hashArray>) "
+            + "AND deleted = FALSE "
+            + "GROUP BY classificationHash")
     @RegisterRowMapper(TermCountMapper.class)
-    List<Pair<String, Integer>> bulkGetTermCounts(
-        @Bind("jsonHashes") String jsonHashes, @Bind("hashArray") List<String> hashArray);
+    List<Pair<String, Integer>> bulkGetTermCounts(@BindList("hashArray") List<String> hashArray);
 
     class TermCountMapper implements RowMapper<Pair<String, Integer>> {
       @Override
@@ -4427,7 +4434,7 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -4439,7 +4446,7 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
@@ -6684,6 +6691,12 @@ public interface CollectionDAO {
     @SqlQuery(
         value =
             "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE assignee = :userFqn ORDER BY timestamp DESC")
+    List<String> listTestCaseResolutionForAssignee(@Bind("userFqn") String userFqn);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp ASC LIMIT 1")
     String listFirstTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
@@ -6836,6 +6849,44 @@ public interface CollectionDAO {
     default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
       return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
+  }
+
+  interface TestCaseDimensionResultTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "test_case_dimension_results_time_series";
+    }
+
+    @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResults(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND dimensionKey = :dimensionKey AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResultsByKey(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("dimensionKey") String dimensionKey,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
+        "SELECT DISTINCT dimensionKey FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND timestamp >= :startTs AND timestamp <= :endTs")
+    List<String> listAvailableDimensionKeys(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_dimension_results_time_series WHERE entityFQNHash = :testCaseFQNHash")
+    void deleteAll(@BindFQN("testCaseFQNHash") String testCaseFQN);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

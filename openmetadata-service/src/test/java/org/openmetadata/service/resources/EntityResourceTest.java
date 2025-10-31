@@ -2865,7 +2865,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addDeleteFollower_200(TestInfo test) throws IOException {
+  protected void put_addDeleteFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -2897,7 +2897,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
+  protected void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -4401,18 +4401,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         getResource(
             String.format(
                 "search/get/%s/doc/%s", indexMapping.getIndexName(null), entityId.toString()));
-    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    GetResponse response = null;
-    try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(
-              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = GetResponse.fromXContent(parser);
-    } catch (Exception e) {
-      System.out.println("exception " + e);
-    }
-    return response.getSourceAsMap();
+
+    // Get the document directly as a Map from the REST API response
+    Map<String, Object> response = TestUtils.get(target, Map.class, ADMIN_AUTH_HEADERS);
+    return response;
   }
 
   @Test
@@ -4497,11 +4489,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
             .withConfigValue(certificationSettings));
 
+    long timestampBeforePatch = System.currentTimeMillis();
     T patchedEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    long timestampAfterPatch = System.currentTimeMillis();
     assertEquals(
         patchedEntity.getCertification().getTagLabel().getTagFQN(), certificationLabel.getTagFQN());
-    assertEquals(
-        patchedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
+    // Verify the applied date is within the time window of the patch operation
+    assertTrue(
+        patchedEntity.getCertification().getAppliedDate() >= timestampBeforePatch - 1000,
+        "Applied date should be at or after the patch operation started (with 1s tolerance)");
+    assertTrue(
+        patchedEntity.getCertification().getAppliedDate() <= timestampAfterPatch + 1000,
+        "Applied date should be at or before the patch operation completed (with 1s tolerance)");
     assertEquals(
         (double)
             (patchedEntity.getCertification().getExpiryDate()
@@ -4946,6 +4945,40 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected final WebTarget getFollowerResource(UUID id, UUID userId) {
     return getFollowersCollection(id).path("/" + userId);
+  }
+
+  protected final WebTarget getAssetsResource(UUID id, int limit, int offset) {
+    WebTarget target = getResource(id).path("/assets");
+    target = target.queryParam("limit", limit);
+    target = target.queryParam("offset", offset);
+    return target;
+  }
+
+  protected final WebTarget getAssetsResourceByName(String name, int limit, int offset) {
+    WebTarget target = getCollection().path("/name/" + name + "/assets");
+    target = target.queryParam("limit", limit);
+    target = target.queryParam("offset", offset);
+    return target;
+  }
+
+  public final ResultList<EntityReference> getAssets(
+      UUID id, int limit, int offset, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getAssetsResource(id, limit, offset);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).get();
+    String json = response.readEntity(String.class);
+    return JsonUtils.readValue(
+        json, new com.fasterxml.jackson.core.type.TypeReference<ResultList<EntityReference>>() {});
+  }
+
+  protected final ResultList<EntityReference> getAssetsByName(
+      String name, int limit, int offset, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getAssetsResourceByName(name, limit, offset);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).get();
+    String json = response.readEntity(String.class);
+    return JsonUtils.readValue(
+        json, new com.fasterxml.jackson.core.type.TypeReference<ResultList<EntityReference>>() {});
   }
 
   public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
