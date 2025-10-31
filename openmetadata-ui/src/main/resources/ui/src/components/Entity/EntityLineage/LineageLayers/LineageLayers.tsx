@@ -108,7 +108,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       _event: React.MouseEvent<HTMLElement, MouseEvent>,
       layer: LineageLayer
     ) => {
-      const value = layer as LineageLayer;
+      const value = layer;
       const index = activeLayer.indexOf(value);
       if (index === -1) {
         onUpdateLayerView([...activeLayer, value]);
@@ -168,24 +168,22 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
     const buttons = [];
 
     if (showColumnAndObservability) {
-      buttons.push(
+      buttons.push([
         <StyledButton
           data-testid="lineage-layer-column-btn"
           key={LineageLayer.ColumnLevelLineage}
           value={LineageLayer.ColumnLevelLineage}>
           {searchClassBase.getEntityIcon(EntityType.TABLE)}
           {t('label.column')}
-        </StyledButton>
-      );
-      buttons.push(
+        </StyledButton>,
         <StyledButton
           data-testid="lineage-layer-observability-btn"
           key={LineageLayer.DataObservability}
           value={LineageLayer.DataObservability}>
           <DataQualityIcon />
           {t('label.observability')}
-        </StyledButton>
-      );
+        </StyledButton>,
+      ]);
     }
 
     if (showService) {

@@ -108,136 +108,134 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   return (
-    <>
-      <ToggleButtonGroup
-        exclusive
-        color="primary"
-        sx={{
-          /* Shadows/shadow-xs */
-          boxShadow: theme.shadows[1],
-          background: theme.palette.background.paper,
+    <ToggleButtonGroup
+      exclusive
+      color="primary"
+      sx={{
+        /* Shadows/shadow-xs */
+        boxShadow: theme.shadows[1],
+        background: theme.palette.background.paper,
 
-          svg: {
-            height: theme.spacing(4),
-            width: theme.spacing(4),
-          },
-        }}>
-        <Tooltip
-          arrow
-          placement="top"
-          title={t('label.lineage-view-option-plural')}>
-          <ToggleButton
-            data-testid="fit-screen"
-            value="fit-view"
-            onClick={(event) =>
-              setLineageViewOptionsAnchorEl(event.currentTarget)
-            }>
-            <FitViewOptionsIcon />
-          </ToggleButton>
-        </Tooltip>
+        svg: {
+          height: theme.spacing(4),
+          width: theme.spacing(4),
+        },
+      }}>
+      <Tooltip
+        arrow
+        placement="top"
+        title={t('label.lineage-view-option-plural')}>
+        <ToggleButton
+          data-testid="fit-screen"
+          value="fit-view"
+          onClick={(event) =>
+            setLineageViewOptionsAnchorEl(event.currentTarget)
+          }>
+          <FitViewOptionsIcon />
+        </ToggleButton>
+      </Tooltip>
 
-        <StyledMenu
-          anchorEl={lineageViewOptionsAnchorEl}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'left',
-          }}
-          id="lineage-view-options-menu"
-          open={Boolean(lineageViewOptionsAnchorEl)}
-          slotProps={{
-            paper: {
-              sx: {
-                marginTop: '0',
-              },
+      <StyledMenu
+        anchorEl={lineageViewOptionsAnchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        id="lineage-view-options-menu"
+        open={Boolean(lineageViewOptionsAnchorEl)}
+        slotProps={{
+          paper: {
+            sx: {
+              marginTop: '0',
             },
-          }}
-          transformOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
-          }}
-          onClose={() => setLineageViewOptionsAnchorEl(null)}>
-          <MenuItem onClick={handleFitView}>
-            <FitScreenIcon />
-            {t('label.fit-to-screen')}
-          </MenuItem>
-          <MenuItem onClick={handleRefocusSelected}>
-            <FitViewOptionsIcon />
-            {t('label.refocused-to-selected')}
-          </MenuItem>
-          <MenuItem onClick={handleRearrange}>
-            <RearrangeNodesIcon />
-            {t('label.rearrange-nodes')}
-          </MenuItem>
-          <MenuItem onClick={handleRefocusHome}>
-            <HomeIcon />
-            {t('label.refocused-to-home')}
-          </MenuItem>
-        </StyledMenu>
+          },
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        onClose={() => setLineageViewOptionsAnchorEl(null)}>
+        <MenuItem onClick={handleFitView}>
+          <FitScreenIcon />
+          {t('label.fit-to-screen')}
+        </MenuItem>
+        <MenuItem onClick={handleRefocusSelected}>
+          <FitViewOptionsIcon />
+          {t('label.refocused-to-selected')}
+        </MenuItem>
+        <MenuItem onClick={handleRearrange}>
+          <RearrangeNodesIcon />
+          {t('label.rearrange-nodes')}
+        </MenuItem>
+        <MenuItem onClick={handleRefocusHome}>
+          <HomeIcon />
+          {t('label.refocused-to-home')}
+        </MenuItem>
+      </StyledMenu>
 
-        {isColumnLayerActive && !isEditMode && (
-          <Tooltip
-            arrow
-            placement="top"
-            title={
-              expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
-            }>
-            <ToggleButton
-              className="lineage-button"
-              data-testid="expand-column"
-              value="expand-column"
-              onClick={toggleColumnView}>
-              {expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
-            </ToggleButton>
-          </Tooltip>
-        )}
-
-        <Tooltip arrow placement="top" title={t('label.mind-map')}>
-          <ToggleButton
-            data-testid="toggle-mind-map"
-            selected={miniMapVisible}
-            value="mind-map"
-            onClick={onToggleMiniMap}>
-            <MapIcon />
-          </ToggleButton>
-        </Tooltip>
-
-        <Tooltip arrow placement="top" title={t('label.zoom-in')}>
-          <ToggleButton
-            data-testid="zoom-in"
-            value="zoom-in"
-            onClick={handleZoomIn}>
-            <ZoomInIcon />
-          </ToggleButton>
-        </Tooltip>
-
-        <Tooltip arrow placement="top" title={t('label.zoom-out')}>
-          <ToggleButton
-            data-testid="zoom-out"
-            value="zoom-out"
-            onClick={handleZoomOut}>
-            <ZoomOutIcon />
-          </ToggleButton>
-        </Tooltip>
-
+      {isColumnLayerActive && !isEditMode && (
         <Tooltip
           arrow
           placement="top"
           title={
-            isFullscreen
-              ? t('label.exit-full-screen')
-              : t('label.full-screen-view')
+            expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
           }>
           <ToggleButton
-            data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-            selected={isFullscreen}
-            size="large"
-            value="full-screen"
-            onClick={toggleFullscreenView}>
-            {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+            className="lineage-button"
+            data-testid="expand-column"
+            value="expand-column"
+            onClick={toggleColumnView}>
+            {expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
           </ToggleButton>
         </Tooltip>
-      </ToggleButtonGroup>
-    </>
+      )}
+
+      <Tooltip arrow placement="top" title={t('label.mind-map')}>
+        <ToggleButton
+          data-testid="toggle-mind-map"
+          selected={miniMapVisible}
+          value="mind-map"
+          onClick={onToggleMiniMap}>
+          <MapIcon />
+        </ToggleButton>
+      </Tooltip>
+
+      <Tooltip arrow placement="top" title={t('label.zoom-in')}>
+        <ToggleButton
+          data-testid="zoom-in"
+          value="zoom-in"
+          onClick={handleZoomIn}>
+          <ZoomInIcon />
+        </ToggleButton>
+      </Tooltip>
+
+      <Tooltip arrow placement="top" title={t('label.zoom-out')}>
+        <ToggleButton
+          data-testid="zoom-out"
+          value="zoom-out"
+          onClick={handleZoomOut}>
+          <ZoomOutIcon />
+        </ToggleButton>
+      </Tooltip>
+
+      <Tooltip
+        arrow
+        placement="top"
+        title={
+          isFullscreen
+            ? t('label.exit-full-screen')
+            : t('label.full-screen-view')
+        }>
+        <ToggleButton
+          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
+          selected={isFullscreen}
+          size="large"
+          value="full-screen"
+          onClick={toggleFullscreenView}>
+          {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+        </ToggleButton>
+      </Tooltip>
+    </ToggleButtonGroup>
   );
 };
 

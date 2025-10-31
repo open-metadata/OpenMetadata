@@ -129,58 +129,56 @@ const Lineage = ({
           id="lineage-container" // ID is required for export PNG functionality
           ref={reactFlowWrapper}>
           {init ? (
-            <>
-              <ReactFlow
-                elevateEdgesOnSelect
-                className="custom-react-flow"
-                data-testid="react-flow-component"
-                deleteKeyCode={null}
-                edgeTypes={customEdges}
-                edges={edges}
-                fitViewOptions={{
-                  padding: 48,
-                }}
-                maxZoom={MAX_ZOOM_VALUE}
-                minZoom={MIN_ZOOM_VALUE}
-                nodeDragThreshold={1}
-                nodeTypes={nodeTypes}
-                nodes={nodes}
-                nodesConnectable={isEditMode}
-                selectNodesOnDrag={false}
-                onConnect={onConnect}
-                onDragOver={onDragOver}
-                onDrop={handleNodeDrop}
-                onEdgeClick={handleEdgeClick}
-                onEdgesChange={onEdgesChange}
-                onInit={onInitReactFlow}
-                onNodeClick={handleNodeClick}
-                onNodeContextMenu={onNodeContextMenu}
-                onNodeDrag={dragHandle}
-                onNodeDragStart={dragHandle}
-                onNodeDragStop={dragHandle}
-                onNodeMouseEnter={onNodeMouseEnter}
-                onNodeMouseLeave={onNodeMouseLeave}
-                onNodeMouseMove={onNodeMouseMove}
-                onNodesChange={onNodesChange}
-                onPaneClick={onPaneClick}>
-                <Background gap={12} size={1} />
-                {showMiniMap && (
-                  <MiniMap pannable zoomable position="bottom-right" />
-                )}
+            <ReactFlow
+              elevateEdgesOnSelect
+              className="custom-react-flow"
+              data-testid="react-flow-component"
+              deleteKeyCode={null}
+              edgeTypes={customEdges}
+              edges={edges}
+              fitViewOptions={{
+                padding: 48,
+              }}
+              maxZoom={MAX_ZOOM_VALUE}
+              minZoom={MIN_ZOOM_VALUE}
+              nodeDragThreshold={1}
+              nodeTypes={nodeTypes}
+              nodes={nodes}
+              nodesConnectable={isEditMode}
+              selectNodesOnDrag={false}
+              onConnect={onConnect}
+              onDragOver={onDragOver}
+              onDrop={handleNodeDrop}
+              onEdgeClick={handleEdgeClick}
+              onEdgesChange={onEdgesChange}
+              onInit={onInitReactFlow}
+              onNodeClick={handleNodeClick}
+              onNodeContextMenu={onNodeContextMenu}
+              onNodeDrag={dragHandle}
+              onNodeDragStart={dragHandle}
+              onNodeDragStop={dragHandle}
+              onNodeMouseEnter={onNodeMouseEnter}
+              onNodeMouseLeave={onNodeMouseLeave}
+              onNodeMouseMove={onNodeMouseMove}
+              onNodesChange={onNodesChange}
+              onPaneClick={onPaneClick}>
+              <Background gap={12} size={1} />
+              {showMiniMap && (
+                <MiniMap pannable zoomable position="bottom-right" />
+              )}
 
-                <Panel
-                  className={classNames({ 'edit-mode': isEditMode })}
-                  position="bottom-left">
-                  <LineageLayers entity={entity} entityType={entityType} />
-                </Panel>
-                <Panel position="bottom-right">
-                  <LineageControlButtons
-                    miniMapVisible={showMiniMap}
-                    onToggleMiniMap={toggleMiniMapVisibility}
-                  />
-                </Panel>
-              </ReactFlow>
-            </>
+              <Panel
+                className={classNames({ 'edit-mode': isEditMode })}
+                position="bottom-left">
+                <LineageLayers entity={entity} entityType={entityType} />
+              </Panel>
+              <Panel position="bottom-right">
+                <LineageControlButtons
+                  miniMapVisible={showMiniMap}
+                  onToggleMiniMap={toggleMiniMapVisibility}
+                />
+              </Panel>
+            </ReactFlow>
           ) : (
             <div className="loading-card">
               <Loader />

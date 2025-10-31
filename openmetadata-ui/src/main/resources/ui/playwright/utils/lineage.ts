@@ -91,8 +91,16 @@ export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-column-btn"]');
 };
 
+export const editLineageClick = async (page: Page) => {
+  await page.getByTestId('lineage-config').click();
+
+  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+
+  await page.getByTestId('edit-lineage').click();
+};
+
 export const editLineage = async (page: Page) => {
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await expect(
     page.getByTestId('table_search_index-draggable-icon')
@@ -103,7 +111,8 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 10 })) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for (const _index of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
@@ -148,7 +157,7 @@ export const dragAndDropNode = async (
   const destinationElement = await page.waitForSelector(destinationSelector);
   await page.hover(originSelector);
   await page.mouse.down();
-  const box = (await destinationElement.boundingBox())!;
+  const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y, { steps: 20 });
@@ -218,6 +227,20 @@ export const connectEdgeBetweenNodes = async (
   );
 };
 
+export const verifyNodePresent = async (page: Page, node: EntityClass) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const name = get(node, 'entityResponseData.name');
+  const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
+
+  await expect(lineageNode).toBeVisible();
+
+  const entityHeaderName = lineageNode.locator(
+    '[data-testid="entity-header-name"]'
+  );
+
+  await expect(entityHeaderName).toHaveText(name);
+};
+
 export const performExpand = async (
   page: Page,
   node: EntityClass,
@@ -262,19 +285,6 @@ export const performCollapse = async (
 
     await expect(hiddenNode).not.toBeVisible();
   }
-};
-export const verifyNodePresent = async (page: Page, node: EntityClass) => {
-  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.name');
-  const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
-
-  await expect(lineageNode).toBeVisible();
-
-  const entityHeaderName = lineageNode.locator(
-    '[data-testid="entity-header-name"]'
-  );
-
-  await expect(entityHeaderName).toHaveText(name);
 };
 
 export const setupEntitiesForLineage = async (
@@ -452,7 +462,7 @@ export const addColumnLineage = async (
   await lineageRes;
 
   if (exitEditMode) {
-    await page.click('[data-testid="edit-lineage"]');
+    await editLineageClick(page);
   }
 
   await expect(
@@ -485,7 +495,7 @@ export const removeColumnLineage = async (
     .dispatchEvent('click');
   await deleteRes;
 
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await expect(
     page.locator(
@@ -494,6 +504,13 @@ export const removeColumnLineage = async (
       )}"]`
     )
   ).not.toBeVisible();
+};
+
+export const visitLineageTab = async (page: Page) => {
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.click('[data-testid="lineage"]');
+  await lineageRes;
+  await page.waitForLoadState('networkidle');
 };
 
 export const addPipelineBetweenNodes = async (
@@ -517,7 +534,7 @@ export const addPipelineBetweenNodes = async (
       targetEntity,
       pipelineItem
     );
-    await page.click('[data-testid="edit-lineage"]');
+    await editLineageClick(page);
     await verifyPipelineDataInDrawer(
       page,
       sourceEntity,
@@ -526,13 +543,6 @@ export const addPipelineBetweenNodes = async (
       bVerifyPipeline
     );
   }
-};
-
-export const visitLineageTab = async (page: Page) => {
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-  await page.click('[data-testid="lineage"]');
-  await lineageRes;
-  await page.waitForLoadState('networkidle');
 };
 
 export const fillLineageConfigForm = async (
