@@ -16,6 +16,7 @@ Unit tests for Databricks Kafka parser
 import unittest
 
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+    extract_dlt_table_dependencies,
     extract_dlt_table_names,
     extract_kafka_sources,
     get_pipeline_libraries,
@@ -426,16 +427,16 @@ class TestDLTTableExtraction(unittest.TestCase):
     def test_function_name_pattern(self):
         """Test DLT table with function call for name"""
         source_code = """
-        entity_name = "moneyRequest"
+        entity_name = "customerEvent"
 
         @dlt.table(name=materializer.generate_event_log_table_name())
         def event_log():
             return df
         """
         table_names = extract_dlt_table_names(source_code)
-        # Should infer from entity_name variable
+        # Should infer from entity_name variable and function pattern
         self.assertEqual(len(table_names), 1)
-        self.assertEqual(table_names[0], "moneyRequest")
+        self.assertEqual(table_names[0], "customerevent_event_log")
 
     def test_no_name_parameter(self):
         """Test DLT table decorator without name parameter"""
@@ -476,15 +477,15 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
     def test_topic_variable_fallback(self):
         """Test fallback to topic_name variable when no explicit Kafka pattern"""
         source_code = """
-        topic_name = "dev.ern.cashout.moneyRequest_v1"
-        entity_name = "moneyRequest"
+        topic_name = "dev.example.cashout.customerEvent_v1"
+        entity_name = "customerEvent"
 
         # Kafka reading is abstracted in helper class
         materializer = KafkaMaterializer(topic_name, entity_name)
         """
         configs = extract_kafka_sources(source_code)
         self.assertEqual(len(configs), 1)
-        self.assertEqual(configs[0].topics, ["dev.ern.cashout.moneyRequest_v1"])
+        self.assertEqual(configs[0].topics, ["dev.example.cashout.customerEvent_v1"])
         self.assertIsNone(configs[0].bootstrap_servers)
 
     def test_subject_variable_fallback(self):
@@ -563,8 +564,8 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         import dlt
         from shared.materializers import KafkaMaterializer
 
-        topic_name = "dev.ern.cashout.moneyRequest_v1"
-        entity_name = "moneyRequest"
+        topic_name = "dev.example.cashout.customerEvent_v1"
+        entity_name = "customerEvent"
 
         materializer = KafkaMaterializer(
             topic_name=topic_name,
@@ -579,12 +580,338 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         # Test Kafka extraction
         kafka_configs = extract_kafka_sources(source_code)
         self.assertEqual(len(kafka_configs), 1)
-        self.assertEqual(kafka_configs[0].topics, ["dev.ern.cashout.moneyRequest_v1"])
+        self.assertEqual(
+            kafka_configs[0].topics, ["dev.example.cashout.customerEvent_v1"]
+        )
 
         # Test DLT table extraction
         table_names = extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
-        self.assertEqual(table_names[0], "moneyRequest")
+        self.assertEqual(table_names[0], "customerevent_event_log")
+
+
+class TestDLTTableDependencies(unittest.TestCase):
+    """Test cases for DLT table dependency extraction"""
+
+    def test_bronze_silver_pattern(self):
+        """Test table dependency pattern with Kafka source and downstream table"""
+        source_code = """
+        import dlt
+        from pyspark.sql.functions import *
+
+        @dlt.table(name="orders_bronze")
+        def bronze():
+            return spark.readStream.format("kafka").option("subscribe", "orders").load()
+
+        @dlt.table(name="orders_silver")
+        def silver():
+            return dlt.read_stream("orders_bronze").select("*")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 2)
+
+        bronze = next(d for d in deps if d.table_name == "orders_bronze")
+        self.assertTrue(bronze.reads_from_kafka)
+        self.assertEqual(bronze.depends_on, [])
+
+        silver = next(d for d in deps if d.table_name == "orders_silver")
+        self.assertFalse(silver.reads_from_kafka)
+        self.assertEqual(silver.depends_on, ["orders_bronze"])
+
+    def test_kafka_view_bronze_silver(self):
+        """Test Kafka view with multi-tier table dependencies"""
+        source_code = """
+        import dlt
+
+        @dlt.view()
+        def kafka_source():
+            return spark.readStream.format("kafka").option("subscribe", "topic").load()
+
+        @dlt.table(name="bronze_table")
+        def bronze():
+            return dlt.read_stream("kafka_source")
+
+        @dlt.table(name="silver_table")
+        def silver():
+            return dlt.read_stream("bronze_table")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        bronze = next((d for d in deps if d.table_name == "bronze_table"), None)
+        self.assertIsNotNone(bronze)
+        self.assertEqual(bronze.depends_on, ["kafka_source"])
+        self.assertFalse(bronze.reads_from_kafka)
+
+        silver = next((d for d in deps if d.table_name == "silver_table"), None)
+        self.assertIsNotNone(silver)
+        self.assertEqual(silver.depends_on, ["bronze_table"])
+        self.assertFalse(silver.reads_from_kafka)
+
+    def test_multiple_dependencies(self):
+        """Test table with multiple source dependencies"""
+        source_code = """
+        @dlt.table(name="source1")
+        def s1():
+            return spark.readStream.format("kafka").load()
+
+        @dlt.table(name="source2")
+        def s2():
+            return spark.readStream.format("kafka").load()
+
+        @dlt.table(name="merged")
+        def merge():
+            df1 = dlt.read_stream("source1")
+            df2 = dlt.read_stream("source2")
+            return df1.union(df2)
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        merged = next((d for d in deps if d.table_name == "merged"), None)
+        self.assertIsNotNone(merged)
+        self.assertEqual(sorted(merged.depends_on), ["source1", "source2"])
+        self.assertFalse(merged.reads_from_kafka)
+
+    def test_no_dependencies(self):
+        """Test table with no dependencies (reads from file)"""
+        source_code = """
+        @dlt.table(name="static_data")
+        def static():
+            return spark.read.parquet("/path/to/data")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertEqual(deps[0].table_name, "static_data")
+        self.assertEqual(deps[0].depends_on, [])
+        self.assertFalse(deps[0].reads_from_kafka)
+
+    def test_function_name_as_table_name(self):
+        """Test using function name when no explicit name in decorator"""
+        source_code = """
+        @dlt.table()
+        def my_bronze_table():
+            return spark.readStream.format("kafka").load()
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertEqual(deps[0].table_name, "my_bronze_table")
+        self.assertTrue(deps[0].reads_from_kafka)
+
+    def test_empty_source_code(self):
+        """Test empty source code returns empty list"""
+        deps = extract_dlt_table_dependencies("")
+        self.assertEqual(len(deps), 0)
+
+    def test_real_world_pattern(self):
+        """Test the exact pattern from user's example"""
+        source_code = """
+import dlt
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+TOPIC = "orders"
+
+@dlt.view(comment="Kafka source")
+def kafka_orders_source():
+    return (
+        spark.readStream
+        .format("kafka")
+        .option("subscribe", TOPIC)
+        .load()
+    )
+
+@dlt.table(name="orders_bronze")
+def orders_bronze():
+    return dlt.read_stream("kafka_orders_source").select("*")
+
+@dlt.table(name="orders_silver")
+def orders_silver():
+    return dlt.read_stream("orders_bronze").select("*")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        # Should find bronze and silver (kafka_orders_source is a view, not a table)
+        table_deps = [
+            d for d in deps if d.table_name in ["orders_bronze", "orders_silver"]
+        ]
+        self.assertEqual(len(table_deps), 2)
+
+    def test_materializer_event_log_snapshot_pattern(self):
+        """Test Materializer pattern with event_log and snapshot tables"""
+        source_code = """
+import dlt
+from materialization.materializer.materializer import Materializer
+
+env = "dev"
+entity_name = "customerEvent"
+topic_name = "dev.example.cashout.customerEvent_v1"
+schema_name = "dev.example.cashout.customerEvent_v1-value"
+schema_format = "json"
+snapshot_required = True
+starting_offsets = "earliest"
+
+materializer = Materializer(env, topic_name, schema_format, schema_name, entity_name,
+                            dbutils.secrets.get, False, True, starting_offsets)
+
+@dlt.table(name=materializer.generate_event_log_table_name())
+@dlt.expect_all_or_drop(dq_rules)
+def create_event_log_table():
+    return materializer.build_event_log_dataframe(spark)
+
+if snapshot_required:
+    materializer.build_snapshot_dataframe()
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        # Should find both event_log and snapshot tables
+        self.assertEqual(len(deps), 2)
+
+        # Check event_log table
+        event_log = next((d for d in deps if "event_log" in d.table_name), None)
+        self.assertIsNotNone(event_log)
+        self.assertEqual(event_log.table_name, "customerevent_event_log")
+        self.assertTrue(event_log.reads_from_kafka)
+        self.assertEqual(event_log.depends_on, [])
+
+        # Check snapshot table
+        snapshot = next((d for d in deps if "snapshot" in d.table_name), None)
+        self.assertIsNotNone(snapshot)
+        self.assertEqual(snapshot.table_name, "customerevent_snapshot")
+        self.assertFalse(snapshot.reads_from_kafka)
+        self.assertEqual(snapshot.depends_on, ["customerevent_event_log"])
+
+
+class TestS3SourceDetection(unittest.TestCase):
+    """Test cases for S3 source detection"""
+
+    def test_s3_json_source(self):
+        """Test detecting S3 source with spark.read.json()"""
+        source_code = """
+        @dlt.view()
+        def s3_source():
+            return spark.read.json("s3://mybucket/data/")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertEqual(deps[0].s3_locations, ["s3://mybucket/data/"])
+
+    def test_s3_parquet_source(self):
+        """Test detecting S3 source with spark.read.parquet()"""
+        source_code = """
+        @dlt.table(name="parquet_table")
+        def load_parquet():
+            return spark.read.parquet("s3a://bucket/path/file.parquet")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertIn("s3a://bucket/path/file.parquet", deps[0].s3_locations)
+
+    def test_s3_with_options(self):
+        """Test S3 source with options"""
+        source_code = """
+        @dlt.view()
+        def external_source():
+            return (
+                spark.read
+                    .option("multiline", "true")
+                    .json("s3://test-firehose-con-bucket/firehose_data/")
+            )
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertEqual(
+            deps[0].s3_locations, ["s3://test-firehose-con-bucket/firehose_data/"]
+        )
+
+    def test_s3_format_load(self):
+        """Test S3 with format().load() pattern"""
+        source_code = """
+        @dlt.table(name="csv_data")
+        def load_csv():
+            return spark.read.format("csv").option("header", "true").load("s3://bucket/data.csv")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertIn("s3://bucket/data.csv", deps[0].s3_locations)
+
+    def test_dlt_read_batch(self):
+        """Test dlt.read() for batch table dependencies"""
+        source_code = """
+        @dlt.table(name="bronze")
+        def bronze_table():
+            return dlt.read("source_view")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertEqual(deps[0].depends_on, ["source_view"])
+
+    def test_mixed_dlt_read_and_read_stream(self):
+        """Test both dlt.read() and dlt.read_stream() in same pipeline"""
+        source_code = """
+        @dlt.table(name="batch_table")
+        def batch():
+            return dlt.read("source1")
+
+        @dlt.table(name="stream_table")
+        def stream():
+            return dlt.read_stream("source2")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 2)
+
+        batch = next(d for d in deps if d.table_name == "batch_table")
+        self.assertEqual(batch.depends_on, ["source1"])
+
+        stream = next(d for d in deps if d.table_name == "stream_table")
+        self.assertEqual(stream.depends_on, ["source2"])
+
+    def test_user_s3_example(self):
+        """Test the user's exact S3 example"""
+        source_code = """
+        import dlt
+        from pyspark.sql.functions import col
+
+        @dlt.view(comment="External source data from S3")
+        def external_source():
+            return (
+                spark.read
+                    .option("multiline", "true")
+                    .json("s3://test-firehose-con-bucket/firehose_data/")
+            )
+
+        @dlt.table(name="bronze_firehose_data")
+        def bronze_firehose_data():
+            return dlt.read("external_source")
+
+        @dlt.table(name="silver_firehose_data")
+        def silver_firehose_data():
+            return dlt.read("bronze_firehose_data")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 3)
+
+        # Verify external_source
+        external = next((d for d in deps if d.table_name == "external_source"), None)
+        self.assertIsNotNone(external)
+        self.assertTrue(external.reads_from_s3)
+        self.assertIn(
+            "s3://test-firehose-con-bucket/firehose_data/", external.s3_locations
+        )
+
+        # Verify bronze
+        bronze = next((d for d in deps if d.table_name == "bronze_firehose_data"), None)
+        self.assertIsNotNone(bronze)
+        self.assertEqual(bronze.depends_on, ["external_source"])
+        self.assertFalse(bronze.reads_from_s3)
+
+        # Verify silver
+        silver = next((d for d in deps if d.table_name == "silver_firehose_data"), None)
+        self.assertIsNotNone(silver)
+        self.assertEqual(silver.depends_on, ["bronze_firehose_data"])
+        self.assertFalse(silver.reads_from_s3)
 
 
 if __name__ == "__main__":

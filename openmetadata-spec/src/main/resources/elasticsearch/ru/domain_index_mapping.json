@@ -233,6 +233,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "properties": {
           "id": {
@@ -303,6 +306,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

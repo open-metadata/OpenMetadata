@@ -3936,9 +3936,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), noOutgoingEdgeResponse.getStatus());
     String noOutgoingEdgeResponseBody = noOutgoingEdgeResponse.readEntity(String.class);
     assertTrue(
-        noOutgoingEdgeResponseBody.contains("non-end node")
-            && noOutgoingEdgeResponseBody.contains("no outgoing edges"),
-        "Expected no outgoing edges error message, got: " + noOutgoingEdgeResponseBody);
+        noOutgoingEdgeResponseBody.contains("requires outgoing edges"),
+        "Expected requires outgoing edges error message, got: " + noOutgoingEdgeResponseBody);
     LOG.debug(
         "Non-end node without outgoing edges correctly rejected: {}", noOutgoingEdgeResponseBody);
 
@@ -4014,9 +4013,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), endWithOutgoingResponse.getStatus());
     String endWithOutgoingResponseBody = endWithOutgoingResponse.readEntity(String.class);
     assertTrue(
-        endWithOutgoingResponseBody.contains("end event node")
-            && endWithOutgoingResponseBody.contains("with outgoing edges"),
-        "Expected end node with outgoing edges error message, got: " + endWithOutgoingResponseBody);
+        endWithOutgoingResponseBody.contains("cannot have outgoing edges"),
+        "Expected cannot have outgoing edges error message, got: " + endWithOutgoingResponseBody);
     LOG.debug("End node with outgoing edges correctly rejected: {}", endWithOutgoingResponseBody);
 
     LOG.info("test_WorkflowValidationEndpoint completed successfully");
@@ -4548,8 +4546,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withName("test_dataproduct_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
             .withDescription("Initial data product description")
             .withDomains(List.of())
-            .withReviewers(List.of(reviewerRef))
-            .withAssets(List.of(table.getEntityReference()));
+            .withReviewers(List.of(reviewerRef));
 
     org.openmetadata.schema.entity.domains.DataProduct dataProduct =
         TestUtils.post(
@@ -4558,6 +4555,16 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             org.openmetadata.schema.entity.domains.DataProduct.class,
             ADMIN_AUTH_HEADERS);
     LOG.debug("Created data product: {} with initial description", dataProduct.getName());
+
+    // Add asset using bulk API
+    org.openmetadata.service.jdbi3.DataProductRepository dataProductRepository =
+        (org.openmetadata.service.jdbi3.DataProductRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.DATA_PRODUCT);
+    org.openmetadata.schema.type.api.BulkAssets bulkAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    dataProductRepository.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
 
     // Step 5.5: Create metric with reviewers
     CreateMetric createMetric =
@@ -4595,7 +4602,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           try {
             LOG.info("Waiting for approval task for {}...", entityType);
             await()
-                .atMost(Duration.ofMinutes(1))
+                .atMost(Duration.ofMinutes(2))
                 .pollInterval(Duration.ofSeconds(2))
                 .until(
                     () -> {
@@ -5050,8 +5057,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withName("auto_dataproduct_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
             .withDescription("Auto-approval test data product")
             .withDomains(List.of())
-            .withReviewers(List.of()) // Explicitly no reviewers - should auto-approve
-            .withAssets(List.of(table.getEntityReference()));
+            .withReviewers(List.of()); // Explicitly no reviewers - should auto-approve
 
     org.openmetadata.schema.entity.domains.DataProduct dataProduct =
         TestUtils.post(
@@ -5060,6 +5066,16 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             org.openmetadata.schema.entity.domains.DataProduct.class,
             ADMIN_AUTH_HEADERS);
     LOG.debug("Created data product without reviewers: {}", dataProduct.getName());
+
+    // Add asset using bulk API
+    org.openmetadata.service.jdbi3.DataProductRepository dataProductRepository2 =
+        (org.openmetadata.service.jdbi3.DataProductRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.DATA_PRODUCT);
+    org.openmetadata.schema.type.api.BulkAssets bulkAssets2 =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    dataProductRepository2.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets2);
 
     // Wait for workflow to process and auto-approve
     // Adding extra time to handle potential duplicate workflow executions

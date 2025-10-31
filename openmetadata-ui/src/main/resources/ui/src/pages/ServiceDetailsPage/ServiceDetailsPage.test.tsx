@@ -17,6 +17,7 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 
 import { noop } from 'lodash';
 import { act } from 'react';
+import { TestConnectionProps } from '../../components/common/TestConnection/TestConnection.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -42,6 +43,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -357,11 +359,16 @@ jest.mock(
 );
 
 jest.mock('../../components/common/TestConnection/TestConnection', () =>
-  jest.fn().mockImplementation(({ serviceCategory }: any) => (
-    <div data-testid="test-connection">
-      <span data-testid="test-connection-category">{serviceCategory}</span>
-    </div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(
+      ({ serviceCategory, extraInfo }: TestConnectionProps) => (
+        <div data-testid="test-connection">
+          <span data-testid="test-connection-category">{serviceCategory}</span>
+          <span data-testid="test-connection-extra-info">{extraInfo}</span>
+        </div>
+      )
+    )
 );
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -1089,6 +1096,38 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       expect(screen.getByTestId('run-agents')).toBeEnabled();
+    });
+  });
+
+  describe('Test connection tab', () => {
+    const mockServiceUtil = serviceUtilClassBase as jest.Mocked<
+      typeof serviceUtilClassBase
+    >;
+
+    it('should pass ingestion runner name to TestConnection component', async () => {
+      const ingestionRunnerName = 'IngestionRunner1';
+      (mockServiceUtil.getServiceExtraInfo as jest.Mock).mockReturnValue({
+        name: ingestionRunnerName,
+      });
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+      (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ...mockServiceDetails,
+          ingestionRunnerName,
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-connection')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('test-connection-extra-info')
+        ).toHaveTextContent(ingestionRunnerName);
+      });
     });
   });
 

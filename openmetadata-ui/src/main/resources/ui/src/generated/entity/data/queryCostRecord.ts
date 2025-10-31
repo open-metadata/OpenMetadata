@@ -27,6 +27,10 @@ export interface QueryCostRecord {
      */
     id?: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Json schema of the query
      */
     jsonSchema?: string;
