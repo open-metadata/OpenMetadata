@@ -22,6 +22,7 @@ from threading import Thread
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
 import networkx as nx
+from sqlalchemy import text
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -333,13 +334,15 @@ class LineageSource(QueryParserSource, ABC):
         """
         for engine in self.get_engine():
             with engine.connect() as conn:
-                rows = conn.execute(
-                    self.get_sql_statement(
-                        start_time=self.start,
-                        end_time=self.end,
-                    )
+                sql_statement = self.get_sql_statement(
+                    start_time=self.start,
+                    end_time=self.end,
                 )
+                logger.debug(f"Executing lineage query: {sql_statement}")
+                rows = conn.execute(text(sql_statement))
+                row_count = 0
                 for row in rows:
+                    row_count += 1
                     query_dict = dict(row)
                     try:
                         query_dict.update({k.lower(): v for k, v in query_dict.items()})
@@ -355,6 +358,7 @@ class LineageSource(QueryParserSource, ABC):
                         logger.warning(
                             f"Error processing query_dict {query_dict}: {exc}"
                         )
+                logger.info(f"Processed {row_count} query log entries for lineage")
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """
