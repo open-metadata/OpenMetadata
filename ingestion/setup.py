@@ -388,6 +388,7 @@ dev = {
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
     "pytest==7.0.1",
+    "pytest-xdist",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -407,6 +408,7 @@ test = {
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
     "pytest==7.0.1",
+    "pytest-xdist",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",

@@ -45,6 +45,8 @@ source = [
 ]
 relative_files = true
 branch = true
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 omit = [
