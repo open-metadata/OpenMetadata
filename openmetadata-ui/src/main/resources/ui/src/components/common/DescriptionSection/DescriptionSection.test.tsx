@@ -102,11 +102,9 @@ describe('DescriptionSection', () => {
     it('shows edit control when showEditButton is true and onDescriptionUpdate provided', () => {
       render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
 
-      const clickable = document.querySelector(
-        '.description-header .edit-icon'
-      ) as HTMLElement | null;
+      const editIcon = screen.getByTestId('edit-icon-svg');
 
-      expect(clickable).toBeTruthy();
+      expect(editIcon).toBeInTheDocument();
     });
 
     it('does not show edit control when showEditButton is false', () => {

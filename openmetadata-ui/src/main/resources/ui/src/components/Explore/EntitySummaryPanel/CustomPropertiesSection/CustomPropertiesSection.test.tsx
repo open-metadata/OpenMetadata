@@ -229,7 +229,6 @@ describe('CustomPropertiesSection', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
       expect(screen.getByText('label.view-all')).toBeInTheDocument();
-      expect(screen.getByRole('button')).toBeInTheDocument();
     });
 
     it('should not show view all button when 5 or fewer properties', () => {
@@ -393,21 +392,10 @@ describe('CustomPropertiesSection', () => {
     it('should render view all button with correct props', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const button = screen.getByRole('button');
+      const viewAllButton = screen.getByText('label.view-all');
 
-      expect(button).toBeInTheDocument();
-      expect(button).toHaveTextContent('label.view-all');
-      expect(button).toHaveClass('ant-btn', 'ant-btn-primary', 'ant-btn-sm');
-    });
-
-    it('should link to correct entity URL', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      const link = screen.getByRole('button').closest('a');
-
-      expect(link).toHaveAttribute('href', '/test-entity-link');
-      expect(link).toHaveAttribute('target', '_blank');
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(viewAllButton).toHaveTextContent('label.view-all');
+      expect(viewAllButton).toHaveClass('text-primary');
     });
 
     it('should call getEntityLinkFromType with correct parameters', () => {

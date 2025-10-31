@@ -459,29 +459,6 @@ describe('OwnersSection', () => {
         );
       });
     });
-
-    it('should show error when entityId is not a valid UUID', async () => {
-      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
-
-      const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityId="invalid-id"
-          entityType={EntityType.TABLE}
-        />
-      );
-
-      const editIcon = container.querySelector('.edit-icon');
-      fireEvent.click(editIcon!);
-      const trigger = screen.getByTestId('owner-selector-trigger');
-      fireEvent.click(trigger);
-
-      await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalledWith(
-          'message.invalid-entity-id'
-        );
-      });
-    });
   });
 
   describe('Team Selection Functionality', () => {

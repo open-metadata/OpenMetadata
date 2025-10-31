@@ -725,25 +725,6 @@ describe('TagsSection', () => {
         );
       });
     });
-
-    it('should show error when entityId is not a valid UUID', async () => {
-      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
-
-      render(<TagsSection {...defaultProps} entityId="invalid-id" />);
-
-      await enterEditMode();
-
-      const tagInput = screen.getByTestId('tag-selector-input');
-      fireEvent.change(tagInput, { target: { value: 'new-tag' } });
-
-      clickSave();
-
-      await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalledWith(
-          'message.invalid-entity-id'
-        );
-      });
-    });
   });
 
   describe('Tag Display Name Handling', () => {

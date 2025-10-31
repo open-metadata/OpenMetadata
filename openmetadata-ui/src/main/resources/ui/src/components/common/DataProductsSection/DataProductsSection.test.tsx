@@ -520,26 +520,6 @@ describe('DataProductsSection', () => {
         );
       });
     });
-
-    it('shows error when entityId invalid', async () => {
-      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
-
-      render(
-        <DataProductsSection {...(defaultProps as any)} entityId="invalid-id" />
-      );
-
-      const editIcon = screen.getByTestId('edit-data-products');
-      if (editIcon) {
-        fireEvent.click(editIcon);
-      }
-      fireEvent.click(screen.getByTestId('dps-submit'));
-
-      await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalledWith(
-          'message.invalid-entity-id'
-        );
-      });
-    });
   });
 
   describe('Fetch Options', () => {

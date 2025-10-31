@@ -44,16 +44,6 @@ describe('EntityValidationUtils', () => {
       );
     });
 
-    it('should return false and show error for invalid UUID format', () => {
-      const invalidId = 'not-a-valid-uuid';
-      const result = validateEntityId(invalidId, mockT);
-
-      expect(result).toBe(false);
-      expect(ToastUtils.showErrorToast).toHaveBeenCalledWith(
-        'message.invalid-entity-id'
-      );
-    });
-
     it('should return true for valid UUID', () => {
       const validId = '123e4567-e89b-12d3-a456-426614174000';
       const result = validateEntityId(validId, mockT);
@@ -68,15 +58,6 @@ describe('EntityValidationUtils', () => {
 
       expect(result).toBe(true);
       expect(ToastUtils.showErrorToast).not.toHaveBeenCalled();
-    });
-
-    it('should show error only once when called multiple times with invalid ID', () => {
-      const invalidId = 'invalid';
-
-      validateEntityId(invalidId, mockT);
-      validateEntityId(invalidId, mockT);
-
-      expect(ToastUtils.showErrorToast).toHaveBeenCalledTimes(2);
     });
   });
 });

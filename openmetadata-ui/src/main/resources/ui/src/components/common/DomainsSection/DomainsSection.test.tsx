@@ -26,7 +26,14 @@ jest.mock('react-i18next', () => ({
     },
   }),
 }));
-
+jest.mock('../Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => (
+    <div className="domains-loading-container" data-testid="loader">
+      Loading...
+    </div>
+  )),
+}));
 // Partial antd mock for Typography.Text
 jest.mock('antd', () => {
   const actual = jest.requireActual('antd');
@@ -268,9 +275,7 @@ describe('DomainsSection', () => {
       fireEvent.click(screen.getByTestId('domain-select-submit'));
 
       await waitFor(() => {
-        expect(
-          document.querySelector('.domains-loading-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('loader')).toBeInTheDocument();
       });
     });
   });
