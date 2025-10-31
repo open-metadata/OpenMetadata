@@ -35,4 +35,9 @@ public class ElasticQueryBuilderFactory implements QueryBuilderFactory {
   public OMQueryBuilder existsQuery(String field) {
     return new ElasticQueryBuilder().existsQuery(field);
   }
+
+  @Override
+  public OMQueryBuilder prefixQuery(String field, String prefix) {
+    return new ElasticQueryBuilder().prefixQuery(field, prefix);
+  }
 }

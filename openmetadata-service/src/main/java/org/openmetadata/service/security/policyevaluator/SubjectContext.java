@@ -110,7 +110,7 @@ public record SubjectContext(User user, String impersonatedBy) {
    * Checks if userDomainFQN is an parent of or equal to resourceDomainFQN.
    * Example: "Engineering" is parent of "Engineering.Backend.Services"
    */
-  private static boolean isDomainParentOrEqual(String userDomainFQN, String resourceDomainFQN) {
+  protected static boolean isDomainParentOrEqual(String userDomainFQN, String resourceDomainFQN) {
     if (userDomainFQN.equals(resourceDomainFQN)) return true; // Exact match
 
     // Check if user domain is parent by walking up resource domain hierarchy
@@ -184,8 +184,38 @@ public record SubjectContext(User user, String impersonatedBy) {
     return roles.stream().distinct().collect(Collectors.toList());
   }
 
+  // Get user's domains including all subdomains in the hierarchy.
   public List<EntityReference> getUserDomains() {
-    return listOrEmpty(user.getDomains());
+    List<EntityReference> userDomains = listOrEmpty(user.getDomains());
+    if (userDomains.isEmpty()) {
+      return userDomains;
+    }
+
+    List<EntityReference> allDomains = new ArrayList<>(userDomains);
+    try {
+      // Build fqnHash patterns to match all subdomains: "parentHash.%"
+      List<String> fqnHashPrefixes =
+          userDomains.stream()
+              .map(d -> FullyQualifiedName.buildHash(d.getFullyQualifiedName()) + ".%")
+              .collect(Collectors.toList());
+
+      List<String> subdomainJsonList =
+          Entity.getCollectionDAO().domainDAO().getSubdomainsByFqnHashPatterns(fqnHashPrefixes);
+
+      for (String json : subdomainJsonList) {
+        try {
+          org.openmetadata.schema.entity.domains.Domain domain =
+              org.openmetadata.schema.utils.JsonUtils.readValue(
+                  json, org.openmetadata.schema.entity.domains.Domain.class);
+          allDomains.add(domain.getEntityReference());
+        } catch (Exception ex) {
+          LOG.warn("Failed to parse subdomain", ex);
+        }
+      }
+    } catch (Exception ex) {
+      LOG.warn("Failed to fetch subdomains", ex);
+    }
+    return allDomains.stream().distinct().collect(Collectors.toList());
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to

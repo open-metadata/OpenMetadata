@@ -133,6 +133,11 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
     return this;
   }
 
+  public OpenSearchQueryBuilder prefixQuery(String field, String prefix) {
+    this.query = QueryBuilders.prefixQuery(field, prefix);
+    return this;
+  }
+
   private BoolQueryBuilder getOrCreateBoolQuery() {
     if (query instanceof BoolQueryBuilder) {
       return (BoolQueryBuilder) query;

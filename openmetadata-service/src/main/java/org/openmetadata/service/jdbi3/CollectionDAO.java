@@ -3057,6 +3057,35 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT de.json "
+                + "FROM domain_entity de "
+                + "JOIN JSON_TABLE("
+                + "    :jsonPrefixes, "
+                + "    '$[*]' COLUMNS (prefix VARCHAR(768) PATH '$')"
+                + ") AS p "
+                + "  ON de.fqnHash LIKE p.prefix",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT de.json "
+                + "FROM domain_entity de "
+                + "JOIN UNNEST(:prefixArray::text[]) AS p(prefix) "
+                + "  ON de.fqnHash LIKE p.prefix",
+        connectionType = POSTGRES)
+    List<String> getSubdomainsByFqnHashPatterns(
+        @Bind("jsonPrefixes") String jsonPrefixes, @Bind("prefixArray") List<String> prefixArray);
+
+    default List<String> getSubdomainsByFqnHashPatterns(List<String> fqnHashPrefixes) {
+      if (fqnHashPrefixes.isEmpty()) {
+        return new ArrayList<>();
+      }
+
+      String jsonPrefixes = org.openmetadata.schema.utils.JsonUtils.pojoToJson(fqnHashPrefixes);
+      return getSubdomainsByFqnHashPatterns(jsonPrefixes, fqnHashPrefixes);
+    }
   }
 
   interface DataProductDAO extends EntityDAO<DataProduct> {
