@@ -15,7 +15,6 @@ import { EntityTags } from 'Models';
 import { useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
@@ -78,7 +77,6 @@ interface GenericEntity
       | 'tags'
     > {
   changeDescription: ChangeDescription;
-  entityRules: DataAssetRuleValidation;
 }
 
 interface CommonWidgetsProps {
