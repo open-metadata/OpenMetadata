@@ -90,6 +90,15 @@ export class EntityClass {
     return this.type;
   }
 
+  public get() {
+    return {};
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  public set(_data: any) {
+    // handle in parent component
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
     // Override for entity visit

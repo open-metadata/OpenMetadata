@@ -30,14 +30,14 @@ type ResponseDataType = {
 };
 
 export class TeamClass {
-  id = uuid();
   data: ResponseDataType;
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
+    const id = uuid();
     this.data = data ?? {
-      name: `PW%team-${this.id}`,
-      displayName: `PW Team ${this.id}`,
+      name: `PW%team-${id}`,
+      displayName: `PW Team ${id}`,
       description: 'playwright team description',
       teamType: 'Group',
       users: [],

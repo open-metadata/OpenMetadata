@@ -75,11 +75,6 @@ test.describe('Service Version pages', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
 
-    await EntityDataClass.preRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
-
     for (const entity of entities) {
       const domain = EntityDataClass.domain1.responseData;
       await entity.patch(apiContext, [
@@ -132,10 +127,6 @@ test.describe('Service Version pages', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
-    await EntityDataClass.postRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
     await afterAction();
   });
 

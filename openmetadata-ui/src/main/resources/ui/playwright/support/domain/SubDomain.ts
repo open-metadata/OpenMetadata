@@ -35,22 +35,24 @@ type ResponseDataType = {
 };
 
 export class SubDomain {
-  id: string = uuid();
-  data: ResponseDataType = {
-    name: `PW%Subdomain.${this.id}`,
-    displayName: `PW Sub Domain ${this.id}`,
-    description: 'playwright sub domain description',
-    domainType: 'Aggregate',
-    // eslint-disable-next-line no-useless-escape
-    fullyQualifiedName: `\"PW%Subdomain.${this.id}\"`,
-  };
+  id: string;
+  data: ResponseDataType;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(domain: Domain | SubDomain, name?: string) {
-    this.data.parent =
-      domain.responseData.fullyQualifiedName ?? domain.data.name;
-    this.data.name = name ?? this.data.name;
+    this.id = uuid();
+    const dataName = name ?? `PW%Subdomain.${this.id}`;
+
+    this.data = {
+      name: dataName,
+      displayName: `PW Sub Domain ${this.id}`,
+      description: 'playwright sub domain description',
+      domainType: 'Aggregate',
+      // eslint-disable-next-line no-useless-escape
+      fullyQualifiedName: `\"PW%Subdomain.${this.id}\"`,
+      parent: domain.responseData.fullyQualifiedName ?? domain.data.name,
+    };
   }
 
   async create(apiContext: APIRequestContext) {
