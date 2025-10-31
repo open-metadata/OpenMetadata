@@ -121,6 +121,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.ai.dynamicAgent import DynamicAgent
 from metadata.generated.schema.entity.applications.app import App
 from metadata.generated.schema.entity.applications.createAppRequest import (
     CreateAppRequest,
@@ -332,4 +333,5 @@ ROUTES = {
     DriveService.__name__: "/services/driveServices",
     CreateDriveServiceRequest.__name__: "/services/driveServices",
     EntityProfile.__name__: "/entity/profiles",
+    DynamicAgent.__name__: "/agents/dynamic",
 }
