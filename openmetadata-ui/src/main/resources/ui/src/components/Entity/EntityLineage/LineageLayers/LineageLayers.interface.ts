@@ -13,14 +13,6 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface LayerButtonProps {
-  isActive: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  testId: string;
-}
-
 export interface LineageLayersProps {
   entityType?: EntityType;
   entity?: SourceType;
