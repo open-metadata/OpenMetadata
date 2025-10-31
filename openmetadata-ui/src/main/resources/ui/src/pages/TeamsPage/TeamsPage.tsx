@@ -50,6 +50,7 @@ import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTermQuery } from '../../utils/SearchUtils';
+import { filterChildTeams } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -95,7 +96,10 @@ const TeamsPage = () => {
   ) => {
     for (const team of teams) {
       if (team.fullyQualifiedName === parentTeam) {
-        team.children = data as EntityReference[];
+        team.children = filterChildTeams(
+          data,
+          showDeletedTeam
+        ) as EntityReference[];
 
         break;
       } else if (team.children && team.children.length > 0) {
