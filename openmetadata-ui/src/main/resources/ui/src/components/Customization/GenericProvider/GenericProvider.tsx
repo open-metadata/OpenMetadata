@@ -27,7 +27,6 @@ import {
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
@@ -57,7 +56,6 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
   muiTags?: boolean;
-  entityRules: DataAssetRuleValidation;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -75,7 +73,6 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
   muiTags: boolean;
-  entityRules: DataAssetRuleValidation;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
