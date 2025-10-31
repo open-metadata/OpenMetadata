@@ -4354,6 +4354,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           "List endpoint should also filter by createdBy");
     }
   }
+
   @Test
   void test_listTestCaseResultsFromSearchWithDataContractIdFilter(TestInfo testInfo)
       throws HttpResponseException, ParseException, IOException {
