@@ -6,6 +6,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
+import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
+import static org.openmetadata.service.search.SearchUtil.isTimeSeriesIndex;
 
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
@@ -43,10 +47,15 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ElasticSearchSourceBuilderFactory
     implements SearchSourceBuilderFactory<
         SearchSourceBuilder, QueryBuilder, HighlightBuilder, FunctionScoreQueryBuilder> {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ElasticSearchSourceBuilderFactory.class);
 
   // Constants for duplicate literals
   private static final String MATCH_TYPE_EXACT = "exact";
@@ -999,5 +1008,638 @@ public class ElasticSearchSourceBuilderFactory
     addFuzzyMatchQueries(
         combinedQuery, query, fieldsByType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
     addStandardMatchQueries(combinedQuery, query, fieldsByType.get(MATCH_TYPE_STANDARD));
+  }
+
+  public es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildSearchQueryBuilderV2(
+      String query, Map<String, Float> fields) {
+    Map<String, Float> fuzzyFields =
+        fields.entrySet().stream()
+            .filter(entry -> isFuzzyField(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    Map<String, Float> nonFuzzyFields =
+        fields.entrySet().stream()
+            .filter(entry -> isNonFuzzyField(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
+        ElasticQueryBuilder.queryStringQuery(
+            query,
+            fuzzyFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            "1",
+            10,
+            3,
+            DEFAULT_TIE_BREAKER,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields);
+
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query nonFuzzyQuery =
+        ElasticQueryBuilder.multiMatchQuery(
+            query,
+            nonFuzzyFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            String.valueOf(DEFAULT_TIE_BREAKER),
+            "0");
+
+    return ElasticQueryBuilder.boolQuery()
+        .should(fuzzyQuery)
+        .should(nonFuzzyQuery)
+        .minimumShouldMatch(1)
+        .build();
+  }
+
+  public ElasticSearchRequestBuilder searchBuilderV2(
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query query,
+      es.co.elastic.clients.elasticsearch.core.search.Highlight highlightBuilder,
+      int fromOffset,
+      int size) {
+    ElasticSearchRequestBuilder builder = new ElasticSearchRequestBuilder();
+    builder.query(query);
+    if (highlightBuilder != null) {
+      builder.highlighter(highlightBuilder);
+    }
+    builder.from(fromOffset);
+    builder.size(size);
+    return builder;
+  }
+
+  public ElasticSearchRequestBuilder buildUserOrTeamSearchBuilderV2(
+      String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    return searchBuilderV2(queryBuilder, null, from, size);
+  }
+
+  private ElasticSearchRequestBuilder addAggregationV2(
+      ElasticSearchRequestBuilder searchRequestBuilder) {
+    searchSettings
+        .getGlobalSettings()
+        .getAggregations()
+        .forEach(
+            agg -> {
+              es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation termsAgg;
+              int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
+
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg = ElasticAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+              } else if (!nullOrEmpty(agg.getScript())) {
+                termsAgg =
+                    ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
+              } else {
+                return;
+              }
+
+              searchRequestBuilder.aggregation(agg.getName(), termsAgg);
+            });
+    return searchRequestBuilder;
+  }
+
+  public es.co.elastic.clients.elasticsearch.core.search.Highlight buildHighlightsV2(
+      List<String> fields) {
+    ElasticHighlightBuilder hb = new ElasticHighlightBuilder();
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+    for (String field : listOrEmpty(fields)) {
+      hb.field(field, MAX_ANALYZED_OFFSET);
+    }
+    return hb.build();
+  }
+
+  public ElasticSearchRequestBuilder getSearchSourceBuilderV2(
+      String indexName, String searchQuery, int fromOffset, int size) {
+    return getSearchSourceBuilderV2(indexName, searchQuery, fromOffset, size, false);
+  }
+
+  public ElasticSearchRequestBuilder getSearchSourceBuilderV2(
+      String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+    indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
+
+    if (isTimeSeriesIndex(indexName)) {
+      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
+    }
+
+    if (isServiceIndex(indexName)) {
+      return buildServiceSearchBuilderV2(searchQuery, fromOffset, size);
+    }
+
+    if (isDataQualityIndex(indexName)) {
+      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
+    }
+
+    if (isDataAssetIndex(indexName)) {
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain);
+    }
+
+    if (indexName.equals("all") || indexName.equals("dataAsset")) {
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain);
+    }
+
+    return switch (indexName) {
+      case "user_search_index",
+          "user",
+          "team_search_index",
+          "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size);
+    };
+  }
+
+  public ElasticSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
+      String indexName, String query, int from, int size) {
+    return switch (indexName) {
+      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
+      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
+          query, from, size);
+      case "cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
+          query, from, size);
+      default -> searchBuilderV2(ElasticQueryBuilder.matchAllQuery(), null, from, size);
+    };
+  }
+
+  public ElasticSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, SearchIndex.getDefaultFields());
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, hb, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildDataAssetSearchBuilderV2(
+      String indexName, String query, int from, int size) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, false);
+  }
+
+  public ElasticSearchRequestBuilder buildDataAssetSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean explain) {
+    AssetTypeConfiguration assetConfig = getAssetConfiguration(indexName);
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
+        buildBaseQueryV2(query, assetConfig);
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
+        applyFunctionScoringV2(baseQuery, assetConfig);
+    es.co.elastic.clients.elasticsearch.core.search.Highlight highlightBuilder =
+        buildHighlightingIfNeededV2(query, assetConfig);
+
+    ElasticSearchRequestBuilder searchRequestBuilder =
+        createSearchSourceBuilderV2(finalQuery, from, size);
+    if (highlightBuilder != null) {
+      searchRequestBuilder.highlighter(highlightBuilder);
+    }
+
+    addConfiguredAggregationsV2(searchRequestBuilder, assetConfig);
+    searchRequestBuilder.explain(explain);
+
+    return searchRequestBuilder;
+  }
+
+  public ElasticSearchRequestBuilder buildAggregateSearchBuilderV2(
+      String query, int from, int size) {
+    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
+        buildQueryWithMatchTypesV2(query, compositeConfig);
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
+        applyFunctionScoringV2(baseQuery, compositeConfig);
+
+    ElasticSearchRequestBuilder searchRequestBuilder =
+        searchBuilderV2(finalQuery, null, from, size);
+    return addAggregationV2(searchRequestBuilder);
+  }
+
+  public ElasticSearchRequestBuilder buildDataQualitySearchBuilderV2(
+      String indexName, String query, int from, int size) {
+    if (indexName.equals("test_case_search_index")) {
+      return buildTestCaseSearchV2(query, from, size);
+    }
+    return searchBuilderV2(ElasticQueryBuilder.matchAllQuery(), null, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
+    return searchBuilderV2(queryBuilder, hb, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildTestCaseResultSearchV2(String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, hb, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildTestCaseResolutionStatusSearchV2(
+      String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResolutionStatusIndex.getFields());
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, hb, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildCostAnalysisReportDataSearchV2(
+      String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        ElasticQueryBuilder.queryStringQuery(query);
+    return searchBuilderV2(queryBuilder, null, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildCommonSearchBuilderV2(String query, int from, int size) {
+    AssetTypeConfiguration defaultConfig = getOrCreateDefaultConfig();
+    LOG.debug(
+        "buildCommonSearchBuilder called with query: '{}', using config: {}",
+        query,
+        defaultConfig.getAssetType());
+
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
+        buildQueryWithMatchTypesV2(query, defaultConfig);
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
+        applyGlobalBoostsV2(baseQuery);
+
+    ElasticSearchRequestBuilder searchRequestBuilder =
+        createCommonSearchSourceBuilderV2(finalQuery, from, size);
+    addHighlightsIfConfiguredV2(searchRequestBuilder);
+    addAggregationV2(searchRequestBuilder);
+
+    return searchRequestBuilder;
+  }
+
+  public ElasticSearchRequestBuilder buildEntitySpecificAggregateSearchBuilderV2(
+      String query, int from, int size) {
+    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
+        buildQueryWithMatchTypesV2(query, compositeConfig);
+
+    List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = collectAllBoostFunctions();
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
+        applyBoostFunctionsV2(baseQuery, functions);
+
+    ElasticSearchRequestBuilder searchRequestBuilder =
+        searchBuilderV2(finalQuery, null, from, size);
+    return addAggregationV2(searchRequestBuilder);
+  }
+
+  private List<FunctionScoreQueryBuilder.FilterFunctionBuilder> collectGlobalBoostFunctions() {
+    List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
+    addGlobalBoosts(functions);
+    return functions;
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildBaseQueryV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
+    } else if (containsQuerySyntax(query)) {
+      return buildComplexSyntaxQueryV2(query, assetConfig);
+    } else {
+      return buildSimpleQueryV2(query, assetConfig);
+    }
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildComplexSyntaxQueryV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    Map<String, Float> fuzzyFields = new HashMap<>();
+    Map<String, Float> nonFuzzyFields = new HashMap<>();
+
+    classifyFields(assetConfig, fuzzyFields, nonFuzzyFields);
+
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
+        ElasticQueryBuilder.queryStringQuery(
+            query,
+            fuzzyFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            "1",
+            10,
+            3,
+            DEFAULT_TIE_BREAKER,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields);
+
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query nonFuzzyQuery =
+        ElasticQueryBuilder.multiMatchQuery(
+            query,
+            nonFuzzyFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            String.valueOf(DEFAULT_TIE_BREAKER),
+            "0");
+
+    return ElasticQueryBuilder.boolQuery()
+        .should(fuzzyQuery)
+        .should(nonFuzzyQuery)
+        .minimumShouldMatch(1)
+        .must(ElasticQueryBuilder.matchAllQuery())
+        .build();
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildSimpleQueryV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    ElasticQueryBuilder.BoolQueryBuilder combinedQuery = ElasticQueryBuilder.boolQuery();
+    MatchTypeMultipliers multipliers = getMatchTypeMultipliers(assetConfig);
+    Map<String, Map<String, Float>> fieldsByMatchType = groupFieldsByMatchType(assetConfig);
+
+    addExactMatchQueriesV2(
+        combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_EXACT), multipliers.exactMatch);
+    addPhraseMatchQueriesV2(
+        combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_PHRASE), multipliers.phraseMatch);
+    addFuzzyMatchQueriesV2(
+        combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
+    addStandardMatchQueriesV2(combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_STANDARD));
+
+    combinedQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.boolQuery().must(combinedQuery.build()).build();
+  }
+
+  private void addExactMatchQueriesV2(
+      ElasticQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      Map<String, Float> fields,
+      float multiplier) {
+    if (!fields.isEmpty()) {
+      ElasticQueryBuilder.BoolQueryBuilder exactMatchQuery = ElasticQueryBuilder.boolQuery();
+      fields.forEach(
+          (field, boost) ->
+              exactMatchQuery.should(
+                  es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                      q ->
+                          q.term(
+                              t ->
+                                  t.field(field)
+                                      .value(query.toLowerCase())
+                                      .boost((float) (boost * multiplier))))));
+      if (!exactMatchQuery.build()._kind().name().equals("match_none")) {
+        combinedQuery.should(exactMatchQuery.build());
+      }
+    }
+  }
+
+  private void addPhraseMatchQueriesV2(
+      ElasticQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      Map<String, Float> fields,
+      float multiplier) {
+    if (!fields.isEmpty()) {
+      ElasticQueryBuilder.BoolQueryBuilder phraseMatchQuery = ElasticQueryBuilder.boolQuery();
+      fields.forEach(
+          (field, boost) ->
+              phraseMatchQuery.should(
+                  es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                      q ->
+                          q.matchPhrase(
+                              m ->
+                                  m.field(field)
+                                      .query(query)
+                                      .boost((float) (boost * multiplier))))));
+      if (!phraseMatchQuery.build()._kind().name().equals("match_none")) {
+        combinedQuery.should(phraseMatchQuery.build());
+      }
+    }
+  }
+
+  private void addFuzzyMatchQueriesV2(
+      ElasticQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      Map<String, Float> fields,
+      float multiplier) {
+    if (!fields.isEmpty()) {
+      List<String> fieldList = new ArrayList<>();
+      fields.forEach(
+          (field, boost) -> {
+            if (boost != null && boost != 1.0f) {
+              fieldList.add(field + "^" + boost);
+            } else {
+              fieldList.add(field);
+            }
+          });
+
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q ->
+                  q.multiMatch(
+                      m ->
+                          m.query(query)
+                              .fields(fieldList)
+                              .type(
+                                  es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType
+                                      .MostFields)
+                              .fuzziness("1")
+                              .maxExpansions(10)
+                              .prefixLength(1)
+                              .operator(
+                                  es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or)
+                              .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
+                              .tieBreaker((double) DEFAULT_TIE_BREAKER)
+                              .boost(multiplier)));
+      combinedQuery.should(fuzzyQuery);
+    }
+  }
+
+  private void addStandardMatchQueriesV2(
+      ElasticQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      Map<String, Float> standardFields) {
+    if (!standardFields.isEmpty()) {
+      Map<String, Float> fuzzyFields =
+          standardFields.entrySet().stream()
+              .filter(entry -> isFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      Map<String, Float> nonFuzzyFields =
+          standardFields.entrySet().stream()
+              .filter(entry -> isNonFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      if (!fuzzyFields.isEmpty()) {
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQueryBuilder =
+            createStandardFuzzyQueryV2(query, fuzzyFields);
+        combinedQuery.should(fuzzyQueryBuilder);
+      }
+
+      if (!nonFuzzyFields.isEmpty()) {
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Query nonFuzzyQueryBuilder =
+            createStandardNonFuzzyQueryV2(query, nonFuzzyFields);
+        combinedQuery.should(nonFuzzyQueryBuilder);
+      }
+    }
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardFuzzyQueryV2(
+      String query, Map<String, Float> fields) {
+    return ElasticQueryBuilder.multiMatchQuery(
+        query,
+        fields,
+        es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+        String.valueOf(DEFAULT_TIE_BREAKER),
+        "1");
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(
+      String query, Map<String, Float> fields) {
+    return ElasticQueryBuilder.multiMatchQuery(
+        query,
+        fields,
+        es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+        String.valueOf(DEFAULT_TIE_BREAKER),
+        "0");
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query applyFunctionScoringV2(
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery,
+      AssetTypeConfiguration assetConfig) {
+    List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions =
+        collectBoostFunctions(assetConfig);
+
+    if (functions.isEmpty()) {
+      return baseQuery;
+    }
+
+    return baseQuery;
+  }
+
+  private es.co.elastic.clients.elasticsearch.core.search.Highlight buildHighlightingIfNeededV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    if (query == null || query.trim().isEmpty()) {
+      return null;
+    }
+
+    if (assetConfig.getHighlightFields() != null && !assetConfig.getHighlightFields().isEmpty()) {
+      return buildHighlightsV2(assetConfig.getHighlightFields());
+    } else if (searchSettings.getGlobalSettings().getHighlightFields() != null) {
+      return buildHighlightsV2(searchSettings.getGlobalSettings().getHighlightFields());
+    }
+
+    return null;
+  }
+
+  private ElasticSearchRequestBuilder createSearchSourceBuilderV2(
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query query, int from, int size) {
+    int maxHits = searchSettings.getGlobalSettings().getMaxResultHits();
+    ElasticSearchRequestBuilder builder = new ElasticSearchRequestBuilder();
+    builder.query(query);
+    builder.from(Math.min(from, maxHits));
+    builder.size(Math.min(size, maxHits));
+    return builder;
+  }
+
+  private void addConfiguredAggregationsV2(
+      ElasticSearchRequestBuilder searchRequestBuilder, AssetTypeConfiguration assetConfig) {
+    Map<String, Aggregation> aggregations = new HashMap<>();
+
+    aggregations.putAll(
+        listOrEmpty(assetConfig.getAggregations()).stream()
+            .collect(Collectors.toMap(Aggregation::getName, agg -> agg)));
+    aggregations.putAll(
+        listOrEmpty(searchSettings.getGlobalSettings().getAggregations()).stream()
+            .collect(Collectors.toMap(Aggregation::getName, agg -> agg)));
+
+    for (var entry : aggregations.entrySet()) {
+      Aggregation agg = entry.getValue();
+      es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation termsAgg;
+      int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
+
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg = ElasticAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+      } else if (!nullOrEmpty(agg.getScript())) {
+        termsAgg = ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
+      } else {
+        continue;
+      }
+
+      searchRequestBuilder.aggregation(agg.getName(), termsAgg);
+    }
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildQueryWithMatchTypesV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
+    }
+
+    if (containsQuerySyntax(query)) {
+      return buildComplexQueryV2(query, assetConfig);
+    }
+
+    return buildSimpleQueryWithTypesV2(query, assetConfig);
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildComplexQueryV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    Map<String, Float> allFields = extractAllFields(assetConfig);
+
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryStringBuilder =
+        ElasticQueryBuilder.queryStringQuery(
+            query,
+            allFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            null,
+            50,
+            0,
+            0.5,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields);
+
+    return ElasticQueryBuilder.boolQuery().must(queryStringBuilder).build();
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildSimpleQueryWithTypesV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    ElasticQueryBuilder.BoolQueryBuilder combinedQuery = ElasticQueryBuilder.boolQuery();
+    MatchTypeMultipliers multipliers = getMatchTypeMultipliers(assetConfig);
+    Map<String, Map<String, Float>> fieldsByType = groupFieldsByMatchType(assetConfig);
+
+    addMatchTypeQueriesV2(combinedQuery, query, fieldsByType, multipliers);
+
+    combinedQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.boolQuery().must(combinedQuery.build()).build();
+  }
+
+  private void addMatchTypeQueriesV2(
+      ElasticQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      Map<String, Map<String, Float>> fieldsByType,
+      MatchTypeMultipliers multipliers) {
+
+    addExactMatchQueriesV2(
+        combinedQuery, query, fieldsByType.get(MATCH_TYPE_EXACT), multipliers.exactMatch);
+    addPhraseMatchQueriesV2(
+        combinedQuery, query, fieldsByType.get(MATCH_TYPE_PHRASE), multipliers.phraseMatch);
+    addFuzzyMatchQueriesV2(
+        combinedQuery, query, fieldsByType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
+    addStandardMatchQueriesV2(combinedQuery, query, fieldsByType.get(MATCH_TYPE_STANDARD));
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query applyGlobalBoostsV2(
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery) {
+    List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = collectGlobalBoostFunctions();
+
+    if (functions.isEmpty()) {
+      return baseQuery;
+    }
+
+    return baseQuery;
+  }
+
+  private ElasticSearchRequestBuilder createCommonSearchSourceBuilderV2(
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query query, int from, int size) {
+    return createSearchSourceBuilderV2(query, from, size);
+  }
+
+  private void addHighlightsIfConfiguredV2(ElasticSearchRequestBuilder searchRequestBuilder) {
+    if (searchSettings.getGlobalSettings().getHighlightFields() != null) {
+      searchRequestBuilder.highlighter(
+          buildHighlightsV2(searchSettings.getGlobalSettings().getHighlightFields()));
+    }
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query applyBoostFunctionsV2(
+      es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery,
+      List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions) {
+    if (functions.isEmpty()) {
+      return baseQuery;
+    }
+
+    return baseQuery;
   }
 }

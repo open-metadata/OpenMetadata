@@ -32,4 +32,51 @@ public interface SearchManagementClient {
    */
   Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException;
+
+  /**
+   * List entities with pagination support.
+   *
+   * @param filter JSON filter to apply to the search
+   * @param limit maximum number of results to return
+   * @param offset starting position for results
+   * @param index the index to search in
+   * @param searchSortFilter sorting configuration
+   * @param q search query string
+   * @param queryString raw query DSL string
+   * @return response containing paginated search results
+   * @throws IOException if search execution fails
+   */
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString)
+      throws IOException;
+
+  /**
+   * List entities with deep pagination using search_after.
+   * This method uses the search_after parameter for efficient deep pagination.
+   *
+   * @param index the index to search in
+   * @param query search query string
+   * @param filter JSON filter to apply to the search
+   * @param fields specific fields to include in results (or null for all fields)
+   * @param searchSortFilter sorting configuration
+   * @param size maximum number of results to return
+   * @param searchAfter sort values from the last hit of the previous page (or null for first page)
+   * @return response containing paginated search results with sort values for next page
+   * @throws IOException if search execution fails
+   */
+  SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      String[] fields,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException;
 }

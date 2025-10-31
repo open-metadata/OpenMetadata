@@ -1035,4 +1035,302 @@ public class OpenSearchSourceBuilderFactory
         combinedQuery, query, fieldsByType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
     addStandardMatchQueries(combinedQuery, query, fieldsByType.get(MATCH_TYPE_STANDARD));
   }
+
+  public os.org.opensearch.client.opensearch._types.query_dsl.Query buildSearchQueryBuilderV2(
+      String query, Map<String, Float> fields) {
+    Map<String, Float> fuzzyFields =
+        fields.entrySet().stream()
+            .filter(entry -> isFuzzyField(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    Map<String, Float> nonFuzzyFields =
+        fields.entrySet().stream()
+            .filter(entry -> isNonFuzzyField(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    os.org.opensearch.client.opensearch._types.query_dsl.Query fuzzyQuery =
+        OpenSearchQueryBuilder.queryStringQuery(
+            query,
+            fuzzyFields,
+            os.org.opensearch.client.opensearch._types.query_dsl.Operator.And,
+            "1",
+            10,
+            3,
+            DEFAULT_TIE_BREAKER,
+            os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.MostFields);
+
+    os.org.opensearch.client.opensearch._types.query_dsl.Query nonFuzzyQuery =
+        OpenSearchQueryBuilder.multiMatchQuery(
+            query,
+            nonFuzzyFields,
+            os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.MostFields,
+            os.org.opensearch.client.opensearch._types.query_dsl.Operator.And,
+            String.valueOf(DEFAULT_TIE_BREAKER),
+            "0");
+
+    return OpenSearchQueryBuilder.boolQuery()
+        .should(fuzzyQuery)
+        .should(nonFuzzyQuery)
+        .minimumShouldMatch(1)
+        .build();
+  }
+
+  public OpenSearchRequestBuilder searchBuilderV2(
+      os.org.opensearch.client.opensearch._types.query_dsl.Query query,
+      os.org.opensearch.client.opensearch.core.search.Highlight highlightBuilder,
+      int fromOffset,
+      int size) {
+    OpenSearchRequestBuilder builder = new OpenSearchRequestBuilder();
+    builder.query(query);
+    if (highlightBuilder != null) {
+      builder.highlighter(highlightBuilder);
+    }
+    builder.from(fromOffset);
+    builder.size(size);
+    return builder;
+  }
+
+  public OpenSearchRequestBuilder buildUserOrTeamSearchBuilderV2(String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    return searchBuilderV2(queryBuilder, null, from, size);
+  }
+
+  public OpenSearchRequestBuilder getSearchSourceBuilderV2(
+      String index, String q, int offset, int limit, boolean explain) {
+    String resolvedIndex = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+
+    switch (resolvedIndex) {
+      case "user-search-index":
+      case "team-search-index":
+        return buildUserOrTeamSearchBuilderV2(q, offset, limit);
+      case "test_case_search_index":
+        return buildTestCaseSearchBuilderV2(q, offset, limit);
+      case "test_case_resolution_status_search_index":
+        return buildTestCaseResolutionStatusSearchBuilderV2(q, offset, limit);
+      case "test_case_result_search_index":
+        return buildTestCaseResultSearchBuilderV2(q, offset, limit);
+      case "cost_analysis_report_data_index":
+        return buildCostAnalysisReportDataSearchBuilderV2(q, offset, limit);
+      case "glossaryterm_search_index":
+      case "tag_search_index":
+      case "dashboard_search_index":
+      case "pipeline_search_index":
+      case "topic_search_index":
+      case "mlmodel_search_index":
+      case "container_search_index":
+      case "query_search_index":
+      case "stored_procedure_search_index":
+      case "dashboard_data_model_search_index":
+      case "glossary_search_index":
+      case "table_search_index":
+      case "database_search_index":
+      case "database_schema_search_index":
+      case "data_product_search_index":
+      case "search_index_search_index":
+      case "domain_search_index":
+        return buildDataAssetSearchBuilderV2(index, q, offset, limit, explain);
+      default:
+        if (resolvedIndex.equals("all") || resolvedIndex.equals("dataAsset")) {
+          return buildAggregateSearchBuilderV2(q, offset, limit);
+        } else {
+          return buildServiceSearchBuilderV2(q, offset, limit);
+        }
+    }
+  }
+
+  public OpenSearchRequestBuilder buildTestCaseSearchBuilderV2(String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
+    os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
+        buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
+    return searchBuilderV2(queryBuilder, highlighter, from, size);
+  }
+
+  public OpenSearchRequestBuilder buildCostAnalysisReportDataSearchBuilderV2(
+      String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        OpenSearchQueryBuilder.queryStringQuery(query);
+    return searchBuilderV2(queryBuilder, null, from, size);
+  }
+
+  public OpenSearchRequestBuilder buildTestCaseResolutionStatusSearchBuilderV2(
+      String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResolutionStatusIndex.getFields());
+    os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
+        buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, highlighter, from, size);
+  }
+
+  public OpenSearchRequestBuilder buildTestCaseResultSearchBuilderV2(
+      String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
+    os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
+        buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, highlighter, from, size);
+  }
+
+  public OpenSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, SearchIndex.getDefaultFields());
+    os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
+        buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, highlighter, from, size);
+  }
+
+  public OpenSearchRequestBuilder buildAggregateSearchBuilderV2(String query, int from, int size) {
+    AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
+    os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery =
+        buildQueryWithMatchTypesV2(query, compositeConfig);
+    os.org.opensearch.client.opensearch._types.query_dsl.Query finalQuery =
+        applyFunctionScoringV2(baseQuery, compositeConfig);
+
+    OpenSearchRequestBuilder searchRequestBuilder = searchBuilderV2(finalQuery, null, from, size);
+    return addAggregationV2(searchRequestBuilder);
+  }
+
+  public OpenSearchRequestBuilder buildDataAssetSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean explain) {
+    AssetTypeConfiguration assetConfig = getAssetConfiguration(indexName);
+    os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery =
+        buildBaseQueryV2(query, assetConfig);
+    os.org.opensearch.client.opensearch._types.query_dsl.Query finalQuery =
+        applyFunctionScoringV2(baseQuery, assetConfig);
+    os.org.opensearch.client.opensearch.core.search.Highlight highlightBuilder =
+        buildHighlightingIfNeededV2(query, assetConfig);
+
+    OpenSearchRequestBuilder searchRequestBuilder =
+        createSearchRequestBuilderV2(finalQuery, from, size);
+    if (highlightBuilder != null) {
+      searchRequestBuilder.highlighter(highlightBuilder);
+    }
+
+    addConfiguredAggregationsV2(searchRequestBuilder, assetConfig);
+
+    return searchRequestBuilder;
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildBaseQueryV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return OpenSearchQueryBuilder.matchAllQuery();
+    } else {
+      return buildQueryWithMatchTypesV2(query, assetConfig);
+    }
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildQueryWithMatchTypesV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return OpenSearchQueryBuilder.matchAllQuery();
+    }
+
+    Map<String, Float> allFields = extractAllFields(assetConfig);
+    return OpenSearchQueryBuilder.queryStringQuery(
+        query,
+        allFields,
+        os.org.opensearch.client.opensearch._types.query_dsl.Operator.And,
+        "1",
+        50,
+        3,
+        0.5,
+        os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.MostFields);
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query applyFunctionScoringV2(
+      os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery,
+      AssetTypeConfiguration assetConfig) {
+    return baseQuery;
+  }
+
+  private os.org.opensearch.client.opensearch.core.search.Highlight buildHighlightingIfNeededV2(
+      String query, AssetTypeConfiguration assetConfig) {
+    if (query == null || query.trim().isEmpty()) {
+      return null;
+    }
+
+    if (assetConfig.getHighlightFields() != null && !assetConfig.getHighlightFields().isEmpty()) {
+      return buildHighlightsV2(assetConfig.getHighlightFields());
+    } else if (searchSettings.getGlobalSettings().getHighlightFields() != null) {
+      return buildHighlightsV2(searchSettings.getGlobalSettings().getHighlightFields());
+    }
+
+    return null;
+  }
+
+  private OpenSearchRequestBuilder createSearchRequestBuilderV2(
+      os.org.opensearch.client.opensearch._types.query_dsl.Query query, int from, int size) {
+    int maxHits = searchSettings.getGlobalSettings().getMaxResultHits();
+    OpenSearchRequestBuilder builder = new OpenSearchRequestBuilder();
+    builder.query(query);
+    builder.from(Math.min(from, maxHits));
+    builder.size(Math.min(size, maxHits));
+    return builder;
+  }
+
+  private void addConfiguredAggregationsV2(
+      OpenSearchRequestBuilder searchRequestBuilder, AssetTypeConfiguration assetConfig) {
+    Map<String, Aggregation> aggregations = new HashMap<>();
+
+    aggregations.putAll(
+        listOrEmpty(assetConfig.getAggregations()).stream()
+            .collect(Collectors.toMap(Aggregation::getName, agg -> agg)));
+    aggregations.putAll(
+        listOrEmpty(searchSettings.getGlobalSettings().getAggregations()).stream()
+            .collect(Collectors.toMap(Aggregation::getName, agg -> agg)));
+
+    for (var entry : aggregations.entrySet()) {
+      Aggregation agg = entry.getValue();
+      os.org.opensearch.client.opensearch._types.aggregations.Aggregation termsAgg;
+      int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
+
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg = OpenSearchAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+      } else if (!nullOrEmpty(agg.getScript())) {
+        termsAgg =
+            OpenSearchAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
+      } else {
+        continue;
+      }
+
+      searchRequestBuilder.aggregation(agg.getName(), termsAgg);
+    }
+  }
+
+  private OpenSearchRequestBuilder addAggregationV2(OpenSearchRequestBuilder searchRequestBuilder) {
+    searchSettings
+        .getGlobalSettings()
+        .getAggregations()
+        .forEach(
+            agg -> {
+              os.org.opensearch.client.opensearch._types.aggregations.Aggregation termsAgg;
+              int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
+
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg = OpenSearchAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+              } else if (!nullOrEmpty(agg.getScript())) {
+                termsAgg =
+                    OpenSearchAggregationBuilder.termsAggregationWithScript(
+                        agg.getScript(), maxSize);
+              } else {
+                return;
+              }
+
+              searchRequestBuilder.aggregation(agg.getName(), termsAgg);
+            });
+    return searchRequestBuilder;
+  }
+
+  public os.org.opensearch.client.opensearch.core.search.Highlight buildHighlightsV2(
+      List<String> fields) {
+    OpenSearchHighlightBuilder hb = new OpenSearchHighlightBuilder();
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+    for (String field : listOrEmpty(fields)) {
+      hb.field(field, org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET);
+    }
+    return hb.build();
+  }
 }

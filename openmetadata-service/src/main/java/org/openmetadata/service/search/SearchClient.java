@@ -414,26 +414,6 @@ public interface SearchClient<T>
     return asyncExecutor;
   }
 
-  SearchResultListMapper listWithOffset(
-      String filter,
-      int limit,
-      int offset,
-      String index,
-      SearchSortFilter searchSortFilter,
-      String q,
-      String queryString)
-      throws IOException;
-
-  SearchResultListMapper listWithDeepPagination(
-      String index,
-      String query,
-      String filter,
-      String[] fields,
-      SearchSortFilter searchSortFilter,
-      int size,
-      Object[] searchAfter)
-      throws IOException;
-
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
@@ -489,8 +469,6 @@ public interface SearchClient<T>
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
-
-  Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);

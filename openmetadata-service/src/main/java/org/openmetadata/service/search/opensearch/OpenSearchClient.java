@@ -81,7 +81,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -103,7 +102,6 @@ import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.search.SearchResponse;
@@ -140,18 +138,13 @@ import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.rest.RestStatus;
-import os.org.opensearch.search.SearchHit;
-import os.org.opensearch.search.SearchHits;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 import os.org.opensearch.search.sort.FieldSortBuilder;
-import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
-import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
 
 @Slf4j
@@ -789,53 +782,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String q,
       String queryString)
       throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (!nullOrEmpty(q)) {
-      searchSourceBuilder =
-          getSearchBuilderFactory().getSearchSourceBuilder(index, q, offset, limit);
-    }
-
-    if (!nullOrEmpty(queryString)) {
-      XContentParser queryParser = createXContentParser(queryString);
-      searchSourceBuilder = SearchSourceBuilder.fromXContent(queryParser);
-    }
-
-    List<Map<String, Object>> results = new ArrayList<>();
-    getSearchFilter(filter, searchSourceBuilder);
-
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    searchSourceBuilder.from(offset);
-    searchSourceBuilder.size(limit);
-    if (searchSortFilter.isSorted()) {
-      FieldSortBuilder fieldSortBuilder =
-          SortBuilders.fieldSort(searchSortFilter.getSortField())
-              .order(SortOrder.fromString(searchSortFilter.getSortType()));
-      if (searchSortFilter.isNested()) {
-        NestedSortBuilder nestedSortBuilder =
-            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
-        fieldSortBuilder.setNestedSort(nestedSortBuilder);
-        fieldSortBuilder.sortMode(
-            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
-      }
-      searchSourceBuilder.sort(fieldSortBuilder);
-    }
-    try {
-      SearchResponse response =
-          client.search(
-              new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
-              RequestOptions.DEFAULT);
-      SearchHits searchHits = response.getHits();
-      SearchHit[] hits = searchHits.getHits();
-      Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
-      return new SearchResultListMapper(
-          results, searchHits.getTotalHits() != null ? searchHits.getTotalHits().value : 0);
-    } catch (OpenSearchStatusException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
-      }
-    }
+    return searchManager.listWithOffset(
+        filter, limit, offset, index, searchSortFilter, q, queryString);
   }
 
   @Override
@@ -848,64 +796,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       int size,
       Object[] searchAfter)
       throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (!nullOrEmpty(query)) {
-      searchSourceBuilder = getSearchBuilderFactory().getSearchSourceBuilder(index, query, 0, size);
-    }
-    if (!nullOrEmpty(fields)) {
-      searchSourceBuilder.fetchSource(fields, null);
-    }
-
-    List<Map<String, Object>> results = new ArrayList<>();
-
-    if (Optional.ofNullable(filter).isPresent()) {
-      getSearchFilter(filter, searchSourceBuilder);
-    }
-
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    searchSourceBuilder.from(0);
-    searchSourceBuilder.size(size);
-
-    if (Optional.ofNullable(searchAfter).isPresent()) {
-      searchSourceBuilder.searchAfter(searchAfter);
-    }
-
-    if (searchSortFilter.isSorted()) {
-      FieldSortBuilder fieldSortBuilder =
-          SortBuilders.fieldSort(searchSortFilter.getSortField())
-              .order(SortOrder.fromString(searchSortFilter.getSortType()));
-      if (searchSortFilter.isNested()) {
-        NestedSortBuilder nestedSortBuilder =
-            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
-        fieldSortBuilder.setNestedSort(nestedSortBuilder);
-        fieldSortBuilder.sortMode(
-            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
-      }
-      searchSourceBuilder.sort(fieldSortBuilder);
-    }
-    try {
-      SearchResponse response =
-          client.search(
-              new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
-              RequestOptions.DEFAULT);
-      SearchHits searchHits = response.getHits();
-      List<SearchHit> hits = List.of(searchHits.getHits());
-      Object[] lastHitSortValues = null;
-
-      if (!hits.isEmpty()) {
-        lastHitSortValues = hits.get(hits.size() - 1).getSortValues();
-      }
-
-      hits.forEach(hit -> results.add(hit.getSourceAsMap()));
-      return new SearchResultListMapper(
-          results, searchHits.getTotalHits().value, lastHitSortValues);
-    } catch (OpenSearchStatusException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
-      }
-    }
+    return searchManager.listWithDeepPagination(
+        index, query, filter, fields, searchSortFilter, size, searchAfter);
   }
 
   @Override
@@ -1349,105 +1241,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
-    try {
-      // Use the EXACT same search building logic as the regular search method
-      // to ensure consistency across all endpoints
-      SearchSettings searchSettings =
-          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-      OpenSearchSourceBuilderFactory searchBuilderFactory =
-          new OpenSearchSourceBuilderFactory(searchSettings);
-
-      // Build the search exactly as doSearch does
-      SearchSourceBuilder searchSourceBuilder =
-          searchBuilderFactory.getSearchSourceBuilder(
-              index,
-              request.getQuery() != null ? request.getQuery() : "*",
-              0, // from
-              0, // size - we only need aggregations
-              false); // explain
-
-      // No RBAC for now as per user's comment about it being disabled
-
-      // Apply query filter - use the same method as regular search
-      buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
-
-      // Apply post filter if specified
-      if (!nullOrEmpty(request.getPostFilter())) {
-        try {
-          XContentParser filterParser =
-              XContentType.JSON
-                  .xContent()
-                  .createParser(
-                      OsUtils.osXContentRegistry,
-                      LoggingDeprecationHandler.INSTANCE,
-                      request.getPostFilter());
-          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-          searchSourceBuilder.postFilter(filter);
-        } catch (Exception ex) {
-          LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
-        }
-      }
-
-      // Apply deleted filter - use the same logic as regular search
-      if (!nullOrEmpty(request.getDeleted())) {
-        String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
-        if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
-          BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-          boolQueryBuilder.should(
-              QueryBuilders.boolQuery()
-                  .must(searchSourceBuilder.query())
-                  .must(QueryBuilders.existsQuery("deleted"))
-                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-          boolQueryBuilder.should(
-              QueryBuilders.boolQuery()
-                  .must(searchSourceBuilder.query())
-                  .mustNot(QueryBuilders.existsQuery("deleted")));
-          searchSourceBuilder.query(boolQueryBuilder);
-        } else {
-          searchSourceBuilder.query(
-              QueryBuilders.boolQuery()
-                  .must(searchSourceBuilder.query())
-                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-        }
-      }
-
-      // We only want aggregations, not search results
-      searchSourceBuilder.size(0);
-      searchSourceBuilder.from(0);
-      searchSourceBuilder.trackTotalHits(true);
-
-      // The entityType aggregation is already added by the search builder factory
-      // from the global aggregations configuration, so we don't need to add it again
-
-      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
-      String resolvedIndex =
-          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
-
-      // Execute the search
-      os.org.opensearch.action.search.SearchRequest osSearchRequest =
-          new os.org.opensearch.action.search.SearchRequest(resolvedIndex);
-      osSearchRequest.source(searchSourceBuilder);
-
-      LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
-      LOG.info(
-          "Query string: '{}', Query builder: {}",
-          request.getQuery(),
-          searchSourceBuilder.toString());
-      SearchResponse searchResponse = client.search(osSearchRequest, RequestOptions.DEFAULT);
-
-      // Convert to API response
-      String jsonResponse = searchResponse.toString();
-      return Response.status(OK).entity(jsonResponse).build();
-    } catch (Exception e) {
-      LOG.error(
-          "Error executing entity type counts search for index: {}, query: {}",
-          index,
-          request.getQuery(),
-          e);
-      throw new SearchException(
-          String.format("Failed to get entity type counts: %s", e.getMessage()));
-    }
+    return aggregationManager.getEntityTypeCounts(request, index);
   }
 
   @Override
