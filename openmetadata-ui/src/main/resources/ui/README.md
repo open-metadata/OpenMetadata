@@ -308,3 +308,4 @@ For continuous integration, the tests are configured to:
 The configuration automatically adapts based on the `CI` environment variable.
 
 
+Small UI optimization: noted refresh issue for ElasticSearch panel.
