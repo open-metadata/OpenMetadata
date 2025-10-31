@@ -16,17 +16,8 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { EditIconButton } from '../IconButtons/EditIconButton';
+import { SectionWithEditProps } from './SectionWithEdit.interface';
 import './SectionWithEdit.less';
-
-interface SectionWithEditProps {
-  title: string | React.ReactNode;
-  children: React.ReactNode;
-  onEdit?: () => void;
-  showEditButton?: boolean;
-  className?: string;
-  titleClassName?: string;
-  contentClassName?: string;
-}
 
 const SectionWithEdit: React.FC<SectionWithEditProps> = ({
   title,

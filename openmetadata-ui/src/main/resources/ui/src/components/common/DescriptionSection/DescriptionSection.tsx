@@ -17,12 +17,8 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
-interface DescriptionSectionProps {
-  description?: string;
-  onDescriptionUpdate?: (description: string) => Promise<void>;
-  showEditButton?: boolean;
-}
 
 const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   description,

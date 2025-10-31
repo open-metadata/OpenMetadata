@@ -28,38 +28,12 @@ import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
-import { EntityType } from '../../../../enums/entity.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
 import Loader from '../../../common/Loader/Loader';
+import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
-
-interface EntityData {
-  extension?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-interface EntityDetails {
-  details: {
-    fullyQualifiedName?: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
-
-interface EntityTypeDetail {
-  customProperties?: CustomProperty[];
-  [key: string]: unknown;
-}
-
-interface CustomPropertiesSectionProps {
-  entityData?: EntityData;
-  entityDetails: EntityDetails;
-  entityType: EntityType;
-  entityTypeDetail?: EntityTypeDetail;
-  isEntityDataLoading: boolean;
-}
 
 const CustomPropertiesSection = ({
   entityData,

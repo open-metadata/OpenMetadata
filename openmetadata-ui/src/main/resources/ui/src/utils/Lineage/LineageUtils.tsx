@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { get, omit, pick } from 'lodash';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-new.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
@@ -144,4 +145,46 @@ export const getSearchNameEsQuery = (
       ],
     },
   };
+};
+
+// Function to truncate path with ellipsis in the middle
+export const getTruncatedPath = (path: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const parts = path.split(' > ');
+
+  // If there are more than 2 parts, show first ... last
+  if (parts.length > 2) {
+    const firstPart = parts[0];
+    const lastPart = parts.at(-1);
+
+    return (
+      <div className="d-flex items-center gap-1">
+        <span>{firstPart}</span>
+        <ChevronRightIcon className="right-arrow-icon" />
+        <div
+          className="right-arrow-icon-container"
+          data-testid="right-arrow-icon-container">
+          <span
+            className="right-arrow-icon-dot"
+            data-testid="right-arrow-icon-dot-1"
+          />
+          <span
+            className="right-arrow-icon-dot"
+            data-testid="right-arrow-icon-dot-2"
+          />
+          <span
+            className="right-arrow-icon-dot"
+            data-testid="right-arrow-icon-dot-3"
+          />
+        </div>
+        <ChevronRightIcon className="right-arrow-icon" />
+        <span>{lastPart}</span>
+      </div>
+    );
+  }
+
+  return path;
 };

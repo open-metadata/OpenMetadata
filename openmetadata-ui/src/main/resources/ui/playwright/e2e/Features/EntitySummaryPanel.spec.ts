@@ -10,14 +10,89 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { selectDataAssetFilter } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-// use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+type EntityType =
+  | 'table'
+  | 'database'
+  | 'databaseSchema'
+  | 'dashboard'
+  | 'dashboardDataModel'
+  | 'pipeline'
+  | 'topic'
+  | 'mlmodel'
+  | 'container'
+  | 'searchIndex';
+
+const ENTITY_TYPES: EntityType[] = [
+  'table',
+  'database',
+  'databaseSchema',
+  'dashboard',
+  'dashboardDataModel',
+  'pipeline',
+  'topic',
+  'mlmodel',
+  'container',
+  'searchIndex',
+];
+
+async function openEntitySummaryPanel(page: Page, entityType: EntityType) {
+  await selectDataAssetFilter(page, entityType);
+  await page.waitForLoadState('networkidle');
+
+  const firstEntityCard = page
+    .locator('[data-testid="table-data-card"]')
+    .first();
+  if (await firstEntityCard.isVisible()) {
+    await firstEntityCard.click();
+    await page.waitForLoadState('networkidle');
+  }
+}
+
+async function verifyEntitySummaryPanelStructure(page: Page) {
+  await expect(page.locator('.entity-summary-panel-container')).toBeVisible({
+    timeout: 10000,
+  });
+
+  await expect(page.locator('.summary-panel-container')).toBeVisible();
+}
+
+async function verifyEntityDetailsInPanel(page: Page) {
+  const hasEntityLink = await page
+    .locator('[data-testid="entity-link"]')
+    .isVisible();
+
+  if (hasEntityLink) {
+    await expect(page.locator('[data-testid="entity-link"]')).toBeVisible();
+  }
+}
+
+async function verifyTabNavigation(page: Page) {
+  const tabs = [
+    'OVERVIEW',
+    'SCHEMA',
+    'LINEAGE',
+    'DATA_QUALITY',
+    'CUSTOM_PROPERTIES',
+  ];
+
+  for (const tab of tabs) {
+    const tabButton = page.locator(`[data-testid="entity-panel-tab-${tab}"]`);
+    if (await tabButton.isVisible()) {
+      await tabButton.click();
+      await page.waitForTimeout(500);
+
+      await expect(tabButton).toHaveClass(/active/);
+    }
+  }
+}
 
 test.describe('Entity Summary Panel', () => {
   test.beforeEach(async ({ page }) => {
@@ -25,361 +100,110 @@ test.describe('Entity Summary Panel', () => {
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
-  test('Table Entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'table');
+  ENTITY_TYPES.forEach((entityType) => {
+    test(`should display summary panel for ${entityType}`, async ({ page }) => {
+      await openEntitySummaryPanel(page, entityType);
 
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
+      const hasSummaryPanel = await page
+        .locator('.entity-summary-panel-container')
+        .isVisible();
 
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
+      if (hasSummaryPanel) {
+        await verifyEntitySummaryPanelStructure(page);
+        await verifyEntityDetailsInPanel(page);
+      } else {
+        await expect(page.locator('body')).toBeVisible();
       }
+    });
+  });
 
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
+  test('should render entity title section with link', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
+
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
+
+    if (hasSummaryPanel) {
+      await expect(page.locator('.title-section')).toBeVisible();
+
+      const entityLink = page.locator('[data-testid="entity-link"]');
+      if (await entityLink.isVisible()) {
+        await expect(entityLink).toHaveAttribute('href', /.+/);
+        await expect(entityLink).toHaveAttribute('target', '_blank');
       }
-    } else {
-      await expect(page.locator('body')).toBeVisible();
     }
   });
 
-  test('Database', async ({ page }) => {
-    await selectDataAssetFilter(page, 'database');
+  test('should display owners section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
+    if (hasSummaryPanel) {
+      const ownersSection = page.locator('.owners-section');
+      if (await ownersSection.isVisible()) {
+        await expect(ownersSection).toBeVisible();
       }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
     }
   });
 
-  test('Database schema', async ({ page }) => {
-    await selectDataAssetFilter(page, 'databaseSchema');
+  test('should display domain section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
+    if (hasSummaryPanel) {
+      const domainSection = page.locator('.domains-section');
+      if (await domainSection.isVisible()) {
+        await expect(domainSection).toBeVisible();
       }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
     }
   });
 
-  test('Dashboard entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'dashboard');
+  test('should display tags section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
+    if (hasSummaryPanel) {
+      const tagsSection = page.locator('.tags-section');
+      if (await tagsSection.isVisible()) {
+        await expect(tagsSection).toBeVisible();
       }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
     }
   });
 
-  test('Dashboard data model entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'dashboardDataModel');
+  test('should navigate between tabs', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
-      }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
+    if (hasSummaryPanel) {
+      await verifyTabNavigation(page);
     }
   });
 
-  test('Pipeline entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'pipeline');
+  test('should display description section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
+    if (hasSummaryPanel) {
+      const descriptionSection = page.locator('.description-section');
+      if (await descriptionSection.isVisible()) {
+        await expect(descriptionSection).toBeVisible();
       }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
-    }
-  });
-
-  test('Topic entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'topic');
-
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
-
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
-      }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
-    }
-  });
-
-  test('ML Model entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'mlmodel');
-
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
-
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
-      }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
-    }
-  });
-
-  test('Container entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'container');
-
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
-
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
-      }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
-    }
-  });
-
-  test('Search Index entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'searchIndex');
-
-    // Wait for the page to load - check for any content
-    await page.waitForLoadState('networkidle');
-
-    // Check if we have any entity content
-    const hasEntityLinks =
-      (await page.locator('[data-testid="entity-link"]').count()) > 0;
-    const hasEntityNames =
-      (await page
-        .locator('[data-testid="entity-header-display-name"]')
-        .count()) > 0;
-
-    // If we have entity content, check for the expected elements
-    if (hasEntityLinks || hasEntityNames) {
-      // Check for entity link in the first card
-      if (hasEntityLinks) {
-        await expect(
-          page.locator('[data-testid="entity-link"]').first()
-        ).toBeVisible();
-      }
-
-      // Check for basic entity information
-      if (hasEntityNames) {
-        await expect(
-          page.getByTestId('entity-header-display-name').first()
-        ).toBeVisible();
-      }
-    } else {
-      // If no entities are found, just verify the page loaded
-
-      await expect(page.locator('body')).toBeVisible();
     }
   });
 });

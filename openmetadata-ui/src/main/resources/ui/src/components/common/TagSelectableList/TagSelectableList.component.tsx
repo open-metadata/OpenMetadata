@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Space, Typography } from 'antd';
+import { Popover } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import {
@@ -23,18 +22,10 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
+import { TagListItemRenderer } from '../../../utils/TagsUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { TagSelectableListProps } from './TagSelectableList.interface';
-
-export const TagListItemRenderer = (props: EntityReference) => {
-  return (
-    <Space>
-      <ClassificationIcon className="d-block'" height={22} width={16} />
-      <Typography.Text>{props.displayName || props.name}</Typography.Text>
-    </Space>
-  );
-};
 
 export const TagSelectableList = ({
   onCancel,

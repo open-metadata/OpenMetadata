@@ -15,7 +15,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
@@ -23,16 +22,8 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
+import { OwnersSectionProps } from './OwnersSection.interface';
 import './OwnersSection.less';
-
-interface OwnersSectionProps {
-  owners?: EntityReference[];
-  showEditButton?: boolean;
-  hasPermission?: boolean;
-  entityId?: string;
-  entityType?: EntityType;
-  onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
-}
 
 const OwnersSection: React.FC<OwnersSectionProps> = ({
   owners = [],

@@ -13,23 +13,8 @@
 import { useTranslation } from 'react-i18next';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
+import { OverviewSectionProps } from './OverviewSection.interface';
 import './OverviewSection.less';
-
-export interface OverviewSectionProps {
-  onEdit?: () => void;
-  showEditButton?: boolean;
-  entityInfoV1?: Array<{
-    name: string;
-    value?: unknown;
-    url?: string;
-    linkProps?: import('react-router-dom').To;
-    isLink?: boolean;
-    isExternal?: boolean;
-    visible?: string[];
-  }>;
-  componentType?: string;
-  isDomainVisible?: boolean;
-}
 
 const OverviewSection: React.FC<OverviewSectionProps> = ({
   onEdit,

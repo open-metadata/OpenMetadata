@@ -13,9 +13,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
-import EntityRightPanelVerticalNav, {
-  EntityRightPanelTab,
-} from './EntityRightPanelVerticalNav';
+import EntityRightPanelVerticalNav from './EntityRightPanelVerticalNav';
+import { EntityRightPanelTab } from './EntityRightPanelVerticalNav.interface';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({

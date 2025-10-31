@@ -14,26 +14,14 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link, To } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../constants/constants';
+import {
+  CommonEntitySummaryInfoV1Props,
+  EntityInfoItemV1,
+} from './CommonEntitySummaryInfoV1.interface';
 import './OverviewSection.less';
-
-interface EntityInfoItemV1 {
-  name: string;
-  value?: any;
-  url?: string;
-  linkProps?: To;
-  isLink?: boolean;
-  isExternal?: boolean;
-  visible?: string[];
-}
-
-interface CommonEntitySummaryInfoV1Props {
-  entityInfo: EntityInfoItemV1[];
-  componentType: string;
-  isDomainVisible?: boolean;
-}
 
 const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   entityInfo,

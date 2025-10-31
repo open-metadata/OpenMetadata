@@ -10,40 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Space, Typography } from 'antd';
+import { Popover } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
-import {
-  ADD_USER_CONTAINER_HEIGHT,
-  DE_ACTIVE_COLOR,
-} from '../../../constants/constants';
+import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+  convertEntityReferencesToTerms,
+  convertTermsToEntityReferences,
+  GlossaryTermListItemRenderer,
+} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { GlossaryTermSelectableListProps } from './GlossaryTermSelectableList.interface';
-
-export const GlossaryTermListItemRenderer = (props: EntityReference) => {
-  return (
-    <Space>
-      <IconTerm
-        className="align-middle"
-        color={DE_ACTIVE_COLOR}
-        height={16}
-        name="doc"
-        width={16}
-      />
-      <Typography.Text>{props.displayName || props.name}</Typography.Text>
-    </Space>
-  );
-};
 
 export const GlossaryTermSelectableList = ({
   selectedTerms = [],
@@ -55,33 +35,6 @@ export const GlossaryTermSelectableList = ({
 }: GlossaryTermSelectableListProps & { listHeight?: number }) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-
-  const convertTermsToEntityReferences = (
-    terms: TagLabel[]
-  ): EntityReference[] => {
-    return terms.map((term) => ({
-      id: term.tagFQN || '',
-      name: term.name || term.tagFQN || '',
-      displayName: term.displayName || term.name || term.tagFQN,
-      type: 'glossaryTerm',
-      fullyQualifiedName: term.tagFQN,
-      description: term.description,
-    }));
-  };
-
-  const convertEntityReferencesToTerms = (
-    refs: EntityReference[]
-  ): TagLabel[] => {
-    return refs.map((ref) => ({
-      tagFQN: ref.fullyQualifiedName || ref.id,
-      displayName: ref.displayName || ref.name,
-      name: ref.name,
-      source: TagSource.Glossary,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-      description: ref.description,
-    }));
-  };
 
   const fetchGlossaryTermOptions = async (
     searchText: string,
@@ -116,10 +69,6 @@ export const GlossaryTermSelectableList = ({
   const handleUpdate = async (updateItems: EntityReference[]) => {
     const updatedTerms = convertEntityReferencesToTerms(updateItems);
     await onUpdate(updatedTerms);
-    setPopupVisible(false);
-  };
-
-  const handleCancel = () => {
     setPopupVisible(false);
   };
 

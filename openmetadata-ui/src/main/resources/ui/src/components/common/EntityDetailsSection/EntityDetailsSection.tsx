@@ -12,17 +12,9 @@
  */
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
-import { EntityType } from '../../../enums/entity.enum';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
-import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
-
-interface EntityDetailsSectionProps {
-  entityType: EntityType;
-  dataAsset: SearchedDataProps['data'][number]['_source'];
-  highlights?: SearchedDataProps['data'][number]['highlight'];
-  isLoading?: boolean;
-}
 
 const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   entityType,

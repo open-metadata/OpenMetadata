@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -26,18 +25,8 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
+import { DataProductsSectionProps } from './DataProductsSection.interface';
 import './DataProductsSection.less';
-
-interface DataProductsSectionProps {
-  dataProducts?: EntityReference[];
-  activeDomains?: EntityReference[];
-  showEditButton?: boolean;
-  hasPermission?: boolean;
-  entityId?: string;
-  entityType?: EntityType;
-  onDataProductsUpdate?: (updatedDataProducts: EntityReference[]) => void;
-  maxVisibleDataProducts?: number;
-}
 
 const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   dataProducts = [],
@@ -70,7 +59,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     completeEditing,
   } = useEditableSection<EntityReference[]>(dataProducts);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setDisplayActiveDomains((prev) => {
       if (JSON.stringify(prev) !== JSON.stringify(activeDomains)) {
         return activeDomains;
@@ -262,6 +251,13 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return dataProductsDisplay;
   }, [isLoading, isEditing, editingState, dataProductsDisplay]);
 
+  const canShowEditButton =
+    showEditButton &&
+    hasPermission &&
+    !isEditing &&
+    !isLoading &&
+    displayActiveDomains?.length > 0;
+
   if (!displayDataProducts?.length) {
     return (
       <div className="data-products-section">
@@ -269,24 +265,19 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
           <Typography.Text className="data-products-title">
             {t('label.data-product-plural')}
           </Typography.Text>
-          {showEditButton &&
-            hasPermission &&
-            !isEditing &&
-            !isLoading &&
-            displayActiveDomains &&
-            displayActiveDomains.length > 0 && (
-              <EditIconButton
-                newLook
-                data-testid="edit-data-products"
-                disabled={false}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.data-product-plural'),
-                })}
-                onClick={handleEditClick}
-              />
-            )}
+          {canShowEditButton && (
+            <EditIconButton
+              newLook
+              data-testid="edit-data-products"
+              disabled={false}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.data-product-plural'),
+              })}
+              onClick={handleEditClick}
+            />
+          )}
         </div>
         <div className="data-products-content">{emptyContent}</div>
       </div>

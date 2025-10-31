@@ -14,36 +14,16 @@ import { Badge, Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../constants/constants';
-import { TableConstraint } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
 import {
   getDataTypeString,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+import { FieldCardProps } from './FieldCard.interface';
 import './FieldCard.less';
 
 const { Text, Paragraph } = Typography;
-
-interface FieldCardProps {
-  fieldName: string;
-  dataType: string;
-  description?: string;
-  tags?: Array<{
-    tagFQN: string;
-    source: string;
-    labelType: string;
-    state: string;
-  }>;
-  glossaryTerms?: Array<{
-    name: string;
-    displayName: string;
-    fullyQualifiedName: string;
-  }>;
-  columnConstraint?: string;
-  tableConstraints?: TableConstraint[];
-  isHighlighted?: boolean;
-}
 
 const FieldCard: React.FC<FieldCardProps> = ({
   fieldName,

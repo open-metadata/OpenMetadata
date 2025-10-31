@@ -81,9 +81,8 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
-import EntityRightPanelVerticalNav, {
-  EntityRightPanelTab,
-} from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
+import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
+import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';

@@ -24,22 +24,13 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
+import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
 import './GlossaryTermsSection.less';
-
-interface GlossaryTermsSectionProps {
-  tags?: TagLabel[];
-  showEditButton?: boolean;
-  hasPermission?: boolean;
-  entityId?: string;
-  onGlossaryTermsUpdate?: (updatedTags: TagLabel[]) => void;
-  maxVisibleGlossaryTerms?: number;
-}
 
 const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
   showEditButton = true,
   hasPermission = false,
-  entityId,
   onGlossaryTermsUpdate,
   maxVisibleGlossaryTerms = 3,
 }) => {

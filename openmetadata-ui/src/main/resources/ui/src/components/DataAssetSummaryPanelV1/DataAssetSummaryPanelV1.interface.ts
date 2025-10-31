@@ -38,3 +38,11 @@ export type DataAssetSummaryPanelProps = {
   onGlossaryTermsUpdate?: (updatedGlossaryTerms: GlossaryTerm[]) => void;
   onDescriptionUpdate?: (updatedDescription: string) => void;
 };
+
+export interface TestCaseStatusCounts {
+  success: number;
+  failed: number;
+  aborted: number;
+  ack: number;
+  total: number;
+}

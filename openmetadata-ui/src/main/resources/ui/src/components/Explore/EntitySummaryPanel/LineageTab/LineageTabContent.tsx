@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React from 'react';
@@ -20,7 +19,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
-import { LineageData } from '../../../../components/Lineage/Lineage.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -28,61 +26,15 @@ import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
+import { getTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { BULLET_SEPARATOR } from './LineageTabContent.constants';
+import { LineageTabContentProps } from './LineageTabContent.interface';
 import './LineageTabContent.less';
 
-interface LineageTabContentProps {
-  entityFqn: string;
-  filter: 'upstream' | 'downstream';
-  lineageData: LineageData;
-  onFilterChange: (filter: 'upstream' | 'downstream') => void;
-}
-
-// Function to truncate path with ellipsis in the middle
-const getTruncatedPath = (path: string) => {
-  if (!path) {
-    return path;
-  }
-
-  const parts = path.split(' > ');
-
-  // If there are more than 2 parts, show first ... last
-  if (parts.length > 2) {
-    const firstPart = parts[0];
-    const lastPart = parts.at(-1);
-
-    return (
-      <div className="d-flex items-center gap-1">
-        <span>{firstPart}</span>
-        <ChevronRightIcon className="right-arrow-icon" />
-        <div
-          className="right-arrow-icon-container"
-          data-testid="right-arrow-icon-container">
-          <span
-            className="right-arrow-icon-dot"
-            data-testid="right-arrow-icon-dot-1"
-          />
-          <span
-            className="right-arrow-icon-dot"
-            data-testid="right-arrow-icon-dot-2"
-          />
-          <span
-            className="right-arrow-icon-dot"
-            data-testid="right-arrow-icon-dot-3"
-          />
-        </div>
-        <ChevronRightIcon className="right-arrow-icon" />
-        <span>{lastPart}</span>
-      </div>
-    );
-  }
-
-  return path;
-};
-const BULLET_SEPARATOR = '•';
 const LineageTabContent: React.FC<LineageTabContentProps> = ({
   lineageData,
   entityFqn,

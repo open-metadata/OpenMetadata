@@ -16,24 +16,15 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
+import { TagsSectionProps } from './TagsSection.interface';
 import './TagsSection.less';
-
-interface TagsSectionProps {
-  tags?: TagLabel[];
-  showEditButton?: boolean;
-  maxVisibleTags?: number;
-  hasPermission?: boolean;
-  entityId?: string;
-  entityType?: EntityType;
-  onTagsUpdate?: (updatedTags: TagLabel[]) => void;
-}
 
 const TagsSectionV1: React.FC<TagsSectionProps> = ({
   tags = [],
@@ -69,10 +60,6 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   const tierTags: TagLabel[] = (displayTags || []).filter((t) =>
     getTagFqn(t).startsWith('Tier.')
   );
-
-  const getTagDisplayName = (tag: TagLabel) => {
-    return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
-  };
 
   const handleEditClick = () => {
     setEditingTags(nonTierTags);
@@ -155,7 +142,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
               {editingTags.map((tag) => (
                 <div className="selected-tag-chip" key={tag.tagFQN}>
                   <ClassificationIcon className="tag-icon" />
-                  <span className="tag-name">{getTagDisplayName(tag)}</span>
+                  <span className="tag-name">{getEntityName(tag)}</span>
                 </div>
               ))}
             </div>
@@ -195,7 +182,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           ).map((tag, index) => (
             <div className="tag-item" key={index}>
               <ClassificationIcon className="tag-icon" />
-              <span className="tag-name">{getTagDisplayName(tag)}</span>
+              <span className="tag-name">{getEntityName(tag)}</span>
             </div>
           ))}
           {nonTierTags.length > maxVisibleTags && (

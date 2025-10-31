@@ -12,27 +12,13 @@
  */
 import { Divider } from '@mui/material';
 import { Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
 import '../OverviewSection/OverviewSection.less';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
+import { DataQualitySectionProps } from './DataQualitySection.interface';
 import './DataQualitySection.less';
-interface DataQualityTest {
-  type: 'success' | 'aborted' | 'failed';
-  count: number;
-}
-
-type FilterStatus = 'success' | 'failed' | 'aborted';
-
-interface DataQualitySectionProps {
-  tests: DataQualityTest[];
-  totalTests: number;
-  onEdit?: () => void;
-  showEditButton?: boolean;
-  isDataQualityTab?: boolean;
-  activeFilter?: FilterStatus;
-  onFilterChange?: (filter: FilterStatus) => void;
-}
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   tests,
@@ -45,15 +31,36 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   const { t } = useTranslation();
 
   // Calculate percentages for each test type
-  const successTests =
-    tests.find((test) => test.type === 'success')?.count || 0;
-  const abortedTests =
-    tests.find((test) => test.type === 'aborted')?.count || 0;
-  const failedTests = tests.find((test) => test.type === 'failed')?.count || 0;
+  const {
+    successTests,
+    abortedTests,
+    failedTests,
+    successPercent,
+    abortedPercent,
+    failedPercent,
+  } = useMemo(() => {
+    const successTests =
+      tests.find((test) => test.type === 'success')?.count || 0;
+    const abortedTests =
+      tests.find((test) => test.type === 'aborted')?.count || 0;
+    const failedTests =
+      tests.find((test) => test.type === 'failed')?.count || 0;
 
-  const successPercent = totalTests > 0 ? (successTests / totalTests) * 100 : 0;
-  const abortedPercent = totalTests > 0 ? (abortedTests / totalTests) * 100 : 0;
-  const failedPercent = totalTests > 0 ? (failedTests / totalTests) * 100 : 0;
+    const successPercent =
+      totalTests > 0 ? (successTests / totalTests) * 100 : 0;
+    const abortedPercent =
+      totalTests > 0 ? (abortedTests / totalTests) * 100 : 0;
+    const failedPercent = totalTests > 0 ? (failedTests / totalTests) * 100 : 0;
+
+    return {
+      successTests,
+      abortedTests,
+      failedTests,
+      successPercent,
+      abortedPercent,
+      failedPercent,
+    };
+  }, [tests, totalTests]);
 
   return isDataQualityTab ? (
     <div className="data-quality-stats-container">

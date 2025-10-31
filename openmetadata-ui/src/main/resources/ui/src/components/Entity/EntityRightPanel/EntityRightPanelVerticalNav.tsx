@@ -19,21 +19,15 @@ import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/explo
 import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-schema.svg';
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
 import { EntityType } from '../../../enums/entity.enum';
+import {
+  ENTITY_RIGHT_PANEL_LINEAGE_TABS,
+  ENTITY_RIGHT_PANEL_SCHEMA_TABS,
+} from './EntityRightPanelVerticalNav.constants';
+import {
+  EntityRightPanelTab,
+  EntityRightPanelVerticalNavProps,
+} from './EntityRightPanelVerticalNav.interface';
 import './EntityRightPanelVerticalNav.less';
-
-export enum EntityRightPanelTab {
-  OVERVIEW = 'overview',
-  SCHEMA = 'schema',
-  LINEAGE = 'lineage',
-  DATA_QUALITY = 'data-quality',
-  CUSTOM_PROPERTIES = 'custom-properties',
-}
-
-interface EntityRightPanelVerticalNavProps {
-  activeTab: EntityRightPanelTab;
-  entityType: EntityType;
-  onTabChange: (tab: EntityRightPanelTab) => void;
-}
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
   ({ activeTab, entityType, onTabChange }) => {
@@ -49,21 +43,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-      if (
-        [
-          EntityType.TABLE,
-          EntityType.TOPIC,
-          EntityType.DASHBOARD,
-          EntityType.DATABASE_SCHEMA,
-          EntityType.DATABASE,
-          EntityType.PIPELINE,
-          EntityType.API_COLLECTION,
-          EntityType.SEARCH_INDEX,
-          EntityType.DASHBOARD_DATA_MODEL,
-          EntityType.API_ENDPOINT,
-          EntityType.CONTAINER,
-        ].includes(entityType)
-      ) {
+      if (ENTITY_RIGHT_PANEL_SCHEMA_TABS.includes(entityType)) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
@@ -71,21 +51,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         });
       }
       // Add lineage tab for most entities
-      if (
-        [
-          EntityType.TABLE,
-          EntityType.TOPIC,
-          EntityType.CONTAINER,
-          EntityType.DASHBOARD,
-          EntityType.CHART,
-          EntityType.PIPELINE,
-          EntityType.MLMODEL,
-          EntityType.SEARCH_INDEX,
-          EntityType.DASHBOARD_DATA_MODEL,
-          EntityType.API_ENDPOINT,
-          EntityType.DIRECTORY,
-        ].includes(entityType)
-      ) {
+      if (ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
