@@ -810,7 +810,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       try {
         setIsServiceLoading(true);
-        handlePageChange(INITIAL_PAGING_VALUE);
         const pagingParams = { ...paging, limit: pageSize };
         switch (serviceCategory) {
           case ServiceCategory.DATABASE_SERVICES: {

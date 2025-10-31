@@ -128,7 +128,6 @@ export const DatabaseSchemaTable = ({
 
       try {
         setIsLoading(true);
-        handlePageChange(INITIAL_PAGING_VALUE);
         const { data, paging } = await getDatabaseSchemas({
           databaseName: decodedDatabaseFQN,
           limit: pageSize,
