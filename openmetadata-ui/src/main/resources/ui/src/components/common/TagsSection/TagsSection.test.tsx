@@ -14,7 +14,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import TagsSection from './TagsSection';
 
 // Mock @react-awesome-query-builder/antd
@@ -147,8 +152,8 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
                     name: fqn,
                     displayName: fqn,
                     source: TagSource.Classification,
-                    labelType: 'Manual' as const,
-                    state: 'Confirmed' as const,
+                    labelType: 'Manual' as LabelType,
+                    state: 'Confirmed' as State,
                   }));
                   onUpdate?.(newTags);
                 }}
@@ -166,8 +171,8 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
                     name: 'New Tag',
                     displayName: 'New Tag',
                     source: TagSource.Classification,
-                    labelType: 'Manual' as const,
-                    state: 'Confirmed' as const,
+                    labelType: 'Manual' as LabelType,
+                    state: 'Confirmed' as State,
                   },
                 ])
               }>
@@ -192,6 +197,29 @@ jest.mock('../../../utils/TagClassBase', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+
+// Mock EditIconButton
+jest.mock('../IconButtons/EditIconButton', () => ({
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button
+      className="edit-icon"
+      data-testid="edit-icon-button"
+      onClick={onClick}
+      {...props}>
+      Edit
+    </button>
+  )),
+}));
+
+// Mock Loader
+jest.mock('../Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => (
+    <div className="tags-loading-container" data-testid="loader">
+      Loading...
+    </div>
+  )),
 }));
 
 // Mock all patch API functions
@@ -560,7 +588,7 @@ describe('TagsSection', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(
           mockError,
-          'server.entity-updating-error - {"entity":"label.tag-lowercase-plural"}'
+          'server.entity-updating-error - {"entity":"label.tag-plural"}'
         );
       });
     });

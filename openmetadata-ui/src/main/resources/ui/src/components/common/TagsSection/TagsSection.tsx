@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
@@ -20,24 +18,8 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
-import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
-import { patchChartDetails } from '../../../rest/chartsAPI';
-import { patchDashboardDetails } from '../../../rest/dashboardAPI';
-import {
-  patchDatabaseDetails,
-  patchDatabaseSchemaDetails,
-} from '../../../rest/databaseAPI';
-import { patchDataModelDetails } from '../../../rest/dataModelsAPI';
-import { patchDataProduct } from '../../../rest/dataProductAPI';
-import { patchMlModelDetails } from '../../../rest/mlModelAPI';
-import { patchPipelineDetails } from '../../../rest/pipelineAPI';
-import { patchSearchIndexDetails } from '../../../rest/SearchIndexAPI';
-import { patchContainerDetails } from '../../../rest/storageAPI';
-import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
-import { patchTableDetails } from '../../../rest/tableAPI';
-import { patchTopicDetails } from '../../../rest/topicsAPI';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useEditableSection } from '../../../hooks/useEditableSection';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
@@ -64,21 +46,19 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showAllTags, setShowAllTags] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [editingTags, setEditingTags] = useState<TagLabel[]>([]);
-  const [displayTags, setDisplayTags] = useState<TagLabel[]>(tags);
-  const [isLoading, setIsLoading] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
 
-  React.useEffect(() => {
-    setDisplayTags((prev) => {
-      if (JSON.stringify(prev) !== JSON.stringify(tags)) {
-        return tags;
-      }
-
-      return prev;
-    });
-  }, [tags]);
+  const {
+    isEditing,
+    isLoading,
+    popoverOpen,
+    displayData: displayTags,
+    setDisplayData: setDisplayTags,
+    setIsLoading,
+    setPopoverOpen,
+    startEditing,
+    completeEditing,
+  } = useEditableSection<TagLabel[]>(tags);
 
   const getTagFqn = (tag: TagLabel) =>
     (tag.tagFQN || tag.name || tag.displayName || '').toString();
@@ -94,104 +74,50 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
   };
 
-  const getPatchAPI = (entityType?: EntityType) => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        return patchTableDetails;
-      case EntityType.DASHBOARD:
-        return patchDashboardDetails;
-      case EntityType.TOPIC:
-        return patchTopicDetails;
-      case EntityType.PIPELINE:
-        return patchPipelineDetails;
-      case EntityType.MLMODEL:
-        return patchMlModelDetails;
-      case EntityType.CHART:
-        return patchChartDetails;
-      case EntityType.API_COLLECTION:
-        return patchApiCollection;
-      case EntityType.API_ENDPOINT:
-        return patchApiEndPoint;
-      case EntityType.DATABASE:
-        return patchDatabaseDetails;
-      case EntityType.DATABASE_SCHEMA:
-        return patchDatabaseSchemaDetails;
-      case EntityType.STORED_PROCEDURE:
-        return patchStoredProceduresDetails;
-      case EntityType.CONTAINER:
-        return patchContainerDetails;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return patchDataModelDetails;
-      case EntityType.SEARCH_INDEX:
-        return patchSearchIndexDetails;
-      case EntityType.DATA_PRODUCT:
-        return patchDataProduct;
-      default:
-        throw new Error(
-          `No patch API available for entity type: ${entityType}`
-        );
-    }
-  };
-
   const handleEditClick = () => {
     setEditingTags(nonTierTags);
-    setIsEditing(true);
-    setPopoverOpen(true);
+    startEditing();
   };
 
   const handleSaveWithTags = useCallback(
     async (tagsToSave: TagLabel[]) => {
-      const idToUse = entityId;
+      setIsLoading(true);
 
-      if (!idToUse) {
-        showErrorToast(t('message.entity-id-required'));
+      const updatedTags: TagLabel[] = [...tierTags, ...tagsToSave];
 
-        return;
-      }
+      const result = await updateEntityField({
+        entityId,
+        entityType,
+        fieldName: 'tags',
+        currentValue: displayTags,
+        newValue: updatedTags,
+        entityLabel: t('label.tag-plural'),
+        onSuccess: (tags) => {
+          setDisplayTags(tags);
+          if (onTagsUpdate) {
+            onTagsUpdate(tags);
+          }
+        },
+        t,
+      });
 
-      try {
-        setIsLoading(true);
-
-        const updatedTags: TagLabel[] = [...tierTags, ...tagsToSave];
-        const currentData = { tags: displayTags };
-        const updatedData = { tags: updatedTags };
-        const jsonPatch = compare(currentData, updatedData);
-
-        if (jsonPatch.length === 0) {
-          setIsLoading(false);
-
-          return;
-        }
-
-        const patchAPI = getPatchAPI(entityType);
-        await patchAPI(idToUse, jsonPatch);
-
-        setDisplayTags(updatedTags);
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.tag-plural'),
-          })
-        );
-
-        if (onTagsUpdate) {
-          onTagsUpdate(updatedTags);
-        }
-
-        setIsEditing(false);
+      if (result.success) {
+        completeEditing();
+      } else {
         setIsLoading(false);
-        setPopoverOpen(false);
-      } catch (error) {
-        setIsLoading(false);
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.tag-lowercase-plural'),
-          })
-        );
       }
     },
-    [entityId, entityType, displayTags, tierTags, onTagsUpdate, t]
+    [
+      entityId,
+      entityType,
+      displayTags,
+      tierTags,
+      onTagsUpdate,
+      t,
+      setDisplayTags,
+      setIsLoading,
+      completeEditing,
+    ]
   );
 
   const handleTagSelection = async (selectedTags: TagLabel[]) => {
@@ -202,7 +128,6 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   const handlePopoverOpenChange = (open: boolean) => {
     setPopoverOpen(open);
     if (!open) {
-      setIsEditing(false);
       setEditingTags(nonTierTags);
     }
   };
@@ -222,7 +147,6 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         selectedTags={editingTags}
         onCancel={() => {
           setPopoverOpen(false);
-          setIsEditing(false);
         }}
         onUpdate={handleTagSelection}>
         <div className="d-none tag-selector-display">

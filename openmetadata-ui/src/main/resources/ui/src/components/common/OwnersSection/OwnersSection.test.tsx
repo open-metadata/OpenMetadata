@@ -51,6 +51,29 @@ jest.mock('../OwnerLabel/OwnerLabel.component', () => ({
     .mockImplementation(() => <div data-testid="owner-label">OwnerLabel</div>),
 }));
 
+// Mock EditIconButton
+jest.mock('../IconButtons/EditIconButton', () => ({
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button
+      className="edit-icon"
+      data-testid="edit-icon-button"
+      onClick={onClick}
+      {...props}>
+      Edit
+    </button>
+  )),
+}));
+
+// Mock Loader
+jest.mock('../Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => (
+    <div className="owners-loading-container" data-testid="loader">
+      Loading...
+    </div>
+  )),
+}));
+
 // Mock UserTeamSelectableList
 const userTeamSelectableListMock = jest
   .fn()
@@ -264,7 +287,7 @@ describe('OwnersSection', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(
           mockError,
-          'server.entity-updating-error - {"entity":"label.owner-lowercase-plural"}'
+          'server.entity-updating-error - {"entity":"label.owner-plural"}'
         );
       });
     });

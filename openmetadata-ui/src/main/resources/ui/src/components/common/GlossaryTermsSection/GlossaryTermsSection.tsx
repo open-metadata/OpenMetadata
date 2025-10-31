@@ -18,6 +18,7 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { useEditableSection } from '../../../hooks/useEditableSection';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
@@ -43,24 +44,23 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
   maxVisibleGlossaryTerms = 3,
 }) => {
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
   const [editingGlossaryTerms, setEditingGlossaryTerms] = useState<TagLabel[]>(
     []
   );
-  const [displayTags, setDisplayTags] = useState<TagLabel[]>(tags);
-  const [isLoading, setIsLoading] = useState(false);
   const [showAllTerms, setShowAllTerms] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
 
-  React.useEffect(() => {
-    setDisplayTags((prev) => {
-      if (JSON.stringify(prev) !== JSON.stringify(tags)) {
-        return tags;
-      }
-
-      return prev;
-    });
-  }, [tags]);
+  const {
+    isEditing,
+    isLoading,
+    popoverOpen,
+    displayData: displayTags,
+    setDisplayData: setDisplayTags,
+    setIsLoading,
+    setPopoverOpen,
+    startEditing,
+    cancelEditing,
+    completeEditing,
+  } = useEditableSection<TagLabel[]>(tags);
 
   const glossaryTerms = displayTags.filter(
     (tag) => tag.source === TagSource.Glossary
@@ -68,8 +68,7 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
 
   const handleEditClick = () => {
     setEditingGlossaryTerms(glossaryTerms);
-    setIsEditing(true);
-    setPopoverOpen(true);
+    startEditing();
   };
 
   const handleGlossaryTermSelection = async (selectedTerms: TagLabel[]) => {
@@ -87,9 +86,7 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
         await Promise.resolve(onGlossaryTermsUpdate(updatedTags));
       }
 
-      setIsEditing(false);
-      setIsLoading(false);
-      setPopoverOpen(false);
+      completeEditing();
     } catch (error) {
       setIsLoading(false);
       showErrorToast(
@@ -104,14 +101,13 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
   const handlePopoverOpenChange = (open: boolean) => {
     setPopoverOpen(open);
     if (!open) {
-      setIsEditing(false);
       setEditingGlossaryTerms(glossaryTerms);
     }
   };
 
   const handleCancel = () => {
     setEditingGlossaryTerms(glossaryTerms);
-    setIsEditing(false);
+    cancelEditing();
   };
 
   const loadingState = useMemo(() => <Loader size="small" />, []);

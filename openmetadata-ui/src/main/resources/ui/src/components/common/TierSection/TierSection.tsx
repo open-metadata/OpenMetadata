@@ -11,34 +11,15 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
-import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
-import { patchChartDetails } from '../../../rest/chartsAPI';
-import { patchDashboardDetails } from '../../../rest/dashboardAPI';
-import {
-  patchDatabaseDetails,
-  patchDatabaseSchemaDetails,
-} from '../../../rest/databaseAPI';
-import { patchDataModelDetails } from '../../../rest/dataModelsAPI';
-import { patchDataProduct } from '../../../rest/dataProductAPI';
-import { patchMlModelDetails } from '../../../rest/mlModelAPI';
-import { patchPipelineDetails } from '../../../rest/pipelineAPI';
-import { patchSearchIndexDetails } from '../../../rest/SearchIndexAPI';
-import { patchContainerDetails } from '../../../rest/storageAPI';
-import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
-import { patchTableDetails } from '../../../rest/tableAPI';
-import { patchTopicDetails } from '../../../rest/topicsAPI';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useEditableSection } from '../../../hooks/useEditableSection';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import TierCard from '../TierCard/TierCard';
@@ -55,149 +36,79 @@ const TierSection: React.FC<TierSectionProps> = ({
   onTierUpdate,
 }) => {
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
-  const [displayTier, setDisplayTier] = useState<TagLabel | undefined>(tier);
-  const [isLoading, setIsLoading] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
 
-  React.useEffect(() => {
-    setDisplayTier((prev) => {
-      // Only update if different
-      if (JSON.stringify(prev) !== JSON.stringify(tier)) {
-        return tier;
-      }
-
-      return prev;
-    });
-  }, [tier]);
-
-  const getPatchAPI = (entityType?: EntityType) => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        return patchTableDetails;
-      case EntityType.DASHBOARD:
-        return patchDashboardDetails;
-      case EntityType.TOPIC:
-        return patchTopicDetails;
-      case EntityType.PIPELINE:
-        return patchPipelineDetails;
-      case EntityType.MLMODEL:
-        return patchMlModelDetails;
-      case EntityType.CHART:
-        return patchChartDetails;
-      case EntityType.API_COLLECTION:
-        return patchApiCollection;
-      case EntityType.API_ENDPOINT:
-        return patchApiEndPoint;
-      case EntityType.DATABASE:
-        return patchDatabaseDetails;
-      case EntityType.DATABASE_SCHEMA:
-        return patchDatabaseSchemaDetails;
-      case EntityType.STORED_PROCEDURE:
-        return patchStoredProceduresDetails;
-      case EntityType.CONTAINER:
-        return patchContainerDetails;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return patchDataModelDetails;
-      case EntityType.SEARCH_INDEX:
-        return patchSearchIndexDetails;
-      case EntityType.DATA_PRODUCT:
-        return patchDataProduct;
-      default:
-        // For entity types without specific patch APIs, throw an error
-        throw new Error(
-          `No patch API available for entity type: ${entityType}`
-        );
-    }
-  };
+  const {
+    isEditing,
+    isLoading,
+    popoverOpen,
+    displayData: displayTier,
+    setDisplayData: setDisplayTier,
+    setIsLoading,
+    setPopoverOpen,
+    startEditing,
+    completeEditing,
+  } = useEditableSection<TagLabel | undefined>(tier);
 
   const handleEditClick = () => {
-    setIsEditing(true);
-    setPopoverOpen(true);
+    startEditing();
   };
 
   const handleSaveWithTier = useCallback(
     async (selectedTier?: Tag) => {
-      const idToUse = entityId;
+      setIsLoading(true);
 
-      if (!idToUse) {
-        showErrorToast(t('message.entity-id-required'));
+      const updatedTags = tags.filter((tag) => !tag.tagFQN.startsWith('Tier.'));
 
-        return;
+      if (selectedTier) {
+        updatedTags.push({
+          tagFQN: selectedTier.fullyQualifiedName ?? '',
+          name: selectedTier.name,
+          description: selectedTier.description,
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        } as TagLabel);
       }
 
-      try {
-        setIsLoading(true);
+      const result = await updateEntityField({
+        entityId,
+        entityType,
+        fieldName: 'tags',
+        currentValue: tags,
+        newValue: updatedTags,
+        entityLabel: t('label.tier'),
+        onSuccess: (updatedTagsList) => {
+          const newTier = updatedTagsList.find((tag) =>
+            tag.tagFQN.startsWith('Tier.')
+          );
+          setDisplayTier(newTier);
 
-        // Remove existing tier from tags and add new tier if provided
-        const updatedTags = tags.filter(
-          (tag) => !tag.tagFQN.startsWith('Tier.')
-        );
+          if (onTierUpdate) {
+            onTierUpdate(newTier);
+          }
+        },
+        t,
+      });
 
-        if (selectedTier) {
-          updatedTags.push({
-            tagFQN: selectedTier.fullyQualifiedName ?? '',
-            name: selectedTier.name,
-            description: selectedTier.description,
-            source: TagSource.Classification,
-            labelType: 'Manual',
-            state: 'Confirmed',
-          } as TagLabel);
-        }
-
-        // Create JSON patch by comparing the tags arrays
-        const currentData = { tags };
-        const updatedData = { tags: updatedTags };
-        const jsonPatch = compare(currentData, updatedData);
-
-        // Only proceed if there are actual changes
-        if (jsonPatch.length === 0) {
-          setIsLoading(false);
-          setIsEditing(false);
-
-          return;
-        }
-
-        // Make the API call using the correct patch API for the entity type
-        const patchAPI = getPatchAPI(entityType);
-        await patchAPI(idToUse, jsonPatch);
-
-        const newTier = updatedTags.find((tag) =>
-          tag.tagFQN.startsWith('Tier.')
-        );
-
-        setDisplayTier(newTier);
-
-        // Show success message
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.tier'),
-          })
-        );
-
-        // Call the callback to update parent component with the new tier
-        if (onTierUpdate) {
-          onTierUpdate(newTier);
-        }
-
-        setIsEditing(false);
+      if (result.success) {
+        completeEditing();
+      } else {
         setIsLoading(false);
-        setPopoverOpen(false);
-      } catch (error) {
-        setIsLoading(false);
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.tier-lowercase'),
-          })
-        );
       }
     },
-    [entityId, entityType, tags, onTierUpdate, t]
+    [
+      entityId,
+      entityType,
+      tags,
+      onTierUpdate,
+      t,
+      setDisplayTier,
+      setIsLoading,
+      completeEditing,
+    ]
   );
 
   const handleCancel = () => {
-    setIsEditing(false);
     setPopoverOpen(false);
   };
 

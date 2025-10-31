@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -21,28 +19,10 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
-import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
-import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
-import { patchChartDetails } from '../../../rest/chartsAPI';
-import { patchDashboardDetails } from '../../../rest/dashboardAPI';
-import {
-  patchDatabaseDetails,
-  patchDatabaseSchemaDetails,
-} from '../../../rest/databaseAPI';
-import { patchDataModelDetails } from '../../../rest/dataModelsAPI';
-import {
-  fetchDataProductsElasticSearch,
-  patchDataProduct,
-} from '../../../rest/dataProductAPI';
-import { patchMlModelDetails } from '../../../rest/mlModelAPI';
-import { patchPipelineDetails } from '../../../rest/pipelineAPI';
-import { patchSearchIndexDetails } from '../../../rest/SearchIndexAPI';
-import { patchContainerDetails } from '../../../rest/storageAPI';
-import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
-import { patchTableDetails } from '../../../rest/tableAPI';
-import { patchTopicDetails } from '../../../rest/topicsAPI';
+import { useEditableSection } from '../../../hooks/useEditableSection';
+import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
@@ -70,27 +50,25 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   maxVisibleDataProducts = 3,
 }) => {
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
   const [editingDataProducts, setEditingDataProducts] = useState<DataProduct[]>(
     []
   );
-  const [displayDataProducts, setDisplayDataProducts] =
-    useState<EntityReference[]>(dataProducts);
-  const [isLoading, setIsLoading] = useState(false);
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
 
-  React.useEffect(() => {
-    setDisplayDataProducts((prev) => {
-      if (JSON.stringify(prev) !== JSON.stringify(dataProducts)) {
-        return dataProducts;
-      }
-
-      return prev;
-    });
-  }, [dataProducts]);
+  const {
+    isEditing,
+    isLoading,
+    popoverOpen,
+    displayData: displayDataProducts,
+    setDisplayData: setDisplayDataProducts,
+    setIsLoading,
+    setPopoverOpen,
+    startEditing,
+    cancelEditing,
+    completeEditing,
+  } = useEditableSection<EntityReference[]>(dataProducts);
 
   React.useEffect(() => {
     setDisplayActiveDomains((prev) => {
@@ -102,46 +80,11 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     });
   }, [activeDomains]);
 
-  const getPatchAPI = (entityType?: EntityType) => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        return patchTableDetails;
-      case EntityType.DASHBOARD:
-        return patchDashboardDetails;
-      case EntityType.TOPIC:
-        return patchTopicDetails;
-      case EntityType.PIPELINE:
-        return patchPipelineDetails;
-      case EntityType.MLMODEL:
-        return patchMlModelDetails;
-      case EntityType.CHART:
-        return patchChartDetails;
-      case EntityType.API_COLLECTION:
-        return patchApiCollection;
-      case EntityType.API_ENDPOINT:
-        return patchApiEndPoint;
-      case EntityType.DATABASE:
-        return patchDatabaseDetails;
-      case EntityType.DATABASE_SCHEMA:
-        return patchDatabaseSchemaDetails;
-      case EntityType.STORED_PROCEDURE:
-        return patchStoredProceduresDetails;
-      case EntityType.CONTAINER:
-        return patchContainerDetails;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return patchDataModelDetails;
-      case EntityType.SEARCH_INDEX:
-        return patchSearchIndexDetails;
-      case EntityType.DATA_PRODUCT:
-        return patchDataProduct;
-      default:
-        return patchTableDetails;
-    }
-  };
-
   const handleEditClick = () => {
-    setIsEditing(true);
-    setPopoverOpen(true);
+    setEditingDataProducts(
+      displayDataProducts.map((dp) => dp as unknown as DataProduct)
+    );
+    startEditing();
   };
 
   const fetchAPI = useCallback(
@@ -159,66 +102,50 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
   const handleSaveWithDataProducts = useCallback(
     async (dataProductsToSave: DataProduct[]) => {
-      const idToUse = entityId;
+      setIsLoading(true);
 
-      if (!idToUse) {
-        showErrorToast(t('message.entity-id-required'));
+      const updatedDataProducts: EntityReference[] = dataProductsToSave.map(
+        (dp) => ({
+          id: dp.id,
+          fullyQualifiedName: dp.fullyQualifiedName,
+          name: dp.name,
+          displayName: dp.displayName,
+          type: 'dataProduct',
+        })
+      );
 
-        return;
-      }
+      const result = await updateEntityField({
+        entityId,
+        entityType,
+        fieldName: 'dataProducts',
+        currentValue: displayDataProducts,
+        newValue: updatedDataProducts,
+        entityLabel: t('label.data-product-plural'),
+        onSuccess: (dataProds) => {
+          setDisplayDataProducts(dataProds);
+          if (onDataProductsUpdate) {
+            onDataProductsUpdate(dataProds);
+          }
+        },
+        t,
+      });
 
-      try {
-        setIsLoading(true);
-
-        const updatedDataProducts: EntityReference[] = dataProductsToSave.map(
-          (dp) => ({
-            id: dp.id,
-            fullyQualifiedName: dp.fullyQualifiedName,
-            name: dp.name,
-            displayName: dp.displayName,
-            type: 'dataProduct',
-          })
-        );
-
-        const currentData = { dataProducts: displayDataProducts };
-        const updatedData = { dataProducts: updatedDataProducts };
-        const jsonPatch = compare(currentData, updatedData);
-
-        if (jsonPatch.length === 0) {
-          setIsLoading(false);
-
-          return;
-        }
-
-        const patchAPI = getPatchAPI(entityType);
-        await patchAPI(idToUse, jsonPatch);
-
-        setDisplayDataProducts(updatedDataProducts);
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.data-product-plural'),
-          })
-        );
-
-        if (onDataProductsUpdate) {
-          onDataProductsUpdate(updatedDataProducts);
-        }
-
-        setIsEditing(false);
+      if (result.success) {
+        completeEditing();
+      } else {
         setIsLoading(false);
-        setPopoverOpen(false);
-      } catch (error) {
-        setIsLoading(false);
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.data-product-plural'),
-          })
-        );
       }
     },
-    [entityId, entityType, displayDataProducts, onDataProductsUpdate, t]
+    [
+      entityId,
+      entityType,
+      displayDataProducts,
+      onDataProductsUpdate,
+      t,
+      setDisplayDataProducts,
+      setIsLoading,
+      completeEditing,
+    ]
   );
 
   const handlePopoverOpenChange = (open: boolean) => {
@@ -234,10 +161,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     })) as DataProduct[];
 
     setEditingDataProducts(dpList);
-
-    if (!open) {
-      setIsEditing(false);
-    }
   };
 
   const editingState = useMemo(
@@ -252,7 +175,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         selectedDataProducts={editingDataProducts}
         onCancel={() => {
           setPopoverOpen(false);
-          setIsEditing(false);
+          cancelEditing();
         }}
         onUpdate={handleSaveWithDataProducts}>
         <div className="data-product-selector-trigger" />
@@ -264,6 +187,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       handlePopoverOpenChange,
       editingDataProducts,
       handleSaveWithDataProducts,
+      cancelEditing,
     ]
   );
 

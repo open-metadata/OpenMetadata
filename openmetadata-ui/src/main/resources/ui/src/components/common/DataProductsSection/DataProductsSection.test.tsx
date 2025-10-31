@@ -162,6 +162,29 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+// Mock EditIconButton
+jest.mock('../IconButtons/EditIconButton', () => ({
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button
+      className="edit-icon"
+      data-testid="edit-icon-button"
+      onClick={onClick}
+      {...props}>
+      Edit
+    </button>
+  )),
+}));
+
+// Mock Loader
+jest.mock('../Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => (
+    <div className="data-products-loading-container" data-testid="loader">
+      Loading...
+    </div>
+  )),
+}));
+
 // Mock APIs
 jest.mock('../../../rest/dataProductAPI', () => ({
   fetchDataProductsElasticSearch: jest.fn().mockResolvedValue({ hits: [] }),

@@ -164,6 +164,29 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+// Mock EditIconButton
+jest.mock('../IconButtons/EditIconButton', () => ({
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button
+      className="edit-icon"
+      data-testid="edit-icon-button"
+      onClick={onClick}
+      {...props}>
+      Edit
+    </button>
+  )),
+}));
+
+// Mock Loader
+jest.mock('../Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => (
+    <div className="glossary-terms-loading-container" data-testid="loader">
+      Loading...
+    </div>
+  )),
+}));
+
 const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
 
