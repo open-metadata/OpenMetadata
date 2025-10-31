@@ -191,7 +191,6 @@ export const DataAssetSummaryPanel = ({
       case EntityType.FILE:
       case EntityType.SPREADSHEET:
       case EntityType.WORKSHEET:
-      case EntityType.GOVERN:
         return (
           <>
             {entityInfo.some((info) =>
