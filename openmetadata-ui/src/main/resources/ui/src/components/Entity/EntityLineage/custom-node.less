@@ -303,7 +303,7 @@
 
 .custom-node-column-container {
   padding: 6px 8px;
-  background: @white;
+  background-color: inherit;
   position: relative;
   font-size: 12px;
   font-weight: 400;
@@ -323,6 +323,18 @@
     .custom-node-column-label {
       width: 100%;
       display: block;
+    }
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 12px;
+      margin-right: 8px;
+      vertical-align: middle;
+      background: transparent;
+      border-radius: 50%;
+      border: 1px solid black;
     }
   }
 
