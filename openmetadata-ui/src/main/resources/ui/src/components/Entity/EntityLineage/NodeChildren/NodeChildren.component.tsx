@@ -388,10 +388,7 @@ const NodeChildren = ({
 
             {!isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
-                <div
-                  className={classNames('rounded-4 overflow-hidden', {
-                    border: !showAllColumns,
-                  })}>
+                <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList items={renderedColumns} />
                 </div>
               </section>
