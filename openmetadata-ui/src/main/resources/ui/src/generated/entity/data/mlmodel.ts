@@ -54,6 +54,10 @@ export interface Mlmodel {
      */
     entityStatus?: EntityStatus;
     /**
+     * Datasets used to validate/test the model.
+     */
+    evaluationDatasets?: EntityReference[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -134,6 +138,10 @@ export interface Mlmodel {
      * For supervised ML Models, the value to estimate.
      */
     target?: string;
+    /**
+     * Datasets used to train the model.
+     */
+    trainingDatasets?: EntityReference[];
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -574,6 +582,10 @@ export interface MlHyperParameter {
  * Location containing the ML Model. It can be a storage layer and/or a container repository.
  */
 export interface MlStore {
+    /**
+     * URI pointing to the model artifacts location (e.g., gs://, s3://, hdfs://, file://).
+     */
+    artifactUri?: string;
     /**
      * Container Repository with the ML Model image.
      */

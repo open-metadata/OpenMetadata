@@ -146,6 +146,10 @@
         "imageRepository": {
           "description": "Container Repository with the ML Model image.",
           "type": "string"
+        },
+        "artifactUri": {
+          "description": "URI pointing to the model artifacts location (e.g., gs://, s3://, hdfs://, file://).",
+          "type": "string"
         }
       }
     }
@@ -190,6 +194,14 @@
         "$ref": "#/definitions/mlHyperParameter"
       },
       "default": null
+    },
+    "trainingDatasets": {
+      "description": "Datasets used to train the model.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "evaluationDatasets": {
+      "description": "Datasets used to validate/test the model.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "target": {
       "description": "For supervised ML Models, the value to estimate.",
