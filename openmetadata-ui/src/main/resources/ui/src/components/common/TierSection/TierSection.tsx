@@ -13,9 +13,10 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -39,6 +40,7 @@ import { patchTableDetails } from '../../../rest/tableAPI';
 import { patchTopicDetails } from '../../../rest/topicsAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import TierCard from '../TierCard/TierCard';
 import { TierSectionProps } from './TierSection.interface';
 import './TierSection.less';
@@ -124,17 +126,6 @@ const TierSection: React.FC<TierSectionProps> = ({
         return;
       }
 
-      const isUUID =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          idToUse
-        );
-
-      if (!isUUID) {
-        showErrorToast(t('message.invalid-entity-id'));
-
-        return;
-      }
-
       try {
         setIsLoading(true);
 
@@ -189,12 +180,9 @@ const TierSection: React.FC<TierSectionProps> = ({
           onTierUpdate(newTier);
         }
 
-        // Keep loading state for a brief moment to ensure smooth transition
-        setTimeout(() => {
-          setIsEditing(false);
-          setIsLoading(false);
-          setPopoverOpen(false);
-        }, 500);
+        setIsEditing(false);
+        setIsLoading(false);
+        setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
         showErrorToast(
@@ -214,9 +202,82 @@ const TierSection: React.FC<TierSectionProps> = ({
   };
 
   const handleTierSelection = async (selectedTier?: Tag) => {
-    // Call API immediately like the existing system
     await handleSaveWithTier(selectedTier);
   };
+
+  const loadingState = useMemo(
+    () => (
+      <div className="tier-loading-container">
+        <div className="tier-loading-spinner">
+          <div className="loading-spinner" />
+        </div>
+      </div>
+    ),
+    []
+  );
+
+  const editingState = useMemo(
+    () => (
+      <TierCard
+        currentTier={displayTier?.tagFQN}
+        footerActionButtonsClassName="tier-card-footer-action-buttons"
+        popoverProps={{ open: popoverOpen }}
+        tierCardClassName="tier-card-popover"
+        updateTier={handleTierSelection}
+        onClose={handleCancel}>
+        <div className="tier-selector-display">
+          {displayTier && (
+            <div className="d-flex flex-col gap-2">
+              <TagsV1
+                hideIcon
+                startWith={TAG_START_WITH.SOURCE_ICON}
+                tag={displayTier}
+                tagProps={{
+                  'data-testid': 'Tier',
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </TierCard>
+    ),
+    [displayTier, popoverOpen, handleTierSelection, handleCancel]
+  );
+
+  const tierDisplay = useMemo(
+    () => (
+      <div className="tier-display">
+        {displayTier ? (
+          <div className="d-flex flex-col gap-2">
+            <TagsV1
+              hideIcon
+              startWith={TAG_START_WITH.SOURCE_ICON}
+              tag={displayTier}
+              tagProps={{
+                'data-testid': 'Tier',
+              }}
+            />
+          </div>
+        ) : (
+          <span className="no-data-placeholder">
+            {t('label.no-data-found')}
+          </span>
+        )}
+      </div>
+    ),
+    [displayTier, t]
+  );
+
+  const tierContent = useMemo(() => {
+    if (isLoading) {
+      return loadingState;
+    }
+    if (isEditing) {
+      return editingState;
+    }
+
+    return tierDisplay;
+  }, [isLoading, isEditing, loadingState, editingState, tierDisplay]);
 
   return (
     <div className="tier-section">
@@ -225,65 +286,20 @@ const TierSection: React.FC<TierSectionProps> = ({
           {t('label.tier')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span
-            className="edit-icon"
+          <EditIconButton
+            newLook
             data-testid="edit-icon-tier"
-            onClick={handleEditClick}>
-            <EditIcon />
-          </span>
+            disabled={false}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.tier'),
+            })}
+            onClick={handleEditClick}
+          />
         )}
       </div>
-      <div className="tier-content">
-        {isLoading ? (
-          <div className="tier-loading-container">
-            <div className="tier-loading-spinner">
-              <div className="loading-spinner" />
-            </div>
-          </div>
-        ) : isEditing ? (
-          <TierCard
-            currentTier={displayTier?.tagFQN}
-            footerActionButtonsClassName="tier-card-footer-action-buttons"
-            popoverProps={{ open: popoverOpen }}
-            tierCardClassName="tier-card-popover"
-            updateTier={handleTierSelection}
-            onClose={handleCancel}>
-            <div className="tier-selector-display">
-              {displayTier && (
-                <div className="d-flex flex-col gap-2">
-                  <TagsV1
-                    hideIcon
-                    startWith={TAG_START_WITH.SOURCE_ICON}
-                    tag={displayTier}
-                    tagProps={{
-                      'data-testid': 'Tier',
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </TierCard>
-        ) : (
-          <div className="tier-display">
-            {displayTier ? (
-              <div className="d-flex flex-col gap-2">
-                <TagsV1
-                  hideIcon
-                  startWith={TAG_START_WITH.SOURCE_ICON}
-                  tag={displayTier}
-                  tagProps={{
-                    'data-testid': 'Tier',
-                  }}
-                />
-              </div>
-            ) : (
-              <span className="no-data-placeholder">
-                {t('label.no-data-found')}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      <div className="tier-content">{tierContent}</div>
     </div>
   );
 };

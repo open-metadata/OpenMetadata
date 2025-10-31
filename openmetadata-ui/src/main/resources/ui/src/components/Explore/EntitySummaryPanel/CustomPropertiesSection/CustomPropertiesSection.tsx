@@ -23,16 +23,16 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Link } from '@mui/material';
+import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
 import Loader from '../../../common/Loader/Loader';
-
+import './CustomPropertiesSection.less';
 interface CustomPropertiesSectionProps {
   entityData?: any;
   entityDetails: any;
@@ -155,6 +155,19 @@ const CustomPropertiesSection = ({
 
   return (
     <div className="entity-summary-panel-tab-content">
+      {customProperties.length > 5 && (
+        <div className="view-all-container">
+          <Link
+            href={getEntityLinkFromType(
+              entityDetails.details.fullyQualifiedName || '',
+              entityType
+            )}
+            rel="noopener noreferrer"
+            target="_blank">
+            <span className="text-primary">{t('label.view-all')}</span>
+          </Link>
+        </div>
+      )}
       <div className="p-x-md">
         <div className="custom-properties-list">
           {customProperties.slice(0, 5).map((property: any) => {
@@ -171,21 +184,6 @@ const CustomPropertiesSection = ({
               </div>
             );
           })}
-          {customProperties.length > 5 && (
-            <div className="m-t-md">
-              <Link
-                rel="noopener noreferrer"
-                target="_blank"
-                to={getEntityLinkFromType(
-                  entityDetails.details.fullyQualifiedName || '',
-                  entityType
-                )}>
-                <Button size="small" type="primary">
-                  {t('label.view-all')}
-                </Button>
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </div>

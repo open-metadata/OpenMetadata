@@ -52,7 +52,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 // SVG mocks
-jest.mock('../../../assets/svg/edit.svg', () => ({
+jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
 }));
 jest.mock('../../../assets/svg/close-icon.svg', () => ({

@@ -26,7 +26,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../assets/svg/edit.svg', () => ({
+jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
 }));
 

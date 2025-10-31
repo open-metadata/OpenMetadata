@@ -12,8 +12,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './DescriptionSection.less';
 interface DescriptionSectionProps {
@@ -135,12 +137,17 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <div className="description-header">
           <span className="description-title">{t('label.description')}</span>
           {showEditButton && onDescriptionUpdate && !isEditDescription && (
-            <button
-              className="edit-icon"
-              type="button"
-              onClick={handleEditDescription}>
-              <EditIcon />
-            </button>
+            <EditIconButton
+              newLook
+              data-testid="edit-description"
+              disabled={false}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.description'),
+              })}
+              onClick={handleEditDescription}
+            />
           )}
         </div>
         <div className="description-content">
@@ -167,12 +174,17 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       <div className="description-header">
         <span className="description-title">{t('label.description')}</span>
         {showEditButton && onDescriptionUpdate && !isEditDescription && (
-          <button
-            className="edit-icon"
-            type="button"
-            onClick={handleEditDescription}>
-            <EditIcon />
-          </button>
+          <EditIconButton
+            newLook
+            data-testid="edit-description"
+            disabled={false}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.description'),
+            })}
+            onClick={handleEditDescription}
+          />
         )}
       </div>
       <div className="description-content">

@@ -84,7 +84,7 @@ jest.mock('antd', () => {
 });
 
 // Mock svg icons
-jest.mock('../../../assets/svg/edit.svg', () => ({
+jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
 }));
 jest.mock('../../../assets/svg/close-icon.svg', () => ({
@@ -237,11 +237,9 @@ describe('DataProductsSection', () => {
 
   describe('Edit Mode', () => {
     it('enters edit mode and shows select list', () => {
-      const { container } = render(
-        <DataProductsSection {...(defaultProps as any)} />
-      );
+      render(<DataProductsSection {...(defaultProps as any)} />);
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -256,11 +254,9 @@ describe('DataProductsSection', () => {
     });
 
     it('exits edit mode on cancel', () => {
-      const { container } = render(
-        <DataProductsSection {...(defaultProps as any)} />
-      );
+      render(<DataProductsSection {...(defaultProps as any)} />);
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -283,7 +279,7 @@ describe('DataProductsSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      const { container } = render(
+      render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
@@ -291,7 +287,7 @@ describe('DataProductsSection', () => {
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -314,14 +310,14 @@ describe('DataProductsSection', () => {
       const error = new Error('fail') as AxiosError;
       patchTableDetails.mockRejectedValue(error);
 
-      const { container } = render(
+      render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -364,14 +360,14 @@ describe('DataProductsSection', () => {
         )
       );
 
-      const { container } = render(
+      render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -391,14 +387,14 @@ describe('DataProductsSection', () => {
       });
       patchTableDetails.mockReturnValue(promise);
 
-      const { container } = render(
+      render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -432,14 +428,14 @@ describe('DataProductsSection', () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
       patchTableDetails.mockResolvedValue({});
 
-      const { container } = render(
+      render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -459,14 +455,14 @@ describe('DataProductsSection', () => {
       );
       patchDashboardDetails.mockResolvedValue({});
 
-      const { container } = render(
+      render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.DASHBOARD}
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -485,11 +481,11 @@ describe('DataProductsSection', () => {
     it('shows error when entityId missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      const { container } = render(
+      render(
         <DataProductsSection {...(defaultProps as any)} entityId={undefined} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -505,11 +501,11 @@ describe('DataProductsSection', () => {
     it('shows error when entityId invalid', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      const { container } = render(
+      render(
         <DataProductsSection {...(defaultProps as any)} entityId="invalid-id" />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -529,11 +525,9 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      const { container } = render(
-        <DataProductsSection {...(defaultProps as any)} />
-      );
+      render(<DataProductsSection {...(defaultProps as any)} />);
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
         fireEvent.click(editIcon);
       }

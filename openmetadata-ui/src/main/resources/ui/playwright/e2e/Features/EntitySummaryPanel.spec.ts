@@ -31,12 +31,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Take a screenshot to see what's on the page
-    await page.screenshot({ path: 'debug-table-entity.png' });
-
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -44,8 +39,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -70,9 +65,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -80,8 +73,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -108,9 +101,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -118,8 +109,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -146,9 +137,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -156,8 +145,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -184,9 +173,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -194,8 +181,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -222,9 +209,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -232,8 +217,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -260,9 +245,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -270,8 +253,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -298,9 +281,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -308,8 +289,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -336,9 +317,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -346,8 +325,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(
@@ -374,9 +353,7 @@ test.describe('Entity Summary Panel', () => {
     // Wait for the page to load - check for any content
     await page.waitForLoadState('networkidle');
 
-    // Check if we have any entity cards or content
-    const hasEntityCards =
-      (await page.locator('[data-testid*="explore-card-"]').count()) > 0;
+    // Check if we have any entity content
     const hasEntityLinks =
       (await page.locator('[data-testid="entity-link"]').count()) > 0;
     const hasEntityNames =
@@ -384,8 +361,8 @@ test.describe('Entity Summary Panel', () => {
         .locator('[data-testid="entity-header-display-name"]')
         .count()) > 0;
 
-    // If we have entity cards, check for the expected elements
-    if (hasEntityCards || hasEntityLinks || hasEntityNames) {
+    // If we have entity content, check for the expected elements
+    if (hasEntityLinks || hasEntityNames) {
       // Check for entity link in the first card
       if (hasEntityLinks) {
         await expect(

@@ -13,10 +13,11 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
@@ -43,6 +44,8 @@ import { patchTopicDetails } from '../../../rest/topicsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1';
+import { EditIconButton } from '../IconButtons/EditIconButton';
+import Loader from '../Loader/Loader';
 import './DataProductsSection.less';
 
 interface DataProductsSectionProps {
@@ -137,16 +140,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   };
 
   const handleEditClick = () => {
-    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
-      id: dp.id,
-      name: dp.name || '',
-      displayName: dp.displayName || dp.name,
-      fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description,
-      type: 'dataProduct',
-    })) as DataProduct[];
-
-    setEditingDataProducts(dpList);
     setIsEditing(true);
     setPopoverOpen(true);
   };
@@ -170,17 +163,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
       if (!idToUse) {
         showErrorToast(t('message.entity-id-required'));
-
-        return;
-      }
-
-      const isUUID =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          idToUse
-        );
-
-      if (!isUUID) {
-        showErrorToast(t('message.invalid-entity-id'));
 
         return;
       }
@@ -223,11 +205,9 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
           onDataProductsUpdate(updatedDataProducts);
         }
 
-        setTimeout(() => {
-          setIsEditing(false);
-          setIsLoading(false);
-          setPopoverOpen(false);
-        }, 500);
+        setIsEditing(false);
+        setIsLoading(false);
+        setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
         showErrorToast(
@@ -243,52 +223,56 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
   const handlePopoverOpenChange = (open: boolean) => {
     setPopoverOpen(open);
+
+    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
+      id: dp.id,
+      name: dp.name || '',
+      displayName: dp.displayName || dp.name,
+      fullyQualifiedName: dp.fullyQualifiedName || '',
+      description: dp.description,
+      type: 'dataProduct',
+    })) as DataProduct[];
+
+    setEditingDataProducts(dpList);
+
     if (!open) {
       setIsEditing(false);
-      const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
-        id: dp.id,
-        name: dp.name || '',
-        displayName: dp.displayName || dp.name,
-        fullyQualifiedName: dp.fullyQualifiedName || '',
-        description: dp.description,
-        type: 'dataProduct',
-      })) as DataProduct[];
-      setEditingDataProducts(dpList);
     }
   };
 
-  const renderLoadingState = () => (
-    <div className="data-products-loading-container">
-      <div className="data-products-loading-spinner">
-        <div className="loading-spinner" />
-      </div>
-    </div>
+  const editingState = useMemo(
+    () => (
+      <DataProductsSelectListV1
+        fetchOptions={fetchAPI}
+        popoverProps={{
+          placement: 'bottomLeft',
+          open: popoverOpen,
+          onOpenChange: handlePopoverOpenChange,
+        }}
+        selectedDataProducts={editingDataProducts}
+        onCancel={() => {
+          setPopoverOpen(false);
+          setIsEditing(false);
+        }}
+        onUpdate={handleSaveWithDataProducts}>
+        <div className="data-product-selector-trigger" />
+      </DataProductsSelectListV1>
+    ),
+    [
+      fetchAPI,
+      popoverOpen,
+      handlePopoverOpenChange,
+      editingDataProducts,
+      handleSaveWithDataProducts,
+    ]
   );
 
-  const renderEditingState = () => (
-    <DataProductsSelectListV1
-      fetchOptions={fetchAPI}
-      popoverProps={{
-        placement: 'bottomLeft',
-        open: popoverOpen,
-        onOpenChange: handlePopoverOpenChange,
-      }}
-      selectedDataProducts={editingDataProducts}
-      onCancel={() => {
-        setPopoverOpen(false);
-        setIsEditing(false);
-      }}
-      onUpdate={handleSaveWithDataProducts}>
-      <div className="data-product-selector-trigger" />
-    </DataProductsSelectListV1>
-  );
-
-  const renderEmptyContent = () => {
+  const emptyContent = useMemo(() => {
     if (isLoading) {
-      return renderLoadingState();
+      return <Loader size="small" />;
     }
     if (isEditing) {
-      return renderEditingState();
+      return editingState;
     }
 
     if (!displayActiveDomains || displayActiveDomains.length === 0) {
@@ -302,56 +286,57 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return (
       <span className="no-data-placeholder">{t('label.no-data-found')}</span>
     );
-  };
+  }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
 
-  const renderDataProductsDisplay = () => (
-    <div className="data-products-display">
-      <div className="data-products-list">
-        {(showAllDataProducts
-          ? displayDataProducts
-          : displayDataProducts.slice(0, maxVisibleDataProducts)
-        ).map((dataProduct) => (
-          <div
-            className="data-product-item"
-            key={dataProduct.id || dataProduct.fullyQualifiedName}>
-            <div className="data-product-card-bar">
-              <div className="data-product-card-content">
-                <DataProductIcon className="data-product-icon" />
-                <span className="data-product-name">
-                  {getEntityName(dataProduct)}
-                </span>
+  const dataProductsDisplay = useMemo(
+    () => (
+      <div className="data-products-display">
+        <div className="data-products-list">
+          {(showAllDataProducts
+            ? displayDataProducts
+            : displayDataProducts.slice(0, maxVisibleDataProducts)
+          ).map((dataProduct) => (
+            <div
+              className="data-product-item"
+              key={dataProduct.id || dataProduct.fullyQualifiedName}>
+              <div className="data-product-card-bar">
+                <div className="data-product-card-content">
+                  <DataProductIcon className="data-product-icon" />
+                  <span className="data-product-name">
+                    {getEntityName(dataProduct)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        {displayDataProducts.length > maxVisibleDataProducts && (
-          <button
-            className="show-more-data-products-button"
-            type="button"
-            onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
-            {showAllDataProducts
-              ? t('label.less')
-              : `+${displayDataProducts.length - maxVisibleDataProducts} ${t(
-                  'label.more-lowercase'
-                )}`}
-          </button>
-        )}
+          ))}
+          {displayDataProducts.length > maxVisibleDataProducts && (
+            <button
+              className="show-more-data-products-button"
+              type="button"
+              onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
+              {showAllDataProducts
+                ? t('label.less')
+                : `+${displayDataProducts.length - maxVisibleDataProducts} ${t(
+                    'label.more-lowercase'
+                  )}`}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    ),
+    [showAllDataProducts, displayDataProducts, maxVisibleDataProducts, t]
   );
 
-  const renderDataProductsContent = () => {
+  const dataProductsContent = useMemo(() => {
     if (isLoading) {
-      return renderLoadingState();
+      return <Loader size="small" />;
     }
     if (isEditing) {
-      return (
-        <div className="data-product-edit-wrapper">{renderEditingState()}</div>
-      );
+      return <div className="data-product-edit-wrapper">{editingState}</div>;
     }
 
-    return renderDataProductsDisplay();
-  };
+    return dataProductsDisplay;
+  }, [isLoading, isEditing, editingState, dataProductsDisplay]);
 
   if (!displayDataProducts?.length) {
     return (
@@ -366,15 +351,20 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             !isLoading &&
             displayActiveDomains &&
             displayActiveDomains.length > 0 && (
-              <button
-                className="edit-icon"
-                type="button"
-                onClick={handleEditClick}>
-                <EditIcon />
-              </button>
+              <EditIconButton
+                newLook
+                data-testid="edit-data-products"
+                disabled={false}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.data-product-plural'),
+                })}
+                onClick={handleEditClick}
+              />
             )}
         </div>
-        <div className="data-products-content">{renderEmptyContent()}</div>
+        <div className="data-products-content">{emptyContent}</div>
       </div>
     );
   }
@@ -391,25 +381,20 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
           !isLoading &&
           displayActiveDomains &&
           displayActiveDomains.length > 0 && (
-            <button
-              className="edit-icon"
-              type="button"
-              onClick={handleEditClick}>
-              <EditIcon />
-            </button>
+            <EditIconButton
+              newLook
+              data-testid="edit-data-products"
+              disabled={false}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.data-product-plural'),
+              })}
+              onClick={handleEditClick}
+            />
           )}
       </div>
-      <div className="data-products-content">
-        {isLoading ? (
-          renderLoadingState()
-        ) : isEditing ? (
-          <div className="data-product-edit-wrapper">
-            {renderEditingState()}
-          </div>
-        ) : (
-          renderDataProductsContent()
-        )}
-      </div>
+      <div className="data-products-content">{dataProductsContent}</div>
     </div>
   );
 };

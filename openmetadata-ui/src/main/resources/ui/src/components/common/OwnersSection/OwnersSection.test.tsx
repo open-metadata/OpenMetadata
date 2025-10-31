@@ -40,7 +40,7 @@ jest.mock('antd', () => ({
 }));
 
 // Mock SVG components
-jest.mock('../../../assets/svg/edit.svg', () => ({
+jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon">EditIcon</div>,
 }));
 

@@ -13,9 +13,10 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
@@ -36,6 +37,8 @@ import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI'
 import { patchTableDetails } from '../../../rest/tableAPI';
 import { patchTopicDetails } from '../../../rest/topicsAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
+import Loader from '../Loader/Loader';
 import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './OwnersSection.less';
@@ -132,17 +135,6 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         return;
       }
 
-      const isUUID =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          idToUse
-        );
-
-      if (!isUUID) {
-        showErrorToast(t('message.invalid-entity-id'));
-
-        return;
-      }
-
       try {
         setIsLoading(true);
 
@@ -177,12 +169,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           onOwnerUpdate(ownersToSave);
         }
 
-        // Keep loading state for a brief moment to ensure smooth transition
-        setTimeout(() => {
-          setIsEditing(false);
-          setIsLoading(false);
-          setPopoverOpen(false);
-        }, 500);
+        setIsEditing(false);
+        setIsLoading(false);
+        setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
         showErrorToast(
@@ -213,79 +202,83 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     }
   };
 
-  const renderLoadingState = () => (
-    <div className="owners-loading-container">
-      <div className="owners-loading-spinner">
-        <div className="loading-spinner" />
-      </div>
-    </div>
+  const editingState = useMemo(
+    () => (
+      <UserTeamSelectableList
+        hasPermission={hasPermission}
+        multiple={{ user: true, team: true }}
+        owner={editingOwners}
+        popoverProps={{
+          placement: 'bottomLeft',
+          open: popoverOpen,
+          onOpenChange: handlePopoverOpenChange,
+        }}
+        onClose={() => handlePopoverOpenChange(false)}
+        onUpdate={handleOwnerSelection}>
+        <div className="owner-selector-display">
+          {editingOwners.length > 0 && (
+            <div className="selected-owners-list">
+              {editingOwners.map((owner) => (
+                <div className="selected-owner-chip" key={owner.id}>
+                  <span className="owner-name">
+                    {owner.displayName || owner.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </UserTeamSelectableList>
+    ),
+    [
+      hasPermission,
+      editingOwners,
+      popoverOpen,
+      handlePopoverOpenChange,
+      handleOwnerSelection,
+    ]
   );
 
-  const renderEditingState = () => (
-    <UserTeamSelectableList
-      hasPermission={hasPermission}
-      multiple={{ user: true, team: true }}
-      owner={editingOwners}
-      popoverProps={{
-        placement: 'bottomLeft',
-        open: popoverOpen,
-        onOpenChange: handlePopoverOpenChange,
-      }}
-      onClose={() => handlePopoverOpenChange(false)}
-      onUpdate={handleOwnerSelection}>
-      <div className="owner-selector-display">
-        {editingOwners.length > 0 && (
-          <div className="selected-owners-list">
-            {editingOwners.map((owner) => (
-              <div className="selected-owner-chip" key={owner.id}>
-                <span className="owner-name">
-                  {owner.displayName || owner.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </UserTeamSelectableList>
-  );
-
-  const renderEmptyContent = () => {
+  const emptyContent = useMemo(() => {
     if (isLoading) {
-      return renderLoadingState();
+      return <Loader size="small" />;
     }
     if (isEditing) {
-      return renderEditingState();
+      return editingState;
     }
 
     return (
       <span className="no-data-placeholder">{t('label.no-data-found')}</span>
     );
-  };
+  }, [isLoading, isEditing, editingState, t]);
 
-  const renderOwnersDisplay = () => (
-    <div className="owners-display">
-      <OwnerLabel
-        avatarSize={24}
-        className="owner-label-section"
-        hasPermission={hasPermission}
-        isCompactView={false}
-        maxVisibleOwners={4}
-        owners={displayOwners}
-        showLabel={false}
-      />
-    </div>
+  const ownersDisplay = useMemo(
+    () => (
+      <div className="owners-display">
+        <OwnerLabel
+          avatarSize={24}
+          className="owner-label-section"
+          hasPermission={hasPermission}
+          isCompactView={false}
+          maxVisibleOwners={4}
+          owners={displayOwners}
+          showLabel={false}
+        />
+      </div>
+    ),
+    [hasPermission, displayOwners]
   );
 
-  const renderOwnersContent = () => {
+  const ownersContent = useMemo(() => {
     if (isLoading) {
-      return renderLoadingState();
+      return <Loader size="small" />;
     }
     if (isEditing) {
-      return renderEditingState();
+      return editingState;
     }
 
-    return renderOwnersDisplay();
-  };
+    return ownersDisplay;
+  }, [isLoading, isEditing, editingState, ownersDisplay]);
 
   if (!displayOwners.length) {
     return (
@@ -295,12 +288,20 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
             {t('label.owner-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="edit-icon" onClick={handleEditClick}>
-              <EditIcon />
-            </span>
+            <EditIconButton
+              newLook
+              data-testid="edit-owners"
+              disabled={false}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.owner-plural'),
+              })}
+              onClick={handleEditClick}
+            />
           )}
         </div>
-        <div className="owners-content">{renderEmptyContent()}</div>
+        <div className="owners-content">{emptyContent}</div>
       </div>
     );
   }
@@ -312,12 +313,20 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           {t('label.owner-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="edit-icon" onClick={handleEditClick}>
-            <EditIcon />
-          </span>
+          <EditIconButton
+            newLook
+            data-testid="edit-owners"
+            disabled={false}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.owner-plural'),
+            })}
+            onClick={handleEditClick}
+          />
         )}
       </div>
-      <div className="owners-content">{renderOwnersContent()}</div>
+      <div className="owners-content">{ownersContent}</div>
     </div>
   );
 };

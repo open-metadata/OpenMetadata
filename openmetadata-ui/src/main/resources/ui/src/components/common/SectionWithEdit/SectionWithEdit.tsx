@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import React from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { EditIconButton } from '../IconButtons/EditIconButton';
@@ -50,7 +50,7 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
             newLook
             data-testid="edit-button"
             disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
               entity: title,

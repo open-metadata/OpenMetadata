@@ -27,6 +27,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import Loader from '../Loader/Loader';
 import './DomainsSection.less';
 interface DomainsSectionProps {
   domains?: EntityReference[];
@@ -171,59 +172,56 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     [entityId, entityType, entityFqn, onDomainUpdate, t]
   );
 
-  const renderLoadingState = () => (
-    <div className="domains-loading-container">
-      <div className="domains-loading-spinner">
-        <div className="loading-spinner" />
-      </div>
-    </div>
-  );
+  const loadingState = useMemo(() => <Loader size="small" />, []);
 
-  const renderDomainsDisplay = () => (
-    <div className="domains-display">
-      <div className="domains-list">
-        {(showAllDomains
-          ? activeDomains
-          : activeDomains.slice(0, maxVisibleDomains)
-        ).map((domain) => {
-          const domainWithStyle = domain as EntityReference & {
-            style?: { color?: string; iconURL?: string };
-          };
+  const domainsDisplay = useMemo(
+    () => (
+      <div className="domains-display">
+        <div className="domains-list">
+          {(showAllDomains
+            ? activeDomains
+            : activeDomains.slice(0, maxVisibleDomains)
+          ).map((domain) => {
+            const domainWithStyle = domain as EntityReference & {
+              style?: { color?: string; iconURL?: string };
+            };
 
-          return (
-            <div
-              className="domain-item"
-              key={
-                domainWithStyle.id ||
-                domainWithStyle.fullyQualifiedName ||
-                domainWithStyle.name ||
-                JSON.stringify(domainWithStyle)
-              }>
-              <div className="domain-card-bar">
-                <div className="domain-card-content">
-                  <div className="domain-card-icon">
-                    {getDomainIcon(domainWithStyle?.style?.iconURL)}
+            return (
+              <div
+                className="domain-item"
+                key={
+                  domainWithStyle.id ||
+                  domainWithStyle.fullyQualifiedName ||
+                  domainWithStyle.name ||
+                  JSON.stringify(domainWithStyle)
+                }>
+                <div className="domain-card-bar">
+                  <div className="domain-card-content">
+                    <div className="domain-card-icon">
+                      {getDomainIcon(domainWithStyle?.style?.iconURL)}
+                    </div>
+                    <span className="domain-name">{getEntityName(domain)}</span>
                   </div>
-                  <span className="domain-name">{getEntityName(domain)}</span>
                 </div>
               </div>
-            </div>
-          );
-        })}
-        {activeDomains.length > maxVisibleDomains && (
-          <button
-            className="show-more-domains-button"
-            type="button"
-            onClick={() => setShowAllDomains(!showAllDomains)}>
-            {showAllDomains
-              ? t('label.less')
-              : `+${activeDomains.length - maxVisibleDomains} ${t(
-                  'label.more-lowercase'
-                )}`}
-          </button>
-        )}
+            );
+          })}
+          {activeDomains.length > maxVisibleDomains && (
+            <button
+              className="show-more-domains-button"
+              type="button"
+              onClick={() => setShowAllDomains(!showAllDomains)}>
+              {showAllDomains
+                ? t('label.less')
+                : `+${activeDomains.length - maxVisibleDomains} ${t(
+                    'label.more-lowercase'
+                  )}`}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    ),
+    [showAllDomains, activeDomains, maxVisibleDomains, t]
   );
 
   const selectableList = useMemo(() => {
@@ -232,7 +230,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       hasPermission && (
         <DomainSelectableList
           multiple
-          editIconClassName="edit-icon"
           hasPermission={hasPermission}
           overlayClassName="domain-popover"
           popoverProps={{
@@ -264,7 +261,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
             {t('label.domain-plural')}
           </Typography.Text>
         </div>
-        <div className="domains-content">{renderLoadingState()}</div>
+        <div className="domains-content">{loadingState}</div>
       </div>
     );
   }
@@ -295,7 +292,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         </Typography.Text>
         {selectableList}
       </div>
-      <div className="domains-content">{renderDomainsDisplay()}</div>
+      <div className="domains-content">{domainsDisplay}</div>
     </div>
   );
 };
