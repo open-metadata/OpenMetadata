@@ -217,7 +217,7 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await page.reload();
 
-    await test.step.skip('Add assets to domain', async () => {
+    await test.step('Add assets to domain', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await addAssetsToDomain(page, domain, assets);
