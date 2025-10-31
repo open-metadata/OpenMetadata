@@ -88,9 +88,13 @@ class ColumnValueMaxToBeBetweenValidator(
 
         try:
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            max_impl = Metrics.MAX(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
-                lambda: {Metrics.MAX.name: [], DIMENSION_TOTAL_COUNT_KEY: []}
+                lambda: {
+                    Metrics.MAX.name: max_impl.create_accumulator(),
+                    DIMENSION_TOTAL_COUNT_KEY: 0,
+                }
             )
 
             for df in dfs:
@@ -100,22 +104,24 @@ class ColumnValueMaxToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][Metrics.MAX.name].append(
-                        Metrics.MAX(column).df_fn([group_df])
+                    dimension_aggregates[dimension_value][
+                        Metrics.MAX.name
+                    ] = max_impl.update_accumulator(
+                        dimension_aggregates[dimension_value][Metrics.MAX.name],
+                        group_df,
                     )
+
                     dimension_aggregates[dimension_value][
                         DIMENSION_TOTAL_COUNT_KEY
-                    ].append(len(group_df))
+                    ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                maxes_list = [m for m in agg[Metrics.MAX.name] if pd.notna(m)]
-                total_rows = sum(agg[DIMENSION_TOTAL_COUNT_KEY])
+                max_value = agg[Metrics.MAX.name]
+                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not maxes_list:
+                if not max_value:
                     continue
-
-                max_value = max(maxes_list)
 
                 failed_count = total_rows if checker.check_pandas(max_value) else 0
 

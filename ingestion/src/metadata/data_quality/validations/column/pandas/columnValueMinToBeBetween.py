@@ -89,9 +89,13 @@ class ColumnValueMinToBeBetweenValidator(
 
         try:
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            min_impl = Metrics.MIN(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
-                lambda: {Metrics.MIN.name: [], DIMENSION_TOTAL_COUNT_KEY: []}
+                lambda: {
+                    Metrics.MIN.name: min_impl.create_accumulator(),
+                    DIMENSION_TOTAL_COUNT_KEY: 0,
+                }
             )
 
             for df in dfs:
@@ -101,22 +105,24 @@ class ColumnValueMinToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][Metrics.MIN.name].append(
-                        Metrics.MIN(column).df_fn([group_df])
+                    dimension_aggregates[dimension_value][
+                        Metrics.MIN.name
+                    ] = min_impl.update_accumulator(
+                        dimension_aggregates[dimension_value][Metrics.MIN.name],
+                        group_df,
                     )
+
                     dimension_aggregates[dimension_value][
                         DIMENSION_TOTAL_COUNT_KEY
-                    ].append(len(group_df))
+                    ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                mins_list = [m for m in agg[Metrics.MIN.name] if pd.notna(m)]
-                total_rows = sum(agg[DIMENSION_TOTAL_COUNT_KEY])
+                min_value = agg[Metrics.MIN.name]
+                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not mins_list:
+                if not min_value:
                     continue
-
-                min_value = min(mins_list)
 
                 failed_count = total_rows if checker.check_pandas(min_value) else 0
 

@@ -14,8 +14,8 @@ Validator for column values to be unique test case
 """
 
 import logging
-from collections import Counter, defaultdict
-from typing import List, Optional
+from collections import defaultdict
+from typing import List, Optional, cast
 
 import pandas as pd
 
@@ -94,35 +94,43 @@ class ColumnValuesToBeUniqueValidator(
 
         try:
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            unique_count_impl = Metrics.UNIQUE_COUNT(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
-                lambda: {"all_values": [], "total_count": 0, "total_rows": 0}
+                lambda: {
+                    Metrics.UNIQUE_COUNT.name: unique_count_impl.create_accumulator(),
+                    Metrics.COUNT.name: 0,
+                    DIMENSION_TOTAL_COUNT_KEY: 0,
+                }
             )
 
-            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
             for df in dfs:
-                grouped = df.groupby(dimension_col.name, dropna=False)
+                df_typed = cast(pd.DataFrame, df)
+                grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    # Collect all non-NULL values to compute unique count across dataframes
-                    dimension_aggregates[dimension_value]["all_values"].extend(
-                        group_df[column.name].dropna().tolist()
+                    unique_count_impl.update_accumulator(
+                        dimension_aggregates[dimension_value][
+                            Metrics.UNIQUE_COUNT.name
+                        ],
+                        group_df,
                     )
-                    # Count non-NULL values (consistent with COUNT metric)
-                    dimension_aggregates[dimension_value]["total_count"] += group_df[
-                        column.name
-                    ].count()
-                    # Track total rows including NULLs for impact score
-                    dimension_aggregates[dimension_value]["total_rows"] += len(group_df)
+                    dimension_aggregates[dimension_value][
+                        Metrics.COUNT.name
+                    ] += Metrics.COUNT(column).df_fn([group_df])
+                    dimension_aggregates[dimension_value][
+                        DIMENSION_TOTAL_COUNT_KEY
+                    ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                total_count = agg["total_count"]
-                total_rows = agg["total_rows"]
-                counter = Counter(agg["all_values"])
-                unique_count = sum(1 for value in counter.values() if value == 1)
+                total_count = agg[Metrics.COUNT.name]
+                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
+                unique_count = unique_count_impl.aggregate_accumulator(
+                    agg[Metrics.UNIQUE_COUNT.name]
+                )
                 duplicate_count = total_count - unique_count
 
                 results_data.append(
