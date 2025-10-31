@@ -15,6 +15,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 
 export interface SubDomainsTableProps {
   domainFqn: string;
+  subDomainsCount?: number;
   permissions: OperationPermission;
   onAddSubDomain: () => void;
 }
