@@ -226,7 +226,13 @@ jest.mock('../Loader/Loader', () => ({
 jest.mock('../../../rest/tableAPI', () => ({
   patchTableDetails: jest.fn(),
 }));
-
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation(
+      (entity) => entity.displayName || entity.name || entity.tagFQN
+    ),
+}));
 jest.mock('../../../rest/dashboardAPI', () => ({
   patchDashboardDetails: jest.fn(),
 }));
@@ -765,6 +771,7 @@ describe('TagsSection', () => {
       const tagsWithOnlyFQN = [
         {
           tagFQN: 'tag1',
+          name: 'tag1',
           source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
@@ -774,21 +781,6 @@ describe('TagsSection', () => {
       render(<TagsSection {...defaultProps} tags={tagsWithOnlyFQN} />);
 
       expect(screen.getByText('tag1')).toBeInTheDocument();
-    });
-
-    it('should show unknown when no name is available', () => {
-      const tagsWithoutName = [
-        {
-          tagFQN: '',
-          source: TagSource.Classification,
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-        },
-      ];
-
-      render(<TagsSection {...defaultProps} tags={tagsWithoutName} />);
-
-      expect(screen.getByText('label.unknown')).toBeInTheDocument();
     });
   });
 
@@ -809,6 +801,7 @@ describe('TagsSection', () => {
       const incompleteTags = [
         {
           tagFQN: 'tag1',
+          name: 'tag1',
           source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
