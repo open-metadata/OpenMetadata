@@ -1105,12 +1105,16 @@ public class OpenSearchSourceBuilderFactory
       case "team-search-index":
         return buildUserOrTeamSearchBuilderV2(q, offset, limit);
       case "test_case_search_index":
+      case "testCase":
+      case "test_suite_search_index":
+      case "testSuite":
         return buildTestCaseSearchBuilderV2(q, offset, limit);
       case "test_case_resolution_status_search_index":
         return buildTestCaseResolutionStatusSearchBuilderV2(q, offset, limit);
       case "test_case_result_search_index":
         return buildTestCaseResultSearchBuilderV2(q, offset, limit);
-      case "cost_analysis_report_data_index":
+      case "raw_cost_analysis_report_data_index":
+      case "aggregated_cost_analysis_report_data_index":
         return buildCostAnalysisReportDataSearchBuilderV2(q, offset, limit);
       case "glossaryterm_search_index":
       case "tag_search_index":

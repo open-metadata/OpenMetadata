@@ -1152,9 +1152,10 @@ public class ElasticSearchSourceBuilderFactory
       case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
           query, from, size);
-      case "cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
+      case "raw_cost_analysis_report_data_index",
+          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
           query, from, size);
-      default -> searchBuilderV2(ElasticQueryBuilder.matchAllQuery(), null, from, size);
+      default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
 
@@ -1208,10 +1209,13 @@ public class ElasticSearchSourceBuilderFactory
 
   public ElasticSearchRequestBuilder buildDataQualitySearchBuilderV2(
       String indexName, String query, int from, int size) {
-    if (indexName.equals("test_case_search_index")) {
-      return buildTestCaseSearchV2(query, from, size);
-    }
-    return searchBuilderV2(ElasticQueryBuilder.matchAllQuery(), null, from, size);
+    return switch (indexName) {
+      case "test_case_search_index",
+          "testCase",
+          "test_suite_search_index",
+          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+      default -> buildAggregateSearchBuilderV2(query, from, size);
+    };
   }
 
   public ElasticSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
