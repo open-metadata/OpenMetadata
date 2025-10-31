@@ -42,7 +42,6 @@ from metadata.generated.schema.entity.services.connections.api.restConnection im
     RestConnection,
     RestType,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -58,8 +57,8 @@ class OMetaRestApiTest(TestCase):
 
     metadata = int_admin_ometa()
 
-    user: User = metadata.create_or_update(
-        data=CreateUserRequest(name="api-test-user", email="api-test@user.com"),
+    user = metadata.create_or_update(
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owners = EntityReferenceList(
         root=[
