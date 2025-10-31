@@ -49,7 +49,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -205,7 +205,7 @@ jest.mock('../../../rest/chartsAPI', () => ({ patchChartDetails: jest.fn() }));
 
 const validUUID = '123e4567-e89b-12d3-a456-426614174000';
 
-const defaultDataProducts = [
+const defaultDataProducts: EntityReference[] = [
   {
     id: 'dp-1',
     fullyQualifiedName: 'domain.dp1',
@@ -216,8 +216,10 @@ const defaultDataProducts = [
 ];
 
 const defaultProps = {
-  dataProducts: defaultDataProducts as any,
-  activeDomains: [{ id: 'd-1', fullyQualifiedName: 'domain' }] as any,
+  dataProducts: defaultDataProducts,
+  activeDomains: [
+    { id: 'd-1', fullyQualifiedName: 'domain', type: 'domain' },
+  ] as EntityReference[],
   showEditButton: true,
   hasPermission: true,
   entityId: validUUID,
@@ -232,9 +234,7 @@ describe('DataProductsSection', () => {
 
   describe('Rendering', () => {
     it('renders with data products', () => {
-      const { container } = render(
-        <DataProductsSection {...(defaultProps as any)} />
-      );
+      const { container } = render(<DataProductsSection {...defaultProps} />);
 
       expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
@@ -250,9 +250,7 @@ describe('DataProductsSection', () => {
     });
 
     it('renders no-data state when no data products', () => {
-      render(
-        <DataProductsSection {...(defaultProps as any)} dataProducts={[]} />
-      );
+      render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
 
       expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
     });
@@ -260,7 +258,7 @@ describe('DataProductsSection', () => {
 
   describe('Edit Mode', () => {
     it('enters edit mode and shows select list', () => {
-      render(<DataProductsSection {...(defaultProps as any)} />);
+      render(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -277,7 +275,7 @@ describe('DataProductsSection', () => {
     });
 
     it('exits edit mode on cancel', () => {
-      render(<DataProductsSection {...(defaultProps as any)} />);
+      render(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -304,7 +302,7 @@ describe('DataProductsSection', () => {
 
       render(
         <DataProductsSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityType={EntityType.TABLE}
           onDataProductsUpdate={onUpdate}
         />
@@ -334,10 +332,7 @@ describe('DataProductsSection', () => {
       patchTableDetails.mockRejectedValue(error);
 
       render(
-        <DataProductsSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -362,7 +357,12 @@ describe('DataProductsSection', () => {
         '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1'
       );
       DataProductsSelectListV1.mockImplementationOnce(
-        ({ onUpdate, ...props }: any) => (
+        ({
+          onUpdate,
+          ...props
+        }: {
+          onUpdate?: (products: unknown[]) => void;
+        }) => (
           <div data-testid="data-products-select-list" {...props}>
             <button
               data-testid="dps-submit"
@@ -384,10 +384,7 @@ describe('DataProductsSection', () => {
       );
 
       render(
-        <DataProductsSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -411,10 +408,7 @@ describe('DataProductsSection', () => {
       patchTableDetails.mockReturnValue(promise);
 
       render(
-        <DataProductsSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -452,10 +446,7 @@ describe('DataProductsSection', () => {
       patchTableDetails.mockResolvedValue({});
 
       render(
-        <DataProductsSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -480,7 +471,7 @@ describe('DataProductsSection', () => {
 
       render(
         <DataProductsSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityType={EntityType.DASHBOARD}
         />
       );
@@ -504,9 +495,7 @@ describe('DataProductsSection', () => {
     it('shows error when entityId missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(
-        <DataProductsSection {...(defaultProps as any)} entityId={undefined} />
-      );
+      render(<DataProductsSection {...defaultProps} entityId={undefined} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -528,7 +517,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...(defaultProps as any)} />);
+      render(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {

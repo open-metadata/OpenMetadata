@@ -16,7 +16,7 @@ import DescriptionSection from './DescriptionSection';
 // Mock i18n
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }

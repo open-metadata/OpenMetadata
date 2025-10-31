@@ -58,7 +58,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -287,40 +287,40 @@ const mockTags: TagLabel[] = [
     displayName: 'Tag 1',
     name: 'Tag 1',
     source: TagSource.Classification,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'tag2',
     displayName: 'Tag 2',
     name: 'Tag 2',
     source: TagSource.Classification,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'tag3',
     displayName: 'Tag 3',
     name: 'Tag 3',
     source: TagSource.Classification,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'tag4',
     displayName: 'Tag 4',
     name: 'Tag 4',
     source: TagSource.Classification,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'tag5',
     displayName: 'Tag 5',
     name: 'Tag 5',
     source: TagSource.Classification,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
 ];
 
@@ -735,8 +735,8 @@ describe('TagsSection', () => {
           displayName: 'Custom Display Name',
           name: 'Tag 1',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -751,8 +751,8 @@ describe('TagsSection', () => {
           tagFQN: 'tag1',
           name: 'Tag 1',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -766,8 +766,8 @@ describe('TagsSection', () => {
         {
           tagFQN: 'tag1',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -781,8 +781,8 @@ describe('TagsSection', () => {
         {
           tagFQN: '',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -810,22 +810,22 @@ describe('TagsSection', () => {
         {
           tagFQN: 'tag1',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
         {
           tagFQN: 'tag2',
           name: 'tag2',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
         {
           tagFQN: 'tag3',
           displayName: 'tag3',
           source: TagSource.Classification,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 

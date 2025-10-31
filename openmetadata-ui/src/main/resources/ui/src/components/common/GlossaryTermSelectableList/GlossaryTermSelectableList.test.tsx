@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import {
   LabelType,
   State,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { SelectableListProps } from '../SelectableList/SelectableList.interface';
 import { GlossaryTermSelectableList } from './GlossaryTermSelectableList.component';
 
 jest.mock('react-i18next', () => ({
@@ -38,7 +40,7 @@ const mockSelectableList = jest
       selectedItems,
       fetchOptions,
       customTagRenderer,
-    }: any) => (
+    }: SelectableListProps) => (
       <div data-testid="selectable-list">
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button
@@ -66,15 +68,18 @@ const mockSelectableList = jest
 const mockFetchGlossaryList = jest.fn();
 
 jest.mock('../SelectableList/SelectableList.component', () => ({
-  SelectableList: (props: any) => mockSelectableList(props),
+  SelectableList: (props: SelectableListProps) => mockSelectableList(props),
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
-  fetchGlossaryList: (...args: any[]) => mockFetchGlossaryList(...args),
+  fetchGlossaryList: (searchQueryParam: string, page: number) =>
+    mockFetchGlossaryList(searchQueryParam, page),
 }));
 
 jest.mock('../FocusTrap/FocusTrapWithContainer', () => ({
-  FocusTrapWithContainer: ({ children }: any) => <div>{children}</div>,
+  FocusTrapWithContainer: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 const mockGlossaryTerms: TagLabel[] = [

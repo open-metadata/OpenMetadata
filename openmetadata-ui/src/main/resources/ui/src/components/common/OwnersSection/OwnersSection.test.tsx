@@ -13,12 +13,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import OwnersSection from './OwnersSection';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -75,31 +76,40 @@ jest.mock('../Loader/Loader', () => ({
 }));
 
 // Mock UserTeamSelectableList
+interface UserTeamSelectableListMockProps {
+  children?: React.ReactNode;
+  onUpdate?: (owners: EntityReference[]) => void;
+  owner?: EntityReference[];
+}
+
 const userTeamSelectableListMock = jest
   .fn()
-  .mockImplementation(({ children, onUpdate, owner }: any) => (
-    <div data-testid="user-selectable-list">
-      {children}
-      <button
-        data-testid="owner-selector-trigger"
-        onClick={() =>
-          onUpdate?.([
-            { id: '2', name: 'bob', displayName: 'Bob', type: 'user' },
-            { id: '3', name: 'carol', displayName: 'Carol', type: 'team' },
-          ])
-        }>
-        Select Owners
-      </button>
-      <div data-testid="selected-users-debug">
-        {(owner || []).map((u: any) => (
-          <span key={u.id}>{u.displayName || u.name}</span>
-        ))}
+  .mockImplementation(
+    ({ children, onUpdate, owner }: UserTeamSelectableListMockProps) => (
+      <div data-testid="user-selectable-list">
+        {children}
+        <button
+          data-testid="owner-selector-trigger"
+          onClick={() =>
+            onUpdate?.([
+              { id: '2', name: 'bob', displayName: 'Bob', type: 'user' },
+              { id: '3', name: 'carol', displayName: 'Carol', type: 'team' },
+            ] as EntityReference[])
+          }>
+          Select Owners
+        </button>
+        <div data-testid="selected-users-debug">
+          {(owner || []).map((u) => (
+            <span key={u.id}>{u.displayName || u.name}</span>
+          ))}
+        </div>
       </div>
-    </div>
-  ));
+    )
+  );
 
 jest.mock('../UserTeamSelectableList/UserTeamSelectableList.component', () => ({
-  UserTeamSelectableList: (props: any) => userTeamSelectableListMock(props),
+  UserTeamSelectableList: (props: UserTeamSelectableListMockProps) =>
+    userTeamSelectableListMock(props),
 }));
 
 // Mock ToastUtils
@@ -149,10 +159,12 @@ jest.mock('../../../rest/dataProductAPI', () => ({
 
 const validUUID = '123e4567-e89b-12d3-a456-426614174000';
 
-const defaultOwners = [{ id: '1', name: 'alice', displayName: 'Alice' }];
+const defaultOwners: EntityReference[] = [
+  { id: '1', name: 'alice', displayName: 'Alice', type: 'user' },
+];
 
 const defaultProps = {
-  owners: defaultOwners as any,
+  owners: defaultOwners,
   showEditButton: true,
   hasPermission: true,
   entityId: validUUID,
@@ -167,16 +179,14 @@ describe('OwnersSection', () => {
 
   describe('Component Rendering', () => {
     it('should render without crashing', () => {
-      render(<OwnersSection {...(defaultProps as any)} />);
+      render(<OwnersSection {...defaultProps} />);
 
       expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
     });
 
     it('should render with correct CSS classes', () => {
-      const { container } = render(
-        <OwnersSection {...(defaultProps as any)} />
-      );
+      const { container } = render(<OwnersSection {...defaultProps} />);
 
       expect(container.querySelector('.owners-section')).toBeInTheDocument();
       expect(container.querySelector('.owners-header')).toBeInTheDocument();
@@ -186,14 +196,14 @@ describe('OwnersSection', () => {
 
   describe('No Owners State', () => {
     it('should render no data found message when no owners', () => {
-      render(<OwnersSection {...(defaultProps as any)} owners={[]} />);
+      render(<OwnersSection {...defaultProps} owners={[]} />);
 
       expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
     });
 
     it('should enter edit mode when no owners', () => {
       const { container } = render(
-        <OwnersSection {...(defaultProps as any)} owners={[]} />
+        <OwnersSection {...defaultProps} owners={[]} />
       );
 
       // Check if edit icon exists
@@ -213,9 +223,7 @@ describe('OwnersSection', () => {
 
   describe('Edit Mode', () => {
     it('should enter edit mode and show selected owners', () => {
-      const { container } = render(
-        <OwnersSection {...(defaultProps as any)} />
-      );
+      const { container } = render(<OwnersSection {...defaultProps} />);
 
       const editIcon = container.querySelector('.edit-icon');
       fireEvent.click(editIcon!);
@@ -240,7 +248,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(
         <OwnersSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityType={EntityType.TABLE}
           onOwnerUpdate={onOwnerUpdate}
         />
@@ -271,10 +279,7 @@ describe('OwnersSection', () => {
       patchTableDetails.mockRejectedValue(mockError);
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -297,7 +302,7 @@ describe('OwnersSection', () => {
 
       // Simulate selecting the same owners list (no changes) - set up mock before rendering
       userTeamSelectableListMock.mockImplementationOnce(
-        ({ onUpdate, children }: any) => (
+        ({ onUpdate, children }: UserTeamSelectableListMockProps) => (
           <div data-testid="user-selectable-list">
             {children}
             <button
@@ -310,10 +315,7 @@ describe('OwnersSection', () => {
       );
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -337,7 +339,7 @@ describe('OwnersSection', () => {
 
       // Mock UserTeamSelectableList to trigger save with different owners
       userTeamSelectableListMock.mockImplementationOnce(
-        ({ onUpdate, children }: any) => (
+        ({ onUpdate, children }: UserTeamSelectableListMockProps) => (
           <div data-testid="user-selectable-list">
             {children}
             <button
@@ -359,10 +361,7 @@ describe('OwnersSection', () => {
       );
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -389,10 +388,7 @@ describe('OwnersSection', () => {
       patchTableDetails.mockResolvedValue({});
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.TABLE}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -416,10 +412,7 @@ describe('OwnersSection', () => {
       patchDashboardDetails.mockResolvedValue({});
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.DASHBOARD}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.DASHBOARD} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -442,7 +435,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(
         <OwnersSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityId={undefined}
           entityType={EntityType.TABLE}
         />
@@ -482,7 +475,7 @@ describe('OwnersSection', () => {
 
       // Mock selecting teams - set up before rendering
       userTeamSelectableListMock.mockImplementationOnce(
-        ({ onUpdate, children }: any) => (
+        ({ onUpdate, children }: UserTeamSelectableListMockProps) => (
           <div data-testid="user-selectable-list">
             {children}
             <button
@@ -505,7 +498,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(
         <OwnersSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityType={EntityType.TABLE}
           owners={teamOwners}
           onOwnerUpdate={onOwnerUpdate}
@@ -550,7 +543,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(
         <OwnersSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityType={EntityType.TABLE}
           owners={mixedOwners}
         />
@@ -582,7 +575,7 @@ describe('OwnersSection', () => {
       ];
 
       const { container } = render(
-        <OwnersSection {...(defaultProps as any)} owners={teamOwners} />
+        <OwnersSection {...defaultProps} owners={teamOwners} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -598,7 +591,7 @@ describe('OwnersSection', () => {
 
     it('should pass correct props to UserTeamSelectableList', () => {
       const { container } = render(
-        <OwnersSection {...(defaultProps as any)} hasPermission />
+        <OwnersSection {...defaultProps} hasPermission />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -620,14 +613,14 @@ describe('OwnersSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      // Mock selecting with undefined (should default to empty array) - set up before rendering
+      // Mock selecting with empty array to clear owners
       userTeamSelectableListMock.mockImplementationOnce(
-        ({ onUpdate, children }: any) => (
+        ({ onUpdate, children }: UserTeamSelectableListMockProps) => (
           <div data-testid="user-selectable-list">
             {children}
             <button
               data-testid="owner-selector-trigger"
-              onClick={() => onUpdate?.(undefined)}>
+              onClick={() => onUpdate?.([])}>
               Clear Owners
             </button>
           </div>
@@ -636,7 +629,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(
         <OwnersSection
-          {...(defaultProps as any)}
+          {...defaultProps}
           entityType={EntityType.TABLE}
           onOwnerUpdate={onOwnerUpdate}
         />
@@ -657,7 +650,7 @@ describe('OwnersSection', () => {
   describe('Permission Handling', () => {
     it('should not show edit button when hasPermission is false', () => {
       const { container } = render(
-        <OwnersSection {...(defaultProps as any)} hasPermission={false} />
+        <OwnersSection {...defaultProps} hasPermission={false} />
       );
 
       expect(container.querySelector('.edit-icon')).not.toBeInTheDocument();
@@ -665,11 +658,7 @@ describe('OwnersSection', () => {
 
     it('should not show edit button when showEditButton is false', () => {
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          hasPermission
-          showEditButton={false}
-        />
+        <OwnersSection {...defaultProps} hasPermission showEditButton={false} />
       );
 
       expect(container.querySelector('.edit-icon')).not.toBeInTheDocument();
@@ -677,11 +666,7 @@ describe('OwnersSection', () => {
 
     it('should show edit button only when both hasPermission and showEditButton are true', () => {
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          hasPermission
-          showEditButton
-        />
+        <OwnersSection {...defaultProps} hasPermission showEditButton />
       );
 
       expect(container.querySelector('.edit-icon')).toBeInTheDocument();
@@ -697,10 +682,7 @@ describe('OwnersSection', () => {
       patchMlModelDetails.mockResolvedValue({});
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.MLMODEL}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.MLMODEL} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -724,10 +706,7 @@ describe('OwnersSection', () => {
       patchDataProduct.mockResolvedValue({});
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.DATA_PRODUCT}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.DATA_PRODUCT} />
       );
 
       const editIcon = container.querySelector('.edit-icon');
@@ -751,10 +730,7 @@ describe('OwnersSection', () => {
       patchContainerDetails.mockResolvedValue({});
 
       const { container } = render(
-        <OwnersSection
-          {...(defaultProps as any)}
-          entityType={EntityType.CONTAINER}
-        />
+        <OwnersSection {...defaultProps} entityType={EntityType.CONTAINER} />
       );
 
       const editIcon = container.querySelector('.edit-icon');

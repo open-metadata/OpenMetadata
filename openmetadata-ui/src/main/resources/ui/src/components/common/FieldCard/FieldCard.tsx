@@ -14,6 +14,7 @@ import { Badge, Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../constants/constants';
+import { TableConstraint } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
 import {
   getDataTypeString,
@@ -40,7 +41,7 @@ interface FieldCardProps {
     fullyQualifiedName: string;
   }>;
   columnConstraint?: string;
-  tableConstraints?: Array<{ constraintType: any; columns: string[] }>;
+  tableConstraints?: TableConstraint[];
   isHighlighted?: boolean;
 }
 

@@ -16,7 +16,7 @@ import DataQualitySection from './DataQualitySection';
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -46,18 +46,27 @@ jest.mock('antd', () => {
 });
 
 // Mock SectionWithEdit to expose props and render children
+interface SectionWithEditProps {
+  title: React.ReactNode;
+  children: React.ReactNode;
+  showEditButton?: boolean;
+  onEdit?: () => void;
+}
+
 jest.mock('../SectionWithEdit/SectionWithEdit', () => {
   return jest
     .fn()
-    .mockImplementation(({ title, children, showEditButton, onEdit }: any) => (
-      <div
-        data-show-edit={String(showEditButton)}
-        data-testid="section-with-edit"
-        onClick={onEdit}>
-        <div data-testid="section-title">{title}</div>
-        <div data-testid="section-children">{children}</div>
-      </div>
-    ));
+    .mockImplementation(
+      ({ title, children, showEditButton, onEdit }: SectionWithEditProps) => (
+        <div
+          data-show-edit={String(showEditButton)}
+          data-testid="section-with-edit"
+          onClick={onEdit}>
+          <div data-testid="section-title">{title}</div>
+          <div data-testid="section-children">{children}</div>
+        </div>
+      )
+    );
 });
 
 describe('DataQualitySection', () => {

@@ -20,7 +20,7 @@ export interface OverviewSectionProps {
   showEditButton?: boolean;
   entityInfoV1?: Array<{
     name: string;
-    value?: any;
+    value?: unknown;
     url?: string;
     linkProps?: import('react-router-dom').To;
     isLink?: boolean;

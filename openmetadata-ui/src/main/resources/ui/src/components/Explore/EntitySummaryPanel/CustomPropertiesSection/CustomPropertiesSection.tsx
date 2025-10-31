@@ -29,15 +29,35 @@ import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { EntityType } from '../../../../enums/entity.enum';
+import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
 import Loader from '../../../common/Loader/Loader';
 import './CustomPropertiesSection.less';
+
+interface EntityData {
+  extension?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface EntityDetails {
+  details: {
+    fullyQualifiedName?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface EntityTypeDetail {
+  customProperties?: CustomProperty[];
+  [key: string]: unknown;
+}
+
 interface CustomPropertiesSectionProps {
-  entityData?: any;
-  entityDetails: any;
+  entityData?: EntityData;
+  entityDetails: EntityDetails;
   entityType: EntityType;
-  entityTypeDetail?: any;
+  entityTypeDetail?: EntityTypeDetail;
   isEntityDataLoading: boolean;
 }
 
@@ -87,7 +107,7 @@ const CustomPropertiesSection = ({
     );
   }
 
-  const formatValue = (val: any) => {
+  const formatValue = (val: unknown) => {
     if (!val) {
       return (
         <div className="text-center text-grey-muted p-sm">
@@ -100,25 +120,31 @@ const CustomPropertiesSection = ({
       if (Array.isArray(val)) {
         return val.join(', ');
       }
-      if (val.name || val.displayName) {
-        return val.name || val.displayName;
+      const objVal = val as Record<string, unknown>;
+      if (objVal.name || objVal.displayName) {
+        return String(objVal.name || objVal.displayName);
       }
-      if (val.value) {
-        return val.value;
+      if (objVal.value) {
+        return String(objVal.value);
       }
       // Handle table-type custom properties
-      if (val.rows && val.columns) {
+      if (objVal.rows && objVal.columns) {
+        const tableVal = objVal as {
+          rows: Record<string, unknown>[];
+          columns: string[];
+        };
+
         return (
           <div className="custom-property-table">
             <table className="ant-table ant-table-small">
               <colgroup>
-                {val.columns.map((column: string) => (
+                {tableVal.columns.map((column: string) => (
                   <col key={column} style={{ minWidth: '80px' }} />
                 ))}
               </colgroup>
               <thead>
                 <tr>
-                  {val.columns.map((column: string) => (
+                  {tableVal.columns.map((column: string) => (
                     <th className="ant-table-cell" key={column}>
                       {column}
                     </th>
@@ -126,21 +152,23 @@ const CustomPropertiesSection = ({
                 </tr>
               </thead>
               <tbody>
-                {val.rows.map((row: any, rowIndex: number) => {
-                  const rowKey = `row-${rowIndex}-${val.columns
-                    .map((col: string) => row[col])
-                    .join('-')}`;
+                {tableVal.rows.map(
+                  (row: Record<string, unknown>, rowIndex: number) => {
+                    const rowKey = `row-${rowIndex}-${tableVal.columns
+                      .map((col: string) => row[col])
+                      .join('-')}`;
 
-                  return (
-                    <tr key={rowKey}>
-                      {val.columns.map((column: string) => (
-                        <td className="ant-table-cell" key={column}>
-                          {row[column] || '-'}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={rowKey}>
+                        {tableVal.columns.map((column: string) => (
+                          <td className="ant-table-cell" key={column}>
+                            {String(row[column] || '-')}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  }
+                )}
               </tbody>
             </table>
           </div>
@@ -170,7 +198,7 @@ const CustomPropertiesSection = ({
       )}
       <div className="p-x-md">
         <div className="custom-properties-list">
-          {customProperties.slice(0, 5).map((property: any) => {
+          {customProperties.slice(0, 5).map((property: CustomProperty) => {
             const value = extensionData[property.name];
 
             return (

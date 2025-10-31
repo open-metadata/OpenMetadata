@@ -175,8 +175,8 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
               className="glossary-term-item"
               data-testid={`tag-${
                 glossaryTerm.tagFQN ||
-                (glossaryTerm as any).name ||
-                (glossaryTerm as any).displayName ||
+                glossaryTerm.name ||
+                glossaryTerm.displayName ||
                 index
               }`}
               key={glossaryTerm.tagFQN}>

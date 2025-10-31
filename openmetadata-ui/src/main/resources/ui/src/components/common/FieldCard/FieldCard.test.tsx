@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { ConstraintType } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
 import FieldCard from './FieldCard';
 
 // Mock i18n
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -68,7 +69,7 @@ const baseProps = {
   ],
   columnConstraint: 'PRIMARY_KEY',
   tableConstraints: [
-    { constraintType: 'PRIMARY_KEY', columns: ['customer_id'] },
+    { constraintType: ConstraintType.PrimaryKey, columns: ['customer_id'] },
   ],
 };
 
@@ -78,7 +79,7 @@ describe('FieldCard', () => {
   });
 
   it('renders basic structure and content', () => {
-    const { container } = render(<FieldCard {...(baseProps as any)} />);
+    const { container } = render(<FieldCard {...baseProps} />);
 
     expect(container.querySelector('.field-card')).toBeInTheDocument();
     expect(container.querySelector('.field-card-header')).toBeInTheDocument();
@@ -91,14 +92,14 @@ describe('FieldCard', () => {
   });
 
   it('renders data type badge using utility', () => {
-    render(<FieldCard {...(baseProps as any)} />);
+    render(<FieldCard {...baseProps} />);
 
     expect(getDataTypeString).toHaveBeenCalled();
     expect(screen.getByText(/^DT:/)).toBeInTheDocument();
   });
 
   it('renders constraint icon when columnConstraint provided', () => {
-    render(<FieldCard {...(baseProps as any)} />);
+    render(<FieldCard {...baseProps} />);
 
     expect(prepareConstraintIcon).toHaveBeenCalledWith(
       expect.objectContaining({ columnName: 'customer_id' })
@@ -107,7 +108,7 @@ describe('FieldCard', () => {
   });
 
   it('shows no-description text when description is missing', () => {
-    render(<FieldCard {...(baseProps as any)} description={undefined} />);
+    render(<FieldCard {...baseProps} description={undefined} />);
 
     expect(
       screen.getByText('label.no-entity - {"entity":"label.description"}')
@@ -115,7 +116,7 @@ describe('FieldCard', () => {
   });
 
   it('shows tags and glossary counts in metadata', () => {
-    const { container } = render(<FieldCard {...(baseProps as any)} />);
+    const { container } = render(<FieldCard {...baseProps} />);
 
     const items = container.querySelectorAll('.metadata-item');
 
@@ -129,17 +130,13 @@ describe('FieldCard', () => {
   });
 
   it('omits metadata sections when no tags or glossary terms', () => {
-    const { container } = render(
-      <FieldCard {...(baseProps as any)} tags={[]} />
-    );
+    const { container } = render(<FieldCard {...baseProps} tags={[]} />);
 
     expect(container.querySelector('.metadata-item')).toBeNull();
   });
 
   it('applies highlighted class when isHighlighted is true', () => {
-    const { container } = render(
-      <FieldCard {...(baseProps as any)} isHighlighted />
-    );
+    const { container } = render(<FieldCard {...baseProps} isHighlighted />);
 
     expect(container.querySelector('.field-card')).toHaveClass(
       'field-card-highlighted'

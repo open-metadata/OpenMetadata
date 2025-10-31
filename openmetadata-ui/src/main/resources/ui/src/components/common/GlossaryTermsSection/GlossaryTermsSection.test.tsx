@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { TagSource } from '../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import GlossaryTermsSection from './GlossaryTermsSection';
 
 // Mock react-router-dom
@@ -41,7 +46,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -87,10 +92,10 @@ jest.mock(
           popoverProps,
         }: {
           onCancel?: () => void;
-          onUpdate?: (terms: any[]) => void;
-          selectedTerms: any[];
-          children: any;
-          popoverProps?: any;
+          onUpdate?: (terms: TagLabel[]) => void;
+          selectedTerms: TagLabel[];
+          children: React.ReactNode;
+          popoverProps?: Record<string, unknown>;
         }) => {
           const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
 
@@ -107,15 +112,15 @@ jest.mock(
                       tagFQN: 'g.term.1',
                       name: 'term.1',
                       source: TagSource.Glossary,
-                      labelType: 'Manual' as const,
-                      state: 'Confirmed' as const,
+                      labelType: LabelType.Manual,
+                      state: State.Confirmed,
                     },
                     {
                       tagFQN: 'g.term.2',
                       name: 'term.2',
                       source: TagSource.Glossary,
-                      labelType: 'Manual' as const,
-                      state: 'Confirmed' as const,
+                      labelType: LabelType.Manual,
+                      state: State.Confirmed,
                     },
                   ])
                 }>
@@ -132,8 +137,8 @@ jest.mock(
                       description: 'desc',
                       style: { color: 'red' },
                       source: TagSource.Glossary,
-                      labelType: 'Manual' as const,
-                      state: 'Confirmed' as const,
+                      labelType: LabelType.Manual,
+                      state: State.Confirmed,
                     },
                   ])
                 }>
@@ -156,7 +161,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(
-      (tag: any) => tag.displayName || tag.name || tag.tagFQN
+      (tag: TagLabel) => tag.displayName || tag.name || tag.tagFQN
     ),
 }));
 
@@ -194,16 +199,16 @@ const baseGlossaryTags = [
   {
     tagFQN: 'g.customer',
     source: TagSource.Glossary,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
     name: 'customer',
     displayName: 'Customer',
   },
   {
     tagFQN: 'g.order',
     source: TagSource.Glossary,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
     name: 'order',
     displayName: 'Order',
   },
@@ -212,9 +217,9 @@ const baseGlossaryTags = [
 const nonGlossaryTags = [
   {
     tagFQN: 'Classification.PII',
-    source: 'Classification' as any,
-    labelType: 'Manual' as any,
-    state: 'Confirmed' as any,
+    source: TagSource.Classification,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
 ];
 

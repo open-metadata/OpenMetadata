@@ -12,7 +12,10 @@
  */
 import { EntityTags } from 'Models';
 import { EntityType } from '../../enums/entity.enum';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../generated/type/entityReference';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
@@ -27,11 +30,11 @@ export type DataAssetSummaryPanelProps = {
   entityType: EntityType;
   isDomainVisible?: boolean;
   isLineageView?: boolean;
-  onOwnerUpdate?: (updatedOwners: any[]) => void;
-  onDomainUpdate?: (updatedDomains: any[]) => void;
-  onTierUpdate?: (updatedTier?: any) => void;
-  onTagsUpdate?: (updatedTags: any[]) => void;
-  onDataProductsUpdate?: (updatedDataProducts: any[]) => void;
-  onGlossaryTermsUpdate?: (updatedGlossaryTerms: any[]) => void;
+  onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
+  onDomainUpdate?: (updatedDomains: EntityReference[]) => void;
+  onTierUpdate?: (updatedTier?: TagLabel) => void;
+  onTagsUpdate?: (updatedTags: TagLabel[]) => void;
+  onDataProductsUpdate?: (updatedDataProducts: EntityReference[]) => void;
+  onGlossaryTermsUpdate?: (updatedGlossaryTerms: GlossaryTerm[]) => void;
   onDescriptionUpdate?: (updatedDescription: string) => void;
 };

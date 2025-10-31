@@ -12,12 +12,14 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainsSection from './DomainsSection';
 
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -78,34 +80,37 @@ jest.mock('../../../utils/Assets/AssetsUtils', () => ({
 // DomainSelectableList mock: exposes onUpdate and renders children with edit button
 const domainSelectableListMock = jest
   .fn()
-  .mockImplementation(({ children, onUpdate, editIconClassName }: any) => (
-    <div data-testid="domain-selectable-list">
-      {/* Render the edit button with the className passed from parent */}
-      <button
-        className={editIconClassName || 'edit-icon'}
-        data-testid="edit-icon"
-        type="button">
-        <div data-testid="edit-icon-svg">Edit</div>
-      </button>
-      {children}
-      <button
-        data-testid="domain-select-submit"
-        onClick={() =>
-          onUpdate?.([
-            { id: 'd1', name: 'd1', displayName: 'Domain 1' },
-            { id: 'd2', name: 'd2', displayName: 'Domain 2' },
-          ])
-        }>
-        Submit Domains
-      </button>
-      <button data-testid="domain-select-clear" onClick={() => onUpdate?.([])}>
-        Clear Domains
-      </button>
-    </div>
-  ));
+  .mockImplementation(
+    ({ children, onUpdate, editIconClassName }: DomainSelectableListProps) => (
+      <div data-testid="domain-selectable-list">
+        {/* Render the edit button with the className passed from parent */}
+        <button
+          className={editIconClassName || 'edit-icon'}
+          data-testid="edit-icon"
+          type="button">
+          <div data-testid="edit-icon-svg">Edit</div>
+        </button>
+        {children}
+        <button
+          data-testid="domain-select-submit"
+          onClick={() =>
+            onUpdate([
+              { id: 'd1', name: 'd1', displayName: 'Domain 1' },
+              { id: 'd2', name: 'd2', displayName: 'Domain 2' },
+            ] as EntityReference[])
+          }>
+          Submit Domains
+        </button>
+        <button data-testid="domain-select-clear" onClick={() => onUpdate([])}>
+          Clear Domains
+        </button>
+      </div>
+    )
+  );
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   __esModule: true,
-  default: (props: any) => domainSelectableListMock(props),
+  default: (props: DomainSelectableListProps) =>
+    domainSelectableListMock(props),
 }));
 
 // Mock getDomainIcon utility
@@ -137,9 +142,7 @@ describe('DomainsSection', () => {
 
   describe('Rendering', () => {
     it('renders header, title and no-data when empty', () => {
-      const { container } = render(
-        <DomainsSection {...(defaultProps as any)} />
-      );
+      const { container } = render(<DomainsSection {...defaultProps} />);
 
       expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
@@ -153,8 +156,15 @@ describe('DomainsSection', () => {
     it('renders existing domains via custom domain cards when provided', () => {
       const { container } = render(
         <DomainsSection
-          {...(defaultProps as any)}
-          domains={[{ id: 'd1', name: 'd1', displayName: 'Domain 1' }]}
+          {...defaultProps}
+          domains={[
+            {
+              id: 'd1',
+              name: 'd1',
+              displayName: 'Domain 1',
+              type: EntityType.DOMAIN,
+            },
+          ]}
         />
       );
 
@@ -166,7 +176,7 @@ describe('DomainsSection', () => {
 
   describe('Edit Functionality', () => {
     it('renders DomainSelectableList when hasPermission is true', () => {
-      render(<DomainsSection {...(defaultProps as any)} />);
+      render(<DomainsSection {...defaultProps} />);
 
       // The DomainSelectableList should be rendered (with edit button)
       expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
@@ -176,8 +186,15 @@ describe('DomainsSection', () => {
     it('shows domain list with edit button when domains are present', () => {
       render(
         <DomainsSection
-          {...(defaultProps as any)}
-          domains={[{ id: 'd1', name: 'd1', displayName: 'Domain 1' }]}
+          {...defaultProps}
+          domains={[
+            {
+              id: 'd1',
+              name: 'd1',
+              displayName: 'Domain 1',
+              type: EntityType.DOMAIN,
+            },
+          ]}
         />
       );
 
@@ -188,9 +205,7 @@ describe('DomainsSection', () => {
     });
 
     it('does not render edit button when hasPermission is false', () => {
-      render(
-        <DomainsSection {...(defaultProps as any)} hasPermission={false} />
-      );
+      render(<DomainsSection {...defaultProps} hasPermission={false} />);
 
       expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
     });
@@ -212,9 +227,7 @@ describe('DomainsSection', () => {
         ],
       });
 
-      render(
-        <DomainsSection {...(defaultProps as any)} onDomainUpdate={onUpdate} />
-      );
+      render(<DomainsSection {...defaultProps} onDomainUpdate={onUpdate} />);
 
       // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
@@ -236,7 +249,7 @@ describe('DomainsSection', () => {
       const error = new Error('failed');
       mockPatchAPI.mockRejectedValue(error);
 
-      render(<DomainsSection {...(defaultProps as any)} />);
+      render(<DomainsSection {...defaultProps} />);
 
       // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
@@ -250,7 +263,7 @@ describe('DomainsSection', () => {
       mockGetEntityAPI.mockResolvedValue({ domains: [] });
       mockPatchAPI.mockResolvedValue({ domains: [] });
 
-      render(<DomainsSection {...(defaultProps as any)} />);
+      render(<DomainsSection {...defaultProps} />);
 
       // No need to click edit - directly clear from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-clear'));
@@ -269,7 +282,7 @@ describe('DomainsSection', () => {
           )
       );
 
-      render(<DomainsSection {...(defaultProps as any)} />);
+      render(<DomainsSection {...defaultProps} />);
 
       // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
@@ -284,9 +297,7 @@ describe('DomainsSection', () => {
     it('shows error when required entity details are missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(
-        <DomainsSection {...(defaultProps as any)} entityId={undefined} />
-      );
+      render(<DomainsSection {...defaultProps} entityId={undefined} />);
 
       // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
@@ -301,9 +312,7 @@ describe('DomainsSection', () => {
 
   describe('CSS and Structure', () => {
     it('has expected structural classes', () => {
-      const { container } = render(
-        <DomainsSection {...(defaultProps as any)} />
-      );
+      const { container } = render(<DomainsSection {...defaultProps} />);
 
       expect(container.querySelector('.domains-section')).toBeInTheDocument();
       expect(container.querySelector('.domains-header')).toBeInTheDocument();

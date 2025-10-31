@@ -12,6 +12,10 @@
  */
 import { render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
+import {
+  SearchedDataProps,
+  SourceType,
+} from '../../SearchedData/SearchedData.interface';
 import EntityDetailsSection from './EntityDetailsSection';
 
 // Mock getEntityChildDetailsV1 to control rendering output and inspect params
@@ -25,8 +29,13 @@ const { getEntityChildDetailsV1 } = jest.requireMock(
   '../../../utils/EntitySummaryPanelUtilsV1'
 );
 
-const baseDataAsset: any = { id: '1', name: 'asset' };
-const baseHighlights: any = { field: ['hit'] };
+const baseDataAsset: SearchedDataProps['data'][number]['_source'] = {
+  id: '1',
+  name: 'asset',
+};
+const baseHighlights: SearchedDataProps['data'][number]['highlight'] = {
+  field: ['hit'],
+};
 
 describe('EntityDetailsSection', () => {
   beforeEach(() => {
@@ -54,7 +63,7 @@ describe('EntityDetailsSection', () => {
   it('returns null when dataAsset is empty', () => {
     const { container } = render(
       <EntityDetailsSection
-        dataAsset={{} as any}
+        dataAsset={{} as SourceType}
         entityType={EntityType.TABLE}
       />
     );
@@ -102,9 +111,9 @@ describe('EntityDetailsSection', () => {
 
     rerender(
       <EntityDetailsSection
-        dataAsset={{ id: '2', name: 'asset2' } as any}
+        dataAsset={{ id: '2', name: 'asset2' }}
         entityType={EntityType.DASHBOARD}
-        highlights={{ field: ['hit2'] } as any}
+        highlights={{ field: ['hit2'] }}
       />
     );
 
