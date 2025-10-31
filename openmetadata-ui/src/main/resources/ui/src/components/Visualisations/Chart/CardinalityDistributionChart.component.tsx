@@ -52,6 +52,12 @@ const CardinalityDistributionChart = ({
 }: CardinalityDistributionChartProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
+
+  const firstDayAllUnique =
+    data.firstDayData?.cardinalityDistribution?.allValuesUnique ?? false;
+  const currentDayAllUnique =
+    data.currentDayData?.cardinalityDistribution?.allValuesUnique ?? false;
+
   const showSingleGraph =
     isUndefined(data.firstDayData?.cardinalityDistribution) ||
     isUndefined(data.currentDayData?.cardinalityDistribution);
@@ -61,22 +67,29 @@ const CardinalityDistributionChart = ({
     []
   );
 
+  const renderPlaceholder = useMemo(
+    () => (placeholderText: string | React.ReactNode) =>
+      (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            width: '100%',
+            minHeight: 350,
+          }}>
+          <ErrorPlaceHolder placeholderText={placeholderText} />
+        </Box>
+      ),
+    []
+  );
+
   if (
     isUndefined(data.firstDayData?.cardinalityDistribution) &&
     isUndefined(data.currentDayData?.cardinalityDistribution)
   ) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          width: '100%',
-        }}>
-        <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
-      </Box>
-    );
+    return renderPlaceholder(noDataPlaceholderText);
   }
 
   const renderTooltip: TooltipProps<string | number, string>['content'] = (
@@ -152,6 +165,11 @@ const CardinalityDistributionChart = ({
     ([, columnProfile]) => !isUndefined(columnProfile?.cardinalityDistribution)
   );
 
+  const bothAllUnique = firstDayAllUnique && currentDayAllUnique;
+  const allValuesUniqueMessage = t(
+    'message.all-values-unique-no-distribution-available'
+  );
+
   return (
     <Box
       data-testid="chart-container"
@@ -160,113 +178,126 @@ const CardinalityDistributionChart = ({
         width: '100%',
         gap: 0,
       }}>
-      {dataEntries.map(([key, columnProfile], index) => {
-        if (
-          isUndefined(columnProfile) ||
-          isUndefined(columnProfile?.cardinalityDistribution)
-        ) {
-          return;
-        }
+      {bothAllUnique
+        ? renderPlaceholder(allValuesUniqueMessage)
+        : dataEntries.map(([key, columnProfile], index) => {
+            if (
+              isUndefined(columnProfile) ||
+              isUndefined(columnProfile?.cardinalityDistribution)
+            ) {
+              return;
+            }
 
-        const cardinalityData = columnProfile.cardinalityDistribution;
+            const cardinalityData = columnProfile.cardinalityDistribution;
+            const isAllUnique = cardinalityData.allValuesUnique ?? false;
 
-        const graphData =
-          cardinalityData.categories?.map((category, i) => ({
-            name: category,
-            count: cardinalityData.counts?.[i] || 0,
-            percentage: cardinalityData.percentages?.[i] || 0,
-          })) || [];
+            const graphData =
+              cardinalityData.categories?.map((category, i) => ({
+                name: category,
+                count: cardinalityData.counts?.[i] || 0,
+                percentage: cardinalityData.percentages?.[i] || 0,
+              })) || [];
 
-        const graphDate = customFormatDateTime(
-          columnProfile?.timestamp || 0,
-          'MMM dd, yyyy'
-        );
+            const graphDate = customFormatDateTime(
+              columnProfile?.timestamp || 0,
+              'MMM dd, yyyy'
+            );
 
-        return (
-          <Box
-            key={key}
-            sx={{
-              flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              px: showSingleGraph ? 4 : 6,
-              py: 2,
-              borderRight:
-                !showSingleGraph && index === 0
-                  ? `1px solid ${theme.palette.grey[200]}`
-                  : 'none',
-            }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                mb: 5,
-              }}>
-              <DataPill data-testid="date">{graphDate}</DataPill>
-              <DataPill data-testid="cardinality-tag">
-                {`${t('label.total-entity', {
-                  entity: t('label.category-plural'),
-                })}: ${cardinalityData.categories?.length || 0}`}
-              </DataPill>
-            </Box>
-            <Box sx={{ flex: 1, minHeight: 350 }}>
-              <ResponsiveContainer
-                debounce={200}
-                id={`${key}-cardinality`}
-                minHeight={300}>
-                <BarChart
-                  className="w-full"
-                  data={graphData}
-                  layout="vertical"
-                  margin={{ left: 16 }}>
-                  <CartesianGrid
-                    horizontal={renderHorizontalGridLine}
-                    stroke={GRAPH_BACKGROUND_COLOR}
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    axisLine={false}
-                    padding={{ left: 16, right: 16 }}
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(props) => axisTickFormatter(props, '%')}
-                    tickLine={false}
-                    type="number"
-                  />
-                  <YAxis
-                    allowDataOverflow
-                    axisLine={false}
-                    dataKey="name"
-                    padding={{ top: 16, bottom: 16 }}
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value: string) =>
-                      value?.length > 15 ? `${value.slice(0, 15)}...` : value
-                    }
-                    tickLine={false}
-                    type="category"
-                    width={120}
-                  />
-                  <Legend />
-                  <Tooltip
-                    content={renderTooltip}
-                    cursor={{
-                      stroke: theme.palette.grey[200],
-                      strokeDasharray: '3 3',
-                    }}
-                  />
-                  <Bar
-                    dataKey="percentage"
-                    fill={CHART_BLUE_1}
-                    radius={[0, 8, 8, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
-          </Box>
-        );
-      })}
+            return (
+              <Box
+                key={key}
+                sx={{
+                  flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  px: showSingleGraph ? 4 : 6,
+                  py: 2,
+                  borderRight:
+                    !showSingleGraph && index === 0
+                      ? `1px solid ${theme.palette.grey[200]}`
+                      : 'none',
+                }}>
+                {isAllUnique ? (
+                  renderPlaceholder(allValuesUniqueMessage)
+                ) : (
+                  <>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: 5,
+                      }}>
+                      <DataPill data-testid="date">{graphDate}</DataPill>
+                      <DataPill data-testid="cardinality-tag">
+                        {`${t('label.total-entity', {
+                          entity: t('label.category-plural'),
+                        })}: ${cardinalityData.categories?.length || 0}`}
+                      </DataPill>
+                    </Box>
+                    <Box sx={{ flex: 1, minHeight: 350 }}>
+                      <ResponsiveContainer
+                        debounce={200}
+                        id={`${key}-cardinality`}
+                        minHeight={300}>
+                        <BarChart
+                          className="w-full"
+                          data={graphData}
+                          layout="vertical"
+                          margin={{ left: 16 }}>
+                          <CartesianGrid
+                            horizontal={renderHorizontalGridLine}
+                            stroke={GRAPH_BACKGROUND_COLOR}
+                            strokeDasharray="3 3"
+                            vertical={false}
+                          />
+                          <XAxis
+                            axisLine={false}
+                            padding={{ left: 16, right: 16 }}
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(props) =>
+                              axisTickFormatter(props, '%')
+                            }
+                            tickLine={false}
+                            type="number"
+                          />
+                          <YAxis
+                            allowDataOverflow
+                            axisLine={false}
+                            dataKey="name"
+                            padding={{ top: 16, bottom: 16 }}
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(value: string) =>
+                              value?.length > 15
+                                ? `${value.slice(0, 15)}...`
+                                : value
+                            }
+                            tickLine={false}
+                            type="category"
+                            width={120}
+                          />
+                          <Legend />
+                          <Tooltip
+                            content={renderTooltip}
+                            cursor={{
+                              stroke: theme.palette.grey[200],
+                              strokeDasharray: '3 3',
+                            }}
+                          />
+                          <Bar
+                            dataKey="percentage"
+                            fill={CHART_BLUE_1}
+                            radius={[0, 8, 8, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </>
+                )}
+              </Box>
+            );
+          })}
     </Box>
   );
 };
