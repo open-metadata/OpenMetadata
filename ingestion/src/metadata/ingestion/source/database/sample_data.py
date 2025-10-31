@@ -512,6 +512,18 @@ class SampleDataSource(
             config=WorkflowSource(**self.model_service_json),
         )
 
+        self.sagemaker_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/models_sagemaker/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.sagemaker_service = self.metadata.get_service_or_create(
+            entity=MlModelService,
+            config=WorkflowSource(**self.sagemaker_service_json),
+        )
+
         self.storage_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/storage/service.json",
@@ -528,6 +540,14 @@ class SampleDataSource(
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/models.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.sagemaker_models = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/models_sagemaker/models.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -829,6 +849,7 @@ class SampleDataSource(
         self.modify_column_descriptions()
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
+        yield from self.ingest_sagemaker_models()
 
     def ingest_domains(self):
 
@@ -1100,9 +1121,11 @@ class SampleDataSource(
                 displayName=file_data.get("displayName"),
                 description=file_data.get("description"),
                 service=self.drive_service.fullyQualifiedName.root,
-                directory=directory_refs.get(file_data["directory"])
-                if file_data.get("directory")
-                else None,
+                directory=(
+                    directory_refs.get(file_data["directory"])
+                    if file_data.get("directory")
+                    else None
+                ),
                 fileType=file_data.get("fileType"),
                 mimeType=file_data.get("mimeType"),
                 fileExtension=file_data.get("fileExtension"),
@@ -1830,8 +1853,13 @@ class SampleDataSource(
 
     def ingest_mlmodels(self) -> Iterable[Either[CreateMlModelRequest]]:
         """
-        Convert sample model data into a Model Entity
-        to feed the metastore
+        Convert MLflow sample model data into MlModel entities
+        Reflects only the metadata that MLflow connector actually extracts:
+        - Registered Models and Model Versions
+        - Hyperparameters from run.data.params
+        - ML Features from model signature
+        - ML Store (storage location)
+        - Source URL to MLflow UI
         """
 
         for model in self.models:
@@ -1854,7 +1882,7 @@ class SampleDataSource(
                     mlStore=(
                         MlStore(
                             storage=model["mlStore"]["storage"],
-                            imageRepository=model["mlStore"]["imageRepository"],
+                            imageRepository=model["mlStore"].get("imageRepository"),
                         )
                         if model.get("mlStore")
                         else None
@@ -1872,6 +1900,49 @@ class SampleDataSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
+
+    def ingest_sagemaker_models(self) -> Iterable[Either[CreateMlModelRequest]]:
+        """
+        Convert SageMaker sample model data into MlModel entities
+        Reflects EXACTLY what SageMaker connector actually extracts:
+        - Model name only
+        - Algorithm (set to default 'mlmodel')
+        - ML Store (S3 storage + ECR image repository)
+
+        NOTE: Tags, description, displayName are NOT extracted by the connector
+        even though _get_tags() method exists (it's never called).
+        """
+
+        for model in self.sagemaker_models:
+            try:
+                # Fetch linked dashboard
+                mlmodel_fqn = model["dashboard"]
+                dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
+
+                if not dashboard:
+                    raise InvalidSampleDataException(
+                        f"Cannot find {mlmodel_fqn} in Sample Dashboards"
+                    )
+
+                # SageMaker connector only extracts: name, algorithm, mlStore, service
+                model_ev = CreateMlModelRequest(
+                    name=model["name"],
+                    algorithm=model["algorithm"],
+                    dashboard=dashboard.fullyQualifiedName.root,
+                    mlStore=(
+                        MlStore(
+                            storage=model["mlStore"]["storage"],
+                            imageRepository=model["mlStore"].get("imageRepository"),
+                        )
+                        if model.get("mlStore")
+                        else None
+                    ),
+                    service=self.sagemaker_service.fullyQualifiedName,
+                )
+                yield Either(right=model_ev)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error ingesting SageMaker MlModel [{model}]: {exc}")
 
     def ingest_containers(self) -> Iterable[Either[CreateContainerRequest]]:
         """
@@ -2500,16 +2571,18 @@ class SampleDataSource(
                         description=random.choice(
                             [f"This is {table_name} description.", None]
                         ),
-                        owners=random.choice(
-                            [
-                                EntityReferenceList(
-                                    [EntityReference(id=owner.id, type="user")]
-                                ),
-                                None,
-                            ]
-                        )
-                        if owner
-                        else None,
+                        owners=(
+                            random.choice(
+                                [
+                                    EntityReferenceList(
+                                        [EntityReference(id=owner.id, type="user")]
+                                    ),
+                                    None,
+                                ]
+                            )
+                            if owner
+                            else None
+                        ),
                     )
                 )
                 yield table_request
