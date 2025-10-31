@@ -26,19 +26,12 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { compare } from 'fast-json-patch';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
-  COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
-  COMMON_AUTH_FIELDS_TO_REMOVE,
-  DEFAULT_AUTHORIZER_CLASS_NAME,
-  DEFAULT_CALLBACK_URL,
-  DEFAULT_CONTAINER_REQUEST_FILTER,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
-  PROVIDERS_WITHOUT_BOT_PRINCIPALS,
-  PROVIDER_FIELD_MAPPINGS,
-  SAML_SSO_DEFAULTS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
@@ -49,7 +42,6 @@ import authorizerConfigSchema from '../../../jsons/configuration/authorizerConfi
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
-  JsonPatchOperation,
   patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
@@ -60,8 +52,22 @@ import {
   transformErrors,
 } from '../../../utils/formUtils';
 import {
+  applySamlConfiguration,
+  cleanupProviderSpecificFields,
+  clearFieldError,
+  createDOMClickHandler,
+  createDOMFocusHandler,
+  createFreshFormData,
+  findChangedFields,
   getProviderDisplayName,
   getProviderIcon,
+  handleClientTypeChange,
+  hasFieldValidationErrors,
+  isValidNonBasicProvider,
+  parseValidationErrors,
+  removeRequiredFields,
+  removeSchemaFields,
+  updateLoadingState,
 } from '../../../utils/SSOUtils';
 import {
   setOidcToken,
@@ -119,56 +125,31 @@ const SSOConfigurationFormRJSF = ({
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
     (config: SecurityConfiguration) => {
-      if (
-        config?.authenticationConfiguration?.provider &&
-        config.authenticationConfiguration.provider !== AuthProvider.Basic
-      ) {
-        setHasExistingConfig(true);
-        setCurrentProvider(config.authenticationConfiguration.provider);
-        const configData = {
-          authenticationConfiguration: config.authenticationConfiguration,
-          authorizerConfiguration: config.authorizerConfiguration,
-        };
-
-        // For SAML, ensure IDP authorityUrl and SP callback fields are populated from root level
-        if (config.authenticationConfiguration.provider === AuthProvider.Saml) {
-          const authConfig =
-            configData.authenticationConfiguration as AuthenticationConfiguration & {
-              samlConfiguration?: {
-                idp?: { authorityUrl?: string };
-                sp?: { callback?: string; acs?: string };
-              };
-            };
-          if (authConfig.samlConfiguration) {
-            // Copy root authority to IDP authorityUrl, or use default if both are empty
-            if (authConfig.samlConfiguration.idp) {
-              if (authConfig.authority) {
-                authConfig.samlConfiguration.idp.authorityUrl =
-                  authConfig.authority;
-              } else if (!authConfig.samlConfiguration.idp.authorityUrl) {
-                // If no authority exists anywhere, use the default
-                authConfig.samlConfiguration.idp.authorityUrl =
-                  SAML_SSO_DEFAULTS.idp.authorityUrl;
-              }
-            }
-            // Copy root callbackUrl to SP callback if not set
-            if (authConfig.callbackUrl && authConfig.samlConfiguration.sp) {
-              authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
-              authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
-            }
-          }
-        }
-
-        setSavedData(configData);
-        setInternalData(configData);
-        setShowForm(true);
-
-        if (forceEditMode) {
-          setIsEditMode(true);
-          setShowForm(true);
-        }
-      } else {
+      if (!isValidNonBasicProvider(config)) {
         setShowProviderSelector(true);
+
+        return;
+      }
+
+      setHasExistingConfig(true);
+      setCurrentProvider(config.authenticationConfiguration.provider);
+
+      const configData = {
+        authenticationConfiguration: config.authenticationConfiguration,
+        authorizerConfiguration: config.authorizerConfiguration,
+      };
+
+      if (config.authenticationConfiguration.provider === AuthProvider.Saml) {
+        applySamlConfiguration(configData);
+      }
+
+      setSavedData(configData);
+      setInternalData(configData);
+      setShowForm(true);
+
+      if (forceEditMode) {
+        setIsEditMode(true);
+        setShowForm(true);
       }
     },
     [forceEditMode]
@@ -190,7 +171,7 @@ const SSOConfigurationFormRJSF = ({
           const config = response.data;
           setupConfigurationState(config);
         }
-      } catch (error) {
+      } catch {
         // No existing configuration, show provider selector
         setShowProviderSelector(true);
       } finally {
@@ -199,10 +180,10 @@ const SSOConfigurationFormRJSF = ({
     };
 
     // Only run if no securityConfig is provided by parent
-    if (!securityConfig) {
-      fetchExistingConfig();
-    } else {
+    if (securityConfig) {
       setIsInitializing(false);
+    } else {
+      fetchExistingConfig();
     }
   }, [selectedProvider, setupConfigurationState, securityConfig]);
 
@@ -215,149 +196,34 @@ const SSOConfigurationFormRJSF = ({
 
   // Handle selectedProvider prop - initialize fresh form when provider is selected
   useEffect(() => {
-    if (selectedProvider) {
-      // If provider is Basic, show provider selector instead
-      if (selectedProvider === AuthProvider.Basic) {
-        setShowProviderSelector(true);
-        setShowForm(false);
-        setIsEditMode(false);
-        setIsInitializing(false);
+    if (!selectedProvider) {
+      return;
+    }
 
-        return;
-      }
-
-      // Clear all existing state first
-      setHasExistingConfig(false);
-      setSavedData(undefined);
-
-      // Initialize fresh form data for the selected provider
-      setCurrentProvider(selectedProvider);
-      setIsEditMode(true);
-      setShowForm(true);
-      setShowProviderSelector(false);
+    // If provider is Basic, show provider selector instead
+    if (selectedProvider === AuthProvider.Basic) {
+      setShowProviderSelector(true);
+      setShowForm(false);
+      setIsEditMode(false);
       setIsInitializing(false);
 
-      // Create fresh form data for the new provider with all required fields
-      // SAML and LDAP are always public clients, OAuth providers default to confidential but can be changed
-      const defaultClientType =
-        selectedProvider === AuthProvider.Saml ||
-        selectedProvider === AuthProvider.LDAP
-          ? ClientType.Public
-          : ClientType.Confidential;
-
-      // Get provider-specific defaults
-      const isGoogle = selectedProvider === AuthProvider.Google;
-      const isSaml = selectedProvider === AuthProvider.Saml;
-
-      const freshFormData = {
-        authenticationConfiguration: {
-          provider: selectedProvider as AuthProvider,
-          providerName: selectedProvider,
-          enableSelfSignup: true,
-          clientType: defaultClientType,
-          // Always include authority and publicKeyUrls for Google (required by backend)
-          ...(isGoogle
-            ? {
-                authority: GOOGLE_SSO_DEFAULTS.authority,
-                publicKeyUrls: GOOGLE_SSO_DEFAULTS.publicKeyUrls,
-              }
-            : {}),
-          // Add SAML-specific configuration
-          ...(isSaml
-            ? {
-                authority: SAML_SSO_DEFAULTS.authority, // Will be populated from IDP authority
-                // callbackUrl is not included here - will be populated from SP callback on submit
-                publicKeyUrls: [],
-                clientId: '',
-                tokenValidationAlgorithm: 'RS256',
-                jwtPrincipalClaims: [],
-                jwtPrincipalClaimsMapping: [],
-                samlConfiguration: {
-                  debugMode: false,
-                  idp: {
-                    entityId: '',
-                    ssoLoginUrl: '',
-                    authorityUrl: SAML_SSO_DEFAULTS.idp.authorityUrl, // Prepopulate with domain/api/auth/login
-                    idpX509Certificate: '',
-                    nameId:
-                      'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-                  },
-                  sp: {
-                    entityId: SAML_SSO_DEFAULTS.sp.entityId,
-                    acs: SAML_SSO_DEFAULTS.sp.acs,
-                    callback: SAML_SSO_DEFAULTS.sp.callback,
-                    spX509Certificate: '',
-                    spPrivateKey: '',
-                  },
-                  security: {
-                    strictMode: false,
-                    tokenValidity: 3600,
-                    wantAssertionsSigned: false,
-                    wantMessagesSigned: false,
-                    sendSignedAuthRequest: false,
-                  },
-                },
-              }
-            : {}),
-          // For confidential clients, fields go in oidcConfiguration
-          // For public clients, use root level fields (but not for SAML which has its own config)
-          ...(!isSaml && defaultClientType === ClientType.Confidential
-            ? {
-                oidcConfiguration: {
-                  type: selectedProvider,
-                  id: '',
-                  secret: '',
-                  scope: 'openid email profile',
-                  discoveryUri: isGoogle
-                    ? GOOGLE_SSO_DEFAULTS.discoveryUri
-                    : '',
-                  useNonce: false,
-                  preferredJwsAlgorithm: 'RS256',
-                  responseType: 'code',
-                  disablePkce: false,
-                  maxClockSkew: 0,
-                  clientAuthenticationMethod: 'client_secret_post',
-                  tokenValidity: isGoogle
-                    ? GOOGLE_SSO_DEFAULTS.tokenValidity
-                    : 0,
-                  customParams: {},
-                  tenant: '',
-                  serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
-                  callbackUrl: DEFAULT_CALLBACK_URL,
-                  maxAge: 0,
-                  prompt: '',
-                  sessionExpiry: isGoogle
-                    ? GOOGLE_SSO_DEFAULTS.sessionExpiry
-                    : 0,
-                },
-              }
-            : !isSaml
-            ? {
-                // For public clients, use root level fields (excluding SAML)
-                authority: isGoogle ? GOOGLE_SSO_DEFAULTS.authority : '',
-                clientId: '',
-                callbackUrl: DEFAULT_CALLBACK_URL,
-                publicKeyUrls: isGoogle
-                  ? GOOGLE_SSO_DEFAULTS.publicKeyUrls
-                  : [],
-                tokenValidationAlgorithm: 'RS256',
-                jwtPrincipalClaims: [],
-                jwtPrincipalClaimsMapping: [],
-              }
-            : {}),
-        } as AuthenticationConfiguration,
-        authorizerConfiguration: {
-          className: DEFAULT_AUTHORIZER_CLASS_NAME,
-          containerRequestFilter: DEFAULT_CONTAINER_REQUEST_FILTER,
-          enforcePrincipalDomain: false,
-          enableSecureSocketConnection: false,
-          adminPrincipals: [],
-          principalDomain: '',
-        } as AuthorizerConfiguration,
-      };
-
-      setInternalData(freshFormData);
+      return;
     }
+
+    // Clear all existing state first
+    setHasExistingConfig(false);
+    setSavedData(undefined);
+
+    // Initialize fresh form data for the selected provider
+    setCurrentProvider(selectedProvider);
+    setIsEditMode(true);
+    setShowForm(true);
+    setShowProviderSelector(false);
+    setIsInitializing(false);
+
+    // Create fresh form data using utility function
+    const freshFormData = createFreshFormData(selectedProvider as AuthProvider);
+    setInternalData(freshFormData);
   }, [selectedProvider]);
 
   const scrollToFirstError = useCallback(
@@ -371,94 +237,9 @@ const SSOConfigurationFormRJSF = ({
     []
   );
 
-  const parseValidationErrors = useCallback(
-    (errors: Array<{ field: string; error: string }>): ErrorSchema => {
-      const errorSchema: ErrorSchema = {};
-
-      errors.forEach((error) => {
-        // Parse the field path to create nested error structure
-        // e.g., "authenticationConfiguration.oidcConfiguration.clientSecret" needs to become:
-        // { authenticationConfiguration: { oidcConfiguration: { clientSecret: { __errors: ["..."] } } } }
-
-        const pathParts = error.field.split('.');
-        let current: ErrorSchema = errorSchema;
-
-        // Navigate/create the nested structure
-        for (let i = 0; i < pathParts.length; i++) {
-          const part = pathParts[i];
-
-          if (i === pathParts.length - 1) {
-            // Last part - add the actual error
-            if (!current[part]) {
-              current[part] = {};
-            }
-            current[part].__errors = [error.error];
-          } else {
-            // Intermediate part - create nested object if needed
-            if (!current[part]) {
-              current[part] = {};
-            }
-            current = current[part] as ErrorSchema;
-          }
-        }
-      });
-
-      return errorSchema;
-    },
-    []
-  );
-
-  // Clear errors for a specific field path
-  const clearFieldError = useCallback((fieldPath: string) => {
-    if (
-      !fieldErrorsRef.current ||
-      Object.keys(fieldErrorsRef.current).length === 0
-    ) {
-      return;
-    }
-
-    // Parse the field path (e.g., "root/authenticationConfiguration/adminPrincipals")
-    const pathParts = fieldPath.replace(/^root\//, '').split('/');
-
-    let current = fieldErrorsRef.current;
-
-    // Navigate through the error structure
-    for (let i = 0; i < pathParts.length; i++) {
-      const part = pathParts[i];
-
-      if (!current[part]) {
-        // Path doesn't exist in errors, nothing to clear
-        return;
-      }
-
-      if (i === pathParts.length - 1) {
-        // We're at the target field, clear its errors
-        delete current[part];
-
-        // Clean up empty parent objects
-        let cleanupCurrent = fieldErrorsRef.current;
-        const cleanupParts = pathParts.slice(0, -1);
-
-        for (let j = 0; j < cleanupParts.length; j++) {
-          const cleanupPart = cleanupParts[j];
-          if (
-            cleanupCurrent[cleanupPart] &&
-            typeof cleanupCurrent[cleanupPart] === 'object'
-          ) {
-            const obj = cleanupCurrent[cleanupPart] as ErrorSchema;
-            if (Object.keys(obj).length === 0) {
-              delete cleanupCurrent[cleanupPart];
-
-              break;
-            }
-            cleanupCurrent = obj;
-          }
-        }
-      } else {
-        // Navigate deeper
-        current = current[part] as ErrorSchema;
-      }
-    }
+  // Wrapper for clearFieldError to work with useCallback and ref
+  const handleClearFieldError = useCallback((fieldPath: string) => {
+    clearFieldError(fieldErrorsRef, fieldPath);
   }, []);
 
   const handleValidationErrors = useCallback(
@@ -492,504 +273,56 @@ const SSOConfigurationFormRJSF = ({
 
         // Show toast only for general errors (no field specified)
         if (generalErrors.length > 0) {
-          generalErrors.forEach((error) => {
+          for (const error of generalErrors) {
             showErrorToast(error.error);
-          });
+          }
         }
-
-        return;
       }
     },
     [parseValidationErrors]
   );
-  const toRecord = (obj: unknown): Record<string, unknown> => {
-    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-      return obj as unknown as Record<string, unknown>;
-    }
-
-    return {};
-  };
-  // Clean up provider-specific fields based on selected provider
-  // Generate JSON Patch operations by comparing old and new data
-  const generatePatches = (
-    oldData: FormData | undefined,
-    newData: FormData | undefined
-  ): JsonPatchOperation[] => {
-    const patches: JsonPatchOperation[] = [];
-
-    if (!oldData || !newData) {
-      return patches;
-    }
-
-    const compareObjects = (
-      oldObj: Record<string, unknown>,
-      newObj: Record<string, unknown>,
-      basePath: string
-    ) => {
-      // Handle authentication configuration
-      if (basePath === '/authenticationConfiguration') {
-        // Compare top-level authentication fields
-        Object.keys(newObj).forEach((key) => {
-          if (
-            key === 'oidcConfiguration' ||
-            key === 'ldapConfiguration' ||
-            key === 'samlConfiguration'
-          ) {
-            // Handle nested configuration objects
-            const newNestedObj = newObj[key] as
-              | Record<string, unknown>
-              | undefined;
-            const oldNestedObj = oldObj[key] as
-              | Record<string, unknown>
-              | undefined;
-
-            if (newNestedObj && oldNestedObj) {
-              Object.keys(newNestedObj).forEach((nestedKey) => {
-                const oldValue = oldNestedObj[nestedKey];
-                const newValue = newNestedObj[nestedKey];
-
-                // Generate patch if values are different
-                const shouldPatch =
-                  JSON.stringify(oldValue) !== JSON.stringify(newValue);
-
-                if (shouldPatch) {
-                  patches.push({
-                    op: 'replace',
-                    path: `${basePath}/${key}/${nestedKey}`,
-                    value: newValue as
-                      | string
-                      | number
-                      | boolean
-                      | Record<string, unknown>
-                      | unknown[]
-                      | null,
-                  });
-                }
-              });
-            } else if (newNestedObj && !oldNestedObj) {
-              // Add new nested configuration
-              patches.push({
-                op: 'add',
-                path: `${basePath}/${key}`,
-                value: newNestedObj,
-              });
-            }
-          } else {
-            // Handle top-level fields
-            const oldValue = oldObj[key];
-            const newValue = newObj[key];
-
-            // Generate patch if values are different
-            const shouldPatch =
-              JSON.stringify(oldValue) !== JSON.stringify(newValue);
-
-            if (shouldPatch) {
-              patches.push({
-                op: 'replace',
-                path: `${basePath}/${key}`,
-                value: newValue as
-                  | string
-                  | number
-                  | boolean
-                  | Record<string, unknown>
-                  | unknown[]
-                  | null,
-              });
-            }
-          }
-        });
-      } else {
-        // Handle authorizer configuration - simple field comparison
-        Object.keys(newObj).forEach((key) => {
-          const oldValue = oldObj[key];
-          const newValue = newObj[key];
-
-          // Generate patch if values are different
-          const shouldPatch =
-            JSON.stringify(oldValue) !== JSON.stringify(newValue);
-
-          if (shouldPatch) {
-            patches.push({
-              op: 'replace',
-              path: `${basePath}/${key}`,
-              value: newValue as
-                | string
-                | number
-                | boolean
-                | Record<string, unknown>
-                | unknown[]
-                | null,
-            });
-          }
-        });
-      }
-    };
-
-    // Generate patches for authentication configuration
-    if (
-      oldData.authenticationConfiguration &&
-      newData.authenticationConfiguration
-    ) {
-      compareObjects(
-        toRecord(oldData.authenticationConfiguration as unknown),
-        toRecord(newData.authenticationConfiguration as unknown),
-        '/authenticationConfiguration'
-      );
-    }
-
-    // Generate patches for authorizer configuration
-    if (oldData.authorizerConfiguration && newData.authorizerConfiguration) {
-      compareObjects(
-        toRecord(oldData.authorizerConfiguration as unknown),
-        toRecord(newData.authorizerConfiguration as unknown),
-        '/authorizerConfiguration'
-      );
-    }
-
-    return patches;
-  };
-
-  const cleanupProviderSpecificFields = (
-    data: FormData | undefined,
-    provider: string
-  ): FormData | undefined => {
-    if (!data) {
-      return undefined;
-    }
-
-    const cleanedData = { ...data };
-
-    if (cleanedData.authenticationConfiguration) {
-      const authConfig = cleanedData.authenticationConfiguration;
-
-      // Remove common unwanted fields that might persist
-      COMMON_AUTH_FIELDS_TO_REMOVE.forEach(
-        (field) => delete authConfig[field as keyof AuthenticationConfiguration]
-      );
-
-      // Set clientType to Public for SAML and LDAP providers
-      if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
-        authConfig.clientType = ClientType.Public;
-      }
-
-      // Remove provider-specific configs that shouldn't be sent
-      const fieldsToRemove = PROVIDER_FIELD_MAPPINGS[provider] || [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'oidcConfiguration',
-      ];
-
-      // Handle oidcConfiguration based on client type
-      if (authConfig.clientType === ClientType.Public) {
-        // For public clients, remove oidcConfiguration entirely
-        fieldsToRemove.forEach(
-          (field) =>
-            delete authConfig[field as keyof AuthenticationConfiguration]
-        );
-        // Also remove secret from root level for public clients
-        delete authConfig.secret;
-      } else {
-        // For confidential clients, keep oidcConfiguration but remove other provider configs
-        const fieldsToActuallyRemove = fieldsToRemove.filter(
-          (field) => field !== 'oidcConfiguration'
-        );
-        fieldsToActuallyRemove.forEach(
-          (field) =>
-            delete authConfig[field as keyof AuthenticationConfiguration]
-        );
-
-        // For confidential clients, populate clientId and callbackUrl from OIDC configuration
-        // since they are hidden in the UI but needed in the authentication object
-        if (
-          authConfig.clientType === ClientType.Confidential &&
-          authConfig.oidcConfiguration
-        ) {
-          const oidcConfig = authConfig.oidcConfiguration as Record<
-            string,
-            unknown
-          >;
-          if (typeof oidcConfig.id === 'string') {
-            authConfig.clientId = oidcConfig.id;
-          }
-          if (typeof oidcConfig.callbackUrl === 'string') {
-            authConfig.callbackUrl = oidcConfig.callbackUrl;
-          }
-          // Clean up serverUrl to ensure it doesn't contain /callback
-          if (typeof oidcConfig.serverUrl === 'string') {
-            const serverUrl = oidcConfig.serverUrl as string;
-            // Remove /callback or any path from serverUrl
-            oidcConfig.serverUrl = serverUrl.replace(/\/callback\/?$/, '');
-          }
-        }
-      }
-
-      // Ensure boolean fields are always included (only for relevant providers)
-      if (authConfig.enableSelfSignup === undefined) {
-        authConfig.enableSelfSignup = true;
-      }
-    }
-
-    if (cleanedData.authorizerConfiguration) {
-      const authorizerConfig = cleanedData.authorizerConfiguration;
-
-      // Remove common authorizer fields that shouldn't be sent
-      COMMON_AUTHORIZER_FIELDS_TO_REMOVE.forEach(
-        (field) =>
-          delete authorizerConfig[field as keyof AuthorizerConfiguration]
-      );
-
-      // Remove bot principals for providers that don't support them (only Azure and Okta should have botPrincipals)
-      if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
-        delete authorizerConfig.botPrincipals;
-      }
-
-      // Ensure boolean fields are always included (for all providers)
-      if (authorizerConfig.enforcePrincipalDomain === undefined) {
-        authorizerConfig.enforcePrincipalDomain = false;
-      }
-      if (authorizerConfig.enableSecureSocketConnection === undefined) {
-        authorizerConfig.enableSecureSocketConnection = false;
-      }
-
-      // Automatically set className and containerRequestFilter for all providers
-      authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
-      authorizerConfig.containerRequestFilter =
-        DEFAULT_CONTAINER_REQUEST_FILTER;
-    }
-
-    // Provider-specific boolean field handling
-    if (cleanedData.authenticationConfiguration?.ldapConfiguration) {
-      const ldapConfig = cleanedData.authenticationConfiguration
-        .ldapConfiguration as Record<string, unknown>;
-
-      // LDAP-specific boolean fields
-      if (ldapConfig.isFullDn === undefined) {
-        ldapConfig.isFullDn = false;
-      }
-      if (ldapConfig.sslEnabled === undefined) {
-        ldapConfig.sslEnabled = false;
-      }
-
-      // Clean up trustStoreConfig based on truststoreFormat
-      if (ldapConfig.trustStoreConfig && ldapConfig.truststoreFormat) {
-        const trustStoreConfig = ldapConfig.trustStoreConfig as Record<
-          string,
-          unknown
-        >;
-        const truststoreFormat = ldapConfig.truststoreFormat as string;
-
-        // Create a new clean trustStoreConfig object
-        const cleanTrustStoreConfig: Record<string, unknown> = {};
-
-        // Only include the configuration that matches the selected format
-        if (
-          truststoreFormat === 'CustomTrustStore' &&
-          trustStoreConfig.customTrustManagerConfig
-        ) {
-          cleanTrustStoreConfig.customTrustManagerConfig =
-            trustStoreConfig.customTrustManagerConfig;
-        }
-        if (
-          truststoreFormat === 'HostName' &&
-          trustStoreConfig.hostNameConfig
-        ) {
-          cleanTrustStoreConfig.hostNameConfig =
-            trustStoreConfig.hostNameConfig;
-        }
-        if (
-          truststoreFormat === 'JVMDefault' &&
-          trustStoreConfig.jvmDefaultConfig
-        ) {
-          cleanTrustStoreConfig.jvmDefaultConfig =
-            trustStoreConfig.jvmDefaultConfig;
-        }
-        if (
-          truststoreFormat === 'TrustAll' &&
-          trustStoreConfig.trustAllConfig
-        ) {
-          cleanTrustStoreConfig.trustAllConfig =
-            trustStoreConfig.trustAllConfig;
-        }
-
-        // Replace the original trustStoreConfig with the clean one
-        ldapConfig.trustStoreConfig = cleanTrustStoreConfig;
-      }
-    }
-
-    if (cleanedData.authenticationConfiguration?.samlConfiguration) {
-      const samlConfig = cleanedData.authenticationConfiguration
-        .samlConfiguration as Record<string, unknown>;
-      const authConfig = cleanedData.authenticationConfiguration;
-
-      // SAML-specific boolean fields
-      if (samlConfig.debugMode === undefined) {
-        samlConfig.debugMode = false;
-      }
-
-      // Process certificates to fix escaping issues and handle authority/callback
-      if (samlConfig.idp && typeof samlConfig.idp === 'object') {
-        const idpConfig = samlConfig.idp as Record<string, unknown>;
-
-        // Copy IDP authorityUrl to root level authority
-        if (
-          idpConfig.authorityUrl &&
-          typeof idpConfig.authorityUrl === 'string'
-        ) {
-          authConfig.authority = idpConfig.authorityUrl as string;
-        }
-
-        if (
-          idpConfig.idpX509Certificate &&
-          typeof idpConfig.idpX509Certificate === 'string'
-        ) {
-          // Fix certificate escaping by replacing \\n with \n
-          idpConfig.idpX509Certificate = (
-            idpConfig.idpX509Certificate as string
-          ).replace(/\\n/g, '\n');
-        }
-      }
-
-      if (samlConfig.sp && typeof samlConfig.sp === 'object') {
-        const spConfig = samlConfig.sp as Record<string, unknown>;
-
-        // Copy SP callback to root level callbackUrl and ensure ACS matches callback
-        if (spConfig.callback && typeof spConfig.callback === 'string') {
-          authConfig.callbackUrl = spConfig.callback as string;
-          // Also ensure ACS has the same value as callback
-          spConfig.acs = spConfig.callback;
-        }
-        if (
-          spConfig.spX509Certificate &&
-          typeof spConfig.spX509Certificate === 'string'
-        ) {
-          // Fix certificate escaping by replacing \\n with \n
-          spConfig.spX509Certificate = (
-            spConfig.spX509Certificate as string
-          ).replace(/\\n/g, '\n');
-        }
-        if (
-          spConfig.spPrivateKey &&
-          typeof spConfig.spPrivateKey === 'string'
-        ) {
-          // Fix private key escaping by replacing \\n with \n
-          spConfig.spPrivateKey = (spConfig.spPrivateKey as string).replace(
-            /\\n/g,
-            '\n'
-          );
-        }
-      }
-
-      if (samlConfig.security) {
-        const securityConfig = samlConfig.security as Record<string, unknown>;
-        if (securityConfig.strictMode === undefined) {
-          securityConfig.strictMode = false;
-        }
-        if (securityConfig.wantAssertionsSigned === undefined) {
-          securityConfig.wantAssertionsSigned = false;
-        }
-        if (securityConfig.wantMessagesSigned === undefined) {
-          securityConfig.wantMessagesSigned = false;
-        }
-        if (securityConfig.sendSignedAuthRequest === undefined) {
-          securityConfig.sendSignedAuthRequest = false;
-        }
-      }
-    }
-
-    return cleanedData;
-  };
 
   const getProviderSpecificSchema = (
     provider: string | undefined,
     isConfigured = false
   ) => {
-    const baseSchema = {
-      properties: {
-        authenticationConfiguration: authenticationConfigSchema,
-        authorizerConfiguration: authorizerConfigSchema,
-      },
-    } as RJSFSchema;
-
-    if (!provider) {
-      return baseSchema;
-    }
-
-    // Deep clone the schema to avoid mutating the original
-    const authSchema = JSON.parse(JSON.stringify(authenticationConfigSchema));
-
-    // For configured SSO, remove providerName from required fields
-    if (
-      isConfigured &&
-      authSchema.required &&
-      Array.isArray(authSchema.required)
-    ) {
-      authSchema.required = authSchema.required.filter(
-        (field: string) => field !== 'providerName'
-      );
-    }
-
-    // For SAML, remove callbackUrl from required fields and properties
-    if (provider === AuthProvider.Saml) {
-      // Remove callbackUrl from properties
-      if (authSchema.properties && authSchema.properties.callbackUrl) {
-        delete authSchema.properties.callbackUrl;
-      }
-
-      // Remove callbackUrl from required array
-      if (authSchema.required && Array.isArray(authSchema.required)) {
-        authSchema.required = authSchema.required.filter(
-          (field: string) => field !== 'callbackUrl'
-        );
-      }
-
-      return {
-        properties: {
-          authenticationConfiguration: authSchema,
-          authorizerConfiguration: authorizerConfigSchema,
-        },
-      } as RJSFSchema;
-    }
-
-    // For Custom OIDC, remove LDAP and SAML configuration sections and clientType field
-    if (provider === AuthProvider.CustomOidc) {
-      // Remove ldapConfiguration, samlConfiguration, and clientType from properties
-      if (authSchema.properties) {
-        if (authSchema.properties.ldapConfiguration) {
-          delete authSchema.properties.ldapConfiguration;
-        }
-        if (authSchema.properties.samlConfiguration) {
-          delete authSchema.properties.samlConfiguration;
-        }
-        if (authSchema.properties.clientType) {
-          delete authSchema.properties.clientType;
-        }
-      }
-
-      // Remove from required array if present
-      if (authSchema.required && Array.isArray(authSchema.required)) {
-        authSchema.required = authSchema.required.filter(
-          (field: string) =>
-            field !== 'ldapConfiguration' &&
-            field !== 'samlConfiguration' &&
-            field !== 'clientType'
-        );
-      }
-
-      return {
-        properties: {
-          authenticationConfiguration: authSchema,
-          authorizerConfiguration: authorizerConfigSchema,
-        },
-      } as RJSFSchema;
-    }
-
-    // Return the modified schema for all cases
-    return {
+    const createSchemaWithAuth = (authSchema: Record<string, unknown>) => ({
       properties: {
         authenticationConfiguration: authSchema,
         authorizerConfiguration: authorizerConfigSchema,
       },
-    } as RJSFSchema;
+    });
+
+    if (!provider) {
+      return createSchemaWithAuth(authenticationConfigSchema) as RJSFSchema;
+    }
+
+    // Deep clone the schema to avoid mutating the original
+    const authSchema = structuredClone(authenticationConfigSchema);
+
+    // For configured SSO, remove providerName from required fields
+    if (isConfigured) {
+      removeRequiredFields(authSchema, ['providerName']);
+    }
+
+    // Provider-specific schema modifications
+    if (provider === AuthProvider.Saml) {
+      removeSchemaFields(authSchema, ['callbackUrl']);
+      removeRequiredFields(authSchema, ['callbackUrl']);
+    } else if (provider === AuthProvider.CustomOidc) {
+      removeSchemaFields(authSchema, [
+        'ldapConfiguration',
+        'samlConfiguration',
+        'clientType',
+      ]);
+      removeRequiredFields(authSchema, [
+        'ldapConfiguration',
+        'samlConfiguration',
+        'clientType',
+      ]);
+    }
+
+    return createSchemaWithAuth(authSchema) as RJSFSchema;
   };
 
   const customFields: RegistryFieldsType = {
@@ -1004,76 +337,71 @@ const SSOConfigurationFormRJSF = ({
   // Custom validate function to inject our validation errors
   const customValidate: CustomValidator<FormData> = useCallback(
     (_formData: FormData | undefined, errors: FormValidation<FormData>) => {
-      // Add our custom validation errors
       if (
-        fieldErrorsRef.current &&
-        Object.keys(fieldErrorsRef.current).length > 0
+        !fieldErrorsRef.current ||
+        Object.keys(fieldErrorsRef.current).length === 0
       ) {
-        // Traverse the error schema and add errors to the form errors object
-        const addErrors = (
-          errorObj: ErrorSchema,
-          formErrorObj: FormValidation<unknown>,
-          path: string[] = []
-        ) => {
-          Object.keys(errorObj).forEach((key) => {
-            if (key === '__errors' && Array.isArray(errorObj[key])) {
-              // RJSF expects errors to be added via addError method or direct assignment
-              // Check if addError method exists, otherwise use direct assignment
-              if (typeof formErrorObj.addError === 'function') {
-                (errorObj[key] as string[]).forEach((msg: string) => {
-                  formErrorObj.addError(msg);
-                });
-              } else {
-                // Direct assignment for error messages
-                if (!formErrorObj.__errors) {
-                  formErrorObj.__errors = [];
-                }
-                formErrorObj.__errors.push(...(errorObj[key] as string[]));
-              }
-            } else if (
-              typeof errorObj[key] === 'object' &&
-              errorObj[key] !== null
-            ) {
-              // Recurse into nested objects
-              // Cast to Record to allow string indexing
-              const formErrorObjRecord = formErrorObj as unknown as Record<
-                string,
-                FormValidation<unknown>
-              >;
-              if (!formErrorObjRecord[key]) {
-                // For nested fields that might not exist in the errors object yet
-                formErrorObjRecord[key] = {} as FormValidation<unknown>;
-              }
-              addErrors(errorObj[key] as ErrorSchema, formErrorObjRecord[key], [
-                ...path,
-                key,
-              ]);
-            }
-          });
-        };
-
-        // Apply errors to the appropriate fields
-        if (fieldErrorsRef.current.authenticationConfiguration) {
-          if (!errors.authenticationConfiguration) {
-            errors.authenticationConfiguration =
-              {} as FormValidation<AuthenticationConfiguration>;
-          }
-          addErrors(
-            fieldErrorsRef.current.authenticationConfiguration,
-            errors.authenticationConfiguration as FormValidation<unknown>
-          );
-        }
-        if (fieldErrorsRef.current.authorizerConfiguration) {
-          if (!errors.authorizerConfiguration) {
-            errors.authorizerConfiguration =
-              {} as FormValidation<AuthorizerConfiguration>;
-          }
-          addErrors(
-            fieldErrorsRef.current.authorizerConfiguration,
-            errors.authorizerConfiguration as FormValidation<unknown>
-          );
-        }
+        return errors;
       }
+
+      // Helper to add error messages to form validation object
+      const addErrorMessages = (
+        errorMessages: string[],
+        formErrorObj: FormValidation<unknown>
+      ): void => {
+        if (typeof formErrorObj.addError === 'function') {
+          for (const msg of errorMessages) {
+            formErrorObj.addError(msg);
+          }
+        } else {
+          formErrorObj.__errors ??= [];
+
+          formErrorObj.__errors.push(...errorMessages);
+        }
+      };
+
+      // Helper to recursively add errors from error schema to form errors
+      const applyErrorsRecursively = (
+        errorSchema: ErrorSchema,
+        formErrors: FormValidation<unknown>
+      ): void => {
+        for (const [key, value] of Object.entries(errorSchema)) {
+          if (key === '__errors' && Array.isArray(value)) {
+            addErrorMessages(value, formErrors);
+          } else if (value && typeof value === 'object') {
+            const formErrorsRecord = formErrors as unknown as Record<
+              string,
+              FormValidation<unknown>
+            >;
+            formErrorsRecord[key] ??= {} as FormValidation<unknown>;
+            applyErrorsRecursively(value as ErrorSchema, formErrorsRecord[key]);
+          }
+        }
+      };
+
+      // Helper to apply errors for a specific configuration section
+      const applyConfigurationErrors = <T,>(
+        configKey: 'authenticationConfiguration' | 'authorizerConfiguration'
+      ): void => {
+        const fieldErrors = fieldErrorsRef.current?.[configKey];
+        if (!fieldErrors) {
+          return;
+        }
+
+        errors[configKey] ??= {} as FormValidation<T>;
+
+        applyErrorsRecursively(
+          fieldErrors,
+          errors[configKey] as FormValidation<unknown>
+        );
+      };
+
+      applyConfigurationErrors<AuthenticationConfiguration>(
+        'authenticationConfiguration'
+      );
+      applyConfigurationErrors<AuthorizerConfiguration>(
+        'authorizerConfiguration'
+      );
 
       return errors;
     },
@@ -1098,16 +426,12 @@ const SSOConfigurationFormRJSF = ({
     };
 
     // Make clientType non-editable for existing SSO configurations
-    if (hasExistingConfig && savedData) {
-      authConfig.clientType = {
-        'ui:widget': 'hidden',
-        'ui:hideError': true,
-      };
-    } else if (
+    // Hide clientType for SAML/LDAP since they're always public
+    if (
+      (hasExistingConfig && savedData) ||
       currentProvider === AuthProvider.Saml ||
       currentProvider === AuthProvider.LDAP
     ) {
-      // Hide clientType for SAML/LDAP since they're always public
       authConfig.clientType = {
         'ui:widget': 'hidden',
         'ui:hideError': true,
@@ -1127,11 +451,9 @@ const SSOConfigurationFormRJSF = ({
       } as UISchemaObject;
     } else if (currentClientType === ClientType.Confidential) {
       // The schema will be shown with OIDC prefixed labels from the constants
-      if (!authConfig['oidcConfiguration']) {
-        authConfig['oidcConfiguration'] = {
-          'ui:title': 'OIDC Configuration',
-        };
-      }
+      authConfig['oidcConfiguration'] ??= {
+        'ui:title': 'OIDC Configuration',
+      };
       // Hide root-level clientId and callbackUrl for confidential clients since we have OIDC equivalents
       authConfig.clientId = {
         'ui:widget': 'hidden',
@@ -1178,55 +500,6 @@ const SSOConfigurationFormRJSF = ({
     hideBorder,
   ]);
 
-  // Helper function to find changed fields between two objects
-  const findChangedFields = (
-    oldData: unknown,
-    newData: unknown,
-    path: string[] = []
-  ): string[] => {
-    const changedFields: string[] = [];
-
-    if (!oldData || !newData) {
-      return changedFields;
-    }
-
-    // Type guard to check if value is an object
-    const isObject = (val: unknown): val is Record<string, unknown> => {
-      return typeof val === 'object' && val !== null && !Array.isArray(val);
-    };
-
-    if (!isObject(oldData) || !isObject(newData)) {
-      return changedFields;
-    }
-
-    // Get all keys from both objects
-    const allKeys = new Set([
-      ...Object.keys(oldData || {}),
-      ...Object.keys(newData || {}),
-    ]);
-
-    for (const key of allKeys) {
-      const currentPath = [...path, key];
-      const oldValue = oldData[key];
-      const newValue = newData[key];
-
-      // Check if values are different
-      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-        // If the value is an object, recursively check for nested changes
-        if (isObject(newValue)) {
-          changedFields.push(
-            ...findChangedFields(oldValue, newValue, currentPath)
-          );
-        } else {
-          // Value has changed, add the field path
-          changedFields.push('root/' + currentPath.join('/'));
-        }
-      }
-    }
-
-    return changedFields;
-  };
-
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
     if (e.formData) {
@@ -1239,79 +512,17 @@ const SSOConfigurationFormRJSF = ({
         Object.keys(fieldErrorsRef.current).length > 0
       ) {
         const changedFields = findChangedFields(internalData, newFormData);
-        changedFields.forEach((fieldPath) => {
-          clearFieldError(fieldPath);
-        });
+        for (const fieldPath of changedFields) {
+          handleClearFieldError(fieldPath);
+        }
       }
 
-      // Check if client type changed
+      // Handle client type changes (Confidential ↔ Public transitions)
       const previousClientType =
         internalData?.authenticationConfiguration?.clientType;
       const newClientType = authConfig?.clientType;
 
-      if (previousClientType !== newClientType && authConfig) {
-        // If switching from Confidential to Public, move callback URL from OIDC to root
-        if (
-          newClientType === ClientType.Public &&
-          previousClientType === ClientType.Confidential
-        ) {
-          const oidcConfig = authConfig.oidcConfiguration as
-            | Record<string, unknown>
-            | undefined;
-          if (!authConfig.callbackUrl && oidcConfig?.callbackUrl) {
-            authConfig.callbackUrl = oidcConfig.callbackUrl as string;
-          } else if (!authConfig.callbackUrl) {
-            // Set default callback URL if not present
-            authConfig.callbackUrl = DEFAULT_CALLBACK_URL;
-          }
-
-          // For Google SSO, prepopulate Authority and Public Key URLs when switching to Public
-          const isGoogle = authConfig.provider === AuthProvider.Google;
-          if (isGoogle) {
-            authConfig.authority = GOOGLE_SSO_DEFAULTS.authority;
-            authConfig.publicKeyUrls = GOOGLE_SSO_DEFAULTS.publicKeyUrls;
-          }
-        }
-        // If switching from Public to Confidential, move callback URL from root to OIDC
-        else if (
-          newClientType === ClientType.Confidential &&
-          previousClientType === ClientType.Public
-        ) {
-          if (!authConfig.oidcConfiguration) {
-            authConfig.oidcConfiguration = {};
-          }
-          const oidcConfig = authConfig.oidcConfiguration as Record<
-            string,
-            unknown
-          >;
-          if (!oidcConfig.callbackUrl && authConfig.callbackUrl) {
-            oidcConfig.callbackUrl = authConfig.callbackUrl;
-          } else if (!oidcConfig.callbackUrl) {
-            // Set default callback URL if not present
-            oidcConfig.callbackUrl = DEFAULT_CALLBACK_URL;
-          }
-
-          // For Google SSO, prepopulate OIDC fields when switching to Confidential
-          const isGoogle = authConfig.provider === AuthProvider.Google;
-          if (isGoogle) {
-            oidcConfig.type = AuthProvider.Google;
-            oidcConfig.discoveryUri = GOOGLE_SSO_DEFAULTS.discoveryUri;
-            oidcConfig.tokenValidity = GOOGLE_SSO_DEFAULTS.tokenValidity;
-            oidcConfig.sessionExpiry = GOOGLE_SSO_DEFAULTS.sessionExpiry;
-            oidcConfig.serverUrl = GOOGLE_SSO_DEFAULTS.serverUrl;
-            // Set default values for other required OIDC fields
-            oidcConfig.scope = oidcConfig.scope || 'openid email profile';
-            oidcConfig.useNonce = oidcConfig.useNonce ?? false;
-            oidcConfig.preferredJwsAlgorithm =
-              oidcConfig.preferredJwsAlgorithm || 'RS256';
-            oidcConfig.responseType = oidcConfig.responseType || 'code';
-            oidcConfig.disablePkce = oidcConfig.disablePkce ?? false;
-            oidcConfig.maxClockSkew = oidcConfig.maxClockSkew ?? 0;
-            oidcConfig.clientAuthenticationMethod =
-              oidcConfig.clientAuthenticationMethod || 'client_secret_post';
-          }
-        }
-      }
+      handleClientTypeChange(authConfig, previousClientType, newClientType);
 
       setInternalData(newFormData);
 
@@ -1329,62 +540,8 @@ const SSOConfigurationFormRJSF = ({
 
   // Add DOM event listeners for field focus tracking
   useEffect(() => {
-    const extractFieldName = (fieldId: string): string => {
-      // Extract meaningful field name from RJSF field ID
-      // Examples:
-      // "root/authenticationConfiguration/clientId" -> "clientId"
-      // "root/authenticationConfiguration/authority" -> "authority"
-      const parts = fieldId.split('/');
-      const lastPart = parts[parts.length - 1];
-
-      // Handle common field mappings for SSO documentation
-      const fieldMappings: Record<string, string> = {
-        clientSecret: 'clientSecret',
-        secret: 'clientSecret', // Map 'secret' to 'clientSecret' for documentation
-        authority: 'authority',
-        domain: 'authority', // Auth0 uses 'domain' but docs show 'authority'
-        callbackUrl: 'callbackUrl',
-        enableSelfSignup: 'enableSelfSignup',
-        scopes: 'scopes',
-        secretKey: 'clientSecret', // Auth0 secret key maps to clientSecret
-        oidcConfiguration: 'oidcConfiguration',
-        samlConfiguration: 'samlConfiguration',
-        ldapConfiguration: 'ldapConfiguration',
-        providerName: 'providerName',
-      };
-
-      return fieldMappings[lastPart] || lastPart;
-    };
-
-    const handleDOMFocus = (event: FocusEvent) => {
-      const target = event.target as HTMLElement;
-      // Look for the closest field container with an id
-      let element = target;
-      while (element && element !== document.body) {
-        if (element.id && element.id.includes('root')) {
-          const fieldName = extractFieldName(element.id);
-          setActiveField(fieldName);
-
-          break;
-        }
-        element = element.parentElement as HTMLElement;
-      }
-    };
-
-    const handleDOMClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      // Look for the closest field container with an id
-      let element = target;
-      while (element && element !== document.body) {
-        if (element.id && element.id.includes('root')) {
-          const fieldName = extractFieldName(element.id);
-          setActiveField(fieldName);
-
-          break;
-        }
-        element = element.parentElement as HTMLElement;
-      }
-    };
+    const handleDOMFocus = createDOMFocusHandler(setActiveField);
+    const handleDOMClick = createDOMClickHandler(setActiveField);
 
     // Add event listeners when form is shown
     if (showForm) {
@@ -1398,192 +555,186 @@ const SSOConfigurationFormRJSF = ({
     };
   }, [showForm]);
 
-  const handleSave = async () => {
-    // Only set main form loading if not saving through modal
-    if (!isModalSave) {
-      setIsLoading(true);
-    }
+  // Helper: Process validation error and update loading state
+  const handleValidationError = useCallback(
+    (
+      validationResult:
+        | SecurityValidationResponse
+        | { status: string; errors: Array<{ field: string; error: string }> }
+    ) => {
+      handleValidationErrors(validationResult);
+      updateLoadingState(isModalSave, setIsLoading, false);
+    },
+    [isModalSave, handleValidationErrors]
+  );
 
-    // Clear any existing field errors
-    fieldErrorsRef.current = {};
+  // Helper: Process API error response
+  const handleApiError = useCallback(
+    (error: unknown) => {
+      if (hasFieldValidationErrors(error)) {
+        handleValidationErrors(error.response.data);
+      } else {
+        showErrorToast(error as AxiosError);
+      }
+      updateLoadingState(isModalSave, setIsLoading, false);
+    },
+    [isModalSave, handleValidationErrors]
+  );
 
-    try {
-      const currentFormData = internalData;
-
-      // Clean up provider-specific fields before submission
-      const cleanedFormData = cleanupProviderSpecificFields(
-        currentFormData,
-        currentFormData?.authenticationConfiguration?.provider as string
-      );
-
-      const payload: SecurityConfiguration = {
-        authenticationConfiguration:
-          cleanedFormData?.authenticationConfiguration as SecurityConfiguration['authenticationConfiguration'],
-        authorizerConfiguration:
-          cleanedFormData?.authorizerConfiguration as SecurityConfiguration['authorizerConfiguration'],
-      };
-
+  // Helper: Validate new SSO configuration
+  const validateConfiguration = useCallback(
+    async (payload: SecurityConfiguration): Promise<boolean> => {
       try {
-        // Use PATCH for existing configurations, PUT with validation for new ones
-        if (hasExistingConfig && savedData) {
-          // For existing configurations, skip validation and directly PATCH
-          // Generate patches for existing configuration
-          const allPatches = generatePatches(savedData, cleanedFormData);
+        const validationResponse: {
+          data:
+            | SecurityValidationResponse
+            | {
+                status: string;
+                errors: Array<{ field: string; error: string }>;
+              };
+        } = await validateSecurityConfiguration(payload);
+        const validationResult = validationResponse.data;
 
-          // Apply security configuration patches using the new endpoint
-          if (allPatches.length > 0) {
-            await patchSecurityConfiguration(allPatches);
-          }
-        } else {
-          // For new configurations, validate first then apply
-          try {
-            const validationResponse: {
-              data:
-                | SecurityValidationResponse
-                | {
-                    status: string;
-                    errors: Array<{ field: string; error: string }>;
-                  };
-            } = await validateSecurityConfiguration(payload);
-            const validationResult = validationResponse.data;
-
-            // Check for validation errors - handle both formats
-            // New format with field-level errors
-            if (
-              'errors' in validationResult &&
-              Array.isArray(validationResult.errors) &&
-              validationResult.errors.length > 0
-            ) {
-              handleValidationErrors(validationResult);
-              // Only update main form loading state if not modal save
-              if (!isModalSave) {
-                setIsLoading(false);
-              }
-
-              return;
-            }
-
-            // Old format or status check
-            if (
-              validationResult.status === 'failed' ||
-              validationResult.status !== VALIDATION_STATUS.SUCCESS
-            ) {
-              handleValidationErrors(validationResult);
-              // Only update main form loading state if not modal save
-              if (!isModalSave) {
-                setIsLoading(false);
-              }
-
-              return;
-            }
-
-            // Validation successful
-          } catch (error) {
-            // Check if error response contains field-level validation errors
-            const axiosError = error as AxiosError;
-            if (
-              axiosError.response?.data &&
-              typeof axiosError.response.data === 'object' &&
-              'errors' in axiosError.response.data
-            ) {
-              handleValidationErrors(
-                axiosError.response.data as {
-                  status: string;
-                  errors: Array<{ field: string; error: string }>;
-                }
-              );
-            } else {
-              showErrorToast(error as AxiosError);
-            }
-            // Only update main form loading state if not modal save
-            if (!isModalSave) {
-              setIsLoading(false);
-            }
-
-            return;
-          }
-
-          // Use full PUT for new configurations after validation passes
-          await applySecurityConfiguration(payload);
-        }
-      } catch (error) {
-        // Check if error response contains field-level validation errors
-        const axiosError = error as AxiosError;
+        // Check for field-level errors (new format)
         if (
-          axiosError.response?.data &&
-          typeof axiosError.response.data === 'object' &&
-          'errors' in axiosError.response.data
+          'errors' in validationResult &&
+          Array.isArray(validationResult.errors) &&
+          validationResult.errors.length > 0
         ) {
-          handleValidationErrors(
-            axiosError.response.data as {
-              status: string;
-              errors: Array<{ field: string; error: string }>;
-            }
-          );
-        } else {
-          showErrorToast(error as AxiosError);
-        }
-        // Only update main form loading state if not modal save
-        if (!isModalSave) {
-          setIsLoading(false);
+          handleValidationError(validationResult);
+
+          return false;
         }
 
-        return;
+        // Check for status-based errors (old format)
+        if (
+          validationResult.status === 'failed' ||
+          validationResult.status !== VALIDATION_STATUS.SUCCESS
+        ) {
+          handleValidationError(validationResult);
+
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        handleApiError(error);
+
+        return false;
+      }
+    },
+    [handleValidationError, handleApiError]
+  );
+
+  // Helper: Save existing configuration using PATCH
+  const saveExistingConfiguration = useCallback(
+    async (cleanedFormData: FormData): Promise<boolean> => {
+      if (!savedData) {
+        return false;
       }
 
-      // Only do logout process for new configurations, not existing ones
-      if (!hasExistingConfig) {
-        // Keep the loading state active to prevent blank screen
-        // The page will navigate away so we don't need to reset states
+      const allPatches = compare(savedData, cleanedFormData);
+      if (allPatches.length > 0) {
+        await patchSecurityConfiguration(allPatches);
+      }
 
-        // Clear session and navigate to signin
-        // Don't update the auth config in the store to avoid triggering re-renders
-        // The signin page will fetch the fresh config when it loads
+      return true;
+    },
+    [savedData]
+  );
+
+  // Helper: Save new configuration with validation
+  const saveNewConfiguration = useCallback(
+    async (payload: SecurityConfiguration): Promise<boolean> => {
+      const isValid = await validateConfiguration(payload);
+      if (!isValid) {
+        return false;
+      }
+
+      await applySecurityConfiguration(payload);
+
+      return true;
+    },
+    [validateConfiguration]
+  );
+
+  // Helper: Handle post-save actions (logout or success toast)
+  const handlePostSaveActions = useCallback(
+    async (cleanedFormData: FormData) => {
+      if (hasExistingConfig) {
+        // For existing configs, update saved data and show success
+        setSavedData(cleanedFormData);
+        updateLoadingState(isModalSave, setIsLoading, false);
+        showSuccessToast(t('message.configuration-save-success'));
+      } else {
+        // For new configs, clear session and redirect to signin
         try {
-          // Clear tokens and session
           sessionStorage.clear();
           localStorage.clear();
           await setOidcToken('');
           await setRefreshToken('');
-
-          // Reset user details without triggering logout flow
           setIsAuthenticated(false);
           setCurrentUser({} as User);
           removeSession();
-        } catch (error) {
+        } catch {
           // Silent fail for storage operations
         }
-
-        // Force navigation to signin page to test new SSO configuration
-        window.location.replace('/signin');
-      } else {
-        // For existing configs, just update the saved data and stay in edit mode
-        setSavedData(cleanedFormData);
-
-        // Only update main form loading state if not modal save
-        if (!isModalSave) {
-          setIsLoading(false);
-        }
-
-        // Keep edit mode enabled so user can continue editing
-        // Show success toast for existing config save
-        showSuccessToast(t('message.configuration-save-success'));
+        globalThis.location.replace('/signin');
       }
+    },
+    [hasExistingConfig, isModalSave, t, setIsAuthenticated, setCurrentUser]
+  );
+
+  const handleSave = async () => {
+    updateLoadingState(isModalSave, setIsLoading, true);
+    fieldErrorsRef.current = {};
+
+    try {
+      // Prepare payload
+      const cleanedFormData = cleanupProviderSpecificFields(
+        internalData,
+        internalData?.authenticationConfiguration?.provider as string
+      );
+
+      if (!cleanedFormData) {
+        updateLoadingState(isModalSave, setIsLoading, false);
+
+        return;
+      }
+
+      const payload: SecurityConfiguration = {
+        authenticationConfiguration:
+          cleanedFormData.authenticationConfiguration,
+        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
+      };
+
+      // Save configuration (PATCH for existing, PUT with validation for new)
+      try {
+        const success =
+          hasExistingConfig && savedData
+            ? await saveExistingConfiguration(cleanedFormData)
+            : await saveNewConfiguration(payload);
+
+        if (!success) {
+          return;
+        }
+      } catch (error) {
+        handleApiError(error);
+
+        return;
+      }
+
+      // Handle post-save actions
+      await handlePostSaveActions(cleanedFormData);
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : t('message.configuration-save-failed');
       showErrorToast(errorMessage);
-      // Only update main form loading state if not modal save
-      if (!isModalSave) {
-        setIsLoading(false);
-      }
+      updateLoadingState(isModalSave, setIsLoading, false);
     } finally {
-      // Only update main form loading state if not modal save
-      if (!isModalSave) {
-        setIsLoading(false);
-      }
+      updateLoadingState(isModalSave, setIsLoading, false);
     }
   };
 
@@ -1644,7 +795,7 @@ const SSOConfigurationFormRJSF = ({
       // If fresh/new form, proceed with logout process and redirect
       // This will trigger the logout and sign-in redirect process
       handleCancelConfirm();
-    } catch (error) {
+    } catch {
       setShowCancelModal(false);
       setModalSaveLoading(false);
       setIsModalSave(false);
@@ -1662,75 +813,9 @@ const SSOConfigurationFormRJSF = ({
       onProviderSelect(provider);
     }
 
-    // Initialize form data with selected provider for new configuration with all required fields
-    // SAML and LDAP are always public clients, OAuth providers default to confidential but can be changed
-    const defaultClientType =
-      provider === AuthProvider.Saml || provider === AuthProvider.LDAP
-        ? ClientType.Public
-        : ClientType.Confidential;
-
-    // Get Google-specific defaults if applicable
-    const isGoogle = provider === AuthProvider.Google;
-
-    setInternalData({
-      authenticationConfiguration: {
-        provider: provider,
-        providerName: provider,
-        enableSelfSignup: false,
-        clientType: defaultClientType,
-        // Always include authority and publicKeyUrls for Google (required by backend)
-        ...(isGoogle
-          ? {
-              authority: GOOGLE_SSO_DEFAULTS.authority,
-              publicKeyUrls: GOOGLE_SSO_DEFAULTS.publicKeyUrls,
-            }
-          : {}),
-        // For confidential clients, fields go in oidcConfiguration
-        // For public clients, use root level fields
-        ...(defaultClientType === ClientType.Confidential
-          ? {
-              oidcConfiguration: {
-                type: provider,
-                id: '',
-                secret: '',
-                scope: 'openid email profile',
-                discoveryUri: isGoogle ? GOOGLE_SSO_DEFAULTS.discoveryUri : '',
-                useNonce: false,
-                preferredJwsAlgorithm: 'RS256',
-                responseType: 'code',
-                disablePkce: false,
-                maxClockSkew: 0,
-                clientAuthenticationMethod: 'client_secret_post',
-                tokenValidity: isGoogle ? GOOGLE_SSO_DEFAULTS.tokenValidity : 0,
-                customParams: {},
-                tenant: '',
-                serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
-                callbackUrl: DEFAULT_CALLBACK_URL,
-                maxAge: 0,
-                prompt: '',
-                sessionExpiry: isGoogle ? GOOGLE_SSO_DEFAULTS.sessionExpiry : 0,
-              },
-            }
-          : {
-              // For public clients, use root level fields
-              authority: isGoogle ? GOOGLE_SSO_DEFAULTS.authority : '',
-              clientId: '',
-              callbackUrl: DEFAULT_CALLBACK_URL,
-              publicKeyUrls: isGoogle ? GOOGLE_SSO_DEFAULTS.publicKeyUrls : [],
-              tokenValidationAlgorithm: 'RS256',
-              jwtPrincipalClaims: [],
-              jwtPrincipalClaimsMapping: [],
-            }),
-      } as AuthenticationConfiguration,
-      authorizerConfiguration: {
-        className: DEFAULT_AUTHORIZER_CLASS_NAME,
-        containerRequestFilter: DEFAULT_CONTAINER_REQUEST_FILTER,
-        enforcePrincipalDomain: false,
-        enableSecureSocketConnection: false,
-        adminPrincipals: [],
-        principalDomain: '',
-      } as AuthorizerConfiguration,
-    });
+    // Create fresh form data using utility function
+    const freshFormData = createFreshFormData(provider);
+    setInternalData(freshFormData);
   };
 
   if (isInitializing) {
@@ -1762,7 +847,7 @@ const SSOConfigurationFormRJSF = ({
           customValidate={customValidate}
           fields={customFields}
           formContext={{
-            clearFieldError,
+            clearFieldError: handleClearFieldError,
           }}
           formData={internalData}
           idSeparator="/"

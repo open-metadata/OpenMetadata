@@ -21,7 +21,11 @@ import '@testing-library/jest-dom/extend-expect';
 import { TextDecoder, TextEncoder } from 'util';
 
 // eslint-disable-next-line no-undef
-Object.assign(global, { TextDecoder, TextEncoder });
+Object.assign(global, {
+  TextDecoder,
+  TextEncoder,
+  structuredClone: (v) => JSON.parse(JSON.stringify(v)),
+});
 
 // Reference: https://github.com/ant-design/ant-design/issues/21096
 Object.defineProperty(window, 'matchMedia', {
