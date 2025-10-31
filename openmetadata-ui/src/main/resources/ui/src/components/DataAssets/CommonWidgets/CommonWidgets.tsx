@@ -407,7 +407,12 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <DomainExpertWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 multiple showDomainHeading />;
+      return (
+        <DomainLabelV2
+          showDomainHeading
+          multiple={entityRules.canAddMultipleDomains}
+        />
+      );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

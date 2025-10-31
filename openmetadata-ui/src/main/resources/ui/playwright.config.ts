@@ -84,6 +84,15 @@ export default defineConfig({
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
     },
+    {
+      name: 'DataAssetRulesEnabled',
+      testMatch: /DataAssetRulesEnabled\.spec\.ts/,
+    },
+    {
+      name: 'DataAssetRulesDisabled',
+      testMatch: /DataAssetRulesDisabled\.spec\.ts/,
+      dependencies: ['DataAssetRulesEnabled'], // ensures serial execution between groups
+    },
   ],
 
   // Increase timeout for the test
