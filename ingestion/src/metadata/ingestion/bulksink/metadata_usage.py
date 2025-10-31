@@ -122,10 +122,18 @@ class MetadataUsageBulkSink(BulkSink):
                 "database": table_usage.databaseName,
                 "database_schema": table_usage.databaseSchema,
             }
+            logger.debug(
+                f"[UsageSink] Added new table usage entry for {table_entity.id.root} "
+                f"(count={table_usage.count}, date={table_usage.date})"
+            )
         else:
             self.table_usage_map[table_entity.id.root][
                 "usage_count"
             ] += table_usage.count
+            logger.debug(
+                f"[UsageSink] Updated usage count for {table_entity.id.root} "
+                f"(+={table_usage.count}, total={self.table_usage_map[table_entity.id.root]['usage_count']})"
+            )
 
     def __publish_usage_records(self) -> None:
         """
@@ -196,6 +204,14 @@ class MetadataUsageBulkSink(BulkSink):
                 self.service_name = table_usage.serviceName
                 table_entities = None
                 try:
+                    logger.debug(
+                        f"[UsageSink] Fetching table entities for "
+                        f"service={self.service_name}, "
+                        f"database={table_usage.databaseName}, "
+                        f"schema={table_usage.databaseSchema}, "
+                        f"table={table_usage.table}"
+                    )
+
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
                         service_names=self.service_name,
@@ -239,6 +255,7 @@ class MetadataUsageBulkSink(BulkSink):
         tables and publish the join information.
         """
         for table_entity in table_entities:
+            logger.debug(f"Processing table entity {table_entity.name.root}")
             if table_entity is not None:
                 table_join_request = None
                 try:
