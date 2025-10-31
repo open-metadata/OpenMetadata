@@ -14,6 +14,7 @@ import { map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as ChartIcon } from '../../assets/svg/chart-colored.svg';
+import { ReactComponent as ClassificationIcon } from '../../assets/svg/classification-colored-new.svg';
 import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/dashboard-data-models-colored.svg';
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets-colored-new.svg';
@@ -75,7 +76,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.File]: FileIcon,
   [PageType.Spreadsheet]: SpreadsheetIcon,
   [PageType.Worksheet]: WorksheetIcon,
-  [PageType.Classification]: TagIcon,
+  [PageType.Classification]: ClassificationIcon,
   [PageType.Tag]: TagIcon,
   [PageType.DataProduct]: DataProductIcon,
 };
