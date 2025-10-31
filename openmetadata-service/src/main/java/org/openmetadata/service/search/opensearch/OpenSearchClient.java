@@ -230,8 +230,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    lineageGraphBuilder = new OSLineageGraphBuilder(client);
-    entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
+    lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
+    entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(newClient);
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
