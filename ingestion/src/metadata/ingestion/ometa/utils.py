@@ -65,6 +65,8 @@ def get_entity_type(
         return class_name.replace("searchindex", "searchIndex")
     if "dashboarddatamodel" in class_name:
         return class_name.replace("dashboarddatamodel", "dashboardDataModel")
+    if "eventsubscription" in class_name:
+        return class_name.replace("eventsubscription", "eventSubscription")
 
     return class_name
 
