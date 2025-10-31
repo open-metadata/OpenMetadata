@@ -16,8 +16,14 @@ import base64
 import json
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.headers import render_query_header
@@ -28,6 +34,7 @@ from metadata.ingestion.ometa.utils import (
     get_entity_type,
     model_str,
 )
+from metadata.utils.constants import ENTITY_REFERENCE_CLASS_MAP
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -71,6 +78,43 @@ class OMetaUtilsTest(TestCase):
 
         self.assertEqual(get_entity_type("hello"), "hello")
         self.assertEqual(get_entity_type(MlModel), "mlmodel")
+
+    def test_get_entity_type_camel_case_consistency(self):
+        """
+        Test that get_entity_type returns camelCase entity types
+        that match ENTITY_REFERENCE_CLASS_MAP keys (Issue #20838)
+
+        This test demonstrates the current failing behavior where
+        get_entity_type returns lowercase versions instead of
+        proper camelCase that matches the reference map.
+        """
+
+        # Test cases that should return camelCase to match ENTITY_REFERENCE_CLASS_MAP
+        test_cases = [
+            (APIEndpoint, "apiEndpoint"),
+            (DashboardDataModel, "dashboardDataModel"),
+            (DatabaseSchema, "databaseSchema"),
+            (SearchIndex, "searchIndex"),
+            (DatabaseService, "databaseService"),
+            (User, "user"),  # This one works correctly
+        ]
+
+        for entity_class, expected_type in test_cases:
+            with self.subTest(entity_class=entity_class.__name__):
+                result = get_entity_type(entity_class)
+                self.assertEqual(
+                    result,
+                    expected_type,
+                    f"get_entity_type({entity_class.__name__}) returned '{result}' "
+                    f"but should return '{expected_type}' to match ENTITY_REFERENCE_CLASS_MAP",
+                )
+
+                # Verify the expected type exists in ENTITY_REFERENCE_CLASS_MAP
+                self.assertIn(
+                    expected_type,
+                    ENTITY_REFERENCE_CLASS_MAP,
+                    f"Expected type '{expected_type}' should exist in ENTITY_REFERENCE_CLASS_MAP",
+                )
 
     def test_model_str(self):
         """
