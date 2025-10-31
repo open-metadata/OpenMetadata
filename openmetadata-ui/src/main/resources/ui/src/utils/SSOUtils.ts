@@ -30,6 +30,7 @@ import {
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
   GOOGLE_SSO_DEFAULTS,
+  OIDC_SSO_DEFAULTS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
   SAML_SSO_DEFAULTS,
@@ -307,12 +308,11 @@ export const getDefaultsForProvider = (
 
   const {
     discoveryUri = '',
-    tokenValidity = '',
-    serverUrl = '',
-    sessionExpiry = '',
     authority = '',
     publicKeyUrls = [],
   } = isGoogle ? GOOGLE_SSO_DEFAULTS : {};
+
+  const { tokenValidity, serverUrl, sessionExpiry } = OIDC_SSO_DEFAULTS;
 
   const authConfig: AuthenticationConfiguration = {
     provider: provider,
@@ -875,9 +875,9 @@ export const handlePublicToConfidentialSwitch = (
   if (isGoogle) {
     oidcConfig.type = AuthProvider.Google;
     oidcConfig.discoveryUri = GOOGLE_SSO_DEFAULTS.discoveryUri;
-    oidcConfig.tokenValidity = GOOGLE_SSO_DEFAULTS.tokenValidity;
-    oidcConfig.sessionExpiry = GOOGLE_SSO_DEFAULTS.sessionExpiry;
-    oidcConfig.serverUrl = GOOGLE_SSO_DEFAULTS.serverUrl;
+    oidcConfig.tokenValidity = OIDC_SSO_DEFAULTS.tokenValidity;
+    oidcConfig.sessionExpiry = OIDC_SSO_DEFAULTS.sessionExpiry;
+    oidcConfig.serverUrl = OIDC_SSO_DEFAULTS.serverUrl;
     // Set default values for other required OIDC fields
     oidcConfig.scope = oidcConfig.scope || 'openid email profile';
     oidcConfig.useNonce = oidcConfig.useNonce ?? false;
