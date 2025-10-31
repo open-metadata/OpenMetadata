@@ -45,9 +45,10 @@ import { SnackbarProvider } from 'notistack';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DEFAULT_THEME } from './constants/Appearance.constants';
+import RuleEnforcementProvider from './context/RuleEnforcementProvider/RuleEnforcementProvider';
+import { EntityType } from './enums/entity.enum';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
-
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
     useApplicationStore();
@@ -131,9 +132,14 @@ const App: FC = () => {
                                   <AsyncDeleteProvider>
                                     <EntityExportModalProvider>
                                       <AirflowStatusProvider>
-                                        <DndProvider backend={HTML5Backend}>
-                                          <AppRouter />
-                                        </DndProvider>
+                                        <RuleEnforcementProvider
+                                          initialEntityTypes={[
+                                            EntityType.TABLE,
+                                          ]}>
+                                          <DndProvider backend={HTML5Backend}>
+                                            <AppRouter />
+                                          </DndProvider>
+                                        </RuleEnforcementProvider>
                                       </AirflowStatusProvider>
                                     </EntityExportModalProvider>
                                   </AsyncDeleteProvider>

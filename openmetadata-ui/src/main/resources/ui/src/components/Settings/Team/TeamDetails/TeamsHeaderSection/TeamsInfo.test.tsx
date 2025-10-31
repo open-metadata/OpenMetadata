@@ -68,6 +68,26 @@ jest.mock('../../../../../hooks/useApplicationStore', () => ({
   }),
 }));
 
+jest.mock(
+  '../../../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 const mockEntityPermissions = { ...ENTITY_PERMISSIONS };
 
 const mockUpdateTeamHandler = jest.fn();

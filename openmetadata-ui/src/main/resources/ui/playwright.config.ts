@@ -71,7 +71,11 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
       grepInvert: /data-insight/,
-      testIgnore: ['**/nightly/**'],
+      testIgnore: [
+        '**/nightly/**',
+        '**/DataAssetRulesEnabled.spec.ts',
+        '**/DataAssetRulesDisabled.spec.ts', // exclude both from chromium
+      ],
     },
     {
       name: 'data-insight-application',
@@ -83,6 +87,16 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
+    },
+    {
+      name: 'DataAssetRulesEnabled',
+      testMatch: '**/DataAssetRulesEnabled.spec.ts',
+      dependencies: ['chromium'], //  ensures it runs only after chromium is done
+    },
+    {
+      name: 'DataAssetRulesDisabled',
+      testMatch: '**/DataAssetRulesDisabled.spec.ts',
+      dependencies: ['DataAssetRulesEnabled'], // ensures serial order runs after DataAssetRulesEnabled
     },
   ],
 

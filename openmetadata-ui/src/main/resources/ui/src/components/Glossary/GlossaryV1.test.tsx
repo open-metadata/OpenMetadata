@@ -120,6 +120,17 @@ jest.mock('./useGlossary.store', () => ({
   })),
 }));
 
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 const mockProps: GlossaryV1Props = {
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,

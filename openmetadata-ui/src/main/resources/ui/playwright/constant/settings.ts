@@ -91,6 +91,7 @@ export enum GlobalSettingOptions {
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
   SEARCH_SETTINGS = 'search-settings',
+  DATA_ASSET_RULES = 'dataAssetRules',
   DOMAINS = 'domains',
   ONLINE_USERS = 'online-users',
   CHARTS = 'charts',
@@ -237,6 +238,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.SEARCH_SETTINGS]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
+  ],
+  [GlobalSettingOptions.DATA_ASSET_RULES]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
   ],
   [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
 };

@@ -141,6 +141,26 @@ jest.mock('../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
     render(<StoredProcedurePage />);

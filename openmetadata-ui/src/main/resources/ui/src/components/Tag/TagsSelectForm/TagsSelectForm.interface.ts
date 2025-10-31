@@ -32,4 +32,5 @@ export type TagsSelectFormProps = {
     data: SelectOption[];
     paging: Paging;
   }>;
+  multiSelect?: boolean;
 };

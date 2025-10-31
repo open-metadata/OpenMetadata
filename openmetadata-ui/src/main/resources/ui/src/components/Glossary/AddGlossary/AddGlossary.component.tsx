@@ -35,6 +35,7 @@ import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -52,6 +53,9 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const { entityRules } = useEntityRules({
+    entityType: EntityType.GLOSSARY,
+  });
   const { currentUser } = useApplicationStore();
   const { activeDomainEntityRef } = useDomainStore();
 
@@ -218,7 +222,10 @@ const AddGlossary = ({
           type="primary"
         />
       ),
-      multiple: { user: true, team: false },
+      multiple: {
+        user: entityRules.canAddMultipleUserOwners,
+        team: entityRules.canAddMultipleTeamOwner,
+      },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
@@ -280,7 +287,7 @@ const AddGlossary = ({
           type="primary"
         />
       ),
-      multiple: true,
+      multiple: entityRules.canAddMultipleDomains,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
