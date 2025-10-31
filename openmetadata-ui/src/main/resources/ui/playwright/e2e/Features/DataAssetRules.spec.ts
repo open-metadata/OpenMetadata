@@ -14,17 +14,29 @@ import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -66,6 +78,18 @@ const entities = [
   FileClass,
   SpreadsheetClass,
   WorksheetClass,
+  ApiServiceClass,
+  ApiCollectionClass,
+  DatabaseServiceClass,
+  DashboardServiceClass,
+  MessagingServiceClass,
+  MlmodelServiceClass,
+  PipelineServiceClass,
+  SearchIndexServiceClass,
+  StorageServiceClass,
+  DatabaseClass,
+  DatabaseSchemaClass,
+  DriveServiceClass,
 ] as const;
 
 const user = new UserClass();
@@ -110,7 +134,7 @@ test.describe.serial('Data Asset Rules', () => {
 
   try {
     test('Platform Rules Enabled', async ({ page, browser }) => {
-      test.setTimeout(360000);
+      test.setTimeout(600000);
 
       await test.step('Enable all data asset rules', async () => {
         const rulesResponse = page.waitForResponse(
@@ -181,25 +205,28 @@ test.describe.serial('Data Asset Rules', () => {
             // Single Domain Add Check
             await assignSingleSelectDomain(page, domain.responseData);
 
-            // Here the createdDataProducts[1] will only be available due to single select type is enabled
-            await assignDataProduct(page, domain.responseData, [
-              createdDataProducts[0].responseData,
-            ]);
-            await assignDataProduct(
-              page,
-              domain.responseData,
-              [createdDataProducts[1].responseData],
-              'Edit'
-            );
+            // Exclude this check at Service Level Entities
+            if (!entityName.includes('Service')) {
+              // Here the createdDataProducts[1] will only be available due to single select type is enabled
+              await assignDataProduct(page, domain.responseData, [
+                createdDataProducts[0].responseData,
+              ]);
+              await assignDataProduct(
+                page,
+                domain.responseData,
+                [createdDataProducts[1].responseData],
+                'Edit'
+              );
 
-            await expect(
-              page
-                .getByTestId('KnowledgePanel.DataProducts')
-                .getByTestId('data-products-list')
-                .getByTestId(
-                  `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
-                )
-            ).not.toBeVisible();
+              await expect(
+                page
+                  .getByTestId('KnowledgePanel.DataProducts')
+                  .getByTestId('data-products-list')
+                  .getByTestId(
+                    `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
+                  )
+              ).not.toBeVisible();
+            }
 
             if (entityName === 'Table') {
               // Only glossaryTerm2.responseData data will be available due to single select type is enabled
@@ -387,10 +414,12 @@ test.describe.serial('Data Asset Rules', () => {
             await expect(page.getByTestId('domain-count-button')).toBeVisible();
 
             // Add Multiple DataProduct, since default single select is off
-            await assignDataProduct(page, domain.responseData, [
-              createdDataProducts[0].responseData,
-              createdDataProducts[1].responseData,
-            ]);
+            if (!entityName.includes('Service')) {
+              await assignDataProduct(page, domain.responseData, [
+                createdDataProducts[0].responseData,
+                createdDataProducts[1].responseData,
+              ]);
+            }
 
             // Add Multiple GlossaryTerm to Table
             await assignGlossaryTerm(page, glossaryTerm.responseData);
