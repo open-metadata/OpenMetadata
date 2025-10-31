@@ -156,7 +156,7 @@ GET_DASHBOARD_FIELDS = [
     "title",
     "dashboard_elements",
     "dashboard_filters",
-    "view_count",
+    # "view_count",
     "description",
     "folder",
     "user_id",  # Use as owner
@@ -1194,18 +1194,18 @@ class LookerSource(DashboardServiceSource):
 
         try:
             source_explore_list = self.get_dashboard_sources(dashboard_details)
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,
+                dashboard_name=self.context.get().dashboard,
+            )
+            dashboard_entity = self.metadata.get_by_name(
+                entity=Dashboard, fqn=dashboard_fqn
+            )
             for explore_name in source_explore_list:
                 cached_explore = self.get_explore(explore_name)
                 if cached_explore:
-                    dashboard_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Dashboard,
-                        service_name=self.context.get().dashboard_service,
-                        dashboard_name=self.context.get().dashboard,
-                    )
-                    dashboard_entity = self.metadata.get_by_name(
-                        entity=Dashboard, fqn=dashboard_fqn
-                    )
                     yield Either(
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
@@ -1467,6 +1467,8 @@ class LookerSource(DashboardServiceSource):
         """
 
         dashboard_name = self.context.get().dashboard
+        # temp disable usage
+        return
 
         try:
             dashboard_fqn = fqn.build(
