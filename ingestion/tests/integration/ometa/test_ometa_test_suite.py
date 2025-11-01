@@ -12,6 +12,7 @@
 """
 OpenMetadata API test suite mixin test
 """
+import uuid
 from datetime import datetime, timezone
 from unittest import TestCase
 
@@ -76,9 +77,13 @@ class OMetaTestSuiteTest(TestCase):
 
     assert metadata.health_check()
 
+    # Create unique test definition name to avoid conflicts
+    unique_test_def_id = str(uuid.uuid4())[:8]
+    test_definition_name = f"testDefinitionForIntegration_{unique_test_def_id}"
+
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
-            name=TestCaseEntityName("testDefinitionForIntegration"),
+            name=TestCaseEntityName(test_definition_name),
             description=Markdown(
                 root="this is a test definition for integration tests"
             ),
@@ -92,11 +97,17 @@ class OMetaTestSuiteTest(TestCase):
     def setUpClass(cls) -> None:
         """set up tests"""
 
+        # Create unique entity names to avoid conflicts in parallel execution
+        cls.unique_id = str(uuid.uuid4())[:8]
+        cls.test_suite_name = (
+            f"sample_data.ecommerce_db.shopify.dim_address.TestSuite_{cls.unique_id}"
+        )
+        cls.test_case_name = f"testCaseForIntegration_{cls.unique_id}"
+        cls.test_case_special_name = f"testCase:With/Special&Characters_{cls.unique_id}"
+
         cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
-                name=TestSuiteEntityName(
-                    root="sample_data.ecommerce_db.shopify.dim_address.TestSuite"
-                ),
+                name=TestSuiteEntityName(root=cls.test_suite_name),
                 description=Markdown(
                     root="This is a test suite for the integration tests"
                 ),
@@ -108,7 +119,7 @@ class OMetaTestSuiteTest(TestCase):
 
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
-                name=TestCaseEntityName("testCaseForIntegration"),
+                name=TestCaseEntityName(cls.test_case_name),
                 entityLink=EntityLink(
                     "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
                 ),
@@ -125,13 +136,13 @@ class OMetaTestSuiteTest(TestCase):
                 sampleData=None,
                 testResultValue=[TestResultValue(name="foo", value="10")],
             ),
-            test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
+            test_case_fqn=f"sample_data.ecommerce_db.shopify.dim_address.{cls.test_case_name}",
         )
 
         # Create test case with special characters in FQN to test URL encoding
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
-                name=TestCaseEntityName("testCase:With/Special&Characters"),
+                name=TestCaseEntityName(cls.test_case_special_name),
                 entityLink=EntityLink(
                     "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
                 ),
@@ -148,41 +159,38 @@ class OMetaTestSuiteTest(TestCase):
                 sampleData=None,
                 testResultValue=[TestResultValue(name="foo", value="20")],
             ),
-            test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCase:With/Special&Characters",
+            test_case_fqn=f"sample_data.ecommerce_db.shopify.dim_address.{cls.test_case_special_name}",
         )
 
     def test_get_or_create_test_suite(self):
         """test we get a test suite object"""
-        test_suite = self.metadata.get_or_create_test_suite(
-            "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
-        )
-        assert (
-            test_suite.name.root
-            == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
-        )
+        test_suite = self.metadata.get_or_create_test_suite(self.test_suite_name)
+        assert test_suite.name.root == self.test_suite_name
         assert isinstance(test_suite, TestSuite)
 
     def test_get_or_create_test_definition(self):
         """test we get a test definition object"""
         test_definition = self.metadata.get_or_create_test_definition(
-            "testDefinitionForIntegration"
+            self.test_definition.name.root
         )
-        assert test_definition.name.root == "testDefinitionForIntegration"
+        assert test_definition.name.root == self.test_definition.name.root
         assert isinstance(test_definition, TestDefinition)
 
     def test_get_or_create_test_case(self):
         """test we get a test case object"""
         test_case = self.metadata.get_or_create_test_case(
-            "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration"
+            f"sample_data.ecommerce_db.shopify.dim_address.{self.test_case_name}"
         )
-        assert test_case.name.root == "testCaseForIntegration"
+        assert test_case.name.root == self.test_case_name
         assert isinstance(test_case, OMetaTestCase)
 
     def test_create_test_case(self):
         """test we get a create the test case object if it does not exists"""
+        unique_test_case_name = f"aNonExistingTestCase_{self.unique_id}"
         test_case_fqn = (
-            "sample_data.ecommerce_db.shopify.dim_address.aNonExistingTestCase"
+            f"sample_data.ecommerce_db.shopify.dim_address.{unique_test_case_name}"
         )
+
         test_case = self.metadata.get_by_name(
             entity=OMetaTestCase, fqn=test_case_fqn, fields=["*"]
         )
@@ -197,13 +205,13 @@ class OMetaTestSuiteTest(TestCase):
                 TestCaseParameterValue(name="regex", value=".*")
             ],
         )
-        assert test_case.name.root == "aNonExistingTestCase"
+        assert test_case.name.root == unique_test_case_name
         assert isinstance(test_case, OMetaTestCase)
 
     def test_get_test_case_results(self):
         """test get test case result method"""
         res = self.metadata.get_test_case_results(
-            "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
+            f"sample_data.ecommerce_db.shopify.dim_address.{self.test_case_name}",
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
         )
@@ -214,7 +222,7 @@ class OMetaTestSuiteTest(TestCase):
         """test get test case results with special characters in FQN (: / &)"""
         # This test validates that URL encoding works correctly for FQNs with special chars
         res = self.metadata.get_test_case_results(
-            "sample_data.ecommerce_db.shopify.dim_address.testCase:With/Special&Characters",
+            f"sample_data.ecommerce_db.shopify.dim_address.{self.test_case_special_name}",
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
         )

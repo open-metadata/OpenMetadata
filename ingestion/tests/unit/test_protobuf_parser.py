@@ -58,12 +58,12 @@ class ProtobufParserTests(TestCase):
 
         # Create unique temp directory for each test instance
         self.temp_dir = tempfile.mkdtemp(prefix="protobuf_test_")
-        
+
         self.protobuf_parser = ProtobufParser(
             config=ProtobufParserConfig(
-                schema_name=self.schema_name, 
+                schema_name=self.schema_name,
                 schema_text=self.sample_protobuf_schema,
-                base_file_path=self.temp_dir
+                base_file_path=self.temp_dir,
             )
         )
         self.parsed_schema = self.protobuf_parser.parse_protobuf_schema()
@@ -116,15 +116,15 @@ class ProtobufParserTests(TestCase):
             with open(file_path, "r") as file:
                 schema_text = schema_text + file.read()
         schema_text = merge_and_clean_protobuf_schema(schema_text)
-        
+
         # Create unique temp directory for this test
         complex_temp_dir = tempfile.mkdtemp(prefix="protobuf_complex_test_")
-        
+
         protobuf_parser = ProtobufParser(
             config=ProtobufParserConfig(
-                schema_name=schema_name, 
+                schema_name=schema_name,
                 schema_text=schema_text,
-                base_file_path=complex_temp_dir
+                base_file_path=complex_temp_dir,
             )
         )
         parsed_schema = protobuf_parser.parse_protobuf_schema()

@@ -38,6 +38,20 @@ def pytest_pycollect_makeitem(collector, name, obj):
         pass
 
 
+def pytest_collection_modifyitems(config, items):
+    """Group problematic integration tests to run on same worker to avoid entity conflicts"""
+    for item in items:
+        test_file = str(item.fspath) if hasattr(item, "fspath") else str(item.path)
+
+        # Group test_ometa_test_suite.py tests together
+        if "test_ometa_test_suite.py" in test_file:
+            item.add_marker(pytest.mark.xdist_group(name="ometa_test_suite_group"))
+
+        # Group test_ometa_life_cycle_api.py tests together
+        elif "test_ometa_life_cycle_api.py" in test_file:
+            item.add_marker(pytest.mark.xdist_group(name="ometa_life_cycle_group"))
+
+
 # TODO: Will be addressed when cleaning up integration tests.
 #  Setting the max tries for testcontainers here has pitfalls,
 #  the main one being that it cannot be changed through the recommended
