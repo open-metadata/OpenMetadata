@@ -19,6 +19,7 @@ import {
   SearchSourceAlias,
   TableSearchSource,
 } from '../../interface/search.interface';
+import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -111,6 +112,7 @@ export interface LineageEntityReference extends EntityReference {
   upstreamExpandPerformed?: boolean;
   downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
+  serviceType?: FormattedDatabaseServiceType;
 }
 
 export type LineageNode = SearchSourceAlias & {

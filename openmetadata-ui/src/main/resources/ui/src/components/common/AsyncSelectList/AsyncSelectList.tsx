@@ -317,7 +317,10 @@ const AsyncSelectList: FC<
       }
       open={open}
       optionLabelProp="label"
-      popupClassName="async-select-list-dropdown" // this popupClassName class is used to identify the dropdown in the playwright tests
+      popupClassName={classNames(
+        'async-select-list-dropdown',
+        props.popupClassName
+      )}
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
@@ -332,7 +335,7 @@ const AsyncSelectList: FC<
       {...props}>
       {tagOptions.map(({ label, value, displayName, data }) => (
         <Select.Option
-          className={`${optionClassName} w-full`}
+          className={classNames(optionClassName, 'w-full')}
           data={data}
           data-testid={`tag-${value}`}
           key={label}

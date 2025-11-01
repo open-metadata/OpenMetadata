@@ -40,11 +40,13 @@ import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
 const { Panel } = Collapse;
 const TierCard = ({
+  tierCardClassName,
   currentTier,
   updateTier,
   children,
   popoverProps,
   onClose,
+  footerActionButtonsClassName,
 }: TierCardProps) => {
   const popoverRef = useRef<any>(null);
   const [tiers, setTiers] = useState<Array<Tag>>([]);
@@ -125,7 +127,7 @@ const TierCard = ({
       content={
         <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
-            className="tier-card"
+            className={`tier-card ${tierCardClassName}`}
             data-testid="cards"
             title={
               <Space className="w-full p-xs justify-between">
@@ -190,7 +192,8 @@ const TierCard = ({
                   ))}
                 </Collapse>
               </Radio.Group>
-              <div className="flex justify-end text-lg gap-2 mt-4">
+              <div
+                className={`flex justify-end text-lg gap-2 mt-4 ${footerActionButtonsClassName}`}>
                 <Button
                   data-testid="close-tier-card"
                   type="default"

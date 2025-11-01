@@ -45,6 +45,7 @@ export const OwnerLabel = ({
   avatarSize = 32,
   isAssignee = false,
   onEditClick,
+  ownerLabelClassName,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -233,10 +234,13 @@ export const OwnerLabel = ({
             {renderVisibleOwners.map(
               (owner: EntityReference, index: number) => (
                 <div
-                  className={classNames({
-                    'w-full': owner.type === OwnerType.TEAM,
-                    'w-max-full': isCompactView,
-                  })}
+                  className={classNames(
+                    {
+                      'w-full': owner.type === OwnerType.TEAM,
+                      'w-max-full': isCompactView,
+                    },
+                    ownerLabelClassName
+                  )}
                   key={owner.id}>
                   <OwnerItem
                     avatarSize={avatarSize}

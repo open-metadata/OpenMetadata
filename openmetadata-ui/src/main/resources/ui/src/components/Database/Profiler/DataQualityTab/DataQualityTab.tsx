@@ -625,7 +625,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {selectedTestCase?.action === 'UPDATE' && (
         <EditTestCaseModalV1
           open
-          testCase={selectedTestCase?.data as TestCase}
+          testCase={selectedTestCase?.data}
           onCancel={handleCancel}
           onUpdate={onTestUpdate}
         />
