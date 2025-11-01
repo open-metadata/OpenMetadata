@@ -73,7 +73,8 @@ disallow_incomplete_defs = false
 
 [tool.pytest.ini_options]
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "single_threaded: marks tests that must run in single-threaded mode due to entity conflicts"
 ]
 
 # Skip tests that are known to fail or are not ready to run until issue #21736 is solved

@@ -57,6 +57,8 @@ from metadata.utils.time_utils import (
     get_end_of_day_timestamp_mill,
 )
 
+from ..integration_base import generate_name
+
 
 class OMetaTestSuiteTest(TestCase):
     """
@@ -78,8 +80,7 @@ class OMetaTestSuiteTest(TestCase):
     assert metadata.health_check()
 
     # Create unique test definition name to avoid conflicts
-    unique_test_def_id = str(uuid.uuid4())[:8]
-    test_definition_name = f"testDefinitionForIntegration_{unique_test_def_id}"
+    test_definition_name = f"testDefinitionForIntegration_{generate_name().root}"
 
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
@@ -98,7 +99,7 @@ class OMetaTestSuiteTest(TestCase):
         """set up tests"""
 
         # Create unique entity names to avoid conflicts in parallel execution
-        cls.unique_id = str(uuid.uuid4())[:8]
+        cls.unique_id = generate_name().root
         cls.test_suite_name = (
             f"sample_data.ecommerce_db.shopify.dim_address.TestSuite_{cls.unique_id}"
         )
@@ -186,7 +187,7 @@ class OMetaTestSuiteTest(TestCase):
 
     def test_create_test_case(self):
         """test we get a create the test case object if it does not exists"""
-        unique_test_case_name = f"aNonExistingTestCase_{self.unique_id}"
+        unique_test_case_name = f"aNonExistingTestCase_{generate_name().root}"
         test_case_fqn = (
             f"sample_data.ecommerce_db.shopify.dim_address.{unique_test_case_name}"
         )

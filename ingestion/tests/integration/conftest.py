@@ -39,17 +39,19 @@ def pytest_pycollect_makeitem(collector, name, obj):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Group problematic integration tests to run on same worker to avoid entity conflicts"""
+    """Mark problematic integration tests that need single-threaded execution"""
+    # Files that have entity conflicts and need single-threaded execution
+    single_threaded_files = [
+        "test_ometa_test_suite.py",
+        "test_ometa_life_cycle_api.py",
+    ]
+    
     for item in items:
         test_file = str(item.fspath) if hasattr(item, "fspath") else str(item.path)
-
-        # Group test_ometa_test_suite.py tests together
-        if "test_ometa_test_suite.py" in test_file:
-            item.add_marker(pytest.mark.xdist_group(name="ometa_test_suite_group"))
-
-        # Group test_ometa_life_cycle_api.py tests together
-        elif "test_ometa_life_cycle_api.py" in test_file:
-            item.add_marker(pytest.mark.xdist_group(name="ometa_life_cycle_group"))
+        
+        # Mark tests that need single-threaded execution
+        if any(st_file in test_file for st_file in single_threaded_files):
+            item.add_marker(pytest.mark.single_threaded)
 
 
 # TODO: Will be addressed when cleaning up integration tests.

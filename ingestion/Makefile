@@ -91,7 +91,10 @@ unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Onl
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist loadscope -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
+	# First run parallel-safe tests with xdist
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist=load -c $(INGESTION_DIR)/pyproject.toml -m "not single_threaded" $(INGESTION_DIR)/tests/integration
+	# Then run single-threaded tests without xdist
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml -m "single_threaded" --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
