@@ -19,7 +19,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -35,12 +34,15 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import get_create_entity
 
 
 class OMetaDatabaseTest(TestCase):
@@ -62,10 +64,14 @@ class OMetaDatabaseTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+            )
+        ]
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateDatabaseServiceRequest(
         name="test-service-db",

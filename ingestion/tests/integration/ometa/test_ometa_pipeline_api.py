@@ -20,7 +20,6 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -42,6 +41,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -49,6 +49,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
+
+from ..integration_base import get_create_entity
 
 
 class OMetaPipelineTest(TestCase):
@@ -70,10 +72,14 @@ class OMetaPipelineTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+            )
+        ]
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreatePipelineServiceRequest(
         name="test-service-pipeline",

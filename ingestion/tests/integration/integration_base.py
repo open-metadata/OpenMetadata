@@ -86,6 +86,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineServiceType,
 )
 from metadata.generated.schema.entity.teams.team import TeamType
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     TestCaseParameterDefinition,
@@ -322,6 +323,12 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
         dataModelType=DataModelType.LookMlExplore,
         columns=COLUMNS,
     )
+
+
+@create_entity_registry.add(User)
+def _(reference: Any, name: EntityName) -> C:
+    email = f"{name}@getcollate.io"
+    return CreateUserRequest(name=name, email=Email(root=email))
 
 
 def get_create_user_entity(

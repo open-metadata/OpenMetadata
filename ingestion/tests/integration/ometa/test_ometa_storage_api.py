@@ -19,7 +19,6 @@ from metadata.generated.schema.api.data.createContainer import CreateContainerRe
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -32,6 +31,7 @@ from metadata.generated.schema.entity.services.storageService import (
     StorageService,
     StorageServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -39,6 +39,8 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import get_create_entity
 
 
 class OMetaObjectStoreTest(TestCase):
@@ -60,10 +62,14 @@ class OMetaObjectStoreTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+            )
+        ]
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateStorageServiceRequest(
         name="test-service-object",
