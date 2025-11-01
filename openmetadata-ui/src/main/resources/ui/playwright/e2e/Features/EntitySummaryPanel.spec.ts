@@ -65,12 +65,14 @@ async function verifyEntitySummaryPanelStructure(page: Page) {
 }
 
 async function verifyEntityDetailsInPanel(page: Page) {
-  const hasEntityLink = await page
+  const summaryPanel = page.locator('.entity-summary-panel-container');
+  const entityLink = summaryPanel
     .locator('[data-testid="entity-link"]')
-    .isVisible();
+    .first();
+  const hasEntityLink = await entityLink.isVisible();
 
   if (hasEntityLink) {
-    await expect(page.locator('[data-testid="entity-link"]')).toBeVisible();
+    await expect(entityLink).toBeVisible();
   }
 }
 
@@ -120,14 +122,15 @@ test.describe('Entity Summary Panel', () => {
   test('should render entity title section with link', async ({ page }) => {
     await openEntitySummaryPanel(page, 'table');
 
-    const hasSummaryPanel = await page
-      .locator('.entity-summary-panel-container')
-      .isVisible();
+    const summaryPanel = page.locator('.entity-summary-panel-container');
+    const hasSummaryPanel = await summaryPanel.isVisible();
 
     if (hasSummaryPanel) {
-      await expect(page.locator('.title-section')).toBeVisible();
+      await expect(summaryPanel.locator('.title-section')).toBeVisible();
 
-      const entityLink = page.locator('[data-testid="entity-link"]');
+      const entityLink = summaryPanel
+        .locator('[data-testid="entity-link"]')
+        .first();
       if (await entityLink.isVisible()) {
         await expect(entityLink).toHaveAttribute('href', /.+/);
         await expect(entityLink).toHaveAttribute('target', '_blank');
