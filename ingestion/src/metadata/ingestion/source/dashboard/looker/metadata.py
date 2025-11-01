@@ -108,6 +108,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.api.distributed import DiscoverableSource, EntityDescriptor
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
@@ -189,7 +190,7 @@ def find_derived_references(sql_query: str) -> List[str]:
     return matches
 
 
-class LookerSource(DashboardServiceSource):
+class LookerSource(DashboardServiceSource, DiscoverableSource):
     """
     Looker Source Class.
 
@@ -1519,6 +1520,246 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    # ========================================================================================
+    # Distributed Execution Support (DiscoverableSource Interface)
+    # ========================================================================================
+
+    def discover_entities(self, entity_type: str) -> List[EntityDescriptor]:
+        """
+        Lightweight discovery of Looker entities for distributed processing.
+
+        Args:
+            entity_type: Type of entities to discover ("dashboard", "datamodel")
+
+        Returns:
+            List of EntityDescriptor with minimal metadata
+        """
+        if entity_type == "dashboard":
+            return self._discover_dashboards()
+        elif entity_type == "datamodel":
+            return self._discover_explores()
+        else:
+            logger.warning(f"Unknown entity type for Looker discovery: {entity_type}")
+            return []
+
+    def _discover_dashboards(self) -> List[EntityDescriptor]:
+        """
+        Fast dashboard discovery - only dashboard IDs and titles.
+
+        Returns:
+            List of EntityDescriptor for each dashboard
+        """
+        entities = []
+
+        try:
+            # Lightweight API call - just ID and title
+            dashboards = self.client.all_dashboards(fields="id,title")
+
+            for dashboard in dashboards:
+                entities.append(
+                    EntityDescriptor(
+                        id=str(dashboard.id),
+                        type="dashboard",
+                        metadata={
+                            "dashboard_id": dashboard.id,
+                            "title": dashboard.title or f"Dashboard {dashboard.id}",
+                        },
+                    )
+                )
+
+            logger.info(
+                f"Discovered {len(entities)} Looker dashboards for distributed processing"
+            )
+
+        except Exception as exc:
+            logger.error(f"Failed to discover Looker dashboards: {exc}")
+            logger.debug(traceback.format_exc())
+
+        return entities
+
+    def _discover_explores(self) -> List[EntityDescriptor]:
+        """
+        Fast explore discovery - list all model::explore combinations.
+
+        Returns:
+            List of EntityDescriptor for each explore
+        """
+        entities = []
+
+        try:
+            # Lightweight API call - just model metadata
+            all_models = self.client.all_lookml_models()
+
+            for model in all_models:
+                if not model.explores:
+                    continue
+
+                for explore in model.explores:
+                    explore_id = f"{model.name}::{explore.name}"
+                    entities.append(
+                        EntityDescriptor(
+                            id=explore_id,
+                            type="datamodel",
+                            metadata={
+                                "model": model.name,
+                                "explore": explore.name,
+                                "project": model.project_name,
+                            },
+                        )
+                    )
+
+            logger.info(
+                f"Discovered {len(entities)} Looker explores for distributed processing"
+            )
+
+        except Exception as exc:
+            logger.error(f"Failed to discover Looker explores: {exc}")
+            logger.debug(traceback.format_exc())
+
+        return entities
+
+    def process_entity(self, descriptor: EntityDescriptor) -> Iterable[Either]:
+        """
+        Process a single Looker entity in a distributed worker.
+
+        This is stateless and can run in any pod.
+
+        Args:
+            descriptor: Entity descriptor from discover_entities()
+
+        Yields:
+            Either objects with entity creation requests or errors
+        """
+        if descriptor.type == "dashboard":
+            yield from self._process_dashboard_entity(descriptor)
+        elif descriptor.type == "datamodel":
+            yield from self._process_explore_entity(descriptor)
+        else:
+            logger.warning(f"Unknown Looker entity type: {descriptor.type}")
+
+    def _process_dashboard_entity(
+        self, descriptor: EntityDescriptor
+    ) -> Iterable[Either[CreateDashboardRequest]]:
+        """
+        Process a single dashboard - full API call with charts, etc.
+
+        Args:
+            descriptor: Dashboard descriptor
+
+        Yields:
+            Either with CreateDashboardRequest or error
+        """
+        dashboard_id = descriptor.metadata["dashboard_id"]
+
+        try:
+            # Heavy API call - fetch full dashboard details
+            dashboard_details = self.client.dashboard(
+                dashboard_id=str(dashboard_id),
+                fields=",".join(
+                    [
+                        "id",
+                        "title",
+                        "dashboard_elements",
+                        "dashboard_filters",
+                        "view_count",
+                        "description",
+                        "folder",
+                        "user_id",
+                        "created_at",
+                        "updated_at",
+                        "model",
+                    ]
+                ),
+            )
+
+            # Use existing yield_dashboard logic
+            yield from self.yield_dashboard(dashboard_details)
+
+        except Exception as exc:
+            error_msg = f"Failed to process Looker dashboard {dashboard_id}: {exc}"
+            logger.error(error_msg)
+            yield Either(
+                left=StackTraceError(
+                    name=str(dashboard_id),
+                    error=error_msg,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _process_explore_entity(
+        self, descriptor: EntityDescriptor
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        Process a single explore - fetch from Looker API and parse LookML.
+
+        Args:
+            descriptor: Explore descriptor
+
+        Yields:
+            Either with CreateDashboardDataModelRequest or error
+        """
+        model_name = descriptor.metadata["model"]
+        explore_name = descriptor.metadata["explore"]
+
+        try:
+            # Heavy API call - fetch full explore details
+            explore = self.client.lookml_model_explore(
+                lookml_model_name=model_name,
+                explore_name=explore_name,
+            )
+
+            # Use existing yield_bulk_datamodel logic
+            # This involves LookML parsing and lineage extraction
+            yield from self.yield_bulk_datamodel(explore)
+
+        except Exception as exc:
+            error_msg = f"Failed to process Looker explore {model_name}::{explore_name}: {exc}"
+            logger.error(error_msg)
+            yield Either(
+                left=StackTraceError(
+                    name=f"{model_name}::{explore_name}",
+                    error=error_msg,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def get_parallelizable_entity_types(self) -> List[str]:
+        """
+        Return entity types that can be processed in parallel.
+
+        Returns:
+            List of entity type names
+        """
+        return ["dashboard", "datamodel"]
+
+    def get_entity_type_dependencies(self) -> Dict[str, List[str]]:
+        """
+        Dashboards depend on datamodels for lineage.
+
+        Returns:
+            Dependency mapping
+        """
+        return {
+            "dashboard": ["datamodel"],  # Process explores first
+        }
+
+    def estimate_entity_processing_time(self, entity_type: str) -> float:
+        """
+        Estimate average processing time per Looker entity.
+
+        Args:
+            entity_type: Type of entity
+
+        Returns:
+            Estimated seconds per entity
+        """
+        if entity_type == "dashboard":
+            return 5.0  # Dashboards with charts take ~5 seconds
+        elif entity_type == "datamodel":
+            return 15.0  # Explores with LookML parsing take ~15 seconds
+        else:
+            return 10.0
 
     def close(self):
         self.metadata.compute_percentile(Dashboard, self.today)

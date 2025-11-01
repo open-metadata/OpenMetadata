@@ -164,6 +164,129 @@
       "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
       "default": "INFO"
     },
+    "distributedExecution": {
+      "description": "Configuration for distributed execution using Argo Workflows or similar orchestrators.",
+      "javaType": "org.openmetadata.schema.metadataIngestion.DistributedExecution",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable distributed execution across multiple pods/containers",
+          "type": "boolean",
+          "default": false
+        },
+        "orchestrator": {
+          "description": "Orchestrator to use for distributed execution",
+          "type": "string",
+          "enum": ["argo", "airflow", "local"],
+          "default": "argo"
+        },
+        "parallelism": {
+          "description": "Maximum number of parallel worker pods",
+          "type": "integer",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "chunkSize": {
+          "description": "Number of entities to process per worker chunk",
+          "type": "integer",
+          "default": 100,
+          "minimum": 1
+        },
+        "namespace": {
+          "description": "Kubernetes namespace for workflow execution",
+          "type": "string",
+          "default": "default"
+        },
+        "serviceAccount": {
+          "description": "Kubernetes service account for workflow pods",
+          "type": "string"
+        },
+        "image": {
+          "description": "Docker image for worker pods",
+          "type": "string",
+          "default": "openmetadata/ingestion:latest"
+        },
+        "retryPolicy": {
+          "description": "Retry policy for failed entity processing",
+          "type": "object",
+          "properties": {
+            "maxAttempts": {
+              "description": "Maximum retry attempts per entity",
+              "type": "integer",
+              "default": 3,
+              "minimum": 1,
+              "maximum": 10
+            },
+            "backoffSeconds": {
+              "description": "Initial backoff duration in seconds",
+              "type": "integer",
+              "default": 60,
+              "minimum": 1
+            },
+            "backoffFactor": {
+              "description": "Backoff multiplier for each retry",
+              "type": "number",
+              "default": 2,
+              "minimum": 1
+            },
+            "maxBackoffSeconds": {
+              "description": "Maximum backoff duration in seconds",
+              "type": "integer",
+              "default": 600,
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "resourceRequests": {
+          "description": "Resource requests for worker pods",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "description": "CPU request (e.g., '500m', '1')",
+              "type": "string",
+              "default": "500m"
+            },
+            "memory": {
+              "description": "Memory request (e.g., '1Gi', '512Mi')",
+              "type": "string",
+              "default": "1Gi"
+            }
+          },
+          "additionalProperties": false
+        },
+        "resourceLimits": {
+          "description": "Resource limits for worker pods",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "description": "CPU limit (e.g., '1', '2')",
+              "type": "string",
+              "default": "1000m"
+            },
+            "memory": {
+              "description": "Memory limit (e.g., '2Gi', '4Gi')",
+              "type": "string",
+              "default": "2Gi"
+            }
+          },
+          "additionalProperties": false
+        },
+        "waitForCompletion": {
+          "description": "Wait for workflow completion before returning",
+          "type": "boolean",
+          "default": false
+        },
+        "timeoutSeconds": {
+          "description": "Maximum workflow execution time in seconds",
+          "type": "integer",
+          "default": 86400,
+          "minimum": 60
+        }
+      },
+      "additionalProperties": false
+    },
     "workflowConfig": {
       "description": "Configuration for the entire Ingestion Workflow.",
       "type": "object",
@@ -190,6 +313,9 @@
         },
         "config": {
           "$ref": "../type/basic.json#/definitions/componentConfig"
+        },
+        "distributedExecution": {
+          "$ref": "#/definitions/distributedExecution"
         }
       },
       "additionalProperties": false,

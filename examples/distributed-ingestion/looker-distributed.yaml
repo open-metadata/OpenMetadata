@@ -1,0 +1,70 @@
+# Looker Distributed Ingestion Example
+# This example shows how to ingest a large Looker instance with 2000+ dashboards
+# using distributed execution across 50 parallel pods.
+
+source:
+  type: looker
+  serviceName: looker-prod
+  serviceConnection:
+    config:
+      type: Looker
+      hostPort: https://looker.example.com
+      username: ${LOOKER_USERNAME}
+      password: ${LOOKER_PASSWORD}
+      # Optional: GitHub credentials for LookML parsing
+      gitCredentials:
+        repositoryOwner: your-org
+        repositoryName: looker-repo
+        token: ${GITHUB_TOKEN}
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      dashboardFilterPattern:
+        # includes:
+        #   - "^Sales.*"
+        #   - "^Marketing.*"
+      chartFilterPattern: {}
+      dataModelFilterPattern: {}
+      includeOwners: true
+      includeDraftDashboard: false
+
+sink:
+  type: metadata-rest
+  config:
+    api_endpoint: null
+
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: ${OPENMETADATA_HOST_PORT:-http://localhost:8585/api}
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ${OM_JWT_TOKEN}
+
+  # Distributed Execution Configuration
+  distributedExecution:
+    enabled: true
+    orchestrator: argo
+    parallelism: 50  # Process 50 dashboards in parallel
+    namespace: openmetadata
+    image: openmetadata/ingestion:latest
+
+    retryPolicy:
+      maxAttempts: 3
+      backoffSeconds: 60
+      backoffFactor: 2
+      maxBackoffSeconds: 600
+
+    resourceRequests:
+      cpu: "500m"
+      memory: "1Gi"
+
+    resourceLimits:
+      cpu: "1"
+      memory: "2Gi"
+
+    waitForCompletion: false
+    timeoutSeconds: 86400  # 24 hours
+
+  loggerLevel: INFO
+  raiseOnError: false
+  successThreshold: 90

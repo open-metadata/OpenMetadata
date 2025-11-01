@@ -19,6 +19,7 @@ from typing import List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, validate_call
 
+from metadata.generated.schema.api.data.bulkCreateTable import BulkCreateTable
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -335,3 +336,22 @@ class OMetaTableMixin:
             data=custom_metric.model_dump_json(),
         )
         return Table(**resp)
+
+    def bulk_create_or_update_tables(self, bulk_request: BulkCreateTable):
+        """Bulk create or update multiple tables in a single API call.
+
+        Args:
+            bulk_request (BulkCreateTable): Bulk create request containing list of tables
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        from metadata.generated.schema.type.bulkOperationResult import (
+            BulkOperationResult,
+        )
+
+        resp = self.client.put(
+            f"{self.get_suffix(Table)}/bulk",
+            data=bulk_request.model_dump_json(),
+        )
+        return BulkOperationResult(**resp)

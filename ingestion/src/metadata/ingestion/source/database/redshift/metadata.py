@@ -402,11 +402,37 @@ class RedshiftSource(
 
     @calculate_execution_time_generator()
     def yield_stored_procedure(
-        self, stored_procedure: RedshiftStoredProcedure
+        self, stored_procedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
-        """Prepare the stored procedure payload"""
+        """Prepare the stored procedure payload
 
+        Args:
+            stored_procedure: Either a RedshiftStoredProcedure object (sequential mode)
+                            or a string name (distributed mode)
+        """
         try:
+            # Handle both object and string input (for distributed mode)
+            if isinstance(stored_procedure, str):
+                # In distributed mode, we get just the name - fetch the full object
+                proc_name = stored_procedure
+                results = self.connection.execute(
+                    REDSHIFT_GET_STORED_PROCEDURES.format(
+                        schema_name=self.context.get().database_schema,
+                    )
+                ).all()
+
+                # Find the matching stored procedure
+                stored_proc_obj = None
+                for row in results:
+                    if dict(row)["name"] == proc_name:
+                        stored_proc_obj = RedshiftStoredProcedure.model_validate(dict(row))
+                        break
+
+                if not stored_proc_obj:
+                    raise ValueError(f"Stored procedure {proc_name} not found")
+
+                stored_procedure = stored_proc_obj
+
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
@@ -426,10 +452,11 @@ class RedshiftSource(
             self.register_record_stored_proc_request(stored_procedure_request)
 
         except Exception as exc:
+            proc_name = stored_procedure if isinstance(stored_procedure, str) else stored_procedure.name
             yield Either(
                 left=StackTraceError(
-                    name=stored_procedure.name,
-                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    name=proc_name,
+                    error=f"Error yielding Stored Procedure [{proc_name}] due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 )
             )

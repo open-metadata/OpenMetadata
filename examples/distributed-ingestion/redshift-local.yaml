@@ -1,0 +1,64 @@
+# Redshift Local Distributed Ingestion Example
+# This example uses LOCAL thread-based execution (no Kubernetes required)
+# Perfect for testing and local development
+
+source:
+  type: redshift
+  serviceName: redshift-local-test
+  serviceConnection:
+    config:
+      type: Redshift
+      username: ${REDSHIFT_USER}
+      password: ${REDSHIFT_PASSWORD}
+      hostPort: ${REDSHIFT_HOST}:${REDSHIFT_PORT:-5439}
+      database: ${REDSHIFT_DATABASE}
+      # Optional: SSL configuration
+      # sslMode: require
+      # sslConfig:
+      #   caCertificate: /path/to/ca-cert.pem
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      # Optional: Filter to specific schemas for testing
+      schemaFilterPattern:
+        includes:
+          - "^public$"
+          # - "^analytics$"
+      # Optional: Filter to specific tables
+      # tableFilterPattern:
+      #   includes:
+      #     - "^fact_.*"
+      #     - "^dim_.*"
+      includeViews: true
+      includeTables: true
+      includeStoredProcedures: false
+      markDeletedTables: true
+      # includeDDL: true  # Include table DDL (can be slow)
+
+sink:
+  type: metadata-rest
+  config:
+    api_endpoint: null
+
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: ${OPENMETADATA_HOST_PORT:-http://localhost:8585/api}
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ${OM_JWT_TOKEN}
+
+  # LOCAL Distributed Execution - No Kubernetes required!
+  distributedExecution:
+    enabled: true
+    orchestrator: local  # KEY: Use 'local' for thread-based execution
+    parallelism: 10      # Number of threads (adjust based on your machine)
+
+    # Note: These settings are ignored in local mode:
+    # - namespace
+    # - image
+    # - serviceAccount
+    # - resourceRequests/Limits
+
+  loggerLevel: INFO
+  raiseOnError: false
+  successThreshold: 90

@@ -77,7 +77,7 @@ def create_generic_db_connection(
         poolclass=QueuePool,
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=False,
-        max_overflow=-1,
+        max_overflow=-1,  # Unlimited overflow for parallel execution
         **kwargs,
     )
 

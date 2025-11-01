@@ -196,6 +196,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
                null AS "schema_oid",
                null AS "table_oid"
             FROM svv_external_columns
+            WHERE 1 {schema_clause}
             ORDER BY "schema", "table_name", "attnum";
             """
 )

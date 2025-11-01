@@ -56,6 +56,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.ingestion.api.distributed import DiscoverableSource, EntityDescriptor
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -100,7 +101,11 @@ class TableNameAndType(BaseModel):
 
 # pylint: disable=too-many-public-methods
 class CommonDbSourceService(
-    DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
+    DatabaseServiceSource,
+    SqlColumnHandlerMixin,
+    SqlAlchemySource,
+    DiscoverableSource,
+    ABC,
 ):
     """
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
@@ -863,3 +868,282 @@ class CommonDbSourceService(
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    # ========================================================================================
+    # Distributed Execution Support (DiscoverableSource Interface)
+    # ========================================================================================
+
+    def discover_entities(self, entity_type: str) -> List[EntityDescriptor]:
+        """
+        Lightweight discovery of database entities for distributed processing.
+
+        This method only fetches entity names and basic metadata - NO column
+        introspection or expensive operations.
+
+        Args:
+            entity_type: Type of entities to discover ("table", "stored_procedure")
+
+        Returns:
+            List of EntityDescriptor with minimal metadata for processing
+        """
+        if entity_type == "table":
+            return self._discover_tables()
+        elif entity_type == "stored_procedure":
+            return self._discover_stored_procedures()
+        else:
+            logger.warning(f"Unknown entity type for discovery: {entity_type}")
+            return []
+
+    def _discover_tables(self) -> List[EntityDescriptor]:
+        """
+        Fast table discovery - only table names, no column introspection.
+
+        Returns:
+            List of EntityDescriptor for each table
+        """
+        entities = []
+
+        try:
+            for database_name in self.get_database_names():
+                # Set up inspector for this database
+                if hasattr(self, "set_inspector"):
+                    self.set_inspector(database_name)
+
+                # Update context
+                self.context.get().database = database_name
+                self.context.get().database_service = (
+                    self.config.serviceName
+                    if hasattr(self.config, "serviceName")
+                    else str(self.service_connection)
+                )
+
+                for schema_name in self.get_database_schema_names():
+                    self.context.get().database_schema = schema_name
+
+                    # Fast iteration - just get table names
+                    for table_and_type in self.query_table_names_and_types(schema_name):
+                        table_name = table_and_type.name
+                        table_type = table_and_type.type_
+                        fqn_value = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=self.context.get().database_service,
+                            database_name=database_name,
+                            schema_name=schema_name,
+                            table_name=table_name,
+                        )
+
+                        entities.append(
+                            EntityDescriptor(
+                                id=fqn_value,
+                                type="table",
+                                metadata={
+                                    "database": database_name,
+                                    "schema": schema_name,
+                                    "table": table_name,
+                                    "table_type": table_type.value,
+                                    "service_name": self.context.get().database_service,
+                                },
+                            )
+                        )
+
+            logger.info(f"Discovered {len(entities)} tables for distributed processing")
+
+        except Exception as exc:
+            logger.error(f"Failed to discover tables: {exc}")
+            logger.debug(traceback.format_exc())
+
+        return entities
+
+    def _discover_stored_procedures(self) -> List[EntityDescriptor]:
+        """
+        Fast stored procedure discovery.
+
+        Returns:
+            List of EntityDescriptor for each stored procedure
+        """
+        entities = []
+
+        try:
+            if not self.source_config.includeStoredProcedures:
+                return entities
+
+            for database_name in self.get_database_names():
+                if hasattr(self, "set_inspector"):
+                    self.set_inspector(database_name)
+
+                self.context.get().database = database_name
+                self.context.get().database_service = (
+                    self.config.serviceName
+                    if hasattr(self.config, "serviceName")
+                    else str(self.service_connection)
+                )
+
+                for schema_name in self.get_database_schema_names():
+                    self.context.get().database_schema = schema_name
+
+                    # Get stored procedures for this schema
+                    stored_procedures = self.get_stored_procedures()
+                    if stored_procedures:
+                        for stored_procedure in stored_procedures:
+                            # Extract procedure name - it might be an object or just a string
+                            proc_name = (
+                                stored_procedure.name
+                                if hasattr(stored_procedure, "name")
+                                else str(stored_procedure)
+                            )
+                            fqn_value = fqn.build(
+                                self.metadata,
+                                entity_type=Table,
+                                service_name=self.context.get().database_service,
+                                database_name=database_name,
+                                schema_name=schema_name,
+                                table_name=proc_name,
+                            )
+
+                            entities.append(
+                                EntityDescriptor(
+                                    id=fqn_value,
+                                    type="stored_procedure",
+                                    metadata={
+                                        "database": database_name,
+                                        "schema": schema_name,
+                                        "procedure": proc_name,
+                                        "service_name": self.context.get().database_service,
+                                    },
+                                )
+                            )
+
+            logger.info(
+                f"Discovered {len(entities)} stored procedures for distributed processing"
+            )
+
+        except Exception as exc:
+            logger.error(f"Failed to discover stored procedures: {exc}")
+            logger.debug(traceback.format_exc())
+
+        return entities
+
+    def process_entity(
+        self, descriptor: EntityDescriptor
+    ) -> Iterable[Either[Any]]:
+        """
+        Process a single entity in a distributed worker.
+
+        This is stateless and can run in any pod with the descriptor metadata.
+
+        Args:
+            descriptor: Entity descriptor from discover_entities()
+
+        Yields:
+            Either objects with entity creation requests or errors
+        """
+        # Initialize context for this worker thread
+        # Each thread needs its own context copy
+        import threading
+
+        main_thread_id = threading.main_thread().ident
+        current_thread_id = threading.current_thread().ident
+
+        # If we're in a worker thread, copy context from main thread
+        if current_thread_id != main_thread_id and main_thread_id in self.context.contexts:
+            if current_thread_id not in self.context.contexts:
+                self.context.copy_from(main_thread_id)
+
+        # Restore context from descriptor metadata
+        self.context.get().database = descriptor.metadata.get("database")
+        self.context.get().database_schema = descriptor.metadata.get("schema")
+        self.context.get().database_service = descriptor.metadata.get("service_name")
+
+        # Set up inspector for this database
+        database_name = descriptor.metadata.get("database")
+        if hasattr(self, "set_inspector"):
+            self.set_inspector(database_name)
+
+        if descriptor.type == "table":
+            yield from self._process_table_entity(descriptor)
+        elif descriptor.type == "stored_procedure":
+            yield from self._process_stored_procedure_entity(descriptor)
+        else:
+            logger.warning(f"Unknown entity type: {descriptor.type}")
+
+    def _process_table_entity(
+        self, descriptor: EntityDescriptor
+    ) -> Iterable[Either[CreateTableRequest]]:
+        """
+        Process a single table - full column introspection and metadata extraction.
+
+        Args:
+            descriptor: Table descriptor
+
+        Yields:
+            Either with CreateTableRequest or error
+        """
+        table_name = descriptor.metadata["table"]
+        table_type_str = descriptor.metadata["table_type"]
+        table_type = TableType(table_type_str)
+
+        # Call existing yield_table logic
+        yield from self.yield_table((table_name, table_type))
+
+    def _process_stored_procedure_entity(
+        self, descriptor: EntityDescriptor
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """
+        Process a single stored procedure.
+
+        Args:
+            descriptor: Stored procedure descriptor
+
+        Yields:
+            Either with CreateStoredProcedureRequest or error
+        """
+        proc_name = descriptor.metadata["procedure"]
+
+        # Call existing yield_stored_procedure logic
+        if hasattr(self, "yield_stored_procedure"):
+            yield from self.yield_stored_procedure(proc_name)
+
+    def get_parallelizable_entity_types(self) -> List[str]:
+        """
+        Return entity types that can be processed in parallel.
+
+        Returns:
+            List of entity type names
+        """
+        entity_types = ["table"]
+
+        if self.source_config.includeStoredProcedures:
+            entity_types.append("stored_procedure")
+
+        return entity_types
+
+    def get_entity_type_dependencies(self) -> Dict[str, List[str]]:
+        """
+        Define dependencies between entity types.
+
+        Tables have no dependencies, so they can all run in parallel.
+        Stored procedures might reference tables, but we handle that via API lookups.
+
+        Returns:
+            Empty dict (no dependencies)
+        """
+        return {}
+
+    def estimate_entity_processing_time(self, entity_type: str) -> float:
+        """
+        Estimate average processing time per entity.
+
+        Args:
+            entity_type: Type of entity
+
+        Returns:
+            Estimated seconds per entity
+        """
+        if entity_type == "table":
+            # Tables with many columns take longer
+            return 2.0  # Average 2 seconds per table (column introspection is slow)
+        elif entity_type == "stored_procedure":
+            return 1.0  # Stored procedures are faster
+        else:
+            return 1.0

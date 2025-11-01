@@ -1,0 +1,94 @@
+# Kubernetes resources for OpenMetadata distributed ingestion
+# This sets up namespace, service account, and RBAC permissions
+
+---
+# Namespace for OpenMetadata ingestion workflows
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openmetadata
+  labels:
+    app: openmetadata
+    component: ingestion
+
+---
+# Service Account for workflow execution
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openmetadata-ingestion
+  namespace: openmetadata
+  labels:
+    app: openmetadata
+    component: ingestion
+
+---
+# Role - Permissions needed for Argo Workflows
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workflow-executor
+  namespace: openmetadata
+rules:
+  # Pod permissions - for creating and managing worker pods
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+
+  # ConfigMap permissions - for passing workflow config
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "delete"]
+
+  # Secret permissions - for credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+
+  # Argo Workflow permissions
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows", "workflowtemplates", "workflowtasksets"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+
+---
+# RoleBinding - Bind role to service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workflow-executor-binding
+  namespace: openmetadata
+subjects:
+  - kind: ServiceAccount
+    name: openmetadata-ingestion
+    namespace: openmetadata
+roleRef:
+  kind: Role
+  name: workflow-executor
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ClusterRole - For cross-namespace operations (if needed)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: workflow-executor-cluster
+rules:
+  # Allow workflow to access Argo namespace
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: workflow-executor-cluster-binding
+subjects:
+  - kind: ServiceAccount
+    name: openmetadata-ingestion
+    namespace: openmetadata
+roleRef:
+  kind: ClusterRole
+  name: workflow-executor-cluster
+  apiGroup: rbac.authorization.k8s.io

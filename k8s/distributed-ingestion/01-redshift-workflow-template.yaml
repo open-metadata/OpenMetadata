@@ -1,0 +1,175 @@
+# Argo WorkflowTemplate for Redshift Distributed Ingestion
+# This template can be used to run distributed ingestion workflows
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: openmetadata-ingestion-distributed
+  namespace: openmetadata
+  labels:
+    app: openmetadata
+    component: ingestion
+spec:
+  # Service account with permissions to create pods
+  serviceAccountName: openmetadata-ingestion
+
+  # Entrypoint - the first template to execute
+  entrypoint: distributed-ingestion
+
+  # Volume to share data between discovery and worker pods
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: ["ReadWriteMany"]
+        resources:
+          requests:
+            storage: 1Gi
+
+  # Template definitions
+  templates:
+    # Main workflow orchestration
+    - name: distributed-ingestion
+      inputs:
+        parameters:
+          - name: workflow-config
+            description: "Workflow configuration YAML (base64 encoded)"
+          - name: parallelism
+            value: "20"
+            description: "Number of parallel worker pods"
+      dag:
+        tasks:
+          # Phase 1: Discovery - identify all entities to process
+          - name: discover-entities
+            template: discovery-pod
+            arguments:
+              parameters:
+                - name: workflow-config
+                  value: "{{inputs.parameters.workflow-config}}"
+
+          # Phase 2: Process entities in parallel
+          - name: process-entities
+            dependencies: [discover-entities]
+            template: worker-pod
+            arguments:
+              parameters:
+                - name: workflow-config
+                  value: "{{inputs.parameters.workflow-config}}"
+                - name: entity-descriptor
+                  value: "{{item}}"
+            # Dynamic parallelism - fan out to N workers
+            withParam: "{{tasks.discover-entities.outputs.result}}"
+            # Limit concurrent workers
+            parallelism: "{{inputs.parameters.parallelism}}"
+
+    # Discovery pod - lists all entities
+    - name: discovery-pod
+      inputs:
+        parameters:
+          - name: workflow-config
+      container:
+        name: discover
+        image: openmetadata-ingestion:local
+        imagePullPolicy: IfNotPresent
+        command: [python]
+        args:
+          - -m
+          - metadata.cmd.discover
+          - --config
+          - /tmp/config/workflow.yaml
+          - --entity-type
+          - table
+          - --output
+          - /mnt/workdir/entities.json
+        env:
+          # OpenMetadata server accessible via host.docker.internal
+          - name: OPENMETADATA_HOST_PORT
+            value: "http://host.docker.internal:8585/api"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        volumeMounts:
+          - name: workdir
+            mountPath: /mnt/workdir
+          - name: workflow-config
+            mountPath: /tmp/config
+      volumes:
+        - name: workflow-config
+          configMap:
+            name: "{{inputs.parameters.workflow-config}}"
+      # Output the discovered entities as JSON array
+      outputs:
+        parameters:
+          - name: entities
+            valueFrom:
+              path: /mnt/workdir/entities.json
+
+    # Worker pod - processes single entity
+    - name: worker-pod
+      inputs:
+        parameters:
+          - name: workflow-config
+          - name: entity-descriptor
+      retryStrategy:
+        limit: "3"
+        retryPolicy: "Always"
+        backoff:
+          duration: "30s"
+          factor: "2"
+          maxDuration: "10m"
+      container:
+        name: worker
+        image: openmetadata-ingestion:local
+        imagePullPolicy: IfNotPresent
+        command: [python]
+        args:
+          - -m
+          - metadata.cmd.process_entity
+          - --config
+          - /tmp/config/workflow.yaml
+          - --entity
+          - "{{inputs.parameters.entity-descriptor}}"
+        env:
+          - name: OPENMETADATA_HOST_PORT
+            value: "http://host.docker.internal:8585/api"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        volumeMounts:
+          - name: workflow-config
+            mountPath: /tmp/config
+      volumes:
+        - name: workflow-config
+          configMap:
+            name: "{{inputs.parameters.workflow-config}}"
+
+---
+# Example Workflow submission (use this as reference)
+# Submit actual workflow by running:
+#   kubectl create -f redshift-workflow-instance.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: redshift-ingestion-
+  namespace: openmetadata
+  labels:
+    app: openmetadata
+    component: ingestion
+    source: redshift
+spec:
+  workflowTemplateRef:
+    name: openmetadata-ingestion-distributed
+  arguments:
+    parameters:
+      - name: workflow-config
+        value: "redshift-workflow-config"  # Name of ConfigMap with workflow YAML
+      - name: parallelism
+        value: "20"

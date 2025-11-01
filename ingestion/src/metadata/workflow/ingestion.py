@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.api.distributed import DiscoverableSource, ExecutionMode
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
@@ -118,6 +119,54 @@ class IngestionWorkflow(BaseWorkflow, ABC):
 
         Note how the Source class needs to be an Iterator. Specifically,
         we are defining Sources as Generators.
+
+        Supports two execution modes:
+        1. SEQUENTIAL (default): Single-threaded pipeline execution
+        2. DISTRIBUTED: Parallel execution across multiple pods via Argo Workflows
+        """
+        execution_mode = self._get_execution_mode()
+
+        if execution_mode == ExecutionMode.DISTRIBUTED:
+            logger.info("Executing workflow in DISTRIBUTED mode via Argo Workflows")
+            return self._execute_distributed()
+        else:
+            logger.info("Executing workflow in SEQUENTIAL mode")
+            return self._execute_sequential()
+
+    def _get_execution_mode(self) -> ExecutionMode:
+        """
+        Determine execution mode based on configuration and source capabilities.
+
+        Returns:
+            ExecutionMode.DISTRIBUTED if configured and source supports it
+            ExecutionMode.SEQUENTIAL otherwise
+        """
+        distributed_config = None
+        if hasattr(self.config, "workflowConfig") and self.config.workflowConfig:
+            distributed_config = getattr(
+                self.config.workflowConfig, "distributedExecution", None
+            )
+
+        if distributed_config and distributed_config.enabled:
+            if isinstance(self.source, DiscoverableSource):
+                logger.info(
+                    f"Source {self.source.__class__.__name__} supports distributed execution"
+                )
+                return ExecutionMode.DISTRIBUTED
+            else:
+                logger.warning(
+                    f"Source {self.source.__class__.__name__} does not support "
+                    f"distributed execution (must implement DiscoverableSource). "
+                    f"Falling back to sequential mode."
+                )
+
+        return ExecutionMode.SEQUENTIAL
+
+    def _execute_sequential(self):
+        """
+        Execute workflow in sequential mode (original implementation).
+
+        This is the default mode that processes entities one-by-one in a single thread.
         """
         for record in self.source.run():
             processed_record = record
@@ -134,6 +183,172 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         )
         if bulk_sink:
             bulk_sink.run()
+
+    def _execute_distributed(self):
+        """
+        Execute workflow in distributed mode.
+
+        Supports two modes:
+        1. Argo Workflows (production) - For Kubernetes deployments
+        2. Local threads (testing) - For local development/testing
+
+        Mode is determined by orchestrator config.
+        """
+        distributed_config = self.config.workflowConfig.distributedExecution
+        orchestrator = getattr(distributed_config, "orchestrator", "argo")
+
+        # Handle both string and Enum values for orchestrator
+        orchestrator_str = str(orchestrator).lower() if hasattr(orchestrator, 'value') else str(orchestrator).lower()
+        if 'local' in orchestrator_str:
+            logger.info("Using LOCAL thread-based distributed execution")
+            return self._execute_distributed_local()
+
+        # Argo mode for production Kubernetes deployment
+        try:
+            from metadata.distributed.argo_client import ArgoWorkflowClient
+
+            client = ArgoWorkflowClient(
+                namespace=distributed_config.namespace or "default",
+                service_account=distributed_config.serviceAccount,
+                image=distributed_config.image or "openmetadata/ingestion:latest",
+            )
+
+            workflow_id = client.submit_workflow(
+                workflow_config=self.config.dict(),
+                source=self.source,
+                parallelism=distributed_config.parallelism or 50,
+                retry_limit=distributed_config.retryPolicy.maxAttempts
+                if distributed_config.retryPolicy
+                else 3,
+            )
+
+            logger.info(f"Submitted Argo Workflow: {workflow_id}")
+            logger.info(
+                f"Monitor workflow at Argo UI: /workflows/{distributed_config.namespace}/{workflow_id}"
+            )
+
+            if distributed_config.waitForCompletion:
+                logger.info("Waiting for workflow completion...")
+                result = client.wait_for_completion(
+                    workflow_id, timeout=distributed_config.timeoutSeconds or 86400
+                )
+                logger.info(f"Workflow completed with status: {result.status}")
+
+                if result.status == "Failed":
+                    raise WorkflowExecutionError(
+                        f"Distributed workflow {workflow_id} failed"
+                    )
+
+            return workflow_id
+
+        except ImportError as exc:
+            logger.warning(
+                f"Argo Workflows client not available: {exc}. "
+                f"Falling back to local thread-based execution."
+            )
+            return self._execute_distributed_local()
+        except Exception as exc:
+            logger.error(
+                f"Failed to execute Argo workflow: {exc}. "
+                f"Attempting local execution...",
+                exc_info=True,
+            )
+            try:
+                return self._execute_distributed_local()
+            except Exception as local_exc:
+                logger.error(
+                    f"Local execution also failed: {local_exc}",
+                    exc_info=True,
+                )
+                raise WorkflowExecutionError(
+                    f"All distributed execution modes failed. "
+                    f"Argo error: {exc}, Local error: {local_exc}"
+                ) from exc
+
+    def _execute_distributed_local(self):
+        """
+        Execute distributed workflow using local threads.
+
+        This simulates distributed execution on a local machine
+        without requiring Kubernetes/Argo.
+        """
+        from metadata.distributed.local_executor import LocalDistributedExecutor
+
+        distributed_config = self.config.workflowConfig.distributedExecution
+        parallelism = distributed_config.parallelism or 10
+
+        logger.info(
+            f"Starting local distributed execution with {parallelism} threads"
+        )
+
+        executor = LocalDistributedExecutor(parallelism=parallelism)
+
+        # Get sink from workflow steps
+        sink = next((step for step in self.steps if isinstance(step, Sink)), None)
+        if not sink:
+            raise WorkflowExecutionError("No sink found in workflow steps")
+
+        # First, create database and schema hierarchy (sequential)
+        logger.info("Creating database and schema hierarchy...")
+        self._create_database_schema_hierarchy()
+
+        # Execute distributed processing
+        result = executor.execute(source=self.source, sink=sink)
+
+        logger.info(f"Local distributed execution completed: {result['status']}")
+
+        return result
+
+    def _create_database_schema_hierarchy(self):
+        """
+        Create database service, databases, and schemas before distributed processing.
+
+        This ensures the hierarchy exists in OpenMetadata before workers
+        try to create tables/entities.
+
+        We temporarily modify the topology to skip table processing, then restore it.
+        """
+        from metadata.ingestion.source.database.database_service import (
+            DatabaseServiceSource,
+        )
+
+        if not isinstance(self.source, DatabaseServiceSource):
+            logger.debug(
+                "Source is not a DatabaseServiceSource, skipping hierarchy creation"
+            )
+            return
+
+        logger.info("Creating database service, databases, and schemas...")
+
+        # Store original children of databaseSchema node
+        original_children = self.source.topology.databaseSchema.children
+
+        try:
+            # Temporarily remove table and stored_procedure from schema's children
+            # This prevents the topology runner from processing tables
+            self.source.topology.databaseSchema.children = []
+
+            # Process the topology up to schema level using the topology runner
+            # This handles all context management automatically
+            for record in self.source.run():
+                # Process each record through pipeline steps (processors and sink)
+                processed_record = record
+                for step in self.steps:
+                    if processed_record is not None and isinstance(
+                        step, (Processor, Stage, Sink)
+                    ):
+                        processed_record = step.run(processed_record)
+
+        except Exception as exc:
+            logger.warning(
+                f"Failed to create hierarchy: {exc}",
+                exc_info=True,
+            )
+        finally:
+            # Restore original children
+            self.source.topology.databaseSchema.children = original_children
+
+        logger.info("Database and schema hierarchy created")
 
     def get_failures(self) -> List[StackTraceError]:
         return self.source.get_status().failures

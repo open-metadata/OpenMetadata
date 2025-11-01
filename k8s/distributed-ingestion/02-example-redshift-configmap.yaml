@@ -1,0 +1,104 @@
+# Example ConfigMap with Redshift workflow configuration
+# IMPORTANT: Replace placeholder values with actual credentials before applying
+#
+# To create with environment variables substitution:
+#   envsubst < 02-example-redshift-configmap.yaml | kubectl apply -f -
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redshift-workflow-config
+  namespace: openmetadata
+  labels:
+    app: openmetadata
+    component: ingestion
+    source: redshift
+data:
+  workflow.yaml: |
+    source:
+      type: redshift
+      serviceName: redshift-k8s-distributed
+      serviceConnection:
+        config:
+          type: Redshift
+          username: ${REDSHIFT_USER}
+          password: ${REDSHIFT_PASSWORD}
+          hostPort: ${REDSHIFT_HOST}:5439
+          database: ${REDSHIFT_DATABASE}
+      sourceConfig:
+        config:
+          type: DatabaseMetadata
+          # Start with public schema for testing
+          schemaFilterPattern:
+            includes:
+              - "^public$"
+          includeViews: true
+          includeTables: true
+          includeStoredProcedures: false
+
+    sink:
+      type: metadata-rest
+      config:
+        api_endpoint: null
+
+    workflowConfig:
+      openMetadataServerConfig:
+        # Use host.docker.internal to reach localhost from K8s pods
+        hostPort: http://host.docker.internal:8585/api
+        authProvider: openmetadata
+        securityConfig:
+          jwtToken: ${OM_JWT_TOKEN}
+
+      # Distributed execution configuration
+      distributedExecution:
+        enabled: true
+        orchestrator: argo
+        parallelism: 20  # 20 parallel worker pods
+        namespace: openmetadata
+        serviceAccount: openmetadata-ingestion
+        image: openmetadata-ingestion:local
+
+        # Retry policy for failed entities
+        retryPolicy:
+          maxAttempts: 3
+          backoffSeconds: 30
+          backoffFactor: 2
+          maxBackoffSeconds: 600
+
+        # Resource requests per worker pod
+        resourceRequests:
+          cpu: "500m"
+          memory: "1Gi"
+
+        # Resource limits per worker pod
+        resourceLimits:
+          cpu: "1"
+          memory: "2Gi"
+
+        # Wait for workflow completion
+        waitForCompletion: true
+
+        # Workflow timeout (24 hours)
+        timeoutSeconds: 86400
+
+      loggerLevel: INFO
+
+---
+# Alternative: Use Kubernetes Secret for sensitive data
+# This approach is more secure than ConfigMap for credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redshift-credentials
+  namespace: openmetadata
+  labels:
+    app: openmetadata
+    component: ingestion
+type: Opaque
+stringData:
+  # Replace with actual values
+  REDSHIFT_USER: "your_username"
+  REDSHIFT_PASSWORD: "your_password"
+  REDSHIFT_HOST: "your-cluster.region.redshift.amazonaws.com"
+  REDSHIFT_DATABASE: "dev"
+  OM_JWT_TOKEN: "your-jwt-token-from-openmetadata-ui"

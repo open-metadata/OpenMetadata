@@ -5721,4 +5721,85 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("PersonalData.Personal", personalTag.getTagFQN());
     assertNull(personalTag.getReason());
   }
+
+  @Test
+  void test_bulkCreateOrUpdateTables(TestInfo test) throws IOException {
+    List<CreateTable> createRequests = new ArrayList<>();
+
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          listOf(
+              getColumn("c" + i + "_1", INT, null),
+              getColumn("c" + i + "_2", VARCHAR, null).withDataLength(100));
+      CreateTable create =
+          createRequest("bulk_table_" + i, "", "", null)
+              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+              .withColumns(columns)
+              .withTableConstraints(null);
+      createRequests.add(create);
+    }
+
+    org.openmetadata.schema.api.data.BulkCreateTable bulkRequest =
+        new org.openmetadata.schema.api.data.BulkCreateTable()
+            .withTables(createRequests)
+            .withDryRun(false);
+
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        bulkCreateTables(bulkRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(5, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertNotNull(result.getSuccessRequest());
+    assertEquals(5, result.getSuccessRequest().size());
+  }
+
+  @Test
+  void test_bulkCreateOrUpdateTables_partialFailure(TestInfo test) throws IOException {
+    List<CreateTable> createRequests = new ArrayList<>();
+
+    for (int i = 0; i < 3; i++) {
+      List<Column> columns =
+          listOf(
+              getColumn("c" + i + "_1", INT, null).withOrdinalPosition(1),
+              getColumn("c" + i + "_2", VARCHAR, null).withDataLength(100).withOrdinalPosition(2));
+      CreateTable create =
+          createRequest("bulk_partial_" + i, "", "", null)
+              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+              .withColumns(columns)
+              .withTableConstraints(null);
+      createRequests.add(create);
+    }
+
+    List<Column> invalidColumns = listOf(getColumn("invalid", CHAR, null));
+    CreateTable invalidCreate =
+        createRequest("bulk_partial_invalid", "", "", null)
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(invalidColumns);
+    createRequests.add(invalidCreate);
+
+    org.openmetadata.schema.api.data.BulkCreateTable bulkRequest =
+        new org.openmetadata.schema.api.data.BulkCreateTable()
+            .withTables(createRequests)
+            .withDryRun(false);
+
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        bulkCreateTables(bulkRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(4, result.getNumberOfRowsProcessed());
+    assertEquals(3, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+  }
+
+  private org.openmetadata.schema.type.api.BulkOperationResult bulkCreateTables(
+      org.openmetadata.schema.api.data.BulkCreateTable request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("tables/bulk");
+    return TestUtils.put(
+        target, request, org.openmetadata.schema.type.api.BulkOperationResult.class, OK, authHeaders);
+  }
 }
