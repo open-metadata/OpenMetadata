@@ -14,6 +14,7 @@ Protobuf parser tests
 """
 
 import os
+import tempfile
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import Column
@@ -26,40 +27,46 @@ class ProtobufParserTests(TestCase):
     Check methods from protobuf_parser.py
     """
 
-    schema_name = "person_info"
+    def setUp(self):
+        self.schema_name = "person_info"
 
-    sample_protobuf_schema = """
-    syntax = "proto3";
-    package persons;
-    enum Gender {
-        M = 0; // male 
-        F = 1; // female
-        O = 2; // other
-    }
+        self.sample_protobuf_schema = """
+        syntax = "proto3";
+        package persons;
+        enum Gender {
+            M = 0; // male 
+            F = 1; // female
+            O = 2; // other
+        }
 
-    message Result {
-        string url = 1;
-        string title = 2;
-        repeated string snippets = 3;
-    }
+        message Result {
+            string url = 1;
+            string title = 2;
+            repeated string snippets = 3;
+        }
 
-    message PersonInfo {
-        int32 age = 1; // age in years
-        Gender gender = 2; 
-        Result gender_new = 3; 
-        int32 height = 4; // height in cm
-        fixed32 height_new = 5; // height in cm
-        bool my_bool = 6;
-        repeated string repeated_string = 7;   
-    }
-    """
+        message PersonInfo {
+            int32 age = 1; // age in years
+            Gender gender = 2; 
+            Result gender_new = 3; 
+            int32 height = 4; // height in cm
+            fixed32 height_new = 5; // height in cm
+            bool my_bool = 6;
+            repeated string repeated_string = 7;   
+        }
+        """
 
-    protobuf_parser = ProtobufParser(
-        config=ProtobufParserConfig(
-            schema_name=schema_name, schema_text=sample_protobuf_schema
+        # Create unique temp directory for each test instance
+        self.temp_dir = tempfile.mkdtemp(prefix="protobuf_test_")
+        
+        self.protobuf_parser = ProtobufParser(
+            config=ProtobufParserConfig(
+                schema_name=self.schema_name, 
+                schema_text=self.sample_protobuf_schema,
+                base_file_path=self.temp_dir
+            )
         )
-    )
-    parsed_schema = protobuf_parser.parse_protobuf_schema()
+        self.parsed_schema = self.protobuf_parser.parse_protobuf_schema()
 
     def test_schema_name(self):
         self.assertEqual(self.parsed_schema[0].name.root, "PersonInfo")
@@ -109,9 +116,15 @@ class ProtobufParserTests(TestCase):
             with open(file_path, "r") as file:
                 schema_text = schema_text + file.read()
         schema_text = merge_and_clean_protobuf_schema(schema_text)
+        
+        # Create unique temp directory for this test
+        complex_temp_dir = tempfile.mkdtemp(prefix="protobuf_complex_test_")
+        
         protobuf_parser = ProtobufParser(
             config=ProtobufParserConfig(
-                schema_name=schema_name, schema_text=schema_text
+                schema_name=schema_name, 
+                schema_text=schema_text,
+                base_file_path=complex_temp_dir
             )
         )
         parsed_schema = protobuf_parser.parse_protobuf_schema()
