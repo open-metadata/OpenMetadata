@@ -1,5 +1,4 @@
 import logging
-import sys
 from typing import List, Tuple, Type
 
 import pytest
@@ -16,10 +15,6 @@ from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
-
-if not sys.version_info >= (3, 9):
-    # these tests use test-containers which are not supported in python 3.8
-    collect_ignore = ["trino", "kafka", "datalake"]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -53,7 +48,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
 #  which is a potential source of issues.
 
 
-@pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
+@pytest.fixture(scope="session", autouse=True)
 def config_testcontatiners():
     try:
         from testcontainers.core.config import testcontainers_config
