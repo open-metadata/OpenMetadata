@@ -10,7 +10,7 @@ else
 endif
 
 PYTEST_UNIT_WORKERS ?= auto
-PYTEST_INTEGRATION_WORKERS ?= 4
+PYTEST_INTEGRATION_WORKERS ?= 2
 
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
@@ -91,9 +91,8 @@ unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Onl
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	# First run parallel-safe tests with xdist
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist=load -c $(INGESTION_DIR)/pyproject.toml -m "not single_threaded" $(INGESTION_DIR)/tests/integration
-	# Then run single-threaded tests without xdist
+	# Run parallel-safe tests first, then single-threaded tests
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist=load -c $(INGESTION_DIR)/pyproject.toml -m "not single_threaded" $(INGESTION_DIR)/tests/integration; \
 	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml -m "single_threaded" --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
 
 .PHONY: run_python_tests
