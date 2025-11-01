@@ -12,7 +12,6 @@
  */
 import { SearchOutlined } from '@ant-design/icons';
 import { Collapse, Input } from 'antd';
-import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

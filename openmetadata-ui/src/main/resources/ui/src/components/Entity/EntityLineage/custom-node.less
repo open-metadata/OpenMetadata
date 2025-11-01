@@ -307,6 +307,21 @@
   position: relative;
   font-size: 12px;
   font-weight: 400;
+  border: 1px solid transparent;
+  border-left: 6px solid transparent;
+  border-radius: 4px;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+
+  &:hover {
+    background-color: @primary-1;
+    color: @blue-44;
+    .custom-node-column-label {
+      color: inherit;
+      font-weight: 500;
+    }
+    border-left-color: @primary-color;
+  }
 
   .custom-node-name-container {
     min-width: 0;
