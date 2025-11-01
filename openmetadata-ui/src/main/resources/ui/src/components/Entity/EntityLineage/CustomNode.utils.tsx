@@ -164,10 +164,11 @@ export const getColumnContent = (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced && 'custom-node-header-tracing'
+        isColumnTraced && 'custom-node-header-column-tracing'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
+      tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
         onColumnClick(fullyQualifiedName ?? '');
