@@ -265,6 +265,41 @@
   .lineage-node-handle.react-flow__handle-right {
     right: -10px;
   }
+  .lineage-node-handle-expand-all {
+    width: 40px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    border-radius: 4px !important;
+    border-color: @lineage-border !important;
+    background: @white !important;
+    top: 60px !important;
+    right: -27px;
+    gap: 1px;
+    border: 1px solid;
+
+    svg {
+      color: @grey-4;
+      cursor: pointer;
+      padding: 1px;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      &:hover {
+        color: @primary-color;
+        background-color: #eff8ff;
+      }
+    }
+
+    .lineage-expand-icons-separator::after {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 2px;
+      width: 1px;
+      height: 14px;
+      background: @blue-20;
+    }
+  }
 }
 
 .react-flow .lineage-node-handle {
