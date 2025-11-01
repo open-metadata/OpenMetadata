@@ -56,10 +56,17 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
     - name: Generate Models
       run: |
         python3 -m venv env
         source env/bin/activate
+        # Use uv for faster pip operations
+        uv pip install pip setuptools wheel
         sudo make install_antlr_cli
         make install_dev generate
       shell: bash
@@ -67,6 +74,8 @@ runs:
     - name: Install Python Dependencies
       run: |
         source env/bin/activate
+        # Use uv for faster dependency installation
+        export UV_SYSTEM_PYTHON=1
         make install_all install_test
       shell: bash
     # ------------------------------------------------------------------------------

@@ -12,6 +12,14 @@ endif
 PYTEST_UNIT_WORKERS ?= auto
 PYTEST_INTEGRATION_WORKERS ?= 2
 
+# Use uv if available, otherwise fall back to pip
+UV := $(shell command -v uv 2> /dev/null)
+ifdef UV
+    PIP_CMD = uv pip
+else
+    PIP_CMD = python -m pip
+endif
+
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
 	python -m pip install $(INGESTION_DIR)/
@@ -24,15 +32,15 @@ install_dev_env:  ## Install all dependencies for development (in edit mode)
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "$(INGESTION_DIR)[dev]/"
+	$(PIP_CMD) install "$(INGESTION_DIR)[dev]/"
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install "$(INGESTION_DIR)[test]/"
+	$(PIP_CMD) install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install "$(INGESTION_DIR)[all]/"
+	$(PIP_CMD) install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
