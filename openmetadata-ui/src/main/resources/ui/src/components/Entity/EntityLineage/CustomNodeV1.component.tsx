@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +18,12 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import DownloadIcon from '@mui/icons-material/SaveAlt';
+
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -31,6 +38,7 @@ import {
 } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
+import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
 
 const NodeHandles = memo(
   ({
@@ -142,8 +150,84 @@ const ExpandCollapseHandles = memo(
   }
 );
 
+const MeatballMenu = () => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <div className="manage-node">
+      <IconButton
+        aria-controls={open ? 'menu' : undefined}
+        aria-haspopup="true"
+        aria-label="more options"
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+          e.stopPropagation();
+          setAnchorEl(e.currentTarget);
+        }}>
+        <MoreVertIcon sx={{ pointerEvents: 'none' }} />
+      </IconButton>
+
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        className="manage-node-menu"
+        id="menu"
+        open={open}
+        sx={{
+          '.MuiPaper-root': {
+            width: 'max-content',
+            marginLeft: '6px',
+            marginTop: 0,
+            '.MuiMenuItem-root': {
+              fontWeight: 400,
+              svg: {
+                fontSize: 20,
+              },
+            },
+          },
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={handleClose}>
+          <ArrowBackIcon />
+          Edit Upstream
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <ArrowForwardIcon />
+          Edit DownStream
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleClose}>
+          <TrendingDownIcon />
+          View Impact
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <DownloadIcon /> Download Impact
+        </MenuItem>
+      </Menu>
+    </div>
+  );
+};
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
+  const [isColumnsListExpanded, setIsColumnsListExpanded] = useState(false);
+
+  const toggleColumnsList = useCallback(() => {
+    setIsColumnsListExpanded((prev) => !prev);
+  }, []);
 
   const {
     isEditMode,
@@ -213,13 +297,25 @@ const CustomNodeV1 = (props: NodeProps) => {
 
     return (
       <>
-        <LineageNodeLabelV1 node={node} />
+        <LineageNodeLabelV1
+          isColumnsListExpanded={isColumnsListExpanded}
+          node={node}
+          toggleColumnsList={toggleColumnsList}
+        />
         {isSelected && isEditMode && !isRootNode && (
           <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
         )}
       </>
     );
-  }, [node.id, isNewNode, label, isSelected, isEditMode, isRootNode]);
+  }, [
+    node.id,
+    isNewNode,
+    label,
+    isSelected,
+    isEditMode,
+    isRootNode,
+    isColumnsListExpanded,
+  ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
     () => ({
@@ -263,6 +359,11 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
+      {isRootNode && (
+        <div className="lineage-node-badge-container">
+          <div className="lineage-node-badge" />
+        </div>
+      )}
       <NodeHandles
         expandCollapseHandles={handlesElement}
         id={id}
@@ -271,8 +372,13 @@ const CustomNodeV1 = (props: NodeProps) => {
       />
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
-        <NodeChildren isConnectable={isConnectable} node={node} />
+        <NodeChildren
+          isColumnsListExpanded={isColumnsListExpanded}
+          isConnectable={isConnectable}
+          node={node}
+        />
       </div>
+      <MeatballMenu />
     </div>
   );
 };
