@@ -19,6 +19,7 @@ import { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
+// import { ReactComponent as DataFlowIcon } from '../../../assets/svg/ic-format-delete-row.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
@@ -27,6 +28,7 @@ import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
+import { Plus, Dataflow01 } from '@untitledui/icons';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -74,24 +76,51 @@ export const getExpandHandle = (
   direction: LineageDirection,
   onClickHandler: () => void
 ) => {
+  // return (
+  //   <>
+  //     <Button
+  //       className={classNames(
+  //         'absolute lineage-node-handle flex-center',
+  //         direction === LineageDirection.Downstream
+  //           ? 'react-flow__handle-right'
+  //           : 'react-flow__handle-left'
+  //       )}
+  //       icon={
+  //         <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
+  //       }
+  //       shape="circle"
+  //       size="small"
+  //       onClick={(e) => {
+  //         e.stopPropagation();
+  //         onClickHandler();
+  //       }}
+  //     />
+  //     <Button
+  //       className={classNames(
+  //         'absolute lineage-node-handle2 flex-center',
+  //         'lineage-node-handle-expand-all'
+  //       )}
+  //       icon={<Dataflow01 />}
+  //       shape="circle"
+  //       size="small"
+  //       onClick={(e) => {
+  //         e.stopPropagation();
+  //       }}
+  //     />
+  //   </>
+  // );
+
   return (
-    <Button
+    <div
       className={classNames(
-        'absolute lineage-node-handle flex-center',
-        direction === LineageDirection.Downstream
-          ? 'react-flow__handle-right'
-          : 'react-flow__handle-left'
+        'absolute lineage-node-handle-expand-all flex-center',
+        'react-flow__handle-right'
       )}
-      icon={
-        <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
-      }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClickHandler();
-      }}
-    />
+      onClick={(e) => e.stopPropagation()}>
+      <Plus className="lineage-expand-icon" onClick={onClickHandler} />
+      <div className="lineage-expand-icons-separator" />
+      <Dataflow01 className="lineage-expand-icon" />
+    </div>
   );
 };
 
