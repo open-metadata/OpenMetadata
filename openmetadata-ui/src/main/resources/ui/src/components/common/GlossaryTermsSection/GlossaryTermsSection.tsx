@@ -27,7 +27,7 @@ import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
 import './GlossaryTermsSection.less';
 
-const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
+const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
   showEditButton = true,
   hasPermission = false,
@@ -206,6 +206,9 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
     return glossaryTermsDisplay;
   }, [isLoading, isEditing, loadingState, editingState, glossaryTermsDisplay]);
 
+  const canShowEditButton =
+    showEditButton && hasPermission && !isEditing && !isLoading;
+
   if (!glossaryTerms?.length) {
     return (
       <div
@@ -215,7 +218,7 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
           <Typography.Text className="glossary-terms-title">
             {t('label.glossary-term-plural')}
           </Typography.Text>
-          {showEditButton && hasPermission && !isEditing && !isLoading && (
+          {canShowEditButton && (
             <EditIconButton
               newLook
               data-testid="edit-glossary-terms"
@@ -246,7 +249,7 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
         <Typography.Text className="glossary-terms-title">
           {t('label.glossary-term-plural')}
         </Typography.Text>
-        {showEditButton && hasPermission && !isEditing && !isLoading && (
+        {canShowEditButton && (
           <EditIconButton
             newLook
             data-testid="edit-glossary-terms"
@@ -267,4 +270,4 @@ const GlossaryTermsSectionV1: React.FC<GlossaryTermsSectionProps> = ({
   );
 };
 
-export default GlossaryTermsSectionV1;
+export default GlossaryTermsSection;

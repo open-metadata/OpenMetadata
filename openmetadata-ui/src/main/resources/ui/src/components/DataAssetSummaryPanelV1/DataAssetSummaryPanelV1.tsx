@@ -431,6 +431,9 @@ export const DataAssetSummaryPanelV1 = ({
             )}
             <DescriptionSection
               description={dataAsset.description}
+              hasPermission={
+                entityPermissions?.EditDescription || entityPermissions?.EditAll
+              }
               onDescriptionUpdate={handleDescriptionUpdate}
             />
             <OverviewSection
@@ -539,6 +542,9 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <DescriptionSection
               description={dataAsset.description}
+              hasPermission={
+                entityPermissions?.EditDescription || entityPermissions?.EditAll
+              }
               onDescriptionUpdate={handleDescriptionUpdate}
             />
             <div>

@@ -49,6 +49,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     setPopoverOpen,
     startEditing,
     completeEditing,
+    cancelEditing,
   } = useEditableSection<TagLabel[]>(tags);
 
   const getTagFqn = (tag: TagLabel) =>
@@ -134,13 +135,17 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         selectedTags={editingTags}
         onCancel={() => {
           setPopoverOpen(false);
+          cancelEditing();
         }}
         onUpdate={handleTagSelection}>
         <div className="d-none tag-selector-display">
           {editingTags.length > 0 && (
             <div className="selected-tags-list">
               {editingTags.map((tag) => (
-                <div className="selected-tag-chip" key={tag.tagFQN}>
+                <div
+                  className="selected-tag-chip"
+                  data-testid={`tag-${tag.tagFQN}`}
+                  key={tag.tagFQN}>
                   <ClassificationIcon className="tag-icon" />
                   <span className="tag-name">{getEntityName(tag)}</span>
                 </div>
@@ -180,7 +185,10 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
             ? nonTierTags
             : nonTierTags.slice(0, maxVisibleTags)
           ).map((tag, index) => (
-            <div className="tag-item" key={index}>
+            <div
+              className="tag-item"
+              data-testid={`tag-${tag.tagFQN}`}
+              key={index}>
               <ClassificationIcon className="tag-icon" />
               <span className="tag-name">{getEntityName(tag)}</span>
             </div>
@@ -214,6 +222,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     return tagsDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tagsDisplay]);
 
+  const canShowEditButton =
+    showEditButton && hasPermission && !isEditing && !isLoading;
+
   if (!nonTierTags.length) {
     return (
       <div className="tags-section">
@@ -221,7 +232,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           <Typography.Text className="tags-title">
             {t('label.tag-plural')}
           </Typography.Text>
-          {showEditButton && hasPermission && !isEditing && !isLoading && (
+          {canShowEditButton && (
             <EditIconButton
               newLook
               data-testid="edit-icon-tags"
@@ -246,7 +257,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         <Typography.Text className="tags-title">
           {t('label.tag-plural')}
         </Typography.Text>
-        {showEditButton && hasPermission && !isEditing && !isLoading && (
+        {canShowEditButton && (
           <EditIconButton
             newLook
             data-testid="edit-icon-tags"

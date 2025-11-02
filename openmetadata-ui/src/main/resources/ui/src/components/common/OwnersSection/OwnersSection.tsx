@@ -45,6 +45,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     setIsLoading,
     setPopoverOpen,
     startEditing,
+    cancelEditing,
     completeEditing,
   } = useEditableSection<EntityReference[]>(owners);
 
@@ -117,7 +118,10 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
         }}
-        onClose={() => handlePopoverOpenChange(false)}
+        onClose={() => {
+          handlePopoverOpenChange(false);
+          cancelEditing();
+        }}
         onUpdate={handleOwnerSelection}>
         <div className="owner-selector-display">
           {editingOwners.length > 0 && (
@@ -184,6 +188,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     return ownersDisplay;
   }, [isLoading, isEditing, editingState, ownersDisplay]);
 
+  const canShowEditButton =
+    showEditButton && hasPermission && !isEditing && !isLoading;
+
   if (!displayOwners.length) {
     return (
       <div className="owners-section">
@@ -191,7 +198,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           <Typography.Text className="owners-title">
             {t('label.owner-plural')}
           </Typography.Text>
-          {showEditButton && hasPermission && !isEditing && !isLoading && (
+          {canShowEditButton && (
             <EditIconButton
               newLook
               data-testid="edit-owners"
@@ -216,7 +223,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         <Typography.Text className="owners-title">
           {t('label.owner-plural')}
         </Typography.Text>
-        {showEditButton && hasPermission && !isEditing && !isLoading && (
+        {canShowEditButton && (
           <EditIconButton
             newLook
             data-testid="edit-owners"

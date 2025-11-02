@@ -24,6 +24,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   description,
   onDescriptionUpdate,
   showEditButton = true,
+  hasPermission = false,
 }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -127,12 +128,18 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
     return () => io.disconnect();
   }, [checkIfTextIsTruncated]);
 
+  const canShowEditButton =
+    showEditButton &&
+    hasPermission &&
+    !isEditDescription &&
+    onDescriptionUpdate;
+
   if (!description?.trim()) {
     return (
       <div className="description-section">
         <div className="description-header">
           <span className="description-title">{t('label.description')}</span>
-          {showEditButton && onDescriptionUpdate && !isEditDescription && (
+          {canShowEditButton && (
             <EditIconButton
               newLook
               data-testid="edit-description"
@@ -169,7 +176,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
     <div className="description-section">
       <div className="description-header">
         <span className="description-title">{t('label.description')}</span>
-        {showEditButton && onDescriptionUpdate && !isEditDescription && (
+        {canShowEditButton && (
           <EditIconButton
             newLook
             data-testid="edit-description"

@@ -47,6 +47,7 @@ const TierSection: React.FC<TierSectionProps> = ({
     setPopoverOpen,
     startEditing,
     completeEditing,
+    cancelEditing,
   } = useEditableSection<TagLabel | undefined>(tier);
 
   const handleEditClick = () => {
@@ -135,7 +136,10 @@ const TierSection: React.FC<TierSectionProps> = ({
         popoverProps={{ open: popoverOpen }}
         tierCardClassName="tier-card-popover"
         updateTier={handleTierSelection}
-        onClose={handleCancel}>
+        onClose={() => {
+          handleCancel();
+          cancelEditing();
+        }}>
         <div className="tier-selector-display">
           {displayTier && (
             <div className="d-flex flex-col gap-2">
@@ -190,13 +194,16 @@ const TierSection: React.FC<TierSectionProps> = ({
     return tierDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tierDisplay]);
 
+  const canShowEditButton =
+    showEditButton && hasPermission && !isEditing && !isLoading;
+
   return (
     <div className="tier-section">
       <div className="tier-header">
         <Typography.Text className="tier-title">
           {t('label.tier')}
         </Typography.Text>
-        {showEditButton && hasPermission && !isEditing && !isLoading && (
+        {canShowEditButton && (
           <EditIconButton
             newLook
             data-testid="edit-icon-tier"

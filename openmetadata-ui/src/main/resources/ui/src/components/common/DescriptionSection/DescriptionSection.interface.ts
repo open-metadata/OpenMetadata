@@ -14,4 +14,5 @@ export interface DescriptionSectionProps {
   description?: string;
   onDescriptionUpdate?: (description: string) => Promise<void>;
   showEditButton?: boolean;
+  hasPermission?: boolean;
 }

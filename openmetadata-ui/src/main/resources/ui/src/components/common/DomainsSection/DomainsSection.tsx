@@ -161,6 +161,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
+        setPopoverOpen(false);
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {

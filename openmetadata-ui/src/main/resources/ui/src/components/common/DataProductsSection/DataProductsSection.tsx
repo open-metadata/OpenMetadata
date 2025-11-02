@@ -166,7 +166,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       <DataProductsSelectListV1
         fetchOptions={fetchAPI}
         popoverProps={{
-          placement: 'bottomLeft',
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
         }}
@@ -299,24 +298,19 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         <Typography.Text className="data-products-title">
           {t('label.data-product-plural')}
         </Typography.Text>
-        {showEditButton &&
-          hasPermission &&
-          !isEditing &&
-          !isLoading &&
-          displayActiveDomains &&
-          displayActiveDomains.length > 0 && (
-            <EditIconButton
-              newLook
-              data-testid="edit-data-products"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.data-product-plural'),
-              })}
-              onClick={handleEditClick}
-            />
-          )}
+        {canShowEditButton && (
+          <EditIconButton
+            newLook
+            data-testid="edit-data-products"
+            disabled={false}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.data-product-plural'),
+            })}
+            onClick={handleEditClick}
+          />
+        )}
       </div>
       <div className="data-products-content">{dataProductsContent}</div>
     </div>

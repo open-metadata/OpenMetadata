@@ -100,7 +100,13 @@ describe('DescriptionSection', () => {
     });
 
     it('shows edit control when showEditButton is true and onDescriptionUpdate provided', () => {
-      render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
+      render(
+        <DescriptionSection
+          hasPermission
+          showEditButton
+          onDescriptionUpdate={jest.fn()}
+        />
+      );
 
       const editIcon = screen.getByTestId('edit-icon-svg');
 
@@ -135,7 +141,13 @@ describe('DescriptionSection', () => {
 
   describe('Edit Mode - Empty Description', () => {
     it('opens modal on edit and cancels back to view', () => {
-      render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
+      render(
+        <DescriptionSection
+          hasPermission
+          showEditButton
+          onDescriptionUpdate={jest.fn()}
+        />
+      );
 
       const editTrigger = screen.getByTestId('edit-description');
       fireEvent.click(editTrigger);
@@ -152,7 +164,13 @@ describe('DescriptionSection', () => {
     it('saves edited description and closes modal', async () => {
       const onUpdate = jest.fn().mockResolvedValue(undefined);
 
-      render(<DescriptionSection onDescriptionUpdate={onUpdate} />);
+      render(
+        <DescriptionSection
+          hasPermission
+          showEditButton
+          onDescriptionUpdate={onUpdate}
+        />
+      );
 
       const editTrigger = screen.getByTestId('edit-description');
       fireEvent.click(editTrigger);
@@ -189,6 +207,8 @@ describe('DescriptionSection', () => {
     it('opens modal from non-empty view and cancel back', () => {
       render(
         <DescriptionSection
+          hasPermission
+          showEditButton
           description="Content"
           onDescriptionUpdate={jest.fn()}
         />
