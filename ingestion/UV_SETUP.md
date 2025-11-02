@@ -110,3 +110,21 @@ make uv_setup
 - **Lock Files**: Reproducible builds with `uv.lock`
 - **Better Caching**: Superior dependency caching
 - **Modern Resolver**: More efficient dependency resolution
+
+## Docker Usage
+
+The `Dockerfile.ci` has been updated to use modern uv patterns:
+
+```dockerfile
+# Configure uv to use system Python
+ENV UV_SYSTEM_PYTHON=1
+
+# Use uv sync for production builds
+RUN uv sync --locked --no-dev
+```
+
+### Benefits in Docker:
+- **Faster Builds**: uv is significantly faster than pip
+- **Reproducible**: `--locked` ensures exact dependency versions  
+- **Production Ready**: `--no-dev` excludes development dependencies
+- **Cache Friendly**: Better layer caching with uv
