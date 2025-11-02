@@ -73,6 +73,10 @@ uv_lock:  ## Update uv.lock file with current dependencies
 uv_sync_frozen:  ## Sync dependencies using frozen lock file (CI/CD)
 	uv sync --frozen
 
+.PHONY: uv_install
+uv_install:  ## Install the ingestion module using uv
+	uv pip install $(INGESTION_DIR)/
+
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
 	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
