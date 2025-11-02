@@ -65,6 +65,7 @@ export const getPipelineDetailPageTabs = ({
   pipelineDetails,
   pipelineFQN,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   editLineagePermission,
   editCustomAttributePermission,
   deleted,
@@ -141,7 +142,7 @@ export const getPipelineDetailPageTabs = ({
         <CustomPropertyTable<EntityType.PIPELINE>
           entityType={EntityType.PIPELINE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

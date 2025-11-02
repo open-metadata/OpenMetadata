@@ -41,6 +41,7 @@ export const getApiEndpointDetailsPageTabs = ({
   handleFeedCount,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   editLineagePermission,
   labelMap,
 }: APIEndpointDetailPageTabProps) => {
@@ -115,7 +116,7 @@ export const getApiEndpointDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.API_ENDPOINT>
           entityType={EntityType.API_ENDPOINT}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

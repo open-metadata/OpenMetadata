@@ -33,6 +33,7 @@ export const getApiCollectionDetailsPageTabs = ({
   handleFeedCount,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   apiEndpointCount,
   labelMap,
 }: APICollectionDetailPageTabProps) => {
@@ -94,7 +95,7 @@ export const getApiCollectionDetailsPageTabs = ({
           className=""
           entityType={EntityType.API_COLLECTION}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),
