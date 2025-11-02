@@ -2,6 +2,8 @@ package org.openmetadata.service.search;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Interface for managing search operations.
@@ -78,5 +80,16 @@ public interface SearchManagementClient {
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
+      throws IOException;
+
+  /**
+   * Execute a direct query search with RBAC constraints.
+   *
+   * @param request the search request containing the direct query filter
+   * @param subjectContext the subject context for RBAC evaluation
+   * @return response containing search results
+   * @throws IOException if search execution fails
+   */
+  Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException;
 }

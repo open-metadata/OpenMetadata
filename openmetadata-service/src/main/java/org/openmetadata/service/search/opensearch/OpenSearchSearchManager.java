@@ -4,6 +4,9 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -16,7 +19,10 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.sdk.exception.SearchException;
@@ -26,11 +32,16 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
+import os.org.opensearch.client.opensearch._types.SearchType;
 import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -46,10 +57,27 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 public class OpenSearchSearchManager implements SearchManagementClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
 
-  public OpenSearchSearchManager(OpenSearchClient client) {
+  // RBAC cache for new Java API
+  private static final LoadingCache<String, Query> RBAC_CACHE_V2 =
+      CacheBuilder.newBuilder()
+          .maximumSize(10000)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
+          .build(
+              new CacheLoader<String, Query>() {
+                @Override
+                public Query load(String key) {
+                  // Will be loaded via computeIfAbsent pattern
+                  return null;
+                }
+              });
+
+  public OpenSearchSearchManager(
+      OpenSearchClient client, RBACConditionEvaluator rbacConditionEvaluator) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
   }
 
   @Override
@@ -406,5 +434,134 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     return new OpenSearchSourceBuilderFactory(searchSettings);
+  }
+
+  @Override
+  public Response searchWithDirectQuery(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    LOG.info("Executing direct OpenSearch query: {}", request.getQueryFilter());
+    if (!isClientAvailable) {
+      throw new IOException("OpenSearch client is not available");
+    }
+
+    try {
+      OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
+
+      // Parse the direct query filter into new API Query
+      String queryFilter = request.getQueryFilter();
+      if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+        try {
+          String queryToProcess = OsUtils.parseJsonQuery(queryFilter);
+          Query filter = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+          requestBuilder.query(filter);
+        } catch (Exception e) {
+          LOG.error("Error parsing direct query: {}", e.getMessage(), e);
+          throw new IOException("Failed to parse direct query: " + e.getMessage(), e);
+        }
+      }
+
+      // Apply RBAC constraints with caching
+      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+        // Create cache key from user ID and roles
+        String cacheKey =
+            subjectContext.user().getId()
+                + ":"
+                + subjectContext.user().getRoles().stream()
+                    .map(r -> r.getId().toString())
+                    .sorted()
+                    .collect(Collectors.joining(","));
+
+        try {
+          Query cachedRbacQuery =
+              RBAC_CACHE_V2.get(
+                  cacheKey,
+                  () -> {
+                    OMQueryBuilder rbacQueryBuilder =
+                        rbacConditionEvaluator.evaluateConditions(subjectContext);
+                    if (rbacQueryBuilder != null) {
+                      return ((org.openmetadata.service.search.opensearch.queries
+                                  .OpenSearchQueryBuilder)
+                              rbacQueryBuilder)
+                          .buildV2();
+                    }
+                    return null;
+                  });
+
+          if (cachedRbacQuery != null) {
+            Query existingQuery = requestBuilder.query();
+            if (existingQuery != null) {
+              Query combinedQuery =
+                  Query.of(
+                      q ->
+                          q.bool(
+                              b -> {
+                                b.must(existingQuery);
+                                b.filter(cachedRbacQuery);
+                                return b;
+                              }));
+              requestBuilder.query(combinedQuery);
+            } else {
+              requestBuilder.query(cachedRbacQuery);
+            }
+          }
+        } catch (Exception e) {
+          LOG.warn("RBAC cache miss, building query directly", e);
+          // Fallback to original implementation without caching
+          OMQueryBuilder rbacQueryBuilder =
+              rbacConditionEvaluator.evaluateConditions(subjectContext);
+          if (rbacQueryBuilder != null) {
+            Query rbacQuery =
+                ((org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder)
+                        rbacQueryBuilder)
+                    .buildV2();
+            Query existingQuery = requestBuilder.query();
+            if (existingQuery != null) {
+              Query combinedQuery =
+                  Query.of(
+                      q ->
+                          q.bool(
+                              b -> {
+                                b.must(existingQuery);
+                                b.filter(rbacQuery);
+                                return b;
+                              }));
+              requestBuilder.query(combinedQuery);
+            } else {
+              requestBuilder.query(rbacQuery);
+            }
+          }
+        }
+      }
+
+      // Add aggregations if needed
+      OpenSearchSourceBuilderFactory factory = getSearchBuilderFactory();
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      AssetTypeConfiguration assetConfig =
+          factory.findAssetTypeConfig(request.getIndex(), searchSettings);
+      factory.addConfiguredAggregationsV2(requestBuilder, assetConfig);
+
+      // Set pagination
+      requestBuilder.from(request.getFrom());
+      requestBuilder.size(request.getSize());
+      requestBuilder.timeout("30s");
+
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      requestBuilder.searchType(SearchType.DfsQueryThenFetch);
+
+      // Build and execute search request
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+      String responseJson = response.toJsonString();
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(responseJson).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
+    }
   }
 }

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch.queries;
 
 import java.util.List;
+import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import os.org.opensearch.index.query.BoolQueryBuilder;
 import os.org.opensearch.index.query.MatchAllQueryBuilder;
@@ -94,6 +95,16 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
 
   public QueryBuilder build() {
     return query;
+  }
+
+  public os.org.opensearch.client.opensearch._types.query_dsl.Query buildV2()
+      throws java.io.IOException {
+    if (query == null) {
+      return null;
+    }
+    String queryJson = OsUtils.parseJsonQuery(query.toString());
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.wrapper(w -> w.query(queryJson)));
   }
 
   public OpenSearchQueryBuilder setQuery(QueryBuilder query) {

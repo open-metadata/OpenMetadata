@@ -1274,7 +1274,7 @@ public class OpenSearchSourceBuilderFactory
     return builder;
   }
 
-  private void addConfiguredAggregationsV2(
+  protected void addConfiguredAggregationsV2(
       OpenSearchRequestBuilder searchRequestBuilder, AssetTypeConfiguration assetConfig) {
     Map<String, Aggregation> aggregations = new HashMap<>();
 

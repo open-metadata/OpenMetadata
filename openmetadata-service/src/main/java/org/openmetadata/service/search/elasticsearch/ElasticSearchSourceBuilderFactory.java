@@ -1528,7 +1528,7 @@ public class ElasticSearchSourceBuilderFactory
     return builder;
   }
 
-  private void addConfiguredAggregationsV2(
+  protected void addConfiguredAggregationsV2(
       ElasticSearchRequestBuilder searchRequestBuilder, AssetTypeConfiguration assetConfig) {
     Map<String, Aggregation> aggregations = new HashMap<>();
 

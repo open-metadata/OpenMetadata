@@ -407,9 +407,6 @@ public interface SearchClient<T>
 
   Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
-  Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
-      throws IOException;
-
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }

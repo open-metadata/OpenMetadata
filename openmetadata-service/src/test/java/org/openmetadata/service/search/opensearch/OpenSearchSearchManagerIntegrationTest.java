@@ -66,7 +66,7 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
     RestClientTransport transport = new RestClientTransport(osRestClient, new JacksonJsonpMapper());
     client = new OpenSearchClient(transport);
 
-    searchManager = new OpenSearchSearchManager(client);
+    searchManager = new OpenSearchSearchManager(client, null);
 
     LOG.info("OpenSearchSearchManager test setup completed with index prefix: {}", testIndexPrefix);
   }
@@ -260,7 +260,7 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
 
   @Test
   void testConstructor_HandlesNullClient() {
-    OpenSearchSearchManager managerWithNullClient = new OpenSearchSearchManager(null);
+    OpenSearchSearchManager managerWithNullClient = new OpenSearchSearchManager(null, null);
 
     assertNotNull(managerWithNullClient);
     assertDoesNotThrow(
@@ -810,6 +810,262 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
     assertEquals(4, pageCount); // Should be 4 pages: 10, 10, 10, 5
     assertEquals(35, totalRetrieved);
     LOG.info("Deep pagination completed: {} pages, {} total results", pageCount, totalRetrieved);
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithDirectQuery_BasicQuery() throws Exception {
+    String testIndex = testIndexPrefix + "_direct_query";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 10; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Test Entity %d",
+                "description": "Description for entity %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Create a direct query request
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQueryFilter("{\"query\":{\"match_all\":{}}}");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(5);
+
+    Response response = searchManager.searchWithDirectQuery(searchRequest, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    assertNotNull(response.getEntity());
+    LOG.info("Direct query executed successfully with status: {}", response.getStatus());
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithDirectQuery_WithTermQuery() throws Exception {
+    String testIndex = testIndexPrefix + "_direct_term";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index documents with different entity types
+    for (int i = 1; i <= 10; i++) {
+      final int entityNum = i;
+      String entityType = (i % 2 == 0) ? "table" : "dashboard";
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Test Entity %d",
+                "description": "Description for entity %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "%s",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum, entityType);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Query for only "table" entities
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQueryFilter("{\"query\":{\"term\":{\"entityType\":\"table\"}}}");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(10);
+
+    Response response = searchManager.searchWithDirectQuery(searchRequest, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Direct term query executed successfully");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithDirectQuery_WithPagination() throws Exception {
+    String testIndex = testIndexPrefix + "_direct_pagination";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index 20 documents
+    for (int i = 1; i <= 20; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Entity %03d",
+                "description": "Description for entity %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Test first page
+    org.openmetadata.schema.search.SearchRequest request1 =
+        new org.openmetadata.schema.search.SearchRequest();
+    request1.setIndex(actualIndexName);
+    request1.setQueryFilter("{\"query\":{\"match_all\":{}}}");
+    request1.setFrom(0);
+    request1.setSize(10);
+
+    Response response1 = searchManager.searchWithDirectQuery(request1, null);
+    assertNotNull(response1);
+    assertEquals(200, response1.getStatus());
+    LOG.info("First page of direct query results retrieved");
+
+    // Test second page
+    org.openmetadata.schema.search.SearchRequest request2 =
+        new org.openmetadata.schema.search.SearchRequest();
+    request2.setIndex(actualIndexName);
+    request2.setQueryFilter("{\"query\":{\"match_all\":{}}}");
+    request2.setFrom(10);
+    request2.setSize(10);
+
+    Response response2 = searchManager.searchWithDirectQuery(request2, null);
+    assertNotNull(response2);
+    assertEquals(200, response2.getStatus());
+    LOG.info("Second page of direct query results retrieved");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithDirectQuery_WithBoolQuery() throws Exception {
+    String testIndex = testIndexPrefix + "_direct_bool";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index documents
+    for (int i = 1; i <= 10; i++) {
+      final int entityNum = i;
+      String entityType = (i <= 5) ? "table" : "dashboard";
+      boolean deleted = (i > 7);
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Entity %d",
+                "description": "Description %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "%s",
+                "deleted": %s
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum, entityType, deleted);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Bool query: entityType=table AND deleted=false
+    String boolQuery =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"term": {"entityType": "table"}},
+                {"term": {"deleted": false}}
+              ]
+            }
+          }
+        }
+        """;
+
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQueryFilter(boolQuery);
+    searchRequest.setFrom(0);
+    searchRequest.setSize(10);
+
+    Response response = searchManager.searchWithDirectQuery(searchRequest, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Bool query executed successfully");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithDirectQuery_WithInvalidJSON() throws Exception {
+    String testIndex = testIndexPrefix + "_direct_invalid";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Test with invalid JSON
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQueryFilter("{invalid json}");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(10);
+
+    Response response = searchManager.searchWithDirectQuery(searchRequest, null);
+
+    // Should return error response
+    assertNotNull(response);
+    assertEquals(500, response.getStatus());
+    LOG.info("Invalid JSON handled correctly with error status");
 
     // Clean up
     client.indices().delete(d -> d.index(actualIndexName));

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import os.org.opensearch.client.opensearch._types.FieldSort;
 import os.org.opensearch.client.opensearch._types.NestedSortValue;
+import os.org.opensearch.client.opensearch._types.SearchType;
 import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOptions;
 import os.org.opensearch.client.opensearch._types.SortOrder;
@@ -29,6 +30,7 @@ public class OpenSearchRequestBuilder {
   private String timeout;
   private Boolean explain;
   private List<String> searchAfter;
+  private SearchType searchType;
 
   public OpenSearchRequestBuilder() {}
 
@@ -196,6 +198,15 @@ public class OpenSearchRequestBuilder {
     return this.searchAfter;
   }
 
+  public OpenSearchRequestBuilder searchType(SearchType searchType) {
+    this.searchType = searchType;
+    return this;
+  }
+
+  public SearchType searchType() {
+    return this.searchType;
+  }
+
   public SearchRequest build(String... indices) {
     return SearchRequest.of(
         s -> {
@@ -245,6 +256,10 @@ public class OpenSearchRequestBuilder {
 
           if (searchAfter != null && !searchAfter.isEmpty()) {
             s.searchAfter(searchAfter);
+          }
+
+          if (searchType != null) {
+            s.searchType(searchType);
           }
 
           return s;

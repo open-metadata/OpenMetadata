@@ -5,6 +5,7 @@ import es.org.elasticsearch.index.query.MatchAllQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import java.util.List;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 
 public class ElasticQueryBuilder implements OMQueryBuilder {
@@ -91,6 +92,16 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
 
   public QueryBuilder build() {
     return query;
+  }
+
+  public es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildV2()
+      throws java.io.IOException {
+    if (query == null) {
+      return null;
+    }
+    String queryJson = EsUtils.parseJsonQuery(query.toString());
+    return es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+        q -> q.withJson(new java.io.StringReader(queryJson)));
   }
 
   public ElasticQueryBuilder setQuery(QueryBuilder query) {

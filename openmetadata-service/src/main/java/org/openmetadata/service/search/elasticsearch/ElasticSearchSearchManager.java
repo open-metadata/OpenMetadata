@@ -39,6 +39,8 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
 
 /**
  * ElasticSearch implementation of search management operations.
@@ -48,10 +50,15 @@ import org.openmetadata.service.search.SearchSortFilter;
 public class ElasticSearchSearchManager implements SearchManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
+  private final org.openmetadata.service.search.security.RBACConditionEvaluator
+      rbacConditionEvaluator;
 
-  public ElasticSearchSearchManager(ElasticsearchClient client) {
+  public ElasticSearchSearchManager(
+      ElasticsearchClient client,
+      org.openmetadata.service.search.security.RBACConditionEvaluator rbacConditionEvaluator) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
   }
 
   @Override
@@ -418,5 +425,85 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     generator.close();
 
     return stringWriter.toString();
+  }
+
+  @Override
+  public Response searchWithDirectQuery(
+      org.openmetadata.schema.search.SearchRequest request,
+      org.openmetadata.service.security.policyevaluator.SubjectContext subjectContext)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("ElasticSearch client is not available");
+    }
+
+    try {
+      LOG.info("Executing direct ElasticSearch query: {}", request.getQueryFilter());
+      ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
+
+      // Parse the direct query filter into new API Query
+      String queryFilter = request.getQueryFilter();
+      if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+        try {
+          String queryToProcess = EsUtils.parseJsonQuery(queryFilter);
+          Query filter = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
+          requestBuilder.query(filter);
+        } catch (Exception e) {
+          LOG.error("Error parsing direct query: {}", e.getMessage(), e);
+          throw new IOException("Failed to parse direct query: " + e.getMessage(), e);
+        }
+      }
+
+      // Apply RBAC constraints
+      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        if (rbacQueryBuilder != null) {
+          Query rbacQuery =
+              ((org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder)
+                      rbacQueryBuilder)
+                  .buildV2();
+          Query existingQuery = requestBuilder.query();
+          if (existingQuery != null) {
+            Query combinedQuery =
+                Query.of(
+                    q ->
+                        q.bool(
+                            b -> {
+                              b.must(existingQuery);
+                              b.filter(rbacQuery);
+                              return b;
+                            }));
+            requestBuilder.query(combinedQuery);
+          } else {
+            requestBuilder.query(rbacQuery);
+          }
+        }
+      }
+
+      // Add aggregations if needed
+      ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      org.openmetadata.schema.api.search.AssetTypeConfiguration assetConfig =
+          factory.findAssetTypeConfig(request.getIndex(), searchSettings);
+      factory.addConfiguredAggregationsV2(requestBuilder, assetConfig);
+
+      // Set pagination
+      requestBuilder.from(request.getFrom());
+      requestBuilder.size(request.getSize());
+      requestBuilder.timeout("30s");
+
+      // Build and execute search request
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+      String responseJson = serializeSearchResponse(response);
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(responseJson).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
+    }
   }
 }
