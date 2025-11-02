@@ -45,6 +45,7 @@ export interface TableDetailPageTabProps {
   editLineagePermission: boolean;
   viewProfilerPermission: boolean;
   viewSampleDataPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   tablePermissions: OperationPermission;
   editCustomAttributePermission: boolean;
   deleted?: boolean;
