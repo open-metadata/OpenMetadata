@@ -52,12 +52,12 @@ js_antlr:  ## Generate the Python code for parsing FQNs
 .PHONY: generate
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run uv_install_dev_env to have datamodel-code-generator available"
+	@echo "Make sure to first run the install_dev recipe"
 	rm -rf ingestion/src/metadata/generated
 	mkdir -p ingestion/src/metadata/generated
-	cd ingestion && uv run python ../scripts/datamodel_generation.py
+	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
-	$(MAKE) uv_install
+	$(MAKE) install
 
 .PHONY: install_antlr_cli
 install_antlr_cli:  ## Install antlr CLI locally
