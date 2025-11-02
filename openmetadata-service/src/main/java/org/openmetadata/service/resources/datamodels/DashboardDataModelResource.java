@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
@@ -331,7 +332,11 @@ public class DashboardDataModelResource
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(
             responseCode = "202",
-            description = "Bulk operation accepted for async processing"),
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(

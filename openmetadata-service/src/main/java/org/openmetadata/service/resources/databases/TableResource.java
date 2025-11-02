@@ -425,7 +425,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(
             responseCode = "202",
-            description = "Bulk operation accepted for async processing"),
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(

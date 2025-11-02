@@ -77,7 +77,9 @@ def test_bulk_creation(metadata: OpenMetadata, tables: List[CreateTableRequest])
         result = metadata.bulk_create_or_update_tables(bulk_request)
         duration = time.time() - start
 
-        print(f"Bulk API: {result.numberOfRowsPassed}/{result.numberOfRowsProcessed} tables in {duration:.2f}s")
+        print(
+            f"Bulk API: {result.numberOfRowsPassed}/{result.numberOfRowsProcessed} tables in {duration:.2f}s"
+        )
         print(f"Average: {duration/len(tables):.3f}s per table")
         print(f"Status: {result.status}")
 
@@ -90,6 +92,7 @@ def test_bulk_creation(metadata: OpenMetadata, tables: List[CreateTableRequest])
     except Exception as e:
         print(f"Error in bulk creation: {e}")
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -97,13 +100,13 @@ def test_bulk_creation(metadata: OpenMetadata, tables: List[CreateTableRequest])
 def main():
     """Main test function"""
     # Configure OpenMetadata connection
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api"
-    )
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     # You'll need to update this with your actual database schema FQN
-    schema_fqn = "sample_data.ecommerce_db.shopify"  # Change this to your Redshift schema
+    schema_fqn = (
+        "sample_data.ecommerce_db.shopify"  # Change this to your Redshift schema
+    )
 
     # Test with different batch sizes
     test_sizes = [10, 50, 100]
@@ -125,13 +128,13 @@ def main():
             try:
                 entity = metadata.get_by_name(
                     entity=metadata.generated.schema.entity.data.table.Table,
-                    fqn=f"{schema_fqn}.{table.name}"
+                    fqn=f"{schema_fqn}.{table.name}",
                 )
                 if entity:
                     metadata.delete(
                         entity=metadata.generated.schema.entity.data.table.Table,
                         entity_id=entity.id,
-                        hard_delete=True
+                        hard_delete=True,
                     )
             except:
                 pass

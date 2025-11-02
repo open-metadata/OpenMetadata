@@ -328,7 +328,14 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(
             responseCode = "202",
-            description = "Bulk operation accepted for async processing"),
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(

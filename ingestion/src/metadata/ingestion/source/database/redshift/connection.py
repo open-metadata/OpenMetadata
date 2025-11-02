@@ -48,16 +48,76 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection(connection: RedshiftConnection) -> Engine:
     """
-    Create connection
+    Create connection with configurable connection pooling
+
+    Pool settings can be configured via connectionArguments:
+    - pool_size: Number of persistent connections to maintain (default: 5)
+    - max_overflow: Additional temporary connections beyond pool_size (default: 10)
+    - pool_timeout: Seconds to wait for available connection (default: 30)
+    - pool_recycle: Seconds before recycling connections (default: 3600)
+    - pool_pre_ping: Test connections before using them (default: True)
     """
+    pool_config = {}
+
+    # Pool parameter names that should be extracted for SQLAlchemy engine,
+    # not passed to the database driver
+    pool_param_names = {
+        "pool_size",
+        "max_overflow",
+        "pool_timeout",
+        "pool_recycle",
+        "pool_pre_ping",
+    }
+
+    if connection.connectionArguments and connection.connectionArguments.root:
+        args = connection.connectionArguments.root
+
+        # Extract pool configuration
+        if "pool_size" in args:
+            pool_config["pool_size"] = int(args["pool_size"])
+
+        if "max_overflow" in args:
+            pool_config["max_overflow"] = int(args["max_overflow"])
+
+        if "pool_timeout" in args:
+            pool_config["pool_timeout"] = int(args["pool_timeout"])
+
+        if "pool_recycle" in args:
+            pool_config["pool_recycle"] = int(args["pool_recycle"])
+
+        if "pool_pre_ping" in args:
+            pool_config["pool_pre_ping"] = args["pool_pre_ping"] in (
+                "true",
+                "True",
+                True,
+            )
+
+        # Remove pool parameters from connectionArguments so they don't get passed to the driver
+        # Create a new dict without pool parameters
+        filtered_args = {k: v for k, v in args.items() if k not in pool_param_names}
+
+        # Update connection.connectionArguments with filtered args
+        from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+            ConnectionArguments,
+        )
+
+        connection.connectionArguments = ConnectionArguments(root=filtered_args)
+
+    if pool_config:
+        logger.info(f"Redshift connection pooling configured: {pool_config}")
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
         get_connection_args_fn=get_connection_args_common,
+        **pool_config,
     )
 
 

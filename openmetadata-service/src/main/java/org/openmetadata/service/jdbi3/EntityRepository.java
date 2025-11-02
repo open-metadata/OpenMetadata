@@ -6605,6 +6605,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final ExecutorService BULK_PROCESSING_EXECUTOR =
       Executors.newVirtualThreadPerTaskExecutor();
 
+  // Bounded executor to limit concurrent database connections during bulk operations
+  // Using 20 threads to leave headroom for other operations (HikariCP default pool size is 100)
+  private static final ExecutorService BOUNDED_BULK_EXECUTOR =
+      Executors.newFixedThreadPool(20, Thread.ofVirtual().factory());
+
   private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =
       new ConcurrentHashMap<>();
 
@@ -6619,7 +6624,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CompletableFuture.supplyAsync(
             () -> {
               try {
-                return bulkCreateOrUpdateEntities(uriInfo, entities, userName);
+                // Use sequential processing to avoid deadlock with nested CompletableFutures
+                return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName);
               } catch (Exception e) {
                 LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
                 BulkOperationResult errorResult = new BulkOperationResult();
@@ -6640,6 +6646,52 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return job;
+  }
+
+  private BulkOperationResult bulkCreateOrUpdateEntitiesSequential(
+      UriInfo uriInfo, List<T> entities, String userName) {
+
+    BulkOperationResult result = new BulkOperationResult();
+    result.setStatus(ApiStatus.SUCCESS);
+
+    List<BulkResponse> successRequests = new ArrayList<>();
+    List<BulkResponse> failedRequests = new ArrayList<>();
+
+    // Process entities sequentially to avoid nested CompletableFuture deadlock
+    for (T entity : entities) {
+      try {
+        createOrUpdate(uriInfo, entity, userName);
+        successRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.OK.getStatusCode()));
+      } catch (Exception e) {
+        LOG.warn("Failed to process entity in bulk operation", e);
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.BAD_REQUEST.getStatusCode())
+                .withMessage(e.getMessage()));
+      }
+    }
+
+    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsPassed(successRequests.size());
+    result.setNumberOfRowsFailed(failedRequests.size());
+    result.setSuccessRequest(successRequests);
+    result.setFailedRequest(failedRequests);
+
+    if (failedRequests.size() > 0) {
+      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    }
+
+    LOG.info(
+        "Async bulk operation completed: {} succeeded, {} failed out of {} total",
+        successRequests.size(),
+        failedRequests.size(),
+        entities.size());
+
+    return result;
   }
 
   public Optional<BulkOperationResult> getBulkJobStatus(String jobId) {
@@ -6663,6 +6715,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Optional.of(inProgress);
   }
 
+  @Transaction
+  private PutResponse<T> bulkCreateOrUpdateEntity(UriInfo uriInfo, T updated, String userName) {
+    // Optimized for bulk operations - use NON_DELETED instead of ALL to avoid loading all fields
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), NON_DELETED);
+    if (original == null) {
+      return new PutResponse<>(
+          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+    }
+    return update(uriInfo, original, updated, userName, null);
+  }
+
   public BulkOperationResult bulkCreateOrUpdateEntities(
       UriInfo uriInfo, List<T> entities, String userName) {
 
@@ -6672,6 +6735,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<BulkResponse> successRequests = Collections.synchronizedList(new ArrayList<>());
     List<BulkResponse> failedRequests = Collections.synchronizedList(new ArrayList<>());
 
+    // Use bounded executor to limit concurrent database connections (max 20)
     List<CompletableFuture<Void>> futures = new ArrayList<>();
 
     for (T entity : entities) {
@@ -6679,7 +6743,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           CompletableFuture.runAsync(
               () -> {
                 try {
-                  createOrUpdate(uriInfo, entity, userName);
+                  // Use NON_DELETED instead of ALL to avoid expensive field loading
+                  bulkCreateOrUpdateEntity(uriInfo, entity, userName);
                   successRequests.add(
                       new BulkResponse()
                           .withRequest(entity.getFullyQualifiedName())
@@ -6693,11 +6758,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .withMessage(e.getMessage()));
                 }
               },
-              BULK_PROCESSING_EXECUTOR);
+              BOUNDED_BULK_EXECUTOR);
 
       futures.add(future);
     }
 
+    // Wait for all tasks to complete
     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
     result.setNumberOfRowsProcessed(entities.size());

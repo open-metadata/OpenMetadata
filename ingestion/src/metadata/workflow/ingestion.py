@@ -198,8 +198,12 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         orchestrator = getattr(distributed_config, "orchestrator", "argo")
 
         # Handle both string and Enum values for orchestrator
-        orchestrator_str = str(orchestrator).lower() if hasattr(orchestrator, 'value') else str(orchestrator).lower()
-        if 'local' in orchestrator_str:
+        orchestrator_str = (
+            str(orchestrator).lower()
+            if hasattr(orchestrator, "value")
+            else str(orchestrator).lower()
+        )
+        if "local" in orchestrator_str:
             logger.info("Using LOCAL thread-based distributed execution")
             return self._execute_distributed_local()
 
@@ -277,9 +281,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         distributed_config = self.config.workflowConfig.distributedExecution
         parallelism = distributed_config.parallelism or 10
 
-        logger.info(
-            f"Starting local distributed execution with {parallelism} threads"
-        )
+        logger.info(f"Starting local distributed execution with {parallelism} threads")
 
         executor = LocalDistributedExecutor(parallelism=parallelism)
 

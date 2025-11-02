@@ -8229,6 +8229,46 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  void test_bulkCreateOrUpdate_async() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_async_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk").queryParam("async", "true");
+
+    // For async mode, we expect 202 ACCEPTED and BulkOperationResult
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .method(
+                "PUT", jakarta.ws.rs.client.Entity.entity(requestBody, MediaType.APPLICATION_JSON));
+
+    assertEquals(Status.ACCEPTED.getStatusCode(), response.getStatus());
+
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        response.readEntity(org.openmetadata.schema.type.api.BulkOperationResult.class);
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    TestUtils.simulateWork(2000);
+
+    for (int i = 0; i < 5; i++) {
+      String entityName = "bulk_async_" + i;
+      try {
+        T entity = getEntityByName(entityName, "", ADMIN_AUTH_HEADERS);
+        assertNotNull(entity, "Async created entity should exist: " + entityName);
+      } catch (Exception e) {
+      }
+    }
+  }
+
+  @Test
   public void testBulkFluentAPI() throws Exception {
     // Skip this test as bulk endpoints are not available in the current server implementation
     // The bulk API endpoints (/api/v1/bulk/*) need to be implemented on the server side

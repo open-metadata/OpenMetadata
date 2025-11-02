@@ -129,9 +129,7 @@ class ArgoWorkflowOrchestrator:
                 "name": f"process-{task_name}",
                 "dependencies": [f"discover-{task_name}"],
                 "template": "worker",
-                "arguments": {
-                    "parameters": [{"name": "entity", "value": "{{item}}"}]
-                },
+                "arguments": {"parameters": [{"name": "entity", "value": "{{item}}"}]},
                 "withParam": f"{{{{tasks.discover-{task_name}.outputs.parameters.entities}}}}",
             }
 
@@ -184,7 +182,10 @@ if __name__ == "__main__":
                         "name": "WORKFLOW_CONFIG",
                         "value": "{{workflow.parameters.workflow-config}}",
                     },
-                    {"name": "ENTITY_TYPE", "value": "{{inputs.parameters.entity-type}}"},
+                    {
+                        "name": "ENTITY_TYPE",
+                        "value": "{{inputs.parameters.entity-type}}",
+                    },
                 ],
             },
             "outputs": {
@@ -252,15 +253,26 @@ if __name__ == "__main__":
         """Encode workflow config as base64 for passing to pods"""
         # Convert to JSON string and back to ensure all Pydantic models are serialized
         # This preserves type information while avoiding Python-specific YAML tags
-        if hasattr(config, 'model_dump'):
+        if hasattr(config, "model_dump"):
             # Pydantic v2 model
-            config_dict = config.model_dump(mode='json', by_alias=True)
-        elif hasattr(config, 'dict'):
+            config_dict = config.model_dump(mode="json", by_alias=True)
+        elif hasattr(config, "dict"):
             # Pydantic v1 model or dict with nested models
-            config_dict = json.loads(json.dumps(config, default=lambda o: o.dict() if hasattr(o, 'dict') else str(o)))
+            config_dict = json.loads(
+                json.dumps(
+                    config, default=lambda o: o.dict() if hasattr(o, "dict") else str(o)
+                )
+            )
         else:
             # Plain dict, convert any nested Pydantic models
-            config_dict = json.loads(json.dumps(config, default=lambda o: o.model_dump(mode='json') if hasattr(o, 'model_dump') else (o.dict() if hasattr(o, 'dict') else str(o))))
+            config_dict = json.loads(
+                json.dumps(
+                    config,
+                    default=lambda o: o.model_dump(mode="json")
+                    if hasattr(o, "model_dump")
+                    else (o.dict() if hasattr(o, "dict") else str(o)),
+                )
+            )
 
         config_yaml = yaml.dump(config_dict, default_flow_style=False)
         return base64.b64encode(config_yaml.encode()).decode()

@@ -21,8 +21,8 @@ from typing import List
 import yaml
 
 from metadata.ingestion.api.distributed import DiscoverableSource, EntityDescriptor
-from metadata.workflow.metadata import MetadataWorkflow
 from metadata.utils.logger import cli_logger
+from metadata.workflow.metadata import MetadataWorkflow
 
 logger = cli_logger()
 
@@ -127,9 +127,7 @@ def main():
     parser.add_argument(
         "--config", required=True, help="Path to workflow configuration YAML"
     )
-    parser.add_argument(
-        "--entity-type", required=True, help="Entity type to discover"
-    )
+    parser.add_argument("--entity-type", required=True, help="Entity type to discover")
     parser.add_argument(
         "--output",
         default="/tmp/entities.json",

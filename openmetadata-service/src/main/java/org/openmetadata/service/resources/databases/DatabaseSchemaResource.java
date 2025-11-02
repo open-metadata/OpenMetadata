@@ -54,6 +54,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -338,7 +339,11 @@ public class DatabaseSchemaResource
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(
             responseCode = "202",
-            description = "Bulk operation accepted for async processing"),
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(

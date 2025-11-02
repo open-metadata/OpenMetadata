@@ -1714,7 +1714,9 @@ class LookerSource(DashboardServiceSource, DiscoverableSource):
             yield from self.yield_bulk_datamodel(explore)
 
         except Exception as exc:
-            error_msg = f"Failed to process Looker explore {model_name}::{explore_name}: {exc}"
+            error_msg = (
+                f"Failed to process Looker explore {model_name}::{explore_name}: {exc}"
+            )
             logger.error(error_msg)
             yield Either(
                 left=StackTraceError(

@@ -71,13 +71,16 @@ def create_generic_db_connection(
     Returns:
         SQLAlchemy Engine
     """
+    # Allow max_overflow to be configured via kwargs, otherwise default to unlimited (-1)
+    if "max_overflow" not in kwargs:
+        kwargs["max_overflow"] = -1
+
     engine = create_engine(
         get_connection_url_fn(connection),
         connect_args=get_connection_args_fn(connection),
         poolclass=QueuePool,
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=False,
-        max_overflow=-1,  # Unlimited overflow for parallel execution
         **kwargs,
     )
 

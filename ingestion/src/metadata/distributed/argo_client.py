@@ -16,8 +16,8 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
-from metadata.ingestion.api.distributed import DiscoverableSource
 from metadata.distributed.argo_orchestrator import ArgoWorkflowOrchestrator
+from metadata.ingestion.api.distributed import DiscoverableSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

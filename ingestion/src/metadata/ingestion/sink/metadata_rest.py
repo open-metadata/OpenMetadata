@@ -142,7 +142,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
             # Deferred lifecycle data - process after all tables are created
             self.deferred_lifecycle_records: List[OMetaLifeCycleData] = []
-            self.deferred_lifecycle_processed = False  # Flag to ensure we only process once
+            self.deferred_lifecycle_processed = (
+                False  # Flag to ensure we only process once
+            )
 
             # Timing statistics
             self.bulk_api_total_time = 0.0
@@ -152,9 +154,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             # Start worker threads
             for i in range(self.config.async_pipeline_workers):
                 worker = threading.Thread(
-                    target=self._bulk_api_worker,
-                    name=f"BulkAPIWorker-{i}",
-                    daemon=True
+                    target=self._bulk_api_worker, name=f"BulkAPIWorker-{i}", daemon=True
                 )
                 worker.start()
                 self.workers.append(worker)
@@ -248,13 +248,17 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     break
 
                 batch_size = len(batch)
-                logger.info(f"[{threading.current_thread().name}] Processing batch of {batch_size} tables")
+                logger.info(
+                    f"[{threading.current_thread().name}] Processing batch of {batch_size} tables"
+                )
 
                 bulk_request = BulkCreateTable(tables=batch, dryRun=False)
                 start_time = time.time()
 
                 try:
-                    result = self.metadata.bulk_create_or_update_tables(bulk_request)
+                    result = self.metadata.bulk_create_or_update_tables(
+                        bulk_request, use_async=False
+                    )
                     elapsed = time.time() - start_time
 
                     # Update timing statistics (thread-safe)
@@ -265,11 +269,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
                     logger.info(
                         f"[{threading.current_thread().name}] Bulk API completed: "
-                        f"{result.numberOfRowsPassed}/{result.numberOfRowsProcessed} tables successful, "
-                        f"{result.numberOfRowsFailed} failed (took {elapsed:.2f}s)"
+                        f"{result.numberOfRowsPassed.root}/{result.numberOfRowsProcessed.root} tables successful, "
+                        f"{result.numberOfRowsFailed.root} failed (took {elapsed:.2f}s)"
                     )
                 except Exception as exc:
-                    logger.error(f"[{threading.current_thread().name}] Bulk API failed: {exc}")
+                    logger.error(
+                        f"[{threading.current_thread().name}] Bulk API failed: {exc}"
+                    )
                     logger.debug(traceback.format_exc())
             except queue.Empty:
                 continue
@@ -867,19 +873,27 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if not self.deferred_lifecycle_records:
             return
 
-        logger.info(f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records")
+        logger.info(
+            f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
+        )
 
         success_count = 0
         error_count = 0
 
         for record in self.deferred_lifecycle_records:
             try:
-                entity = self.metadata.get_by_name(entity=record.entity, fqn=record.entity_fqn)
+                entity = self.metadata.get_by_name(
+                    entity=record.entity, fqn=record.entity_fqn
+                )
                 if entity:
-                    self.metadata.patch_life_cycle(entity=entity, life_cycle=record.life_cycle)
+                    self.metadata.patch_life_cycle(
+                        entity=entity, life_cycle=record.life_cycle
+                    )
                     success_count += 1
                 else:
-                    logger.warning(f"Table {record.entity_fqn} not found even after bulk processing")
+                    logger.warning(
+                        f"Table {record.entity_fqn} not found even after bulk processing"
+                    )
                     error_count += 1
                     self.status.failed(
                         StackTraceError(
@@ -888,7 +902,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                         )
                     )
             except Exception as exc:
-                logger.error(f"Error processing lifecycle for {record.entity_fqn}: {exc}")
+                logger.error(
+                    f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                )
                 logger.debug(traceback.format_exc())
                 error_count += 1
                 self.status.failed(
@@ -899,7 +915,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     )
                 )
 
-        logger.info(f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed")
+        logger.info(
+            f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
+        )
 
         # Mark as processed to prevent duplicate execution
         self.deferred_lifecycle_processed = True
@@ -941,13 +959,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         # Report bulk API timing statistics
         if self.bulk_api_call_count > 0:
             avg_time_per_call = self.bulk_api_total_time / self.bulk_api_call_count
-            avg_tables_per_sec = self.bulk_api_total_tables / self.bulk_api_total_time if self.bulk_api_total_time > 0 else 0
+            avg_tables_per_sec = (
+                self.bulk_api_total_tables / self.bulk_api_total_time
+                if self.bulk_api_total_time > 0
+                else 0
+            )
             logger.info("=" * 70)
             logger.info("BULK API PERFORMANCE METRICS")
             logger.info("=" * 70)
             logger.info(f"Total bulk API calls: {self.bulk_api_call_count}")
             logger.info(f"Total tables processed: {self.bulk_api_total_tables}")
-            logger.info(f"Total time in bulk API: {self.bulk_api_total_time:.2f}s ({self.bulk_api_total_time/60:.2f}m)")
+            logger.info(
+                f"Total time in bulk API: {self.bulk_api_total_time:.2f}s ({self.bulk_api_total_time/60:.2f}m)"
+            )
             logger.info(f"Average time per bulk call: {avg_time_per_call:.2f}s")
             logger.info(f"Average throughput: {avg_tables_per_sec:.1f} tables/sec")
             logger.info("=" * 70)

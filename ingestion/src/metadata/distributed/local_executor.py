@@ -98,9 +98,11 @@ class LocalDistributedExecutor:
 
         # Phase 2: Batch Parallel Processing
         # Split entities into batches for better connection reuse
-        batch_size = max(1, total_entities // (self.parallelism * 2))  # 2 batches per thread
+        batch_size = max(
+            1, total_entities // (self.parallelism * 2)
+        )  # 2 batches per thread
         batches = [
-            all_descriptors[i:i + batch_size]
+            all_descriptors[i : i + batch_size]
             for i in range(0, total_entities, batch_size)
         ]
 
@@ -156,9 +158,7 @@ class LocalDistributedExecutor:
         logger.info(f"Failed: {failed}")
         logger.info(f"Success rate: {(successful/total_entities)*100:.1f}%")
         logger.info(f"Duration: {duration:.1f} seconds")
-        logger.info(
-            f"Throughput: {total_entities/duration:.1f} entities/second"
-        )
+        logger.info(f"Throughput: {total_entities/duration:.1f} entities/second")
         logger.info("=" * 80)
 
         return {

@@ -837,9 +837,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                   result.getNumberOfRowsFailed());
             });
 
-    return Response.accepted()
-        .entity(Map.of("message", "Bulk operation accepted and processing asynchronously"))
-        .build();
+    // Return BulkOperationResult for consistency with sync endpoint
+    BulkOperationResult result = new BulkOperationResult();
+    result.setStatus(ApiStatus.SUCCESS);
+    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsPassed(0); // Will be updated asynchronously
+    result.setNumberOfRowsFailed(0);
+
+    return Response.accepted().entity(result).build();
   }
 
   protected Response bulkCreateOrUpdateSync(UriInfo uriInfo, List<T> entities, String userName) {

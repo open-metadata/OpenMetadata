@@ -30,6 +30,10 @@
         "message": {
           "description": "Message for the request.",
           "type": "string"
+        },
+        "status": {
+          "description": "HTTP status code for the request.",
+          "type": "integer"
         }
       },
       "additionalProperties": false

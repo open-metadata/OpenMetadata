@@ -12,6 +12,7 @@
 Generic source to build SQL connectors.
 """
 import copy
+import time
 import traceback
 from abc import ABC
 from copy import deepcopy
@@ -148,6 +149,11 @@ class CommonDbSourceService(
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
         self.context.set_threads(self.source_config.threads)
+
+        # Source performance metrics
+        self._source_start_time = time.time()
+        self._source_query_time = 0.0
+        self._source_query_count = 0
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -777,6 +783,28 @@ class CommonDbSourceService(
         return self._inspector_map[thread_id]
 
     def close(self):
+        # Log source performance metrics before closing
+        if hasattr(self, "_source_start_time"):
+            total_time = time.time() - self._source_start_time
+            logger.info("=" * 70)
+            logger.info("SOURCE PERFORMANCE METRICS")
+            logger.info("=" * 70)
+            logger.info(f"Total source time: {total_time:.2f}s ({total_time/60:.2f}m)")
+            if hasattr(self, "_source_query_time") and self._source_query_time > 0:
+                logger.info(
+                    f"Total query time: {self._source_query_time:.2f}s ({self._source_query_time/60:.2f}m)"
+                )
+                logger.info(f"Total queries executed: {self._source_query_count}")
+                if self._source_query_count > 0:
+                    logger.info(
+                        f"Average query time: {self._source_query_time/self._source_query_count:.3f}s"
+                    )
+                other_time = total_time - self._source_query_time
+                logger.info(
+                    f"Processing/other time: {other_time:.2f}s ({other_time/60:.2f}m)"
+                )
+            logger.info("=" * 70)
+
         if self.connection is not None:
             self.connection.close()
         for connection in self._connection_map.values():
@@ -1024,9 +1052,7 @@ class CommonDbSourceService(
 
         return entities
 
-    def process_entity(
-        self, descriptor: EntityDescriptor
-    ) -> Iterable[Either[Any]]:
+    def process_entity(self, descriptor: EntityDescriptor) -> Iterable[Either[Any]]:
         """
         Process a single entity in a distributed worker.
 
@@ -1046,7 +1072,10 @@ class CommonDbSourceService(
         current_thread_id = threading.current_thread().ident
 
         # If we're in a worker thread, copy context from main thread
-        if current_thread_id != main_thread_id and main_thread_id in self.context.contexts:
+        if (
+            current_thread_id != main_thread_id
+            and main_thread_id in self.context.contexts
+        ):
             if current_thread_id not in self.context.contexts:
                 self.context.copy_from(main_thread_id)
 

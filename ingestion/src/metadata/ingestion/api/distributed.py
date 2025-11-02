@@ -20,7 +20,6 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from pydantic import BaseModel, Field
 
-from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.models import Either
 
 
@@ -105,9 +104,7 @@ class DiscoverableSource(ABC):
         pass
 
     @abstractmethod
-    def process_entity(
-        self, descriptor: EntityDescriptor
-    ) -> Iterable[Either[Any]]:
+    def process_entity(self, descriptor: EntityDescriptor) -> Iterable[Either[Any]]:
         """
         Process a single entity and yield creation requests.
 

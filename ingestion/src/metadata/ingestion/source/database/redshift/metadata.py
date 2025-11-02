@@ -425,7 +425,9 @@ class RedshiftSource(
                 stored_proc_obj = None
                 for row in results:
                     if dict(row)["name"] == proc_name:
-                        stored_proc_obj = RedshiftStoredProcedure.model_validate(dict(row))
+                        stored_proc_obj = RedshiftStoredProcedure.model_validate(
+                            dict(row)
+                        )
                         break
 
                 if not stored_proc_obj:
@@ -452,7 +454,11 @@ class RedshiftSource(
             self.register_record_stored_proc_request(stored_procedure_request)
 
         except Exception as exc:
-            proc_name = stored_procedure if isinstance(stored_procedure, str) else stored_procedure.name
+            proc_name = (
+                stored_procedure
+                if isinstance(stored_procedure, str)
+                else stored_procedure.name
+            )
             yield Either(
                 left=StackTraceError(
                     name=proc_name,

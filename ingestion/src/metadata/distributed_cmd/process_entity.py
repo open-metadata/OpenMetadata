@@ -17,7 +17,6 @@ suitable for running in separate pods/containers.
 import json
 import sys
 import time
-from typing import Any, Dict
 
 import yaml
 
@@ -26,8 +25,8 @@ from metadata.ingestion.api.distributed import (
     EntityDescriptor,
     ProcessingResult,
 )
-from metadata.workflow.metadata import MetadataWorkflow
 from metadata.utils.logger import cli_logger
+from metadata.workflow.metadata import MetadataWorkflow
 
 logger = cli_logger()
 
@@ -52,9 +51,7 @@ def process_entity_cli(config_yaml: str, entity_json: str) -> ProcessingResult:
         entity_dict = json.loads(entity_json)
         entity_descriptor = EntityDescriptor(**entity_dict)
 
-        logger.info(
-            f"Processing {entity_descriptor.type}: {entity_descriptor.id}"
-        )
+        logger.info(f"Processing {entity_descriptor.type}: {entity_descriptor.id}")
 
         workflow = MetadataWorkflow.create(config_dict)
         source = workflow.source
@@ -73,18 +70,12 @@ def process_entity_cli(config_yaml: str, entity_json: str) -> ProcessingResult:
                 result = sink.run(entity_request.right)
 
                 if result.left:
-                    logger.warning(
-                        f"Failed to sink entity: {result.left}"
-                    )
+                    logger.warning(f"Failed to sink entity: {result.left}")
                 else:
                     entities_created += 1
-                    logger.debug(
-                        f"Successfully created entity: {result.right}"
-                    )
+                    logger.debug(f"Successfully created entity: {result.right}")
             else:
-                logger.warning(
-                    f"Source returned error: {entity_request.left}"
-                )
+                logger.warning(f"Source returned error: {entity_request.left}")
 
         processing_time = time.time() - start_time
         logger.info(
