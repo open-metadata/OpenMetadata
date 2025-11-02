@@ -74,9 +74,7 @@ class DatabricksClient:
         }
         self.api_timeout = self.config.connectionTimeout or 120
         self._job_table_lineage_executed: bool = False
-        self.job_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
+        self.job_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(list)
         self._job_column_lineage_executed: bool = False
         self.job_column_lineage: dict[
             str, dict[Tuple[str, str], list[Tuple[str, str]]]
