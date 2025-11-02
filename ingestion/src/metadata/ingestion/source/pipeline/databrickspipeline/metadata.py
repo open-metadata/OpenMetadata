@@ -113,6 +113,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
             )
         return cls(config, metadata)
 
+    def close(self):
+        """Method to implement any required logic after the ingestion process is completed"""
+        self._table_lookup_cache.clear()
+        self._dlt_table_cache.clear()
+        return super().close()
+
     def get_pipelines_list(self) -> Iterable[DataBrickPipelineDetails]:
         try:
             for workflow in self.client.list_jobs() or []:
@@ -1330,5 +1336,3 @@ class DatabrickspipelineSource(PipelineServiceSource):
         finally:
             # Clear pipeline-specific caches to free memory
             logger.debug("Clearing table lookup caches for pipeline")
-            self._table_lookup_cache.clear()
-            self._dlt_table_cache.clear()
