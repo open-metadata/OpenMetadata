@@ -48,7 +48,7 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
 import fileClassBase from '../../../utils/FileClassBase';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getPrioritizedEditPermission, getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -252,6 +252,7 @@ function FileDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -277,6 +278,10 @@ function FileDetails({
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
       viewAllPermission: filePermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        filePermissions,
+        Operation.ViewCustomProperties
+      ),
     }),
     [filePermissions, deleted]
   );
@@ -315,7 +320,7 @@ function FileDetails({
         <CustomPropertyTable<EntityType.FILE>
           entityType={EntityType.FILE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,

@@ -47,7 +47,7 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getPrioritizedEditPermission, getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -258,6 +258,7 @@ function WorksheetDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -287,6 +288,10 @@ function WorksheetDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: worksheetPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        worksheetPermissions,
+        Operation.ViewCustomProperties
+      ),
     }),
     [worksheetPermissions, deleted]
   );
@@ -325,7 +330,7 @@ function WorksheetDetails({
         <CustomPropertyTable<EntityType.WORKSHEET>
           entityType={EntityType.WORKSHEET}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
