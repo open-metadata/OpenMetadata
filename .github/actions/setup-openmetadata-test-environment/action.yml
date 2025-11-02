@@ -26,9 +26,8 @@ runs:
     # ---- Install Ubuntu Dependencies ---------------------------------------------
     - name: Install Ubuntu dependencies
       run: |
-        sudo apt-get update && sudo apt-get install -y -qq unixodbc-dev librdkafka-dev gcc libsasl2-dev \
-        build-essential libssl-dev libffi-dev libevent-dev python3-dev libkrb5-dev tdsodbc \
-        libmysqlclient-dev pkg-config curl unzip make jq && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
+        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
       shell: bash
     # ------------------------------------------------------------------------------
 
@@ -52,27 +51,23 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Setup Python Test Environment -------------------------------------------
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
+    - name: Setup Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
       with:
-        version: "latest"
+        python-version: ${{ inputs.python-version }}
 
-    - name: Set up Python
-      run: uv python install ${{ inputs.python-version }}
+    - name: Generate Models
+      run: |
+        python3 -m venv env
+        source env/bin/activate
+        sudo make install_antlr_cli
+        make install_dev generate
       shell: bash
 
-    - name: Setup Python Environment and Generate Models
+    - name: Install Python Dependencies
       run: |
-        cd ingestion
-        sudo make -C .. install_antlr_cli
-        make -C .. generate
-      shell: bash
-
-    - name: Install All Python Dependencies
-      run: |
-        cd ingestion
-        # Use uv sync with frozen lock file for reproducible builds
-        make uv_sync_frozen
+        source env/bin/activate
+        make install_all install_test
       shell: bash
     # ------------------------------------------------------------------------------
 
@@ -81,9 +76,6 @@ runs:
       uses: nick-fields/retry@v3.0.2
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
-        # Ensure the Docker script uses the uv-managed virtual environment
-        VIRTUAL_ENV: ${{ github.workspace }}/ingestion/.venv
-        PATH: ${{ github.workspace }}/ingestion/.venv/bin:${{ env.PATH }}
       with:
         timeout_minutes: 60
         max_attempts: 2
