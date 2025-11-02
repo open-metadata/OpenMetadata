@@ -276,6 +276,38 @@ public class StoredProcedureResource
     return create(uriInfo, securityContext, storedProcedure);
   }
 
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateStoredProcedures",
+      summary = "Bulk create or update stored procedures",
+      description =
+          "Create or update multiple stored procedures in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each stored procedure.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      java.util.List<CreateStoredProcedure> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(

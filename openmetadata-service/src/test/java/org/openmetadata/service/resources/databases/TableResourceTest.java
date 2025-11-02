@@ -227,6 +227,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
+    supportsBulkAPI = true;
   }
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {
@@ -5739,13 +5740,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       createRequests.add(create);
     }
 
-    org.openmetadata.schema.api.data.BulkCreateTable bulkRequest =
-        new org.openmetadata.schema.api.data.BulkCreateTable()
-            .withTables(createRequests)
-            .withDryRun(false);
-
+    WebTarget target = getResource("tables/bulk");
     org.openmetadata.schema.type.api.BulkOperationResult result =
-        bulkCreateTables(bulkRequest, ADMIN_AUTH_HEADERS);
+        TestUtils.put(
+            target,
+            createRequests,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            OK,
+            ADMIN_AUTH_HEADERS);
 
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
@@ -5780,26 +5782,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(invalidColumns);
     createRequests.add(invalidCreate);
 
-    org.openmetadata.schema.api.data.BulkCreateTable bulkRequest =
-        new org.openmetadata.schema.api.data.BulkCreateTable()
-            .withTables(createRequests)
-            .withDryRun(false);
-
+    WebTarget target = getResource("tables/bulk");
     org.openmetadata.schema.type.api.BulkOperationResult result =
-        bulkCreateTables(bulkRequest, ADMIN_AUTH_HEADERS);
+        TestUtils.put(
+            target,
+            createRequests,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            OK,
+            ADMIN_AUTH_HEADERS);
 
     assertNotNull(result);
     assertEquals(4, result.getNumberOfRowsProcessed());
     assertEquals(3, result.getNumberOfRowsPassed());
     assertEquals(1, result.getNumberOfRowsFailed());
     assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
-  }
-
-  private org.openmetadata.schema.type.api.BulkOperationResult bulkCreateTables(
-      org.openmetadata.schema.api.data.BulkCreateTable request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("tables/bulk");
-    return TestUtils.put(
-        target, request, org.openmetadata.schema.type.api.BulkOperationResult.class, OK, authHeaders);
   }
 }

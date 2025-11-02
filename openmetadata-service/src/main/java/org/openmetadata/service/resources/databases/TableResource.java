@@ -72,7 +72,6 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -423,62 +422,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema =
-                        @Schema(
-                            implementation =
-                                BulkOperationResult.class))),
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid org.openmetadata.schema.api.data.BulkCreateTable bulkRequest) {
-   BulkOperationResult result =
-        new BulkOperationResult();
-    result.setDryRun(bulkRequest.getDryRun());
-
-    int totalTables = bulkRequest.getTables().size();
-    int successCount = 0;
-    int failureCount = 0;
-    List<BulkResponse> successRequests =
-        new java.util.ArrayList<>();
-    List<BulkResponse> failedRequests =
-        new java.util.ArrayList<>();
-
-    for (CreateTable createRequest : bulkRequest.getTables()) {
-      try {
-        if (!bulkRequest.getDryRun()) {
-          Table table =
-              mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
-          createOrUpdate(uriInfo, securityContext, table);
-        }
-
-        BulkResponse successResponse =
-            new BulkResponse();
-        successResponse.setMessage(
-            "Table " + createRequest.getName() + " created/updated successfully");
-        successRequests.add(successResponse);
-        successCount++;
-      } catch (Exception e) {
-        BulkResponse failureResponse = new BulkResponse();
-        failureResponse.setMessage(
-            "Failed to create/update table " + createRequest.getName() + ": " + e.getMessage());
-        failedRequests.add(failureResponse);
-        failureCount++;
-      }
-    }
-
-    result.setNumberOfRowsProcessed(totalTables);
-    result.setNumberOfRowsPassed(successCount);
-    result.setNumberOfRowsFailed(failureCount);
-    result.setSuccessRequest(successRequests);
-    result.setFailedRequest(failedRequests);
-    result.setStatus(
-        failureCount == 0
-            ? org.openmetadata.schema.type.ApiStatus.SUCCESS
-            : org.openmetadata.schema.type.ApiStatus.PARTIAL_SUCCESS);
-
-    return Response.ok(result).build();
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateTable> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH
