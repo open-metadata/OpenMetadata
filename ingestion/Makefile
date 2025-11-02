@@ -20,6 +20,11 @@ else
     PIP_CMD = python -m pip
 endif
 
+.PHONY: help
+help:  ## Show this help message
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
 	python -m pip install $(INGESTION_DIR)/
@@ -29,6 +34,10 @@ install_dev_env:  ## Install all dependencies for development (in edit mode)
 	pip install --upgrade pip
 	pip install nox
 	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
+
+.PHONY: uv_install_dev_env
+uv_install_dev_env:  ## Install all dependencies for development using uv (recommended)
+	uv sync --extra dev --extra test-unit --extra all-dev-env
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
@@ -41,6 +50,28 @@ install_test:  ## Install the ingestion module with test dependencies
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
 	$(PIP_CMD) install "$(INGESTION_DIR)[all]/"
+
+# ---- UV-based targets (recommended for better dependency management) ----
+.PHONY: uv_setup
+uv_setup:  ## Create .venv using uv and sync all development dependencies
+	uv venv .venv
+	uv sync --extra dev --extra test
+
+.PHONY: uv_sync
+uv_sync:  ## Sync dependencies using uv (uses uv.lock if available)
+	uv sync
+
+.PHONY: uv_sync_all
+uv_sync_all:  ## Sync all dependencies including all extras using uv
+	uv sync --extra all --extra test --extra dev
+
+.PHONY: uv_lock
+uv_lock:  ## Update uv.lock file with current dependencies
+	uv lock
+
+.PHONY: uv_sync_frozen
+uv_sync_frozen:  ## Sync dependencies using frozen lock file (CI/CD)
+	uv sync --frozen
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment

@@ -26,8 +26,9 @@ runs:
     # ---- Install Ubuntu Dependencies ---------------------------------------------
     - name: Install Ubuntu dependencies
       run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
+        sudo apt-get update && sudo apt-get install -y -qq unixodbc-dev librdkafka-dev gcc libsasl2-dev \
+        build-essential libssl-dev libffi-dev libevent-dev python3-dev libkrb5-dev tdsodbc \
+        libmysqlclient-dev pkg-config curl unzip make jq && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
       shell: bash
     # ------------------------------------------------------------------------------
 
@@ -51,32 +52,26 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Setup Python Test Environment -------------------------------------------
-    - name: Setup Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ inputs.python-version }}
-
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
+      uses: astral-sh/setup-uv@v4
       with:
-        enable-cache: true
+        version: "latest"
 
-    - name: Generate Models
+    - name: Set up Python
+      run: uv python install ${{ inputs.python-version }}
+
+    - name: Setup Python Environment and Generate Models
       run: |
-        python3 -m venv env
-        source env/bin/activate
-        # Use uv for faster pip operations
-        uv pip install pip setuptools wheel
-        sudo make install_antlr_cli
-        make install_dev generate
+        cd ingestion
+        sudo make -C .. install_antlr_cli
+        make -C .. generate
       shell: bash
 
-    - name: Install Python Dependencies
+    - name: Install All Python Dependencies
       run: |
-        source env/bin/activate
-        # Use uv for faster dependency installation
-        export UV_SYSTEM_PYTHON=1
-        make install_all install_test
+        cd ingestion
+        # Use uv sync with frozen lock file for reproducible builds
+        make uv_sync_frozen
       shell: bash
     # ------------------------------------------------------------------------------
 
@@ -85,6 +80,9 @@ runs:
       uses: nick-fields/retry@v3.0.2
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
+        # Ensure the Docker script uses the uv-managed virtual environment
+        VIRTUAL_ENV: ${{ github.workspace }}/ingestion/.venv
+        PATH: ${{ github.workspace }}/ingestion/.venv/bin:${{ env.PATH }}
       with:
         timeout_minutes: 60
         max_attempts: 2

@@ -81,6 +81,8 @@ USER airflow
 # Install uv for faster package installation
 RUN pip install uv
 
+# Configure uv to use system Python
+ENV UV_SYSTEM_PYTHON=1
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
 ENV PIP_NO_CACHE_DIR=1
@@ -94,9 +96,16 @@ RUN uv pip install --system "." --constraint "/home/airflow/airflow-constraints-
 
 WORKDIR /home/airflow/ingestion
 
-# Argument to provide for Ingestion Dependencies to install. Defaults to all
-ARG INGESTION_DEPENDENCY="all"
-RUN uv pip install --system ".[${INGESTION_DEPENDENCY}]"
+# Use uv sync for faster, more reliable dependency installation
+# --locked ensures exact reproducible builds from lock file
+# --no-dev skips development dependencies for production
+RUN uv sync --locked --no-dev
+
+# Argument to provide for additional Ingestion Dependencies to install if needed
+ARG INGESTION_DEPENDENCY=""
+RUN if [ -n "${INGESTION_DEPENDENCY}" ]; then \
+      uv pip install --system ".[${INGESTION_DEPENDENCY}]"; \
+    fi
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
