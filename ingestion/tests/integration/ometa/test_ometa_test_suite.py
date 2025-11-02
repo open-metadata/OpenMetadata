@@ -12,7 +12,6 @@
 """
 OpenMetadata API test suite mixin test
 """
-import uuid
 from datetime import datetime, timezone
 from unittest import TestCase
 

@@ -45,10 +45,10 @@ def pytest_collection_modifyitems(config, items):
         "test_ometa_test_suite.py",
         "test_ometa_life_cycle_api.py",
     ]
-    
+
     for item in items:
         test_file = str(item.fspath) if hasattr(item, "fspath") else str(item.path)
-        
+
         # Mark tests that need single-threaded execution
         if any(st_file in test_file for st_file in single_threaded_files):
             item.add_marker(pytest.mark.single_threaded)

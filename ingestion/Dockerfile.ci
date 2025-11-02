@@ -78,33 +78,30 @@ COPY --chown=airflow:0 ingestion/airflow-constraints-2.10.5.txt /home/airflow/ai
 
 USER airflow
 
-# Install uv for faster package installation
-RUN pip install uv
-
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 
-RUN uv pip install --system --upgrade pip
+RUN pip install --upgrade pip
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN uv pip install --system "." --constraint "/home/airflow/airflow-constraints-2.10.5.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-2.10.5.txt"
 
 WORKDIR /home/airflow/ingestion
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
-RUN uv pip install --system ".[${INGESTION_DEPENDENCY}]"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
-  && uv pip install --system ".[db2]" \
+  && pip install ".[db2]" \
   || echo "DB2 not supported on ARM architectures."
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
-RUN uv pip install --system "python-daemon>=3.0.0"
+RUN pip install "python-daemon>=3.0.0"
 
 # remove all airflow providers except for docker and cncf kubernetes
 RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common" | xargs pip uninstall -y
@@ -113,7 +110,7 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN uv pip install --system psycopg2 mysqlclient==2.1.1
+RUN pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 
