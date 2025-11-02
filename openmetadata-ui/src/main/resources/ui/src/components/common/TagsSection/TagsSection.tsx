@@ -184,11 +184,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           {(showAllTags
             ? nonTierTags
             : nonTierTags.slice(0, maxVisibleTags)
-          ).map((tag, index) => (
+          ).map((tag) => (
             <div
               className="tag-item"
               data-testid={`tag-${tag.tagFQN}`}
-              key={index}>
+              key={tag.tagFQN}>
               <ClassificationIcon className="tag-icon" />
               <span className="tag-name">{getEntityName(tag)}</span>
             </div>

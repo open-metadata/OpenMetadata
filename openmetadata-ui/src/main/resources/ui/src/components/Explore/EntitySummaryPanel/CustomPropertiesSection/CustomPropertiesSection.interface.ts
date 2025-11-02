@@ -12,6 +12,7 @@
  */
 import { EntityType } from '../../../../enums/entity.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
+import { EntityDetailsObjectInterface } from '../../ExplorePage.interface';
 
 export interface EntityData {
   extension?: Record<string, unknown>;
@@ -33,7 +34,7 @@ export interface EntityTypeDetail {
 
 export interface CustomPropertiesSectionProps {
   entityData?: EntityData;
-  entityDetails: EntityDetails;
+  entityDetails: EntityDetailsObjectInterface;
   entityType: EntityType;
   entityTypeDetail?: EntityTypeDetail;
   isEntityDataLoading: boolean;

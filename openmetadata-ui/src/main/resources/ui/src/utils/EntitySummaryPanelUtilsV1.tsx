@@ -804,8 +804,8 @@ const APIEndpointSchemaV1: React.FC<{
       width: 200,
       render: (tags: any[]) => (
         <div className="d-flex flex-wrap gap-2">
-          {tags?.map((tag, index) => (
-            <span className="tag-container" key={index}>
+          {tags?.map((tag) => (
+            <span className="tag-container" key={tag.tagFQN}>
               {tag.displayName || tag.name}
             </span>
           )) || <span className="text-grey-muted">{t('label.no-tags')}</span>}

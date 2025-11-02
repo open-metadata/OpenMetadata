@@ -37,27 +37,10 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
-import { patchApiCollection } from '../../rest/apiCollectionsAPI';
-import { patchApiEndPoint } from '../../rest/apiEndpointsAPI';
-import { patchChartDetails } from '../../rest/chartsAPI';
-import { patchDashboardDetails } from '../../rest/dashboardAPI';
-import {
-  patchDatabaseDetails,
-  patchDatabaseSchemaDetails,
-} from '../../rest/databaseAPI';
-import { patchDataModelDetails } from '../../rest/dataModelsAPI';
-import { patchDataProduct } from '../../rest/dataProductAPI';
-import { patchGlossaries, patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
-import { patchMlModelDetails } from '../../rest/mlModelAPI';
-import { patchPipelineDetails } from '../../rest/pipelineAPI';
-import { patchSearchIndexDetails } from '../../rest/SearchIndexAPI';
-import { patchContainerDetails } from '../../rest/storageAPI';
-import { patchStoredProceduresDetails } from '../../rest/storedProceduresAPI';
-import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
-import { patchTopicDetails } from '../../rest/topicsAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
+import { getEntityPatchAPI } from '../../utils/EntityPatchUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
@@ -100,51 +83,6 @@ export const DataAssetSummaryPanelV1 = ({
     [dataAsset.tags]
   );
 
-  // Function to get the appropriate patch API based on entity type
-  const getPatchAPI = (entityType?: EntityType) => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        return patchTableDetails;
-      case EntityType.DASHBOARD:
-        return patchDashboardDetails;
-      case EntityType.TOPIC:
-        return patchTopicDetails;
-      case EntityType.PIPELINE:
-        return patchPipelineDetails;
-      case EntityType.MLMODEL:
-        return patchMlModelDetails;
-      case EntityType.CHART:
-        return patchChartDetails;
-      case EntityType.API_COLLECTION:
-        return patchApiCollection;
-      case EntityType.API_ENDPOINT:
-        return patchApiEndPoint;
-      case EntityType.DATABASE:
-        return patchDatabaseDetails;
-      case EntityType.DATABASE_SCHEMA:
-        return patchDatabaseSchemaDetails;
-      case EntityType.STORED_PROCEDURE:
-        return patchStoredProceduresDetails;
-      case EntityType.CONTAINER:
-        return patchContainerDetails;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return patchDataModelDetails;
-      case EntityType.SEARCH_INDEX:
-        return patchSearchIndexDetails;
-      case EntityType.DATA_PRODUCT:
-        return patchDataProduct;
-      case EntityType.GLOSSARY:
-        return patchGlossaries;
-      case EntityType.GLOSSARY_TERM:
-        return patchGlossaryTerm;
-      default:
-        // For entity types without specific patch APIs, throw an error
-        throw new Error(
-          `No patch API available for entity type: ${entityType}`
-        );
-    }
-  };
-
   // Handler for description updates
   const handleDescriptionUpdate = useCallback(
     async (newDescription: string) => {
@@ -165,7 +103,7 @@ export const DataAssetSummaryPanelV1 = ({
         ];
 
         // Make the API call using the correct patch API for the entity type
-        const patchAPI = getPatchAPI(entityType);
+        const patchAPI = getEntityPatchAPI(entityType);
         const response = await patchAPI(dataAsset.id, jsonPatch);
 
         // Show success message

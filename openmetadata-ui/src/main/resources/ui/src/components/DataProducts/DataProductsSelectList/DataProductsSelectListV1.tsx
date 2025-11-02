@@ -38,7 +38,7 @@ export const DataProductsSelectListV1 = ({
   const fetchDataProductOptions = useMemo(
     () => async (searchText: string, after?: string) => {
       try {
-        const afterPage = after ? parseInt(after, 10) : 1;
+        const afterPage = after ? Number.parseInt(after, 10) : 1;
         const response = await fetchOptions(searchText, afterPage);
         const dataProducts = response.data || [];
 

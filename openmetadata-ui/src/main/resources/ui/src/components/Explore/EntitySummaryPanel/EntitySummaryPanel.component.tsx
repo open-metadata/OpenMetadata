@@ -28,44 +28,18 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
-import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
-import { patchChartDetails } from '../../../rest/chartsAPI';
-import {
-  getDashboardByFqn,
-  patchDashboardDetails,
-} from '../../../rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  patchDatabaseDetails,
-  patchDatabaseSchemaDetails,
-} from '../../../rest/databaseAPI';
-import {
-  getDataModelByFqn,
-  patchDataModelDetails,
-} from '../../../rest/dataModelsAPI';
-import { patchDataProduct } from '../../../rest/dataProductAPI';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getMlModelByFQN, patchMlModelDetails } from '../../../rest/mlModelAPI';
-import {
-  getPipelineByFqn,
-  patchPipelineDetails,
-} from '../../../rest/pipelineAPI';
-import {
-  getSearchIndexDetailsByFQN,
-  patchSearchIndexDetails,
-} from '../../../rest/SearchIndexAPI';
-import { patchContainerDetails } from '../../../rest/storageAPI';
-import {
-  getStoredProceduresByFqn,
-  patchStoredProceduresDetails,
-} from '../../../rest/storedProceduresAPI';
-import {
-  getTableDetailsByFQN,
-  patchTableDetails,
-} from '../../../rest/tableAPI';
-import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getEntityPatchAPI } from '../../../utils/EntityPatchUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -612,7 +586,7 @@ export default function EntitySummaryPanel({
         ];
 
         // Make the API call using the correct patch API for the entity type
-        const patchAPI = getPatchAPI(entityType);
+        const patchAPI = getEntityPatchAPI(entityType);
         if (entityDetails.details.id) {
           await patchAPI(entityDetails.details.id, jsonPatch);
         }
@@ -766,47 +740,6 @@ export default function EntitySummaryPanel({
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
     [entityPermissions]
   );
-
-  // Function to get the correct patch API based on entity type
-  const getPatchAPI = (entityType?: EntityType) => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        return patchTableDetails;
-      case EntityType.DASHBOARD:
-        return patchDashboardDetails;
-      case EntityType.TOPIC:
-        return patchTopicDetails;
-      case EntityType.PIPELINE:
-        return patchPipelineDetails;
-      case EntityType.MLMODEL:
-        return patchMlModelDetails;
-      case EntityType.CHART:
-        return patchChartDetails;
-      case EntityType.API_COLLECTION:
-        return patchApiCollection;
-      case EntityType.API_ENDPOINT:
-        return patchApiEndPoint;
-      case EntityType.DATABASE:
-        return patchDatabaseDetails;
-      case EntityType.DATABASE_SCHEMA:
-        return patchDatabaseSchemaDetails;
-      case EntityType.STORED_PROCEDURE:
-        return patchStoredProceduresDetails;
-      case EntityType.CONTAINER:
-        return patchContainerDetails;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return patchDataModelDetails;
-      case EntityType.SEARCH_INDEX:
-        return patchSearchIndexDetails;
-      case EntityType.DATA_PRODUCT:
-        return patchDataProduct;
-      default:
-        // For entity types without specific patch APIs, throw an error
-        throw new Error(
-          `No patch API available for entity type: ${entityType}`
-        );
-    }
-  };
 
   const summaryComponent = useMemo(() => {
     if (isPermissionLoading) {

@@ -11,37 +11,13 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
+import { ENTITY_TYPES } from '../../constant/entity';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { selectDataAssetFilter } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-type EntityType =
-  | 'table'
-  | 'database'
-  | 'databaseSchema'
-  | 'dashboard'
-  | 'dashboardDataModel'
-  | 'pipeline'
-  | 'topic'
-  | 'mlmodel'
-  | 'container'
-  | 'searchIndex';
-
-const ENTITY_TYPES: EntityType[] = [
-  'table',
-  'database',
-  'databaseSchema',
-  'dashboard',
-  'dashboardDataModel',
-  'pipeline',
-  'topic',
-  'mlmodel',
-  'container',
-  'searchIndex',
-];
 
 async function openEntitySummaryPanel(page: Page, entityType: EntityType) {
   await selectDataAssetFilter(page, entityType);

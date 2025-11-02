@@ -51,7 +51,7 @@ const convertEntityReferencesToTags = (refs: EntityReference[]): TagLabel[] => {
 
 const fetchTagOptions = async (searchText: string, after?: string) => {
   try {
-    const afterPage = after ? parseInt(after, 10) : 1;
+    const afterPage = after ? Number.parseInt(after, 10) : 1;
     const response = await tagClassBase.getTags(searchText, afterPage);
     const tags = response.data || [];
 

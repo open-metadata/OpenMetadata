@@ -36,6 +36,32 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     return (item.visible || []).includes(componentType) || isDomain;
   };
 
+  const renderInfoValue = (info: EntityInfoItemV1) => {
+    if (!info.isLink) {
+      return isNil(info.value) ? '-' : info.value;
+    }
+
+    if (info.isExternal && info.value !== '-') {
+      return (
+        <a className="summary-item-link" href={info.url} target="_blank">
+          {info.value}
+          <Icon
+            className="m-l-xs"
+            component={IconExternalLink}
+            data-testid="external-link-icon"
+            style={ICON_DIMENSION}
+          />
+        </a>
+      );
+    }
+
+    return (
+      <Link className="summary-item-link" to={info.linkProps ?? info.url ?? ''}>
+        {info.value}
+      </Link>
+    );
+  };
+
   return (
     <div className="overview-section">
       {entityInfo.filter(isItemVisible).map((info) => (
@@ -48,32 +74,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
           <span
             className={classNames('overview-value text-grey-body')}
             data-testid={`${info.name}-value`}>
-            {info.isLink ? (
-              info.isExternal && info.value !== '-' ? (
-                <a
-                  className="summary-item-link"
-                  href={info.url}
-                  target="_blank">
-                  {info.value}
-                  <Icon
-                    className="m-l-xs"
-                    component={IconExternalLink}
-                    data-testid="external-link-icon"
-                    style={ICON_DIMENSION}
-                  />
-                </a>
-              ) : (
-                <Link
-                  className="summary-item-link"
-                  to={info.linkProps ?? info.url ?? ''}>
-                  {info.value}
-                </Link>
-              )
-            ) : isNil(info.value) ? (
-              '-'
-            ) : (
-              info.value
-            )}
+            {renderInfoValue(info)}
           </span>
         </div>
       ))}

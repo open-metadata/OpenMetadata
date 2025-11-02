@@ -27,7 +27,7 @@ import { GlossaryTermSelectableListProps } from './GlossaryTermSelectableList.in
 
 const fetchGlossaryTermOptions = async (searchText: string, after?: string) => {
   try {
-    const afterPage = after ? parseInt(after, 10) : 1;
+    const afterPage = after ? Number.parseInt(after, 10) : 1;
     const response = await fetchGlossaryList(searchText, afterPage);
     const terms = response.data || [];
 
