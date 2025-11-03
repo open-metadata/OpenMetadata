@@ -136,7 +136,11 @@
   }
 
   .lineage-node {
-    border-color: @primary-color !important;
+    border-color: @primary-color;
+  }
+
+  .data-quality-failed-custom-node-header {
+    border-color: @red-3;
   }
 }
 
@@ -336,6 +340,15 @@
   }
 }
 
+.data-quality-failed-custom-node-header {
+  .custom-node-column-container {
+    &:hover {
+      border-left-color: @red-14;
+      background-color: @red-9;
+      color: @red-20;
+    }
+  }
+}
 .custom-node-column-container {
   padding: 6px 8px;
   background-color: inherit;
