@@ -243,6 +243,93 @@ MOCK_SCHEMA_RESPONSE_WITH_OBJECT_REF_CIRCULAR = {
     }
 }
 
+# Mock data for testing Swagger 2.0 and query/path parameter support
+MOCK_SWAGGER_2_REQUEST_BODY = {
+    "parameters": [
+        {
+            "in": "body",
+            "name": "user",
+            "description": "User object",
+            "schema": {"$ref": "#/components/schemas/User"},
+        }
+    ],
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "username": {"type": "string"},
+                },
+            }
+        }
+    },
+}
+
+MOCK_QUERY_PARAMETERS = {
+    "parameters": [
+        {
+            "in": "query",
+            "name": "page",
+            "type": "integer",
+            "description": "Page number",
+        },
+        {
+            "in": "query",
+            "name": "limit",
+            "type": "integer",
+            "description": "Items per page",
+        },
+        {
+            "in": "path",
+            "name": "userId",
+            "type": "string",
+            "description": "User ID",
+        },
+    ]
+}
+
+MOCK_QUERY_PARAMETERS_OPENAPI_3 = {
+    "parameters": [
+        {
+            "in": "query",
+            "name": "filter",
+            "schema": {"type": "string"},
+            "description": "Filter criteria",
+        },
+        {
+            "in": "query",
+            "name": "tags",
+            "schema": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "description": "Tag filters",
+        },
+    ]
+}
+
+MOCK_MIXED_PARAMETERS = {
+    "parameters": [
+        {
+            "in": "header",
+            "name": "Authorization",
+            "type": "string",
+        },
+        {
+            "in": "query",
+            "name": "search",
+            "type": "string",
+            "description": "Search term",
+        },
+        {
+            "in": "path",
+            "name": "id",
+            "type": "integer",
+        },
+    ]
+}
+
 
 class RESTTest(TestCase):
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
@@ -437,3 +524,154 @@ class RESTTest(TestCase):
         )
         # Should be None due to circular reference prevention
         assert user_field_in_profile.children is None
+
+    def test_convert_parameter_to_field_swagger_2(self):
+        """Test converting Swagger 2.0 parameter to FieldModel"""
+        param = {
+            "in": "query",
+            "name": "page",
+            "type": "integer",
+            "description": "Page number",
+        }
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.name.root == "page"
+        assert result.dataType == DataTypeTopic.INT
+        assert result.description.root == "Page number"
+        assert result.children is None
+
+    def test_convert_parameter_to_field_openapi_3(self):
+        """Test converting OpenAPI 3.0 parameter to FieldModel"""
+        param = {
+            "in": "query",
+            "name": "filter",
+            "schema": {"type": "string"},
+            "description": "Filter criteria",
+        }
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.name.root == "filter"
+        assert result.dataType == DataTypeTopic.STRING
+        assert result.description.root == "Filter criteria"
+
+    def test_convert_parameter_to_field_array_type(self):
+        """Test converting array parameter to FieldModel with children"""
+        param = {
+            "in": "query",
+            "name": "tags",
+            "schema": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "description": "Tag filters",
+        }
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.name.root == "tags"
+        assert result.dataType == DataTypeTopic.ARRAY
+        assert result.children is not None
+        assert len(result.children) == 1
+        assert result.children[0].name.root == "item"
+        assert result.children[0].dataType == DataTypeTopic.STRING
+
+    def test_convert_parameter_to_field_no_name(self):
+        """Test that parameter without name returns None"""
+        param = {"in": "query", "type": "string"}
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is None
+
+    def test_convert_parameter_to_field_no_type(self):
+        """Test parameter without type defaults to string"""
+        param = {"in": "query", "name": "search"}
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.dataType == DataTypeTopic.STRING
+
+    def test_get_request_schema_swagger_2_body(self):
+        """Test extracting request schema from Swagger 2.0 body parameter"""
+        self.rest_source.json_response = MOCK_SWAGGER_2_REQUEST_BODY
+
+        result = self.rest_source._get_request_schema(MOCK_SWAGGER_2_REQUEST_BODY)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 2
+        field_names = {field.name.root for field in result.schemaFields}
+        assert field_names == {"id", "username"}
+
+    def test_get_request_schema_query_parameters(self):
+        """Test extracting request schema from query and path parameters"""
+        result = self.rest_source._get_request_schema(MOCK_QUERY_PARAMETERS)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 3
+
+        field_names = {field.name.root for field in result.schemaFields}
+        assert field_names == {"page", "limit", "userId"}
+
+        # Check that query parameters are extracted correctly
+        page_field = next(f for f in result.schemaFields if f.name.root == "page")
+        assert page_field.dataType == DataTypeTopic.INT
+        assert page_field.description.root == "Page number"
+
+    def test_get_request_schema_openapi_3_query_parameters(self):
+        """Test extracting request schema from OpenAPI 3.0 query parameters"""
+        result = self.rest_source._get_request_schema(MOCK_QUERY_PARAMETERS_OPENAPI_3)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 2
+
+        # Check array parameter with schema
+        tags_field = next(f for f in result.schemaFields if f.name.root == "tags")
+        assert tags_field.dataType == DataTypeTopic.ARRAY
+        assert tags_field.children is not None
+        assert len(tags_field.children) == 1
+
+    def test_get_request_schema_mixed_parameters(self):
+        """Test that only query and path parameters are extracted, not headers"""
+        result = self.rest_source._get_request_schema(MOCK_MIXED_PARAMETERS)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 2  # Only query and path, not header
+
+        field_names = {field.name.root for field in result.schemaFields}
+        assert field_names == {"search", "id"}
+        assert "Authorization" not in field_names
+
+    def test_get_request_schema_no_parameters(self):
+        """Test that endpoints without request schema return None"""
+        result = self.rest_source._get_request_schema({})
+
+        assert result is None
+
+    def test_get_request_schema_openapi_3_requestbody(self):
+        """Test that OpenAPI 3.0 requestBody still works (backward compatibility)"""
+        mock_openapi_3 = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": "#/components/schemas/User"}
+                    }
+                }
+            }
+        }
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_SIMPLE
+
+        result = self.rest_source._get_request_schema(mock_openapi_3)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 3
