@@ -412,7 +412,7 @@ class OMetaTestsMixin:
     def delete_test_case(
         self,
         test_case_fqn: str,
-        recursive: bool = False,
+        recursive: bool = True,
         hard: bool = False,
     ) -> None:
         """Delete a test case
