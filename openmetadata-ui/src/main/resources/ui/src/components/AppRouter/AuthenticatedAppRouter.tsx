@@ -711,8 +711,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
 
       {/* Plugin routes */}
-      {pluginRoutes.map((route, idx) => {
-        return <Route key={idx} {...route} />;
+      {pluginRoutes?.map((route) => {
+        return <Route key={route.path ?? route.id} {...route} />;
       })}
 
       <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
