@@ -48,15 +48,31 @@ export const GREY_100 = '#f5f5f5';
 export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
 
-export const SEVERITY_COLORS: Record<
-  string,
-  { bg: string; color: string; border: string }
-> = {
-  Severity1: { bg: '#FEF3F2', color: '#B42318', border: '#FDA29B' },
-  Severity2: { bg: '#FEF6EE', color: '#C4320A', border: '#FDB022' },
-  Severity3: { bg: '#FFFAEB', color: '#DC6803', border: '#FEC84B' },
-  Severity4: { bg: '#F0F9FF', color: '#026AA2', border: '#7CD4FD' },
-  Severity5: { bg: '#F9FAFB', color: '#344054', border: '#D0D5DD' },
+export const SEVERITY_COLORS: Record<string, { bg: string; color: string }> = {
+  Severity1: {
+    bg: 'rgba(222, 57, 49, 0.1)',
+    color: '#9c0700',
+  },
+  Severity2: {
+    bg: 'rgba(247, 99, 33, 0.1)',
+    color: '#be3b00',
+  },
+  Severity3: {
+    bg: 'rgba(255, 165, 33, 0.1)',
+    color: '#c27400',
+  },
+  Severity4: {
+    bg: 'rgba(255, 206, 41, 0.1)',
+    color: '#ad8600',
+  },
+  Severity5: {
+    bg: 'rgba(181, 198, 33, 0.1)',
+    color: '#6e7343',
+  },
+  NoSeverity: {
+    bg: 'rgba(154, 154, 154, 0.1)',
+    color: '#6B7280',
+  },
 };
 
 export const STATUS_COLORS: Record<

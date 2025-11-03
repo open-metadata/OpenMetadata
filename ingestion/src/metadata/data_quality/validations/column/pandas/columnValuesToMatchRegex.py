@@ -30,17 +30,6 @@ class ColumnValuesToMatchRegexValidator(
 ):
     """Validator for column values to match regex test case"""
 
-    def _get_column_name(self) -> SQALikeColumn:
-        """Get column name from the test case entity link
-
-        Returns:
-            SQALikeColumn: column
-        """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            self.runner,
-        )
-
     def _run_results(
         self, metric: Tuple[Metrics], column: SQALikeColumn, **kwargs
     ) -> Tuple[Optional[int], Optional[int]]:
