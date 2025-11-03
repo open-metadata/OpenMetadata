@@ -13,7 +13,7 @@
 AVG Metric definition
 """
 from functools import partial
-from typing import Callable, List, Optional, cast
+from typing import TYPE_CHECKING, Callable, NamedTuple, Optional
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
@@ -23,6 +23,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -35,8 +36,18 @@ from metadata.utils.logger import profiler_logger
 
 # pylint: disable=duplicate-code
 
+if TYPE_CHECKING:
+    import pandas as pd
+
 
 logger = profiler_logger()
+
+
+class SumAndCount(NamedTuple):
+    """Running sum and count for computing mean efficiently"""
+
+    sum_value: float
+    count_value: int
 
 
 class AvgFn(GenericFunction):
@@ -120,38 +131,76 @@ class Mean(StaticMetric):
     # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs=None):
         """dataframe function"""
-        import pandas as pd
-        from numpy import average, vectorize
-
-        dfs = cast(List[pd.DataFrame], dfs)
-
-        means = []
-        weights = []
-        length_vectorize_func = vectorize(len)
+        computation = self.get_pandas_computation()
+        accumulator = computation.create_accumulator()
         for df in dfs:
-            processed_df = df[self.col.name].dropna()
             try:
-                mean = None
-                if is_quantifiable(self.col.type):
-                    mean = processed_df.mean()
-                if is_concatenable(self.col.type):
-                    mean = length_vectorize_func(processed_df.astype(str)).mean()
-                if not pd.isnull(mean):
-                    means.append(mean)
-                    weights.append(processed_df.count())
+                accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
                 logger.debug(
                     f"Error while computing mean for column {self.col.name}: {err}"
                 )
                 return None
+        mean = computation.aggregate_accumulator(accumulator)
 
-        if means:
-            return average(means, weights=weights)
+        if mean is None:
+            logger.warning(
+                f"Don't know how to process type {self.col.type} when computing MEAN"
+            )
+            return None
+        return mean
 
-        logger.warning(
-            f"Don't know how to process type {self.col.type} when computing MEAN"
+    def get_pandas_computation(self) -> PandasComputation:
+        return PandasComputation[SumAndCount, Optional[float]](
+            create_accumulator=lambda: SumAndCount(0.0, 0),
+            update_accumulator=lambda acc, df: Mean.update_accumulator(
+                acc, df, self.col
+            ),
+            aggregate_accumulator=Mean.aggregate_accumulator,
         )
-        return None
+
+    @staticmethod
+    def update_accumulator(
+        sum_and_count: SumAndCount, df: "pd.DataFrame", column
+    ) -> SumAndCount:
+        """Optimized accumulator: maintains running sum and count (O(1) memory)
+
+        Instead of storing per-chunk means, directly accumulates sum and count.
+        This reduces memory from O(chunks) to O(1).
+        """
+        import pandas as pd
+        from numpy import vectorize
+
+        length_vectorize_func = vectorize(len)
+        clean_df = df[column.name].dropna()
+
+        if clean_df.empty:
+            return sum_and_count
+
+        chunk_count = clean_df.count()
+        chunk_sum = None
+
+        if is_quantifiable(column.type):
+            chunk_sum = clean_df.sum()
+        elif is_concatenable(column.type):
+            chunk_sum = length_vectorize_func(clean_df.astype(str)).sum()
+
+        if chunk_sum is None or pd.isnull(chunk_sum):
+            return sum_and_count
+
+        return SumAndCount(
+            sum_value=sum_and_count.sum_value + chunk_sum,
+            count_value=sum_and_count.count_value + chunk_count,
+        )
+
+    @staticmethod
+    def aggregate_accumulator(
+        sum_and_count: SumAndCount,
+    ) -> Optional[float]:
+        """Compute final mean from running sum and count"""
+        if sum_and_count.count_value == 0:
+            return None
+        return sum_and_count.sum_value / sum_and_count.count_value
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""
