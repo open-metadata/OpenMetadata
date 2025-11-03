@@ -339,7 +339,6 @@ class PowerBIUnitTest(TestCase):
         )
         self.assertIsNone(result)
 
-
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
     def test_owner_ingestion(self, get_reference_by_email):
