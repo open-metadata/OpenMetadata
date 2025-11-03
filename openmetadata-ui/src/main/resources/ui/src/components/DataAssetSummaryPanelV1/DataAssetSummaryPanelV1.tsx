@@ -19,15 +19,15 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../utils/date-time/DateTimeUtils';
 import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../utils/EntityUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 
 import { AxiosError } from 'axios';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
@@ -40,9 +40,13 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
-import { getEntityPatchAPI } from '../../utils/EntityPatchUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  DataAssetSummaryPanelProps,
+  TestCaseStatusCounts,
+} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
@@ -54,10 +58,6 @@ import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
-import {
-  DataAssetSummaryPanelProps,
-  TestCaseStatusCounts,
-} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -103,7 +103,7 @@ export const DataAssetSummaryPanelV1 = ({
         ];
 
         // Make the API call using the correct patch API for the entity type
-        const patchAPI = getEntityPatchAPI(entityType);
+        const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
         const response = await patchAPI(dataAsset.id, jsonPatch);
 
         // Show success message

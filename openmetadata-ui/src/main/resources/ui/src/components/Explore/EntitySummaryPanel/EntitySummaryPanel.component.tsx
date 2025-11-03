@@ -28,18 +28,18 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import { getEntityPatchAPI } from '../../../utils/EntityPatchUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -50,19 +50,19 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
-import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+import './entity-summary-panel.less';
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -246,8 +246,8 @@ export default function EntitySummaryPanel({
         fqn,
         entityType,
         config: {
-          upstreamDepth: 2, // Backend subtracts 1, so this becomes 1
-          downstreamDepth: 1, // Backend subtracts 1, so this becomes 1
+          upstreamDepth: 2,
+          downstreamDepth: 1,
           nodesPerLayer: 50,
         },
       });
@@ -586,7 +586,7 @@ export default function EntitySummaryPanel({
         ];
 
         // Make the API call using the correct patch API for the entity type
-        const patchAPI = getEntityPatchAPI(entityType);
+        const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
         if (entityDetails.details.id) {
           await patchAPI(entityDetails.details.id, jsonPatch);
         }

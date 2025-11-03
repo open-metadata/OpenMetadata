@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { EntityType } from '../enums/entity.enum';
-import { getEntityPatchAPI } from './EntityPatchUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { validateEntityId } from './EntityValidationUtils';
 import { showErrorToast, showSuccessToast } from './ToastUtils';
 
@@ -63,7 +63,7 @@ export const updateEntityField = async <T>({
   }
 
   try {
-    const patchAPI = getEntityPatchAPI(entityType);
+    const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
     await patchAPI(entityId, jsonPatch);
 
     showSuccessToast(

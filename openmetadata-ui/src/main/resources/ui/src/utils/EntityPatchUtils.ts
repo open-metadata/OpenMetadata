@@ -12,19 +12,19 @@
  */
 import { Operation } from 'fast-json-patch';
 import { EntityType } from '../enums/entity.enum';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
 import { patchChartDetails } from '../rest/chartsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
+import { patchDataModelDetails } from '../rest/dataModelsAPI';
+import { patchDataProduct } from '../rest/dataProductAPI';
 import {
   patchDatabaseDetails,
   patchDatabaseSchemaDetails,
 } from '../rest/databaseAPI';
-import { patchDataModelDetails } from '../rest/dataModelsAPI';
-import { patchDataProduct } from '../rest/dataProductAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
-import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchStoredProceduresDetails } from '../rest/storedProceduresAPI';
 import { patchTableDetails } from '../rest/tableAPI';
@@ -32,36 +32,41 @@ import { patchTopicDetails } from '../rest/topicsAPI';
 
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
 
-const ENTITY_PATCH_API_MAP: Record<EntityType, PatchAPIFunction> = {
-  [EntityType.TABLE]: patchTableDetails,
-  [EntityType.DASHBOARD]: patchDashboardDetails,
-  [EntityType.TOPIC]: patchTopicDetails,
-  [EntityType.PIPELINE]: patchPipelineDetails,
-  [EntityType.MLMODEL]: patchMlModelDetails,
-  [EntityType.CHART]: patchChartDetails,
-  [EntityType.API_COLLECTION]: patchApiCollection,
-  [EntityType.API_ENDPOINT]: patchApiEndPoint,
-  [EntityType.DATABASE]: patchDatabaseDetails,
-  [EntityType.DATABASE_SCHEMA]: patchDatabaseSchemaDetails,
-  [EntityType.STORED_PROCEDURE]: patchStoredProceduresDetails,
-  [EntityType.CONTAINER]: patchContainerDetails,
-  [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
-  [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
-  [EntityType.DATA_PRODUCT]: patchDataProduct,
-} as Record<EntityType, PatchAPIFunction>;
+class EntityPatchClassBase {
+  protected ENTITY_PATCH_API_MAP: Record<EntityType, PatchAPIFunction> = {
+    [EntityType.TABLE]: patchTableDetails,
+    [EntityType.DASHBOARD]: patchDashboardDetails,
+    [EntityType.TOPIC]: patchTopicDetails,
+    [EntityType.PIPELINE]: patchPipelineDetails,
+    [EntityType.MLMODEL]: patchMlModelDetails,
+    [EntityType.CHART]: patchChartDetails,
+    [EntityType.API_COLLECTION]: patchApiCollection,
+    [EntityType.API_ENDPOINT]: patchApiEndPoint,
+    [EntityType.DATABASE]: patchDatabaseDetails,
+    [EntityType.DATABASE_SCHEMA]: patchDatabaseSchemaDetails,
+    [EntityType.STORED_PROCEDURE]: patchStoredProceduresDetails,
+    [EntityType.CONTAINER]: patchContainerDetails,
+    [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
+    [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
+    [EntityType.DATA_PRODUCT]: patchDataProduct,
+  } as Record<EntityType, PatchAPIFunction>;
 
-export const getEntityPatchAPI = (
-  entityType?: EntityType
-): PatchAPIFunction => {
-  if (!entityType) {
-    throw new Error('Entity type is required');
+  public getEntityPatchAPI(entityType?: EntityType): PatchAPIFunction {
+    if (!entityType) {
+      throw new Error('Entity type is required');
+    }
+
+    const api = this.ENTITY_PATCH_API_MAP[entityType];
+
+    if (!api) {
+      throw new Error(`No patch API available for entity type: ${entityType}`);
+    }
+
+    return api;
   }
+}
 
-  const api = ENTITY_PATCH_API_MAP[entityType];
+const entityPatchClassBase = new EntityPatchClassBase();
 
-  if (!api) {
-    throw new Error(`No patch API available for entity type: ${entityType}`);
-  }
-
-  return api;
-};
+export default entityPatchClassBase;
+export { EntityPatchClassBase };
