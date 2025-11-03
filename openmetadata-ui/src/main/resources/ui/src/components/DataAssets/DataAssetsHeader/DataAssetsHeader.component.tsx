@@ -128,6 +128,7 @@ export const DataAssetsHeader = ({
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
+  disableRunAgentsButtonMessage,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -501,7 +502,11 @@ export const DataAssetsHeader = ({
     const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
-      <Tooltip title={t('message.trigger-auto-pilot-application')}>
+      <Tooltip
+        title={
+          disableRunAgentsButtonMessage ??
+          t('message.trigger-auto-pilot-application')
+        }>
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
@@ -510,7 +515,7 @@ export const DataAssetsHeader = ({
           loading={isLoading}
           type="primary"
           onClick={triggerTheAutoPilotApplication}>
-          {t('label.run-agent-plural')}
+          {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
         </Button>
       </Tooltip>
     );
@@ -519,6 +524,7 @@ export const DataAssetsHeader = ({
     isAutoPilotWorkflowStatusLoading,
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
+    disableRunAgentsButtonMessage,
   ]);
 
   return (
