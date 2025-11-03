@@ -55,8 +55,7 @@
 
   .entity-footer {
     padding: 8px 16px 8px 16px;
-    // background-color: #fffbfa;
-    background-color: #eff8ff;
+    background-color: #ffffff;
     .columns-info-dropdown-label {
       min-width: fit-content;
       padding: 0px @size-xs 0 @size-sm;
@@ -96,6 +95,12 @@
 
     .mapping-icon {
       cursor: pointer;
+    }
+  }
+
+  &.columns-expanded {
+    .entity-footer {
+      background-color: @grey-1;
     }
   }
 }

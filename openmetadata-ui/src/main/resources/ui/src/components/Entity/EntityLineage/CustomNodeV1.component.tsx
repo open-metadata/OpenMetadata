@@ -274,6 +274,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     showDqTracing: showDqTracing ?? false,
     isTraced,
     isBaseNode: isRootNode,
+    isColumnsListExpanded,
   });
 
   const onExpand = useCallback(

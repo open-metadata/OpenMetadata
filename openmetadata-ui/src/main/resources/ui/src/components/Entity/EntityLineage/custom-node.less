@@ -162,17 +162,17 @@
 .react-flow__node-load-more.selectable:focus-visible {
   .lineage-node {
     border-color: @primary-color !important;
-    // border-color: #d92d20 !important;
-    // background-color: @blue-4;
-    background-color: #d1e9ff;
-    // background-color: #fee4e2;
+    background: #eff8ff;
+    &.columns-expanded {
+      background-color: #d1e9ff;
+      .lineage-node-badge-container {
+        background-color: #d1e9ff;
+      }
+    }
 
     .lineage-node-badge-container {
       border-color: @primary-color;
-      // border-color: #d92d20;
-      // background-color: @blue-4;
-      background-color: #d1e9ff;
-      // background-color: #fee4e2;
+      background: #eff8ff;
     }
   }
 
@@ -185,18 +185,23 @@
   }
 
   .label-container {
-    // background: @blue-4;
-    background-color: #d1e9ff;
-    // background-color: #fee4e2;
+    background: #eff8ff;
     .entity-label-container::after {
       background: @primary-1;
     }
   }
 
-  .column-container {
-    // background: @primary-1;
+  .columns-expanded {
+    .label-container {
+      background: #d1e9ff;
+    }
+  }
+  .entity-footer {
     background: #eff8ff;
-    // background-color: #fffbfa;
+  }
+
+  .column-container {
+    background: #eff8ff;
   }
 }
 
