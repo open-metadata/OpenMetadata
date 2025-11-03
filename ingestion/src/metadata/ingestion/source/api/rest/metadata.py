@@ -337,7 +337,9 @@ class RestSource(ApiServiceSource):
             return DataTypeTopic.UNKNOWN
 
         # Handle INTEGER -> INT conversion
-        normalized_type = "INT" if openapi_type.upper() == "INTEGER" else openapi_type.upper()
+        normalized_type = (
+            "INT" if openapi_type.upper() == "INTEGER" else openapi_type.upper()
+        )
 
         # Check if type exists in DataTypeTopic enum
         if normalized_type in DataTypeTopic.__members__:
@@ -416,9 +418,7 @@ class RestSource(ApiServiceSource):
         """Extract schema from a response object (supports both OpenAPI 3.0 and Swagger 2.0)"""
         # OpenAPI 3.0: response.content.application/json.schema
         schema = (
-            response.get("content", {})
-            .get("application/json", {})
-            .get("schema", {})
+            response.get("content", {}).get("application/json", {}).get("schema", {})
         )
         # Swagger 2.0: response.schema
         if not schema:
@@ -459,11 +459,7 @@ class RestSource(ApiServiceSource):
                     return APISchema(schemaFields=self.process_schema_fields(items_ref))
 
             # Case 3: Nested $ref in schema.properties.data
-            schema_ref = (
-                schema.get("properties", {})
-                .get("data", {})
-                .get("$ref")
-            )
+            schema_ref = schema.get("properties", {}).get("data", {}).get("$ref")
             if schema_ref:
                 logger.debug("Found response schema in schema.properties.data")
                 return APISchema(schemaFields=self.process_schema_fields(schema_ref))
@@ -499,8 +495,8 @@ class RestSource(ApiServiceSource):
                 )
             elif self.json_response.get("definitions"):
                 # Swagger 2.0: definitions.{SchemaName}
-                schema_fields = (
-                    self.json_response.get("definitions", {}).get(schema_name)
+                schema_fields = self.json_response.get("definitions", {}).get(
+                    schema_name
                 )
 
             if not schema_fields:

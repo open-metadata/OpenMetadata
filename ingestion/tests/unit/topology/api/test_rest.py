@@ -336,9 +336,7 @@ MOCK_RESPONSE_DIRECT_REF = {
         "200": {
             "description": "successful operation",
             "content": {
-                "application/json": {
-                    "schema": {"$ref": "#/components/schemas/User"}
-                }
+                "application/json": {"schema": {"$ref": "#/components/schemas/User"}}
             },
         }
     }
@@ -367,9 +365,7 @@ MOCK_RESPONSE_NESTED_DATA_REF = {
             "content": {
                 "application/json": {
                     "schema": {
-                        "properties": {
-                            "data": {"$ref": "#/components/schemas/User"}
-                        }
+                        "properties": {"data": {"$ref": "#/components/schemas/User"}}
                     }
                 }
             },
@@ -378,11 +374,7 @@ MOCK_RESPONSE_NESTED_DATA_REF = {
 }
 
 MOCK_RESPONSE_NO_SCHEMA = {
-    "responses": {
-        "200": {
-            "description": "successful operation"
-        }
-    }
+    "responses": {"200": {"description": "successful operation"}}
 }
 
 
@@ -824,9 +816,7 @@ class RESTTest(TestCase):
         """Test _extract_schema_from_response extracts OpenAPI 3.0 schema"""
         response = {
             "content": {
-                "application/json": {
-                    "schema": {"$ref": "#/components/schemas/User"}
-                }
+                "application/json": {"schema": {"$ref": "#/components/schemas/User"}}
             }
         }
         result = self.rest_source._extract_schema_from_response(response)
@@ -834,9 +824,7 @@ class RESTTest(TestCase):
 
     def test_extract_schema_from_response_swagger2(self):
         """Test _extract_schema_from_response extracts Swagger 2.0 schema"""
-        response = {
-            "schema": {"$ref": "#/definitions/Pet"}
-        }
+        response = {"schema": {"$ref": "#/definitions/Pet"}}
         result = self.rest_source._extract_schema_from_response(response)
         assert result == {"$ref": "#/definitions/Pet"}
 
@@ -863,12 +851,7 @@ class RESTTest(TestCase):
 
     def test_process_inline_schema_with_array(self):
         """Test _process_inline_schema handles array types"""
-        properties = {
-            "tags": {
-                "type": "array",
-                "items": {"type": "string"}
-            }
-        }
+        properties = {"tags": {"type": "array", "items": {"type": "string"}}}
         result = self.rest_source._process_inline_schema(properties)
 
         assert result is not None
@@ -878,9 +861,7 @@ class RESTTest(TestCase):
 
     def test_process_inline_schema_no_type(self):
         """Test _process_inline_schema defaults to UNKNOWN for missing type"""
-        properties = {
-            "field": {"description": "A field without type"}
-        }
+        properties = {"field": {"description": "A field without type"}}
         result = self.rest_source._process_inline_schema(properties)
 
         assert result is not None
@@ -899,8 +880,8 @@ class RESTTest(TestCase):
                                 "type": "object",
                                 "properties": {
                                     "status": {"type": "string"},
-                                    "count": {"type": "integer"}
-                                }
+                                    "count": {"type": "integer"},
+                                },
                             }
                         }
                     }
@@ -916,13 +897,7 @@ class RESTTest(TestCase):
         """Test _get_response_schema falls back to 201 when 200 not found"""
         self.rest_source.json_response = {
             "components": {
-                "schemas": {
-                    "User": {
-                        "properties": {
-                            "id": {"type": "string"}
-                        }
-                    }
-                }
+                "schemas": {"User": {"properties": {"id": {"type": "string"}}}}
             }
         }
         info = {
@@ -947,7 +922,7 @@ class RESTTest(TestCase):
             "in": "query",
             "name": "ids",
             "type": "array",
-            "items": {"type": "string"}  # Items with type
+            "items": {"type": "string"},  # Items with type
         }
         result = self.rest_source._convert_parameter_to_field(param)
 
@@ -962,7 +937,7 @@ class RESTTest(TestCase):
             "in": "query",
             "name": "ids",
             "type": "array",
-            "items": {}  # Empty items object - treated as falsy in or expression
+            "items": {},  # Empty items object - treated as falsy in or expression
         }
         result = self.rest_source._convert_parameter_to_field(param)
 
