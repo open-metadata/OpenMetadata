@@ -81,6 +81,7 @@
   .column-container {
     min-height: 48px;
     padding: 12px;
+    padding-top: 0;
     background-color: @grey-1;
 
     .lineage-collapse-column.ant-collapse {
@@ -161,11 +162,17 @@
 .react-flow__node-load-more.selectable:focus-visible {
   .lineage-node {
     border-color: @primary-color !important;
-    background-color: @blue-4;
+    // border-color: #d92d20 !important;
+    // background-color: @blue-4;
+    background-color: #d1e9ff;
+    // background-color: #fee4e2;
 
     .lineage-node-badge-container {
       border-color: @primary-color;
-      background-color: @blue-4;
+      // border-color: #d92d20;
+      // background-color: @blue-4;
+      background-color: #d1e9ff;
+      // background-color: #fee4e2;
     }
   }
 
@@ -178,15 +185,18 @@
   }
 
   .label-container {
-    background: @blue-4;
+    // background: @blue-4;
+    background-color: #d1e9ff;
+    // background-color: #fee4e2;
     .entity-label-container::after {
       background: @primary-1;
     }
   }
 
   .column-container {
-    background: @primary-1;
-    border-top: 1px solid @border-color;
+    // background: @primary-1;
+    background: #eff8ff;
+    // background-color: #fffbfa;
   }
 }
 
@@ -238,7 +248,6 @@
 
   .column-container {
     background: @primary-1;
-    border-top: 1px solid @border-color;
   }
 
   &.lineage-base-node .lineage-node-badge-container {
