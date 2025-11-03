@@ -351,12 +351,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
       expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(
-        screen.getByTestId('right-arrow-icon-container')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
+      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
     });
 
     it('should render direction icon for upstream items', () => {
@@ -402,14 +397,9 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts
+      // Path is truncated to "service > ... > schema" when there are more than 2 parts with MUI Breadcrumbs
       expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(
-        screen.getByTestId('right-arrow-icon-container')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
+      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
     });
 
     it('should render downstream direction text', () => {
@@ -471,18 +461,12 @@ describe('LineageTabContent', () => {
     it('should render entity path when available', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      expect(
-        screen.getByTitle('service > database > schema')
-      ).toBeInTheDocument();
+      // MUI Breadcrumbs renders path as separate breadcrumb items
+      expect(screen.getByText('service')).toBeInTheDocument();
+      expect(screen.getByText('schema')).toBeInTheDocument();
       expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(
-        screen.getByTestId('right-arrow-icon-container')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts
-      //   expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
+      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      // Path is truncated to "service > ... > schema" when there are more than 2 parts with MUI Breadcrumbs
     });
 
     it('should render entity display name or name', () => {
@@ -637,18 +621,11 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(
-        screen.getByTitle('service > database > schema > table')
-      ).toBeInTheDocument();
+      // MUI Breadcrumbs renders first and last items with condensed menu for middle items
       expect(screen.getByText('service')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(
-        screen.getByTestId('right-arrow-icon-container')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-1')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-2')).toBeInTheDocument();
-      expect(screen.getByTestId('right-arrow-icon-dot-3')).toBeInTheDocument();
       expect(screen.getByText('table')).toBeInTheDocument();
+      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
+      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
     });
 
     it('should handle entities without fullyQualifiedName', () => {

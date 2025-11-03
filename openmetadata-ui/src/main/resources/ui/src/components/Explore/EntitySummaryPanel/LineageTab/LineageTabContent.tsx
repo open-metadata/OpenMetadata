@@ -187,13 +187,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       )}
                     </div>
                     <div className="item-path-container">
-                      {item.path && (
-                        <Typography.Text
-                          className="item-path-text"
-                          title={item.path}>
-                          {getTruncatedPath(item.path)}
-                        </Typography.Text>
-                      )}
+                      {item.path &&
+                        getTruncatedPath(item.path, 'breadcrumb-container')}
                     </div>
                   </div>
                   <div className="lineage-item-direction">
