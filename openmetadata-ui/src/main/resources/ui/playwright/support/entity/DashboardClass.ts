@@ -172,9 +172,10 @@ export class DashboardClass extends EntityClass {
     this.entityResponseData = await entityResponse.json();
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
-      charts: chartsResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
+      charts: this.chartsResponseData,
+      dataModel: this.dataModelResponseData,
     };
   }
 
@@ -206,15 +207,21 @@ export class DashboardClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      charts: this.chartsResponseData,
+      dataModel: this.dataModelResponseData,
     };
   }
 
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    charts: ResponseDataType;
+    dataModel: ResponseDataWithServiceType;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.chartsResponseData = data.charts;
+    this.dataModelResponseData = data.dataModel;
   }
 
   async visitEntityPage(page: Page) {

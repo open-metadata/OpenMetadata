@@ -65,10 +65,10 @@ function toNameableEntity(
     return undefined;
   }
   const holder = entity as unknown as {
-    entity?: { name?: string; displayName?: string };
+    entityResponseData?: { name?: string; displayName?: string };
   };
 
-  return holder?.entity;
+  return holder?.entityResponseData;
 }
 
 const test = base.extend<{ page: Page }>({
