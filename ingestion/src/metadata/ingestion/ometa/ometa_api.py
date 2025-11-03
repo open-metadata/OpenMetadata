@@ -15,8 +15,19 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
-from typing import Any, Dict, Generator, Generic, Iterable, List, Optional, Type, TypeVar, Union
 from collections.abc import Generator
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -34,7 +45,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
-from metadata.ingestion.ometa.sse_client import SSEClient
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
@@ -66,6 +76,7 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
+from metadata.ingestion.ometa.sse_client import SSEClient
 from metadata.ingestion.ometa.utils import (
     decode_jwt_token,
     get_entity_type,
@@ -581,7 +592,9 @@ class OpenMetadata(
 
         return [entity(**p) for p in resp["data"]]
 
-    def stream(self, method: str, path: str, data: None | dict[str, Any] = None)  -> Generator[Any, Any, None]:
+    def stream(
+        self, method: str, path: str, data: None | dict[str, Any] = None
+    ) -> Generator[Any, Any, None]:
         """
         Stream an SSE response
         """

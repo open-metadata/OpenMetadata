@@ -11,8 +11,8 @@
 """Unit tests for SSEClient"""
 
 import json
-from datetime import datetime, timezone, timedelta
 from collections.abc import Iterator
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from unittest.mock import Mock, patch
 
@@ -30,7 +30,7 @@ class MockSSEResponse:
         self,
         lines: list[str],
         status_code: int = 200,
-        raise_error: Optional[Exception] = None
+        raise_error: Optional[Exception] = None,
     ):
         self.lines: list[str] = lines
         self.status_code: int = status_code
@@ -41,7 +41,7 @@ class MockSSEResponse:
             raise httpx.HTTPStatusError(
                 "HTTP error",
                 request=Mock(),
-                response=Mock(status_code=self.status_code)
+                response=Mock(status_code=self.status_code),
             )
 
     def iter_lines(self) -> Iterator[str]:
@@ -63,10 +63,7 @@ class MockHTTPXClient:
         self.response: MockSSEResponse = response
 
     def stream(
-        self,
-        method: str,
-        url: str,
-        headers: Optional[dict[str, str]] = None
+        self, method: str, url: str, headers: Optional[dict[str, str]] = None
     ) -> MockSSEResponse:
         return self.response
 
@@ -121,7 +118,7 @@ def test_stream_with_events(sse_client, mock_client_config):
         "data: test message 2",
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 2\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 2","type":"completed"}',
         "",
     ]
 
@@ -134,7 +131,10 @@ def test_stream_with_events(sse_client, mock_client_config):
     assert len(events) == 3
     assert events[0] == {"event": "message", "data": "test message 1"}
     assert events[1] == {"event": "update", "data": "test message 2"}
-    assert events[2] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 2\",\"type\":\"completed\"}"}
+    assert events[2] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 2","type":"completed"}',
+    }
     assert sse_client.stream_completed is True
 
 
@@ -147,7 +147,7 @@ def test_stream_filters_comment_lines(sse_client, mock_client_config):
         ": another comment",
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 1","type":"completed"}',
         "",
     ]
 
@@ -159,13 +159,22 @@ def test_stream_filters_comment_lines(sse_client, mock_client_config):
 
     assert len(events) == 2
     assert events[0] == {"event": "message", "data": "test message"}
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
     assert sse_client.stream_completed is True
 
 
 def test_stream_with_auth_headers(sse_client, mock_client_config):
     """Test that authentication headers are properly set"""
-    sse_lines = ["event: message", "data: test message", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: test message",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
 
     captured_headers = {}
@@ -188,7 +197,14 @@ def test_stream_with_auth_headers(sse_client, mock_client_config):
 
 def test_stream_with_post_method_and_data(sse_client, mock_client_config):
     """Test streaming with POST method and data payload"""
-    sse_lines = ["event: message", "data: response", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: response",
+        "",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
 
     captured_method = None
@@ -209,15 +225,22 @@ def test_stream_with_post_method_and_data(sse_client, mock_client_config):
 
     assert captured_method == "POST"
 
+
 def test_stream_with_get_method_converts_data_to_params(sse_client):
     """Test that GET requests convert data to params"""
-    sse_lines = ["event: message", "data: response", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: response",
+        "",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
     mock_http_client = MockHTTPXClient(mock_response)
 
     with patch("httpx.Client", return_value=mock_http_client):
         list(sse_client.stream("GET", "/events", data={"key": "value"}))
-
 
 
 def test_stream_http_error_raises_immediately(sse_client):
@@ -239,9 +262,20 @@ def test_stream_connection_error_with_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse([], raise_error=httpx.ConnectError("Connection failed"))
+            mock_response = MockSSEResponse(
+                [], raise_error=httpx.ConnectError("Connection failed")
+            )
         else:
-            mock_response = MockSSEResponse(["event: message", "data: success", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""])
+            mock_response = MockSSEResponse(
+                [
+                    "event: message",
+                    "data: success",
+                    "",
+                    "event: stream-complete",
+                    'data: {"message":"total messages: 1","type":"completed"}',
+                    "",
+                ]
+            )
 
         return MockHTTPXClient(mock_response)
 
@@ -251,12 +285,17 @@ def test_stream_connection_error_with_retries(sse_client):
 
     assert call_count == 3
     assert len(events) == 2
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
 
 
 def test_stream_max_retries_exceeded(sse_client):
     """Test that max retries are respected and exception is raised"""
-    mock_response = MockSSEResponse([], raise_error=httpx.ConnectError("Connection failed"))
+    mock_response = MockSSEResponse(
+        [], raise_error=httpx.ConnectError("Connection failed")
+    )
     mock_http_client = MockHTTPXClient(mock_response)
 
     with patch("httpx.Client", return_value=mock_http_client):
@@ -269,7 +308,14 @@ def test_stream_with_last_event_id(sse_client):
     """Test that Last-Event-ID header is set when reconnecting"""
     sse_client.last_event_id = "event-123"
 
-    sse_lines = ["event: message", "data: test", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: test",
+        "",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
 
     captured_headers = {}
@@ -298,9 +344,20 @@ def test_stream_resets_retry_count_on_success(sse_client):
         call_count += 1
 
         if call_count == 1:
-            mock_response = MockSSEResponse([], raise_error=httpx.ConnectError("Connection failed"))
+            mock_response = MockSSEResponse(
+                [], raise_error=httpx.ConnectError("Connection failed")
+            )
         else:
-            mock_response = MockSSEResponse(["event: message", "data: success", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""])
+            mock_response = MockSSEResponse(
+                [
+                    "event: message",
+                    "data: success",
+                    "",
+                    "event: stream-complete",
+                    'data: {"message":"total messages: 1","type":"completed"}',
+                    "",
+                ]
+            )
 
         return MockHTTPXClient(mock_response)
 
@@ -310,7 +367,10 @@ def test_stream_resets_retry_count_on_success(sse_client):
 
     assert call_count == 2
     assert len(events) == 2
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
 
 
 def test_validate_access_token_with_expired_token(sse_client, mock_client_config):
@@ -365,14 +425,14 @@ def test_stream_with_empty_lines_separating_events(sse_client):
         "data: event1",
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 1","type":"completed"}',
         "",
         "",
         "event: message",
         "data: event2",
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 1","type":"completed"}',
         "",
     ]
 
@@ -384,12 +444,22 @@ def test_stream_with_empty_lines_separating_events(sse_client):
 
     assert len(events) == 2
     assert events[0] == {"event": "message", "data": "event1"}
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
 
 
 def test_stream_constructs_correct_url(sse_client, mock_client_config):
     """Test that the URL is constructed correctly"""
-    sse_lines = ["event: message", "data: test", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: test",
+        "",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
 
     captured_url = None
@@ -414,7 +484,14 @@ def test_stream_with_no_auth_header(sse_client, mock_client_config):
     """Test streaming without auth header"""
     mock_client_config.auth_header = None
 
-    sse_lines = ["event: message", "data: test", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: test",
+        "",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
 
     captured_headers = {}
@@ -439,7 +516,14 @@ def test_stream_with_no_auth_token_mode(sse_client, mock_client_config):
     """Test authentication header without token mode"""
     mock_client_config.auth_token_mode = None
 
-    sse_lines = ["event: message", "data: test", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""]
+    sse_lines = [
+        "event: message",
+        "data: test",
+        "",
+        "event: stream-complete",
+        'data: {"message":"total messages: 1","type":"completed"}',
+        "",
+    ]
     mock_response = MockSSEResponse(sse_lines)
 
     captured_headers = {}
@@ -472,9 +556,20 @@ def test_stream_exponential_backoff_on_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse([], raise_error=httpx.ReadError("Read failed"))
+            mock_response = MockSSEResponse(
+                [], raise_error=httpx.ReadError("Read failed")
+            )
         else:
-            mock_response = MockSSEResponse(["event: message", "data: success", "", "event: stream-complete", "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}", ""])
+            mock_response = MockSSEResponse(
+                [
+                    "event: message",
+                    "data: success",
+                    "",
+                    "event: stream-complete",
+                    'data: {"message":"total messages: 1","type":"completed"}',
+                    "",
+                ]
+            )
 
         return MockHTTPXClient(mock_response)
 
@@ -493,7 +588,7 @@ def test_stream_with_multiline_event_data(sse_client):
         "data: line 1",
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 1","type":"completed"}',
         "",
     ]
 
@@ -504,7 +599,10 @@ def test_stream_with_multiline_event_data(sse_client):
         events = list(sse_client.stream("GET", "/events"))
 
     assert len(events) == 2
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
     assert events[0] == {"event": "multiline", "data": "line 1"}
 
 
@@ -516,7 +614,7 @@ def test_stream_with_realistic_stream_start_event(sse_client):
         'data: {"streamId":"test-stream-id","conversationId":"test-conv-id","sequence":0}',
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 1","type":"completed"}',
         "",
     ]
 
@@ -527,7 +625,10 @@ def test_stream_with_realistic_stream_start_event(sse_client):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 2
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
     event = events[0]
     assert event["event"] == "stream-start"
     assert event["id"] == "0"
@@ -547,7 +648,7 @@ def test_stream_with_realistic_message_event(sse_client):
         'data: {"streamId":"stream-123","conversationId":"conv-456","sequence":1,"data":{"message":{"sender":"system","index":0,"content":[{"textMessage":{"type":"markdown","message":"Test message"}}]},"type":"update"}}',
         "",
         "event: stream-complete",
-        "data: {\"message\":\"total messages: 1\",\"type\":\"completed\"}",
+        'data: {"message":"total messages: 1","type":"completed"}',
         "",
     ]
 
@@ -558,7 +659,10 @@ def test_stream_with_realistic_message_event(sse_client):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 2
-    assert events[1] == {"event": "stream-complete", "data": "{\"message\":\"total messages: 1\",\"type\":\"completed\"}"}
+    assert events[1] == {
+        "event": "stream-complete",
+        "data": '{"message":"total messages: 1","type":"completed"}',
+    }
     event = events[0]
     assert event["event"] == "message"
     assert event["id"] == "test-message-id"
@@ -567,7 +671,10 @@ def test_stream_with_realistic_message_event(sse_client):
     data_json = json.loads(event["data"])
     assert data_json["streamId"] == "stream-123"
     assert data_json["data"]["message"]["sender"] == "system"
-    assert data_json["data"]["message"]["content"][0]["textMessage"]["message"] == "Test message"
+    assert (
+        data_json["data"]["message"]["content"][0]["textMessage"]["message"]
+        == "Test message"
+    )
 
 
 def test_stream_with_stream_completed_event_terminates(sse_client):
@@ -712,7 +819,7 @@ def test_parse_sse_event_with_error_sets_flag(sse_client):
 
 def test_parse_sse_event_with_colon_in_data(sse_client):
     """Test parsing event with colon in data field"""
-    event_buffer = ['event: message', 'data: {"key":"value:with:colons"}']
+    event_buffer = ["event: message", 'data: {"key":"value:with:colons"}']
     parsed = sse_client._parse_sse_event(event_buffer)
 
     assert parsed["event"] == "message"

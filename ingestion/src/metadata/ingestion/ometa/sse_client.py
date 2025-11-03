@@ -12,20 +12,17 @@
 Python SSE Client wrapper and helpers
 """
 
+import time
 from datetime import datetime, timezone
+from logging import Logger
 from typing import Any, Generator
 
-
-from logging import Logger
-
-
 import httpx
-import time
-import logging
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.credentials import URL
 from metadata.utils.logger import ometa_logger
+
 
 class SSEClient:
     """SSE Client wrapper and helpers"""
@@ -38,7 +35,9 @@ class SSEClient:
         self.stream_completed: bool = False
         self.logger: Logger = ometa_logger()
 
-    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
+    def stream(
+        self, method: str, path: str, data: None | dict[str, Any] = None
+    ) -> Generator[Any, Any, None]:
         """Connect to the SSE stream and yield events.
 
         Args:
@@ -50,9 +49,11 @@ class SSEClient:
         """
         retries = 0
 
-        url: URL = URL(self.config.base_url + "/" + (self.config.api_version or "v1") + path)
+        url: URL = URL(
+            self.config.base_url + "/" + (self.config.api_version or "v1") + path
+        )
         method = method.upper()
-        headers = {'Accept': 'text/event-stream'}
+        headers = {"Accept": "text/event-stream"}
         self._validate_access_token()
         if self.config.auth_header:
             headers[self.config.auth_header] = (
@@ -74,7 +75,7 @@ class SSEClient:
         while retries < self.max_retries:
             try:
                 if self.last_event_id:
-                    headers['Last-Event-ID'] = self.last_event_id
+                    headers["Last-Event-ID"] = self.last_event_id
 
                 with httpx.Client(timeout=None) as client:
                     with client.stream(method, url, headers=headers) as response:
@@ -90,10 +91,12 @@ class SSEClient:
                                     event_buffer = []
 
                                     if self.stream_completed:
-                                        self.logger.info(f"Stream terminated with event: {parsed_event.get('event', 'unknown')}")
+                                        self.logger.info(
+                                            f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
+                                        )
                                         return
                             else:
-                                if not line.startswith(':'):
+                                if not line.startswith(":"):
                                     event_buffer.append(line)
 
             except httpx.HTTPStatusError as e:
@@ -101,7 +104,9 @@ class SSEClient:
                 raise
             except Exception as e:
                 retries += 1
-                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")
+                self.logger.error(
+                    f"Connection error (retry {retries}/{self.max_retries}): {e}"
+                )
 
                 if retries >= self.max_retries:
                     raise
@@ -119,15 +124,15 @@ class SSEClient:
         """
         event: dict[str, Any] = {}
         for line in event_buffer:
-            if line.startswith('event:'):
-                event['event'] = line.split(':', 1)[1].strip()
-                if "complete" in event['event'] or "error" in event['event']:
+            if line.startswith("event:"):
+                event["event"] = line.split(":", 1)[1].strip()
+                if "complete" in event["event"] or "error" in event["event"]:
                     self.stream_completed = True
-            elif line.startswith('data:'):
-                event['data'] = line.split(':', 1)[1].strip()
-            elif line.startswith('id:'):
-                event['id'] = line.split(':', 1)[1].strip()
-                self.last_event_id = event['id']
+            elif line.startswith("data:"):
+                event["data"] = line.split(":", 1)[1].strip()
+            elif line.startswith("id:"):
+                event["id"] = line.split(":", 1)[1].strip()
+                self.last_event_id = event["id"]
         return event
 
     def _validate_access_token(self):
@@ -135,7 +140,7 @@ class SSEClient:
 
         Returns:
             None
-        """        
+        """
         if (
             self.config.expires_in
             and datetime.now(timezone.utc).timestamp() >= self.config.expires_in

@@ -17,6 +17,9 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
+from metadata.generated.schema.api.chat.createChatConversation import (
+    CreateChatConversation,
+)
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -195,7 +198,6 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityProfile import EntityProfile
-from metadata.generated.schema.api.chat.createChatConversation import CreateChatConversation
 
 ROUTES = {
     MlModel.__name__: "/mlmodels",
