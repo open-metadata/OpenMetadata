@@ -26,7 +26,7 @@ from metadata.sdk.data_quality.dataframes.models import MockTestCase
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
-from metadata.utils.entity_link import maybe_get_column_from
+from metadata.utils.entity_link import get_column_name_or_none
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class ValidationResult(BaseModel):
                     entity_link=get_entity_link(
                         Table,
                         table_fqn,
-                        column_name=maybe_get_column_from(test_case.entityLink.root),
+                        column_name=get_column_name_or_none(test_case.entityLink.root),
                     ),
                     test_definition_fqn=test_case.testDefinition.fullyQualifiedName,
                     test_case_parameter_values=test_case.parameterValues,

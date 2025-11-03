@@ -106,7 +106,7 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     )
 
 
-def maybe_get_column_from(entity_link: str) -> Optional[str]:
+def get_column_name_or_none(entity_link: str) -> Optional[str]:
     """It attempts to get a column from an entity link
 
     Args:
