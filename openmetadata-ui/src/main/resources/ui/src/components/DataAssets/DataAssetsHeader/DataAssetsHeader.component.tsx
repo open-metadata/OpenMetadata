@@ -34,6 +34,10 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
+  CustomizeEntityType,
+  ENTITY_PAGE_TYPE_MAP,
+} from '../../../constants/Customize.constants';
+import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
@@ -54,7 +58,6 @@ import {
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { SearchSourceAlias } from '../../../interface/search.interface';
@@ -142,7 +145,9 @@ export const DataAssetsHeader = ({
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
-  const { customizedPage } = useCustomPages(PageType.Table);
+  const { customizedPage } = useCustomPages(
+    ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
+  );
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
