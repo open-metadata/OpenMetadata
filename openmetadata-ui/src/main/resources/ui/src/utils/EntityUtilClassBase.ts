@@ -32,9 +32,9 @@ import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
 import ChartDetailsPage from '../pages/ChartDetailsPage/ChartDetailsPage.component';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
-import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
 import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
@@ -51,6 +51,7 @@ import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
+import entityPatchClassBase from './EntityPatchUtils';
 import { EntityTypeName } from './EntityUtils';
 import {
   FormattedAPIServiceType,
@@ -581,6 +582,10 @@ class EntityUtilClassBase {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public shouldShowEntityStatus(entityType: string): boolean {
     return false;
+  }
+
+  public getEntityPatchAPI(entityType: EntityType) {
+    return entityPatchClassBase.getEntityPatchAPI(entityType);
   }
 }
 

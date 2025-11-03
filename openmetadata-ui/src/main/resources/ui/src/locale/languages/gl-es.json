@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 día",
     "1-hr": "1 hora",
     "a-to-z": "A a Z",
@@ -17,6 +18,7 @@
     "account": "Conta",
     "account-email": "Correo electrónico da conta",
     "account-name": "Nome da conta",
+    "ack": "Ack",
     "acknowledged": "Recoñecido",
     "action": "Acción",
     "action-plural": "Accións",
@@ -1394,6 +1396,7 @@
     "resolved": "Resolto",
     "resolved-by": "Resolto por",
     "resolved-incident-plural": "Incidentes resoltos",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",
