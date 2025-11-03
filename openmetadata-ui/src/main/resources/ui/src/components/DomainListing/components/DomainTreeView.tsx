@@ -160,7 +160,7 @@ const DomainTreeView = ({
       const initialFqn =
         domains[0]?.fullyQualifiedName || domains[0]?.name || domains[0]?.id;
 
-      if (existingSelection && map[existingSelection]) {
+      if (existingSelection === initialFqn && map[existingSelection]) {
         updateExpansionForFqn(existingSelection, parents);
       } else if (initialFqn) {
         setSelectedFqn(initialFqn);
@@ -262,7 +262,6 @@ const DomainTreeView = ({
     if (searchQuery) {
       searchDomain(searchQuery);
     } else {
-      setSelectedFqn(null);
       fetchHierarchy();
     }
   }, [fetchHierarchy, refreshToken, searchQuery]);
@@ -515,6 +514,7 @@ const DomainTreeView = ({
           handleFollowingClick={handleFollowingToggle}
           isFollowing={isFollowing}
           isFollowingLoading={isFollowingLoading}
+          refreshDomains={refreshAll}
           onActiveTabChange={setActiveTab}
           onDelete={handleDomainDelete}
           onNavigate={handleNavigate}

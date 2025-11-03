@@ -128,6 +128,7 @@ const DomainDetails = ({
   onActiveTabChange,
   domainFqnOverride,
   onNavigate,
+  refreshDomains,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -306,6 +307,11 @@ const DomainDetails = ({
         navigate(getDomainDetailsPath(domainFqn, activeKey));
       }
     }
+  };
+
+  const onDeleteSubDomain = () => {
+    fetchSubDomainsCount();
+    refreshDomains?.();
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -499,6 +505,7 @@ const DomainDetails = ({
               patchEntity: patchDomains,
               onSuccess: () => {
                 fetchSubDomainsCount();
+                refreshDomains?.();
                 handleTabChange(EntityTabs.SUBDOMAINS);
                 closeSubDomainDrawer();
               },
@@ -774,6 +781,7 @@ const DomainDetails = ({
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
+      onDeleteSubDomain: onDeleteSubDomain,
       showAddSubDomainModal: false,
       labelMap: tabLabelMap,
       feedCount,

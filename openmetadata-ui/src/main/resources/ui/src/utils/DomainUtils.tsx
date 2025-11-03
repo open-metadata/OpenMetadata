@@ -321,6 +321,7 @@ export const convertDomainsToTreeOptions = (
       name: option.name,
       label: option.name,
       key: option.fullyQualifiedName,
+      displayName: option.displayName,
       fullyQualifiedName: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
@@ -402,6 +403,7 @@ export const getDomainDetailTabs = ({
   setShowAddSubDomainModal,
   feedCount,
   onFeedUpdate,
+  onDeleteSubDomain,
 }: DomainDetailPageTabProps) => {
   return [
     {
@@ -432,6 +434,7 @@ export const getDomainDetailTabs = ({
                 permissions={domainPermission}
                 subDomainsCount={subDomainsCount}
                 onAddSubDomain={() => setShowAddSubDomainModal(true)}
+                onDeleteSubDomain={onDeleteSubDomain}
               />
             ),
           },
