@@ -15,7 +15,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import { Stack, Tooltip } from '@mui/material';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
@@ -72,43 +72,12 @@ export const getColumnHandle = (
   }
 };
 
-export const getExpandHandle = (
-  direction: LineageDirection,
-  onClickHandler: () => void
-) => {
-  // return (
-  //   <>
-  //     <Button
-  //       className={classNames(
-  //         'absolute lineage-node-handle flex-center',
-  //         direction === LineageDirection.Downstream
-  //           ? 'react-flow__handle-right'
-  //           : 'react-flow__handle-left'
-  //       )}
-  //       icon={
-  //         <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
-  //       }
-  //       shape="circle"
-  //       size="small"
-  //       onClick={(e) => {
-  //         e.stopPropagation();
-  //         onClickHandler();
-  //       }}
-  //     />
-  //     <Button
-  //       className={classNames(
-  //         'absolute lineage-node-handle2 flex-center',
-  //         'lineage-node-handle-expand-all'
-  //       )}
-  //       icon={<Dataflow01 />}
-  //       shape="circle"
-  //       size="small"
-  //       onClick={(e) => {
-  //         e.stopPropagation();
-  //       }}
-  //     />
-  //   </>
-  // );
+const ExpandHandle = ({
+  onClickHandler,
+}: {
+  onClickHandler: (depth: number) => void;
+}) => {
+  const [showExpandAll, setShowExpandAll] = useState(false);
 
   return (
     <div
@@ -116,12 +85,28 @@ export const getExpandHandle = (
         'absolute lineage-node-handle-expand-all flex-center',
         'react-flow__handle-right'
       )}
-      onClick={(e) => e.stopPropagation()}>
-      <Plus className="lineage-expand-icon" onClick={onClickHandler} />
-      <div className="lineage-expand-icons-separator" />
-      <Dataflow01 className="lineage-expand-icon" />
+      onClick={(e) => e.stopPropagation()}
+      onMouseOut={() => setShowExpandAll(false)}
+      onMouseOver={() => setShowExpandAll(true)}>
+      <Plus className="lineage-expand-icon" onClick={() => onClickHandler(1)} />
+      {showExpandAll && (
+        <>
+          <div className="lineage-expand-icons-separator" />
+          <Dataflow01
+            className="lineage-expand-icon"
+            onClick={() => onClickHandler(50)}
+          />
+        </>
+      )}
     </div>
   );
+};
+
+export const getExpandHandle = (
+  direction: LineageDirection,
+  onClickHandler: (depth: number) => void
+) => {
+  return <ExpandHandle onClickHandler={onClickHandler} />;
 };
 
 export const getCollapseHandle = (
@@ -191,11 +176,11 @@ export const getColumnContent = (
 ) => {
   const { fullyQualifiedName } = column;
   const columnNameContentRender = getColumnNameContent(column, isLoading);
-  const handleViewImpactClick = (e) => {
+  const handleViewImpactClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 
-  const handleDownloadImpactClick = (e) => {
+  const handleDownloadImpactClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 

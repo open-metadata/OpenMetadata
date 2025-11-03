@@ -129,8 +129,8 @@ const ExpandCollapseHandles = memo(
 
         {!hasOutgoers &&
           !downstreamExpandPerformed &&
-          getExpandHandle(LineageDirection.Downstream, () =>
-            onExpand(LineageDirection.Downstream)
+          getExpandHandle(LineageDirection.Downstream, (depth = 1) =>
+            onExpand(LineageDirection.Downstream, depth)
           )}
 
         {hasIncomers &&
@@ -142,8 +142,8 @@ const ExpandCollapseHandles = memo(
         {!hasIncomers &&
           !upstreamExpandPerformed &&
           upstreamLineageLength > 0 &&
-          getExpandHandle(LineageDirection.Upstream, () =>
-            onExpand(LineageDirection.Upstream)
+          getExpandHandle(LineageDirection.Upstream, (depth = 1) =>
+            onExpand(LineageDirection.Upstream, depth)
           )}
       </>
     );
@@ -277,8 +277,8 @@ const CustomNodeV1 = (props: NodeProps) => {
   });
 
   const onExpand = useCallback(
-    (direction: LineageDirection) => {
-      loadChildNodesHandler(node, direction);
+    (direction: LineageDirection, depth = 1) => {
+      loadChildNodesHandler(node, direction, depth);
     },
     [loadChildNodesHandler, node]
   );

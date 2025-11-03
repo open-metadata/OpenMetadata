@@ -439,7 +439,6 @@ export const CustomEdge = ({
         id={id}
         markerEnd={markerEnd}
         style={updatedStyle}
-        // onMouseOver={}
       />
       {renderIcons}
     </Fragment>
