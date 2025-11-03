@@ -506,7 +506,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
         await page.waitForSelector(
-          'text=Adding a new Asset is easy, just give it a spin!'
+          "text=Looks like you haven't added any data assets yet."
         );
 
         await dashboardEntity.visitEntityPage(page);
