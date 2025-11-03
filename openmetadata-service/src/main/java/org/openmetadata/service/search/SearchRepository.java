@@ -657,6 +657,9 @@ public class SearchRepository {
     // 2. When a tag entity itself is updated (to all entities using it)
     // 3. NOT from table to columns
     boolean hasTagChanges = false;
+    boolean nameChanged =
+        changeDescription.getFieldsUpdated().stream()
+            .anyMatch(field -> field.getName().equals(FIELD_NAME));
     if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
         || entityType.equalsIgnoreCase(Entity.TAG)) {
       hasTagChanges =
@@ -670,10 +673,6 @@ public class SearchRepository {
 
     // Check for glossary term specific changes
     if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-      boolean nameChanged =
-          changeDescription.getFieldsUpdated().stream()
-              .anyMatch(field -> field.getName().equals(FIELD_NAME));
-
       hasInheritableChanges =
           hasInheritableChanges
               || hasTagChanges
@@ -686,19 +685,14 @@ public class SearchRepository {
 
     // Check for certification tag changes + tag specific changes
     if (entityType.equalsIgnoreCase(Entity.TAG)) {
-      boolean nameChanged =
-          changeDescription.getFieldsUpdated().stream()
-              .anyMatch(field -> field.getName().equals(FIELD_NAME));
-
-      boolean certificationChanged = false;
       Tag tag = (Tag) entity;
+      hasInheritableChanges = hasInheritableChanges || nameChanged;
       if (tag != null && tag.getCertification() != null) {
-        certificationChanged =
-            changeDescription.getFieldsUpdated().stream()
-                .anyMatch(field -> field.getName().equals("certification"));
+        hasInheritableChanges =
+            hasInheritableChanges
+                || changeDescription.getFieldsUpdated().stream()
+                    .anyMatch(field -> field.getName().equals("certification"));
       }
-
-      hasInheritableChanges = hasInheritableChanges || nameChanged || certificationChanged;
     }
 
     // Check for relationship changes that need propagation
