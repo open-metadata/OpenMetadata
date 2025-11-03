@@ -253,8 +253,9 @@ class RestSource(ApiServiceSource):
         return None
 
     def _get_request_schema(self, info: dict) -> Optional[APISchema]:
-        """fetch request schema"""
+        """fetch request schema - supports both OpenAPI 3.0 and Swagger 2.0"""
         try:
+            # Try OpenAPI 3.0 format first (requestBody)
             schema_ref = (
                 info.get("requestBody", {})
                 .get("content", {})
@@ -262,13 +263,87 @@ class RestSource(ApiServiceSource):
                 .get("schema", {})
                 .get("$ref")
             )
-            if not schema_ref:
-                logger.debug("No request schema found for the endpoint")
-                return None
-            return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            if schema_ref:
+                return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            # Try Swagger 2.0 format (parameters with "in": "body")
+            parameters = info.get("parameters", [])
+            for param in parameters:
+                if param.get("in") == "body" and "schema" in param:
+                    schema_ref = param["schema"].get("$ref")
+                    if schema_ref:
+                        return APISchema(
+                            schemaFields=self.process_schema_fields(schema_ref)
+                        )
+
+            # Try to get query/path parameters for GET/DELETE requests
+            # This handles Swagger 2.0 and OpenAPI 3.0 query parameters
+            param_fields = []
+            for param in parameters:
+                if param.get("in") in ["query", "path"]:
+                    field = self._convert_parameter_to_field(param)
+                    if field:
+                        param_fields.append(field)
+
+            if param_fields:
+                return APISchema(schemaFields=param_fields)
+
+            logger.debug("No request schema found for the endpoint")
+            return None
         except Exception as err:
             logger.warning(f"Error while parsing request schema: {err}")
         return None
+
+    def _convert_parameter_to_field(self, param: dict) -> Optional[FieldModel]:
+        """Convert OpenAPI/Swagger parameter to FieldModel for query/path parameters"""
+        try:
+            param_name = param.get("name")
+            if not param_name:
+                return None
+
+            # Get type from parameter (Swagger 2.0 format)
+            param_type = param.get("type")
+
+            # Get type from schema (OpenAPI 3.0 format)
+            if not param_type and "schema" in param:
+                param_type = param["schema"].get("type")
+
+            if not param_type:
+                param_type = "string"  # Default to string if no type specified
+
+            # Map OpenAPI types to DataTypeTopic
+            type_mapping = {
+                "string": DataTypeTopic.STRING,
+                "integer": DataTypeTopic.INT,
+                "number": DataTypeTopic.FLOAT,
+                "boolean": DataTypeTopic.BOOLEAN,
+                "array": DataTypeTopic.ARRAY,
+                "object": DataTypeTopic.RECORD,
+            }
+
+            data_type = type_mapping.get(param_type.lower(), DataTypeTopic.UNKNOWN)
+
+            # Handle array items
+            children = None
+            if data_type == DataTypeTopic.ARRAY:
+                items = param.get("items") or param.get("schema", {}).get("items")
+                if items:
+                    item_type = items.get("type", "string")
+                    child_data_type = type_mapping.get(
+                        item_type.lower(), DataTypeTopic.STRING
+                    )
+                    children = [FieldModel(name="item", dataType=child_data_type)]
+
+            return FieldModel(
+                name=param_name,
+                dataType=data_type,
+                children=children,
+                description=param.get("description"),
+            )
+        except Exception as err:
+            logger.warning(f"Error converting parameter to field: {err}")
+            return None
 
     def _get_response_schema(self, info: dict) -> Optional[APISchema]:
         """fetch response schema"""
