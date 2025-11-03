@@ -24,6 +24,7 @@ import TagsSection from './TagsSection';
 
 // Mock @react-awesome-query-builder/antd
 jest.mock('@react-awesome-query-builder/antd', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/antd'),
   Config: {},
   Utils: {
     loadFromJsonLogic: jest.fn(),
@@ -70,6 +71,7 @@ jest.mock('react-i18next', () => ({
 
 // Mock antd components
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Button: jest
     .fn()
     .mockImplementation(

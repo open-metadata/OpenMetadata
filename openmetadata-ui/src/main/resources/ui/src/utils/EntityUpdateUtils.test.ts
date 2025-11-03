@@ -13,12 +13,16 @@
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import { EntityType } from '../enums/entity.enum';
-import * as EntityPatchUtils from './EntityPatchUtils';
 import { updateEntityField } from './EntityUpdateUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import * as EntityValidationUtils from './EntityValidationUtils';
 import * as ToastUtils from './ToastUtils';
 
-jest.mock('./EntityPatchUtils');
+const mockedEntityValidationUtils = EntityValidationUtils as jest.Mocked<
+  typeof EntityValidationUtils
+>;
+
+jest.mock('./EntityUtilClassBase');
 jest.mock('./EntityValidationUtils');
 jest.mock('./ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -31,7 +35,7 @@ describe('EntityUpdateUtils', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (EntityPatchUtils.getEntityPatchAPI as jest.Mock).mockReturnValue(
+    (entityUtilClassBase.getEntityPatchAPI as jest.Mock).mockReturnValue(
       mockPatchAPI
     );
   });
@@ -45,9 +49,7 @@ describe('EntityUpdateUtils', () => {
     const entityLabel = 'Tags';
 
     it('should return failure when entity ID validation fails', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        false
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(false);
 
       const result = await updateEntityField({
         entityId: 'invalid-id',
@@ -65,9 +67,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should return failure when entity type is undefined', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
 
       const result = await updateEntityField({
         entityId: validEntityId,
@@ -88,9 +88,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should return success with current value when no changes detected', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
 
       const sameValue = [{ name: 'tag1' }];
 
@@ -111,9 +109,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should successfully update entity field and call onSuccess callback', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
       mockPatchAPI.mockResolvedValue({ data: 'success' });
 
       const onSuccess = jest.fn();
@@ -131,7 +127,7 @@ describe('EntityUpdateUtils', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual(newValue);
-      expect(EntityPatchUtils.getEntityPatchAPI).toHaveBeenCalledWith(
+      expect(entityUtilClassBase.getEntityPatchAPI).toHaveBeenCalledWith(
         entityType
       );
       expect(mockPatchAPI).toHaveBeenCalledWith(
@@ -150,9 +146,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should handle API errors and show error toast', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
 
       const mockError = new Error('API Error') as AxiosError;
       mockPatchAPI.mockRejectedValue(mockError);
@@ -176,9 +170,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should not call onSuccess callback when update fails', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
       mockPatchAPI.mockRejectedValue(new Error('API Error'));
 
       const onSuccess = jest.fn();
@@ -198,9 +190,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should work with different field types', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
       mockPatchAPI.mockResolvedValue({ data: 'success' });
 
       const owners = [{ id: '1', name: 'Owner1' }];
@@ -224,9 +214,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should handle empty arrays correctly', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
       mockPatchAPI.mockResolvedValue({ data: 'success' });
 
       const result = await updateEntityField({
@@ -245,9 +233,7 @@ describe('EntityUpdateUtils', () => {
     });
 
     it('should generate correct JSON patch for field update', async () => {
-      (EntityValidationUtils.validateEntityId as jest.Mock).mockReturnValue(
-        true
-      );
+      mockedEntityValidationUtils.validateEntityId.mockReturnValue(true);
       mockPatchAPI.mockResolvedValue({ data: 'success' });
 
       await updateEntityField({

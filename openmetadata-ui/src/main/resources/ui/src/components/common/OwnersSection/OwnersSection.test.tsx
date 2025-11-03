@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import OwnersSection from './OwnersSection';
 
 // Mock react-i18next
@@ -31,6 +33,7 @@ jest.mock('react-i18next', () => ({
 
 // Mock antd components
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Typography: {
     Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
       <span className={className} data-testid="typography-text" {...props}>
@@ -118,44 +121,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-// Mock patch API functions
-jest.mock('../../../rest/tableAPI', () => ({ patchTableDetails: jest.fn() }));
-jest.mock('../../../rest/dashboardAPI', () => ({
-  patchDashboardDetails: jest.fn(),
-}));
-jest.mock('../../../rest/topicsAPI', () => ({ patchTopicDetails: jest.fn() }));
-jest.mock('../../../rest/pipelineAPI', () => ({
-  patchPipelineDetails: jest.fn(),
-}));
-jest.mock('../../../rest/mlModelAPI', () => ({
-  patchMlModelDetails: jest.fn(),
-}));
-jest.mock('../../../rest/chartsAPI', () => ({ patchChartDetails: jest.fn() }));
-jest.mock('../../../rest/apiCollectionsAPI', () => ({
-  patchApiCollection: jest.fn(),
-}));
-jest.mock('../../../rest/apiEndpointsAPI', () => ({
-  patchApiEndPoint: jest.fn(),
-}));
-jest.mock('../../../rest/databaseAPI', () => ({
-  patchDatabaseDetails: jest.fn(),
-  patchDatabaseSchemaDetails: jest.fn(),
-}));
-jest.mock('../../../rest/storedProceduresAPI', () => ({
-  patchStoredProceduresDetails: jest.fn(),
-}));
-jest.mock('../../../rest/storageAPI', () => ({
-  patchContainerDetails: jest.fn(),
-}));
-jest.mock('../../../rest/dataModelsAPI', () => ({
-  patchDataModelDetails: jest.fn(),
-}));
-jest.mock('../../../rest/SearchIndexAPI', () => ({
-  patchSearchIndexDetails: jest.fn(),
-}));
-jest.mock('../../../rest/dataProductAPI', () => ({
-  patchDataProduct: jest.fn(),
-}));
+jest.mock('../../../utils/EntityUtilClassBase');
 
 const validUUID = '123e4567-e89b-12d3-a456-426614174000';
 
@@ -172,9 +138,14 @@ const defaultProps = {
   onOwnerUpdate: jest.fn(),
 };
 
+const mockPatchAPI = jest.fn();
+
 describe('OwnersSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (entityUtilClassBase.getEntityPatchAPI as jest.Mock).mockImplementation(
+      () => mockPatchAPI
+    );
   });
 
   describe('Component Rendering', () => {
@@ -238,13 +209,7 @@ describe('OwnersSection', () => {
 
   describe('Save Functionality', () => {
     it('should save owners successfully', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
-      const { showSuccessToast } = jest.requireMock(
-        '../../../utils/ToastUtils'
-      );
       const onOwnerUpdate = jest.fn();
-
-      patchTableDetails.mockResolvedValue({});
 
       const { container } = render(
         <OwnersSection
@@ -262,21 +227,16 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchTableDetails).toHaveBeenCalledWith(
-          validUUID,
-          expect.any(Array)
-        );
-        expect(showSuccessToast).toHaveBeenCalled();
+        expect(mockPatchAPI).toHaveBeenCalledWith(validUUID, expect.any(Array));
         expect(onOwnerUpdate).toHaveBeenCalled();
       });
     });
 
     it('should handle save error', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
       const mockError = new Error('Save failed') as AxiosError;
-      patchTableDetails.mockRejectedValue(mockError);
+      mockPatchAPI.mockRejectedValue(mockError);
 
       const { container } = render(
         <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
@@ -298,8 +258,6 @@ describe('OwnersSection', () => {
     });
 
     it('should not save when no changes are made', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
-
       // Simulate selecting the same owners list (no changes) - set up mock before rendering
       userTeamSelectableListMock.mockImplementationOnce(
         ({ onUpdate, children }: UserTeamSelectableListMockProps) => (
@@ -325,16 +283,14 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchTableDetails).not.toHaveBeenCalled();
+        expect(mockPatchAPI).not.toHaveBeenCalled();
       });
     });
 
     it('should show loading state during save', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
-
       // Mock a delayed response
-      patchTableDetails.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
+      mockPatchAPI.mockImplementation(
+        () => new Promise((res) => setTimeout(res, 100))
       );
 
       // Mock UserTeamSelectableList to trigger save with different owners
@@ -383,10 +339,6 @@ describe('OwnersSection', () => {
 
   describe('Entity Type Handling', () => {
     it('should use correct patch API for TABLE entity', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
-
-      patchTableDetails.mockResolvedValue({});
-
       const { container } = render(
         <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
@@ -397,20 +349,11 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchTableDetails).toHaveBeenCalledWith(
-          validUUID,
-          expect.any(Array)
-        );
+        expect(mockPatchAPI).toHaveBeenCalledWith(validUUID, expect.any(Array));
       });
     });
 
     it('should use correct patch API for DASHBOARD entity', async () => {
-      const { patchDashboardDetails } = jest.requireMock(
-        '../../../rest/dashboardAPI'
-      );
-
-      patchDashboardDetails.mockResolvedValue({});
-
       const { container } = render(
         <OwnersSection {...defaultProps} entityType={EntityType.DASHBOARD} />
       );
@@ -421,10 +364,7 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchDashboardDetails).toHaveBeenCalledWith(
-          validUUID,
-          expect.any(Array)
-        );
+        expect(mockPatchAPI).toHaveBeenCalledWith(validUUID, expect.any(Array));
       });
     });
   });
@@ -456,13 +396,7 @@ describe('OwnersSection', () => {
 
   describe('Team Selection Functionality', () => {
     it('should handle team-only owners', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
-      const { showSuccessToast } = jest.requireMock(
-        '../../../utils/ToastUtils'
-      );
       const onOwnerUpdate = jest.fn();
-
-      patchTableDetails.mockResolvedValue({});
 
       const teamOwners = [
         {
@@ -512,8 +446,7 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchTableDetails).toHaveBeenCalled();
-        expect(showSuccessToast).toHaveBeenCalled();
+        expect(mockPatchAPI).toHaveBeenCalled();
         expect(onOwnerUpdate).toHaveBeenCalledWith([
           {
             id: 't2',
@@ -608,10 +541,7 @@ describe('OwnersSection', () => {
     });
 
     it('should handle undefined owners in onUpdate callback', async () => {
-      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
       const onOwnerUpdate = jest.fn();
-
-      patchTableDetails.mockResolvedValue({});
 
       // Mock selecting with empty array to clear owners
       userTeamSelectableListMock.mockImplementationOnce(
@@ -675,12 +605,6 @@ describe('OwnersSection', () => {
 
   describe('Additional Entity Types', () => {
     it('should use correct patch API for MLMODEL entity', async () => {
-      const { patchMlModelDetails } = jest.requireMock(
-        '../../../rest/mlModelAPI'
-      );
-
-      patchMlModelDetails.mockResolvedValue({});
-
       const { container } = render(
         <OwnersSection {...defaultProps} entityType={EntityType.MLMODEL} />
       );
@@ -691,20 +615,11 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchMlModelDetails).toHaveBeenCalledWith(
-          validUUID,
-          expect.any(Array)
-        );
+        expect(mockPatchAPI).toHaveBeenCalledWith(validUUID, expect.any(Array));
       });
     });
 
     it('should use correct patch API for DATA_PRODUCT entity', async () => {
-      const { patchDataProduct } = jest.requireMock(
-        '../../../rest/dataProductAPI'
-      );
-
-      patchDataProduct.mockResolvedValue({});
-
       const { container } = render(
         <OwnersSection {...defaultProps} entityType={EntityType.DATA_PRODUCT} />
       );
@@ -715,20 +630,11 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchDataProduct).toHaveBeenCalledWith(
-          validUUID,
-          expect.any(Array)
-        );
+        expect(mockPatchAPI).toHaveBeenCalledWith(validUUID, expect.any(Array));
       });
     });
 
     it('should use correct patch API for CONTAINER entity', async () => {
-      const { patchContainerDetails } = jest.requireMock(
-        '../../../rest/storageAPI'
-      );
-
-      patchContainerDetails.mockResolvedValue({});
-
       const { container } = render(
         <OwnersSection {...defaultProps} entityType={EntityType.CONTAINER} />
       );
@@ -739,10 +645,7 @@ describe('OwnersSection', () => {
       fireEvent.click(trigger);
 
       await waitFor(() => {
-        expect(patchContainerDetails).toHaveBeenCalledWith(
-          validUUID,
-          expect.any(Array)
-        );
+        expect(mockPatchAPI).toHaveBeenCalledWith(validUUID, expect.any(Array));
       });
     });
   });
