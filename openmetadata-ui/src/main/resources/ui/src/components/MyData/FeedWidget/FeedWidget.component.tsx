@@ -95,6 +95,11 @@ const MyFeedWidgetInternal = ({
     [entityThread, loading]
   );
 
+  const userActivityFeedLink = useMemo(
+    () => getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED),
+    [currentUser?.name]
+  );
+
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
@@ -102,7 +107,7 @@ const MyFeedWidgetInternal = ({
         actionButtonText={t('label.explore-assets')}
         description={t('message.activity-feed-no-data-placeholder')}
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('label.no-recent-activity')}
       />
@@ -154,9 +159,8 @@ const MyFeedWidgetInternal = ({
         sortOptions={FEED_WIDGET_FILTER_OPTIONS}
         title={t('label.activity-feed')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange(key)}
-        onTitleClick={() => navigate(ROUTES.EXPLORE)}
+        onTitleClick={() => navigate(userActivityFeedLink)}
       />
     ),
     [
@@ -181,10 +185,7 @@ const MyFeedWidgetInternal = ({
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter
-            moreButtonLink={getUserPath(
-              currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
-            )}
+            moreButtonLink={userActivityFeedLink}
             moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />

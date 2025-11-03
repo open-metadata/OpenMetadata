@@ -27,7 +27,7 @@ export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
-export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
+export const GRAPH_BACKGROUND_COLOR = '#E9EAEB';
 export const GRAYED_OUT_COLOR = '#959595';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
@@ -47,6 +47,7 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
+export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
@@ -143,6 +144,7 @@ export const ROUTES = {
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
+  KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -168,6 +170,7 @@ export const ROUTES = {
   TAG_DETAILS: `/tags/${PLACEHOLDER_ROUTE_FQN}`,
   TAG_ITEM: `/tag/${PLACEHOLDER_ROUTE_FQN}`,
   TAG_ITEM_WITH_TAB: `/tag/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TAG_ITEM_WITH_SUB_TAB: `/tag/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   TAG_VERSION: `/tags/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SIGNUP: '/signup',
   REGISTER: '/register',
@@ -207,9 +210,13 @@ export const ROUTES = {
   DOMAIN: '/domain',
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DOMAIN_DETAILS_WITH_SUBTAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   DOMAIN_VERSION: `/domain/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
 
   ADD_DOMAIN: '/domain/add',
+
+  DATA_PRODUCT: '/dataProduct',
+  ADD_DATA_PRODUCT: '/dataProduct/add',
 
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/glossary/add',
@@ -300,6 +307,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {
@@ -310,6 +320,7 @@ export const SOCKET_EVENTS = {
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
   SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+  CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
@@ -349,6 +360,10 @@ export const ENTITY_PATH = {
   testCases: 'testCase',
   domains: 'domain',
   charts: 'chart',
+  directories: 'directory',
+  files: 'file',
+  spreadsheets: 'spreadsheet',
+  worksheets: 'worksheet',
 };
 
 export const VALIDATION_MESSAGES = {
@@ -442,3 +457,5 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const FULLSCREEN_QUERY_PARAM_KEY = 'fullscreen';

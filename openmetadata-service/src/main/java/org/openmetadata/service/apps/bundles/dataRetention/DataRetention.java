@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
@@ -24,6 +24,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -45,11 +46,16 @@ public class DataRetention extends AbstractNativeApplication {
   private final FeedRepository feedRepository;
   private final CollectionDAO.FeedDAO feedDAO;
 
+  private final EntityTimeSeriesDAO testCaseResultsDAO;
+  private final EntityTimeSeriesDAO profileDataDAO;
+
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
     this.feedRepository = Entity.getFeedRepository();
     this.feedDAO = Entity.getCollectionDAO().feedDAO();
+    this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
+    this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
   }
 
   @Override
@@ -134,6 +140,18 @@ public class DataRetention extends AbstractNativeApplication {
         "Starting cleanup for activity threads with retention period: {} days.",
         threadRetentionPeriod);
     cleanActivityThreads(threadRetentionPeriod);
+
+    int testCaseResultsRetentionPeriod = config.getTestCaseResultsRetentionPeriod();
+    LOG.info(
+        "Starting cleanup for test case results with retention period: {} days.",
+        testCaseResultsRetentionPeriod);
+    cleanTestCaseResults(testCaseResultsRetentionPeriod);
+
+    int profileDataRetentionPeriod = config.getProfileDataRetentionPeriod();
+    LOG.info(
+        "Starting cleanup for profile data with retention period: {} days.",
+        profileDataRetentionPeriod);
+    cleanProfileData(profileDataRetentionPeriod);
   }
 
   @Transaction
@@ -217,6 +235,29 @@ public class DataRetention extends AbstractNativeApplication {
         failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
       }
     }
+  }
+
+  @Transaction
+  private void cleanTestCaseResults(int retentionPeriod) {
+    LOG.info("Initiating test case results cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executeWithStatsTracking(
+        "test_case_results",
+        () -> testCaseResultsDAO.deleteRecordsBeforeCutOff(cutoffMillis, BATCH_SIZE));
+
+    LOG.info("Test case results cleanup complete.");
+  }
+
+  @Transaction
+  private void cleanProfileData(int retentionPeriod) {
+    LOG.info("Initiating profile data cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executeWithStatsTracking(
+        "profile_data", () -> profileDataDAO.deleteRecordsBeforeCutOff(cutoffMillis, BATCH_SIZE));
+
+    LOG.info("Profile data cleanup complete.");
   }
 
   private void executeWithStatsTracking(String entity, Supplier<Integer> deleteFunction) {

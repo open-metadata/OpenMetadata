@@ -186,22 +186,38 @@ export const updateRelatedMetric = async (
 
   // Wait for the metrics API call to complete
   const metricsResponsePromise1 = page.waitForResponse(
-    '/api/v1/metrics/name/*?fields=*'
+    `/api/v1/metrics/name/${dataAsset.entity.name}?fields=*`
   );
+
   await page
-    .getByRole('link', { name: dataAsset.entity.name, exact: true })
+    .getByRole('button', { name: dataAsset.entity.name, exact: true })
     .click();
+
   await metricsResponsePromise1;
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  await expect(page.getByTestId('entity-header-display-name')).toContainText(
+    dataAsset.entity.name
+  );
+
+  // Adding manual wait for,right panel to be in place
+  await page.waitForTimeout(1000);
+
   // Wait for the metrics API call to complete
   const metricsResponsePromise2 = page.waitForResponse(
-    '/api/v1/metrics/name/*?fields=*'
+    `/api/v1/metrics/name/${title}?fields=*`
   );
-  await page.getByRole('link', { name: title }).click();
+  await page.getByRole('button', { name: title, exact: true }).click();
   await metricsResponsePromise2;
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('entity-header-display-name')).toContainText(
+    title
+  );
 };
 
 export const addMetric = async (page: Page) => {
@@ -240,7 +256,8 @@ export const addMetric = async (page: Page) => {
 
   // Select the unit of measurement
   await page
-    .locator('[id="root\\/unitOfMeasurement"]')
+    .getByTestId('unitOfMeasurement')
+    .locator('input')
     .fill(metricData.unitOfMeasurement);
   await page
     .getByTitle(`${metricData.unitOfMeasurement}`, { exact: true })

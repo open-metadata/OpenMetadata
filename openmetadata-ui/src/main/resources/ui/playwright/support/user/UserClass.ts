@@ -205,10 +205,12 @@ export class UserClass {
     await page.goto('/');
     await page.waitForURL('**/signin');
     await page.waitForLoadState('networkidle');
-    await page.fill('input[id="email"]', userName);
+    const emailInput = page.locator('input[id="email"]');
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
-    const loginRes = page.waitForResponse('/api/v1/users/login');
+    const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
 
@@ -237,6 +239,11 @@ export class UserClass {
 
   async logout(page: Page) {
     await page.getByRole('menuitem', { name: 'Logout' }).click();
+
+    const waitLogout = page.waitForResponse('/api/v1/users/logout');
+
     await page.getByTestId('confirm-logout').click();
+
+    await waitLogout;
   }
 }

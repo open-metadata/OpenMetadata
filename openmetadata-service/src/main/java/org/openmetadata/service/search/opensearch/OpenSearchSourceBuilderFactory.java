@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static os.org.opensearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIELDS;
@@ -39,6 +40,7 @@ import os.org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuild
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 
@@ -61,8 +63,17 @@ public class OpenSearchSourceBuilderFactory
 
   private final SearchSettings searchSettings;
 
+  // Cache the expensive composite configuration
+  private volatile AssetTypeConfiguration cachedCompositeConfig = null;
+  private volatile long cacheTimestamp = 0;
+  private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
   public OpenSearchSourceBuilderFactory(SearchSettings searchSettings) {
     this.searchSettings = searchSettings;
+  }
+
+  public SearchSettings getSearchSettings() {
+    return searchSettings;
   }
 
   @Override
@@ -82,7 +93,7 @@ public class OpenSearchSourceBuilderFactory
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
+            .fuzziness(Fuzziness.ONE)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
             .tieBreaker(0.5f);
@@ -125,11 +136,21 @@ public class OpenSearchSourceBuilderFactory
         .getGlobalSettings()
         .getAggregations()
         .forEach(
-            agg ->
-                searchSourceBuilder.aggregation(
-                    AggregationBuilders.terms(agg.getName())
-                        .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
+            agg -> {
+              TermsAggregationBuilder termsAgg =
+                  AggregationBuilders.terms(agg.getName())
+                      .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg.field(agg.getField());
+              }
+
+              if (!nullOrEmpty(agg.getScript())) {
+                termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
+              }
+
+              searchSourceBuilder.aggregation(termsAgg);
+            });
     return searchSourceBuilder;
   }
 
@@ -170,7 +191,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
     QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
     QueryBuilder finalQuery = applyFunctionScoring(baseQuery, compositeConfig);
 
@@ -206,7 +227,7 @@ public class OpenSearchSourceBuilderFactory
   private AssetTypeConfiguration getAssetConfiguration(String indexName) {
     String resolvedIndex = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
     if (resolvedIndex.equals(INDEX_ALL) || resolvedIndex.equals(INDEX_DATA_ASSET)) {
-      return buildCompositeAssetConfig(searchSettings);
+      return getOrBuildCompositeConfig(); // Use cached version!
     } else {
       return findAssetTypeConfig(indexName, searchSettings);
     }
@@ -264,7 +285,7 @@ public class OpenSearchSourceBuilderFactory
         .fields(fields)
         .defaultOperator(Operator.AND)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
         .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -383,10 +404,11 @@ public class OpenSearchSourceBuilderFactory
       MultiMatchQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
               .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
+              .fuzziness(Fuzziness.ONE)
               .maxExpansions(10)
               .prefixLength(1)
-              .operator(Operator.AND)
+              .operator(Operator.OR)
+              .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
               .tieBreaker(DEFAULT_TIE_BREAKER);
       fields.forEach(fuzzyQueryBuilder::field);
       combinedQuery.should(fuzzyQueryBuilder.boost(multiplier));
@@ -423,7 +445,7 @@ public class OpenSearchSourceBuilderFactory
   private MultiMatchQueryBuilder createStandardFuzzyQuery(String query) {
     return QueryBuilders.multiMatchQuery(query)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .maxExpansions(10)
         .prefixLength(1)
         .operator(Operator.OR)
@@ -647,10 +669,20 @@ public class OpenSearchSourceBuilderFactory
 
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
-      searchSourceBuilder.aggregation(
+
+      TermsAggregationBuilder termsAgg =
           AggregationBuilders.terms(agg.getName())
-              .field(agg.getField())
-              .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+              .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg.field(agg.getField());
+      }
+
+      if (!nullOrEmpty(agg.getScript())) {
+        termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
+      }
+
+      searchSourceBuilder.aggregation(termsAgg);
     }
   }
 
@@ -738,7 +770,7 @@ public class OpenSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildEntitySpecificAggregateSearchBuilder(
       String query, int from, int size) {
-    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
     QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = collectAllBoostFunctions();
@@ -881,6 +913,21 @@ public class OpenSearchSourceBuilderFactory
     functionScore.boost(FUNCTION_BOOST_FACTOR);
 
     return functionScore;
+  }
+
+  private AssetTypeConfiguration getOrBuildCompositeConfig() {
+    long now = System.currentTimeMillis();
+    if (cachedCompositeConfig == null || (now - cacheTimestamp) > CACHE_TTL_MS) {
+      synchronized (this) {
+        // Double-check after acquiring lock
+        if (cachedCompositeConfig == null || (now - cacheTimestamp) > CACHE_TTL_MS) {
+          cachedCompositeConfig = buildCompositeAssetConfig(searchSettings);
+          cacheTimestamp = now;
+          LOG.debug("Rebuilt composite asset configuration cache");
+        }
+      }
+    }
+    return cachedCompositeConfig;
   }
 
   private AssetTypeConfiguration buildCompositeAssetConfig(SearchSettings searchSettings) {

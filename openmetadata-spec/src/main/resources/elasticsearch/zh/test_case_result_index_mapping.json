@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "priority": 500
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -296,6 +299,31 @@
                 "type": "keyword"
               }
             }
+          },
+          "tier": {
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },
@@ -432,6 +460,5 @@
         }
       }
     }
-  },
-  "priority": 500
+  }
 }

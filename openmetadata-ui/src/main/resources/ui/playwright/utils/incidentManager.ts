@@ -30,11 +30,7 @@ export const acknowledgeTask = async (data: {
 }) => {
   const { testCase, page, table } = data;
   await visitProfilerTab(page, table);
-  await page.click('[data-testid="profiler-tab-left-panel"]');
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
 
   await expect(
     page.locator(`[data-testid="status-badge-${testCase}"]`)
@@ -42,6 +38,8 @@ export const acknowledgeTask = async (data: {
 
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=New`);
   await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
   await page.click('[title="Ack"]');
@@ -51,6 +49,13 @@ export const acknowledgeTask = async (data: {
   await page.click('#update-status-button');
   await statusChangeResponse;
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=Ack`);
+  await page.waitForLoadState('networkidle');
+
+  await expect(
+    page.locator(
+      `[data-testid="${testCase}-status"] [data-testid="badge-container"]`
+    )
+  ).toContainText('Ack');
 };
 
 export const assignIncident = async (data: {
@@ -60,32 +65,35 @@ export const assignIncident = async (data: {
 }) => {
   const { testCaseName, page, user } = data;
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector(`[data-testid="test-case-${testCaseName}"]`);
-  await page.click(
-    `[data-testid="${testCaseName}-status"] [data-testid="edit-resolution-icon"]`
+  await page.click(`[data-testid="${testCaseName}-status"]`);
+  await page.getByRole('menuitem', { name: 'Assigned' }).click();
+  await page.waitForSelector(
+    `[data-testid="${testCaseName}-assignee-popover"]`
   );
-  await page.click('[data-testid="test-case-resolution-status-type"]');
-  await page.click('[title="Assigned"]');
-  await page.waitForSelector('#testCaseResolutionStatusDetails_assignee');
+  await page.click('[data-testid="assignee-search-input"]');
+
+  const searchUserResponse = page.waitForResponse(
+    'api/v1/search/query?q=*&index=user_search_index*'
+  );
   await page.fill(
-    '#testCaseResolutionStatusDetails_assignee',
+    '[data-testid="assignee-search-input"] input',
     user.displayName
   );
-  await page.waitForResponse('/api/v1/search/query?q=*');
+  await searchUserResponse;
   await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
   const updateIncident = page.waitForResponse(
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
   );
-  await page.click('#update-status-button');
+  await page.click('[data-testid="submit-assignee-popover-button"]');
   await updateIncident;
   await page.waitForSelector(
-    `[data-testid="${testCaseName}-status"] [data-testid="badge-container"] >> text=Assigned`
+    `[data-testid="${testCaseName}-status"] >> text=Assigned`
   );
 
   await expect(
-    page.locator(
-      `[data-testid="${testCaseName}-status"] [data-testid="badge-container"]`
-    )
+    page.locator(`[data-testid="${testCaseName}-status"]`)
   ).toContainText('Assigned');
 };
 

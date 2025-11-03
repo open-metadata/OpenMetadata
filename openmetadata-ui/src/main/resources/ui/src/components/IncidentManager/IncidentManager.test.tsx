@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
+import { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
-import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
+import '../../test/unit/mocks/mui.mock';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -30,6 +32,8 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
           handleDateRangeChange({
             startTs: 1709556624254,
             endTs: 1710161424255,
+            key: 'last7days',
+            title: 'Last 7 days',
           })
         }>
         time filter
@@ -71,7 +75,7 @@ jest.mock('../../hooks/paging/usePaging', () => ({
   }),
 }));
 jest.mock('../../rest/incidentManagerAPI', () => ({
-  getListTestCaseIncidentStatus: jest
+  getListTestCaseIncidentStatusFromSearch: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
   updateTestCaseIncidentById: jest.fn(),
@@ -135,7 +139,7 @@ describe('IncidentManagerPage', () => {
 
   it('Incident should be fetch with updated time', async () => {
     const mockGetListTestCaseIncidentStatus =
-      getListTestCaseIncidentStatus as jest.Mock;
+      getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
       render(<IncidentManager />);
     });
@@ -152,12 +156,14 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       startTs: 1709556624254,
       include: 'non-deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
     });
   });
 
   it('Incident should be fetch with deleted', async () => {
     const mockGetListTestCaseIncidentStatus =
-      getListTestCaseIncidentStatus as jest.Mock;
+      getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
       render(<IncidentManager tableDetails={{ deleted: true } as Table} />);
     });
@@ -174,6 +180,8 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       startTs: 1709556624254,
       include: 'deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
     });
   });
 

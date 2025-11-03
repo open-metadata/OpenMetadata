@@ -41,6 +41,10 @@ export interface DataProduct {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Data Product.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * List of users who are experts for this Data Product.
      */
     experts?: EntityReference[];
@@ -64,6 +68,10 @@ export interface DataProduct {
      * Unique ID of the Data Product
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -92,6 +100,10 @@ export interface DataProduct {
      * Other data products that consume data from this product
      */
     providesTo?: EntityReference[];
+    /**
+     * User references of the reviewers for this Data Product.
+     */
+    reviewers?: EntityReference[];
     /**
      * Service Level Agreement for this data product
      */
@@ -240,6 +252,21 @@ export interface FieldChange {
 }
 
 /**
+ * Status of the Data Product.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Port definition for data product input/output
  */
 export interface DataProductPort {
@@ -372,9 +399,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -405,6 +454,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

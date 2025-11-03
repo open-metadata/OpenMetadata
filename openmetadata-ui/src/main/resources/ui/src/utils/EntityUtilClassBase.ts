@@ -35,29 +35,28 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage';
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from '../rest/databaseAPI';
-import { getGlossariesByName } from '../rest/glossaryAPI';
-import { getServiceByFQN } from '../rest/serviceAPI';
-import { getTableDetailsByFQN } from '../rest/tableAPI';
+import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { getEntityByFqnUtil } from './EntityByFqnUtils';
 import { EntityTypeName } from './EntityUtils';
 import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
   FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
   FormattedMessagingServiceType,
   FormattedMetadataServiceType,
   FormattedMlModelServiceType,
@@ -67,10 +66,13 @@ import {
 } from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
+  getBotsPath,
+  getClassificationTagPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -100,6 +102,7 @@ class EntityUtilClassBase {
       ...FormattedMessagingServiceType,
       ...FormattedAPIServiceType,
       ...FormattedStorageServiceType,
+      ...FormattedDriveServiceType,
     });
   }
 
@@ -216,6 +219,7 @@ class EntityUtilClassBase {
         );
       case SearchIndex.TAG:
       case EntityType.TAG:
+        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
       case EntityType.CLASSIFICATION:
         return getTagsDetailsPath(fullyQualifiedName);
 
@@ -257,7 +261,7 @@ class EntityUtilClassBase {
 
       case EntityType.DOMAIN:
       case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName, tab);
+        return getDomainDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
@@ -317,6 +321,40 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.DIRECTORY:
+        return getEntityDetailsPath(
+          EntityType.DIRECTORY,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.FILE:
+        return getEntityDetailsPath(
+          EntityType.FILE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.SPREADSHEET:
+        return getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.WORKSHEET:
+        return getEntityDetailsPath(
+          EntityType.WORKSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.BOT:
+        return getBotsPath(fullyQualifiedName);
+
+      case EntityType.KPI:
+        return getKpiPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
@@ -330,23 +368,11 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityByFqn(entityType: string, fqn: string, fields?: string[]) {
-    switch (entityType) {
-      case EntityType.DATABASE_SERVICE:
-        return getServiceByFQN('databaseServices', fqn, { fields });
-      case EntityType.DATABASE:
-        return getDatabaseDetailsByFQN(fqn, { fields });
-      case EntityType.DATABASE_SCHEMA:
-        return getDatabaseSchemaDetailsByFQN(fqn, { fields });
-
-      case EntityType.GLOSSARY_TERM:
-        return getGlossariesByName(fqn, { fields });
-      default:
-        return getTableDetailsByFQN(fqn, { fields });
-    }
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string) {
+    return getEntityByFqnUtil(entityType, fqn, fields);
   }
 
-  public getEntityDetailComponent(entityType: string) {
+  public getEntityDetailComponent(entityType: string): FC | null {
     switch (entityType) {
       case EntityType.DATABASE:
         return DatabaseDetailsPage;
@@ -380,6 +406,14 @@ class EntityUtilClassBase {
         return APIEndpointPage;
       case EntityType.METRIC:
         return MetricDetailsPage;
+      case EntityType.DIRECTORY:
+        return DirectoryDetailsPage;
+      case EntityType.FILE:
+        return FileDetailsPage;
+      case EntityType.SPREADSHEET:
+        return SpreadsheetDetailsPage;
+      case EntityType.WORKSHEET:
+        return WorksheetDetailsPage;
 
       default:
         return null;
@@ -439,6 +473,18 @@ class EntityUtilClassBase {
       case EntityType.METRIC: {
         return ResourceEntity.METRIC;
       }
+      case EntityType.DIRECTORY: {
+        return ResourceEntity.DRIVE_SERVICE;
+      }
+      case EntityType.FILE: {
+        return ResourceEntity.FILE;
+      }
+      case EntityType.SPREADSHEET: {
+        return ResourceEntity.SPREADSHEET;
+      }
+      case EntityType.WORKSHEET: {
+        return ResourceEntity.WORKSHEET;
+      }
 
       default: {
         return ResourceEntity.TABLE;
@@ -446,6 +492,7 @@ class EntityUtilClassBase {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getEntityFloatingButton(_: EntityType): FC | null {
     return null;
   }
@@ -529,6 +576,11 @@ class EntityUtilClassBase {
       this.getEntityTypeLookupMap().get(normalizedKey) ??
       serviceType
     );
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public shouldShowEntityStatus(entityType: string): boolean {
+    return false;
   }
 }
 

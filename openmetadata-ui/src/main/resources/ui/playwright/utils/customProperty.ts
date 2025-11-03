@@ -291,6 +291,7 @@ export const validateValueForProperty = async (data: {
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
+    // For markdown, remove * and _ as they are formatting characters
     await expect(
       container.locator(descriptionBoxReadOnly).last()
     ).toContainText(value.replace(/\*|_/gi, ''));
@@ -302,7 +303,8 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
+    // For other types (string, integer, number, duration), match exact value without transformation
+    await expect(container.getByTestId('value')).toContainText(value);
   }
 };
 
@@ -570,7 +572,7 @@ export const addCustomPropertiesForEntity = async ({
 }: {
   page: Page;
   propertyName: string;
-  customPropertyData: { description: string };
+  customPropertyData: { description: string; entityApiType?: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
   formatConfig?: string;
@@ -579,6 +581,20 @@ export const addCustomPropertiesForEntity = async ({
 }) => {
   // Add Custom property for selected entity
   await page.click('[data-testid="add-field-button"]');
+
+  // Assert that breadcrumb has correct link for the entity type
+  // The second breadcrumb item should be "Custom Attributes" with the correct entity type in URL
+  const customAttributesBreadcrumb = page.locator(
+    '[data-testid="breadcrumb-link"]:nth-child(2) a'
+  );
+
+  if (customPropertyData.entityApiType) {
+    // Verify that the Custom Attributes breadcrumb link contains the correct entity type
+    await expect(customAttributesBreadcrumb).toHaveAttribute(
+      'href',
+      `/settings/customProperties/${customPropertyData.entityApiType}`
+    );
+  }
 
   // Trigger validation
   await page.click('[data-testid="create-button"]');

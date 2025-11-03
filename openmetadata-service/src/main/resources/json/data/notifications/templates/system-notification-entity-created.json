@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-entity-created",
+  "fullyQualifiedName": "system-notification-entity-created",
+  "displayName": "Entity Created Notification",
+  "description": "System default template for entity creation notifications",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> created <strong>{{camelCaseToTitle event.entityType}}</strong> <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
+}

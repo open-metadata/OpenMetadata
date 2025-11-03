@@ -291,7 +291,7 @@ test.describe('Tag Page with Admin Roles', () => {
       page: adminPage,
       ownerNames: [OWNER1],
       activatorBtnDataTestId: 'add-owner',
-      resultTestId: 'tag-owner-name',
+      resultTestId: 'owner-link',
       endpoint: EntityTypeEndpoint.Tag,
       isSelectableInsideForm: false,
       type: 'Users',
@@ -302,7 +302,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.waitForLoadState('networkidle');
 
     const myDataRes = adminPage.waitForResponse(
-      `/api/v1/search/query?q=*&index=all&from=0&size=15`
+      `/api/v1/search/query?q=*&index=all&*`
     );
     await adminPage.getByTestId('mydata').click();
     await myDataRes;
@@ -320,7 +320,7 @@ test.describe('Tag Page with Admin Roles', () => {
       endpoint: EntityTypeEndpoint.Tag,
       ownerName: OWNER1,
       type: 'Users',
-      dataTestId: 'tag-owner-name',
+      dataTestId: 'owner-link',
     });
   });
 });

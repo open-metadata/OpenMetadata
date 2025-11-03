@@ -31,9 +31,7 @@ import { ContractDetail } from '../ContractDetailTab/ContractDetail';
 import './contract-tab.less';
 
 export const ContractTab = () => {
-  const {
-    data: { id },
-  } = useGenericContext();
+  const { data: entityData } = useGenericContext();
   const { t } = useTranslation();
   const [tabMode, setTabMode] = useState<DataContractTabMode>(
     DataContractTabMode.VIEW
@@ -42,6 +40,7 @@ export const ContractTab = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const { id } = entityData ?? {};
 
   const fetchContract = async () => {
     try {
@@ -57,7 +56,7 @@ export const ContractTab = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (contract?.id) {
       setIsDeleteModalVisible(true);
     }

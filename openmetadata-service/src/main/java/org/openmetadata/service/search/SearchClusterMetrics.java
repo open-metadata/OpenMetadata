@@ -27,6 +27,12 @@ public class SearchClusterMetrics {
   private final int recommendedConsumerThreads;
   private final int recommendedQueueSize;
 
+  public static final double DEFAULT_CPU_PERCENT = 50.0;
+  public static final long DEFAULT_HEAP_USED_BYTES = 512L * 1024 * 1024; // 512 MB
+  public static final long DEFAULT_HEAP_MAX_BYTES = 1024L * 1024 * 1024; // 1 GB
+  public static final long DEFAULT_MAX_CONTENT_LENGTH =
+      10 * 1024 * 1024L; // Conservative 10MB default
+
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -51,41 +57,32 @@ public class SearchClusterMetrics {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchOpenSearchMetrics(
       SearchRepository searchRepository,
       OpenSearchClient osClient,
       long totalEntities,
       int maxDbConnections) {
     try {
-      Map<String, Object> clusterStats = osClient.clusterStats();
-      Map<String, Object> nodesStats = osClient.nodesStats();
-      Map<String, Object> clusterSettings = osClient.clusterSettings();
+      var clusterStats = osClient.clusterStats();
+      var nodesStats = osClient.nodesStats();
+      var clusterSettings = osClient.clusterSettings();
 
       LOG.debug("ClusterStats response: {}", clusterStats);
       LOG.debug("NodesStats response: {}", nodesStats);
 
-      Map<String, Object> nodes = (Map<String, Object>) clusterStats.get("nodes");
-      int totalNodes = extractIntValue(nodes, "count", 1);
+      int totalNodes = clusterStats.nodes().count().total();
+      int totalShards =
+          clusterStats.indices().shards().total() != null
+              ? clusterStats.indices().shards().total().intValue()
+              : 0;
 
-      Map<String, Object> indices = (Map<String, Object>) clusterStats.get("indices");
-      Map<String, Object> shards = (Map<String, Object>) indices.get("shards");
-      int totalShards = extractIntValue(shards, "total", 0);
+      double cpuUsagePercent = osClient.averageCpuPercentFromNodesStats(nodesStats);
+      var jvmStats = osClient.extractJvmMemoryStats(nodesStats);
+      long heapMaxBytes = (long) jvmStats.get("heapMaxBytes");
+      double memoryUsagePercent = (double) jvmStats.get("memoryUsagePercent");
 
-      Map<String, Object> nodesMap = (Map<String, Object>) nodesStats.get("nodes");
-      Map<String, Object> firstNode = (Map<String, Object>) nodesMap.values().iterator().next();
-
-      Map<String, Object> os = (Map<String, Object>) firstNode.get("os");
-      Map<String, Object> cpu = (Map<String, Object>) os.get("cpu");
-      double cpuUsagePercent = extractCpuPercent(cpu);
-
-      Map<String, Object> jvm = (Map<String, Object>) firstNode.get("jvm");
-      Map<String, Object> mem = (Map<String, Object>) jvm.get("mem");
-      long heapUsedBytes = ((Number) mem.get("heap_used_in_bytes")).longValue();
-      long heapMaxBytes = ((Number) mem.get("heap_max_in_bytes")).longValue();
-      double memoryUsagePercent = (double) heapUsedBytes / heapMaxBytes * 100;
-
-      long maxContentLength = extractMaxContentLength(clusterSettings);
+      String maxContentLengthStr = osClient.extractMaxContentLengthStr(clusterSettings);
+      long maxContentLength = extractMaxContentLength(maxContentLengthStr);
 
       return calculateRecommendations(
           totalNodes,
@@ -103,38 +100,29 @@ public class SearchClusterMetrics {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchElasticSearchMetrics(
       SearchRepository searchRepository,
       ElasticSearchClient client,
       long totalEntities,
       int maxDbConnections) {
     try {
-      Map<String, Object> clusterStats = client.clusterStats();
-      Map<String, Object> nodesStats = client.nodesStats();
-      Map<String, Object> clusterSettings = client.clusterSettings();
+      var clusterStats = client.clusterStats();
+      var nodesStats = client.nodesStats();
+      var clusterSettings = client.clusterSettings();
 
-      Map<String, Object> nodes = (Map<String, Object>) clusterStats.get("nodes");
-      int totalNodes = extractIntValue(nodes, "count", 1);
+      int totalNodes = clusterStats.nodes().count().total();
+      int totalShards =
+          clusterStats.indices().shards().total() != null
+              ? clusterStats.indices().shards().total().intValue()
+              : 0;
 
-      Map<String, Object> indices = (Map<String, Object>) clusterStats.get("indices");
-      Map<String, Object> shards = (Map<String, Object>) indices.get("shards");
-      int totalShards = extractIntValue(shards, "total", 0);
+      double cpuUsagePercent = client.averageCpuPercentFromNodesStats(nodesStats);
+      var jvmStats = client.extractJvmMemoryStats(nodesStats);
+      long heapMaxBytes = (long) jvmStats.get("heapMaxBytes");
+      double memoryUsagePercent = (double) jvmStats.get("memoryUsagePercent");
 
-      Map<String, Object> nodesMap = (Map<String, Object>) nodesStats.get("nodes");
-      Map<String, Object> firstNode = (Map<String, Object>) nodesMap.values().iterator().next();
-
-      Map<String, Object> os = (Map<String, Object>) firstNode.get("os");
-      Map<String, Object> cpu = (Map<String, Object>) os.get("cpu");
-      double cpuUsagePercent = extractCpuPercent(cpu);
-
-      Map<String, Object> jvm = (Map<String, Object>) firstNode.get("jvm");
-      Map<String, Object> mem = (Map<String, Object>) jvm.get("mem");
-      long heapUsedBytes = ((Number) mem.get("heap_used_in_bytes")).longValue();
-      long heapMaxBytes = ((Number) mem.get("heap_max_in_bytes")).longValue();
-      double memoryUsagePercent = (double) heapUsedBytes / heapMaxBytes * 100;
-
-      long maxContentLength = extractMaxContentLength(clusterSettings);
+      String maxContentLengthStr = client.extractMaxContentLengthStr(clusterSettings);
+      long maxContentLength = extractMaxContentLength(maxContentLengthStr);
 
       return calculateRecommendations(
           totalNodes,
@@ -311,29 +299,10 @@ public class SearchClusterMetrics {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public static long extractMaxContentLength(Map<String, Object> clusterSettings) {
+  public static long extractMaxContentLength(String maxContentLengthStr) {
     try {
       // Use a conservative 10MB default for AWS-managed OpenSearch/ElasticSearch
       // AWS OpenSearch has a hard limit of 10MB that may not be exposed in cluster settings
-      long defaultMaxContentLength = 10 * 1024 * 1024L; // Conservative 10MB default
-
-      Map<String, Object> persistentSettings =
-          (Map<String, Object>) clusterSettings.get("persistent");
-      Map<String, Object> transientSettings =
-          (Map<String, Object>) clusterSettings.get("transient");
-
-      String maxContentLengthStr = null;
-      if (persistentSettings != null && persistentSettings.containsKey("http.max_content_length")) {
-        maxContentLengthStr = (String) persistentSettings.get("http.max_content_length");
-      }
-
-      if (maxContentLengthStr == null
-          && transientSettings != null
-          && transientSettings.containsKey("http.max_content_length")) {
-        maxContentLengthStr = (String) transientSettings.get("http.max_content_length");
-      }
-
       if (maxContentLengthStr != null) {
         long maxContentLength = parseByteSize(maxContentLengthStr);
         LOG.info(
@@ -345,17 +314,17 @@ public class SearchClusterMetrics {
 
       LOG.info(
           "No max_content_length setting found in cluster, using conservative default: {} bytes",
-          defaultMaxContentLength);
-      return defaultMaxContentLength;
+          DEFAULT_MAX_CONTENT_LENGTH);
+      return DEFAULT_MAX_CONTENT_LENGTH;
     } catch (Exception e) {
       LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
-      return 10 * 1024 * 1024L; // Conservative 10MB default for safety
+      return DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default for safety
     }
   }
 
   private static long parseByteSize(String sizeStr) {
     if (sizeStr == null || sizeStr.trim().isEmpty()) {
-      return 10 * 1024 * 1024L; // Conservative 10MB default for safety
+      return DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default for safety
     }
 
     sizeStr = sizeStr.trim().toLowerCase();
@@ -375,32 +344,17 @@ public class SearchClusterMetrics {
       };
     } catch (NumberFormatException e) {
       LOG.warn("Failed to parse byte size: {}", sizeStr);
-      return 100 * 1024 * 1024L; // Default 100MB
+      return DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default for safety
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private static double extractCpuPercent(Map<String, Object> cpu) {
-    Object percentValue = cpu.get("percent");
-
-    // Handle different formats of CPU percent from various OpenSearch versions
-    if (percentValue instanceof Number) {
-      // OpenSearch < 2.19 format: direct numeric value
-      return ((Number) percentValue).doubleValue();
-    } else if (percentValue instanceof Map) {
-      // OpenSearch 2.19+ format: might be a map with detailed CPU info
-      Map<String, Object> percentMap = (Map<String, Object>) percentValue;
-      // Try to find the actual percent value in the map
-      for (String key : new String[] {"value", "percent", "usage", "total"}) {
-        if (percentMap.containsKey(key) && percentMap.get(key) instanceof Number) {
-          return ((Number) percentMap.get(key)).doubleValue();
-        }
-      }
+  private static long extractLongValue(Map<String, Object> map, String key, long defaultValue) {
+    Object value = map.get(key);
+    if (value instanceof Number number) {
+      return number.longValue();
     }
-
-    // Fallback: return default 50% if unable to extract
-    LOG.warn("Unable to extract CPU percent from response, using default 50%");
-    return 50.0;
+    LOG.debug("Unable to extract long value for key '{}', using default: {}", key, defaultValue);
+    return defaultValue;
   }
 
   private static int extractIntValue(Map<String, Object> map, String key, int defaultValue) {
@@ -441,29 +395,35 @@ public class SearchClusterMetrics {
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
     // Default to conservative 10MB for AWS-managed clusters if we can't fetch from cluster
-    long maxPayloadSize = 10 * 1024 * 1024L; // Conservative 10MB default
+    long maxPayloadSize = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
     try {
       if (searchRepository != null) {
         SearchClient searchClient = searchRepository.getSearchClient();
         Map<String, Object> clusterSettings = null;
 
+        long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default;
+        String maxContentLengthStr;
+
         // Get cluster settings based on search client type
         if (searchClient instanceof OpenSearchClient) {
-          clusterSettings = ((OpenSearchClient) searchClient).clusterSettings();
+          var osClusterSettings = ((OpenSearchClient) searchClient).clusterSettings();
+          maxContentLengthStr =
+              ((OpenSearchClient) searchClient).extractMaxContentLengthStr(osClusterSettings);
+          maxContentLength = extractMaxContentLength(maxContentLengthStr);
         } else if (searchClient instanceof ElasticSearchClient) {
-          clusterSettings = ((ElasticSearchClient) searchClient).clusterSettings();
+          var esClusterSettings = ((ElasticSearchClient) searchClient).clusterSettings();
+          maxContentLengthStr =
+              ((ElasticSearchClient) searchClient).extractMaxContentLengthStr(esClusterSettings);
+          maxContentLength = extractMaxContentLength(maxContentLengthStr);
         }
 
-        if (clusterSettings != null) {
-          long maxContentLength = extractMaxContentLength(clusterSettings);
-          // Use actual max content length from cluster settings
-          // Apply 90% to leave small buffer for HTTP headers and request overhead
-          maxPayloadSize = maxContentLength * 9 / 10;
-          LOG.info(
-              "Conservative defaults: Detected max content length: {} MB, effective payload size: {} MB",
-              maxContentLength / (1024 * 1024),
-              maxPayloadSize / (1024 * 1024));
-        }
+        // Use actual max content length from cluster settings
+        // Apply 90% to leave small buffer for HTTP headers and request overhead
+        maxPayloadSize = maxContentLength * 9 / 10;
+        LOG.info(
+            "Conservative defaults: Detected max content length: {} MB, effective payload size: {} MB",
+            maxContentLength / (1024 * 1024),
+            maxPayloadSize / (1024 * 1024));
       }
     } catch (Exception e) {
       LOG.debug(

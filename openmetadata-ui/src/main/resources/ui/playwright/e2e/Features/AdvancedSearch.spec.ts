@@ -40,6 +40,7 @@ const creationConfig: EntityDataClassCreationConfig = {
   searchIndex: true,
   container: true,
   entityDetails: true,
+  tier: true,
 };
 
 const user = new UserClass();
@@ -50,12 +51,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
-  let searchCriteria: Record<string, any> = {};
+  let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { page, apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
     await user.create(apiContext);
     glossaryEntity = new Glossary(undefined, [
@@ -72,7 +73,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await glossaryTermEntity.create(apiContext);
     await table.create(apiContext);
 
-    // Add Owner & Tag to the table
+    // Add Owner & Tag and domain to the table
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
@@ -104,6 +105,23 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
+    // Add data product to the table 1
+    await EntityDataClass.table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataProducts/0',
+          value: {
+            id: EntityDataClass.dataProduct1.responseData.id,
+            type: 'dataProduct',
+            name: EntityDataClass.dataProduct1.responseData.name,
+            displayName: EntityDataClass.dataProduct1.responseData.displayName,
+          },
+        },
+      ],
+    });
+
     await EntityDataClass.table2.patch({
       apiContext,
       patchData: [
@@ -130,6 +148,23 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
             type: 'domain',
             name: EntityDataClass.domain2.responseData.name,
             displayName: EntityDataClass.domain2.responseData.displayName,
+          },
+        },
+      ],
+    });
+
+    // Add data product to the table 2
+    await EntityDataClass.table2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataProducts/0',
+          value: {
+            id: EntityDataClass.dataProduct3.responseData.id,
+            type: 'dataProduct',
+            name: EntityDataClass.dataProduct3.responseData.name,
+            displayName: EntityDataClass.dataProduct3.responseData.displayName,
           },
         },
       ],
@@ -248,25 +283,25 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel1.entity.project,
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
-      status: ['Approved', 'In Review'],
+      entityStatus: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
         EntityDataClass.dashboard2.charts.displayName,
+      ],
+      'dataProducts.displayName.keyword': [
+        EntityDataClass.dataProduct1.data.displayName,
+        EntityDataClass.dataProduct3.data.displayName,
       ],
     };
 
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
+  test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-    await glossaryEntity.delete(apiContext);
-    await user.delete(apiContext);
-    await table.delete(apiContext);
+
     await afterAction();
   });
 

@@ -11,23 +11,28 @@
  *  limitations under the License.
  */
 import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { ContractTab } from '../../components/DataContract/ContractTab/ContractTab';
-import Lineage from '../../components/Lineage/Lineage.component';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { APIEndpointDetailPageTabProps } from './APIEndpointClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 export const getApiEndpointDetailsPageTabs = ({
   activeTab,
@@ -87,14 +92,14 @@ export const getApiEndpointDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={apiEndpoint.deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(apiEndpoint?.deleted)}
             entity={apiEndpoint as SourceType}
             entityType={EntityType.API_ENDPOINT}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
     },
     {

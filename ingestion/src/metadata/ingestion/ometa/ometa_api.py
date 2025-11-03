@@ -33,6 +33,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
 )
@@ -44,9 +45,11 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
+from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.profile_mixin import OMetaProfileMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
@@ -54,6 +57,7 @@ from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.tag_glossary_mixin import OMetaTagGlossaryMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
@@ -108,6 +112,7 @@ class OpenMetadataSettings(BaseSettings):
 
 
 class OpenMetadata(
+    CSVMixin,
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
@@ -122,6 +127,7 @@ class OpenMetadata(
     OMetaTestsMixin,
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
+    OMetaLogsMixin,
     OMetaUserMixin,
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
@@ -129,6 +135,8 @@ class OpenMetadata(
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
     OMetaDomainMixin,
+    OMetaProfileMixin,
+    OMetaTagGlossaryMixin,
     Generic[T, C],
 ):
     """

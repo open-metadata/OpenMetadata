@@ -20,12 +20,16 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
 }));
+
+const mockPrepareFeedLink = jest.fn();
+const mockGetTaskDetailPath = jest.fn();
+
 jest.mock('../../utils/FeedUtils', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
-  prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
+  prepareFeedLink: (...args: any[]) => mockPrepareFeedLink(...args),
 }));
 jest.mock('../../utils/TasksUtils', () => ({
-  getTaskDetailPath: jest.fn().mockReturnValue('/'),
+  getTaskDetailPath: (...args: any[]) => mockGetTaskDetailPath(...args),
 }));
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest
@@ -35,9 +39,13 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () => {
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <p data-testid="link">{children}</p>
-    )),
+    .mockImplementation(
+      ({ children, to }: { children: React.ReactNode; to: string }) => (
+        <p data-testid="link" data-to={to}>
+          {children}
+        </p>
+      )
+    ),
 }));
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
@@ -180,5 +188,102 @@ describe('Test NotificationFeedCard Component', () => {
     });
 
     expect(screen.getByText('1692612000000')).toBeInTheDocument();
+  });
+
+  describe('Navigation URL Tests', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should navigate to tasks subtab for task notifications', async () => {
+      const taskUrl = '/database/test.entity/activity_feed/tasks';
+      mockGetTaskDetailPath.mockReturnValue(taskUrl);
+
+      const taskProps = {
+        ...mockProps,
+        feedType: ThreadType.Task,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...taskProps} />);
+      });
+
+      // Verify getTaskDetailPath was called with the task
+      expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
+
+      // Verify Link component has the correct URL
+      const linkElement = screen.getAllByTestId('link')[0]; // Main link
+
+      expect(linkElement).toHaveAttribute('data-to', taskUrl);
+    });
+
+    it('should navigate to all subtab for conversation notifications', async () => {
+      const conversationUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(conversationUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: true,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      // Verify prepareFeedLink was called with ActivityFeedTabs.ALL
+      expect(mockPrepareFeedLink).toHaveBeenCalledWith(
+        mockProps.entityType,
+        mockProps.entityFQN,
+        'all' // ActivityFeedTabs.ALL value
+      );
+
+      // Verify Link component has the correct URL
+      const linkElement = screen.getAllByTestId('link')[0]; // Main link
+
+      expect(linkElement).toHaveAttribute('data-to', conversationUrl);
+    });
+
+    it('should call getTaskDetailPath for task feed entity links in mention notifications tab', async () => {
+      const entityLinkUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: false,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      // Should be called twice - once for main link, once for entity name link
+      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(2);
+      expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
+    });
+
+    it('should call prepareFeedLink with ALL subtab for entity links in conversation notifications', async () => {
+      const entityLinkUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: true,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      // Should be called twice - once for main link, once for entity name link
+      expect(mockPrepareFeedLink).toHaveBeenCalledTimes(2);
+      expect(mockPrepareFeedLink).toHaveBeenCalledWith(
+        mockProps.entityType,
+        mockProps.entityFQN,
+        'all' // ActivityFeedTabs.ALL value
+      );
+    });
   });
 });

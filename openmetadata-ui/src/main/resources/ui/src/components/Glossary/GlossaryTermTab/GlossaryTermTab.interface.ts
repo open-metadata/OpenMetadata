@@ -20,9 +20,14 @@ export interface GlossaryTermTabProps {
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
-  children?: GlossaryTerm[];
+  children?: ModifiedGlossaryTerm[];
   value?: string;
   data?: TagLabel;
+  hasMoreChildren?: boolean;
+  childrenPagingAfter?: string;
+  isLoadMoreButton?: boolean;
+  parentRecord?: ModifiedGlossaryTerm;
+  level?: number;
 };
 
 export type MoveGlossaryTermType = {

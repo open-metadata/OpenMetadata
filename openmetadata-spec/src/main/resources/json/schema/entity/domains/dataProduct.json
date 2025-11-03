@@ -137,6 +137,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -150,13 +154,19 @@
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },
+    "reviewers": {
+      "description": "User references of the reviewers for this Data Product.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domains": {
       "description": "Domains or sub-domains to which this Data Product belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
     "inputPorts": {
       "description": "Input ports for consuming data into this data product",
@@ -215,6 +225,11 @@
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Data Product.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "description"],
