@@ -36,6 +36,7 @@ const SubDomainsTable = ({
   permissions,
   onAddSubDomain,
   subDomainsCount,
+  onDeleteSubDomain,
 }: SubDomainsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -112,6 +113,7 @@ const SubDomainsTable = ({
     onDeleteComplete: () => {
       subdomainListing.clearSelection();
       subdomainListing.refetch();
+      onDeleteSubDomain();
     },
   });
 

@@ -18,4 +18,5 @@ export interface SubDomainsTableProps {
   subDomainsCount?: number;
   permissions: OperationPermission;
   onAddSubDomain: () => void;
+  onDeleteSubDomain: () => void;
 }

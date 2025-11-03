@@ -37,4 +37,5 @@ export interface DomainDetailsProps {
    * Optional navigation handler to intercept internal navigations triggered by the component.
    */
   onNavigate?: (path: string) => void;
+  refreshDomains?: () => void;
 }
