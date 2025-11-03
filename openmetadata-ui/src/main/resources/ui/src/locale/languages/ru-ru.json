@@ -426,6 +426,7 @@
     "data-quartile-plural": "Качество данных",
     "data-range": "Временной интервал",
     "data-type": "Тип данных",
+    "data-type-display": "Отображение типа данных",
     "data-volume": "Объем данных",
     "database": "База данных",
     "database-lowercase": "база данных",
