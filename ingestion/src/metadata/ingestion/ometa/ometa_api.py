@@ -315,6 +315,7 @@ class OpenMetadata(
             .replace("ingestionpipeline", "ingestionPipeline")
             .replace("dataproduct", "dataProduct")
             .replace("datacontract", "dataContract")
+            .replace("chatconversation", "chatConversation")
         )
         class_path = ".".join(
             filter(

@@ -47,13 +47,19 @@ class SSEClient:
         Returns:
             Generator[Any, Any, None]: A generator of events.
         """
+        self.stream_completed = False
         retries = 0
 
         url: URL = URL(
             self.config.base_url + "/" + (self.config.api_version or "v1") + path
         )
         method = method.upper()
-        headers = {"Accept": "text/event-stream"}
+        headers = {
+            "Accept": "text/event-stream",
+            "Content-Type": "application/json",
+            "Connection": "keep-alive",
+            "Accept-Encoding": "gzip, deflate, br",
+        }
         self._validate_access_token()
         if self.config.auth_header:
             headers[self.config.auth_header] = (
@@ -68,17 +74,17 @@ class SSEClient:
             "cookies": self.config.cookies,
         }
 
-        method_key = "params" if method.upper() == "GET" else "data"
+        method_key = "params" if method.upper() == "GET" else "json"
         if data:
             opts[method_key] = data
 
-        while retries < self.max_retries:
+        while retries < self.max_retries and not self.stream_completed:
             try:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
                 with httpx.Client(timeout=None) as client:
-                    with client.stream(method, url, headers=headers) as response:
+                    with client.stream(method, url, headers=headers, json=opts.get("json"), params=opts.get("params")) as response:
                         response.raise_for_status()
                         self.logger.info("Connected to SSE stream")
 

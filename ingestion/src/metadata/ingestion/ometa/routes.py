@@ -337,5 +337,5 @@ ROUTES = {
     CreateDriveServiceRequest.__name__: "/services/driveServices",
     EntityProfile.__name__: "/entity/profiles",
     DynamicAgent.__name__: "/agents/dynamic",
-    CreateChatConversation.__name__: "/v1/assistants/chatConversations",
+    CreateChatConversation.__name__: "/assistants/chatConversations",
 }
