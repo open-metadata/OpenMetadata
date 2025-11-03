@@ -141,12 +141,18 @@ export const ContractTestTypeLabelMap = {
 
 export const getContractTabLabel = (tabKey: EDataContractTab): string => {
   switch (tabKey) {
+    case EDataContractTab.TERMS_OF_SERVICE:
+      return i18n.t('label.terms-of-service');
     case EDataContractTab.SCHEMA:
       return i18n.t('label.schema');
     case EDataContractTab.SEMANTICS:
       return i18n.t('label.semantic-plural');
     case EDataContractTab.QUALITY:
       return i18n.t('label.quality');
+    case EDataContractTab.SECURITY:
+      return i18n.t('label.security');
+    case EDataContractTab.SLA:
+      return i18n.t('label.sla');
 
     default:
       return i18n.t('label.contract-detail-plural');
