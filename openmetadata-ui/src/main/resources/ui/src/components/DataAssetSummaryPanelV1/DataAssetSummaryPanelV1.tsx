@@ -269,7 +269,19 @@ export const DataAssetSummaryPanelV1 = ({
         break;
     }
   };
-
+  const { editDomainPermission, editOwnerPermission, editTierPermission } =
+    useMemo(
+      () => ({
+        editDomainPermission: entityPermissions?.EditAll && !dataAsset.deleted,
+        editOwnerPermission:
+          (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
+          !dataAsset.deleted,
+        editTierPermission:
+          (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
+          !dataAsset.deleted,
+      }),
+      [entityPermissions, dataAsset]
+    );
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
     if (!dataAsset.id || isTourPage) {
@@ -400,7 +412,7 @@ export const DataAssetSummaryPanelV1 = ({
               <OwnersSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditOwners}
+                hasPermission={editOwnerPermission}
                 key={`owners-${dataAsset.id}-${
                   (dataAsset.owners as EntityReference[])?.length || 0
                 }`}
@@ -414,7 +426,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityFqn={dataAsset.fullyQualifiedName}
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditTags}
+                hasPermission={editDomainPermission}
                 key={`domains-${dataAsset.id}-${
                   (dataAsset.domains as EntityReference[])?.length || 0
                 }`}
@@ -425,7 +437,7 @@ export const DataAssetSummaryPanelV1 = ({
               <TierSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditTags}
+                hasPermission={editTierPermission}
                 key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
                 tags={dataAsset.tags}
                 tier={tier}
@@ -489,9 +501,7 @@ export const DataAssetSummaryPanelV1 = ({
               <OwnersSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={editOwnerPermission}
                 key={`owners-${dataAsset.id}-${
                   (dataAsset.owners as EntityReference[])?.length || 0
                 }`}
@@ -505,9 +515,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityFqn={dataAsset.fullyQualifiedName}
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={editDomainPermission}
                 key={`domains-${dataAsset.id}-${
                   (dataAsset.domains as EntityReference[])?.length || 0
                 }`}
@@ -518,9 +526,7 @@ export const DataAssetSummaryPanelV1 = ({
               <TierSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={editTierPermission}
                 key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
                 tags={dataAsset.tags}
                 tier={tier}
