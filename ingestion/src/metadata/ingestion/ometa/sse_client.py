@@ -84,7 +84,13 @@ class SSEClient:
                     headers["Last-Event-ID"] = self.last_event_id
 
                 with httpx.Client(timeout=None) as client:
-                    with client.stream(method, url, headers=headers, json=opts.get("json"), params=opts.get("params")) as response:
+                    with client.stream(
+                        method,
+                        url,
+                        headers=headers,
+                        json=opts.get("json"),
+                        params=opts.get("params"),
+                    ) as response:
                         response.raise_for_status()
                         self.logger.info("Connected to SSE stream")
 
