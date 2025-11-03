@@ -195,6 +195,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityProfile import EntityProfile
+from metadata.generated.schema.api.chat.createChatConversation import CreateChatConversation
 
 ROUTES = {
     MlModel.__name__: "/mlmodels",
@@ -334,4 +335,5 @@ ROUTES = {
     CreateDriveServiceRequest.__name__: "/services/driveServices",
     EntityProfile.__name__: "/entity/profiles",
     DynamicAgent.__name__: "/agents/dynamic",
+    CreateChatConversation.__name__: "/v1/assistants/chatConversations",
 }
