@@ -29,11 +29,11 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 )
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
-    aggregate_others_pandas,
     calculate_impact_score_pandas,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
+    aggregate_others_pandas,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
