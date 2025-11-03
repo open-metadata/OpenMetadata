@@ -55,7 +55,6 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -129,7 +128,6 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
-    const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
@@ -246,7 +244,7 @@ const AssetsTabs = forwardRef(
           const finalQueryFilter = queryFilter
             ? getCombinedQueryFilterObject(
                 queryParam as unknown as QueryFilterInterface,
-                queryFilter as QueryFilterInterface
+                queryFilter
               )
             : queryParam;
 
@@ -280,12 +278,12 @@ const AssetsTabs = forwardRef(
 
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
-        (key) => openKeys.indexOf(key as EntityType) === -1
+        (key) => !openKeys.includes(key as EntityType)
       );
-      if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
-        setOpenKeys(keys as EntityType[]);
-      } else {
+      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
         setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
+      } else {
+        setOpenKeys(keys as EntityType[]);
       }
     };
 
@@ -613,12 +611,12 @@ const AssetsTabs = forwardRef(
         const selectedItemMap = new Map(prevItems ?? []);
 
         if (selectAll) {
-          data.forEach(({ _source }) => {
+          for (const { _source } of data) {
             const id = _source.id;
             if (id) {
               selectedItemMap.set(id, _source);
             }
-          });
+          }
         } else {
           // Clear selection
           selectedItemMap.clear();

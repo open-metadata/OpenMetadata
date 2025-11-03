@@ -230,7 +230,7 @@ export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
     },
   ];
 
-  domains.forEach((domain) => {
+  for (const domain of domains) {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',
@@ -250,7 +250,7 @@ export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
         />
       ),
     });
-  });
+  }
 
   return domainOptions;
 };
@@ -416,8 +416,9 @@ export const getDomainDetailTabs = ({
       key: EntityTabs.DOCUMENTATION,
       children: <GenericTab type={PageType.Domain} />,
     },
-    ...(!isVersionsView
-      ? [
+    ...(isVersionsView
+      ? []
+      : [
           {
             label: (
               <TabsLabel
@@ -551,8 +552,7 @@ export const getDomainDetailTabs = ({
               />
             ),
           },
-        ]
-      : []),
+        ]),
   ];
 };
 

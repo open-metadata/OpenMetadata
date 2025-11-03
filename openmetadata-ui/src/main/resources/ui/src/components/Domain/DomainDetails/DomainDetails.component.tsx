@@ -155,12 +155,9 @@ const DomainDetails = ({
     [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
   );
   const activeTab = useMemo(
-    () =>
-      (activeTabOverride ??
-        (routeParams.tab as EntityTabs) ??
-        EntityTabs.DOCUMENTATION) as EntityTabs,
+    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
     [activeTabOverride, routeParams.tab]
-  );
+  ) as EntityTabs;
   const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
@@ -429,10 +426,10 @@ const DomainDetails = ({
       const announcements = await getActiveAnnouncement(
         getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
       );
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncement(announcements.data[0]);
-      } else {
+      if (isEmpty(announcements.data)) {
         setActiveAnnouncement(undefined);
+      } else {
+        setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
       showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
