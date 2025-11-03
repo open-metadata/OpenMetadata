@@ -25,13 +25,16 @@ const mockFitView = jest.fn();
 const mockSetCenter = jest.fn();
 const mockGetNodes = jest.fn();
 const mockRedraw = jest.fn();
+const mockZoomTo = jest.fn();
 
 const mockReactFlowInstance = {
   zoomIn: mockZoomIn,
   zoomOut: mockZoomOut,
+  zoomTo: mockZoomTo,
   fitView: mockFitView,
   setCenter: mockSetCenter,
   getNodes: mockGetNodes,
+  getZoom: jest.fn().mockReturnValue(1),
 };
 
 const mockLineageProviderValues = {
@@ -316,8 +319,20 @@ describe('LineageControlButtons', () => {
 
     it('should call fitView with selected nodes when "Refocus to selected" is clicked', () => {
       const selectedNodes = [
-        { id: '1', selected: true },
-        { id: '2', selected: true },
+        {
+          id: '1',
+          position: { x: 5, y: 5 },
+          width: 10,
+          height: 10,
+          selected: true,
+        },
+        {
+          id: '2',
+          position: { x: 15, y: 15 },
+          width: 10,
+          height: 10,
+          selected: true,
+        },
       ];
       mockGetNodes.mockReturnValue(selectedNodes);
 
@@ -330,9 +345,9 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-selected'));
 
-      expect(mockFitView).toHaveBeenCalledWith({
-        padding: 0.2,
-        nodes: selectedNodes,
+      expect(mockSetCenter).toHaveBeenCalledWith(15, 50, {
+        duration: 800,
+        zoom: 0.65,
       });
     });
 
@@ -350,6 +365,18 @@ describe('LineageControlButtons', () => {
     });
 
     it('should call setCenter when "Refocus to home" is clicked', () => {
+      const selectedNodes = [
+        { id: '1', selected: true, data: { isRootNode: false } },
+        {
+          id: '2',
+          position: { x: 5, y: 5 },
+          width: 20,
+          selected: true,
+          data: { isRootNode: true },
+        },
+      ];
+      mockGetNodes.mockReturnValue(selectedNodes);
+
       render(
         <MemoryRouter>
           <LineageControlButtons {...mockProps} />
@@ -359,7 +386,10 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-home'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(0, 0, { zoom: 1 });
+      expect(mockSetCenter).toHaveBeenCalledWith(25, 50, {
+        duration: 800,
+        zoom: 0.65,
+      });
     });
 
     it('should handle missing reactFlowInstance gracefully', () => {

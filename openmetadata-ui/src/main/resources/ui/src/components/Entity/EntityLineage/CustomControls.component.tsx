@@ -351,13 +351,14 @@ const CustomControls: FC<{
     let menu = null;
 
     const showEditOption =
+      (!activeTab || activeTab === 'lineage') &&
       hasEditAccess &&
       !deleted &&
       platformView === LineagePlatformView.None &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
 
-    if ((!activeTab || activeTab === 'lineage') && showEditOption) {
+    if (showEditOption) {
       menu = (
         <StyledMenu
           anchorEl={settingsAnchorEl}
@@ -396,7 +397,7 @@ const CustomControls: FC<{
     }
 
     const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-      if ((!activeTab || activeTab === 'lineage') && showEditOption) {
+      if (showEditOption) {
         event.stopPropagation();
         setSettingsAnchorEl(event.currentTarget);
       } else {
