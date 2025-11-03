@@ -27,14 +27,13 @@ import { SIZE } from '../../enums/common.enum';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/data/table';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
+import {
+  convertEntityReferencesToTagLabels,
+  convertTagLabelsToEntityReferences,
+} from '../EntityReferenceUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityName } from '../EntityUtils';
 
 export const getWidgetFromKey = ({
@@ -150,26 +149,11 @@ export const GlossaryTermListItemRenderer = (props: EntityReference) => {
 export const convertTermsToEntityReferences = (
   terms: TagLabel[]
 ): EntityReference[] => {
-  return terms.map((term) => ({
-    id: term.tagFQN || '',
-    name: term.name || term.tagFQN || '',
-    displayName: term.displayName || term.name || term.tagFQN,
-    type: 'glossaryTerm',
-    fullyQualifiedName: term.tagFQN,
-    description: term.description,
-  }));
+  return convertTagLabelsToEntityReferences(terms);
 };
 
 export const convertEntityReferencesToTerms = (
   refs: EntityReference[]
 ): TagLabel[] => {
-  return refs.map((ref) => ({
-    tagFQN: ref.fullyQualifiedName || ref.id,
-    displayName: ref.displayName || ref.name,
-    name: ref.name,
-    source: TagSource.Glossary,
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    description: ref.description,
-  }));
+  return convertEntityReferencesToTagLabels(refs, TagSource.Glossary);
 };

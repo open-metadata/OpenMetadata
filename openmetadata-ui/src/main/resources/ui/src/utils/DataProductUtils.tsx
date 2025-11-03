@@ -39,6 +39,10 @@ import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
+  convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
+} from './EntityReferenceUtils';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getPrioritizedEditPermission } from './PermissionsUtils';
@@ -247,25 +251,11 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
 export const convertDataProductsToEntityReferences = (
   dataProducts: DataProduct[]
 ): EntityReference[] => {
-  return dataProducts.map((dp) => ({
-    id: dp.id || '',
-    name: dp.name || '',
-    displayName: dp.displayName || dp.name,
-    type: 'dataProduct',
-    fullyQualifiedName: dp.fullyQualifiedName,
-    description: dp.description,
-  }));
+  return convertDataProductsToEntityReferencesUtil(dataProducts);
 };
 
 export const convertEntityReferencesToDataProducts = (
   refs: EntityReference[]
 ): DataProduct[] => {
-  return refs.map((ref) => ({
-    id: ref.id,
-    name: ref.name,
-    displayName: ref.displayName || ref.name,
-    fullyQualifiedName: ref.fullyQualifiedName || ref.id,
-    description: ref.description,
-    type: 'dataProduct',
-  })) as DataProduct[];
+  return convertEntityReferencesToDataProductsUtil(refs);
 };

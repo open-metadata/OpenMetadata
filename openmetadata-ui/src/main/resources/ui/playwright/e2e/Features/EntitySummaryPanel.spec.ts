@@ -13,6 +13,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { ENTITY_TYPES } from '../../constant/entity';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { redirectToHomePage } from '../../utils/common';
 import { selectDataAssetFilter } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
@@ -45,11 +46,8 @@ async function verifyEntityDetailsInPanel(page: Page) {
   const entityLink = summaryPanel
     .locator('[data-testid="entity-link"]')
     .first();
-  const hasEntityLink = await entityLink.isVisible();
 
-  if (hasEntityLink) {
-    await expect(entityLink).toBeVisible();
-  }
+  await expect(entityLink).toBeVisible();
 }
 
 async function verifyTabNavigation(page: Page) {
@@ -65,7 +63,6 @@ async function verifyTabNavigation(page: Page) {
     const tabButton = page.locator(`[data-testid="entity-panel-tab-${tab}"]`);
     if (await tabButton.isVisible()) {
       await tabButton.click();
-      await page.waitForTimeout(500);
 
       await expect(tabButton).toHaveClass(/active/);
     }
@@ -82,16 +79,10 @@ test.describe('Entity Summary Panel', () => {
     test(`should display summary panel for ${entityType}`, async ({ page }) => {
       await openEntitySummaryPanel(page, entityType);
 
-      const hasSummaryPanel = await page
-        .locator('.entity-summary-panel-container')
-        .isVisible();
+      await page.locator('.entity-summary-panel-container').isVisible();
 
-      if (hasSummaryPanel) {
-        await verifyEntitySummaryPanelStructure(page);
-        await verifyEntityDetailsInPanel(page);
-      } else {
-        await expect(page.locator('body')).toBeVisible();
-      }
+      await verifyEntitySummaryPanelStructure(page);
+      await verifyEntityDetailsInPanel(page);
     });
   });
 

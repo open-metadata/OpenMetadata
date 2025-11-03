@@ -14,12 +14,11 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+  convertEntityReferencesToTagLabels,
+  convertTagLabelsToEntityReferences,
+} from '../../../utils/EntityReferenceUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { TagListItemRenderer } from '../../../utils/TagsUtils';
 import { EntitySelectableList } from '../EntitySelectableList/EntitySelectableList.component';
@@ -27,26 +26,11 @@ import { EntitySelectableListConfig } from '../EntitySelectableList/EntitySelect
 import { TagSelectableListProps } from './TagSelectableList.interface';
 
 const convertTagsToEntityReferences = (tags: TagLabel[]): EntityReference[] => {
-  return tags.map((tag) => ({
-    id: tag.tagFQN || '',
-    name: tag.name || tag.tagFQN || '',
-    displayName: tag.displayName || tag.name || tag.tagFQN,
-    type: 'tag',
-    fullyQualifiedName: tag.tagFQN,
-    description: tag.description,
-  }));
+  return convertTagLabelsToEntityReferences(tags);
 };
 
 const convertEntityReferencesToTags = (refs: EntityReference[]): TagLabel[] => {
-  return refs.map((ref) => ({
-    tagFQN: ref.fullyQualifiedName || ref.id,
-    displayName: ref.displayName || ref.name,
-    name: ref.name,
-    source: TagSource.Classification,
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    description: ref.description,
-  }));
+  return convertEntityReferencesToTagLabels(refs, TagSource.Classification);
 };
 
 const fetchTagOptions = async (searchText: string, after?: string) => {
