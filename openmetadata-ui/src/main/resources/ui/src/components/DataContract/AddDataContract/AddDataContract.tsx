@@ -311,9 +311,12 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SECURITY.toString(),
         children: (
           <ContractSecurityFormTab
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             initialValues={contract}
-            nextLabel={t('label.quality')}
-            prevLabel={t('label.semantic-plural')}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -330,8 +333,11 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.QUALITY.toString(),
         children: (
           <ContractQualityFormTab
-            nextLabel={t('label.sla')}
-            prevLabel={currentTabInfo.prevTabLabel}
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             selectedQuality={
               contract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
@@ -353,8 +359,12 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SLA.toString(),
         children: (
           <ContractSLAFormTab
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             initialValues={contract}
-            prevLabel={t('label.quality')}
             onChange={onFormChange}
             onPrev={onPrev}
           />

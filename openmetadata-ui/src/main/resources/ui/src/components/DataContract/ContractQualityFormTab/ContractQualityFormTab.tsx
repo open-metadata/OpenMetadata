@@ -50,11 +50,14 @@ export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
-  prevLabel?: string;
   onNext: () => void;
   initialValues?: Partial<DataContract>;
-  nextLabel?: string;
-}> = ({ selectedQuality, onChange, onNext, onPrev, nextLabel, prevLabel }) => {
+  buttonProps: {
+    nextLabel?: string;
+    prevLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({ selectedQuality, onChange, onNext, onPrev, buttonProps }) => {
   const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
@@ -269,13 +272,13 @@ export const ContractQualityFormTab: React.FC<{
           className="contract-prev-button"
           icon={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
-          {prevLabel ?? t('label.previous')}
+          {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
           type="primary"
           onClick={onNext}>
-          {nextLabel ?? t('label.next')}
+          {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>
       </div>
