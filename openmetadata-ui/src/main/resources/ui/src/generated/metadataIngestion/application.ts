@@ -191,6 +191,16 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
+    /**
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
@@ -1010,6 +1020,7 @@ export interface AppLimitsConfig {
  */
 export interface WorkflowConfig {
     config?:                  { [key: string]: any };
+    distributedExecution?:    DistributedExecution;
     loggerLevel?:             LogLevels;
     openMetadataServerConfig: OpenMetadataConnection;
     /**
@@ -1021,6 +1032,119 @@ export interface WorkflowConfig {
      * to be considered successful. Otherwise, the pipeline will be marked as failed.
      */
     successThreshold?: number;
+}
+
+/**
+ * Configuration for distributed execution using Argo Workflows or similar orchestrators.
+ */
+export interface DistributedExecution {
+    /**
+     * Number of entities to process per worker chunk
+     */
+    chunkSize?: number;
+    /**
+     * Enable distributed execution across multiple pods/containers
+     */
+    enabled?: boolean;
+    /**
+     * Docker image for worker pods
+     */
+    image?: string;
+    /**
+     * Kubernetes namespace for workflow execution
+     */
+    namespace?: string;
+    /**
+     * Orchestrator to use for distributed execution
+     */
+    orchestrator?: Orchestrator;
+    /**
+     * Maximum number of parallel worker pods
+     */
+    parallelism?: number;
+    /**
+     * Resource limits for worker pods
+     */
+    resourceLimits?: ResourceLimits;
+    /**
+     * Resource requests for worker pods
+     */
+    resourceRequests?: ResourceRequests;
+    /**
+     * Retry policy for failed entity processing
+     */
+    retryPolicy?: RetryPolicy;
+    /**
+     * Kubernetes service account for workflow pods
+     */
+    serviceAccount?: string;
+    /**
+     * Maximum workflow execution time in seconds
+     */
+    timeoutSeconds?: number;
+    /**
+     * Wait for workflow completion before returning
+     */
+    waitForCompletion?: boolean;
+}
+
+/**
+ * Orchestrator to use for distributed execution
+ */
+export enum Orchestrator {
+    Airflow = "airflow",
+    Argo = "argo",
+    Local = "local",
+}
+
+/**
+ * Resource limits for worker pods
+ */
+export interface ResourceLimits {
+    /**
+     * CPU limit (e.g., '1', '2')
+     */
+    cpu?: string;
+    /**
+     * Memory limit (e.g., '2Gi', '4Gi')
+     */
+    memory?: string;
+}
+
+/**
+ * Resource requests for worker pods
+ */
+export interface ResourceRequests {
+    /**
+     * CPU request (e.g., '500m', '1')
+     */
+    cpu?: string;
+    /**
+     * Memory request (e.g., '1Gi', '512Mi')
+     */
+    memory?: string;
+}
+
+/**
+ * Retry policy for failed entity processing
+ */
+export interface RetryPolicy {
+    /**
+     * Backoff multiplier for each retry
+     */
+    backoffFactor?: number;
+    /**
+     * Initial backoff duration in seconds
+     */
+    backoffSeconds?: number;
+    /**
+     * Maximum retry attempts per entity
+     */
+    maxAttempts?: number;
+    /**
+     * Maximum backoff duration in seconds
+     */
+    maxBackoffSeconds?: number;
 }
 
 /**
