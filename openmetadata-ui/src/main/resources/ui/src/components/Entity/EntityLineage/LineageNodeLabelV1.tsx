@@ -118,7 +118,7 @@ const EntityFooter = ({
   };
 
   return (
-    <Box className="m-t-xs flex justify-between entity-footer">
+    <Box className="flex justify-between entity-footer">
       <Button
         className={classNames(
           'columns-info-dropdown-label',
@@ -139,7 +139,7 @@ const LineageNodeLabelV1 = ({
   toggleColumnsList,
 }: LineageNodeLabelProps) => {
   return (
-    <Box className="custom-node-label-container m-0 p-x-md p-y-xs">
+    <Box className="custom-node-label-container m-0">
       <EntityLabel node={node} />
       <EntityFooter
         isColumnsListExpanded={isColumnsListExpanded}

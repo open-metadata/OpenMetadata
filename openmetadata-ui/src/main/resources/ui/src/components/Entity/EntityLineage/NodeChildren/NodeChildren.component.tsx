@@ -372,18 +372,16 @@ const NodeChildren = ({
         </div>
 
         {(isColumnLayerEnabled || isColumnsListExpanded) && (
-          <div className="m-t-md">
-            <div className="search-box">
-              <Input
-                placeholder={t('label.search-entity', {
-                  entity: childrenHeading,
-                })}
-                suffix={<SearchOutlined color={BORDER_COLOR} />}
-                value={searchValue}
-                onChange={handleSearchChange}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
+          <div className="search-box">
+            <Input
+              placeholder={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              suffix={<SearchOutlined color={BORDER_COLOR} />}
+              value={searchValue}
+              onChange={handleSearchChange}
+              onClick={(e) => e.stopPropagation()}
+            />
 
             {!isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
