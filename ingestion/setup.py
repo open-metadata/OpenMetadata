@@ -361,6 +361,10 @@ plugins: Dict[str, Set[str]] = {
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
+    # Install with: pip install 'openmetadata-ingestion[pandas]'
+    "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
+    "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
