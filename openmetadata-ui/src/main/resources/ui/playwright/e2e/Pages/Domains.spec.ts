@@ -1418,6 +1418,8 @@ test.describe('Domain Tree View Functionality', () => {
   let subDomain: SubDomain;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.create(apiContext);
     subDomain = new SubDomain(domain);
@@ -1426,6 +1428,8 @@ test.describe('Domain Tree View Functionality', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await subDomain.delete(apiContext);
     await domain.delete(apiContext);
@@ -1435,6 +1439,8 @@ test.describe('Domain Tree View Functionality', () => {
   test('should render the domain tree view with correct details', async ({
     page,
   }) => {
+    test.slow(true);
+
     await sidebarClick(page, SidebarItem.DOMAIN);
     await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
@@ -1449,6 +1455,13 @@ test.describe('Domain Tree View Functionality', () => {
         .locator('div')
         .nth(2)
     ).toBeVisible();
+
+    await page
+      .getByRole('treeitem', { name: domain.data.displayName })
+      .locator('div')
+      .nth(2)
+      .click();
+
     await expect(
       page
         .getByRole('treeitem', { name: subDomain.data.displayName })
