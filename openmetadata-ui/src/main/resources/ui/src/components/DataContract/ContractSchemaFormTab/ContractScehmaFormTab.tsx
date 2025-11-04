@@ -29,9 +29,10 @@ import {
   FqnPart,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column, Table } from '../../../generated/entity/data/table';
-import { Field } from '../../../generated/entity/data/topic';
+import { Field, Topic } from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -78,7 +79,7 @@ export const ContractSchemaFormTab: React.FC<{
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const { data: tableData } = useGenericContext();
+  const { data: entityData } = useGenericContext();
   const [allColumnsData, setAllColumnsData] = useState<Column[] | Field[]>([]);
   const [columnsData, setColumnsData] = useState<Column[] | Field[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>();
@@ -123,14 +124,45 @@ export const ContractSchemaFormTab: React.FC<{
 
   // Old Columns which are available in Contract but being Modified/Removed at Table Schema Level
   const oldRemovedColumns = useMemo(() => {
-    const columnsDataFQN = new Set(
-      (tableData as Table).columns.map((col) => col.fullyQualifiedName)
-    );
+    switch (entityType) {
+      case EntityType.TABLE:
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        const columnsDataFQN = new Set(
+          (entityData as Table).columns?.map((col) => col.fullyQualifiedName)
+        );
 
-    return selectedSchema.filter(
-      (col) => !columnsDataFQN.has(col.fullyQualifiedName)
-    );
-  }, [selectedSchema, tableData]);
+        return selectedSchema.filter(
+          (col) => !columnsDataFQN.has(col.fullyQualifiedName)
+        );
+      }
+
+      case EntityType.TOPIC: {
+        const schemaFieldsFQN = new Set(
+          (entityData as Topic).messageSchema?.schemaFields?.map(
+            (col) => col.fullyQualifiedName
+          )
+        );
+
+        return selectedSchema.filter(
+          (col) => !schemaFieldsFQN.has(col.fullyQualifiedName)
+        );
+      }
+      case EntityType.API_ENDPOINT: {
+        const schemaFieldsFQN = new Set(
+          (entityData as APIEndpoint).responseSchema?.schemaFields?.map(
+            (col) => col.fullyQualifiedName
+          )
+        );
+
+        return selectedSchema.filter(
+          (col) => !schemaFieldsFQN.has(col.fullyQualifiedName)
+        );
+      }
+
+      default:
+        return [];
+    }
+  }, [selectedSchema, entityData]);
 
   const fetchTableColumns = useCallback(
     async (page = 1) => {
@@ -150,7 +182,7 @@ export const ContractSchemaFormTab: React.FC<{
         );
         setAllColumnsData((prev) => {
           const combined = [
-            ...prev,
+            ...(prev as Column[]),
             ...selectedSchema,
             ...oldPrunedColumns,
             ...prunedColumns,
@@ -184,7 +216,24 @@ export const ContractSchemaFormTab: React.FC<{
           fields: TabSpecificField.TAGS,
         });
 
-        setAllColumnsData(pruneEmptyChildren(response.data) || []);
+        const prunedColumns = pruneEmptyChildren(response.data);
+        const oldPrunedColumns = pruneEmptyChildren(oldRemovedColumns);
+        // should render the oldPrunedColumns only on the first page, if there is pagination
+        setColumnsData(
+          offset === 0 ? [...oldPrunedColumns, ...prunedColumns] : prunedColumns
+        );
+
+        setAllColumnsData((prev) => {
+          const combined = [
+            ...(prev as Column[]),
+            ...selectedSchema,
+            ...oldPrunedColumns,
+            ...prunedColumns,
+          ];
+
+          return uniqBy(combined, 'fullyQualifiedName');
+        });
+
         handlePagingChange(response.paging);
       } catch (error) {
         setAllColumnsData([]);
@@ -205,7 +254,21 @@ export const ContractSchemaFormTab: React.FC<{
         fields: TabSpecificField.TAGS,
       });
 
-      setAllColumnsData(response.messageSchema?.schemaFields || []);
+      const schemaFields = response.messageSchema?.schemaFields ?? [];
+      setColumnsData([
+        ...(oldRemovedColumns as unknown as Field[]),
+        ...schemaFields,
+      ]);
+      setAllColumnsData((prev) => {
+        const combined = [
+          ...(prev as unknown as Field[]),
+          ...(selectedSchema as unknown as Field[]),
+          ...(oldRemovedColumns as unknown as Field[]),
+          ...schemaFields,
+        ];
+
+        return uniqBy(combined, 'fullyQualifiedName');
+      });
     } catch (error) {
       setAllColumnsData([]);
     }
@@ -218,7 +281,22 @@ export const ContractSchemaFormTab: React.FC<{
         fields: TabSpecificField.TAGS,
       });
 
-      setAllColumnsData(response.responseSchema?.schemaFields || []);
+      const schemaFields = response.responseSchema?.schemaFields || [];
+      setColumnsData([
+        ...(oldRemovedColumns as unknown as Field[]),
+        ...schemaFields,
+      ]);
+
+      setAllColumnsData((prev) => {
+        const combined = [
+          ...(prev as unknown as Field[]),
+          ...(selectedSchema as unknown as Field[]),
+          ...(oldRemovedColumns as unknown as Field[]),
+          ...schemaFields,
+        ];
+
+        return uniqBy(combined, 'fullyQualifiedName');
+      });
     } catch {
       setAllColumnsData([]);
     } finally {
@@ -422,11 +500,29 @@ export const ContractSchemaFormTab: React.FC<{
     setExpandedRowKeys(keys as string[]);
   }, []);
 
+  const schemaRecordDisabledEntity = useMemo(() => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return 5; // 5 since FQN+Column = 4+1
+      case EntityType.TOPIC:
+        return 3; // 3 since FQN+Column = 2+1
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return 4; // 4 since FQN+Column = 3+1
+      case EntityType.API_ENDPOINT:
+        return 5; // 5 since FQN+Column = 4+1
+
+      default:
+        return 3;
+    }
+  }, [entityType]);
+
   const tableCheckBoxProps = useCallback(
     (record: Column) => ({
-      disabled: Fqn.split(record.fullyQualifiedName ?? '').length !== 5, // 5 since FQN+Column = 4+1
+      disabled:
+        Fqn.split(record.fullyQualifiedName ?? '').length !==
+        schemaRecordDisabledEntity,
     }),
-    []
+    [schemaRecordDisabledEntity]
   );
 
   useEffect(() => {
