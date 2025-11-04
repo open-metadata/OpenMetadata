@@ -157,6 +157,7 @@ export type DataAssetsHeaderProps = {
   afterTriggerAction?: VoidFunction;
   isAutoPilotWorkflowStatusLoading?: boolean;
   onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
+  disableRunAgentsButtonMessage?: string;
 } & (
   | DataAssetTable
   | DataAssetTopic
