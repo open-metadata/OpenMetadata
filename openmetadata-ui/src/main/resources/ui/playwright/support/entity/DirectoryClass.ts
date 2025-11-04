@@ -58,6 +58,7 @@ export class DirectoryClass extends EntityClass {
   entity = {
     name: this.directoryName,
     displayName: this.directoryName,
+    description: 'description',
     service: this.service.name,
   };
 
@@ -88,6 +89,7 @@ export class DirectoryClass extends EntityClass {
       {
         data: {
           name: this.directoryName,
+          description: this.entity.description,
           service: this.serviceResponseData.fullyQualifiedName,
         },
       }

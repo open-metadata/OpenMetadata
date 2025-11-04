@@ -90,6 +90,7 @@ export class WorksheetClass extends EntityClass {
     name: this.worksheetName,
     displayName: this.worksheetName,
     service: this.service.name,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -136,6 +137,7 @@ export class WorksheetClass extends EntityClass {
           name: this.worksheetName,
           spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
           columns: this.worksheetColumns,
+          description: this.entity.description,
         },
       }
     );

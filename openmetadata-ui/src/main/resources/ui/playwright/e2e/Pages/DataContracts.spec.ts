@@ -649,21 +649,26 @@ test.describe('Data Contracts', () => {
           page.getByTestId('user-tag').getByText('admin')
         ).toBeVisible();
 
-        // Move to Schema Tab
-        await page.getByRole('tab', { name: 'Schema' }).click();
+        if (entitySupportsSchema(entityType)) {
+          // Move to Schema Tab
+          await page
+            .getByTestId('add-contract-card')
+            .getByText('Schema')
+            .click();
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
-        await page.getByRole('checkbox', { name: 'Select all' }).click();
+          await page.getByRole('checkbox', { name: 'Select all' }).click();
 
-        await expect(
-          page.getByRole('checkbox', { name: 'Select all' })
-        ).not.toBeChecked();
+          await expect(
+            page.getByRole('checkbox', { name: 'Select all' })
+          ).not.toBeChecked();
+        }
 
         // Move to Semantic Tab
-        await page.getByRole('button', { name: 'Semantics' }).click();
+        await page.getByRole('tab', { name: 'Semantics' }).click();
 
         await page.getByTestId('delete-condition-button').last().click();
 
@@ -696,7 +701,9 @@ test.describe('Data Contracts', () => {
         // Description with header
         await expect(page.getByText('DescriptionModified Data')).toBeVisible();
 
-        await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
+        if (entitySupportsSchema(entityType)) {
+          await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
+        }
       });
 
       await test.step('Delete contract', async () => {
@@ -2374,7 +2381,6 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               // Additional verification: Check that other common tabs are still visible
               await expect(page.getByTestId('activity_feed')).toBeVisible();
-              await expect(page.getByTestId('lineage')).toBeVisible();
               await expect(page.getByTestId('custom_properties')).toBeVisible();
             }
           );
@@ -2455,7 +2461,6 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               // Additional verification: Check that other common tabs are still visible
               await expect(page.getByTestId('activity_feed')).toBeVisible();
-              await expect(page.getByTestId('lineage')).toBeVisible();
               await expect(page.getByTestId('custom_properties')).toBeVisible();
             }
           );

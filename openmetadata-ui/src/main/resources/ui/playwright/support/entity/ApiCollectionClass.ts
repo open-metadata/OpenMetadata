@@ -41,6 +41,7 @@ export class ApiCollectionClass extends EntityClass {
   entity = {
     name: this.apiCollectionName,
     service: this.service.name,
+    description: 'description',
   };
 
   private apiEndpointName = `pw-api-endpoint-${uuid()}`;

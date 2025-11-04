@@ -142,8 +142,8 @@ const commonProps = {
   onNext: mockOnNext,
   onPrev: mockOnPrev,
   buttonProps: {
-    nextLabel: 'next',
-    prevLabel: 'previous',
+    nextLabel: 'Custom Next',
+    prevLabel: 'Custom Previous',
     isNextVisible: true,
   },
 };
@@ -387,13 +387,13 @@ describe('ContractQualityFormTab', () => {
     it('should display navigation buttons', () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      expect(screen.getByText('Previous')).toBeInTheDocument();
+      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });
 
     it('should call onPrev when previous button is clicked', () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const prevButton = screen.getByText('Previous');
+      const prevButton = screen.getByText('Custom Previous');
       fireEvent.click(prevButton);
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -449,7 +449,7 @@ describe('ContractQualityFormTab', () => {
 
       expect(addButton).toBeInTheDocument();
 
-      const prevButton = screen.getByText('Previous');
+      const prevButton = screen.getByText('Custom Previous');
 
       expect(prevButton).toBeInTheDocument();
     });

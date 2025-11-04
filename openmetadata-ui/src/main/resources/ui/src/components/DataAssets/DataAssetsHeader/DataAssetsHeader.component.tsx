@@ -157,9 +157,9 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const [dataContract, setDataContract] = useState<DataContract>();
 
-  const fetchDataContract = async (tableId: string) => {
+  const fetchDataContract = async (entityId: string) => {
     try {
-      const contract = await getContractByEntityId(tableId, entityType);
+      const contract = await getContractByEntityId(entityId, entityType);
       setDataContract(contract);
     } catch {
       // Do nothing

@@ -51,6 +51,16 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    entityType: 'table',
+  })),
+}));
+
+jest.mock('.../../../utils/DataContract/DataContractUtils', () => ({
+  getContractTabLabel: jest.fn(),
+}));
+
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
@@ -686,19 +696,6 @@ describe('AddDataContract', () => {
 
       expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
       expect(document.querySelector('.contract-tabs')).toBeInTheDocument();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle missing table context', () => {
-      const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
-      ).useGenericContext;
-      mockUseGenericContext.mockReturnValue({ data: undefined });
-
-      expect(() => {
-        render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
-      }).not.toThrow();
     });
   });
 

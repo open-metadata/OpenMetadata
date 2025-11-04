@@ -52,8 +52,8 @@ const commonProps = {
   onChange: mockOnChange,
   onPrev: mockOnPrev,
   buttonProps: {
-    nextLabel: 'next',
-    prevLabel: 'previous',
+    nextLabel: 'Custom Next',
+    prevLabel: 'Custom Previous',
     isNextVisible: true,
   },
 };
@@ -126,13 +126,13 @@ describe('ContractSLAFormTab', () => {
     it('should render Previous button', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      expect(screen.getByText('label.previous')).toBeInTheDocument();
+      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });
 
     it('should call onPrev when Previous button is clicked', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      const prevButton = screen.getByText('label.previous');
+      const prevButton = screen.getByText('Custom Previous');
       prevButton.click();
 
       expect(mockOnPrev).toHaveBeenCalled();
