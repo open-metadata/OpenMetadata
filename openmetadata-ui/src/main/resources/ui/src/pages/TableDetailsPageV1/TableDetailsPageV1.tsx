@@ -492,6 +492,7 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     viewAllPermission,
     viewBasicPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -533,6 +534,10 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions,
         Operation.ViewBasic
       ),
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewCustomProperties
+      ),
     }),
     [tablePermissions, deleted]
   );
@@ -555,6 +560,7 @@ const TableDetailsPageV1: React.FC = () => {
       viewSampleDataPermission,
       viewQueriesPermission,
       viewProfilerPermission,
+      viewCustomPropertiesPermission,
       editLineagePermission,
       fetchTableDetails,
       isViewTableType,

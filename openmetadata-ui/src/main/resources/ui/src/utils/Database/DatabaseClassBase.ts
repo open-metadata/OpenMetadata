@@ -37,6 +37,7 @@ export interface DatabaseDetailPageTabProps {
   activeTab: EntityTabs;
   database: Database;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   schemaInstanceCount: number;
   feedCount: FeedCounts;
   handleFeedCount: (data: FeedCounts) => void;

@@ -124,6 +124,7 @@ export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   schemaInstanceCount,
   feedCount,
   handleFeedCount,
@@ -187,7 +188,7 @@ export const getDatabasePageBaseTabs = ({
         <CustomPropertyTable<EntityType.DATABASE>
           entityType={EntityType.DATABASE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),
