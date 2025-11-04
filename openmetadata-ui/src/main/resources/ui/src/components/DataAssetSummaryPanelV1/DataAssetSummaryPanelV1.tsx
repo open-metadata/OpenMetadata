@@ -447,6 +447,7 @@ export const DataAssetSummaryPanelV1 = ({
             <div>
               <GlossaryTermsSection
                 entityId={dataAsset.id}
+                entityType={entityType}
                 hasPermission={entityPermissions?.EditGlossaryTerms}
                 key={`glossary-terms-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
@@ -525,6 +526,7 @@ export const DataAssetSummaryPanelV1 = ({
             <div>
               <GlossaryTermsSection
                 entityId={dataAsset.id}
+                entityType={entityType}
                 hasPermission={entityPermissions?.EditGlossaryTerms}
                 key={`glossary-terms-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0

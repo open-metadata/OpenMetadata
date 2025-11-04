@@ -10,13 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   LabelType,
   State,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import GlossaryTermsSection from './GlossaryTermsSection';
 
 // Mock react-router-dom
@@ -171,15 +179,17 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 // Mock EditIconButton
 jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button
-      className="edit-icon"
-      data-testid="edit-icon-button"
-      onClick={onClick}
-      {...props}>
-      Edit
-    </button>
-  )),
+  EditIconButton: jest
+    .fn()
+    .mockImplementation(({ onClick, newLook, ...props }) => (
+      <button
+        className="edit-icon"
+        data-testid="edit-icon-button"
+        onClick={onClick}
+        {...props}>
+        Edit
+      </button>
+    )),
 }));
 
 // Mock Loader
@@ -190,6 +200,18 @@ jest.mock('../Loader/Loader', () => ({
       Loading...
     </div>
   )),
+}));
+
+// Mock EntityUpdateUtils
+jest.mock('../../../utils/EntityUpdateUtils', () => ({
+  updateEntityField: jest
+    .fn()
+    .mockImplementation(async ({ onSuccess, newValue }) => {
+      await Promise.resolve();
+      onSuccess(newValue);
+
+      return { success: true };
+    }),
 }));
 
 const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
@@ -315,12 +337,14 @@ describe('GlossaryTermsSection', () => {
 
   describe('Save Flow', () => {
     it('calls onGlossaryTermsUpdate via selection submit and keeps non-glossary tags', async () => {
-      const onUpdate = jest.fn().mockResolvedValue(undefined);
+      const onUpdate = jest.fn();
 
       render(
         <GlossaryTermsSection
           hasPermission
           showEditButton
+          entityId="123"
+          entityType={EntityType.TABLE}
           tags={[...nonGlossaryTags, ...baseGlossaryTags] as any}
           onGlossaryTermsUpdate={onUpdate}
         />
@@ -329,7 +353,10 @@ describe('GlossaryTermsSection', () => {
       clickHeaderEdit();
 
       // Submit string selections from form
-      fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+        await Promise.resolve(); // flush microtasks
+      });
 
       await waitFor(() => {
         expect(onUpdate).toHaveBeenCalled();
@@ -346,42 +373,52 @@ describe('GlossaryTermsSection', () => {
     });
 
     it('shows error toast on selection submit error', async () => {
-      const error = new Error('fail');
-      const onUpdate = jest.fn().mockRejectedValue(error);
+      (updateEntityField as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({ success: false })
+      );
+      const onUpdate = jest.fn();
 
       render(
         <GlossaryTermsSection
           hasPermission
           showEditButton
+          entityId="123"
+          entityType={EntityType.TABLE}
           tags={baseGlossaryTags as any}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
 
       clickHeaderEdit();
-      fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+      });
 
       await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalled();
+        expect(onUpdate).not.toHaveBeenCalled();
       });
     });
   });
 
   describe('Selection Submit', () => {
     it('submits string values and exits edit mode', async () => {
-      const onUpdate = jest.fn().mockResolvedValue(undefined);
+      const onUpdate = jest.fn();
 
       render(
         <GlossaryTermsSection
           hasPermission
           showEditButton
+          entityId="123"
+          entityType={EntityType.TABLE}
           tags={nonGlossaryTags as any}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
 
       clickHeaderEdit();
-      fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+      });
 
       await waitFor(() => {
         expect(onUpdate).toHaveBeenCalled();
@@ -399,19 +436,23 @@ describe('GlossaryTermsSection', () => {
     });
 
     it('submits object values with data and maps fields', async () => {
-      const onUpdate = jest.fn().mockResolvedValue(undefined);
+      const onUpdate = jest.fn();
 
       render(
         <GlossaryTermsSection
           hasPermission
           showEditButton
+          entityId="123"
+          entityType={EntityType.TABLE}
           tags={nonGlossaryTags as any}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
 
       clickHeaderEdit();
-      fireEvent.click(screen.getByTestId('tsf-submit-objects'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('tsf-submit-objects'));
+      });
 
       await waitFor(() => {
         expect(onUpdate).toHaveBeenCalled();

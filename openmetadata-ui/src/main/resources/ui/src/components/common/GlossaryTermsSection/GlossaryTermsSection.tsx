@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -64,40 +64,55 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     startEditing();
   };
 
-  const handleGlossaryTermSelection = async (selectedTerms: TagLabel[]) => {
-    try {
-      if (!entityId || !entityType) {
-        return;
-      }
-      setIsLoading(true);
+  const handleGlossaryTermSelection = useCallback(
+    async (selectedTerms: TagLabel[]) => {
+      try {
+        if (!entityId || !entityType) {
+          return;
+        }
+        // Update the local state for the selectable list with the new selection
+        setEditingGlossaryTerms(selectedTerms);
 
-      const nonGlossaryTags = displayTags.filter(
-        (tag) => tag.source !== TagSource.Glossary
-      );
-      const updatedTags = [...nonGlossaryTags, ...selectedTerms];
+        setIsLoading(true);
 
-      const result = await updateEntityField({
-        entityId,
-        entityType: entityType as EntityType,
-        fieldName: 'tags',
-        currentValue: displayTags,
-        newValue: updatedTags,
-        entityLabel: t('label.glossary-term-plural'),
-        onSuccess: (newTags: TagLabel[]) => {
-          setDisplayTags(newTags);
-          onGlossaryTermsUpdate?.(newTags);
-          completeEditing();
-        },
-        t,
-      });
+        const nonGlossaryTags = displayTags.filter(
+          (tag) => tag.source !== TagSource.Glossary
+        );
+        const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
-      if (!result.success) {
+        const result = await updateEntityField({
+          entityId,
+          entityType: entityType as EntityType,
+          fieldName: 'tags',
+          currentValue: displayTags,
+          newValue: updatedTags,
+          entityLabel: t('label.glossary-term-plural'),
+          onSuccess: (newTags: TagLabel[]) => {
+            setDisplayTags(newTags);
+            onGlossaryTermsUpdate?.(newTags);
+            completeEditing();
+          },
+          t,
+        });
+
+        if (!result.success) {
+          setIsLoading(false);
+        }
+      } catch (error) {
         setIsLoading(false);
       }
-    } catch (error) {
-      setIsLoading(false);
-    }
-  };
+    },
+    [
+      entityId,
+      entityType,
+      displayTags,
+      onGlossaryTermsUpdate,
+      t,
+      setIsLoading,
+      setDisplayTags,
+      completeEditing,
+    ]
+  );
 
   const handlePopoverOpenChange = (open: boolean) => {
     setPopoverOpen(open);
