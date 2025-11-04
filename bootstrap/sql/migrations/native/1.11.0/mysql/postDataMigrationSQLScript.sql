@@ -67,3 +67,7 @@ SET json = JSON_SET(
     '$.appConfiguration.profileDataRetentionPeriod', 1440
 )
 WHERE JSON_EXTRACT(json, '$.name') = 'DataRetentionApplication';
+
+UPDATE notification_template_entity
+SET json = JSON_REMOVE(json, '$.defaultTemplateChecksum')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.defaultTemplateChecksum');

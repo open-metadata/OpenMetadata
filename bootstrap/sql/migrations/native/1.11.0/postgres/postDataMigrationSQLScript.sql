@@ -68,3 +68,6 @@ SET json = jsonb_set(
     '1440'
 )
 WHERE json->>'name' = 'DataRetentionApplication';
+
+UPDATE notification_template_entity
+SET json = json::jsonb - 'defaultTemplateChecksum';
