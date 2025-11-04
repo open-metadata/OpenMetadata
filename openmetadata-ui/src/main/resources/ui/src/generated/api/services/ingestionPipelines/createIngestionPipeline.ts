@@ -1026,6 +1026,16 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
+    /**
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
@@ -2851,7 +2861,7 @@ export interface ConfigObject {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -2939,8 +2949,8 @@ export interface ConfigObject {
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -3524,6 +3534,18 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
@@ -3538,7 +3560,7 @@ export interface ConfigObject {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
