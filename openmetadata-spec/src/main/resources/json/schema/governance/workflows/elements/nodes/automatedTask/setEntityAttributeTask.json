@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/setEntityAttributeTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SetEntityAttributeTaskDefinition",
   "description": "Sets any Entity attribute field to the configured value.",
   "javaInterfaces": [

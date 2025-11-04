@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/searchServiceMetadataPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SearchServiceMetadataPipeline",
   "description": "SearchService Metadata Pipeline Configuration.",
   "type": "object",

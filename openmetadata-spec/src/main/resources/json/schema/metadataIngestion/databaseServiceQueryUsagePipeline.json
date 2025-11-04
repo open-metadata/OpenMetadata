@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabaseServiceQueryUsagePipeline",
   "description": "DatabaseService Query Usage Pipeline Configuration.",
   "type": "object",
