@@ -76,7 +76,7 @@ class CardinalityDistribution(HybridMetric):
             logger.debug(
                 f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
             )
-            return None
+            return {"allValuesUnique": True}
 
         col = column(self.col.name, self.col.type)
         threshold = self.threshold_percentage * total_count
@@ -170,7 +170,7 @@ class CardinalityDistribution(HybridMetric):
             logger.debug(
                 f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
             )
-            return None
+            return {"allValuesUnique": True}
 
         try:
             if dfs is None:

@@ -13,9 +13,9 @@
 Validator Mixin for SQA tests cases
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, case, func, select, text
+from sqlalchemy import Column, Table, case, func, inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
@@ -31,6 +31,7 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_impact_score_expression,
 )
+from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
@@ -61,7 +62,30 @@ DIMENSION_GROUP_LABEL = "dimension_group"
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
-    def get_column_name(self, entity_link: str, columns: List) -> Column:
+    def get_column(
+        self: HasValidatorContext, column_name: Optional[str] = None
+    ) -> Column:
+        """Get column object for the given column name
+
+        Args:
+            column_name: Optional column name. If None, returns the main validation column.
+
+        Returns:
+            Column: Column object
+        """
+        table: Table = cast(Table, inspect(cast(QueryRunner, self.runner).dataset))
+        if column_name is None:
+            return SQAValidatorMixin.get_column_from_list(
+                self.test_case.entityLink.root,
+                table.c,
+            )
+        return SQAValidatorMixin.get_column_from_list(
+            column_name,
+            table.c,
+        )
+
+    @staticmethod
+    def get_column_from_list(entity_link: str, columns: List) -> Column:
         """Given a column name get the column object
 
         Args:
