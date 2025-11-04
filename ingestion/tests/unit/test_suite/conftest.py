@@ -152,6 +152,66 @@ def create_sqlite_table():
                 lon=2.2518325,
                 is_active=None,
             ),
+            User(
+                name="Alice",
+                first_name="Al",
+                fullname="Alice Smith",
+                nickname="Ally",
+                age=30,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
+            ),
+            User(
+                name="Bob",
+                first_name="Bo",
+                fullname="Bob Johnson",
+                nickname="Bobby",
+                age=31,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
+            ),
+            User(
+                name="Charlie",
+                first_name="Ch",
+                fullname="Charlie Brown",
+                nickname="Chuck",
+                age=30,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=False,
+            ),
+            User(
+                name="Diana",
+                first_name="Di",
+                fullname="Diana Prince",
+                nickname="Di",
+                age=31,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
+            ),
+            User(
+                name="Eve",
+                first_name="Ev",
+                fullname="Eve Wilson",
+                nickname="Evie",
+                age=None,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=False,
+            ),
         ]
         session.add_all(data)
         session.commit()
@@ -609,7 +669,7 @@ def test_case_table_custom_sql_query_with_threshold_success():
             ),
             TestCaseParameterValue(
                 name="threshold",
-                value="20",
+                value="50",
             ),
         ],
     )  # type: ignore
@@ -674,8 +734,8 @@ def test_case_table_row_count_to_be_between():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(name="minValue", value="10"),
-            TestCaseParameterValue(name="maxValue", value="35"),
+            TestCaseParameterValue(name="minValue", value="40"),
+            TestCaseParameterValue(name="maxValue", value="90"),
         ],
     )  # type: ignore
 
@@ -870,7 +930,7 @@ def test_case_column_value_mean_to_be_between_dimensional():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
-            TestCaseParameterValue(name="maxValueForMeanInCol", value="10"),
+            TestCaseParameterValue(name="maxValueForMeanInCol", value="15"),
         ],
         dimensionColumns=["name"],
         computePassedFailedRowCount=True,
@@ -886,6 +946,68 @@ def test_case_column_value_mean_to_be_between_dimensional_without_max():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="minValueForMeanInCol", value="31"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_max_to_be_between_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMaxInCol", value="20"),
+            TestCaseParameterValue(name="maxValueForMaxInCol", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_max_to_be_between_dimensional_without_max():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMaxInCol", value="31"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_min_to_be_between_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMinInCol", value="20"),
+            TestCaseParameterValue(name="maxValueForMinInCol", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_min_to_be_between_dimensional_without_min():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="maxValueForMinInCol", value="30"),
         ],
         dimensionColumns=["name"],
         computePassedFailedRowCount=True,

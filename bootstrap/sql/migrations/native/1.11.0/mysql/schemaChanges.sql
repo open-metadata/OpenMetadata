@@ -68,6 +68,18 @@ ALTER TABLE user_entity ADD COLUMN impersonatedBy VARCHAR(256) GENERATED ALWAYS 
 ALTER TABLE workflow_definition_entity ADD COLUMN impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.impersonatedBy'))) VIRTUAL;
 ALTER TABLE worksheet_entity ADD COLUMN impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.impersonatedBy'))) VIRTUAL;
 
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    '$.testPlatforms',
+    CAST(REPLACE(
+        JSON_EXTRACT(json, '$.testPlatforms'),
+        '"DBT"',
+        '"dbt"'
+    ) AS JSON)
+)
+WHERE JSON_CONTAINS(json, '"DBT"', '$.testPlatforms');
+
 -- Performance optimization for tag_usage prefix queries
 ALTER TABLE tag_usage
 ADD COLUMN targetfqnhash_lower VARCHAR(768) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci

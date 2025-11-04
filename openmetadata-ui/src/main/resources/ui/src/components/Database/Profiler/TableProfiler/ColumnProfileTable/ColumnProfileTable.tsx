@@ -225,7 +225,7 @@ const ColumnProfileTable = () => {
         title: t('label.success'),
         dataIndex: 'success',
         key: 'success',
-        width: 100,
+        width: 110,
         render: (_, record) => {
           const testCounts =
             testCaseSummary?.[
@@ -434,7 +434,7 @@ const ColumnProfileTable = () => {
           }}
           pagination={false}
           rowKey="name"
-          scroll={{ x: true }}
+          scroll={{ x: true, y: 500 }}
           searchProps={searchProps}
         />
       ) : (

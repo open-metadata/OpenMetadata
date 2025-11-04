@@ -1285,15 +1285,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
-  const disableRunAgentsButton = useMemo(() => {
-    if (isWorkflowStatusLoading) {
-      return true;
-    }
+  const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
+    useMemo(() => {
+      let disableRunAgentsButton = false;
+      let disableRunAgentsButtonMessage: string | undefined;
 
-    return isEmpty(workflowStatesData?.mainInstanceState.status)
-      ? false
-      : workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running;
-  }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
+      if (isWorkflowStatusLoading) {
+        disableRunAgentsButton = true;
+      }
+
+      if (
+        workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+      ) {
+        disableRunAgentsButton = true;
+        disableRunAgentsButtonMessage = t('message.auto-pilot-already-running');
+      }
+
+      return {
+        disableRunAgentsButton,
+        disableRunAgentsButtonMessage,
+      };
+    }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
@@ -1723,6 +1735,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               afterTriggerAction={afterAutoPilotAppTrigger}
               dataAsset={serviceDetails}
               disableRunAgentsButton={disableRunAgentsButton}
+              disableRunAgentsButtonMessage={disableRunAgentsButtonMessage}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
               isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
