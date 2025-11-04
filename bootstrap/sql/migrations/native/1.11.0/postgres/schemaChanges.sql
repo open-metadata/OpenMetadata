@@ -69,6 +69,18 @@ ALTER TABLE user_entity ADD COLUMN IF NOT EXISTS impersonatedBy VARCHAR(256) GEN
 ALTER TABLE workflow_definition_entity ADD COLUMN IF NOT EXISTS impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'impersonatedBy') STORED;
 ALTER TABLE worksheet_entity ADD COLUMN IF NOT EXISTS impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'impersonatedBy') STORED;
 
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{testPlatforms}',
+    REPLACE(
+        (json::jsonb -> 'testPlatforms')::text,
+        '"DBT"',
+        '"dbt"'
+    )::jsonb
+)::json
+WHERE json::jsonb -> 'testPlatforms' @> '"DBT"'::jsonb;
+
 -- Performance optimization for tag_usage prefix queries
 ALTER TABLE tag_usage
 ADD COLUMN IF NOT EXISTS targetfqnhash_lower text
