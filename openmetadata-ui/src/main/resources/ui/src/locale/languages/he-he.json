@@ -1935,6 +1935,7 @@
     "alerts-source-description": "Specify the source that will activate the alert.",
     "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "כל התרשימים ממופים עם KPIs קיימים.",
+    "all-values-unique-no-distribution-available": "כל הערכים בעמודה זו הם ייחודיים. אין חלוקה זמינה.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "כבר משתמש?",
     "and-followed-owned-by-name": "והצוות שאתה עוקב אחריהם שייכים ל-{{userName}}",

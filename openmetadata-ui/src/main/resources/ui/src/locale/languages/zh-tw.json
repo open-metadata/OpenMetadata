@@ -1935,6 +1935,7 @@
     "alerts-source-description": "指定將啟動警示的來源。",
     "alerts-trigger-description": "選擇重要的觸發事件，如「結構變更」或「測試失敗」，以產生警示。",
     "all-charts-are-mapped": "所有圖表都已對應到現有的 KPI。",
+    "all-values-unique-no-distribution-available": "此欄中的所有值都是唯一的。沒有可用的分佈。",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "已經是使用者？",
     "and-followed-owned-by-name": "且您追蹤的團隊由 {{userName}} 擁有",
