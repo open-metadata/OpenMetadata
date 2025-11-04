@@ -66,21 +66,34 @@ export default defineConfig({
       testMatch: '**/*.setup.ts',
     },
     {
+      name: 'DataAssetRulesEnabled',
+      testMatch: '**/DataAssetRulesEnabled.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: false,
+    },
+    {
+      name: 'DataAssetRulesDisabled',
+      testMatch: '**/DataAssetRulesDisabled.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['DataAssetRulesEnabled'],
+      fullyParallel: false,
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
+      dependencies: ['DataAssetRulesDisabled'],
       fullyParallel: true,
       grepInvert: /data-insight/,
       testIgnore: [
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
-        '**/DataAssetRulesDisabled.spec.ts', // exclude both from chromium
+        '**/DataAssetRulesDisabled.spec.ts',
       ],
     },
     {
       name: 'data-insight-application',
-      dependencies: ['setup'],
+      dependencies: ['DataAssetRulesDisabled'],
       testMatch: '**/dataInsightApp.ts',
     },
     {
@@ -89,19 +102,6 @@ export default defineConfig({
       dependencies: ['data-insight-application'],
       fullyParallel: true,
       grep: /data-insight/,
-    },
-    {
-      name: 'DataAssetRulesEnabled',
-      testMatch: '**/DataAssetRulesEnabled.spec.ts',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['chromium', 'Data Insight'],
-      fullyParallel: false,
-    },
-    {
-      name: 'DataAssetRulesDisabled',
-      testMatch: '**/DataAssetRulesDisabled.spec.ts',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['DataAssetRulesEnabled'],
     },
   ],
 
