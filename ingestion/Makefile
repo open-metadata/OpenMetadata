@@ -10,7 +10,7 @@ else
 endif
 
 PYTEST_UNIT_WORKERS ?= auto
-PYTEST_INTEGRATION_WORKERS ?= 2
+PYTEST_INTEGRATION_WORKERS ?= auto
 
 # Use uv if available, otherwise fall back to pip
 UV := $(shell command -v uv 2> /dev/null)
@@ -113,7 +113,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_UNIT_WORKERS) -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_UNIT_WORKERS) --dist=loadfile -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
 
 # FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
 # and might be omitted in unless the we are developing them. This only must be used for local development!
@@ -131,7 +131,7 @@ unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Onl
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
 	# Run parallel-safe tests first, then single-threaded tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist=load -c $(INGESTION_DIR)/pyproject.toml -m "not single_threaded" $(INGESTION_DIR)/tests/integration; \
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist=loadfile -c $(INGESTION_DIR)/pyproject.toml -m "not single_threaded" $(INGESTION_DIR)/tests/integration; \
 	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml -m "single_threaded" --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
 
 .PHONY: run_python_tests
