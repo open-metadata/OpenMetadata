@@ -1,6 +1,6 @@
-package org.openmetadata.service.migration.postgres.v1101;
+package org.openmetadata.service.migration.postgres.v1105;
 
-import static org.openmetadata.service.migration.utils.v1101.MigrationUtil.updateGlossaryTermApprovalWorkflow;
+import static org.openmetadata.service.migration.utils.v1105.MigrationUtil.updateGlossaryTermApprovalWorkflow;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;

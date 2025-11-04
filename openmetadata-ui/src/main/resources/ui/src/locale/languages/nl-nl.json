@@ -1935,6 +1935,7 @@
     "alerts-source-description": "Specify the source that will activate the alert.",
     "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "Alle charts zijn gekoppeld aan bestaande KPI's.",
+    "all-values-unique-no-distribution-available": "Alle waarden in deze kolom zijn uniek. Geen distributie beschikbaar.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Al een gebruiker?",
     "and-followed-owned-by-name": "en het team dat je volgt is eigendom van {{userName}}",

@@ -1935,6 +1935,7 @@
     "alerts-source-description": "منبعی را که باعث فعال شدن اعلان می‌شود مشخص کنید.",
     "alerts-trigger-description": "رویدادهای مهمی مانند 'تغییر شِما' یا 'خطای آزمون' را برای تولید اعلان انتخاب کنید.",
     "all-charts-are-mapped": "تمام نمودارها با KPI‌های موجود مطابقت دارند.",
+    "all-values-unique-no-distribution-available": "تمام مقادیر در این ستون منحصر به فرد هستند. توزیع موجود نیست.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "قبلاً کاربر هستید؟",
     "and-followed-owned-by-name": "و تیمی که دنبال می‌کنید متعلق به {{userName}} است.",
