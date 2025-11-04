@@ -69,11 +69,13 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       }
 
       // Add custom properties tab
-      items.push({
-        key: EntityRightPanelTab.CUSTOM_PROPERTIES,
-        icon: <CustomPropertiesIcon height={16} width={16} />,
-        label: t('label.custom-property'),
-      });
+      if (entityType !== EntityType.KNOWLEDGE_PAGE) {
+        items.push({
+          key: EntityRightPanelTab.CUSTOM_PROPERTIES,
+          icon: <CustomPropertiesIcon height={16} width={16} />,
+          label: t('label.custom-property'),
+        });
+      }
 
       return items;
     };
