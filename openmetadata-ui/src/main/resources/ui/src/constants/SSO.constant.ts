@@ -550,6 +550,7 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   okta: { 'ui:widget': 'hidden', 'ui:hideError': true },
   ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
   saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'custom-oidc': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Provider-specific field removal mapping for cleanup
@@ -616,6 +617,7 @@ export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
   'okta',
   'ldap',
   'saml',
+  'custom-oidc',
 ];
 
 // Main SSO UI Schema generator
