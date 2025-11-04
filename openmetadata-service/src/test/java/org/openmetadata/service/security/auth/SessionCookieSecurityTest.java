@@ -30,10 +30,10 @@ public class SessionCookieSecurityTest extends OpenMetadataApplicationTest {
 
   @Test
   void testSessionCookieSecurityFlags() throws Exception {
-    // Test 1: Default configuration (forceSecureSessionCookie should be false)
+    // Test 1: Default authentication configuration (forceSecureSessionCookie should be false)
     testSessionCookieFlags(false);
 
-    // Test 2: With forceSecureSessionCookie enabled via system property
+    // Test 2: With forceSecureSessionCookie enabled via system property in authentication config
     System.setProperty("FORCE_SECURE_SESSION_COOKIE", "true");
     testSessionCookieFlags(true);
 
@@ -67,16 +67,16 @@ public class SessionCookieSecurityTest extends OpenMetadataApplicationTest {
             setCookieHeader.contains("; HttpOnly"),
             "Cookie should always have HttpOnly flag for security");
 
-        // Check Secure flag based on configuration
+        // Check Secure flag based on authentication configuration
         if (expectSecureFlag) {
           assertTrue(
               setCookieHeader.contains("; Secure"),
-              "Cookie should have Secure flag when forceSecureSessionCookie is true");
+              "Cookie should have Secure flag when forceSecureSessionCookie is true in authentication config");
         } else {
           // With HTTP and forceSecure=false, should not have Secure flag
           assertFalse(
               setCookieHeader.contains("; Secure"),
-              "Cookie should NOT have Secure flag when using HTTP and forceSecureSessionCookie is false");
+              "Cookie should NOT have Secure flag when using HTTP and forceSecureSessionCookie is false in authentication config");
         }
       } else {
         LOG.info(

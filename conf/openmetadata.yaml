@@ -11,12 +11,6 @@
 
 clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
-# Session Configuration
-sessionConfiguration:
-  # Force secure flag on session cookies even when not using HTTPS directly.
-  # Enable this when running behind a proxy/load balancer that handles SSL termination.
-  # Default: false (secure flag only set when HTTPS is detected)
-  forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
 
 swagger:
   resourcePackage: org.openmetadata.service.resources
@@ -295,6 +289,10 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  # Force secure flag on session cookies even when not using HTTPS directly.
+  # Enable this when running behind a proxy/load balancer that handles SSL termination.
+  # Default: false (secure flag only set when HTTPS is detected)
+  forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-true}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.

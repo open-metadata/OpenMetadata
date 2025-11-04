@@ -394,7 +394,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
     cookieConfig.setSecure(
-        isHttps(config) || config.getSessionConfiguration().getForceSecureSessionCookie());
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
