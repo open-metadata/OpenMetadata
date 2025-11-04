@@ -21,14 +21,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -312,6 +315,7 @@ public class AppScheduler {
               new JobKey(
                   String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
       boolean isJobRunning = false;
+      JobExecutionContext runningJobContext = null;
       // Check if the job is already running
       List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
       LOG.info("Currently executing jobs count: {}", currentJobs.size());
@@ -322,6 +326,7 @@ public class AppScheduler {
             || (jobDetailOnDemand != null
                 && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
           isJobRunning = true;
+          runningJobContext = context;
           LOG.info("Found matching job for application: {}", application.getName());
         }
       }
@@ -333,7 +338,13 @@ public class AppScheduler {
             jobDetailOnDemand != null ? jobDetailOnDemand.getKey() : "null");
         throw new UnhandledServerException("There is no job running for the application.");
       }
-      // Try to interrupt the running job first
+
+      // Update status to STOPPED and broadcast before interrupting
+      if (runningJobContext != null) {
+        updateAndBroadcastStoppedStatus(runningJobContext);
+      }
+
+      // Try to interrupt the running job
       boolean interruptSuccessful = false;
 
       // Check which job is actually running and interrupt it
@@ -381,5 +392,49 @@ public class AppScheduler {
     } catch (SchedulerException ex) {
       LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
     }
+  }
+
+  private void updateAndBroadcastStoppedStatus(JobExecutionContext context) {
+    try {
+      JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+      OmAppJobListener listener = getJobListener(context);
+
+      // Get the current run record
+      AppRunRecord runRecord = listener.getAppRunRecordForJob(context);
+
+      if (runRecord != null) {
+        // Update status to STOPPED
+        runRecord.withStatus(AppRunRecord.Status.STOPPED);
+        runRecord.withEndTime(System.currentTimeMillis());
+
+        // Get WebSocket channel name
+        String webSocketChannelName =
+            (String) dataMap.get(OmAppJobListener.WEBSOCKET_STATUS_CHANNEL);
+
+        // Broadcast via WebSocket
+        if (!CommonUtil.nullOrEmpty(webSocketChannelName)
+            && WebSocketManager.getInstance() != null) {
+          LOG.info(
+              "Broadcasting STOPPED status for job via WebSocket channel: {}",
+              webSocketChannelName);
+          WebSocketManager.getInstance()
+              .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
+        }
+
+        // Update database
+        listener.pushApplicationStatusUpdates(context, runRecord, true);
+        LOG.info("Updated job status to STOPPED and broadcasted via WebSocket");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to update and broadcast stopped status", e);
+    }
+  }
+
+  private OmAppJobListener getJobListener(JobExecutionContext context) throws SchedulerException {
+    return (OmAppJobListener)
+        context
+            .getScheduler()
+            .getListenerManager()
+            .getJobListener(OmAppJobListener.JOB_LISTENER_NAME);
   }
 }
