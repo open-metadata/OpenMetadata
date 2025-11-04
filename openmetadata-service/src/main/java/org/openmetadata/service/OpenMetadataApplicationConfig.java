@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.configuration.SessionConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -157,11 +158,21 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("cache")
   private org.openmetadata.service.cache.CacheConfig cacheConfig;
 
+  @JsonProperty("sessionConfiguration")
+  private org.openmetadata.schema.configuration.SessionConfiguration sessionConfiguration;
+
   public org.openmetadata.service.cache.CacheConfig getCacheConfig() {
     if (cacheConfig == null) {
       cacheConfig = new org.openmetadata.service.cache.CacheConfig();
     }
     return cacheConfig;
+  }
+
+  public SessionConfiguration getSessionConfiguration() {
+    if (sessionConfiguration == null) {
+      sessionConfiguration = new SessionConfiguration();
+    }
+    return sessionConfiguration;
   }
 
   @Override
