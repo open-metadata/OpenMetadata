@@ -46,6 +46,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     WorkSpaceScanResponse,
 )
 from metadata.utils.filters import validate_regex
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -54,44 +55,6 @@ GETGROUPS_DEFAULT_PARAMS = {"$top": "1", "$skip": "0"}
 API_RESPONSE_MESSAGE_KEY = "message"
 AUTH_TOKEN_MAX_RETRIES = 5
 AUTH_TOKEN_RETRY_WAIT = 120
-
-
-def get_api_url_from_dashboard_url(dashboard_url: str) -> str:
-    """
-    Derive the PowerBI API URL from the dashboard URL.
-    
-    This supports different PowerBI environments:
-    - Public Cloud: app.powerbi.com -> api.powerbi.com
-    - GCC: app.powerbigov.us -> api.powerbigov.us
-    - GCC High: app.high.powerbigov.us -> api.high.powerbigov.us
-    - DoD: app.mil.powerbigov.us -> api.mil.powerbigov.us
-    - China: app.powerbi.cn -> api.powerbi.cn
-    
-    Args:
-        dashboard_url: The dashboard URL from hostPort config
-        
-    Returns:
-        The API URL for the PowerBI environment
-    """
-    # Remove protocol and trailing slashes
-    url = dashboard_url.replace("https://", "").replace("http://", "")
-    url = url.rstrip("/")
-    
-    # Remove any path components (e.g., /home/)
-    if "/" in url:
-        url = url.split("/")[0]
-    
-    # Replace 'app.' with 'api.' to get the API URL
-    if url.startswith("app."):
-        api_domain = url.replace("app.", "api.", 1)
-    else:
-        # If no 'app.' prefix, assume it's already the correct format or default
-        # Fall back to standard API URL
-        api_domain = "api.powerbi.com"
-    
-    return f"https://{api_domain}"
-
-
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
 class PowerBiApiClient:
@@ -111,10 +74,8 @@ class PowerBiApiClient:
             client_credential=self.config.clientSecret.get_secret_value(),
             authority=self.config.authorityURI + self.config.tenantId,
         )
-        # Derive API URL from dashboard URL (hostPort) to support different environments
-        api_url = get_api_url_from_dashboard_url(self.config.hostPort)
         client_config = ClientConfig(
-            base_url=api_url,
+            base_url=clean_uri(self.config.apiURL),
             api_version="v1.0",
             auth_token=self.get_auth_token,
             auth_header="Authorization",

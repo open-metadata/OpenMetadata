@@ -77,16 +77,19 @@ To get the tenant ID, follow these steps:
 $$
 
 $$section
+### API URL $(id="apiURL")
+
+API URL to call powerbi REST Apis to extract metadata.
+
+If you don't specify a URL for the REST Apis, we'll use the default value of `https://api.powerbi.com`.
+$$
+
+$$section
 ### Authority URI $(id="authorityURI")
 
 To identify a token authority, you can provide a URL that points to the authority in question.
 
 If you don't specify a URL for the token authority, we'll use the default value of `https://login.microsoftonline.com/`.
-
-For sovereign cloud environments, use the appropriate authority URI:
-- **GCC High**: `https://login.microsoftonline.us/`
-- **DoD**: `https://login.microsoftonline.eaglex.ic.gov/`
-- **China**: `https://login.chinacloudapi.cn/`
 $$
 
 $$section
@@ -95,24 +98,13 @@ $$section
 To connect with your Power BI instance, you'll need to provide the host URL. If you're using an on-premise installation of Power BI, this will be the domain name associated with your instance.
 
 If you don't specify a host URL, we'll use the default value of `https://app.powerbi.com` to connect with your Power BI instance.
-
-For sovereign cloud environments, use the appropriate dashboard URL:
-- **GCC (Government Community Cloud)**: `https://app.powerbigov.us`
-- **GCC High**: `https://app.high.powerbigov.us`
-- **DoD (Department of Defense)**: `https://app.mil.powerbigov.us`
-- **China (21Vianet)**: `https://app.powerbi.cn`
-
-The API endpoint will be automatically derived from the dashboard URL.
 $$
 
 $$section
 ### Scope $(id="scope")
 
 To let OM use the Power BI APIs using your Azure AD app, you'll need to add the following scopes:
-- **Public Cloud**: `https://analysis.windows.net/powerbi/api/.default`
-- **GCC High**: `https://analysis.usgovcloudapi.net/powerbi/api/.default`
-- **DoD**: `https://analysis.cloudapi.eaglex.ic.gov/powerbi/api/.default`
-- **China**: `https://analysis.chinacloudapi.cn/powerbi/api/.default`
+- `https://analysis.windows.net/powerbi/api/.default`
 
 Instructions for adding these scopes to your app can be found by following this link: https://analysis.windows.net/powerbi/api/.default.
 $$
