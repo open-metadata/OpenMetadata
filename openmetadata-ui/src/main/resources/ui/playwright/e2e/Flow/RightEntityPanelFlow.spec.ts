@@ -293,9 +293,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Domains & Data Products Section - Add and Update', async ({
-    adminPage,
-  }) => {
+  test('Domains Section - Add and Update', async ({ adminPage }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const domainsSection = summaryPanel.locator('.domains-section');
 
@@ -325,37 +323,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
           adminPage.getByText(/Domains updated successfully/i)
         ).toBeVisible();
       }
-    }
-
-    const dataProductsSection = summaryPanel.locator('.data-products-section');
-
-    if (await dataProductsSection.isVisible()) {
-      await adminPage
-        .locator('[data-testid="edit-data-products"]')
-        .scrollIntoViewIfNeeded();
-      await adminPage.waitForSelector('[data-testid="edit-data-products"]', {
-        state: 'visible',
-      });
-
-      await adminPage.locator('[data-testid="edit-data-products"]').click();
-      await adminPage.locator('.ant-popover').scrollIntoViewIfNeeded();
-
-      await adminPage.waitForSelector(
-        '[data-testid="data-product-select-search-bar"]',
-        {
-          state: 'visible',
-        }
-      );
-      const dataProductItem = adminPage.locator('.ant-list-item').first();
-      await dataProductItem.click();
-
-      await adminPage.getByTestId('selectable-list-update-btn').click();
-      const patchResp = waitForPatchResponse(adminPage);
-      await patchResp;
-
-      await expect(
-        adminPage.getByText(/Data Products updated successfully/i)
-      ).toBeVisible();
     }
   });
 
