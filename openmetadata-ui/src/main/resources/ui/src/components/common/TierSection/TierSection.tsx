@@ -84,16 +84,13 @@ const TierSection: React.FC<TierSectionProps> = ({
           );
           setDisplayTier(newTier);
 
-          if (onTierUpdate) {
-            onTierUpdate(newTier);
-          }
+          onTierUpdate?.(newTier);
+          completeEditing();
         },
         t,
       });
 
-      if (result.success) {
-        completeEditing();
-      } else {
+      if (!result.success) {
         setIsLoading(false);
       }
     },

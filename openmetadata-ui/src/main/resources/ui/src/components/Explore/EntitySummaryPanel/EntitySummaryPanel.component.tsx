@@ -39,7 +39,6 @@ import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -48,7 +47,7 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -260,458 +259,93 @@ export default function EntitySummaryPanel({
     }
   }, [entityDetails?.details?.fullyQualifiedName, entityType]);
 
+  const updateEntityData = (updatedData: Partial<any>) => {
+    setEntityData((prevData: any) => {
+      // Use entityDetails.details as a fallback if prevData is null.
+      // This handles the initial update before fetchEntityData completes.
+      const baseData = prevData || entityDetails.details;
+
+      // Safety check: If the base data's ID doesn't match the current entity,
+      // abort the update to prevent state corruption.
+      if (baseData.id !== entityDetails.details.id) {
+        return prevData; // Return the original state without changes
+      }
+
+      const newState = { ...baseData, ...updatedData };
+
+      // After updating the local state, trigger a re-fetch to ensure consistency
+      fetchEntityData();
+
+      return newState;
+    });
+  };
+
   const handleOwnerUpdate = useCallback(
-    (updatedOwners: EntityReference[]) => {
-      const ownersClone = updatedOwners.map((o) => ({ ...o }));
-      setEntityData((prevData: any) => {
-        if (!prevData || prevData.id !== entityDetails.details.id) {
-          return prevData;
-        }
-
-        const updatedData = {
-          ...prevData,
-          owners: ownersClone,
-          entityType: prevData.entityType || entityDetails.details.entityType,
-          fullyQualifiedName:
-            prevData.fullyQualifiedName ||
-            entityDetails.details.fullyQualifiedName,
-          id: prevData.id || entityDetails.details.id,
-          description:
-            prevData.description || entityDetails.details.description,
-          displayName:
-            prevData.displayName || entityDetails.details.displayName,
-          name: prevData.name || entityDetails.details.name,
-          deleted:
-            prevData.deleted === undefined
-              ? entityDetails.details.deleted
-              : prevData.deleted,
-          serviceType:
-            prevData.serviceType || (entityDetails.details as any).serviceType,
-          service: prevData.service || entityDetails.details.service,
-          domains: prevData.domains || entityDetails.details.domains,
-          tags: prevData.tags || entityDetails.details.tags,
-          tier: prevData.tier || (entityDetails.details as any).tier,
-          columnNames:
-            prevData.columnNames || (entityDetails.details as any).columnNames,
-          database:
-            prevData.database || (entityDetails.details as any).database,
-          databaseSchema:
-            prevData.databaseSchema ||
-            (entityDetails.details as any).databaseSchema,
-          tableType:
-            prevData.tableType || (entityDetails.details as any).tableType,
-        };
-
-        return updatedData;
-      });
+    (owners: EntityReference[]) => {
+      updateEntityData({ owners });
     },
-    [entityDetails.details]
+    [fetchEntityData]
   );
 
   const handleDomainUpdate = useCallback(
-    (updatedDomains: EntityReference[]) => {
-      const domainsClone = updatedDomains.map((d) => ({ ...d }));
-      setEntityData((prevData: any) => {
-        if (!prevData || prevData.id !== entityDetails.details.id) {
-          return prevData;
-        }
-
-        const updatedData = {
-          ...prevData,
-          domains: domainsClone,
-          entityType: prevData.entityType || entityDetails.details.entityType,
-          fullyQualifiedName:
-            prevData.fullyQualifiedName ||
-            entityDetails.details.fullyQualifiedName,
-          id: prevData.id || entityDetails.details.id,
-          description:
-            prevData.description || entityDetails.details.description,
-          displayName:
-            prevData.displayName || entityDetails.details.displayName,
-          name: prevData.name || entityDetails.details.name,
-          deleted:
-            prevData.deleted === undefined
-              ? entityDetails.details.deleted
-              : prevData.deleted,
-          serviceType:
-            prevData.serviceType || (entityDetails.details as any).serviceType,
-          service: prevData.service || entityDetails.details.service,
-          owners: prevData.owners || entityDetails.details.owners,
-          tags: prevData.tags || entityDetails.details.tags,
-          tier: prevData.tier || (entityDetails.details as any).tier,
-          columnNames:
-            prevData.columnNames || (entityDetails.details as any).columnNames,
-          database:
-            prevData.database || (entityDetails.details as any).database,
-          databaseSchema:
-            prevData.databaseSchema ||
-            (entityDetails.details as any).databaseSchema,
-          tableType:
-            prevData.tableType || (entityDetails.details as any).tableType,
-        };
-
-        return updatedData;
-      });
+    (domains: EntityReference[]) => {
+      updateEntityData({ domains });
     },
-    [entityDetails.details]
+    [fetchEntityData]
   );
 
   const handleTagsUpdate = useCallback(
     (updatedTags: any[]) => {
-      setEntityData((prevData: any) => {
-        if (!prevData || prevData.id !== entityDetails.details.id) {
-          return prevData;
-        }
-        const currentTags = prevData.tags || [];
-        const existingGlossaryTerms = currentTags.filter(
-          (tag: any) => tag.source === TagSource.Glossary
-        );
-
-        // updatedTags already includes tier tags merged from TagsSection
-        // Merge with existing glossary terms
-        const mergedTags = [...existingGlossaryTerms, ...updatedTags];
-
-        const updatedData = {
-          ...prevData,
-          tags: mergedTags,
-          entityType: prevData.entityType || entityDetails.details.entityType,
-          fullyQualifiedName:
-            prevData.fullyQualifiedName ||
-            entityDetails.details.fullyQualifiedName,
-          id: prevData.id || entityDetails.details.id,
-          description:
-            prevData.description || entityDetails.details.description,
-          displayName:
-            prevData.displayName || entityDetails.details.displayName,
-          name: prevData.name || entityDetails.details.name,
-          deleted:
-            prevData.deleted === undefined
-              ? entityDetails.details.deleted
-              : prevData.deleted,
-          serviceType:
-            prevData.serviceType || (entityDetails.details as any).serviceType,
-          service: prevData.service || entityDetails.details.service,
-          owners: prevData.owners || entityDetails.details.owners,
-          domains: prevData.domains || entityDetails.details.domains,
-          tier: prevData.tier || (entityDetails.details as any).tier,
-          columnNames:
-            prevData.columnNames || (entityDetails.details as any).columnNames,
-          database:
-            prevData.database || (entityDetails.details as any).database,
-          databaseSchema:
-            prevData.databaseSchema ||
-            (entityDetails.details as any).databaseSchema,
-          tableType:
-            prevData.tableType || (entityDetails.details as any).tableType,
-        };
-
-        return updatedData;
+      // updatedTags from TagsSection only contains classification tags
+      const currentTags = entityData?.tags ?? [];
+      const glossaryTags = currentTags.filter(
+        (tag: any) => tag.source === TagSource.Glossary
+      );
+      const tierTags = currentTags.filter((tag: any) =>
+        tag.tagFQN?.startsWith('Tier.')
+      );
+      updateEntityData({
+        tags: [...updatedTags, ...glossaryTags, ...tierTags],
       });
     },
-    [entityDetails.details]
+    [entityData, fetchEntityData]
   );
 
   const handleTierUpdate = useCallback(
     (updatedTier?: any) => {
-      setEntityData((prevData: any) => {
-        if (!prevData || prevData.id !== entityDetails.details.id) {
-          return prevData;
-        }
-
-        // Update the tags array by removing old tier and adding new one
-        const tagsWithoutTier = (prevData.tags || []).filter(
-          (tag: any) => !tag.tagFQN?.startsWith('Tier.')
-        );
-
-        const updatedTags = updatedTier
-          ? [...tagsWithoutTier, updatedTier]
-          : tagsWithoutTier;
-
-        const updatedData = {
-          ...prevData,
-          tags: updatedTags,
-          entityType: prevData.entityType || entityDetails.details.entityType,
-          fullyQualifiedName:
-            prevData.fullyQualifiedName ||
-            entityDetails.details.fullyQualifiedName,
-          id: prevData.id || entityDetails.details.id,
-          description:
-            prevData.description || entityDetails.details.description,
-          displayName:
-            prevData.displayName || entityDetails.details.displayName,
-          name: prevData.name || entityDetails.details.name,
-          deleted:
-            prevData.deleted === undefined
-              ? entityDetails.details.deleted
-              : prevData.deleted,
-          serviceType:
-            prevData.serviceType || (entityDetails.details as any).serviceType,
-          service: prevData.service || entityDetails.details.service,
-          owners: prevData.owners || entityDetails.details.owners,
-          domains: prevData.domains || entityDetails.details.domains,
-          tier: updatedTier,
-          columnNames:
-            prevData.columnNames || (entityDetails.details as any).columnNames,
-          database:
-            prevData.database || (entityDetails.details as any).database,
-          databaseSchema:
-            prevData.databaseSchema ||
-            (entityDetails.details as any).databaseSchema,
-          tableType:
-            prevData.tableType || (entityDetails.details as any).tableType,
-        };
-
-        return updatedData;
-      });
+      const currentTags = entityData?.tags ?? [];
+      const tagsWithoutTier = currentTags.filter(
+        (tag: any) => !tag.tagFQN?.startsWith('Tier.')
+      );
+      const newTags = updatedTier
+        ? [...tagsWithoutTier, updatedTier]
+        : tagsWithoutTier;
+      updateEntityData({ tags: newTags });
     },
-    [entityDetails.details]
+    [entityData, fetchEntityData]
   );
 
   const handleDataProductsUpdate = useCallback(
     (updatedDataProducts: EntityReference[]) => {
-      const dpsClone = updatedDataProducts.map((dp) => ({ ...dp }));
-      setEntityData((prevData: any) => {
-        if (!prevData || prevData.id !== entityDetails.details.id) {
-          return prevData;
-        }
-
-        const updatedData = {
-          ...prevData,
-          dataProducts: dpsClone,
-          entityType: prevData.entityType || entityDetails.details.entityType,
-          fullyQualifiedName:
-            prevData.fullyQualifiedName ||
-            entityDetails.details.fullyQualifiedName,
-          id: prevData.id || entityDetails.details.id,
-          description:
-            prevData.description || entityDetails.details.description,
-          displayName:
-            prevData.displayName || entityDetails.details.displayName,
-          name: prevData.name || entityDetails.details.name,
-          deleted:
-            prevData.deleted === undefined
-              ? entityDetails.details.deleted
-              : prevData.deleted,
-          serviceType:
-            prevData.serviceType || (entityDetails.details as any).serviceType,
-          service: prevData.service || entityDetails.details.service,
-          owners: prevData.owners || entityDetails.details.owners,
-          domains: prevData.domains || entityDetails.details.domains,
-          tags: prevData.tags || entityDetails.details.tags,
-          tier: prevData.tier || (entityDetails.details as any).tier,
-          columnNames:
-            prevData.columnNames || (entityDetails.details as any).columnNames,
-          database:
-            prevData.database || (entityDetails.details as any).database,
-          databaseSchema:
-            prevData.databaseSchema ||
-            (entityDetails.details as any).databaseSchema,
-          tableType:
-            prevData.tableType || (entityDetails.details as any).tableType,
-        };
-
-        return updatedData;
-      });
+      updateEntityData({ dataProducts: updatedDataProducts });
     },
-    [entityDetails.details]
+    [fetchEntityData]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
     async (updatedTags: any[]) => {
-      try {
-        // Use the most up-to-date entity data as the base
-        const currentEntityData = entityData || entityDetails.details;
-
-        // Get current tags and separate glossary terms from classification tags
-        const currentTags = currentEntityData.tags || [];
-        const classificationTags = currentTags.filter(
-          (tag: any) => tag.source !== TagSource.Glossary
-        );
-
-        // Normalize the current tags to ensure they have all required properties
-        const normalizedClassificationTags = classificationTags.map(
-          (tag: any) => ({
-            ...tag,
-            style: tag.style || {},
-          })
-        );
-
-        // Normalize the updated tags to ensure they have all required properties
-        const normalizedUpdatedTags = updatedTags.map((tag: any) => ({
-          ...tag,
-          style: tag.style || {},
-        }));
-
-        // Merge classification tags with new glossary terms
-        const mergedTags = [
-          ...normalizedClassificationTags,
-          ...normalizedUpdatedTags,
-        ];
-
-        // Create updated entity data with merged tags - following the same pattern as TableDetailsPageV1
-        const updatedEntityData = {
-          ...currentEntityData,
-          tags: mergedTags,
-        };
-
-        // Normalize the current entity data to ensure all tags have required properties
-        const normalizedCurrentEntityData = {
-          ...currentEntityData,
-          tags: currentTags.map((tag: any) => ({
-            ...tag,
-            style: tag.style || {},
-          })),
-        };
-
-        // Generate JSON patch by comparing only the tags arrays to avoid array index issues
-        const currentTagsNormalized = normalizedCurrentEntityData.tags || [];
-        const updatedTagsArray = updatedEntityData.tags || [];
-
-        // Check if tags have actually changed
-        const tagsChanged =
-          JSON.stringify(currentTagsNormalized) !==
-          JSON.stringify(updatedTagsArray);
-
-        if (!tagsChanged) {
-          return;
-        }
-
-        // Create a simple replace operation for the entire tags array
-        const jsonPatch = [
-          {
-            op: 'replace' as const,
-            path: '/tags',
-            value: updatedTagsArray,
-          },
-        ];
-
-        // Make the API call using the correct patch API for the entity type
-        const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
-        if (entityDetails.details.id) {
-          await patchAPI(entityDetails.details.id, jsonPatch);
-        }
-
-        // Show success message
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
-
-        // Update the entityData state with the new tags
-        setEntityData((prevData: any) => {
-          if (!prevData) {
-            return prevData;
-          }
-
-          const updatedData = {
-            ...prevData,
-            tags: updatedTags,
-            entityType: prevData.entityType || entityDetails.details.entityType,
-            fullyQualifiedName:
-              prevData.fullyQualifiedName ||
-              entityDetails.details.fullyQualifiedName,
-            id: prevData.id || entityDetails.details.id,
-            description:
-              prevData.description || entityDetails.details.description,
-            displayName:
-              prevData.displayName || entityDetails.details.displayName,
-            name: prevData.name || entityDetails.details.name,
-            deleted:
-              prevData.deleted === undefined
-                ? entityDetails.details.deleted
-                : prevData.deleted,
-            serviceType:
-              prevData.serviceType ||
-              (entityDetails.details as any).serviceType,
-            service: prevData.service || entityDetails.details.service,
-            owners: prevData.owners || entityDetails.details.owners,
-            domains: prevData.domains || entityDetails.details.domains,
-            dataProducts:
-              prevData.dataProducts ||
-              (entityDetails.details as any).dataProducts,
-            tier: prevData.tier || entityDetails.details.tier,
-            columnNames:
-              prevData.columnNames ||
-              (entityDetails.details as any).columnNames,
-            database:
-              prevData.database || (entityDetails.details as any).database,
-            databaseSchema:
-              prevData.databaseSchema ||
-              (entityDetails.details as any).databaseSchema,
-            tableType:
-              prevData.tableType || (entityDetails.details as any).tableType,
-          };
-
-          return updatedData;
-        });
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
-      }
+      // The child component (`GlossaryTermsSection`) now handles the API call.
+      // We just need to update the parent's state with the new tags.
+      updateEntityData({ tags: updatedTags });
     },
-    [entityData, entityDetails.details, entityType, t]
+    [fetchEntityData]
   );
 
   const handleDescriptionUpdate = useCallback(
     (updatedDescription: string) => {
-      setEntityData((prevData: any) => {
-        // If no prevData, create new data object from entityDetails
-        if (!prevData) {
-          return {
-            ...entityDetails.details,
-            description: updatedDescription,
-          };
-        }
-
-        if (prevData.id !== entityDetails.details.id) {
-          return prevData;
-        }
-
-        const updatedData = {
-          ...prevData,
-          description: updatedDescription,
-          entityType: prevData.entityType || entityDetails.details.entityType,
-          fullyQualifiedName:
-            prevData.fullyQualifiedName ||
-            entityDetails.details.fullyQualifiedName,
-          id: prevData.id || entityDetails.details.id,
-          displayName:
-            prevData.displayName || entityDetails.details.displayName,
-          name: prevData.name || entityDetails.details.name,
-          deleted:
-            prevData.deleted === undefined
-              ? entityDetails.details.deleted
-              : prevData.deleted,
-          serviceType:
-            prevData.serviceType || (entityDetails.details as any).serviceType,
-          service: prevData.service || entityDetails.details.service,
-          owners: prevData.owners || entityDetails.details.owners,
-          domains: prevData.domains || entityDetails.details.domains,
-          tags: prevData.tags || entityDetails.details.tags,
-          dataProducts:
-            prevData.dataProducts ||
-            (entityDetails.details as any).dataProducts,
-          tier: prevData.tier || (entityDetails.details as any).tier,
-          columnNames:
-            prevData.columnNames || (entityDetails.details as any).columnNames,
-          database:
-            prevData.database || (entityDetails.details as any).database,
-          databaseSchema:
-            prevData.databaseSchema ||
-            (entityDetails.details as any).databaseSchema,
-          tableType:
-            prevData.tableType || (entityDetails.details as any).tableType,
-        };
-
-        return updatedData;
-      });
+      updateEntityData({ description: updatedDescription });
     },
-    [entityDetails.details]
+    [fetchEntityData]
   );
 
   useEffect(() => {

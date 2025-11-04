@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 
 export interface GlossaryTermsSectionProps {
@@ -18,5 +19,6 @@ export interface GlossaryTermsSectionProps {
   hasPermission?: boolean;
   entityId?: string;
   onGlossaryTermsUpdate?: (updatedTags: TagLabel[]) => void;
+  entityType?: EntityType;
   maxVisibleGlossaryTerms?: number;
 }

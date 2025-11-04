@@ -82,16 +82,13 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         entityLabel: t('label.tag-plural'),
         onSuccess: (tags) => {
           setDisplayTags(tags);
-          if (onTagsUpdate) {
-            onTagsUpdate(tags);
-          }
+          onTagsUpdate?.(tags);
+          completeEditing();
         },
         t,
       });
 
-      if (result.success) {
-        completeEditing();
-      } else {
+      if (!result.success) {
         setIsLoading(false);
       }
     },

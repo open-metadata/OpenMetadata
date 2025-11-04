@@ -67,16 +67,13 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         entityLabel: t('label.owner-plural'),
         onSuccess: (owners) => {
           setDisplayOwners(owners);
-          if (onOwnerUpdate) {
-            onOwnerUpdate(owners);
-          }
+          onOwnerUpdate?.(owners);
+          completeEditing();
         },
         t,
       });
 
-      if (result.success) {
-        completeEditing();
-      } else {
+      if (!result.success) {
         setIsLoading(false);
       }
     },

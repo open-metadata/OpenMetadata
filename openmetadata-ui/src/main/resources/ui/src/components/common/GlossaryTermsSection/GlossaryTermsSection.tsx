@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { AxiosError } from 'axios';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
@@ -31,6 +31,8 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
   showEditButton = true,
   hasPermission = false,
+  entityId,
+  entityType,
   onGlossaryTermsUpdate,
   maxVisibleGlossaryTerms = 3,
 }) => {
@@ -64,6 +66,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
   const handleGlossaryTermSelection = async (selectedTerms: TagLabel[]) => {
     try {
+      if (!entityId || !entityType) {
+        return;
+      }
       setIsLoading(true);
 
       const nonGlossaryTags = displayTags.filter(
@@ -71,21 +76,26 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       );
       const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
-      setDisplayTags(updatedTags);
+      const result = await updateEntityField({
+        entityId,
+        entityType: entityType as EntityType,
+        fieldName: 'tags',
+        currentValue: displayTags,
+        newValue: updatedTags,
+        entityLabel: t('label.glossary-term-plural'),
+        onSuccess: (newTags: TagLabel[]) => {
+          setDisplayTags(newTags);
+          onGlossaryTermsUpdate?.(newTags);
+          completeEditing();
+        },
+        t,
+      });
 
-      if (onGlossaryTermsUpdate) {
-        await Promise.resolve(onGlossaryTermsUpdate(updatedTags));
+      if (!result.success) {
+        setIsLoading(false);
       }
-
-      completeEditing();
     } catch (error) {
       setIsLoading(false);
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.glossary-term-plural'),
-        })
-      );
     }
   };
 
