@@ -29,13 +29,19 @@ import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { FileClass } from '../../support/entity/FileClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -44,7 +50,6 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
   getApiContext,
@@ -85,6 +90,12 @@ const entitiesWithDataContracts = [
   ApiEndpointClass,
   ApiCollectionClass,
   ChartClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
+  DatabaseClass,
+  DatabaseSchemaClass,
 ] as const;
 
 // Helper function to check if entity supports specific features
@@ -112,10 +123,10 @@ test.describe('Data Contracts', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await user.create(apiContext);
-    if (!process.env.PLAYWRIGHT_IS_OSS) {
-      // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, 'testsuite-bot');
-    }
+    // if (!process.env.PLAYWRIGHT_IS_OSS) {
+    //   // Todo: Remove this patch once the issue is fixed #19140
+    //   await resetTokenFromBotPage(page, 'testsuite-bot');
+    // }
 
     await afterAction();
   });
@@ -337,7 +348,7 @@ test.describe('Data Contracts', () => {
           page,
           owner: user.responseData.displayName,
           type: 'Users',
-          endpoint: EntityTypeEndpoint.Table,
+          endpoint: entity.endpoint,
           dataTestId: 'data-assets-header',
         });
 
@@ -2371,6 +2382,14 @@ entitiesWithDataContracts.forEach((EntityClass) => {
           await testPersona.step(
             `Customize ${entityType} page to hide Contract tab`,
             async () => {
+              const entityName: Record<string, string> = {
+                MlModel: 'Ml Model',
+                DashboardDataModel: 'Dashboard Data Model',
+                'Api Collection': 'API Collection',
+                ApiEndpoint: 'API Endpoint',
+                SearchIndex: 'Search Index',
+                'Store Procedure': 'Stored Procedure',
+              };
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await page.waitForLoadState('networkidle');
               await page.waitForSelector('[data-testid="loader"]', {
@@ -2389,7 +2408,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 .getByTestId('data-assets')
                 .getByText('Data Assets')
                 .click();
-              await page.getByText(entityType, { exact: true }).click();
+              await page
+                .getByText(entityName[entityType] ?? entityType, {
+                  exact: true,
+                })
+                .click();
 
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',

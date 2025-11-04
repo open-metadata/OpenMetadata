@@ -141,6 +141,11 @@ const commonProps = {
   onChange: mockOnChange,
   onNext: mockOnNext,
   onPrev: mockOnPrev,
+  buttonProps: {
+    nextLabel: 'next',
+    prevLabel: 'previous',
+    isNextVisible: true,
+  },
 };
 
 const mockTestCases: TestCase[] = [
@@ -197,13 +202,7 @@ describe('ContractQualityFormTab', () => {
     });
 
     it('should render with custom previous label', () => {
-      render(
-        <ContractQualityFormTab
-          prevLabel="Custom Previous"
-          selectedQuality={[]}
-          {...commonProps}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });

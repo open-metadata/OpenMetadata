@@ -248,9 +248,12 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.TERMS_OF_SERVICE.toString(),
         children: (
           <ContractTermsOfService
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             initialValues={contract}
-            nextLabel={t('label.schema')}
-            prevLabel={t('label.contract-detail-plural')}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}

@@ -153,6 +153,34 @@ export const SUPPORTED_CONTRACT_TAB = {
     EDataContractTab.SECURITY,
     EDataContractTab.SLA,
   ],
+  [EntityType.FILE]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.TERMS_OF_SERVICE,
+    EDataContractTab.SEMANTICS,
+    EDataContractTab.SECURITY,
+    EDataContractTab.SLA,
+  ],
+  [EntityType.DIRECTORY]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.TERMS_OF_SERVICE,
+    EDataContractTab.SEMANTICS,
+    EDataContractTab.SECURITY,
+    EDataContractTab.SLA,
+  ],
+  [EntityType.WORKSHEET]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.TERMS_OF_SERVICE,
+    EDataContractTab.SEMANTICS,
+    EDataContractTab.SECURITY,
+    EDataContractTab.SLA,
+  ],
+  [EntityType.SPREADSHEET]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.TERMS_OF_SERVICE,
+    EDataContractTab.SEMANTICS,
+    EDataContractTab.SECURITY,
+    EDataContractTab.SLA,
+  ],
 };
 export const SEMANTIC_TAG_OPERATORS = ['array_contains', 'array_not_contains'];
 

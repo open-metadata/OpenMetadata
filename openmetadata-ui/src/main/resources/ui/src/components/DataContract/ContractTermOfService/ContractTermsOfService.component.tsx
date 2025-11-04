@@ -26,9 +26,12 @@ export const ContractTermsOfService: React.FC<{
   onNext: () => void;
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
-  nextLabel?: string;
-  prevLabel?: string;
-}> = ({ initialValues, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
+  buttonProps: {
+    nextLabel?: string;
+    prevLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({ initialValues, onNext, onChange, onPrev, buttonProps }) => {
   const { fqn } = useFqn();
   const { t } = useTranslation();
 
@@ -74,13 +77,13 @@ export const ContractTermsOfService: React.FC<{
           icon={<LeftOutlined height={22} width={20} />}
           type="default"
           onClick={onPrev}>
-          {prevLabel ?? t('label.previous')}
+          {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
           type="primary"
           onClick={onNext}>
-          {nextLabel ?? t('label.next')}
+          {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>
       </div>
