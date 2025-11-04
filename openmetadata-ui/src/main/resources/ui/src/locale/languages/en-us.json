@@ -503,6 +503,7 @@
     "developed-by-developer": "Developed by {{developer}}",
     "diagnostic-info": "Diagnostic Info",
     "dimension": "Dimension",
+    "dimension-plural": "Dimensions",
     "direct": "Direct",
     "direct-lowercase": "direct",
     "direct-policy-plural": "Direct Policies",
