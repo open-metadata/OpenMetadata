@@ -1,8 +1,11 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import java.util.stream.Stream;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.helpers.GroupEventChangesHelper.ChangeGroups;
 
 /**
@@ -43,5 +46,18 @@ public class HasFieldInChangesHelper implements HandlebarsHelper {
               .flatMap(list -> list.stream())
               .anyMatch(fieldChange -> fieldName.equals(fieldChange.getName()));
         });
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("hasFieldInChanges")
+        .withDescription("Check if specific field changed in event")
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{#if (hasFieldInChanges changeEvent \"fieldName\")}}...{{/if}}")
+                    .withExample(
+                        "{{#if (hasFieldInChanges changes \"testCaseResult\")}}Test results changed{{/if}}")));
   }
 }

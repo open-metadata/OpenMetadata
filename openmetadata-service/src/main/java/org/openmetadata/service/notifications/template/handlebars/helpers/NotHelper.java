@@ -1,7 +1,10 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to negate a boolean value.
@@ -31,5 +34,17 @@ public class NotHelper implements HandlebarsHelper {
       case Number number -> number.doubleValue() != 0;
       default -> true;
     };
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("not")
+        .withDescription("Logical NOT operation on a value")
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{#if (not condition)}}...{{/if}}")
+                    .withExample("{{#if (not hasErrors)}}All tests passed{{/if}}")));
   }
 }

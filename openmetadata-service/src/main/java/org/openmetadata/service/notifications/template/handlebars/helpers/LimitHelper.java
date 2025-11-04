@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to limit an array to the first N items.
@@ -61,5 +63,17 @@ public class LimitHelper implements HandlebarsHelper {
 
           return limited;
         });
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("limit")
+        .withDescription("Limit array to first N items")
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{#each (limit list n)}}...{{/each}}")
+                    .withExample("{{#each (limit failedTests 5)}}{{name}}{{/each}}")));
   }
 }

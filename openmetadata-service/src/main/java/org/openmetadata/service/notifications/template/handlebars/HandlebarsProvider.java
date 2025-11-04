@@ -78,4 +78,14 @@ public class HandlebarsProvider {
         new MathHelper(),
         new GtHelper());
   }
+
+  /**
+   * Get all helper instances for metadata extraction. Used by API endpoint to discover available
+   * helpers.
+   *
+   * @return List of all registered helpers
+   */
+  public static List<HandlebarsHelper> getAllHelperInstances() {
+    return getAllHelpers();
+  }
 }

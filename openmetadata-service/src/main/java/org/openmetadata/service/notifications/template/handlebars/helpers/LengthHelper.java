@@ -2,7 +2,10 @@ package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
 import java.util.Collection;
+import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to get the length of an array or collection.
@@ -39,5 +42,18 @@ public class LengthHelper implements HandlebarsHelper {
 
           return 0;
         });
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("length")
+        .withDescription("Get length of array or string")
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{length collection}}")
+                    .withExample(
+                        "{{#if (gt (length failedTests) 0)}}Found {{length failedTests}} failures{{/if}}")));
   }
 }

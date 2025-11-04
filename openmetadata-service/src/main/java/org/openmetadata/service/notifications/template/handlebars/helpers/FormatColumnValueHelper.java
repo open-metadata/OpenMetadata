@@ -1,8 +1,11 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to format column values based on their type. Usage: {{formatColumnValue columnData}}
@@ -61,5 +64,17 @@ public class FormatColumnValueHelper implements HandlebarsHelper {
 
     formattedColumn.append(")");
     return formattedColumn.toString();
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("formatColumnValue")
+        .withDescription("Format column value for display")
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{formatColumnValue fieldChange}}")
+                    .withExample("{{formatColumnValue column}}")));
   }
 }
