@@ -166,52 +166,64 @@ def _(elements, compiler, **kwargs):
 
 @compiles(MedianFn, Dialects.MySQL)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    """Median computation for MySQL"""
+    """
+    MySQL median implementation that respects GROUP BY and WHERE clauses.
+
+    Uses window functions (MySQL 8.0+) to compute median within the current
+    query context without referencing a specific table name.
+    """
     col = compiler.process(elements.clauses.clauses[0])
-    table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
-    return """
-    (SELECT
-        {col}
-    FROM (
-        SELECT
-            {col}, 
-            ROW_NUMBER() OVER () AS row_num
-        FROM 
-            {table},
-            (SELECT @counter := COUNT(*) FROM {table}) t_count 
-        ORDER BY {col}
-        ) temp
-    WHERE temp.row_num = ROUND({percentile} * @counter)
-    )
-    """.format(
-        col=col, table=table, percentile=percentile
-    )
+    # MySQL 8.0+ supports window functions
+    # Compute the row number and total count for non-NULL values
+    # Then take the middle value(s)
+    return f"""(
+        SELECT AVG({col})
+        FROM (
+            SELECT {col},
+                   ROW_NUMBER() OVER (ORDER BY {col}) as rn,
+                   COUNT(*) OVER () as cnt
+            FROM (SELECT {col}) AS src
+            WHERE {col} IS NOT NULL
+        ) AS ranked
+        WHERE rn IN (
+            FLOOR((cnt + 1) * {percentile}),
+            CEIL((cnt + 1) * {percentile})
+        )
+    )"""
 
 
 @compiles(MedianFn, Dialects.SQLite)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    """
+    SQLite median implementation using percentile_cont equivalent.
+
+    This implementation respects GROUP BY and WHERE clauses by using
+    window functions without referencing a specific table name.
+
+    Note: SQLite supports window functions since version 3.25.0 (2018-09-15)
+    """
     col = compiler.process(elements.clauses.clauses[0])
-    table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
-    return """
-    (SELECT 
-        {col}
-    FROM {table}
-    WHERE {col} IS NOT NULL
-    ORDER BY {col}
-    LIMIT 1
-    OFFSET (
-            SELECT ROUND(COUNT(*) * {percentile} -1)
-            FROM {table}
+    # SQLite doesn't have PERCENTILE_CONT, but we can emulate it using
+    # NTILE or by computing the position manually
+    # This uses a simpler approach: average of middle values
+    return f"""CAST((
+        SELECT AVG({col})
+        FROM (
+            SELECT {col},
+                   ROW_NUMBER() OVER (ORDER BY {col}) as rn,
+                   COUNT(*) OVER () as cnt
+            FROM (SELECT {col})
             WHERE {col} IS NOT NULL
         )
-    )
-    """.format(
-        col=col, table=table, percentile=percentile
-    )
+        WHERE rn IN (
+            CAST((cnt + 1) * {percentile} AS INTEGER),
+            CAST(cnt * {percentile} + 1 AS INTEGER)
+        )
+    ) AS FLOAT)"""
 
 
 @compiles(MedianFn, Dialects.Doris)
