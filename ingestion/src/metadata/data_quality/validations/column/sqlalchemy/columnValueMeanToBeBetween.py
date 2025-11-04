@@ -102,7 +102,8 @@ class ColumnValueMeanToBeBetweenValidator(
                 dimension_col,
                 metric_expressions,
                 self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
-                    Metrics.MEAN.name, DIMENSION_TOTAL_COUNT_KEY
+                    {Metrics.MEAN.name: Metrics.MEAN.name},
+                    DIMENSION_TOTAL_COUNT_KEY,
                 ),
                 final_metric_builders={Metrics.MEAN.name: build_mean_final},
                 exclude_from_results=[Metrics.SUM.name, Metrics.COUNT.name],

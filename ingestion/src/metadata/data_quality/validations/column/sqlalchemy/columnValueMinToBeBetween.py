@@ -85,7 +85,8 @@ class ColumnValueMinToBeBetweenValidator(
                 dimension_col,
                 metric_expressions,
                 self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
-                    Metrics.MIN.name, DIMENSION_TOTAL_COUNT_KEY
+                    {Metrics.MIN.name: Metrics.MIN.name},
+                    DIMENSION_TOTAL_COUNT_KEY,
                 ),
                 final_metric_builders={Metrics.MIN.name: build_min_final},
                 top_dimensions_count=DEFAULT_TOP_DIMENSIONS,

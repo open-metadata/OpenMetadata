@@ -123,7 +123,11 @@ class ColumnValueMaxToBeBetweenValidator(
                 if not max_value:
                     continue
 
-                failed_count = total_rows if checker.check_pandas(max_value) else 0
+                failed_count = (
+                    total_rows
+                    if checker.violates_pandas({Metrics.MAX.name: max_value})
+                    else 0
+                )
 
                 results_data.append(
                     {
@@ -148,8 +152,8 @@ class ColumnValueMaxToBeBetweenValidator(
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={Metrics.MAX.name: "max"},
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metric=Metrics.MAX.name,
-                    violation_predicate=checker.check_pandas,
+                    violation_metrics=[Metrics.MAX.name],
+                    violation_predicate=checker.violates_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):

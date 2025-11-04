@@ -15,13 +15,19 @@ MIN_LENGTH Metric definition
 # pylint: disable=duplicate-code
 
 
+from typing import TYPE_CHECKING, Optional
+
 from sqlalchemy import column, func
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable
 from metadata.utils.logger import profiler_logger
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = profiler_logger()
 
@@ -60,23 +66,49 @@ class MinLength(StaticMetric):
     # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs=None):
         """dataframe function"""
+        computation = self.get_pandas_computation()
+        accumulator = computation.create_accumulator()
+
+        for df in dfs:
+            try:
+                accumulator = computation.update_accumulator(accumulator, df)
+            except Exception as err:
+                logger.debug(
+                    f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
+                )
+                return None
+        return computation.aggregate_accumulator(accumulator)
+
+    def get_pandas_computation(self) -> PandasComputation:
+        """Returns the logic to compute this metrics using Pandas"""
+        return PandasComputation[Optional[int], Optional[int]](
+            create_accumulator=lambda: None,
+            update_accumulator=lambda acc, df: MinLength.update_accumulator(
+                acc, df, self.col
+            ),
+            aggregate_accumulator=lambda acc: acc,
+        )
+
+    @staticmethod
+    def update_accumulator(
+        current_min: Optional[int], df: "pd.DataFrame", column
+    ) -> Optional[int]:
+        """Computes one DataFrame chunk and updates the running minimum"""
+        import pandas as pd
         from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
+        chunk_min = None
 
-        if self._is_concatenable():
-            min_length_list = []
+        if is_concatenable(column.type):
+            min_val = length_vectorize_func(df[column.name].dropna().astype(str)).min()
+            if not pd.isnull(min_val):
+                chunk_min = min_val
 
-            for df in dfs:
-                if any(df[self.col.name].dropna()):
-                    min_length_list.append(
-                        length_vectorize_func(
-                            df[self.col.name].dropna().astype(str)
-                        ).min()
-                    )
-            if min_length_list:
-                return min(min_length_list)
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
-        )
-        return None
+        if chunk_min is None or pd.isnull(chunk_min):
+            return current_min
+
+        if current_min is None:
+            return chunk_min
+
+        return min(current_min, chunk_min)
