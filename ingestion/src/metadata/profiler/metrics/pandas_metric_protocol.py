@@ -13,25 +13,15 @@
 Defines the needed protocol for a Metric to support pandas
 """
 
-from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Generic,
-    Protocol,
-    TypeVar,
-    runtime_checkable,
-)
+from typing import Any, Callable, Generic, Protocol, TypeVar, runtime_checkable
 
-if TYPE_CHECKING:
-    import pandas as pd
+from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
 R = TypeVar("R")
 
 
-@dataclass(frozen=True)
-class PandasComputation(Generic[T, R]):
+class PandasComputation(BaseModel, Generic[T, R]):
     """Defines how to compute a metric using accumulation pattern.
     Three-step computation:
     1. create_accumulator: () -> T
@@ -42,12 +32,15 @@ class PandasComputation(Generic[T, R]):
         For immutable types (int, float): return new value
     3. aggregate_accumulator: (T) -> R
         Aggregate accumulated state to compute the metric final result
-
     """
 
     create_accumulator: Callable[[], T]
-    update_accumulator: Callable[[T, "pd.DataFrame"], T]
+    # Using Any instead of pd.DataFrame due to Pydantic limitation
+    # It does not allow the use of forward references nor the import within the class.
+    update_accumulator: Callable[[T, Any], T]
     aggregate_accumulator: Callable[[T], R]
+
+    model_config = ConfigDict(frozen=True)
 
 
 @runtime_checkable

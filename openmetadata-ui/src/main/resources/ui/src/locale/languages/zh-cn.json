@@ -1935,6 +1935,7 @@
     "alerts-source-description": "指定激活警报的来源",
     "alerts-trigger-description": "选择重要的触发事件, 如 “模式更改 ”或 “测试失败”, 以生成警报",
     "all-charts-are-mapped": "所有图表都与现有的 KPI 映射",
+    "all-values-unique-no-distribution-available": "此列中的所有值都是唯一的。没有可用的分布。",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "已经是用户了吗？",
     "and-followed-owned-by-name": "并关注由{{userName}}拥有的团队",
