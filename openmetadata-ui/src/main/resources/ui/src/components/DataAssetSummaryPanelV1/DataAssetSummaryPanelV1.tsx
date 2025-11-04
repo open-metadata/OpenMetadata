@@ -19,15 +19,15 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../utils/EntityUtils';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../utils/date-time/DateTimeUtils';
 
 import { AxiosError } from 'axios';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
@@ -43,10 +43,6 @@ import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import {
-  DataAssetSummaryPanelProps,
-  TestCaseStatusCounts,
-} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
@@ -58,6 +54,10 @@ import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
+import {
+  DataAssetSummaryPanelProps,
+  TestCaseStatusCounts,
+} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -483,6 +483,55 @@ export const DataAssetSummaryPanelV1 = ({
                   (dataAsset.dataProducts as unknown[])?.length || 0
                 }`}
                 onDataProductsUpdate={onDataProductsUpdate}
+              />
+            </div>
+          </>
+        );
+      case EntityType.KNOWLEDGE_PAGE:
+        return (
+          <>
+            <span className="d-none" data-testid="KnowledgePageSummary" />
+            <DescriptionSection
+              description={dataAsset.description}
+              hasPermission={
+                entityPermissions?.EditDescription || entityPermissions?.EditAll
+              }
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
+            <div>
+              <OwnersSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editOwnerPermission}
+                key={`owners-${dataAsset.id}-${
+                  (dataAsset.owners as EntityReference[])?.length || 0
+                }`}
+                owners={dataAsset.owners as EntityReference[]}
+                onOwnerUpdate={onOwnerUpdate}
+              />
+            </div>
+            <div>
+              <TagsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={entityPermissions?.EditTags}
+                key={`tags-${dataAsset.id}-${
+                  (dataAsset.tags as unknown[])?.length || 0
+                }`}
+                tags={dataAsset.tags}
+                onTagsUpdate={onTagsUpdate}
+              />
+            </div>
+            <div>
+              <GlossaryTermsSection
+                entityId={dataAsset.id}
+                hasPermission={entityPermissions?.EditGlossaryTerms}
+                key={`glossary-terms-${dataAsset.id}-${
+                  (dataAsset.tags as unknown[])?.length || 0
+                }`}
+                maxVisibleGlossaryTerms={3}
+                tags={dataAsset.tags}
+                onGlossaryTermsUpdate={onGlossaryTermsUpdate}
               />
             </div>
           </>
