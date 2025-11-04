@@ -786,7 +786,7 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             continue
                         if dexpression.name == match.group(2):
-                            pattern = r'DefaultValue="([^"]+)"'
+                            pattern = r'^"([^"]+)"\s+meta'
                             kw_match = re.search(pattern, dexpression.expression)
                             if kw_match:
                                 return kw_match.group(1)
