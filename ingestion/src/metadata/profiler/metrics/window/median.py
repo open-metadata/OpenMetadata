@@ -63,13 +63,22 @@ class Median(StaticMetric, PercentilMixin):
 
     @_label
     def fn(self):
-        """sqlalchemy function"""
+        """sqlalchemy function
+
+        Supports optional dimension_col property for GROUP BY correlation.
+        Set via: add_props(dimension_col=col.name)(Metrics.MEDIAN.value)
+        """
+        # Get optional dimension_col property (for dimensionality validation)
+        # Expected to be a string column name, not a Column object
+        dimension_col = getattr(self, "dimension_col", None)
+
         if is_quantifiable(self.col.type):
             # col fullname is only needed for MySQL and SQLite
             return self._compute_sqa_fn(
                 column(self.col.name, self.col.type),
                 self.col.table.name if self.col.table is not None else None,
                 0.5,
+                dimension_col,
             )
 
         if is_concatenable(self.col.type):
@@ -77,6 +86,7 @@ class Median(StaticMetric, PercentilMixin):
                 LenFn(column(self.col.name, self.col.type)),
                 self.col.table.name if self.col.table is not None else None,
                 0.5,
+                dimension_col,
             )
 
         logger.debug(

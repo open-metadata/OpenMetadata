@@ -36,6 +36,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
+from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 
@@ -92,7 +93,9 @@ class ColumnValueMedianToBeBetweenValidator(
             # ==================== PASS 1: Top N Dimensions ====================
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                Metrics.MEDIAN.name: Metrics.MEDIAN(column).fn(),
+                Metrics.MEDIAN.name: add_props(dimension_col=dimension_col.name)(
+                    Metrics.MEDIAN.value
+                )(column).fn(),
             }
 
             def build_median_final(cte):
@@ -215,25 +218,22 @@ class ColumnValueMedianToBeBetweenValidator(
             return None
 
         try:
-            # Subquery: filtered data for "Others" group
-            others_data = (
-                select([column, dimension_col])
-                .select_from(self.runner.dataset)
-                .where(dimension_col.notin_(top_dimension_values))
-            ).alias("others_data")
-
-            # Compute median and counts in SQL (same as Pass 1)
-            median_expr = Metrics.MEDIAN(others_data.c[column.name]).fn()
+            # Compute median directly on base table with WHERE filter
+            # (Cannot use Metrics.MEDIAN on alias due to scalar subquery limitation)
+            median_expr = Metrics.MEDIAN(column).fn()
             total_count_expr = func.count()
 
-            # Create stats subquery (mimics raw_aggregates CTE from Pass 1)
+            # Create stats subquery with WHERE filter for "Others" group
+            # Query: SELECT MEDIAN(col), COUNT(*) FROM table WHERE dimension NOT IN (top_N)
             stats_subquery = (
                 select(
                     [
                         median_expr.label(Metrics.MEDIAN.name),
                         total_count_expr.label(DIMENSION_TOTAL_COUNT_KEY),
                     ]
-                ).select_from(others_data)
+                )
+                .select_from(self.runner.dataset)
+                .where(dimension_col.notin_(top_dimension_values))
             ).alias("others_stats")
 
             # Apply failed_count builder to stats subquery (reused from Pass 1)

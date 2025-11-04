@@ -159,7 +159,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "COLUMN",
             (
                 TestCaseResult,
-                "30.0",
+                "30",
                 None,
                 TestCaseStatus.Failed,
                 None,
@@ -782,7 +782,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "COLUMN",
             (
                 TestCaseResult,
-                "30.0",
+                "30",
                 None,
                 TestCaseStatus.Failed,
                 None,
