@@ -1842,6 +1842,11 @@ export interface ConfigObject {
      */
     projectFilterPattern?: FilterPattern;
     /**
+     * API URL to call powerbi rest apis to extract metadata. Default to
+     * `https://api.powerbi.com`. You can provide youw own in case of different environment
+     */
+    apiURL?: string;
+    /**
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
