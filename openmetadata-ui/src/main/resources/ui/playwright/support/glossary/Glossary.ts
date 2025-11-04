@@ -52,10 +52,10 @@ export class Glossary extends EntityClass {
   }
 
   async visitPage(page: Page) {
-    await visitGlossaryPage(page, this.data.displayName);
+    await visitGlossaryPage(page, this.responseData.displayName);
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-      this.data.displayName
+      this.responseData.displayName
     );
   }
 
