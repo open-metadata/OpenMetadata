@@ -63,7 +63,12 @@ class MockHTTPXClient:
         self.response: MockSSEResponse = response
 
     def stream(
-        self, method: str, url: str, headers: Optional[dict[str, str]] = None
+        self,
+        method: str,
+        url: str,
+        headers: Optional[dict[str, str]] = None,
+        json: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> MockSSEResponse:
         return self.response
 
@@ -179,7 +184,7 @@ def test_stream_with_auth_headers(sse_client, mock_client_config):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None):
+    def mock_stream(method, url, headers=None, json=None, params=None):
         captured_headers.update(headers or {})
         return mock_response
 
@@ -210,7 +215,7 @@ def test_stream_with_post_method_and_data(sse_client, mock_client_config):
     captured_method = None
     captured_data = None
 
-    def mock_stream(method, url, headers=None):
+    def mock_stream(method, url, headers=None, json=None, params=None):
         nonlocal captured_method
         captured_method = method
         return mock_response
@@ -320,7 +325,7 @@ def test_stream_with_last_event_id(sse_client):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None):
+    def mock_stream(method, url, headers=None, json=None, params=None):
         captured_headers.update(headers or {})
         return mock_response
 
@@ -464,7 +469,7 @@ def test_stream_constructs_correct_url(sse_client, mock_client_config):
 
     captured_url = None
 
-    def mock_stream(method, url, headers=None):
+    def mock_stream(method, url, headers=None, json=None, params=None):
         nonlocal captured_url
         captured_url = str(url)
         return mock_response
@@ -496,7 +501,7 @@ def test_stream_with_no_auth_header(sse_client, mock_client_config):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None):
+    def mock_stream(method, url, headers=None, json=None, params=None):
         captured_headers.update(headers or {})
         return mock_response
 
@@ -528,7 +533,7 @@ def test_stream_with_no_auth_token_mode(sse_client, mock_client_config):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None):
+    def mock_stream(method, url, headers=None, json=None, params=None):
         captured_headers.update(headers or {})
         return mock_response
 
