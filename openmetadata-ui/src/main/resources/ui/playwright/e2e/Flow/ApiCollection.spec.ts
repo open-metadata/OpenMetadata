@@ -80,8 +80,8 @@ test.describe('API Collection Entity Special Test Cases', () => {
       async () => {
         test.slow(true);
 
-        const OWNER1 = EntityDataClass.team1.data.displayName;
-        const OWNER2 = EntityDataClass.team2.data.displayName;
+        const OWNER1 = EntityDataClass.team1.responseData.displayName;
+        const OWNER2 = EntityDataClass.team2.responseData.displayName;
 
         await addOwner({
           page,

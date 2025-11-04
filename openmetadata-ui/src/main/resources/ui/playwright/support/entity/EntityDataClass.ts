@@ -82,7 +82,7 @@ export class EntityDataClass {
   });
   static readonly team1 = new TeamClass({
     name: `PW%team-1${randomUUID}`,
-    displayName: `PW Team 1`,
+    displayName: `PW Team 1 ${randomUUID}`,
     description: 'playwright team 1 description',
     teamType: 'Group',
     users: [],
@@ -90,7 +90,7 @@ export class EntityDataClass {
   });
   static readonly team2 = new TeamClass({
     name: `PW%team-2${randomUUID}`,
-    displayName: `PW Team 2`,
+    displayName: `PW Team 2 ${randomUUID}`,
     description: 'playwright team 2 description',
     teamType: 'Group',
     users: [],
