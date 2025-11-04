@@ -175,6 +175,12 @@ class ColumnValueMeanToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
+                    agg_functions={
+                        Metrics.SUM.name: "sum",
+                        Metrics.COUNT.name: "sum",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     final_metric_calculators={
                         Metrics.MEAN.name: calculate_weighted_mean
                     },
