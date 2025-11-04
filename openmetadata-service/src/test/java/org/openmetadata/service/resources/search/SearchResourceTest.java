@@ -1562,6 +1562,10 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
           LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
         }
       }
+    }
+  }
+
+  @Test
   void testClassificationAndGlossaryTagsAggregations() throws IOException {
     String testPrefix = "tag_aggregation_test_" + System.currentTimeMillis();
 
