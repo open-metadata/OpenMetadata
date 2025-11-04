@@ -71,6 +71,7 @@ test.describe('Service Version pages', () => {
     await adminUser.setAdminRole(apiContext);
 
     for (const entity of entities) {
+      await entity.create(apiContext);
       const domain = EntityDataClass.domain1.responseData;
       await entity.patch(apiContext, [
         {

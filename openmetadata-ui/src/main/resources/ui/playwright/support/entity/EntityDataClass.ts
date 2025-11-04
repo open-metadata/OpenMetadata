@@ -53,13 +53,6 @@ import { TableClass } from './TableClass';
 import { TopicClass } from './TopicClass';
 import { WorksheetClass } from './WorksheetClass';
 
-// Reset seed before initializing entities to ensure deterministic data across all workers
-// resetSeed();
-
-// Get unique identifier for this test execution (only used in CI to avoid conflicts)
-// const JOB_ID = getCIJobId();
-// const SUFFIX = JOB_ID ? `-${JOB_ID}` : ''; // Only add suffix in CI
-
 const randomUUID = uuid();
 
 export class EntityDataClass {

@@ -79,6 +79,7 @@ test.describe('Entity Version pages', () => {
     const domain = EntityDataClass.domain1.responseData;
 
     for (const entity of entities) {
+      await entity.create(apiContext);
       const dataTypeDisplayPath = getEntityDataTypeDisplayPatch(entity);
       await entity.patch({
         apiContext,
