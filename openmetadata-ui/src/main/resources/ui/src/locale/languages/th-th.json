@@ -1935,6 +1935,7 @@
     "alerts-source-description": "กำหนดแหล่งที่มาที่จะกระตุ้นการแจ้งเตือน",
     "alerts-trigger-description": "เลือกเหตุการณ์การกระตุ้นที่สำคัญ เช่น 'การเปลี่ยนแปลงโครงสร้าง' หรือ 'การล้มเหลวในการทดสอบ' เพื่อสร้างการแจ้งเตือน",
     "all-charts-are-mapped": "แผนภูมิทั้งหมดแมพกับ KPIs ที่มีอยู่",
+    "all-values-unique-no-distribution-available": "ค่าทั้งหมดในคอลัมน์นี้ไม่ซ้ำกัน ไม่มีการกระจายข้อมูลที่พร้อมใช้งาน",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "เป็นผู้ใช้แล้วใช่ไหม?",
     "and-followed-owned-by-name": "และทีมที่คุณติดตามนั้นมีเจ้าของคือ {{userName}}",
