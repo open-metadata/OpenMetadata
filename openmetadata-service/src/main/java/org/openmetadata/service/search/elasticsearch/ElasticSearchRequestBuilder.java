@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ElasticSearchRequestBuilder {
   private Query query;
+  private Query postFilterQuery;
   private final List<SortOptions> sortOptions = new ArrayList<>();
   private final Map<String, Aggregation> aggregations = new ConcurrentHashMap<>();
   private Highlight highlight;
@@ -40,6 +41,15 @@ public class ElasticSearchRequestBuilder {
 
   public Query query() {
     return this.query;
+  }
+
+  public ElasticSearchRequestBuilder postFilter(Query postFilterQuery) {
+    this.postFilterQuery = postFilterQuery;
+    return this;
+  }
+
+  public Query postFilter() {
+    return this.postFilterQuery;
   }
 
   public ElasticSearchRequestBuilder from(int from) {
@@ -198,6 +208,10 @@ public class ElasticSearchRequestBuilder {
 
           if (query != null) {
             s.query(query);
+          }
+
+          if (postFilterQuery != null) {
+            s.postFilter(postFilterQuery);
           }
 
           if (!sortOptions.isEmpty()) {

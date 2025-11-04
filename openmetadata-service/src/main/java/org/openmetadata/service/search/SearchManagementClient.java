@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -12,6 +13,30 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * and pagination operations.
  */
 public interface SearchManagementClient {
+
+  /**
+   * Execute a search with the configured search settings.
+   *
+   * @param request the search request
+   * @param subjectContext the subject context for RBAC evaluation
+   * @return response containing search results
+   * @throws IOException if search execution fails
+   */
+  Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
+
+  /**
+   * Execute a preview search with custom search settings.
+   * This is typically used for testing search configurations before applying them.
+   *
+   * @param request the search request
+   * @param subjectContext the subject context for RBAC evaluation
+   * @param searchSettings custom search settings to use
+   * @return response containing search results
+   * @throws IOException if search execution fails
+   */
+  Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException;
 
   /**
    * Search for entities by source URL.

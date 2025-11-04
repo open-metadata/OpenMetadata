@@ -1135,11 +1135,7 @@ public class OpenSearchSourceBuilderFactory
       case "domain_search_index":
         return buildDataAssetSearchBuilderV2(index, q, offset, limit, explain);
       default:
-        if (resolvedIndex.equals("all") || resolvedIndex.equals("dataAsset")) {
-          return buildAggregateSearchBuilderV2(q, offset, limit);
-        } else {
-          return buildServiceSearchBuilderV2(q, offset, limit);
-        }
+        return buildAggregateSearchBuilderV2(q, offset, limit);
     }
   }
 

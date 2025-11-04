@@ -19,6 +19,7 @@ import os.org.opensearch.client.opensearch.core.search.SourceConfig;
 
 public class OpenSearchRequestBuilder {
   private Query query;
+  private Query postFilterQuery;
   private final List<SortOptions> sortOptions = new ArrayList<>();
   private final Map<String, Aggregation> aggregations = new ConcurrentHashMap<>();
   private Highlight highlight;
@@ -41,6 +42,15 @@ public class OpenSearchRequestBuilder {
 
   public Query query() {
     return this.query;
+  }
+
+  public OpenSearchRequestBuilder postFilter(Query postFilterQuery) {
+    this.postFilterQuery = postFilterQuery;
+    return this;
+  }
+
+  public Query postFilter() {
+    return this.postFilterQuery;
   }
 
   public OpenSearchRequestBuilder from(int from) {
@@ -214,6 +224,10 @@ public class OpenSearchRequestBuilder {
 
           if (query != null) {
             s.query(query);
+          }
+
+          if (postFilterQuery != null) {
+            s.postFilter(postFilterQuery);
           }
 
           if (!sortOptions.isEmpty()) {

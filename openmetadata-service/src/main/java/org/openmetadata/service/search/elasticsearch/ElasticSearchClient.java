@@ -2,15 +2,11 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
-import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -19,7 +15,6 @@ import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -31,18 +26,12 @@ import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
-import es.org.elasticsearch.rest.RestStatus;
-import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
-import es.org.elasticsearch.search.sort.FieldSortBuilder;
-import es.org.elasticsearch.search.sort.SortBuilders;
-import es.org.elasticsearch.search.sort.SortOrder;
 import es.org.elasticsearch.xcontent.XContentLocation;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
@@ -51,17 +40,13 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
@@ -91,7 +76,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
-import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.search.AggregationRequest;
@@ -103,8 +87,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -199,7 +181,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
-    searchManager = new ElasticSearchSearchManager(newClient, rbacConditionEvaluator);
+    searchManager = new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias);
     nlqService = null;
   }
 
@@ -301,336 +283,19 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
-    SearchSettings searchSettings =
-        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-    return doSearch(request, subjectContext, searchSettings);
+    return searchManager.search(request, subjectContext);
   }
 
   @Override
   public Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
-    return doSearch(request, subjectContext, searchSettings);
-  }
-
-  public Response doSearch(
-      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
-      throws IOException {
-    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
-    ElasticSearchSourceBuilderFactory searchBuilderFactory =
-        new ElasticSearchSourceBuilderFactory(searchSettings);
-    SearchSourceBuilder searchSourceBuilder =
-        searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(),
-            request.getQuery(),
-            request.getFrom(),
-            request.getSize(),
-            request.getExplain());
-
-    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
-    // Add Filter
-    buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
-
-    // Log the actual query being sent to Elasticsearch
-    LOG.debug(
-        "Elasticsearch query for index '{}' with sanitized query '{}': {}",
-        request.getIndex(),
-        request.getQuery(),
-        searchSourceBuilder.toString());
-
-    if (!nullOrEmpty(request.getPostFilter())) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    EsUtils.esXContentRegistry,
-                    LoggingDeprecationHandler.INSTANCE,
-                    request.getPostFilter());
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        searchSourceBuilder.postFilter(filter);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
-      }
-    }
-
-    if (!nullOrEmpty(request.getSearchAfter())) {
-      searchSourceBuilder.searchAfter(request.getSearchAfter().toArray());
-    }
-
-    /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (!nullOrEmpty(request.getDeleted())) {
-      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-        boolQueryBuilder.should(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .must(QueryBuilders.existsQuery("deleted"))
-                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-        boolQueryBuilder.should(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .mustNot(QueryBuilders.existsQuery("deleted")));
-        searchSourceBuilder.query(boolQueryBuilder);
-      } else {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-      }
-    }
-
-    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
-      FieldSortBuilder fieldSortBuilder =
-          new FieldSortBuilder(request.getSortFieldParam())
-              .order(SortOrder.fromString(request.getSortOrder()));
-      // Score is an internal ES Field
-      if (!request.getSortFieldParam().equalsIgnoreCase("_score")) {
-        fieldSortBuilder.unmappedType("integer");
-      }
-      searchSourceBuilder.sort(fieldSortBuilder);
-
-      // Add tiebreaker sort for stable pagination when sorting by score
-      // This ensures consistent ordering when multiple documents have identical scores
-      if (request.getSortFieldParam().equalsIgnoreCase("_score")) {
-        searchSourceBuilder.sort(
-            SortBuilders.fieldSort("name.keyword").order(SortOrder.ASC).unmappedType("keyword"));
-      }
-    }
-
-    buildHierarchyQuery(request, searchSourceBuilder, client);
-
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
-    if we enable trackTotalHits parameter it will try to match every result, count and return hits
-    however in most cases for search results an approximate value is good enough.
-    we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
-    searchSourceBuilder.fetchSource(
-        new FetchSourceContext(
-            request.getFetchSource(),
-            request.getIncludeSourceFields().toArray(String[]::new),
-            request.getExcludeSourceFields().toArray(String[]::new)));
-
-    if (request.getTrackTotalHits()) {
-      searchSourceBuilder.trackTotalHits(true);
-    } else {
-      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
-    }
-
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
-    LOG.debug("SearchSourceBuilder query: {}", searchSourceBuilder.query());
-    LOG.debug("Full SearchSourceBuilder: {}", searchSourceBuilder);
-
-    try {
-      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
-          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
-
-      SearchResponse searchResponse =
-          client.search(
-              new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                  .source(searchSourceBuilder),
-              RequestOptions.DEFAULT);
-
-      // End search operation timing
-      if (searchTimerSample != null) {
-        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
-            searchTimerSample);
-      }
-
-      if (!request.getIsHierarchy()) {
-        return Response.status(OK).entity(searchResponse.toString()).build();
-      } else {
-        // Build the nested hierarchy from elastic search response
-        List<?> response = buildSearchHierarchy(request, searchResponse);
-        return Response.status(OK).entity(response).build();
-      }
-
-    } catch (ElasticsearchStatusException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to to find index %s", request.getIndex()));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
+    return searchManager.previewSearch(request, subjectContext, searchSettings);
   }
 
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
     return entityManager.getDocByID(indexName, entityId);
-  }
-
-  private void buildHierarchyQuery(
-      SearchRequest request, SearchSourceBuilder searchSourceBuilder, RestHighLevelClient client)
-      throws IOException {
-
-    if (!request.getIsHierarchy()) {
-      return;
-    }
-
-    String indexName = request.getIndex();
-    String glossaryTermIndex =
-        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
-    String domainIndex =
-        Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
-
-    BoolQueryBuilder baseQuery =
-        QueryBuilders.boolQuery()
-            .should(searchSourceBuilder.query())
-            .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
-            .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
-            .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()));
-
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
-      baseQuery
-          .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
-          .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-          .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
-      baseQuery
-          .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
-          .should(QueryBuilders.matchPhraseQuery("parent.displayName", request.getQuery()));
-    }
-
-    baseQuery.minimumShouldMatch(1);
-    searchSourceBuilder.query(baseQuery);
-
-    SearchResponse searchResponse =
-        client.search(
-            new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                .source(searchSourceBuilder),
-            RequestOptions.DEFAULT);
-
-    Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
-
-    // Build  es query to get parent terms for the user input query , to build correct hierarchy
-    // In case of default search , no need to get parent terms they are already present in the
-    // response
-    if (parentTerms != null
-        && !parentTerms.getBuckets().isEmpty()
-        && !request.getQuery().equals("*")) {
-      BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
-
-      parentTerms.getBuckets().stream()
-          .map(Terms.Bucket::getKeyAsString)
-          .forEach(
-              parentTerm ->
-                  parentTermQueryBuilder.should(
-                      QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
-      if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
-        parentTermQueryBuilder
-            .minimumShouldMatch(1)
-            .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
-      } else {
-        parentTermQueryBuilder.minimumShouldMatch(1);
-      }
-      searchSourceBuilder.query(parentTermQueryBuilder);
-    }
-
-    searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
-  }
-
-  public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
-    List<?> response = new ArrayList<>();
-
-    String indexName = request.getIndex();
-    String glossaryTermIndex =
-        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
-    String domainIndex =
-        Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
-
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
-      response = buildGlossaryTermSearchHierarchy(searchResponse);
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
-      response = buildDomainSearchHierarchy(searchResponse);
-    }
-    return response;
-  }
-
-  public List<EntityHierarchy> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
-    Map<String, EntityHierarchy> termMap =
-        new LinkedHashMap<>(); // termMap represent glossary terms
-    Map<String, EntityHierarchy> rootTerms =
-        new LinkedHashMap<>(); // rootTerms represent glossaries
-
-    for (var hit : searchResponse.getHits().getHits()) {
-      String jsonSource = hit.getSourceAsString();
-
-      EntityHierarchy term = JsonUtils.readValue(jsonSource, EntityHierarchy.class);
-      EntityHierarchy glossaryInfo =
-          JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
-              ? null
-              : JsonUtils.convertValue(
-                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy.class);
-
-      if (glossaryInfo != null) {
-        rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
-      }
-
-      term.setChildren(new ArrayList<>());
-      termMap.putIfAbsent(term.getFullyQualifiedName(), term);
-    }
-
-    termMap.putAll(rootTerms);
-
-    termMap
-        .values()
-        .forEach(
-            term -> {
-              String parentFQN = getParentFQN(term.getFullyQualifiedName());
-              String termFQN = term.getFullyQualifiedName();
-
-              if (parentFQN != null && termMap.containsKey(parentFQN)) {
-                EntityHierarchy parentTerm = termMap.get(parentFQN);
-                List<EntityHierarchy> children = parentTerm.getChildren();
-                children.removeIf(
-                    child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
-                children.add(term);
-                parentTerm.setChildren(children);
-              } else {
-                if (rootTerms.containsKey(termFQN)) {
-                  EntityHierarchy rootTerm = rootTerms.get(termFQN);
-                  rootTerm.setChildren(term.getChildren());
-                }
-              }
-            });
-
-    return new ArrayList<>(rootTerms.values());
-  }
-
-  public List<EntityHierarchy> buildDomainSearchHierarchy(SearchResponse searchResponse) {
-    Map<String, EntityHierarchy> entityHierarchyMap =
-        Arrays.stream(searchResponse.getHits().getHits())
-            .map(hit -> JsonUtils.readValue(hit.getSourceAsString(), EntityHierarchy.class))
-            .collect(
-                Collectors.toMap(
-                    EntityHierarchy::getFullyQualifiedName,
-                    entity -> {
-                      entity.setChildren(new ArrayList<>());
-                      return entity;
-                    },
-                    (existing, replacement) -> existing,
-                    LinkedHashMap::new));
-
-    List<EntityHierarchy> rootDomains = new ArrayList<>();
-
-    entityHierarchyMap
-        .values()
-        .forEach(
-            entity -> {
-              String parentFqn = getParentFQN(entity.getFullyQualifiedName());
-              EntityHierarchy parentEntity = entityHierarchyMap.get(parentFqn);
-              if (parentEntity != null) {
-                parentEntity.getChildren().add(entity);
-              } else {
-                rootDomains.add(entity);
-              }
-            });
-
-    return rootDomains;
   }
 
   @Override

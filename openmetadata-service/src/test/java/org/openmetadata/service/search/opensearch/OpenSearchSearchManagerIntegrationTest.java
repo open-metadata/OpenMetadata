@@ -66,7 +66,7 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
     RestClientTransport transport = new RestClientTransport(osRestClient, new JacksonJsonpMapper());
     client = new OpenSearchClient(transport);
 
-    searchManager = new OpenSearchSearchManager(client, null);
+    searchManager = new OpenSearchSearchManager(client, null, "");
 
     LOG.info("OpenSearchSearchManager test setup completed with index prefix: {}", testIndexPrefix);
   }
@@ -260,7 +260,7 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
 
   @Test
   void testConstructor_HandlesNullClient() {
-    OpenSearchSearchManager managerWithNullClient = new OpenSearchSearchManager(null, null);
+    OpenSearchSearchManager managerWithNullClient = new OpenSearchSearchManager(null, null, "");
 
     assertNotNull(managerWithNullClient);
     assertDoesNotThrow(
@@ -1066,6 +1066,354 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
     assertNotNull(response);
     assertEquals(500, response.getStatus());
     LOG.info("Invalid JSON handled correctly with error status");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearch_BasicQuery() throws Exception {
+    String testIndex = testIndexPrefix + "_search_basic";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 10; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Test Entity %d",
+                "description": "Description for entity %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Create a search request
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQuery("Test");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(5);
+    searchRequest.setDeleted(false);
+
+    Response response = searchManager.search(searchRequest, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    assertNotNull(response.getEntity());
+    LOG.info("Search executed successfully with status: {}", response.getStatus());
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearch_WithQueryAndFilters() throws Exception {
+    String testIndex = testIndexPrefix + "_search_filters";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index documents with different entity types
+    for (int i = 1; i <= 10; i++) {
+      final int entityNum = i;
+      String entityType = (i % 2 == 0) ? "table" : "dashboard";
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Test Entity %d",
+                "description": "Description for entity %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "%s",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum, entityType);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Search for tables only
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQuery("Test");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(10);
+    searchRequest.setDeleted(false);
+
+    Response response = searchManager.search(searchRequest, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Search with filters executed successfully");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearch_WithPagination() throws Exception {
+    String testIndex = testIndexPrefix + "_search_pagination";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index 20 documents
+    for (int i = 1; i <= 20; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Entity %03d",
+                "description": "Description for entity %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Test first page
+    org.openmetadata.schema.search.SearchRequest request1 =
+        new org.openmetadata.schema.search.SearchRequest();
+    request1.setIndex(actualIndexName);
+    request1.setQuery("Entity");
+    request1.setFrom(0);
+    request1.setSize(10);
+    request1.setDeleted(false);
+
+    Response response1 = searchManager.search(request1, null);
+    assertNotNull(response1);
+    assertEquals(200, response1.getStatus());
+    LOG.info("First page of search results retrieved");
+
+    // Test second page
+    org.openmetadata.schema.search.SearchRequest request2 =
+        new org.openmetadata.schema.search.SearchRequest();
+    request2.setIndex(actualIndexName);
+    request2.setQuery("Entity");
+    request2.setFrom(10);
+    request2.setSize(10);
+    request2.setDeleted(false);
+
+    Response response2 = searchManager.search(request2, null);
+    assertNotNull(response2);
+    assertEquals(200, response2.getStatus());
+    LOG.info("Second page of search results retrieved");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testPreviewSearch_WithCustomSettings() throws Exception {
+    String testIndex = testIndexPrefix + "_preview_search";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 5; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Preview Entity %d",
+                "description": "Preview description %d",
+                "fullyQualifiedName": "test.preview.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Create custom search settings for preview with proper initialization
+    org.openmetadata.schema.api.search.GlobalSettings globalSettings =
+        new org.openmetadata.schema.api.search.GlobalSettings();
+    globalSettings.setTermBoosts(new java.util.ArrayList<>());
+
+    org.openmetadata.schema.api.search.SearchSettings customSettings =
+        new org.openmetadata.schema.api.search.SearchSettings();
+    customSettings.setGlobalSettings(globalSettings);
+
+    // Create a search request
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQuery("Preview");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(5);
+    searchRequest.setDeleted(false);
+
+    Response response = searchManager.previewSearch(searchRequest, null, customSettings);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    assertNotNull(response.getEntity());
+    LOG.info("Preview search executed successfully with custom settings");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testPreviewSearch_DifferentFromRegularSearch() throws Exception {
+    String testIndex = testIndexPrefix + "_preview_compare";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 10; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Compare Entity %d",
+                "description": "Compare description %d",
+                "fullyQualifiedName": "test.compare.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Create search request
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQuery("Compare");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(5);
+    searchRequest.setDeleted(false);
+
+    // Execute regular search
+    Response regularResponse = searchManager.search(searchRequest, null);
+
+    // Create custom settings for preview with proper initialization
+    org.openmetadata.schema.api.search.GlobalSettings globalSettings =
+        new org.openmetadata.schema.api.search.GlobalSettings();
+    globalSettings.setTermBoosts(new java.util.ArrayList<>());
+
+    org.openmetadata.schema.api.search.SearchSettings customSettings =
+        new org.openmetadata.schema.api.search.SearchSettings();
+    customSettings.setGlobalSettings(globalSettings);
+
+    // Execute preview search with custom settings
+    Response previewResponse = searchManager.previewSearch(searchRequest, null, customSettings);
+
+    // Both should succeed
+    assertNotNull(regularResponse);
+    assertEquals(200, regularResponse.getStatus());
+    assertNotNull(previewResponse);
+    assertEquals(200, previewResponse.getStatus());
+
+    LOG.info("Both regular and preview search executed successfully");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearch_WithEmptyQuery() throws Exception {
+    String testIndex = testIndexPrefix + "_search_empty";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 5; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+              {
+                "id": "entity-%d",
+                "name": "Entity %d",
+                "description": "Description %d",
+                "fullyQualifiedName": "test.entity.%d",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("entity-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Search with empty query (should return all)
+    org.openmetadata.schema.search.SearchRequest searchRequest =
+        new org.openmetadata.schema.search.SearchRequest();
+    searchRequest.setIndex(actualIndexName);
+    searchRequest.setQuery("");
+    searchRequest.setFrom(0);
+    searchRequest.setSize(10);
+    searchRequest.setDeleted(false);
+
+    Response response = searchManager.search(searchRequest, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Empty query search handled correctly");
 
     // Clean up
     client.indices().delete(d -> d.index(actualIndexName));
