@@ -278,24 +278,23 @@ public class JwtFilter implements ContainerRequestFilter {
   protected static String extractToken(MultivaluedMap<String, String> headers) {
     LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
-    if (nullOrEmpty(source)) {
-      throw AuthenticationException.getTokenNotPresentException();
-    }
-    // Extract the bearer token
-    if (source.startsWith(TOKEN_PREFIX)) {
-      return source.substring(TOKEN_PREFIX.length() + 1);
-    }
-    throw AuthenticationException.getTokenNotPresentException();
+    return extractTokenFromString(source);
   }
 
   public static String extractToken(String tokenFromHeader) {
     LOG.debug("Request Token:{}", tokenFromHeader);
-    if (nullOrEmpty(tokenFromHeader)) {
+    return extractTokenFromString(tokenFromHeader);
+  }
+
+  private static String extractTokenFromString(String tokenString) {
+    if (nullOrEmpty(tokenString)) {
       throw AuthenticationException.getTokenNotPresentException();
     }
-    // Extract the bearer token
-    if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
-      return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
+    if (tokenString.startsWith(TOKEN_PREFIX)) {
+      if (tokenString.length() <= TOKEN_PREFIX.length() + 1) {
+        throw AuthenticationException.getTokenNotPresentException();
+      }
+      return tokenString.substring(TOKEN_PREFIX.length() + 1);
     }
     throw AuthenticationException.getTokenNotPresentException();
   }
