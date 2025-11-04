@@ -889,14 +889,14 @@ export interface FilterPattern {
  *
  * This schema defines the Slack App Token Configuration
  *
+ * Configuration for the Collate AI Quality Agent.
+ *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
  * Cache Warmup Application Configuration.
- *
- * Configuration for the Collate AI Quality Agent.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -909,6 +909,8 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
+     *
+     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -931,7 +933,13 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?:             string;
+    userToken?: string;
+    /**
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?:                boolean;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -1010,12 +1018,6 @@ export interface CollateAIAppConfig {
      */
     force?: boolean;
     /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?: boolean;
-    /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
      */
@@ -1025,6 +1027,16 @@ export interface CollateAIAppConfig {
      * one month).
      */
     changeEventRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -1740,6 +1752,7 @@ export enum CollateAIAppConfigType {
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -2815,7 +2828,7 @@ export interface ConfigObject {
      *
      * API key to authenticate with the SAP ERP APIs.
      *
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */
@@ -3980,6 +3993,11 @@ export interface ConfigObject {
      * We support username/password or client certificate authentication
      */
     nifiConfig?: NifiCredentialsConfiguration;
+    /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
     /**
      * Spline UI Host & Port.
      */

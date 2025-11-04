@@ -77,6 +77,7 @@ import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -97,6 +98,7 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
@@ -312,6 +314,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean force) {
     try {
       parseConfig();
+      initializeCollectionRegistry();
+      WorkflowHandler.initialize(config);
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
       if (!force && isAppInstalled(appRepository, appName)) {
@@ -342,6 +348,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String appName) {
     try {
       parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       if (deleteApplication(appRepository, appName)) {
         LOG.info("App deleted.");
@@ -385,6 +394,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       initializeCollectionRegistry();
+      SettingsCache.initialize(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
@@ -562,6 +572,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
 
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
