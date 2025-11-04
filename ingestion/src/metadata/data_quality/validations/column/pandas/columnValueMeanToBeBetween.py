@@ -133,7 +133,11 @@ class ColumnValueMeanToBeBetweenValidator(
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 # Statistical validator: when mean fails, ALL rows in dimension fail
-                failed_count = total_rows if checker.check_pandas(mean_value) else 0
+                failed_count = (
+                    total_rows
+                    if checker.violates_pandas({Metrics.MEAN.name: mean_value})
+                    else 0
+                )
 
                 results_data.append(
                     {
@@ -176,8 +180,8 @@ class ColumnValueMeanToBeBetweenValidator(
                     },
                     exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metric=Metrics.MEAN.name,
-                    violation_predicate=checker.check_pandas,
+                    violation_metrics=[Metrics.MEAN.name],
+                    violation_predicate=checker.violates_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):

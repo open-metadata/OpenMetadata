@@ -13,7 +13,7 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import Callable, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -234,8 +234,8 @@ def aggregate_others_statistical_pandas(
     others_label: str = DIMENSION_OTHERS_LABEL,
     exclude_from_final: Optional[List[str]] = None,
     agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,
-    violation_metric: Optional[str] = None,
-    violation_predicate: Optional[Callable[[object], bool]] = None,
+    violation_metrics: Optional[List[str]] = None,
+    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
@@ -283,6 +283,7 @@ def aggregate_others_statistical_pandas(
     exclude_from_final = exclude_from_final or []
     agg_functions = agg_functions or {}
     final_metric_calculators = final_metric_calculators or {}
+    violation_metrics = violation_metrics or []
 
     # Sort by impact score descending
     df_sorted = df.sort_values(by=impact_column, ascending=False)
@@ -332,14 +333,18 @@ def aggregate_others_statistical_pandas(
 
         # Recompute failed_count for Others if violation condition provided
         if (
-            violation_metric is not None
-            and violation_predicate is not None
+            violation_predicate is not None
             and "failed_count" in df_aggregated.columns
-            and violation_metric in df_aggregated.columns
+            and all(name in df_aggregated.columns for name in violation_metrics)
         ):
-            metric_series = df_aggregated.loc[others_mask, violation_metric]
+            metrics_df = df_aggregated.loc[others_mask, violation_metrics]
             total_series = df_aggregated.loc[others_mask, "total_count"]
-            violation_mask = metric_series.apply(violation_predicate)
+            violation_mask = metrics_df.apply(
+                lambda row: violation_predicate(
+                    {name: row[name] for name in violation_metrics}
+                ),
+                axis=1,
+            )
             df_aggregated.loc[others_mask, "failed_count"] = np.where(
                 violation_mask, total_series, 0
             )
