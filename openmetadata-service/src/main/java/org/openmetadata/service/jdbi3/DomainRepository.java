@@ -18,14 +18,12 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +57,6 @@ import org.openmetadata.service.util.LineageUtil;
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
-  private static final String FIELD_ASSETS_COUNT = "assetsCount";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -79,21 +76,12 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
-    fieldFetchers.put(FIELD_ASSETS_COUNT, this::fetchAndSetAssetsCount);
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
 
   @Override
-  public Set<String> getSearchDerivedFields() {
-    return Set.of(FIELD_ASSETS, FIELD_ASSETS_COUNT);
-  }
-
-  @Override
   public void setFields(Domain entity, Fields fields) {
-    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
-    entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssets(entity).size() : 0);
     entity.withParent(getParent(entity));
   }
 
@@ -102,21 +90,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
-  }
-
-  // Individual field fetchers registered in constructor
-  private void fetchAndSetAssets(List<Domain> domains, Fields fields) {
-    if (!fields.contains(FIELD_ASSETS) || domains == null || domains.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, domains, batchFetchAssets(domains), Domain::setAssets);
-  }
-
-  private void fetchAndSetAssetsCount(List<Domain> domains, Fields fields) {
-    if (!fields.contains(FIELD_ASSETS_COUNT) || domains == null || domains.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, domains, batchFetchAssetsCount(domains), Domain::setAssetsCount);
   }
 
   private void fetchAndSetParents(List<Domain> domains, Fields fields) {
@@ -173,25 +146,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  private List<EntityReference> getAssets(Domain entity) {
-    if (inheritedFieldEntitySearch == null) {
-      LOG.warn("Search is unavailable for domain assets. Returning empty list for consistency.");
-      return new ArrayList<>();
-    }
-
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain(entity.getFullyQualifiedName());
-    InheritedFieldResult result =
-        inheritedFieldEntitySearch.getEntitiesForField(
-            query,
-            () -> {
-              LOG.warn(
-                  "Search fallback triggered for domain {}. Returning empty list for consistency.",
-                  entity.getFullyQualifiedName());
-              return new InheritedFieldResult(new ArrayList<>(), 0);
-            });
-    return result.entities();
-  }
-
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
@@ -200,6 +154,37 @@ public class DomainRepository extends EntityRepository<Domain> {
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+  }
+
+  public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
+    Domain domain = get(null, domainId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for domain assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    // Use the forDomain helper method with pagination
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for domain {} assets. Returning empty list.",
+                  domain.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getDomainAssetsByName(
+      String domainName, int limit, int offset) {
+    Domain domain = getByName(null, domainName, getFields("id,fullyQualifiedName"));
+    return getDomainAssets(domain.getId(), limit, offset);
   }
 
   @Transaction
@@ -389,35 +374,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  private Map<UUID, List<EntityReference>> batchFetchAssets(List<Domain> domains) {
-    if (domains == null || domains.isEmpty()) {
-      return new HashMap<>();
-    }
-
-    if (inheritedFieldEntitySearch == null) {
-      LOG.warn("Search is unavailable for domain assets. Returning empty lists for consistency.");
-      var emptyMap = new HashMap<UUID, List<EntityReference>>();
-      domains.forEach(domain -> emptyMap.put(domain.getId(), new ArrayList<>()));
-      return emptyMap;
-    }
-
-    var assetsMap = new HashMap<UUID, List<EntityReference>>();
-    for (Domain domain : domains) {
-      InheritedFieldQuery query = InheritedFieldQuery.forDomain(domain.getFullyQualifiedName());
-      InheritedFieldResult result =
-          inheritedFieldEntitySearch.getEntitiesForField(
-              query,
-              () -> {
-                LOG.warn(
-                    "Search fallback triggered for domain {}. Returning empty list for consistency.",
-                    domain.getFullyQualifiedName());
-                return new InheritedFieldResult(new ArrayList<>(), 0);
-              });
-      assetsMap.put(domain.getId(), result.entities());
-    }
-    return assetsMap;
-  }
-
   private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {
     var parentsMap = new HashMap<UUID, EntityReference>();
     if (domains == null || domains.isEmpty()) {
@@ -467,35 +423,5 @@ public class DomainRepository extends EntityRepository<Domain> {
         });
 
     return expertsMap;
-  }
-
-  private Map<UUID, Integer> batchFetchAssetsCount(List<Domain> domains) {
-    if (domains == null || domains.isEmpty()) {
-      return new HashMap<>();
-    }
-
-    if (inheritedFieldEntitySearch == null) {
-      LOG.warn(
-          "Search is unavailable for domain asset counts. Returning 0 for all domains for consistency.");
-      var emptyCountMap = new HashMap<UUID, Integer>();
-      domains.forEach(domain -> emptyCountMap.put(domain.getId(), 0));
-      return emptyCountMap;
-    }
-
-    Map<UUID, Integer> countsById = new HashMap<>();
-    for (Domain domain : domains) {
-      InheritedFieldQuery query = InheritedFieldQuery.forDomain(domain.getFullyQualifiedName());
-      Integer count =
-          inheritedFieldEntitySearch.getCountForField(
-              query,
-              () -> {
-                LOG.warn(
-                    "Search fallback triggered for domain {}. Returning 0 for consistency.",
-                    domain.getFullyQualifiedName());
-                return 0;
-              });
-      countsById.put(domain.getId(), count);
-    }
-    return countsById;
   }
 }

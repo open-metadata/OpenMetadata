@@ -281,6 +281,14 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
+    /**
      * Configuration for natural language search capabilities
      */
     naturalLanguageSearch?: NaturalLanguageSearch;
@@ -431,6 +439,10 @@ export interface PipelineServiceClientConfiguration {
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
+    /**
+     * Pipeline View Mode for Lineage.
+     */
+    pipelineViewMode?: PipelineViewMode;
     /**
      * Upstream Depth for Lineage.
      */
@@ -1488,6 +1500,11 @@ export enum ProviderType {
  */
 export interface ExecutorConfiguration {
     /**
+     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for new jobs.
+     */
+    asyncJobAcquisitionInterval?: number;
+    /**
      * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
      */
     corePoolSize?: number;
@@ -1509,6 +1526,11 @@ export interface ExecutorConfiguration {
      * more.
      */
     tasksDuePerAcquisition?: number;
+    /**
+     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for scheduled jobs.
+     */
+    timerJobAcquisitionInterval?: number;
 }
 
 export interface GlobalSettings {
@@ -2041,6 +2063,16 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+ * Pipeline View Mode for Lineage.
+ *
+ * Determines the view mode for pipelines in lineage.
+ */
+export enum PipelineViewMode {
+    Edge = "Edge",
+    Node = "Node",
 }
 
 /**

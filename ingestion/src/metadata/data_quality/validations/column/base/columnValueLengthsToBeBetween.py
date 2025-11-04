@@ -38,14 +38,17 @@ MAX = "maxValueLength"
 class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
     """Validator for column value length to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             max_res = self._run_results(Metrics.MAX_LENGTH, column)
             min_res = self._run_results(Metrics.MIN_LENGTH, column)
         except (ValueError, RuntimeError) as exc:
@@ -88,10 +91,6 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _get_column_name(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
         raise NotImplementedError
 
@@ -121,4 +120,4 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name(), min_bound, max_bound)
+        return self.compute_row_count(self.get_column(), min_bound, max_bound)

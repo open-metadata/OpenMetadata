@@ -586,7 +586,6 @@ public class NotificationTemplateResourceTest
       "system-notification-entity-deleted",
       "system-notification-entity-soft-deleted",
       "system-notification-entity-default",
-      "system-notification-test-result",
       "system-notification-logical-test-case-added",
       "system-notification-task-closed",
       "system-notification-task-resolved"
@@ -646,8 +645,6 @@ public class NotificationTemplateResourceTest
     assertFalse(
         systemTemplate.getIsModifiedFromDefault(),
         "Fresh template should not be marked as modified");
-    assertNotNull(
-        systemTemplate.getDefaultTemplateChecksum(), "Template should have a default checksum");
   }
 
   @Test
@@ -661,7 +658,6 @@ public class NotificationTemplateResourceTest
     assertFalse(
         systemTemplate.getIsModifiedFromDefault(),
         "Fresh template should not be marked as modified");
-    String originalChecksum = systemTemplate.getDefaultTemplateChecksum();
 
     // User modifies the template using PATCH (following existing test patterns)
     String newBody = "<div>User modified template: {{entity.name}}</div>";
@@ -678,10 +674,6 @@ public class NotificationTemplateResourceTest
         modifiedTemplate.getIsModifiedFromDefault(),
         "Template should be marked as modified after change");
     assertEquals(newBody, modifiedTemplate.getTemplateBody());
-    assertEquals(
-        originalChecksum,
-        modifiedTemplate.getDefaultTemplateChecksum(),
-        "Default checksum should be preserved");
   }
 
   @Test
@@ -731,8 +723,6 @@ public class NotificationTemplateResourceTest
     assertEquals(originalSubject, resetResult.getTemplateSubject());
     assertEquals(originalDescription, resetResult.getDescription());
     assertEquals(originalDisplayName, resetResult.getDisplayName());
-    assertNotNull(
-        resetResult.getDefaultTemplateChecksum(), "Template should have checksum after reset");
   }
 
   @Test
@@ -767,7 +757,6 @@ public class NotificationTemplateResourceTest
             + "{{#each entity.tags as |tag|}}"
             + "<span class='tag'>{{tag.tagFQN}}</span>"
             + "{{/each}}"
-            + "{{joinList entity.columns 'name' ', '}}"
             + "{{formatDate entity.updatedAt 'yyyy-MM-dd'}}";
 
     NotificationTemplateValidationRequest request =

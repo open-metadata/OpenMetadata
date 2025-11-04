@@ -35,7 +35,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.3",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
@@ -67,9 +67,10 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
-    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
+    "kafka-connect": "kafka-connect-py==0.10.11",
 }
 
 COMMONS = {
@@ -137,7 +138,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager==2.22.1",
+    "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -171,8 +172,7 @@ base_requirements = {
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        "opentelemetry-exporter-otlp==1.27.0",
-        "protobuf<5",
+        "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
@@ -188,7 +188,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
-        "sqlalchemy-bigquery>=1.2.2",
+        "sqlalchemy-bigquery~=1.15.0",
     },
     "bigtable": {
         VERSIONS["google-cloud-bigtable"],
@@ -293,7 +293,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
-    "kafkaconnect": {"kafka-connect-py==0.10.11"},
+    "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -398,7 +398,7 @@ test_unit = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.27.0",
+    "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -464,6 +464,7 @@ test = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     *plugins["exasol"],
     VERSIONS["opensearch"],
+    VERSIONS["kafka-connect"],
 }
 
 if sys.version_info >= (3, 9):

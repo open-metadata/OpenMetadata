@@ -51,11 +51,13 @@ in
 customers_clean1
 """
 
-EXPECTED_REDSHIFT_RESULT = {
-    "database": "dev",
-    "schema": "demo_dbt_jaffle",
-    "table": "customers_clean",
-}
+EXPECTED_REDSHIFT_RESULT = [
+    {
+        "database": "dev",
+        "schema": "demo_dbt_jaffle",
+        "table": "customers_clean",
+    }
+]
 
 
 MOCK_SNOWFLAKE_EXP = """let
@@ -72,11 +74,35 @@ MOCK_SNOWFLAKE_EXP_INVALID = """let
 in
     STG_CUSTOMERS_View"""
 
-EXPECTED_SNOWFLAKE_RESULT = {
-    "database": "DEMO_STAGE",
-    "schema": "PUBLIC",
-    "table": "STG_CUSTOMERS",
-}
+EXPECTED_SNOWFLAKE_RESULT = [
+    {
+        "database": "DEMO_STAGE",
+        "schema": "PUBLIC",
+        "table": "STG_CUSTOMERS",
+    }
+]
+
+MOCK_DATABRICKS_EXP = """let
+    Source = Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog = "", Database = ""]),
+    test_database = Source{[Name="DEMO_STAGE",Kind="Database"]}[Data],
+    test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
+    test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
+in 
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+
+EXPECTED_DATABRICKS_RESULT = [
+    {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
+]
 
 mock_config = {
     "source": {
@@ -103,6 +129,7 @@ mock_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
+            "enableVersionValidation": "false",
             "securityConfig": {
                 "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
                 "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
@@ -160,11 +187,13 @@ MOCK_USER_2_ENITYTY_REF_LIST = EntityReferenceList(
 )
 
 MOCK_SNOWFLAKE_EXP_V2 = 'let\n    Source = Snowflake.Databases(Snowflake_URL,Warehouse,[Role=Role]),\n    Database = Source{[Name=DB,Kind="Database"]}[Data],\n    DB_Schema = Database{[Name=Schema,Kind="Schema"]}[Data],\n    Table = DB_Schema{[Name="CUSTOMER_TABLE",Kind="Table"]}[Data],\n    #"Andere entfernte Spalten" = Table.SelectColumns(Table,{"ID_BERICHTSMONAT", "ID_AKQUISE_VERMITTLER", "ID_AKQUISE_OE", "ID_SPARTE", "ID_RISIKOTRAEGER", "ID_KUNDE", "STUECK", "BBE"})\nin\n    #"Andere entfernte Spalten"'
-EXPECTED_SNOWFLAKE_RESULT_V2 = {
-    "database": "MY_DB",
-    "schema": "MY_SCHEMA",
-    "table": "CUSTOMER_TABLE",
-}
+EXPECTED_SNOWFLAKE_RESULT_V2 = [
+    {
+        "database": "MY_DB",
+        "schema": "MY_SCHEMA",
+        "table": "CUSTOMER_TABLE",
+    }
+]
 MOCK_DATASET_FROM_WORKSPACE = Dataset(
     id="testdataset",
     name="Test Dataset",
@@ -262,6 +291,33 @@ class PowerBIUnitTest(TestCase):
             MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
         )
         self.assertEqual(result, EXPECTED_SNOWFLAKE_RESULT_V2)
+
+        test_snowflaek_query_expression = 'let\n    Source = Value.NativeQuery(Snowflake.Databases("dummy_host",(Warehouse)){[Name=(Database)]}[Data], "select * from "& Database &".""STG"".""STATIC_AOPANDLE""", null, [EnableFolding=true]),\n    #"Renamed Columns" = Table.RenameColumns(Source,{{"AOP_IMPRESSIONS", "AOP Impressions"}, {"AOP_ORDERS", "AOP Orders"}, {"AOP_SPEND", "AOP Spend"}, {"AOP_TOTAL_REV", "AOP Total Revenue"}, {"AOP_UNITS", "AOP Units"}, {"AOP_VISITS", "AOP Visits"}, {"LE_IMPRESSIONS", "LE Impressions"}, {"LE_ORDERS", "LE Orders"}, {"LE_SPEND", "LE Spend"}, {"LE_TOTAL_REV", "LE Total Revenue"}, {"LE_UNITS", "LE Units"}, {"LE_VISITS", "LE Visits"}, {"SITEID", "SiteID"}, {"COUNTRY", "Country"}, {"REGION", "Region"}, {"CHANNEL", "Channel"}, {"DATE", "Date"}, {"AOP_CONV", "AOP_Conv"}, {"LE_CONV", "LE_Conv"}}),\n    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns",{{"SiteID", type text}, {"AOP Impressions", type number}, {"AOP Visits", type number}, {"AOP Orders", type number}, {"AOP Units", type number}, {"AOP Total Revenue", type number}, {"AOP Spend", type number}, {"AOP_Conv", type number}, {"AOP_UPT", type number}, {"AOP_ASP", type number}, {"AOP_AOV", type number}, {"AOP_CTR", type number}, {"LE Impressions", type number}, {"LE Visits", type number}, {"LE Orders", type number}, {"LE Units", type number}, {"LE Total Revenue", type number}, {"LE Spend", type number}, {"LE_Conv", type number}, {"LE_UPT", type number}, {"LE_ASP", type number}, {"LE_AOV", type number}, {"LE_CTR", type number}}),\n    #"Duplicated Column" = Table.DuplicateColumn(#"Changed Type", "Date", "Date - Copy"),\n    #"Split Column by Delimiter" = Table.SplitColumn(#"Duplicated Column", "Date - Copy", Splitter.SplitTextByDelimiter("-", QuoteStyle.None), {"Date - Copy.1", "Date - Copy.2", "Date - Copy.3"}),\n    #"Changed Type1" = Table.TransformColumnTypes(#"Split Column by Delimiter",{{"Date - Copy.1", type text}, {"Date - Copy.2", type text}, {"Date - Copy.3", type text}}),\n    #"Inserted Merged Column" = Table.AddColumn(#"Changed Type1", "Merged", each Text.Combine({[#"Date - Copy.1"], [#"Date - Copy.2"], [#"Date - Copy.3"]}, ""), type text),\n    #"Renamed Columns1" = Table.RenameColumns(#"Inserted Merged Column",{{"Merged", "DateKey"}}),\n    #"Removed Columns" = Table.RemoveColumns(#"Renamed Columns1",{"Date - Copy.1", "Date - Copy.2", "Date - Copy.3"}),\n    #"Added Custom" = Table.AddColumn(#"Removed Columns", "Brand", each "CROCS"),\n    #"Changed Type2" = Table.TransformColumnTypes(#"Added Custom",{{"Brand", type text}})\nin\n    #"Changed Type2"'
+        result = self.powerbi._parse_snowflake_source(
+            test_snowflaek_query_expression, MOCK_DASHBOARD_DATA_MODEL
+        )
+        # Test should parse the Snowflake query and extract table info
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        result_table = result[0]
+        self.assertEqual(result_table.get("schema"), "STG")
+        self.assertEqual(result_table.get("table"), "STATIC_AOPANDLE")
+
+        # Test with valid databricks native source
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
@@ -370,7 +426,7 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_table_info_from_source_exp(
             table, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertEqual(result, {})
+        self.assertEqual(result, None)
 
         # no source
         table = PowerBiTable(
@@ -380,7 +436,7 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_table_info_from_source_exp(
             table, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertEqual(result, {})
+        self.assertEqual(result, None)
 
     @pytest.mark.order(4)
     @patch.object(
@@ -394,6 +450,7 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_snowflake_source(
             MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
         )
+        result = result[0]
         self.assertIsNone(result["database"])
         self.assertIsNone(result["schema"])
         self.assertEqual(result["table"], "CUSTOMER_TABLE")

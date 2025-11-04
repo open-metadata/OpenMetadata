@@ -519,6 +519,54 @@ const ServiceDetailsPage: FunctionComponent = () => {
               label: startCase(type),
             }))
           : typeFilter;
+
+        // Build queryFilter with proper structure instead of using filters with AND/OR
+        const baseQueryFilter = getServiceDisplayNameQueryFilter(
+          getEntityName(serviceDetails)
+        );
+
+        // Build filters array for the must clause
+        const filterClauses = [];
+
+        // Add pipeline type filter (OR condition)
+        if (typeFilterArray.length > 0) {
+          filterClauses.push({
+            bool: {
+              should: typeFilterArray.map((type) => ({
+                term: { pipelineType: type.key },
+              })),
+              minimum_should_match: 1,
+            },
+          });
+        }
+
+        // Add status filter (OR condition)
+        if (!isEmpty(statusFilter)) {
+          filterClauses.push({
+            bool: {
+              should: statusFilter.map((status) => ({
+                term: { 'pipelineStatuses.pipelineState': status.key },
+              })),
+              minimum_should_match: 1,
+            },
+          });
+        }
+
+        // Combine all filters with the base query filter
+        const combinedQueryFilter =
+          filterClauses.length > 0
+            ? {
+                query: {
+                  bool: {
+                    must: [
+                      ...(baseQueryFilter.query.bool.must || []),
+                      ...filterClauses,
+                    ],
+                  },
+                },
+              }
+            : baseQueryFilter;
+
         const res = await searchQuery({
           pageNumber: page,
           pageSize: ingestionPageSize,
@@ -526,28 +574,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           query: `*${getEncodedFqn(
             escapeESReservedCharacters(searchText ?? '')
           )}*`,
-          filters: `(${typeFilterArray
-            .map(
-              (type, index) =>
-                `pipelineType:${type.key} ${
-                  index < typeFilterArray.length - 1 ? 'OR' : ''
-                }`
-            )
-            .join(' ')}) ${
-            isEmpty(statusFilter)
-              ? ''
-              : `AND (${statusFilter
-                  .map(
-                    (type, index) =>
-                      `pipelineStatuses.pipelineState:${type.key} ${
-                        index < statusFilter.length - 1 ? 'OR' : ''
-                      }`
-                  )
-                  .join(' ')})`
-          }`,
-          queryFilter: getServiceDisplayNameQueryFilter(
-            getEntityName(serviceDetails)
-          ),
+          queryFilter: combinedQueryFilter,
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
         const total = res?.hits?.total.value ?? 0;
@@ -1258,15 +1285,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
-  const disableRunAgentsButton = useMemo(() => {
-    if (isWorkflowStatusLoading) {
-      return true;
-    }
+  const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
+    useMemo(() => {
+      let disableRunAgentsButton = false;
+      let disableRunAgentsButtonMessage: string | undefined;
 
-    return isEmpty(workflowStatesData?.mainInstanceState.status)
-      ? false
-      : workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running;
-  }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
+      if (isWorkflowStatusLoading) {
+        disableRunAgentsButton = true;
+      }
+
+      if (
+        workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+      ) {
+        disableRunAgentsButton = true;
+        disableRunAgentsButtonMessage = t('message.auto-pilot-already-running');
+      }
+
+      return {
+        disableRunAgentsButton,
+        disableRunAgentsButtonMessage,
+      };
+    }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
@@ -1440,6 +1479,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             {allowTestConn && (
               <TestConnection
                 connectionType={serviceDetails?.serviceType ?? ''}
+                extraInfo={extraInfoData?.name}
                 getData={() => connectionDetails}
                 hostIp={hostIp}
                 isTestingDisabled={isTestingDisabled}
@@ -1695,6 +1735,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               afterTriggerAction={afterAutoPilotAppTrigger}
               dataAsset={serviceDetails}
               disableRunAgentsButton={disableRunAgentsButton}
+              disableRunAgentsButtonMessage={disableRunAgentsButtonMessage}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
               isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}

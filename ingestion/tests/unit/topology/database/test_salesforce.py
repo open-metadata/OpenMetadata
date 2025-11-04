@@ -106,7 +106,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 EXPECTED_COLUMN_VALUE = [
     Column(
         name=ColumnName("Description"),
-        displayName=None,
+        displayName="Contact Label",
         dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=32000,
@@ -125,14 +125,14 @@ EXPECTED_COLUMN_VALUE = [
     ),
     Column(
         name=ColumnName("OwnerId"),
-        displayName=None,
+        displayName="Owner ID",
         dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=18,
         precision=None,
         scale=None,
         dataTypeDisplay="reference",
-        description="Owner ID",
+        description=None,
         fullyQualifiedName=None,
         tags=[],
         constraint=Constraint.NOT_NULL,
@@ -144,14 +144,14 @@ EXPECTED_COLUMN_VALUE = [
     ),
     Column(
         name=ColumnName("Phone"),
-        displayName=None,
+        displayName="Phone",
         dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=0,
         precision=None,
         scale=None,
         dataTypeDisplay="phone",
-        description="Phone",
+        description=None,
         fullyQualifiedName=None,
         tags=[],
         constraint=Constraint.NOT_NULL,
@@ -163,14 +163,14 @@ EXPECTED_COLUMN_VALUE = [
     ),
     Column(
         name=ColumnName("CreatedById"),
-        displayName=None,
+        displayName="Created By ID",
         dataType=DataType.UNKNOWN,
         arrayDataType=None,
         dataLength=18,
         precision=None,
         scale=None,
         dataTypeDisplay="anytype",
-        description="Created By ID",
+        description=None,
         fullyQualifiedName=None,
         tags=[],
         constraint=Constraint.NOT_NULL,
@@ -215,7 +215,7 @@ SALESFORCE_FIELDS = [
             ("htmlFormatted", False),
             ("idLookup", False),
             ("inlineHelpText", None),
-            ("label", "Contact Description"),
+            ("label", "Contact Label"),
             ("length", 32000),
             ("mask", None),
             ("maskType", None),
@@ -453,7 +453,9 @@ class SalesforceUnitTest(TestCase):
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
     )
     def test_table_column(self, get_table_column_description):
-        get_table_column_description.return_value = None
+        get_table_column_description.return_value = [
+            {"QualifiedApiName": "Description", "Description": "Contact Description"}
+        ]
         result = self.salesforce_source.get_columns("TEST_TABLE", SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 
