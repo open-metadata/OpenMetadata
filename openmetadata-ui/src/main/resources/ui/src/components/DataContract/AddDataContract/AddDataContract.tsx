@@ -27,7 +27,6 @@ import { ReactComponent as SLAIcon } from '../../../assets/svg/timeout.svg';
 import {
   DataContractMode,
   EDataContractTab,
-  SUPPORTED_CONTRACT_TAB,
 } from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,7 +36,10 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
-import { getContractTabLabel } from '../../../utils/DataContract/DataContractUtils';
+import {
+  getContractTabLabel,
+  getDataContractTabByEntity,
+} from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -76,8 +78,7 @@ const AddDataContract: React.FC<{
   );
 
   const entityContractTabs = useMemo(
-    () =>
-      SUPPORTED_CONTRACT_TAB[entityType as keyof typeof SUPPORTED_CONTRACT_TAB],
+    () => getDataContractTabByEntity(entityType),
     [entityType]
   );
 
@@ -132,10 +133,6 @@ const AddDataContract: React.FC<{
           compare(contract, {
             ...contract,
             ...formValues,
-            entity: {
-              id: entityData.id,
-              type: entityType,
-            },
             semantics: validSemantics,
             security: validSecurity,
             displayName: formValues.name,

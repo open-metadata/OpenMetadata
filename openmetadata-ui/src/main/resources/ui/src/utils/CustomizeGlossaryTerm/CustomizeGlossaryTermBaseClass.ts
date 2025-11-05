@@ -18,6 +18,7 @@ import {
 import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
+import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import {
   CommonWidgetType,
   CUSTOM_PROPERTIES_WIDGET,
@@ -246,6 +247,27 @@ class CustomizeGlossaryTermPageClassBase {
         return GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY;
       default:
         return GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER;
+    }
+  }
+
+  /**
+   *
+   * @param string widgetKey
+   * @returns React.FC<
+    {
+      
+      widgetKey: string;
+      
+    }
+  >
+   */
+  public getWidgetFromKey(widgetKey: string) {
+    if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.HEADER)) {
+      return GlossaryHeaderWidget;
+    } else if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TABS)) {
+      return CustomizeTabWidget;
+    } else {
+      return GenericWidget;
     }
   }
 

@@ -22,6 +22,7 @@ import {
   SEMANTIC_TAG_OPERATORS,
 } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
@@ -355,4 +356,39 @@ export const generateSelectOptionsFromString = (
     label: t(`label.${value}`),
     value: value, // Use the string value as the actual value (hour, day, week, etc.)
   }));
+};
+
+export const getDataContractTabByEntity = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.QUALITY,
+        EDataContractTab.SLA,
+      ];
+    case EntityType.TOPIC:
+    case EntityType.API_ENDPOINT:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+
+    default:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+  }
 };

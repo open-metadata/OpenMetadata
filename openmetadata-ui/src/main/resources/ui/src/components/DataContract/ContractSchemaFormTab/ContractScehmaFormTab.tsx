@@ -48,7 +48,6 @@ import {
 } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
-  getAllRowKeysByKeyName,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
@@ -530,12 +529,6 @@ export const ContractSchemaFormTab: React.FC<{
       selectedSchema.map((item) => item.fullyQualifiedName ?? '')
     );
   }, [selectedSchema]);
-
-  useEffect(() => {
-    setExpandedRowKeys(
-      getAllRowKeysByKeyName<Field>((allColumnsData as Field[]) ?? [], 'name')
-    );
-  }, [allColumnsData]);
 
   useEffect(() => {
     fetchColumnsBasedOnEntity();

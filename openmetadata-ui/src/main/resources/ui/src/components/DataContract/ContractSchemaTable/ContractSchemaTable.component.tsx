@@ -115,7 +115,7 @@ const ContractSchemaTable: React.FC<{
           ]
         : []),
     ],
-    [latestSchemaValidationResult]
+    [entityType, latestSchemaValidationResult]
   );
 
   return (
