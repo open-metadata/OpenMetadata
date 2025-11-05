@@ -1714,20 +1714,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               trend.setTimestamp(timestamp);
               trend.setDate(dateStr);
 
-              long maxRuntime = 0;
-              long minRuntime = 0;
+              int maxRuntime = 0;
+              int minRuntime = 0;
               double avgRuntime = 0.0;
               int totalPipelines = ((Number) bucket.get("doc_count")).intValue();
 
               Map<String, Object> maxRuntimeAgg = (Map<String, Object>) bucket.get("max_runtime");
               if (maxRuntimeAgg != null && maxRuntimeAgg.get("value") != null) {
-                maxRuntime = ((Number) maxRuntimeAgg.get("value")).longValue();
+                maxRuntime = ((Number) maxRuntimeAgg.get("value")).intValue();
               }
 
               Map<String, Object> minRuntimeAgg = (Map<String, Object>) bucket.get("min_runtime");
               if (minRuntimeAgg != null && minRuntimeAgg.get("value") != null) {
-                long minValue = ((Number) minRuntimeAgg.get("value")).longValue();
-                minRuntime = (minValue == Long.MAX_VALUE) ? 0 : minValue;
+                int minValue = ((Number) minRuntimeAgg.get("value")).intValue();
+                minRuntime = (minValue == Integer.MAX_VALUE) ? 0 : minValue;
               }
 
               Map<String, Object> avgRuntimeAgg = (Map<String, Object>) bucket.get("avg_runtime");
