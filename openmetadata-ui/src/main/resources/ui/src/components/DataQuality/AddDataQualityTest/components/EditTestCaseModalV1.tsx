@@ -304,6 +304,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             ...(value.tags ?? []),
             ...(value.glossaryTerms ?? []),
           ],
+      dimensionColumns: value.dimensionColumns || undefined,
     };
 
     const jsonPatch = compare(testCase, updatedTestCase);
@@ -501,6 +502,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                     label={t('label.dimension-plural')}
                     name="dimensionColumns">
                     <Select
+                      getPopupContainer={getPopupContainer}
                       id="root/dimensionColumns"
                       mode="multiple"
                       options={dimensionColumnOptions}
