@@ -12,6 +12,8 @@
 """
 Define constants useful for the metadata ingestion
 """
+from metadata.generated.schema.events.eventSubscription import EventSubscription
+
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -154,6 +156,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metric": Metric,
     "glossary": Glossary,
     "glossaryTerm": GlossaryTerm,
+    "eventSubscription": EventSubscription,
 }
 
 ENTITY_REFERENCE_TYPE_MAP = {
