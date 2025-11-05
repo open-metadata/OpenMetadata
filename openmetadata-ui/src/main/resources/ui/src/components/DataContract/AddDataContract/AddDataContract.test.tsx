@@ -13,6 +13,7 @@
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { EDataContractTab } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -40,6 +41,18 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
     ...contract,
     ...formValues,
   })),
+  getDataContractTabByEntity: jest
+    .fn()
+    .mockReturnValue([
+      EDataContractTab.CONTRACT_DETAIL,
+      EDataContractTab.TERMS_OF_SERVICE,
+      EDataContractTab.SCHEMA,
+      EDataContractTab.SEMANTICS,
+      EDataContractTab.SECURITY,
+      EDataContractTab.QUALITY,
+      EDataContractTab.SLA,
+    ]),
+  getContractTabLabel: jest.fn(),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
@@ -55,10 +68,6 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockImplementation(() => ({
     entityType: 'table',
   })),
-}));
-
-jest.mock('.../../../utils/DataContract/DataContractUtils', () => ({
-  getContractTabLabel: jest.fn(),
 }));
 
 const mockOnCancel = jest.fn();
