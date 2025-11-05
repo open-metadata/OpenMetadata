@@ -906,6 +906,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           Query.of(q -> q.bool(b -> b.should(existingQuery).minimumShouldMatch("1"))));
     }
 
+    // Add fqnParts aggregation to fetch parent terms
+    requestBuilder.aggregation(
+        "fqnParts_agg",
+        os.org.opensearch.client.opensearch._types.aggregations.Aggregation.of(
+            a -> a.terms(t -> t.field("fqnParts").size(1000))));
+
     // Execute search to get aggregations for parent terms
     SearchRequest searchRequest = requestBuilder.build(request.getIndex());
     SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
@@ -920,26 +926,31 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         List<Query> parentTermQueries = new ArrayList<>();
         for (StringTermsBucket bucket : parentTermsAgg.sterms().buckets().array()) {
           String fqnPart = bucket.key();
-          Query termQuery =
+          Query matchQuery =
               Query.of(
-                  qt ->
-                      qt.term(
-                          t ->
-                              t.field("fullyQualifiedName.keyword").value(FieldValue.of(fqnPart))));
-          parentTermQueries.add(termQuery);
+                  qt -> qt.match(m -> m.field("fullyQualifiedName").query(FieldValue.of(fqnPart))));
+          parentTermQueries.add(matchQuery);
         }
 
-        Query finalQuery = requestBuilder.query();
-        Query combinedQuery =
+        // Replace the query entirely with parent term queries (not combine)
+        Query parentTermQuery =
             Query.of(
                 q ->
                     q.bool(
                         b -> {
-                          b.should(finalQuery);
                           parentTermQueries.forEach(b::should);
+                          if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+                            b.must(
+                                m ->
+                                    m.match(
+                                        ma ->
+                                            ma.field("entityStatus")
+                                                .query(FieldValue.of("Approved"))));
+                          }
+                          b.minimumShouldMatch("1");
                           return b;
                         }));
-        requestBuilder.query(combinedQuery);
+        requestBuilder.query(parentTermQuery);
       }
     }
 
@@ -977,7 +988,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() == null) continue;
 
-      String jsonSource = hit.source().toString();
+      String jsonSource = hit.source().toJson().toString();
 
       EntityHierarchy term = JsonUtils.readValue(jsonSource, EntityHierarchy.class);
       EntityHierarchy glossaryInfo =
@@ -1026,7 +1037,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Map<String, EntityHierarchy> entityHierarchyMap =
         searchResponse.hits().hits().stream()
             .filter(hit -> hit.source() != null)
-            .map(hit -> JsonUtils.readValue(hit.source().toString(), EntityHierarchy.class))
+            .map(
+                hit -> JsonUtils.readValue(hit.source().toJson().toString(), EntityHierarchy.class))
             .collect(
                 Collectors.toMap(
                     EntityHierarchy::getFullyQualifiedName,
