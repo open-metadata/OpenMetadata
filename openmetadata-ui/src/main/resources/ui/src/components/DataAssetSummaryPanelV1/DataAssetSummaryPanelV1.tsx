@@ -35,7 +35,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
-import { TestCaseStatus } from '../../generated/tests/testCase';
+import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
@@ -466,7 +466,7 @@ export const DataAssetSummaryPanelV1 = ({
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
                 tags={dataAsset.tags?.filter(
-                  (tag: any) => tag.source !== TagSource.Glossary
+                  (tag: TagLabel) => tag.source !== TagSource.Glossary
                 )}
                 onTagsUpdate={onTagsUpdate}
               />
@@ -595,7 +595,7 @@ export const DataAssetSummaryPanelV1 = ({
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
                 tags={dataAsset.tags?.filter(
-                  (tag: any) => tag.source !== TagSource.Glossary
+                  (tag: TagLabel) => tag.source !== TagSource.Glossary
                 )}
                 onTagsUpdate={onTagsUpdate}
               />
