@@ -1,0 +1,14 @@
+{
+  "name": "Hubspot",
+  "displayName": "Hubspot Test Connection",
+  "description": "This Test Connection validates the access against the server and basic metadata extraction of analytics reports.",
+  "steps": [
+    {
+      "name": "GetReports",
+      "description": "List all the analytics reports available to the user",
+      "errorMessage": "Failed to fetch reports, please validate the credentials or validate if user has access to fetch analytics reports",
+      "shortCircuit": true,
+      "mandatory": true
+    }
+  ]
+}

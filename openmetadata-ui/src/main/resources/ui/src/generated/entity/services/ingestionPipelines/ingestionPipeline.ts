@@ -2909,6 +2909,8 @@ export interface ServiceConnection {
  *
  * Hex Connection Config
  *
+ * HubSpot Dashboard Connection Config
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -3648,6 +3650,8 @@ export interface ConfigObject {
      * Access Token for Mode Dashboard
      *
      * Access token to connect to DOMO
+     *
+     * HubSpot Private App Access Token or OAuth Access Token
      */
     accessToken?: string;
     /**
@@ -3764,6 +3768,10 @@ export interface ConfigObject {
      * Type of token to use for authentication
      */
     tokenType?: TokenType;
+    /**
+     * HubSpot Hub ID (optional)
+     */
+    hubId?: string;
     /**
      * Billing Project ID
      */
@@ -6503,6 +6511,8 @@ export enum TokenType {
  *
  * Service type.
  *
+ * HubSpot service type
+ *
  * Custom database service type
  *
  * Kafka service type
@@ -6598,6 +6608,7 @@ export enum PurpleType {
     Greenplum = "Greenplum",
     Hex = "Hex",
     Hive = "Hive",
+    Hubspot = "Hubspot",
     Iceberg = "Iceberg",
     Impala = "Impala",
     Kafka = "Kafka",
