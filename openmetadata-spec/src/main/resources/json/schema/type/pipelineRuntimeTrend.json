@@ -15,13 +15,13 @@
       "description": "Date in YYYY-MM-DD format"
     },
     "maxRuntime": {
-      "type": "integer",
-      "default": 0,
+      "type": "number",
+      "default": 0.0,
       "description": "Maximum runtime in milliseconds among all pipelines executed on this date"
     },
     "minRuntime": {
-      "type": "integer",
-      "default": 0,
+      "type": "number",
+      "default": 0.0,
       "description": "Minimum runtime in milliseconds among all pipelines executed on this date"
     },
     "avgRuntime": {
