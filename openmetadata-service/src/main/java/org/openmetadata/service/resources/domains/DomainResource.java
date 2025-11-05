@@ -75,7 +75,7 @@ import org.openmetadata.service.util.EntityHierarchyList;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
-  static final String FIELDS = "tags,children,owners,experts,extension,followers";
+  static final String FIELDS = "tags,children,childrenCount,owners,experts,extension,followers";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);
@@ -507,9 +507,25 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
-          int limitParam) {
+          int limitParam,
+      @Parameter(
+              description =
+                  "List domains filtered to retrieve the first level/immediate children of the domain `directChildrenOf` parameter. "
+                      + "If not specified, returns only root domains (domains with no parent).",
+              schema = @Schema(type = "string"))
+          @QueryParam("directChildrenOf")
+          String directChildrenOf,
+      @Parameter(
+              description =
+                  "Offset from which to start returning results (for offset-based pagination)",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offset) {
 
-    return new EntityHierarchyList(repository.buildHierarchy(fieldsParam, limitParam));
+    return new EntityHierarchyList(
+        repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset));
   }
 
   @PUT
