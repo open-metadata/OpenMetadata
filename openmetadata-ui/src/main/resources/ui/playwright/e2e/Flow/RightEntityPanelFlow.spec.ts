@@ -62,7 +62,7 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
 async function openEntitySummaryPanel(
   page: Page,
   entityType: string,
-  entityName: string
+  entityFqn: string
 ) {
   await page.getByRole('button', { name: 'Data Assets' }).click();
   const dataAssetDropdownRequest = page.waitForResponse(
@@ -86,27 +86,12 @@ async function openEntitySummaryPanel(
       // Loader might not appear, continue
     });
 
-  const searchResponse = page.waitForResponse('/api/v1/search/query*');
-  await page.getByTestId('searchbar').fill(entityName);
-  await searchResponse;
-
-  await page
-    .waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout: 15000,
-    })
-    .catch(() => {
-      // Loader might not appear, continue
-    });
-
-  const entityCard = page
-    .locator('[data-testid="table-data-card"]')
-    .filter({ hasText: entityName })
-    .first();
-  if (await entityCard.isVisible()) {
-    await entityCard.click();
-    await page.waitForLoadState('networkidle');
-  }
+  const entityCard = page.locator(
+    `[data-testid="table-data-card_${entityFqn}"]`
+  );
+  await entityCard.waitFor({ state: 'visible', timeout: 15000 });
+  await entityCard.click();
+  await page.waitForLoadState('networkidle');
 }
 
 async function navigateToExploreAndSelectTable(page: Page) {
@@ -120,7 +105,11 @@ async function navigateToExploreAndSelectTable(page: Page) {
     .catch(() => {
       // Loader might not appear, continue
     });
-  await openEntitySummaryPanel(page, 'table', testEntity.entity.name);
+  await openEntitySummaryPanel(
+    page,
+    'table',
+    testEntity.entityResponseData.fullyQualifiedName
+  );
 
   await page
     .waitForSelector('[data-testid="loader"]', {
