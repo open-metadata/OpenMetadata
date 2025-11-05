@@ -30,6 +30,7 @@ import {
 } from '../../utils/EntityUtils';
 
 import { AxiosError } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
@@ -94,9 +95,7 @@ export const DataAssetSummaryPanelV1 = ({
         // Create the JSON patch for description update
         const jsonPatch = [
           {
-            op: (dataAsset.description ? 'replace' : 'add') as
-              | 'replace'
-              | 'add',
+            op: dataAsset.description ? 'replace' : 'add',
             path: '/description',
             value: newDescription,
           },
@@ -104,7 +103,7 @@ export const DataAssetSummaryPanelV1 = ({
 
         // Make the API call using the correct patch API for the entity type
         const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
-        const response = await patchAPI(dataAsset.id, jsonPatch);
+        const response = await patchAPI(dataAsset.id, jsonPatch as Operation[]);
 
         // Show success message
         showSuccessToast(

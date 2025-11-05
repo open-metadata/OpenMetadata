@@ -19,6 +19,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import React, { useState } from 'react';
 import { CondensedBreadcrumbProps } from './CondensedBreadcrumb.interface';
+import './condensedBreadcrumb.less';
 
 export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
   items,
@@ -78,7 +79,10 @@ export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
         open={open}
         onClose={handleClose}>
         {hiddenItems.map((item, index) => (
-          <MenuItem key={index} onClick={handleClose}>
+          <MenuItem
+            className="breadcrumb-menu-item"
+            key={index}
+            onClick={handleClose}>
             {item}
           </MenuItem>
         ))}

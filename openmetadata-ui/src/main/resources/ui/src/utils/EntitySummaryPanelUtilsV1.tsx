@@ -45,7 +45,7 @@ export const getEntityChildDetailsV1 = (
 ) => {
   // kept for potential future use; remove unused to satisfy linter
   switch (entityType) {
-    case EntityType.TABLE:
+    case EntityType.TABLE || EntityType.DASHBOARD_DATA_MODEL:
       return (
         <SchemaFieldCardsV1
           entityInfo={entityInfo as TableEntity}
@@ -68,16 +68,6 @@ export const getEntityChildDetailsV1 = (
       return (
         <DashboardChartsV1
           entityInfo={entityInfo as Dashboard}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return (
-        <SchemaFieldCardsV1
-          entityInfo={entityInfo as TableEntity}
-          entityType={entityType}
           highlights={highlights}
           loading={loading}
         />
@@ -743,12 +733,12 @@ const APIEndpointSchemaV1: React.FC<{
   const getAllRowKeys = (fields: Field[]): string[] => {
     const keys: string[] = [];
     const traverse = (fieldList: Field[]) => {
-      fieldList.forEach((field) => {
+      for (const field of fieldList) {
         keys.push(field.name);
         if (field.children && field.children.length > 0) {
           traverse(field.children);
         }
-      });
+      }
     };
     traverse(fields);
 
@@ -859,8 +849,11 @@ const APIEndpointSchemaV1: React.FC<{
         </Button>
       </div>
 
-      {/* Schema Fields Table */}
-      {!isEmpty(activeSchemaFields) ? (
+      {isEmpty(activeSchemaFields) ? (
+        <div className="no-data-container m-x-md">
+          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        </div>
+      ) : (
         <div className="m-l-md">
           <Table
             columns={columns}
@@ -876,10 +869,6 @@ const APIEndpointSchemaV1: React.FC<{
             scroll={{ x: 800 }}
             size="small"
           />
-        </div>
-      ) : (
-        <div className="no-data-container m-x-md">
-          <Text className="no-data-text">{t('message.no-data-available')}</Text>
         </div>
       )}
     </div>
