@@ -191,7 +191,7 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         """
         if test_params is None:
             raise ValueError(
-                "test_params is required for columnValueMaxToBeBetween._format_result_message"
+                "test_params is required for columnValueLengthToBeBetween._format_result_message"
             )
 
         min_length_value = metric_values[Metrics.MIN_LENGTH.name]

@@ -150,7 +150,11 @@ class ColumnValueMaxToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={Metrics.MAX.name: "max"},
+                    agg_functions={
+                        Metrics.MAX.name: "max",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[Metrics.MAX.name],
                     violation_predicate=checker.violates_pandas,
