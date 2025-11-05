@@ -786,7 +786,7 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             continue
                         if dexpression.name == match.group(2):
-                            pattern = r'DefaultValue="([^"]+)"'
+                            pattern = r'^"([^"]+)"\s+meta'
                             kw_match = re.search(pattern, dexpression.expression)
                             if kw_match:
                                 return kw_match.group(1)
@@ -1056,7 +1056,9 @@ class PowerbiSource(DashboardServiceSource):
                 return table_info_list
 
             # parse databricks source
-            table_info_list = self._parse_databricks_source(source_expression)
+            table_info_list = self._parse_databricks_source(
+                source_expression, datamodel_entity
+            )
             if isinstance(table_info_list, List):
                 return table_info_list
 

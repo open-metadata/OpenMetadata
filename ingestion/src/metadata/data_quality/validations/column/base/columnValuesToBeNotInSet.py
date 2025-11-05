@@ -55,7 +55,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         )
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             res = self._run_results(
                 Metrics.COUNT_IN_SET, column, values=forbidden_values
             )
@@ -88,10 +88,6 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _get_column_name(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _run_results(
         self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
     ):
@@ -115,4 +111,4 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name())
+        return self.compute_row_count(self.get_column())

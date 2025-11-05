@@ -52,10 +52,13 @@ export const DATA_STEWARD_RULES: PolicyRulesType[] = [
     name: 'DataStewardRole',
     resources: ['All'],
     operations: [
+      'EditCertification',
       'EditDescription',
       'EditDisplayName',
+      'EditGlossaryTerms',
       'EditLineage',
       'EditOwners',
+      'EditTier',
       'EditTags',
       'ViewAll',
     ],

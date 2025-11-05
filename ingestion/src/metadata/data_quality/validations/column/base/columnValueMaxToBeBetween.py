@@ -25,6 +25,9 @@ from metadata.data_quality.validations.base_test_handler import (
     DimensionResult,
     TestEvaluation,
 )
+from metadata.data_quality.validations.checkers.between_bounds_checker import (
+    BetweenBoundsChecker,
+)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -40,6 +43,9 @@ logger = test_suite_logger()
 class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
     """Validator for column value max to be between test case"""
 
+    MIN_BOUND = "minValueForMaxInCol"
+    MAX_BOUND = "maxValueForMaxInCol"
+
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
 
@@ -52,7 +58,7 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             max_value = self._run_results(Metrics.MAX, column)
 
             metric_values = {
@@ -81,56 +87,15 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
             self.get_test_case_status(evaluation["matched"]),
             result_message,
             test_result_values,
-            min_bound=test_params["minValueForMaxInCol"],
-            max_bound=test_params["maxValueForMaxInCol"],
+            min_bound=test_params[self.MIN_BOUND],
+            max_bound=test_params[self.MAX_BOUND],
         )
 
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for column value max to be between
-
-        The new approach runs separate queries for each dimension column instead of
-        combining them with GROUP BY. For example, if dimensionColumns = ["region", "category"],
-        this method will:
-        1. Run one query: GROUP BY region -> {"North America": result1, "Europe": result2}
-        2. Run another query: GROUP BY category -> {"Electronics": result3, "Clothing": result4}
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
-
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
-
-            test_params = self._get_test_parameters()
-            metrics_to_compute = self._get_metrics_to_compute(test_params)
-
-            dimension_results = []
-            for dimension_column in dimension_columns:
-                try:
-                    dimension_col = self._get_column_name(dimension_column)
-
-                    single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute, test_params
-                    )
-
-                    dimension_results.extend(single_dimension_results)
-
-                except Exception as exc:
-                    logger.warning(
-                        f"Error executing dimensional query for column {dimension_column}: {exc}"
-                    )
-                    logger.debug(traceback.format_exc())
-                    continue
-
-            return dimension_results
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
-            logger.debug(traceback.format_exc())
-            return []
+    def _get_validation_checker(self, test_params: dict) -> BetweenBoundsChecker:
+        return BetweenBoundsChecker(
+            min_bound=test_params[self.MIN_BOUND],
+            max_bound=test_params[self.MAX_BOUND],
+        )
 
     def _get_test_parameters(self) -> dict:
         """Get test parameters for this validator
@@ -139,8 +104,8 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
             dict: Test parameters including min and max bounds
         """
         return {
-            "minValueForMaxInCol": self.get_min_bound("minValueForMaxInCol"),
-            "maxValueForMaxInCol": self.get_max_bound("maxValueForMaxInCol"),
+            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
+            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
         }
 
     def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
@@ -177,8 +142,8 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
                 - total_rows: None - not applicable for statistical validators
         """
         max_value = metric_values[Metrics.MAX.name]
-        min_bound = test_params["minValueForMaxInCol"]
-        max_bound = test_params["maxValueForMaxInCol"]
+        min_bound = test_params[self.MIN_BOUND]
+        max_bound = test_params[self.MAX_BOUND]
 
         matched = min_bound <= max_value <= max_bound
 
@@ -211,8 +176,8 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
             )
 
         max_value = metric_values[Metrics.MAX.name]
-        min_bound = test_params["minValueForMaxInCol"]
-        max_bound = test_params["maxValueForMaxInCol"]
+        min_bound = test_params[self.MIN_BOUND]
+        max_bound = test_params[self.MAX_BOUND]
 
         if dimension_info:
             return (
@@ -237,18 +202,6 @@ class BaseColumnValueMaxToBeBetweenValidator(BaseTestValidator):
                 value=str(metric_values[Metrics.MAX.name]),
             ),
         ]
-
-    @abstractmethod
-    def _get_column_name(self, column_name: Optional[str] = None):
-        """Get column object from entity link or column name
-
-        Args:
-            column_name: Optional column name. If None, returns the test case column.
-
-        Returns:
-            Column object
-        """
-        raise NotImplementedError
 
     @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
