@@ -336,23 +336,29 @@ export const parseBucketsData = (
 ) => {
   if (sourceFieldOptionType) {
     return buckets.map((bucket) => {
-      const data = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+      const topHits = bucket['top_hits#top'] as
+        | { hits?: { hits?: Array<{ _source?: Record<string, unknown> }> } }
+        | undefined;
+      const data = topHits?.hits?.hits?.[0]?._source;
 
       return {
-        title: data[sourceFieldOptionType.label],
-        value: data[sourceFieldOptionType.value],
+        title: data?.[sourceFieldOptionType.label] as string,
+        value: data?.[sourceFieldOptionType.value] as string,
       };
     });
   }
 
   return buckets.map((bucket) => {
+    const topHits = bucket['top_hits#top'] as
+      | { hits?: { hits?: Array<{ _source?: Record<string, unknown> }> } }
+      | undefined;
     const actualValue = sourceFields
       ? sourceFields
           .split('.')
           .reduce(
             (obj, key) =>
               obj && obj[key] !== undefined ? obj[key] : undefined,
-            bucket['top_hits#top']?.hits?.hits?.[0]?._source
+            topHits?.hits?.hits?.[0]?._source
           ) ?? bucket.key
       : bucket.key;
 

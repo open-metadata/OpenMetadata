@@ -703,7 +703,7 @@ const APIEndpointSchemaV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
   >('request-schema');
@@ -881,7 +881,7 @@ const DatabaseSchemasV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const databaseSchemas = entityInfo.databaseSchemas || [];
 
   if (loading) {

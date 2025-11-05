@@ -194,7 +194,7 @@ class AdvancedSearchClassBase {
             response.data.aggregations[`sterms#${entityField}`].buckets;
 
           const bucketsData = parseBucketsData(
-            buckets,
+            buckets as Array<Record<string, unknown>>,
             sourceFields,
             sourceFieldOptionType
           );
