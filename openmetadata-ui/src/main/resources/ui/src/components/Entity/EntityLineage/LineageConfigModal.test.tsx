@@ -20,6 +20,7 @@ const config = {
   upstreamDepth: 2,
   downstreamDepth: 3,
   nodesPerLayer: 4,
+  pipelineViewMode: 'Node' as const,
 };
 
 describe('LineageConfigModal', () => {

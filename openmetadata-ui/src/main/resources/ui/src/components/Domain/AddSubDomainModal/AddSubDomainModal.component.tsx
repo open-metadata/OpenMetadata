@@ -44,12 +44,10 @@ const AddSubDomainModal = ({
           {t('label.save')}
         </Button>,
       ]}
+      bodyStyle={{ padding: '48px' }}
       maskClosable={false}
       okText={t('label.submit')}
       open={open}
-      styles={{
-        body: { padding: '48px' },
-      }}
       title={t('label.add-entity', { entity: t('label.sub-domain') })}
       width={670}
       onCancel={onCancel}>

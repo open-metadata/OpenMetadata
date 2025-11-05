@@ -88,7 +88,6 @@ const TreeContent: FC<TreeContentProps> = ({
     <SimpleTreeView
       apiRef={apiRef}
       expandedItems={expandedItems}
-      focusedItem={focusedItem}
       selectedItems={selectedItems}
       slots={{
         collapseIcon: ExpandMoreIcon,

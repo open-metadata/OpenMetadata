@@ -38,8 +38,6 @@ const mockSelectableList = jest
       onUpdate,
       onCancel,
       selectedItems,
-      fetchOptions,
-      customTagRenderer,
     }: SelectableListProps) => (
       <div data-testid="selectable-list">
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>

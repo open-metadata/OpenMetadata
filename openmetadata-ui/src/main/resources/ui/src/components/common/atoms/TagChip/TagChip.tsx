@@ -91,6 +91,10 @@ const TagChip: FC<TagChipProps> = ({
     <XClose size={size === 'small' ? 12 : size === 'large' ? 16 : 14} />
   ) : undefined;
 
+  const labelSlotProps = labelDataTestId
+    ? { root: { 'data-testid': labelDataTestId } }
+    : undefined;
+
   return (
     <Chip
       {...otherProps}
@@ -98,9 +102,15 @@ const TagChip: FC<TagChipProps> = ({
       icon={chipIcon}
       label={label}
       size={size}
-      slotProps={{
-        label: labelDataTestId ? { 'data-testid': labelDataTestId } : undefined,
-      }}
+      slotProps={
+        labelSlotProps
+          ? {
+              label: labelSlotProps as {
+                root: { 'data-testid': string };
+              },
+            }
+          : undefined
+      }
       sx={{
         maxWidth,
         minWidth: 0,

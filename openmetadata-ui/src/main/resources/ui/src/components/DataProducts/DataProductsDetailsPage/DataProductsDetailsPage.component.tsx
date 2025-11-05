@@ -129,7 +129,7 @@ const DataProductsDetailsPage = ({
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
     PageType.DataProduct
   );
-  const [assetModelVisible, setAssetModelVisible] = useState(false);
+  const [_assetModelVisible, setAssetModelVisible] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);

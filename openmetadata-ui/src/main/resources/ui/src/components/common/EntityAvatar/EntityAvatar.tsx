@@ -83,6 +83,11 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
     : null;
 
   if (IconComponent) {
+    const IconWithProps = IconComponent as React.ComponentType<{
+      size?: number;
+      style?: React.CSSProperties;
+    }>;
+
     return (
       <Avatar
         alt={entity.name || entity.displayName}
@@ -94,13 +99,18 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
           color: theme.palette.allShades.white,
           ...customSx,
         }}>
-        <IconComponent size={size * 0.6} style={{ strokeWidth: 1.5 }} />
+        <IconWithProps size={size * 0.6} style={{ strokeWidth: 1.5 }} />
       </Avatar>
     );
   }
 
   // Default icons when no iconURL is provided
-  const DefaultIcon = getDefaultIconForEntityType(entity.entityType);
+  const DefaultIcon = getDefaultIconForEntityType(
+    entity.entityType
+  ) as React.ComponentType<{
+    size?: number;
+    style?: React.CSSProperties;
+  }>;
 
   return (
     <Avatar

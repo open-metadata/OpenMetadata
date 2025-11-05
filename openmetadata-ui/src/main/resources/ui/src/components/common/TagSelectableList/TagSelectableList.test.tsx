@@ -36,9 +36,11 @@ const mockSelectableList = jest
       onUpdate,
       onCancel,
       selectedItems,
-      fetchOptions,
-      customTagRenderer,
-    }: any) => (
+    }: {
+      onUpdate?: (items: TagOption[]) => void;
+      onCancel?: () => void;
+      selectedItems?: TagOption[];
+    }) => (
       <div data-testid="selectable-list">
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button

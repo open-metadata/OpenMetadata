@@ -248,6 +248,7 @@ export default function EntitySummaryPanel({
           upstreamDepth: 2,
           downstreamDepth: 1,
           nodesPerLayer: 50,
+          pipelineViewMode: 'Node' as const,
         },
       });
       setLineageData(response);

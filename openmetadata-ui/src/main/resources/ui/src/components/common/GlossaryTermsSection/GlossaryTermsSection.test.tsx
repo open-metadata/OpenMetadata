@@ -97,13 +97,11 @@ jest.mock(
           onUpdate,
           selectedTerms,
           children,
-          popoverProps,
         }: {
           onCancel?: () => void;
           onUpdate?: (terms: TagLabel[]) => void;
           selectedTerms: TagLabel[];
           children: React.ReactNode;
-          popoverProps?: Record<string, unknown>;
         }) => {
           const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
 
@@ -214,7 +212,7 @@ jest.mock('../../../utils/EntityUpdateUtils', () => ({
     }),
 }));
 
-const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+jest.requireMock('../../../utils/ToastUtils');
 const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
 
 const baseGlossaryTags = [

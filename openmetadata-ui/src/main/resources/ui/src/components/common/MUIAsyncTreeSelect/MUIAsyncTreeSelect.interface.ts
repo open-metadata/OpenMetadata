@@ -56,6 +56,8 @@ export interface MUIAsyncTreeSelectProps<T = unknown> {
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;
   onSearch?: (searchTerm: string) => void;
+  onBlur?: () => void;
+  onFocus?: () => void;
 
   // Custom renderers
   renderNode?: (node: TreeNode<T>, isSelected: boolean) => ReactNode;
