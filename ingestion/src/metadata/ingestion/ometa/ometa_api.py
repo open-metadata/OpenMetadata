@@ -15,7 +15,19 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
-from typing import Any, Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from collections.abc import Generator
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -64,6 +76,7 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
+from metadata.ingestion.ometa.sse_client import SSEClient
 from metadata.ingestion.ometa.utils import (
     decode_jwt_token,
     get_entity_type,
@@ -148,6 +161,7 @@ class OpenMetadata(
     """
 
     client: REST
+    sse_client: SSEClient
     _auth_provider: OpenMetadataAuthenticationProvider
     config: OpenMetadataConnection
 
@@ -190,6 +204,7 @@ class OpenMetadata(
         )
 
         self.client = REST(client_config)
+        self.sse_client = SSEClient(client_config)
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
@@ -300,6 +315,7 @@ class OpenMetadata(
             .replace("ingestionpipeline", "ingestionPipeline")
             .replace("dataproduct", "dataProduct")
             .replace("datacontract", "dataContract")
+            .replace("chatconversation", "chatConversation")
         )
         class_path = ".".join(
             filter(
@@ -576,6 +592,14 @@ class OpenMetadata(
             return resp
 
         return [entity(**p) for p in resp["data"]]
+
+    def stream(
+        self, method: str, path: str, data: None | dict[str, Any] = None
+    ) -> Generator[Any, Any, None]:
+        """
+        Stream an SSE response
+        """
+        yield from self.sse_client.stream(method, path, data)
 
     def delete(
         self,
