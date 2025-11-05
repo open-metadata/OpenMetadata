@@ -170,6 +170,8 @@ class ColumnValueLengthsToBeBetweenValidator(
                     agg_functions={
                         Metrics.MIN_LENGTH.name: "min",
                         Metrics.MAX_LENGTH.name: "max",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[
