@@ -91,6 +91,7 @@ export const verifyColumnLayerInactive = async (page: Page) => {
 export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]');
   await page.click('[data-testid="lineage-layer-column-btn"]');
+  await clickOutside(page);
 };
 
 export const editLineageClick = async (page: Page) => {
@@ -586,13 +587,9 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 };
 
 export const getLineageCSVData = async (page: Page) => {
-  await page.waitForSelector('[data-testid="lineage-export"]', {
-    state: 'visible',
-  });
+  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
 
-  await expect(page.getByTestId('lineage-export')).toBeEnabled();
-
-  await page.getByTestId('lineage-export').click();
+  await page.getByRole('button', { name: 'Export' }).click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -687,13 +684,9 @@ export const verifyExportLineagePNG = async (
   page: Page,
   isPNGSelected?: boolean
 ) => {
-  await page.waitForSelector('[data-testid="lineage-export"]', {
-    state: 'visible',
-  });
+  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
 
-  await expect(page.getByTestId('lineage-export')).toBeEnabled();
-
-  await page.getByTestId('lineage-export').click();
+  await page.getByRole('button', { name: 'Export' }).click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -754,6 +747,7 @@ export const verifyColumnLineageInCSV = async (
 
 export const verifyLineageConfig = async (page: Page) => {
   await page.click('[data-testid="lineage-config"]');
+  await page.getByRole('menuitem', { name: 'Node Depth' }).click();
   await page.waitForSelector('.ant-modal-content', {
     state: 'visible',
   });

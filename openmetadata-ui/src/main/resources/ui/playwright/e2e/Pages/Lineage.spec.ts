@@ -118,6 +118,7 @@ for (const EntityClass of entities) {
         await page.waitForLoadState('networkidle');
         await editLineageClick(page);
         await page.getByTestId('fit-screen').click();
+        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
@@ -154,6 +155,8 @@ for (const EntityClass of entities) {
       await test.step('Should create pipeline between entities', async () => {
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
+        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+        await page.waitForTimeout(500); // wait for the nodes to settle
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
@@ -268,7 +271,6 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="lineage-export"]');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
