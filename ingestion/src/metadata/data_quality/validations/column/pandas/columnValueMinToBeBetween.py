@@ -121,7 +121,12 @@ class ColumnValueMinToBeBetweenValidator(
                 min_value = agg[Metrics.MIN.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not min_value:
+                if min_value is None:
+                    logger.warning(
+                        "Skipping '%s=%s' dimension since 'min' is 'None'",
+                        dimension_col.name,
+                        dimension_value,
+                    )
                     continue
 
                 failed_count = (
