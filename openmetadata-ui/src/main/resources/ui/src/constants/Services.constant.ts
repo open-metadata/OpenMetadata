@@ -470,6 +470,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
+  DatabaseServiceType.Dremio,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

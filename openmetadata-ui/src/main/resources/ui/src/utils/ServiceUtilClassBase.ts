@@ -188,6 +188,7 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    DatabaseServiceType.Dremio,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

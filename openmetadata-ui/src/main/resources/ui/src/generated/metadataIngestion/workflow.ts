@@ -273,6 +273,8 @@ export interface ServiceConnection {
  *
  * ServiceNow Connection Config
  *
+ * Dremio Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -565,6 +567,8 @@ export interface ConfigObject {
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      *
+     * Host and port of the Dremio service.
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -673,6 +677,8 @@ export interface ConfigObject {
      * Password
      *
      * Password to connect to ServiceNow.
+     *
+     * Password to connect to Dremio.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -785,6 +791,9 @@ export interface ConfigObject {
      *
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
+     *
+     * Username to connect to Dremio. This user should have privileges to read all the metadata
+     * in Dremio.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -1312,7 +1321,10 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * SSL Mode for the connection. Dremio supports SSL connections.
+     */
+    sslMode?: boolean | SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -1510,6 +1522,10 @@ export interface ConfigObject {
      * admin tables will be fetched.
      */
     includeSystemTables?: boolean;
+    /**
+     * Dremio Project ID. This is optional parameter to connect to a specific project.
+     */
+    projectId?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3891,6 +3907,8 @@ export enum ConfigScheme {
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
+    DremioFlight = "dremio+flight",
+    DremioPyodbc = "dremio+pyodbc",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
@@ -4223,6 +4241,7 @@ export enum PurpleType {
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
