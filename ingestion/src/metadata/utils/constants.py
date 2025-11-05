@@ -12,8 +12,6 @@
 """
 Define constants useful for the metadata ingestion
 """
-from metadata.generated.schema.events.eventSubscription import EventSubscription
-
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -81,6 +79,7 @@ from metadata.generated.schema.entity.services.securityService import SecuritySe
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.events.eventSubscription import EventSubscription
 
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
