@@ -33,7 +33,8 @@
         "Sigma",
         "ThoughtSpot",
         "Grafana",
-        "Hex"
+        "Hex",
+        "Hubspot"
       ],
       "javaEnums": [
         {
@@ -92,6 +93,9 @@
         },
         {
           "name": "Hex"
+        },
+        {
+          "name": "Hubspot"
         }
       ]
     },
@@ -162,6 +166,9 @@
             },
             {
               "$ref": "./connections/dashboard/hexConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/hubspotConnection.json"
             }
           ]
         }

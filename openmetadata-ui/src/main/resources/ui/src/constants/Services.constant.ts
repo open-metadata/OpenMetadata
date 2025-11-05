@@ -470,6 +470,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
+  DashboardServiceType.Hubspot,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
