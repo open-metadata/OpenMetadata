@@ -35,7 +35,6 @@ from metadata.generated.schema.api.data.createTableProfile import (
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -137,9 +136,7 @@ class OMetaTableTest(TestCase):
 
     metadata = int_admin_ometa()
 
-    user: User = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
     owners = EntityReferenceList(
         root=[
             EntityReference(

@@ -1,5 +1,4 @@
 import logging
-import sys
 from typing import List, Tuple, Type
 
 import pytest
@@ -16,10 +15,6 @@ from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
-
-if not sys.version_info >= (3, 9):
-    # these tests use test-containers which are not supported in python 3.8
-    collect_ignore = ["trino", "kafka", "datalake"]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -43,6 +38,22 @@ def pytest_pycollect_makeitem(collector, name, obj):
         pass
 
 
+def pytest_collection_modifyitems(config, items):
+    """Mark problematic integration tests that need single-threaded execution"""
+    # Files that have entity conflicts and need single-threaded execution
+    single_threaded_files = [
+        "test_ometa_test_suite.py",
+        "test_ometa_life_cycle_api.py",
+    ]
+
+    for item in items:
+        test_file = str(item.fspath) if hasattr(item, "fspath") else str(item.path)
+
+        # Mark tests that need single-threaded execution
+        if any(st_file in test_file for st_file in single_threaded_files):
+            item.add_marker(pytest.mark.single_threaded)
+
+
 # TODO: Will be addressed when cleaning up integration tests.
 #  Setting the max tries for testcontainers here has pitfalls,
 #  the main one being that it cannot be changed through the recommended
@@ -53,7 +64,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
 #  which is a potential source of issues.
 
 
-@pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
+@pytest.fixture(scope="session", autouse=True)
 def config_testcontatiners():
     try:
         from testcontainers.core.config import testcontainers_config

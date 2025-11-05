@@ -9,6 +9,22 @@ else
     ROOT_DIR := .
 endif
 
+PYTEST_UNIT_WORKERS ?= auto
+PYTEST_INTEGRATION_WORKERS ?= auto
+
+# Use uv if available, otherwise fall back to pip
+UV := $(shell command -v uv 2> /dev/null)
+ifdef UV
+    PIP_CMD = uv pip
+else
+    PIP_CMD = python -m pip
+endif
+
+.PHONY: help
+help:  ## Show this help message
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
 	python -m pip install $(INGESTION_DIR)/
@@ -19,17 +35,43 @@ install_dev_env:  ## Install all dependencies for development (in edit mode)
 	pip install nox
 	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
 
+.PHONY: uv_install_dev_env
+uv_install_dev_env:  ## Install all dependencies for development using uv (recommended)
+	uv sync --extra dev --extra test-unit --extra all-dev-env
+
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "$(INGESTION_DIR)[dev]/"
+	$(PIP_CMD) install "$(INGESTION_DIR)[dev]/"
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install "$(INGESTION_DIR)[test]/"
+	$(PIP_CMD) install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install "$(INGESTION_DIR)[all]/"
+	$(PIP_CMD) install "$(INGESTION_DIR)[all]/"
+
+# ---- UV-based targets (recommended for better dependency management) ----
+.PHONY: uv_setup
+uv_setup:  ## Create .venv using uv and sync all development dependencies
+	uv venv .venv
+	uv sync --extra dev --extra test
+
+.PHONY: uv_sync
+uv_sync:  ## Sync dependencies using uv (uses uv.lock if available)
+	uv sync
+
+.PHONY: uv_sync_all
+uv_sync_all:  ## Sync all dependencies including all extras using uv
+	uv sync --extra all --extra test --extra dev
+
+.PHONY: uv_lock
+uv_lock:  ## Update uv.lock file with current dependencies
+	uv lock
+
+.PHONY: uv_sync_frozen
+uv_sync_frozen:  ## Sync dependencies using frozen lock file (CI/CD)
+	uv sync --frozen
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
@@ -71,7 +113,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_UNIT_WORKERS) --dist=loadfile -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
 
 # FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
 # and might be omitted in unless the we are developing them. This only must be used for local development!
@@ -88,7 +130,9 @@ unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Onl
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
+	# Run parallel-safe tests first, then single-threaded tests
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -n $(PYTEST_INTEGRATION_WORKERS) --dist=loadfile -c $(INGESTION_DIR)/pyproject.toml -m "not single_threaded" $(INGESTION_DIR)/tests/integration; \
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml --parallel-mode --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml -m "single_threaded" --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
@@ -96,6 +140,7 @@ run_python_tests:  ## Run all Python tests with coverage
 	$(MAKE) static-checks
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
+	coverage combine --rcfile $(INGESTION_DIR)/pyproject.toml
 	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
 
 .PHONY: sonar_ingestion
@@ -124,6 +169,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
+	coverage combine --rcfile $(INGESTION_DIR)/pyproject.toml
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
 

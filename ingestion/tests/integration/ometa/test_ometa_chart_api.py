@@ -15,29 +15,25 @@ OpenMetadata high-level API Chart test
 import uuid
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
     DashboardServiceType,
 )
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import get_create_entity
 
 
 class OMetaChartTest(TestCase):
@@ -48,21 +44,18 @@ class OMetaChartTest(TestCase):
 
     service_entity_id = None
 
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
+    metadata = int_admin_ometa()
 
-    assert metadata.health_check()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+    user: User = metadata.create_or_update(data=get_create_entity(User, reference=None))
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id,
+                type="user",
+                fullyQualifiedName=user.fullyQualifiedName.root,
+            )
+        ]
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateDashboardServiceRequest(
         name="test-service-chart",
@@ -81,12 +74,17 @@ class OMetaChartTest(TestCase):
         Prepare ingredients
         """
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
+        service_fqn = cls.service_entity.fullyQualifiedName.root
 
         cls.entity = Chart(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type="dashboardService"),
-            fullyQualifiedName="test-service-chart.test",
+            service=EntityReference(
+                id=cls.service_entity.id,
+                type="dashboardService",
+                fullyQualifiedName=service_fqn,
+            ),
+            fullyQualifiedName=f"{service_fqn}.test",
         )
 
         cls.create = CreateChartRequest(
@@ -100,15 +98,9 @@ class OMetaChartTest(TestCase):
         Clean up
         """
 
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DashboardService, fqn="test-service-chart"
-            ).id.root
-        )
-
         cls.metadata.delete(
             entity=DashboardService,
-            entity_id=service_id,
+            entity_id=str(cls.service_entity.id.root),
             recursive=True,
             hard_delete=True,
         )
