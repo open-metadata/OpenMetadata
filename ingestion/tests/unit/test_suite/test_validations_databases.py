@@ -842,6 +842,28 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("age=31", TestCaseStatus.Success, 30, 0, 100, 0, 0),
             ],
         ),
+        (
+            "test_case_column_values_to_match_regex_dimensional",
+            "columnValuesToMatchRegex",
+            "COLUMN",
+            (TestCaseResult, "30", None, TestCaseStatus.Failed, 30.0, 50.0, 37.5, 62.5),
+            [
+                ("age=31", TestCaseStatus.Failed, 10, 20, 33.33, 66.67, 0.0444),
+                ("age=30", TestCaseStatus.Failed, 10, 20, 33.33, 66.67, 0.0444),
+                ("age=NULL", TestCaseStatus.Failed, 10, 10, 50, 50, 0.0167),
+            ],
+        ),
+        (
+            "test_case_column_values_to_not_match_regex_dimensional",
+            "columnValuesToNotMatchRegex",
+            "COLUMN",
+            (TestCaseResult, "0", None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            [
+                ("age=NULL", TestCaseStatus.Success, 20, 0, 100, 0, 0),
+                ("age=30", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+                ("age=31", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_database(
