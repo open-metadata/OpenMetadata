@@ -46,6 +46,11 @@ export interface DashboardServiceMetadataPipeline {
      */
     includeTags?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
+     * enabled, usage statistics will be collected and ingested.
+     */
+    includeUsage?: boolean;
+    /**
      * Details required to generate Lineage
      */
     lineageInformation?: LineageInformation;
