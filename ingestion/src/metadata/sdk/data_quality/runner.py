@@ -242,13 +242,7 @@ class TestRunner:
 
         Returns:
             List of test case results
-
-        Raises:
-            ValueError: If no tests have been added
         """
-        if not self.test_definitions:
-            raise ValueError("No tests added. Use add_test() to add test definitions.")
-
         config = self.config_builder.build()
 
         workflow = TestSuiteWorkflow.create(  # pyright: ignore[reportUnknownMemberType]
