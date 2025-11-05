@@ -151,7 +151,11 @@ class ColumnValueMinToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={Metrics.MIN.name: "min"},
+                    agg_functions={
+                        Metrics.MIN.name: "min",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[Metrics.MIN.name],
                     violation_predicate=checker.violates_pandas,
