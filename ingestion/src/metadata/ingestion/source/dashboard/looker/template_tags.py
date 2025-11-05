@@ -51,16 +51,18 @@ def _preprocess_looker_tags(text: str) -> str:
         condition_pattern,
         lambda m: f"{m.group(1).strip()}='placeholder_value'",
         text,
-        flags=re.DOTALL
+        flags=re.DOTALL,
     )
 
     # Handle incrementcondition tags
-    increment_pattern = r"\{%\s*incrementcondition\s+\w+\s*%\}(.*?)\{%\s*endincrementcondition\s*%\}"
+    increment_pattern = (
+        r"\{%\s*incrementcondition\s+\w+\s*%\}(.*?)\{%\s*endincrementcondition\s*%\}"
+    )
     text = re.sub(
         increment_pattern,
         lambda m: f"{m.group(1).strip()} > '2023-01-01'",
         text,
-        flags=re.DOTALL
+        flags=re.DOTALL,
     )
 
     return text

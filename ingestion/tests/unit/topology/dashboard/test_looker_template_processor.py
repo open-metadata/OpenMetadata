@@ -83,20 +83,14 @@ class TestLiquidTemplateProcessor(TestCase):
     def test_simple_variable_substitution(self):
         """Test basic variable substitution"""
         result = process_liquid_templates(
-            "{{ schema }}.orders",
-            {"schema": "public"},
-            "test_view"
+            "{{ schema }}.orders", {"schema": "public"}, "test_view"
         )
 
         self.assertEqual(result, "public.orders")
 
     def test_undefined_variable_becomes_null(self):
         """Test undefined variables default to NULL"""
-        result = process_liquid_templates(
-            "{{ undefined_var }}",
-            {},
-            "test_view"
-        )
+        result = process_liquid_templates("{{ undefined_var }}", {}, "test_view")
 
         self.assertEqual(result, "NULL")
 
@@ -105,7 +99,7 @@ class TestLiquidTemplateProcessor(TestCase):
         result = process_liquid_templates(
             "{% if env == 'prod' %}production{% else %}development{% endif %}",
             {"env": "prod"},
-            "test_view"
+            "test_view",
         )
 
         self.assertEqual(result, "production")
@@ -115,7 +109,7 @@ class TestLiquidTemplateProcessor(TestCase):
         result = process_liquid_templates(
             "{% if users.name._is_selected %}SELECT name{% else %}SELECT NULL{% endif %}",
             {},
-            "test_view"
+            "test_view",
         )
 
         self.assertIn("SELECT name", result)
@@ -132,7 +126,7 @@ class TestLiquidTemplateProcessorClass(TestCase):
 
         view_data = {
             "name": "orders",
-            "sql_table_name": "{{ database }}.{{ schema }}.orders"
+            "sql_table_name": "{{ database }}.{{ schema }}.orders",
         }
 
         result = processor.execute(view_data)
@@ -142,15 +136,11 @@ class TestLiquidTemplateProcessorClass(TestCase):
 
     def test_transform_derived_table_sql(self):
         """Test transformation of derived_table.sql"""
-        processor = LiquidTemplateProcessor(
-            liquid_vars={"env": "prod"}
-        )
+        processor = LiquidTemplateProcessor(liquid_vars={"env": "prod"})
 
         view_data = {
             "name": "summary",
-            "derived_table": {
-                "sql": "SELECT * FROM {{ env }}_table"
-            }
+            "derived_table": {"sql": "SELECT * FROM {{ env }}_table"},
         }
 
         result = processor.execute(view_data)
@@ -169,9 +159,7 @@ class TestSqlFragmentCompleter(TestCase):
 
         view_data = {
             "name": "summary",
-            "derived_table": {
-                "sql": "customer_id, SUM(amount) as total FROM orders"
-            }
+            "derived_table": {"sql": "customer_id, SUM(amount) as total FROM orders"},
         }
 
         result = processor.transform(view_data["derived_table"]["sql"], view_data)
@@ -184,9 +172,7 @@ class TestSqlFragmentCompleter(TestCase):
 
         view_data = {
             "name": "customer_summary",
-            "derived_table": {
-                "sql": "SELECT customer_id, COUNT(*) as order_count"
-            }
+            "derived_table": {"sql": "SELECT customer_id, COUNT(*) as order_count"},
         }
 
         result = processor.transform(view_data["derived_table"]["sql"], view_data)
@@ -199,9 +185,7 @@ class TestSqlFragmentCompleter(TestCase):
 
         view_data = {
             "name": "orders",
-            "derived_table": {
-                "sql": "order_id, customer_id, amount"
-            }
+            "derived_table": {"sql": "order_id, customer_id, amount"},
         }
 
         result = processor.transform(view_data["derived_table"]["sql"], view_data)
@@ -215,9 +199,7 @@ class TestSqlFragmentCompleter(TestCase):
 
         view_data = {
             "name": "orders",
-            "derived_table": {
-                "sql": "SELECT * FROM complete_table"
-            }
+            "derived_table": {"sql": "SELECT * FROM complete_table"},
         }
 
         result = processor.transform(view_data["derived_table"]["sql"], view_data)
@@ -243,8 +225,7 @@ class TestDerivedPatternCleaner(TestCase):
 
         view_data = {"name": "test"}
         result = processor.transform(
-            "SELECT * FROM ${view1.TABLE} JOIN ${view2.TABLE}",
-            view_data
+            "SELECT * FROM ${view1.TABLE} JOIN ${view2.TABLE}", view_data
         )
 
         self.assertNotIn("${", result)
@@ -320,9 +301,7 @@ class TestConstantResolver(TestCase):
 
     def test_resolve_constant_from_manifest(self):
         """Test resolving constants from manifest"""
-        processor = ConstantResolver(
-            manifest_constants={"CONNECTION": "bigquery"}
-        )
+        processor = ConstantResolver(manifest_constants={"CONNECTION": "bigquery"})
 
         view_data = {"name": "test"}
         result = processor.transform("@{CONNECTION}.table", view_data)
@@ -342,7 +321,7 @@ class TestConstantResolver(TestCase):
         """Test that config constants take precedence"""
         processor = ConstantResolver(
             constants={"key": "from_config"},
-            manifest_constants={"key": "from_manifest"}
+            manifest_constants={"key": "from_manifest"},
         )
 
         view_data = {"name": "test"}
@@ -362,10 +341,7 @@ class TestViewTransformationPipeline(TestCase):
             DerivedPatternCleaner(),
         ]
 
-        view_data = {
-            "name": "test",
-            "sql_table_name": "{{ schema }}.${base.TABLE}"
-        }
+        view_data = {"name": "test", "sql_table_name": "{{ schema }}.${base.TABLE}"}
 
         pipeline = ViewTransformationPipeline(processors, view_data)
         result = pipeline.get_transformed_view()
@@ -395,54 +371,47 @@ class TestApplyTemplateTransformations(TestCase):
         """Test transformation of multiple views"""
         lkml_data = {
             "views": [
-                {
-                    "name": "orders",
-                    "sql_table_name": "{{ schema }}.orders"
-                },
-                {
-                    "name": "users",
-                    "sql_table_name": "{{ schema }}.users"
-                }
+                {"name": "orders", "sql_table_name": "{{ schema }}.orders"},
+                {"name": "users", "sql_table_name": "{{ schema }}.users"},
             ]
         }
 
         apply_template_transformations(
-            lkml_data=lkml_data,
-            liquid_vars={"schema": "analytics"}
+            lkml_data=lkml_data, liquid_vars={"schema": "analytics"}
         )
 
         self.assertEqual(
-            lkml_data["views"][0][TRANSFORMED_TABLE_FIELD],
-            "analytics.orders"
+            lkml_data["views"][0][TRANSFORMED_TABLE_FIELD], "analytics.orders"
         )
         self.assertEqual(
-            lkml_data["views"][1][TRANSFORMED_TABLE_FIELD],
-            "analytics.users"
+            lkml_data["views"][1][TRANSFORMED_TABLE_FIELD], "analytics.users"
         )
 
     def test_full_pipeline_integration(self):
         """Test complete transformation pipeline"""
         lkml_data = {
-            "views": [{
-                "name": "complex_view",
-                "sql_table_name": "{{ database }}.@{schema}.${base.TABLE}",
-                "derived_table": {
-                    "sql": """
+            "views": [
+                {
+                    "name": "complex_view",
+                    "sql_table_name": "{{ database }}.@{schema}.${base.TABLE}",
+                    "derived_table": {
+                        "sql": """
                         {% if users.name._is_selected %}
                             user_id, name
                         {% else %}
                             user_id
                         {% endif %}
                     """
+                    },
                 }
-            }]
+            ]
         }
 
         apply_template_transformations(
             lkml_data=lkml_data,
             liquid_vars={"database": "warehouse"},
             constants={"schema": "analytics"},
-            process_constants=True
+            process_constants=True,
         )
 
         view = lkml_data["views"][0]
@@ -471,25 +440,27 @@ class TestApplyTemplateTransformations(TestCase):
     def test_environment_filtering_with_constants(self):
         """Test environment filtering combined with constant resolution"""
         lkml_data = {
-            "views": [{
-                "name": "sales",
-                "derived_table": {
-                    "sql": """
+            "views": [
+                {
+                    "name": "sales",
+                    "derived_table": {
+                        "sql": """
                         SELECT * FROM @{project}.
                         -- if prod --
                         production_sales
                         -- if dev --
                         development_sales
                     """
+                    },
                 }
-            }]
+            ]
         }
 
         apply_template_transformations(
             lkml_data=lkml_data,
             constants={"project": "analytics"},
             environment="prod",
-            process_constants=True
+            process_constants=True,
         )
 
         transformed = lkml_data["views"][0]["derived_table"][TRANSFORMED_SQL_FIELD]
@@ -504,22 +475,23 @@ class TestComplexScenarios(TestCase):
     def test_scenario_templated_filter_with_incremental_pdt(self):
         """Test templated filters with incremental PDT patterns"""
         lkml_data = {
-            "views": [{
-                "name": "orders",
-                "derived_table": {
-                    "sql": """
+            "views": [
+                {
+                    "name": "orders",
+                    "derived_table": {
+                        "sql": """
                         SELECT *
                         FROM {{ database }}.orders
                         WHERE {% condition region %} orders.region {% endcondition %}
                         AND {% incrementcondition created_at %} orders.created_at {% endincrementcondition %}
                     """
+                    },
                 }
-            }]
+            ]
         }
 
         apply_template_transformations(
-            lkml_data=lkml_data,
-            liquid_vars={"database": "warehouse"}
+            lkml_data=lkml_data, liquid_vars={"database": "warehouse"}
         )
 
         transformed = lkml_data["views"][0]["derived_table"][TRANSFORMED_SQL_FIELD]
@@ -530,10 +502,11 @@ class TestComplexScenarios(TestCase):
     def test_scenario_nested_liquid_logic(self):
         """Test nested Liquid conditional logic"""
         lkml_data = {
-            "views": [{
-                "name": "multi_env",
-                "derived_table": {
-                    "sql": """
+            "views": [
+                {
+                    "name": "multi_env",
+                    "derived_table": {
+                        "sql": """
                         SELECT
                         {% if env == 'prod' %}
                             {% if region == 'us' %}
@@ -546,13 +519,13 @@ class TestComplexScenarios(TestCase):
                         {% endif %}
                         FROM base
                     """
+                    },
                 }
-            }]
+            ]
         }
 
         apply_template_transformations(
-            lkml_data=lkml_data,
-            liquid_vars={"env": "prod", "region": "us"}
+            lkml_data=lkml_data, liquid_vars={"env": "prod", "region": "us"}
         )
 
         transformed = lkml_data["views"][0]["derived_table"][TRANSFORMED_SQL_FIELD]
@@ -563,18 +536,17 @@ class TestComplexScenarios(TestCase):
     def test_scenario_original_values_preserved(self):
         """Test that original values are preserved alongside transformed"""
         lkml_data = {
-            "views": [{
-                "name": "test",
-                "sql_table_name": "{{ schema }}.original_table",
-                "derived_table": {
-                    "sql": "SELECT * FROM original"
+            "views": [
+                {
+                    "name": "test",
+                    "sql_table_name": "{{ schema }}.original_table",
+                    "derived_table": {"sql": "SELECT * FROM original"},
                 }
-            }]
+            ]
         }
 
         apply_template_transformations(
-            lkml_data=lkml_data,
-            liquid_vars={"schema": "public"}
+            lkml_data=lkml_data, liquid_vars={"schema": "public"}
         )
 
         view = lkml_data["views"][0]

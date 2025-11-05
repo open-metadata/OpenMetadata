@@ -19,14 +19,14 @@ from typing import Any, Dict, List, Optional
 import lkml
 from pydantic import ValidationError
 
-from metadata.ingestion.source.dashboard.looker.template_processor import (
-    apply_template_transformations,
-)
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LkmlFile,
     LookMlView,
     ViewName,
+)
+from metadata.ingestion.source.dashboard.looker.template_processor import (
+    apply_template_transformations,
 )
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
@@ -144,7 +144,9 @@ class LkmlParser:
                     constants=self.lookml_constants,
                     manifest_constants=self.manifest_constants,
                     environment=self.looker_environment,
-                    process_constants=bool(self.lookml_constants or self.manifest_constants),
+                    process_constants=bool(
+                        self.lookml_constants or self.manifest_constants
+                    ),
                 )
                 logger.debug(f"Template processing applied to {path}")
             except Exception as exc:

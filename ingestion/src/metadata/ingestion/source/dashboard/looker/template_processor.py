@@ -140,8 +140,12 @@ class ViewAttributeProcessor(ABC):
         result = {}
 
         # Process sql_table_name if present and supported
-        if SQL_TABLE_NAME_KEY in view_data and self.supports_attribute(SQL_TABLE_NAME_KEY):
-            source_value = view_data.get(TRANSFORMED_TABLE_FIELD, view_data[SQL_TABLE_NAME_KEY])
+        if SQL_TABLE_NAME_KEY in view_data and self.supports_attribute(
+            SQL_TABLE_NAME_KEY
+        ):
+            source_value = view_data.get(
+                TRANSFORMED_TABLE_FIELD, view_data[SQL_TABLE_NAME_KEY]
+            )
             if source_value:
                 logger.debug(f"Processing sql_table_name: {source_value[:100]}...")
                 processed_value = self.transform(source_value, view_data)
@@ -198,7 +202,10 @@ class SqlFragmentCompleter(ViewAttributeProcessor):
         return attribute == f"{DERIVED_TABLE_KEY}.{SQL_KEY}"
 
     def transform(self, value: str, view_data: dict) -> str:
-        if DERIVED_TABLE_KEY not in view_data or SQL_KEY not in view_data[DERIVED_TABLE_KEY]:
+        if (
+            DERIVED_TABLE_KEY not in view_data
+            or SQL_KEY not in view_data[DERIVED_TABLE_KEY]
+        ):
             return value
 
         query: str = value
@@ -241,7 +248,9 @@ class EnvironmentCodeFilter(ViewAttributeProcessor):
             if self.environment.lower() == PRODUCTION_ENV
             else PRODUCTION_ENV
         )
-        self.inactive_env_pattern = r"--\s*if\s+{}\s*--.*?(?=--\s*if\s|\Z)".format(inactive_env)
+        self.inactive_env_pattern = r"--\s*if\s+{}\s*--.*?(?=--\s*if\s|\Z)".format(
+            inactive_env
+        )
 
     def transform(self, value: str, view_data: dict) -> str:
         # Remove inactive environment blocks (including the marker and content)
@@ -299,7 +308,9 @@ class ConstantResolver(ViewAttributeProcessor):
         return re.sub(CONSTANT_PATTERN, replace_match, text)
 
     def transform(self, value: str, view_data: dict) -> str:
-        return self.resolve_constant_refs(text=value, view_name=view_data.get(VIEW_NAME_KEY))
+        return self.resolve_constant_refs(
+            text=value, view_name=view_data.get(VIEW_NAME_KEY)
+        )
 
 
 class ViewTransformationPipeline:
@@ -339,7 +350,11 @@ class ViewTransformationPipeline:
     def _merge_updates(target: dict, updates: dict) -> None:
         """Deep merge updates into target dictionary"""
         for key, value in updates.items():
-            if key in target and isinstance(target[key], dict) and isinstance(value, dict):
+            if (
+                key in target
+                and isinstance(target[key], dict)
+                and isinstance(value, dict)
+            ):
                 ViewTransformationPipeline._merge_updates(target[key], value)
             else:
                 target[key] = value

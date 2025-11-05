@@ -51,7 +51,7 @@ class TestParserTemplateIntegration(TestCase):
         parser = LkmlParser(
             reader=reader,
             liquid_variables={"schema": "analytics"},
-            enable_template_processing=True
+            enable_template_processing=True,
         )
 
         view = parser.find_view("test_view", "test.view.lkml")
@@ -74,7 +74,7 @@ class TestParserTemplateIntegration(TestCase):
         parser = LkmlParser(
             reader=reader,
             lookml_constants={"project": "analytics", "dataset": "prod"},
-            enable_template_processing=True
+            enable_template_processing=True,
         )
 
         view = parser.find_view("orders", "orders.view.lkml")
@@ -94,10 +94,7 @@ class TestParserTemplateIntegration(TestCase):
         self.create_lkml_file("derived.view.lkml", content)
 
         reader = LocalReader(self.temp_path)
-        parser = LkmlParser(
-            reader=reader,
-            enable_template_processing=True
-        )
+        parser = LkmlParser(reader=reader, enable_template_processing=True)
 
         view = parser.find_view("derived_view", "derived.view.lkml")
 
@@ -125,9 +122,7 @@ class TestParserTemplateIntegration(TestCase):
 
         reader = LocalReader(self.temp_path)
         parser = LkmlParser(
-            reader=reader,
-            looker_environment="prod",
-            enable_template_processing=True
+            reader=reader, looker_environment="prod", enable_template_processing=True
         )
 
         view = parser.find_view("env_view", "env.view.lkml")
@@ -150,10 +145,7 @@ class TestParserTemplateIntegration(TestCase):
         self.create_lkml_file("fragment.view.lkml", content)
 
         reader = LocalReader(self.temp_path)
-        parser = LkmlParser(
-            reader=reader,
-            enable_template_processing=True
-        )
+        parser = LkmlParser(reader=reader, enable_template_processing=True)
 
         view = parser.find_view("fragment_view", "fragment.view.lkml")
 
@@ -177,7 +169,7 @@ class TestParserTemplateIntegration(TestCase):
         parser = LkmlParser(
             reader=reader,
             liquid_variables={"schema": "analytics"},
-            enable_template_processing=False
+            enable_template_processing=False,
         )
 
         view = parser.find_view("no_process", "no_process.view.lkml")
@@ -220,7 +212,7 @@ class TestParserTemplateIntegration(TestCase):
             liquid_variables={"database": "warehouse"},
             lookml_constants={"schema": "analytics"},
             looker_environment="prod",
-            enable_template_processing=True
+            enable_template_processing=True,
         )
 
         view = parser.find_view("complex", "complex.view.lkml")
@@ -263,7 +255,7 @@ class TestParserTemplateIntegration(TestCase):
         parser = LkmlParser(
             reader=reader,
             liquid_variables={"schema": "analytics"},
-            enable_template_processing=True
+            enable_template_processing=True,
         )
 
         # Find view from explore file
@@ -287,10 +279,7 @@ class TestParserTemplateIntegration(TestCase):
         self.create_lkml_file("error.view.lkml", content)
 
         reader = LocalReader(self.temp_path)
-        parser = LkmlParser(
-            reader=reader,
-            enable_template_processing=True
-        )
+        parser = LkmlParser(reader=reader, enable_template_processing=True)
 
         # Parser should handle error and continue
         view = parser.find_view("error_view", "error.view.lkml")
@@ -317,7 +306,7 @@ class TestParserTemplateIntegration(TestCase):
         parser = LkmlParser(
             reader=reader,
             liquid_variables={"original": "transformed", "original_field": "field"},
-            enable_template_processing=True
+            enable_template_processing=True,
         )
 
         view = parser.find_view("preserved", "preserved.view.lkml")
@@ -361,7 +350,7 @@ class TestParserCaching(TestCase):
         parser = LkmlParser(
             reader=reader,
             liquid_variables={"schema": "analytics"},
-            enable_template_processing=True
+            enable_template_processing=True,
         )
 
         # First access
