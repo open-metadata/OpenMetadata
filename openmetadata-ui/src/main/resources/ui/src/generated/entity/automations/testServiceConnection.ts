@@ -281,6 +281,8 @@ export interface TestServiceConnectionConnection {
  *
  * Alation Sink Connection Config
  *
+ * Collibra Connection Config
+ *
  * S3 Connection.
  *
  * ADLS Connection.
@@ -499,6 +501,8 @@ export interface ConfigObject {
      *
      * Host and port of the Alation service.
      *
+     * Host and port of the Collibra service.
+     *
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
@@ -699,6 +703,8 @@ export interface ConfigObject {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      */
     password?: string;
     /**
@@ -812,6 +818,9 @@ export interface ConfigObject {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      */
     username?: string;
     /**
@@ -1836,6 +1845,20 @@ export interface ConfigObject {
     ingestUsersAndGroups?: boolean;
     datasourceLinks?:      { [key: string]: string };
     /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
+    /**
      * Bucket Names of the data source.
      */
     bucketNames?: string[];
@@ -1938,6 +1961,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
  *
@@ -4083,6 +4110,8 @@ export enum TokenType {
  *
  * OpenMetadata service type
  *
+ * Collibra service type
+ *
  * S3 service type
  *
  * ADLS service type
@@ -4124,6 +4153,7 @@ export enum ConfigType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
+    Collibra = "Collibra",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
