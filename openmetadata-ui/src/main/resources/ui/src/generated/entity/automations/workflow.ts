@@ -1224,7 +1224,7 @@ export interface ConfigObject {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -1309,8 +1309,8 @@ export interface ConfigObject {
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -1537,6 +1537,18 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
@@ -1551,7 +1563,7 @@ export interface ConfigObject {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -1842,6 +1854,11 @@ export interface ConfigObject {
      */
     projectFilterPattern?: FilterPattern;
     /**
+     * API URL to call powerbi rest apis to extract metadata. Default to
+     * `https://api.powerbi.com`. You can provide youw own in case of different environment
+     */
+    apiURL?: string;
+    /**
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
@@ -2106,6 +2123,11 @@ export interface ConfigObject {
      * We support username/password or client certificate authentication
      */
     nifiConfig?: NifiCredentialsConfiguration;
+    /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
     /**
      * Spline UI Host & Port.
      */
