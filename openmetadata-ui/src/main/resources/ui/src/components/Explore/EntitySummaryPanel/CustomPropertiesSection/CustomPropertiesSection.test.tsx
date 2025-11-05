@@ -78,7 +78,13 @@ const mockEntityData = {
 
 const mockEntityDetails = {
   details: {
+    id: 'test-id',
+    name: 'test-entity',
+    displayName: 'Test Entity',
     fullyQualifiedName: 'test.entity.fqn',
+    description: 'Test entity description',
+    deleted: false,
+    serviceType: 'testService',
   },
 };
 
