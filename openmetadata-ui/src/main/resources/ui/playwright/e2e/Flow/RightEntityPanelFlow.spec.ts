@@ -59,7 +59,11 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
   await afterAction();
 });
 
-async function openEntitySummaryPanel(page: Page, entityType: string) {
+async function openEntitySummaryPanel(
+  page: Page,
+  entityType: string,
+  entityName: string
+) {
   await page.getByRole('button', { name: 'Data Assets' }).click();
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
@@ -73,11 +77,34 @@ async function openEntitySummaryPanel(page: Page, entityType: string) {
   await page.getByTestId('update-btn').click();
   await page.waitForLoadState('networkidle');
 
-  const firstEntityCard = page
+  await page
+    .waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+      timeout: 15000,
+    })
+    .catch(() => {
+      // Loader might not appear, continue
+    });
+
+  const searchResponse = page.waitForResponse('/api/v1/search/query*');
+  await page.getByTestId('searchbar').fill(entityName);
+  await searchResponse;
+
+  await page
+    .waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+      timeout: 15000,
+    })
+    .catch(() => {
+      // Loader might not appear, continue
+    });
+
+  const entityCard = page
     .locator('[data-testid="table-data-card"]')
+    .filter({ hasText: entityName })
     .first();
-  if (await firstEntityCard.isVisible()) {
-    await firstEntityCard.click();
+  if (await entityCard.isVisible()) {
+    await entityCard.click();
     await page.waitForLoadState('networkidle');
   }
 }
@@ -93,9 +120,8 @@ async function navigateToExploreAndSelectTable(page: Page) {
     .catch(() => {
       // Loader might not appear, continue
     });
-  await openEntitySummaryPanel(page, 'table');
+  await openEntitySummaryPanel(page, 'table', testEntity.entity.name);
 
-  // Wait for loader to disappear
   await page
     .waitForSelector('[data-testid="loader"]', {
       state: 'detached',
