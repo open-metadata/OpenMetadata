@@ -63,7 +63,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
               key="profile-picture"
               name={owner.name ?? ''}
               type="circle"
-              width={isCompactView ? '24' : `${avatarSize}`}
+              width={isCompactView && !avatarSize ? '24' : `${avatarSize}`}
             />
 
             {inheritedIcon && (
@@ -102,7 +102,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         key="profile-picture"
         name={owner.name ?? ''}
         type="circle"
-        width={isCompactView ? '24' : `${avatarSize}`}
+        width={isCompactView && !avatarSize ? '24' : `${avatarSize}`}
       />
 
       {inheritedIcon && (
