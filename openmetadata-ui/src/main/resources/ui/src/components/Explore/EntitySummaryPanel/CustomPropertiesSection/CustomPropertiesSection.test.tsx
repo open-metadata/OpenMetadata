@@ -90,15 +90,60 @@ const mockEntityDetails = {
 
 const mockEntityTypeDetail = {
   customProperties: [
-    { name: 'property1', displayName: 'Property 1' },
-    { name: 'property2', displayName: 'Property 2' },
-    { name: 'property3', displayName: 'Property 3' },
-    { name: 'property4', displayName: 'Property 4' },
-    { name: 'property5', displayName: 'Property 5' },
-    { name: 'property6', displayName: 'Property 6' },
-    { name: 'property7', displayName: 'Property 7' },
-    { name: 'property8', displayName: 'Property 8' },
-    { name: 'property9', displayName: 'Property 9' },
+    {
+      name: 'property1',
+      displayName: 'Property 1',
+      description: 'Property 1 description',
+      propertyType: { id: 'type1', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property2',
+      displayName: 'Property 2',
+      description: 'Property 2 description',
+      propertyType: { id: 'type2', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property3',
+      displayName: 'Property 3',
+      description: 'Property 3 description',
+      propertyType: { id: 'type3', name: 'array', type: 'type' },
+    },
+    {
+      name: 'property4',
+      displayName: 'Property 4',
+      description: 'Property 4 description',
+      propertyType: { id: 'type4', name: 'object', type: 'type' },
+    },
+    {
+      name: 'property5',
+      displayName: 'Property 5',
+      description: 'Property 5 description',
+      propertyType: { id: 'type5', name: 'object', type: 'type' },
+    },
+    {
+      name: 'property6',
+      displayName: 'Property 6',
+      description: 'Property 6 description',
+      propertyType: { id: 'type6', name: 'table', type: 'type' },
+    },
+    {
+      name: 'property7',
+      displayName: 'Property 7',
+      description: 'Property 7 description',
+      propertyType: { id: 'type7', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property8',
+      displayName: 'Property 8',
+      description: 'Property 8 description',
+      propertyType: { id: 'type8', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property9',
+      displayName: 'Property 9',
+      description: 'Property 9 description',
+      propertyType: { id: 'type9', name: 'string', type: 'type' },
+    },
   ],
 };
 
@@ -282,7 +327,14 @@ describe('CustomPropertiesSection', () => {
       const tableProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property6', displayName: 'Property 6' }],
+          customProperties: [
+            {
+              name: 'property6',
+              displayName: 'Property 6',
+              description: 'Property 6 description',
+              propertyType: { id: 'type6', name: 'table', type: 'type' },
+            },
+          ],
         },
       };
 
@@ -308,7 +360,14 @@ describe('CustomPropertiesSection', () => {
       const nullProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property7', displayName: 'Property 7' }],
+          customProperties: [
+            {
+              name: 'property7',
+              displayName: 'Property 7',
+              description: 'Property 7 description',
+              propertyType: { id: 'type7', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
@@ -321,7 +380,14 @@ describe('CustomPropertiesSection', () => {
       const undefinedProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property8', displayName: 'Property 8' }],
+          customProperties: [
+            {
+              name: 'property8',
+              displayName: 'Property 8',
+              description: 'Property 8 description',
+              propertyType: { id: 'type8', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
@@ -334,7 +400,14 @@ describe('CustomPropertiesSection', () => {
       const emptyProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property9', displayName: 'Property 9' }],
+          customProperties: [
+            {
+              name: 'property9',
+              displayName: 'Property 9',
+              description: 'Property 9 description',
+              propertyType: { id: 'type9', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
@@ -355,7 +428,12 @@ describe('CustomPropertiesSection', () => {
         entityData: complexObjectData,
         entityTypeDetail: {
           customProperties: [
-            { name: 'complexProperty', displayName: 'Complex Property' },
+            {
+              name: 'complexProperty',
+              displayName: 'Complex Property',
+              description: 'Complex Property description',
+              propertyType: { id: 'typeComplex', name: 'object', type: 'type' },
+            },
           ],
         },
       };
@@ -381,8 +459,17 @@ describe('CustomPropertiesSection', () => {
         ...defaultProps,
         entityTypeDetail: {
           customProperties: [
-            { name: 'property1' }, // No displayName
-            { name: 'property2', displayName: 'Property 2' },
+            {
+              name: 'property1',
+              description: 'Property 1 description',
+              propertyType: { id: 'type1', name: 'string', type: 'type' },
+            },
+            {
+              name: 'property2',
+              displayName: 'Property 2',
+              description: 'Property 2 description',
+              propertyType: { id: 'type2', name: 'string', type: 'type' },
+            },
           ],
         },
       };
@@ -477,7 +564,14 @@ describe('CustomPropertiesSection', () => {
       const propsWithoutViewAll = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property1', displayName: 'Property 1' }],
+          customProperties: [
+            {
+              name: 'property1',
+              displayName: 'Property 1',
+              description: 'Property 1 description',
+              propertyType: { id: 'type1', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
@@ -520,7 +614,12 @@ describe('CustomPropertiesSection', () => {
         entityData: emptyTableData,
         entityTypeDetail: {
           customProperties: [
-            { name: 'emptyTable', displayName: 'Empty Table' },
+            {
+              name: 'emptyTable',
+              displayName: 'Empty Table',
+              description: 'Empty Table description',
+              propertyType: { id: 'typeEmpty', name: 'table', type: 'type' },
+            },
           ],
         },
       };
@@ -559,7 +658,12 @@ describe('CustomPropertiesSection', () => {
         entityData: incompleteTableData,
         entityTypeDetail: {
           customProperties: [
-            { name: 'incompleteTable', displayName: 'Incomplete Table' },
+            {
+              name: 'incompleteTable',
+              displayName: 'Incomplete Table',
+              description: 'Incomplete Table description',
+              propertyType: { id: 'typeIncomplete', name: 'table', type: 'type' },
+            },
           ],
         },
       };
@@ -609,7 +713,14 @@ describe('CustomPropertiesSection', () => {
       const tableProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property6', displayName: 'Property 6' }],
+          customProperties: [
+            {
+              name: 'property6',
+              displayName: 'Property 6',
+              description: 'Property 6 description',
+              propertyType: { id: 'type6', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
