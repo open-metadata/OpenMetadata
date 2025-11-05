@@ -64,7 +64,8 @@
         "Cockroach",
         "SSAS",
         "Epic",
-        "ServiceNow"
+        "ServiceNow",
+        "Dremio"
       ],
       "javaEnums": [
         {
@@ -216,6 +217,9 @@
         },
         {
           "name": "ServiceNow"
+        },
+        {
+          "name": "Dremio"
         }
       ]
     },
@@ -372,6 +376,9 @@
             },
             {
               "$ref": "./connections/database/serviceNowConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dremioConnection.json"
             }
           ]
         }

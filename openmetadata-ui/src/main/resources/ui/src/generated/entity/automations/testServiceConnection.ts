@@ -167,6 +167,8 @@ export interface TestServiceConnectionConnection {
  *
  * ServiceNow Connection Config
  *
+ * Dremio Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -448,6 +450,8 @@ export interface ConfigObject {
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      *
+     * Host and port of the Dremio service.
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -688,6 +692,8 @@ export interface ConfigObject {
      *
      * Password to connect to ServiceNow.
      *
+     * Password to connect to Dremio.
+     *
      * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
@@ -796,6 +802,9 @@ export interface ConfigObject {
      *
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
+     *
+     * Username to connect to Dremio. This user should have privileges to read all the metadata
+     * in Dremio.
      *
      * Username to connect to Metabase. Required for basic authentication.
      *
@@ -961,7 +970,10 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * SSL Mode for the connection. Dremio supports SSL connections.
+     */
+    sslMode?: boolean | SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -1268,6 +1280,10 @@ export interface ConfigObject {
      * admin tables will be fetched.
      */
     includeSystemTables?: boolean;
+    /**
+     * Dremio Project ID. This is optional parameter to connect to a specific project.
+     */
+    projectId?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -3811,6 +3827,8 @@ export enum ConfigScheme {
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
+    DremioFlight = "dremio+flight",
+    DremioPyodbc = "dremio+pyodbc",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
@@ -4145,6 +4163,7 @@ export enum ConfigType {
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",

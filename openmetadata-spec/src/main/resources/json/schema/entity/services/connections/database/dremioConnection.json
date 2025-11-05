@@ -1,0 +1,122 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/dremioConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DremioConnection",
+    "description": "Dremio Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.DremioConnection",
+    "definitions": {
+      "dremioType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Dremio"],
+        "default": "Dremio"
+      },
+      "dremioScheme": {
+        "description": "SQLAlchemy driver scheme options.",
+        "type": "string",
+        "enum": ["dremio+pyodbc", "dremio+flight"],
+        "default": "dremio+pyodbc"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/dremioType",
+        "default": "Dremio"
+      },
+      "scheme": {
+        "title": "Connection Scheme",
+        "description": "SQLAlchemy driver scheme options.",
+        "$ref": "#/definitions/dremioScheme",
+        "default": "dremio+pyodbc"
+      },
+      "username": {
+        "title": "Username",
+        "description": "Username to connect to Dremio. This user should have privileges to read all the metadata in Dremio.",
+        "type": "string"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Password to connect to Dremio.",
+        "type": "string",
+        "format": "password"
+      },
+      "hostPort": {
+        "title": "Host and Port",
+        "description": "Host and port of the Dremio service.",
+        "type": "string"
+      },
+      "database": {
+        "title": "Database",
+        "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+        "type": "string"
+      },
+      "projectId": {
+        "title": "Project ID",
+        "description": "Dremio Project ID. This is optional parameter to connect to a specific project.",
+        "type": "string"
+      },
+      "sslMode": {
+        "title": "SSL Mode",
+        "description": "SSL Mode for the connection. Dremio supports SSL connections.",
+        "type": "boolean",
+        "default": false
+      },
+      "connectionOptions": {
+        "title": "Connection Options",
+        "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+      },
+      "connectionArguments": {
+        "title": "Connection Arguments",
+        "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+      },
+      "schemaFilterPattern": {
+        "title": "Default Schema Filter Pattern",
+        "description": "Regex to only include/exclude schemas that matches the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "tableFilterPattern": {
+        "title": "Default Table Filter Pattern",
+        "description": "Regex to only include/exclude tables that matches the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "databaseFilterPattern": {
+        "title": "Default Database Filter Pattern",
+        "description": "Regex to only include/exclude databases that matches the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      },
+      "supportsUsageExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+      },
+      "supportsLineageExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+      },
+      "supportsDBTExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+      },
+      "supportsProfiler": {
+        "title": "Supports Profiler",
+        "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+      },
+      "supportsDatabase": {
+        "title": "Supports Database",
+        "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+      },
+      "supportsQueryComment": {
+        "title": "Supports Query Comment",
+        "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+      },
+      "sampleDataStorageConfig": {
+        "title": "Storage Config for Sample Data",
+        "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["username", "password", "hostPort"]
+  }
