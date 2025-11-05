@@ -13,7 +13,7 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -28,6 +28,7 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_volume_factor,
 )
+from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
@@ -38,7 +39,33 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
 
-    def get_column_name(self, entity_link: str, dfs) -> SQALikeColumn:
+    def get_column(
+        self: HasValidatorContext, column_name: Optional[str] = None
+    ) -> SQALikeColumn:
+        """Get column object for the given column name
+
+        If column_name is None, returns the main column being validated.
+        If column_name is provided, returns the column object for that specific column.
+
+        Args:
+            column_name: Optional column name. If None, returns the main validation column.
+
+        Returns:
+            SQALikeColumn: Column object
+        """
+        if column_name is None:
+            return PandasValidatorMixin.get_column_from_list(
+                self.test_case.entityLink.root,
+                cast(List[pd.DataFrame], self.runner),
+            )
+        else:
+            return PandasValidatorMixin.get_column_from_list(
+                column_name,
+                cast(List[pd.DataFrame], self.runner),
+            )
+
+    @staticmethod
+    def get_column_from_list(entity_link: str, dfs) -> SQALikeColumn:
         # we'll use the first dataframe chunk to get the column name.
         column = dfs[0][get_decoded_column(entity_link)]
         _type = GenericDataFrameColumnParser.fetch_col_types(
@@ -207,8 +234,8 @@ def aggregate_others_statistical_pandas(
     others_label: str = DIMENSION_OTHERS_LABEL,
     exclude_from_final: Optional[List[str]] = None,
     agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,
-    violation_metric: Optional[str] = None,
-    violation_predicate: Optional[Callable[[object], bool]] = None,
+    violation_metrics: Optional[List[str]] = None,
+    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
@@ -256,6 +283,7 @@ def aggregate_others_statistical_pandas(
     exclude_from_final = exclude_from_final or []
     agg_functions = agg_functions or {}
     final_metric_calculators = final_metric_calculators or {}
+    violation_metrics = violation_metrics or []
 
     # Sort by impact score descending
     df_sorted = df.sort_values(by=impact_column, ascending=False)
@@ -268,16 +296,8 @@ def aggregate_others_statistical_pandas(
         others_label,
     )
 
-    # Aggregate by dimension_group using custom functions or default to sum
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    agg_dict = {
-        col: agg_functions.get(col, "sum")
-        for col in numeric_cols
-        if col not in [impact_column, "calculated_failed_count"]
-    }
-
     # Aggregate by dimension_group
-    df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_dict)
+    df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_functions)
 
     # For top dimensions, preserve their original metric values
     # NOTE: While top dimensions are single-row groups (aggregation doesn't change them),
@@ -305,14 +325,18 @@ def aggregate_others_statistical_pandas(
 
         # Recompute failed_count for Others if violation condition provided
         if (
-            violation_metric is not None
-            and violation_predicate is not None
+            violation_predicate is not None
             and "failed_count" in df_aggregated.columns
-            and violation_metric in df_aggregated.columns
+            and all(name in df_aggregated.columns for name in violation_metrics)
         ):
-            metric_series = df_aggregated.loc[others_mask, violation_metric]
+            metrics_df = df_aggregated.loc[others_mask, violation_metrics]
             total_series = df_aggregated.loc[others_mask, "total_count"]
-            violation_mask = metric_series.apply(violation_predicate)
+            violation_mask = metrics_df.apply(
+                lambda row: violation_predicate(
+                    {name: row[name] for name in violation_metrics}
+                ),
+                axis=1,
+            )
             df_aggregated.loc[others_mask, "failed_count"] = np.where(
                 violation_mask, total_series, 0
             )
