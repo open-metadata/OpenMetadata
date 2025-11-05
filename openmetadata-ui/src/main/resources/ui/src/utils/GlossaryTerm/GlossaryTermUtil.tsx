@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Space, Typography } from 'antd';
+import { ReactComponent as IconTerm } from '../../assets/svg/book.svg';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -18,10 +20,17 @@ import GlossaryTermReferences from '../../components/Glossary/GlossaryTerms/tabs
 import GlossaryTermSynonyms from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms';
 import RelatedTerms from '../../components/Glossary/GlossaryTerms/tabs/RelatedTerms';
 import WorkflowHistory from '../../components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
+import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/data/table';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { ENTITY_LINK_SEPARATOR } from '../EntityUtils';
+import {
+  convertEntityReferencesToTagLabels,
+  convertTagLabelsToEntityReferences,
+} from '../EntityReferenceUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityName } from '../EntityUtils';
 
 export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   if (
@@ -66,4 +75,31 @@ export const createGlossaryTermEntityLink = (
   fullyQualifiedName: string
 ): string => {
   return `<#E${ENTITY_LINK_SEPARATOR}glossaryTerm${ENTITY_LINK_SEPARATOR}${fullyQualifiedName}>`;
+};
+
+export const GlossaryTermListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space>
+      <IconTerm
+        className="align-middle"
+        color={DE_ACTIVE_COLOR}
+        height={16}
+        name="doc"
+        width={16}
+      />
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
+    </Space>
+  );
+};
+
+export const convertTermsToEntityReferences = (
+  terms: TagLabel[]
+): EntityReference[] => {
+  return convertTagLabelsToEntityReferences(terms);
+};
+
+export const convertEntityReferencesToTerms = (
+  refs: EntityReference[]
+): TagLabel[] => {
+  return convertEntityReferencesToTagLabels(refs, TagSource.Glossary);
 };
