@@ -97,7 +97,6 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.search.SearchResponse;
-import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.action.update.UpdateResponse;
@@ -130,7 +129,6 @@ import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
-import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 
 @Slf4j
@@ -196,12 +194,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   private NLQService nlqService;
 
-  public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    this(config);
-    this.nlqService = nlqService;
+  public OpenSearchClient(ElasticSearchConfiguration config) {
+    this(config, null);
   }
 
-  public OpenSearchClient(ElasticSearchConfiguration config) {
+  public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
     RestClientBuilder restClientBuilder = getLowLevelClient(config);
     this.client = createOpenSearchLegacyClient(restClientBuilder);
     this.newClient = createOpenSearchNewClient(restClientBuilder);
@@ -212,12 +209,14 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(newClient);
+    this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
     aggregationManager = new OpenSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
-    searchManager = new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias);
+    searchManager =
+        new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -326,90 +325,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
-    LOG.info("Searching with NLQ: {}", request.getQuery());
-
-    if (nlqService != null) {
-      try {
-        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
-        if (transformedQuery == null) {
-          LOG.info("Failed to  get Transformed NLQ query ");
-          return fallbackToBasicSearch(request, subjectContext);
-        } else {
-          LOG.debug("Transformed NLQ query: {}", transformedQuery);
-          XContentParser parser = createXContentParser(transformedQuery);
-          SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
-          searchSourceBuilder.from(request.getFrom());
-          searchSourceBuilder.size(request.getSize());
-          OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
-          sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
-          os.org.opensearch.action.search.SearchRequest searchRequest =
-              new os.org.opensearch.action.search.SearchRequest(request.getIndex());
-          searchRequest.source(searchSourceBuilder);
-
-          // Use DFS Query Then Fetch for consistent scoring across shards
-          searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
-
-          // Start search operation timing using Micrometer
-          io.micrometer.core.instrument.Timer.Sample searchTimerSample =
-              org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
-
-          os.org.opensearch.action.search.SearchResponse response =
-              client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
-
-          // End search operation timing
-          if (searchTimerSample != null) {
-            org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
-                searchTimerSample);
-          }
-          if (response.getHits() != null
-              && response.getHits().getTotalHits() != null
-              && response.getHits().getTotalHits().value > 0) {
-            nlqService.cacheQuery(request.getQuery(), transformedQuery);
-          }
-          return Response.status(Response.Status.OK).entity(response.toString()).build();
-        }
-      } catch (Exception e) {
-        LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
-        return fallbackToBasicSearch(request, subjectContext);
-      }
-    } else {
-      return fallbackToBasicSearch(request, subjectContext);
-    }
+    return searchManager.searchWithNLQ(request, subjectContext);
   }
 
   @Override
   public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
     return searchManager.searchWithDirectQuery(request, subjectContext);
-  }
-
-  private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext) {
-    try {
-      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
-
-      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-      QueryStringQueryBuilder queryBuilder = new QueryStringQueryBuilder(request.getQuery());
-      searchSourceBuilder.query(queryBuilder);
-      searchSourceBuilder.from(request.getFrom());
-      searchSourceBuilder.size(request.getSize());
-      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
-
-      os.org.opensearch.action.search.SearchRequest osRequest =
-          new os.org.opensearch.action.search.SearchRequest(request.getIndex());
-      osRequest.source(searchSourceBuilder);
-
-      // Use DFS Query Then Fetch for consistent scoring across shards
-      osRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
-
-      getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
-      SearchResponse searchResponse = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
-      return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
-    } catch (Exception e) {
-      LOG.error("Error in fallback search: {}", e.getMessage(), e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(String.format("Failed to execute natural language search: %s", e.getMessage()))
-          .build();
-    }
   }
 
   @Override
@@ -1272,28 +1194,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;
-    }
-  }
-
-  private void getSearchFilter(String filter, SearchSourceBuilder searchSourceBuilder)
-      throws IOException {
-    if (!filter.isEmpty()) {
-      try {
-        XContentParser queryParser = createXContentParser(filter);
-        XContentParser sourceParser = createXContentParser(filter);
-        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
-        FetchSourceContext sourceFromXContent =
-            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
-        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        if (searchSourceBuilder.query() != null) {
-          boolQuery = boolQuery.must(searchSourceBuilder.query());
-        }
-        boolQuery = boolQuery.filter(queryFromXContent);
-        searchSourceBuilder.query(boolQuery);
-        searchSourceBuilder.fetchSource(sourceFromXContent);
-      } catch (Exception e) {
-        throw new IOException("Failed to parse query filter: %s", e);
-      }
     }
   }
 

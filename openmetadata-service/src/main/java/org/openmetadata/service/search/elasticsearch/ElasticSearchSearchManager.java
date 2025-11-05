@@ -16,7 +16,9 @@ import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.SortMode;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -41,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.settings.SettingsType;
@@ -48,13 +51,16 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -66,17 +72,19 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final String clusterAlias;
-  private final org.openmetadata.service.search.security.RBACConditionEvaluator
-      rbacConditionEvaluator;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final NLQService nlqService;
 
   public ElasticSearchSearchManager(
       ElasticsearchClient client,
-      org.openmetadata.service.search.security.RBACConditionEvaluator rbacConditionEvaluator,
-      String clusterAlias) {
+      RBACConditionEvaluator rbacConditionEvaluator,
+      String clusterAlias,
+      NLQService nlqService) {
     this.client = client;
     this.isClientAvailable = client != null;
     this.rbacConditionEvaluator = rbacConditionEvaluator;
     this.clusterAlias = clusterAlias;
+    this.nlqService = nlqService;
   }
 
   @Override
@@ -172,18 +180,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // Handle queryString parameter (raw ES query DSL)
     if (!nullOrEmpty(queryString)) {
       try {
-        JsonReader jsonReader = Json.createReader(new StringReader(queryString));
-        JsonObject jsonObject = jsonReader.readObject();
-        jsonReader.close();
-
-        if (jsonObject.containsKey("query")) {
-          JsonObject queryJson = jsonObject.getJsonObject("query");
-          StringReader qReader = new StringReader(queryJson.toString());
-          JsonpMapper qMapper = client._transport().jsonpMapper();
-          JsonParser qParser = qMapper.jsonProvider().createParser(qReader);
-          Query query = Query._DESERIALIZER.deserialize(qParser, qMapper);
-          requestBuilder.query(query);
-        }
+        String queryToProcess = EsUtils.parseJsonQuery(queryString);
+        Query query = Query.of(qb -> qb.withJson(new StringReader(queryToProcess)));
+        requestBuilder.query(query);
       } catch (Exception e) {
         LOG.warn("Error parsing queryString parameter, ignoring: {}", e.getMessage());
       }
@@ -372,6 +371,69 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
   }
 
+  /**
+   * Search with Natural Language Query (NLQ).
+   * Transforms natural language query to Elasticsearch query using NLQ service,
+   * then executes the search using the new Java API client.
+   */
+  @Override
+  public Response searchWithNLQ(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
+    LOG.info("Searching with NLQ: {}", request.getQuery());
+
+    if (nlqService != null) {
+      try {
+        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
+        if (transformedQuery == null) {
+          LOG.info("Failed to get Transformed NLQ query");
+          return fallbackToBasicSearch(request, subjectContext);
+        }
+
+        LOG.debug("Transformed NLQ query: {}", transformedQuery);
+
+        // Start search operation timing
+        io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+            org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
+        // Parse the transformed query and create Query object
+        ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
+        String queryToProcess = EsUtils.parseJsonQuery(transformedQuery);
+        Query nlqQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
+        requestBuilder.query(nlqQuery);
+
+        requestBuilder.from(request.getFrom());
+        requestBuilder.size(request.getSize());
+
+        // Add aggregations for NLQ query
+        addAggregationsToNLQQuery(requestBuilder, request.getIndex());
+
+        SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+        SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+        // End search operation timing
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+
+        // Cache successful queries
+        if (response.hits() != null
+            && response.hits().total() != null
+            && response.hits().total().value() > 0) {
+          nlqService.cacheQuery(request.getQuery(), transformedQuery);
+        }
+
+        return Response.status(Response.Status.OK)
+            .entity(serializeSearchResponse(response))
+            .build();
+      } catch (Exception e) {
+        LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
+        return fallbackToBasicSearch(request, subjectContext);
+      }
+    } else {
+      return fallbackToBasicSearch(request, subjectContext);
+    }
+  }
+
   @Override
   public Response searchWithDirectQuery(
       org.openmetadata.schema.search.SearchRequest request,
@@ -523,6 +585,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     return new ElasticSearchSourceBuilderFactory(searchSettings);
+  }
+
+  private void addAggregationsToNLQQuery(
+      ElasticSearchRequestBuilder requestBuilder, String indexName) {
+    ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    AssetTypeConfiguration assetConfig =
+        sourceBuilderFactory.findAssetTypeConfig(indexName, searchSettings);
+    sourceBuilderFactory.addConfiguredAggregationsV2(requestBuilder, assetConfig);
   }
 
   /**
@@ -855,9 +927,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Add fqnParts aggregation to fetch parent terms
     requestBuilder.aggregation(
-        "fqnParts_agg",
-        es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation.of(
-            a -> a.terms(t -> t.field("fqnParts").size(1000))));
+        "fqnParts_agg", Aggregation.of(a -> a.terms(t -> t.field("fqnParts").size(1000))));
 
     // Execute search to get aggregations for parent terms
     SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1006,5 +1076,68 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             });
 
     return rootDomains;
+  }
+
+  /**
+   * Fallback to basic query_string search when NLQ transformation fails or is unavailable.
+   * Uses the new Java API client for query execution.
+   */
+  private Response fallbackToBasicSearch(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
+    try {
+      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
+
+      ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
+
+      // Build basic query_string query using new API
+      Query queryStringQuery =
+          Query.of(
+              q -> q.queryString(qs -> qs.query(request.getQuery()).defaultOperator(Operator.And)));
+
+      requestBuilder.query(queryStringQuery);
+      requestBuilder.from(request.getFrom());
+      requestBuilder.size(request.getSize());
+
+      // Apply RBAC constraints using new API
+      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        if (rbacQueryBuilder != null) {
+          Query rbacQuery =
+              ((org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder)
+                      rbacQueryBuilder)
+                  .buildV2();
+          Query existingQuery = requestBuilder.query();
+          if (existingQuery != null) {
+            Query combinedQuery =
+                Query.of(
+                    qb ->
+                        qb.bool(
+                            b -> {
+                              b.must(existingQuery);
+                              b.filter(rbacQuery);
+                              return b;
+                            }));
+            requestBuilder.query(combinedQuery);
+          } else {
+            requestBuilder.query(rbacQuery);
+          }
+        }
+      }
+
+      // Add aggregations for fallback NLQ search
+      addAggregationsToNLQQuery(requestBuilder, request.getIndex());
+
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+      return Response.status(Response.Status.OK)
+          .entity(serializeSearchResponse(searchResponse))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Error in fallback search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute natural language search: %s", e.getMessage()))
+          .build();
+    }
   }
 }

@@ -117,4 +117,14 @@ public interface SearchManagementClient {
    */
   Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException;
+
+  /**
+   * Execute a search using Natural Language Query processing.
+   *
+   * @param request the search request
+   * @param subjectContext the subject context for RBAC evaluation
+   * @return response containing search results
+   * @throws IOException if search execution fails
+   */
+  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 }

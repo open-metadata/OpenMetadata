@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
@@ -37,10 +39,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
@@ -55,6 +59,7 @@ import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
+import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
@@ -70,14 +75,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final boolean isClientAvailable;
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final NLQService nlqService;
 
   // RBAC cache for new Java API
-  private static final LoadingCache<String, Query> RBAC_CACHE_V2 =
+  private static final LoadingCache<@NotNull String, @NotNull Query> RBAC_CACHE_V2 =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(5, TimeUnit.MINUTES)
           .build(
-              new CacheLoader<String, Query>() {
+              new CacheLoader<>() {
                 @Override
                 public Query load(String key) {
                   // Will be loaded via computeIfAbsent pattern
@@ -86,11 +92,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
               });
 
   public OpenSearchSearchManager(
-      OpenSearchClient client, RBACConditionEvaluator rbacConditionEvaluator, String clusterAlias) {
+      OpenSearchClient client,
+      RBACConditionEvaluator rbacConditionEvaluator,
+      String clusterAlias,
+      NLQService nlqService) {
     this.client = client;
     this.isClientAvailable = client != null;
     this.rbacConditionEvaluator = rbacConditionEvaluator;
     this.clusterAlias = clusterAlias;
+    this.nlqService = nlqService;
   }
 
   @Override
@@ -190,20 +200,11 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     if (!nullOrEmpty(queryString)) {
       try {
-        JsonReader jsonReader = Json.createReader(new StringReader(queryString));
-        JsonObject jsonObject = jsonReader.readObject();
-        jsonReader.close();
-
-        if (jsonObject.containsKey("query")) {
-          JsonObject queryJson = jsonObject.getJsonObject("query");
-          StringReader qReader = new StringReader(queryJson.toString());
-          JsonpMapper qMapper = client._transport().jsonpMapper();
-          JsonParser qParser = qMapper.jsonProvider().createParser(qReader);
-          Query query = Query._DESERIALIZER.deserialize(qParser, qMapper);
-          requestBuilder.query(query);
-        }
+        String queryToProcess = OsUtils.parseJsonQuery(queryString);
+        Query query = Query.of(qb -> qb.wrapper(w -> w.query(queryToProcess)));
+        requestBuilder.query(query);
       } catch (Exception e) {
-        LOG.warn("Error parsing queryString parameter, ignoring: {}", e.getMessage());
+        LOG.warn("Error parsing queryString using OsUtils: {}", e.getMessage());
       }
     }
 
@@ -239,8 +240,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(index);
-      SearchResponse<JsonData> response =
-          client.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
 
       List<Map<String, Object>> results = new ArrayList<>();
       if (response.hits().hits() != null) {
@@ -312,9 +312,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     if (searchAfter != null && searchAfter.length > 0) {
       List<String> searchAfterList = new ArrayList<>();
       for (Object value : searchAfter) {
-        if (value instanceof os.org.opensearch.client.opensearch._types.FieldValue) {
-          os.org.opensearch.client.opensearch._types.FieldValue fieldValue =
-              (os.org.opensearch.client.opensearch._types.FieldValue) value;
+        if (value instanceof FieldValue) {
+          FieldValue fieldValue = (FieldValue) value;
           searchAfterList.add(String.valueOf(fieldValue._get()));
         } else {
           searchAfterList.add(String.valueOf(value));
@@ -328,15 +327,13 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String sortTypeCapitalized =
           searchSortFilter.getSortType().substring(0, 1).toUpperCase()
               + searchSortFilter.getSortType().substring(1).toLowerCase();
-      os.org.opensearch.client.opensearch._types.SortOrder sortOrder =
-          os.org.opensearch.client.opensearch._types.SortOrder.valueOf(sortTypeCapitalized);
+      SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
       if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
         String sortModeCapitalized =
             searchSortFilter.getSortNestedMode().substring(0, 1).toUpperCase()
                 + searchSortFilter.getSortNestedMode().substring(1).toLowerCase();
-        os.org.opensearch.client.opensearch._types.SortMode sortMode =
-            os.org.opensearch.client.opensearch._types.SortMode.valueOf(sortModeCapitalized);
+        SortMode sortMode = SortMode.valueOf(sortModeCapitalized);
         requestBuilder.sortWithNested(
             searchSortFilter.getSortField(),
             sortOrder,
@@ -389,6 +386,66 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
+    }
+  }
+
+  /**
+   * Search with Natural Language Query (NLQ).
+   * Transforms natural language query to OpenSearch query using NLQ service,
+   * then executes the search using the new Java API client.
+   */
+  @Override
+  public Response searchWithNLQ(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
+    LOG.info("Searching with NLQ: {}", request.getQuery());
+
+    if (nlqService != null) {
+      try {
+        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
+        if (transformedQuery == null) {
+          LOG.info("Failed to get Transformed NLQ query");
+          return fallbackToBasicSearch(request, subjectContext);
+        }
+
+        LOG.debug("Transformed NLQ query: {}", transformedQuery);
+
+        // Start search operation timing
+        Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+
+        // Parse the transformed query and create Query object
+        OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
+        String queryToProcess = OsUtils.parseJsonQuery(transformedQuery);
+        Query nlqQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        requestBuilder.query(nlqQuery);
+
+        requestBuilder.from(request.getFrom());
+        requestBuilder.size(request.getSize());
+
+        // Add aggregations for NLQ query
+        addAggregationsToNLQQuery(requestBuilder, request.getIndex());
+
+        SearchResponse<JsonData> response =
+            client.search(requestBuilder.build(request.getIndex()), JsonData.class);
+
+        // End search operation timing
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+
+        // Cache successful queries
+        if (response.hits() != null
+            && response.hits().total() != null
+            && response.hits().total().value() > 0) {
+          nlqService.cacheQuery(request.getQuery(), transformedQuery);
+        }
+
+        return Response.status(Response.Status.OK).entity(response.toJsonString()).build();
+      } catch (Exception e) {
+        LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
+        return fallbackToBasicSearch(request, subjectContext);
+      }
+    } else {
+      return fallbackToBasicSearch(request, subjectContext);
     }
   }
 
@@ -600,6 +657,16 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     return new OpenSearchSourceBuilderFactory(searchSettings);
   }
 
+  private void addAggregationsToNLQQuery(
+      OpenSearchRequestBuilder requestBuilder, String indexName) {
+    OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    AssetTypeConfiguration assetConfig =
+        sourceBuilderFactory.findAssetTypeConfig(indexName, searchSettings);
+    sourceBuilderFactory.addConfiguredAggregationsV2(requestBuilder, assetConfig);
+  }
+
   public Response doSearch(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
@@ -792,15 +859,13 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
     try {
-      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
-          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
 
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
       SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
 
       if (searchTimerSample != null) {
-        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
-            searchTimerSample);
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
@@ -1065,5 +1130,47 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             });
 
     return rootDomains;
+  }
+
+  /**
+   * Fallback to basic query_string search when NLQ transformation fails or is unavailable.
+   * Uses the new Java API client for query execution.
+   */
+  private Response fallbackToBasicSearch(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
+    try {
+      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
+
+      OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
+
+      // Build basic query_string query using new API
+      Query queryStringQuery =
+          Query.of(
+              q -> q.queryString(qs -> qs.query(request.getQuery()).defaultOperator(Operator.And)));
+
+      requestBuilder.query(queryStringQuery);
+      requestBuilder.from(request.getFrom());
+      requestBuilder.size(request.getSize());
+
+      // Apply RBAC constraints using applyRbacQueryWithCaching
+      try {
+        applyRbacQueryWithCaching(subjectContext, requestBuilder);
+      } catch (IOException e) {
+        LOG.warn("Failed to apply RBAC query with caching, continuing without RBAC", e);
+      }
+
+      // Add aggregations for fallback NLQ search
+      addAggregationsToNLQQuery(requestBuilder, request.getIndex());
+
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+    } catch (Exception e) {
+      LOG.error("Error in fallback search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute natural language search: %s", e.getMessage()))
+          .build();
+    }
   }
 }

@@ -29,9 +29,7 @@ import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
-import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
-import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.xcontent.XContentLocation;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
@@ -166,6 +164,11 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private NLQService nlqService;
 
   public ElasticSearchClient(ElasticSearchConfiguration config) {
+    this(config, null);
+  }
+
+  // Update the constructor to accept NLQService
+  public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
     RestClient lowLevelClient = getLowLevelRestClient(config);
     this.client = createElasticSearchLegacyClient(lowLevelClient);
     this.newClient = createElasticSearchNewClient(lowLevelClient);
@@ -176,19 +179,14 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(newClient);
+    this.nlqService = nlqService;
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
-    searchManager = new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias);
-    nlqService = null;
-  }
-
-  // Update the constructor to accept NLQService
-  public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    this(config);
-    this.nlqService = nlqService;
+    searchManager =
+        new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
 
   private ElasticsearchClient createElasticSearchNewClient(RestClient lowLevelClient) {
@@ -333,66 +331,13 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
-    LOG.info("Searching with NLQ: {}", request.getQuery());
-    if (nlqService != null) {
-      try {
-        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
-        XContentParser parser = createXContentParser(transformedQuery);
-        SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
-        searchSourceBuilder.from(request.getFrom());
-        searchSourceBuilder.size(request.getSize());
-        ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
-        sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
-        LOG.debug("Transformed NLQ query: {}", transformedQuery);
-        es.org.elasticsearch.action.search.SearchRequest searchRequest =
-            new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
-        searchRequest.source(searchSourceBuilder);
-        es.org.elasticsearch.action.search.SearchResponse response =
-            client.search(searchRequest, RequestOptions.DEFAULT);
-        if (response.getHits().getTotalHits().value > 0) {
-          nlqService.cacheQuery(request.getQuery(), transformedQuery);
-        }
-        return Response.status(Response.Status.OK).entity(response.toString()).build();
-      } catch (Exception e) {
-        LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
-
-        // Try using the built-in OpenSearch NLQ feature as a first fallback
-        return fallbackToBasicSearch(request, subjectContext);
-      }
-    } else {
-      return fallbackToBasicSearch(request, subjectContext);
-    }
+    return searchManager.searchWithNLQ(request, subjectContext);
   }
 
   @Override
   public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
     return searchManager.searchWithDirectQuery(request, subjectContext);
-  }
-
-  private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext) {
-    try {
-      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
-
-      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-      QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(request.getQuery());
-      searchSourceBuilder.query(queryBuilder);
-      searchSourceBuilder.from(request.getFrom());
-      searchSourceBuilder.size(request.getSize());
-
-      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
-      es.org.elasticsearch.action.search.SearchRequest esRequest =
-          new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
-      esRequest.source(searchSourceBuilder);
-      getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
-      SearchResponse searchResponse = client.search(esRequest, RequestOptions.DEFAULT);
-      return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
-    } catch (Exception e) {
-      LOG.error("Error in fallback search: {}", e.getMessage(), e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(String.format("Failed to execute natural language search: %s", e.getMessage()))
-          .build();
-    }
   }
 
   @Override
@@ -1104,28 +1049,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;
-    }
-  }
-
-  private void getSearchFilter(String filter, SearchSourceBuilder searchSourceBuilder)
-      throws IOException {
-    if (!filter.isEmpty()) {
-      try {
-        XContentParser queryParser = createXContentParser(filter);
-        XContentParser sourceParser = createXContentParser(filter);
-        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
-        FetchSourceContext sourceFromXContent =
-            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
-        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        if (searchSourceBuilder.query() != null) {
-          boolQuery = boolQuery.must(searchSourceBuilder.query());
-        }
-        boolQuery = boolQuery.filter(queryFromXContent);
-        searchSourceBuilder.query(boolQuery);
-        searchSourceBuilder.fetchSource(sourceFromXContent);
-      } catch (Exception e) {
-        throw new IOException(String.format("Failed to parse query filter: %s", e.getMessage()), e);
-      }
     }
   }
 

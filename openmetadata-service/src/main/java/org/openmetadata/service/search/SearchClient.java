@@ -13,12 +13,10 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
@@ -397,8 +395,6 @@ public interface SearchClient<T>
   boolean isNewClientAvailable();
 
   ElasticSearchConfiguration.SearchType getSearchType();
-
-  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;

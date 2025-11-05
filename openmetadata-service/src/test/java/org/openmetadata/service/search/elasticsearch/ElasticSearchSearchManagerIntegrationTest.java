@@ -3,6 +3,10 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,7 +63,7 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
     RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
     client = new ElasticsearchClient(transport);
 
-    searchManager = new ElasticSearchSearchManager(client, null, "");
+    searchManager = new ElasticSearchSearchManager(client, null, "", null);
 
     LOG.info(
         "ElasticSearchSearchManager test setup completed with index prefix: {}", testIndexPrefix);
@@ -255,7 +259,7 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
   @Test
   void testConstructor_HandlesNullClient() {
     ElasticSearchSearchManager managerWithNullClient =
-        new ElasticSearchSearchManager(null, null, "");
+        new ElasticSearchSearchManager(null, null, "", null);
 
     assertNotNull(managerWithNullClient);
     assertDoesNotThrow(
@@ -1459,6 +1463,203 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
     assertNotNull(response);
     assertEquals(200, response.getStatus());
     LOG.info("Empty query search handled correctly");
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithNLQ_SuccessfulTransformation() throws Exception {
+    String testIndex = testIndexPrefix + "_nlq_success";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 5; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+                  {
+                    "id": "test-nlq-%d",
+                    "name": "Sales Report %d",
+                    "description": "Monthly sales report for region %d",
+                    "fullyQualifiedName": "test.nlq.report.%d",
+                    "entityType": "dashboard",
+                    "owner": "sales-team",
+                    "deleted": false,
+                    "metrics": ["revenue", "growth"]
+                  }
+                  """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("nlq-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Create mock NLQ service
+    org.openmetadata.service.search.nlq.NLQService mockNlqService =
+        mock(org.openmetadata.service.search.nlq.NLQService.class);
+    when(mockNlqService.transformNaturalLanguageQuery(any(), any()))
+        .thenReturn("{\"query\":{\"match\":{\"name\":\"Sales Report\"}}}");
+
+    // Create search manager with mock NLQ service
+    ElasticSearchSearchManager searchManagerWithNLQ =
+        new ElasticSearchSearchManager(client, null, "", mockNlqService);
+
+    // Create search request
+    org.openmetadata.schema.search.SearchRequest request =
+        new org.openmetadata.schema.search.SearchRequest();
+    request.setIndex(actualIndexName);
+    request.setQuery("show me all sales reports");
+    request.setFrom(0);
+    request.setSize(10);
+
+    // Execute NLQ search
+    Response response = searchManagerWithNLQ.searchWithNLQ(request, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("NLQ search executed successfully");
+
+    // Verify NLQ service was called
+    verify(mockNlqService).transformNaturalLanguageQuery(any(), any());
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithNLQ_FallbackToBasicSearch() throws Exception {
+    String testIndex = testIndexPrefix + "_nlq_fallback";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Index test documents
+    for (int i = 1; i <= 3; i++) {
+      final int entityNum = i;
+      String entityJson =
+          String.format(
+              """
+                  {
+                    "id": "test-nlq-fallback-%d",
+                    "name": "Financial Report %d",
+                    "description": "Financial analysis document %d",
+                    "fullyQualifiedName": "test.nlq.finance.%d",
+                    "entityType": "report",
+                    "owner": "finance-team",
+                    "deleted": false
+                  }
+                  """,
+              entityNum, entityNum, entityNum, entityNum);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id("nlq-fallback-" + entityNum)
+                  .document(parseJson(entityJson))
+                  .refresh(Refresh.True));
+    }
+
+    // Create mock NLQ service that returns null (triggers fallback)
+    org.openmetadata.service.search.nlq.NLQService mockNlqService =
+        mock(org.openmetadata.service.search.nlq.NLQService.class);
+    when(mockNlqService.transformNaturalLanguageQuery(any(), any())).thenReturn(null);
+
+    ElasticSearchSearchManager searchManagerWithNLQ =
+        new ElasticSearchSearchManager(client, null, "", mockNlqService);
+
+    // Create search request
+    org.openmetadata.schema.search.SearchRequest request =
+        new org.openmetadata.schema.search.SearchRequest();
+    request.setIndex(actualIndexName);
+    request.setQuery("find financial reports");
+    request.setFrom(0);
+    request.setSize(10);
+
+    // Execute search
+    Response response = searchManagerWithNLQ.searchWithNLQ(request, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Fallback search executed successfully");
+
+    // Verify NLQ service was called
+    verify(mockNlqService).transformNaturalLanguageQuery(any(), any());
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithNLQ_ErrorHandling() throws Exception {
+    String testIndex = testIndexPrefix + "_nlq_error";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Create mock NLQ service that throws exception
+    org.openmetadata.service.search.nlq.NLQService mockNlqService =
+        mock(org.openmetadata.service.search.nlq.NLQService.class);
+    when(mockNlqService.transformNaturalLanguageQuery(any(), any()))
+        .thenThrow(new RuntimeException("NLQ transformation error"));
+
+    ElasticSearchSearchManager searchManagerWithNLQ =
+        new ElasticSearchSearchManager(client, null, "", mockNlqService);
+
+    // Create search request
+    org.openmetadata.schema.search.SearchRequest request =
+        new org.openmetadata.schema.search.SearchRequest();
+    request.setIndex(actualIndexName);
+    request.setQuery("this query will fail");
+    request.setFrom(0);
+    request.setSize(10);
+
+    // Execute search - should fall back to basic search
+    Response response = searchManagerWithNLQ.searchWithNLQ(request, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Error handled gracefully with fallback to basic search");
+
+    // Verify NLQ service was called
+    verify(mockNlqService).transformNaturalLanguageQuery(any(), any());
+
+    // Clean up
+    client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchWithNLQ_NullNLQService() throws Exception {
+    String testIndex = testIndexPrefix + "_nlq_null";
+    String actualIndexName =
+        org.openmetadata.service.Entity.getSearchRepository().getIndexOrAliasName(testIndex);
+    createTestIndex(actualIndexName);
+
+    // Create search manager with null NLQ service
+    ElasticSearchSearchManager searchManagerNoNLQ =
+        new ElasticSearchSearchManager(client, null, "", null);
+
+    // Create search request
+    org.openmetadata.schema.search.SearchRequest request =
+        new org.openmetadata.schema.search.SearchRequest();
+    request.setIndex(actualIndexName);
+    request.setQuery("find reports");
+    request.setFrom(0);
+    request.setSize(10);
+
+    // Execute search - should default to basic search
+    Response response = searchManagerNoNLQ.searchWithNLQ(request, null);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    LOG.info("Search with null NLQ service handled correctly");
 
     // Clean up
     client.indices().delete(d -> d.index(actualIndexName));
