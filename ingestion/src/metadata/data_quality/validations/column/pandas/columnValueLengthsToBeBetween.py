@@ -131,13 +131,14 @@ class ColumnValueLengthsToBeBetweenValidator(
                 max_length_value = agg[Metrics.MAX_LENGTH.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not (min_length_value is None or max_length_value is None):
+                if min_length_value is None or max_length_value is None:
                     logger.warning(
                         "Skipping '%s=%s' dimension since 'min_length' or 'max_length' are 'None'",
                         dimension_col.name,
                         dimension_value,
                     )
                     continue
+
                 failed_count = (
                     total_rows
                     if checker.violates_pandas(
