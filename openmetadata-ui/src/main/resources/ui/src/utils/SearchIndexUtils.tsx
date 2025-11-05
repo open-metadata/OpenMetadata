@@ -113,7 +113,12 @@ export const getSearchIndexDetailsTabs = ({
         />
       ),
       key: EntityTabs.SAMPLE_DATA,
-      children: !viewSampleDataPermission ? (
+      children: viewSampleDataPermission ? (
+        <SampleDataWithMessages
+          entityId={searchIndexDetails?.id ?? ''}
+          entityType={EntityType.SEARCH_INDEX}
+        />
+      ) : (
         <div className="m-t-xlg">
           <ErrorPlaceHolder
             className="border-none"
@@ -123,11 +128,6 @@ export const getSearchIndexDetailsTabs = ({
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
-      ) : (
-        <SampleDataWithMessages
-          entityId={searchIndexDetails?.id ?? ''}
-          entityType={EntityType.SEARCH_INDEX}
-        />
       ),
     },
     {

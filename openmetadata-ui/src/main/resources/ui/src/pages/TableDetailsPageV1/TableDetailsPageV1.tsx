@@ -270,7 +270,7 @@ const TableDetailsPageV1: React.FC = () => {
         TestCaseStatus.Failed
       );
       const failureCount = data.reduce(
-        (acc, curr) => acc + parseInt(curr.document_count ?? '0'),
+        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
         0
       );
 

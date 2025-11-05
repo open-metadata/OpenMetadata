@@ -139,17 +139,17 @@ export const ContractSemanticFormTab: React.FC<{
   };
 
   useEffect(() => {
-    if (!isEmpty(initialValues?.semantics)) {
-      form.setFieldsValue({
-        semantics: initialValues?.semantics,
-      });
-    } else {
+    if (isEmpty(initialValues?.semantics)) {
       form.setFieldsValue({
         semantics: [
           {
             enabled: true,
           },
         ],
+      });
+    } else {
+      form.setFieldsValue({
+        semantics: initialValues?.semantics,
       });
     }
     setEditingKey(0);

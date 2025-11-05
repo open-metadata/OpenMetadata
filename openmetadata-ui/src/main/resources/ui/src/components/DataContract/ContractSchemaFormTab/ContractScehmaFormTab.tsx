@@ -235,7 +235,7 @@ export const ContractSchemaFormTab: React.FC<{
         });
 
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setAllColumnsData([]);
         handlePagingChange({
           offset: 1,
@@ -269,7 +269,7 @@ export const ContractSchemaFormTab: React.FC<{
 
         return uniqBy(combined, 'fullyQualifiedName');
       });
-    } catch (error) {
+    } catch {
       setAllColumnsData([]);
     }
     setIsLoading(false);

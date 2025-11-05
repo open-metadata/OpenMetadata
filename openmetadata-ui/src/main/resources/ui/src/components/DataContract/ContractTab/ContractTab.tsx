@@ -89,19 +89,6 @@ export const ContractTab = () => {
   const content = useMemo(() => {
     switch (tabMode) {
       case DataContractTabMode.ADD:
-        return (
-          <AddDataContract
-            contract={contract}
-            onCancel={() => {
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-            onSave={() => {
-              fetchContract();
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-          />
-        );
-
       case DataContractTabMode.EDIT:
         return (
           <AddDataContract

@@ -71,7 +71,9 @@ export const getTopicDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.SAMPLE_DATA,
-      children: !viewSampleDataPermission ? (
+      children: viewSampleDataPermission ? (
+        sampleDataTab
+      ) : (
         <div className="border-default border-radius-sm p-y-lg">
           <ErrorPlaceHolder
             className="border-none"
@@ -81,8 +83,6 @@ export const getTopicDetailsPageTabs = ({
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
-      ) : (
-        sampleDataTab
       ),
     },
     {
