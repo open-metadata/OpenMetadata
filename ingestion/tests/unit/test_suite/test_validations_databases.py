@@ -822,6 +822,26 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
             ],
         ),
+        (
+            "test_case_column_values_not_in_set_dimensional",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "20",
+                None,
+                TestCaseStatus.Failed,
+                60.0,
+                20.0,
+                75.0,
+                25.0,
+            ),
+            [
+                ("age=NULL", TestCaseStatus.Failed, 10, 10, 50, 50, 0.0167),
+                ("age=30", TestCaseStatus.Failed, 20, 10, 66.67, 33.33, 0.0111),
+                ("age=31", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_database(

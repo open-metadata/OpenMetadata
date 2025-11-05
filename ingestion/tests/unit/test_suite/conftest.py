@@ -1077,3 +1077,19 @@ def test_case_column_sum_to_be_between_dimensional():
         ],
         dimensionColumns=["name"],
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_not_in_set_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="forbiddenValues", value="['John']"),
+        ],
+        dimensionColumns=["age"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
