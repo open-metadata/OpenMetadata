@@ -1045,3 +1045,19 @@ def test_case_column_value_length_to_be_between_dimensional_without_min():
         dimensionColumns=["name"],
         computePassedFailedRowCount=True,
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_median_to_be_between_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
+            TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
+        ],
+        dimensionColumns=["name"],
+    )  # type: ignore
