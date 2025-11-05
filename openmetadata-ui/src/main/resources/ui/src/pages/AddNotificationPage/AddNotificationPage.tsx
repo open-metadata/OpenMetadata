@@ -38,7 +38,10 @@ import RichTextEditor from '../../components/common/RichTextEditor/RichTextEdito
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
@@ -103,6 +106,13 @@ const AddNotificationPage = () => {
       {
         name: t('label.notification-plural'),
         url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+      },
+      {
+        name: t('label.alert-plural'),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERTS
+        ),
       },
       {
         name: fqn

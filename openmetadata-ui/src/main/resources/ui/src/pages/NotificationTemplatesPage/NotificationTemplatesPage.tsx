@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,16 +12,16 @@
  */
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
+import DateTimeDisplay from '../../components/common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -46,29 +46,25 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  AlertType,
-  EventSubscription,
+  NotificationTemplate,
   ProviderType,
-} from '../../generated/events/eventSubscription';
+} from '../../generated/entity/events/notificationTemplate';
 import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
+import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import {
-  getNotificationAlertDetailsPath,
-  getNotificationAlertsEditPath,
-  getSettingPath,
-} from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const NotificationListPage = () => {
+const NotificationTemplatesPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [loadingCount, setLoadingCount] = useState(0);
-  const [alerts, setAlerts] = useState<EventSubscription[]>([]);
-  const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<NotificationTemplate>();
   const {
     pageSize,
     currentPage,
@@ -81,40 +77,42 @@ const NotificationListPage = () => {
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
     usePermissionProvider();
-  const [alertPermissions, setAlertPermissions] = useState<
+  const [templatePermissions, setTemplatePermissions] = useState<
     {
       id: string;
       edit: boolean;
       delete: boolean;
     }[]
   >();
-  const [alertResourcePermission, setAlertResourcePermission] =
+  const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>();
 
-  const fetchAlertPermissionByFqn = async (alertDetails: EventSubscription) => {
+  const fetchTemplatePermissionByFqn = async (
+    templateDetails: NotificationTemplate
+  ) => {
     const permission = await getEntityPermissionByFqn(
-      ResourceEntity.EVENT_SUBSCRIPTION,
-      alertDetails.fullyQualifiedName ?? ''
+      ResourceEntity.NOTIFICATION_TEMPLATE,
+      templateDetails.fullyQualifiedName ?? ''
     );
 
     const editPermission = permission.EditAll;
     const deletePermission = permission.Delete;
 
     return {
-      id: alertDetails.id,
+      id: templateDetails.id,
       edit: editPermission,
       delete: deletePermission,
     };
   };
 
-  const fetchAlertResourcePermission = async () => {
+  const fetchTemplateResourcePermission = async () => {
     try {
       setLoadingCount((count) => count + 1);
       const permission = await getResourcePermission(
-        ResourceEntity.EVENT_SUBSCRIPTION
+        ResourceEntity.NOTIFICATION_TEMPLATE
       );
 
-      setAlertResourcePermission(permission);
+      setTemplateResourcePermission(permission);
     } catch {
       // Error
     } finally {
@@ -122,12 +120,16 @@ const NotificationListPage = () => {
     }
   };
 
-  const fetchAllAlertsPermission = async (alerts: EventSubscription[]) => {
+  const fetchAllTemplatesPermission = async (
+    templates: NotificationTemplate[]
+  ) => {
     try {
       setLoadingCount((count) => count + 1);
-      const response = alerts.map((alert) => fetchAlertPermissionByFqn(alert));
+      const response = templates.map((template) =>
+        fetchTemplatePermissionByFqn(template)
+      );
 
-      setAlertPermissions(await Promise.all(response));
+      setTemplatePermissions(await Promise.all(response));
     } catch {
       // Error
     } finally {
@@ -139,37 +141,28 @@ const NotificationListPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.NOTIFICATIONS,
-        t('label.alert-plural')
+        t('label.template-plural')
       ),
     []
   );
 
-  const fetchAlerts = useCallback(
+  const fetchTemplates = useCallback(
     async (params?: Partial<Paging>) => {
       setLoadingCount((count) => count + 1);
       try {
-        const { data, paging } = await getAllAlerts({
+        const { data, paging } = await getAllNotificationTemplates({
           after: params?.after,
           before: params?.before,
           limit: pageSize,
-          alertType: AlertType.Notification,
         });
 
-        if (isUndefined(params?.after)) {
-          // Fetch and show the system created activity feed alert when fetching results fro page 1
-          const activityFeedAlert = await getAlertsFromName(
-            'ActivityFeedAlert'
-          );
-          setAlerts([activityFeedAlert, ...data]);
-        } else {
-          setAlerts(data);
-        }
+        setTemplates(data);
 
         handlePagingChange(paging);
-        fetchAllAlertsPermission(data);
+        fetchAllTemplatesPermission(data);
       } catch {
         showErrorToast(
-          t('server.entity-fetch-error', { entity: t('label.alert-plural') })
+          t('server.entity-fetch-error', { entity: t('label.template-plural') })
         );
       } finally {
         setLoadingCount((count) => count - 1);
@@ -179,27 +172,27 @@ const NotificationListPage = () => {
   );
 
   useEffect(() => {
-    fetchAlertResourcePermission();
+    fetchTemplateResourcePermission();
   }, []);
 
   useEffect(() => {
-    fetchAlerts();
+    fetchTemplates();
   }, [pageSize]);
 
-  const handleAlertDelete = useCallback(async () => {
+  const handleTemplateDelete = useCallback(async () => {
     try {
-      setSelectedAlert(undefined);
-      await getResourceLimit('eventsubscription', true, true);
-      fetchAlerts();
+      setSelectedTemplate(undefined);
+      await getResourceLimit('notificationTemplate', true, true);
+      fetchTemplates();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [fetchAlerts]);
+  }, [fetchTemplates]);
 
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchAlerts({ [cursorType]: paging[cursorType] });
+        fetchTemplates({ [cursorType]: paging[cursorType] });
         handlePageChange(currentPage);
       }
     },
@@ -213,12 +206,10 @@ const NotificationListPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (_: string, record: EventSubscription) => {
+        render: (_: string, record: NotificationTemplate) => {
           return (
             record.fullyQualifiedName && (
-              <Link
-                data-testid="alert-name"
-                to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
+              <Link data-testid="template-name" to="">
                 {getEntityName(record)}
               </Link>
             )
@@ -227,45 +218,29 @@ const NotificationListPage = () => {
       },
       {
         title: t('label.trigger').toString(),
-        dataIndex: ['filteringRules', 'resources'],
+        dataIndex: 'updatedAt',
         width: '200px',
-        key: 'FilteringRules.resources',
-        render: (resources: string[]) => {
-          return resources?.join(', ') || '--';
-        },
-      },
-      {
-        title: t('label.description').toString(),
-        dataIndex: 'description',
-        flex: true,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
+        key: 'updatedAt',
+        render: (updatedAt: number) => (
+          <DateTimeDisplay timestamp={updatedAt} />
+        ),
       },
       {
         title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
         width: 90,
         key: 'fullyQualifiedName',
-        render: (fullyQualifiedName: string, record: EventSubscription) => {
-          const alertPermission = alertPermissions?.find(
-            (alert) => alert.id === record.id
+        render: (_: string, record: NotificationTemplate) => {
+          const templatePermission = templatePermissions?.find(
+            (template) => template.id === record.id
           );
           if (loadingCount > 0) {
             return <Skeleton active className="p-r-lg" paragraph={false} />;
           }
 
           if (
-            isUndefined(alertPermission) ||
-            (!alertPermission.edit && !alertPermission.delete)
+            isUndefined(templatePermission) ||
+            (!templatePermission.edit && !templatePermission.delete)
           ) {
             return (
               <Typography.Text className="p-l-xs">
@@ -276,12 +251,12 @@ const NotificationListPage = () => {
 
           return (
             <div className="d-flex items-center">
-              {alertPermission.edit && (
+              {templatePermission.edit && (
                 <Tooltip placement="bottom" title={t('label.edit')}>
-                  <Link to={getNotificationAlertsEditPath(fullyQualifiedName)}>
+                  <Link to="">
                     <Button
                       className="flex flex-center"
-                      data-testid={`alert-edit-${record.name}`}
+                      data-testid={`template-edit-${record.name}`}
                       disabled={record.provider === ProviderType.System}
                       icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                       type="text"
@@ -289,15 +264,15 @@ const NotificationListPage = () => {
                   </Link>
                 </Tooltip>
               )}
-              {alertPermission.delete && (
+              {templatePermission.delete && (
                 <Tooltip placement="bottom" title={t('label.delete')}>
                   <Button
                     className="flex flex-center"
-                    data-testid={`alert-delete-${record.name}`}
+                    data-testid={`template-delete-${record.name}`}
                     disabled={record.provider === ProviderType.System}
                     icon={<DeleteIcon height={16} />}
                     type="text"
-                    onClick={() => setSelectedAlert(record)}
+                    onClick={() => setSelectedTemplate(record)}
                   />
                 </Tooltip>
               )}
@@ -306,11 +281,11 @@ const NotificationListPage = () => {
         },
       },
     ],
-    [alertPermissions, loadingCount]
+    [templatePermissions, loadingCount]
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+    <PageLayoutV1 pageTitle={t('label.template-plural')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -318,8 +293,8 @@ const NotificationListPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
-            {(alertResourcePermission?.Create ||
-              alertResourcePermission?.All) && (
+            {(templateResourcePermission?.Create ||
+              templateResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
                 <Button
                   data-testid="create-notification"
@@ -332,7 +307,7 @@ const NotificationListPage = () => {
                       )
                     )
                   }>
-                  {t('label.add-entity', { entity: t('label.alert') })}
+                  {t('label.add-entity', { entity: t('label.template') })}
                 </Button>
               </LimitWrapper>
             )}
@@ -350,7 +325,7 @@ const NotificationListPage = () => {
               pagingHandler: onPageChange,
               onShowSizeChange: handlePageSizeChange,
             }}
-            dataSource={alerts}
+            dataSource={templates}
             loading={Boolean(loadingCount)}
             locale={{
               emptyText: (
@@ -358,9 +333,9 @@ const NotificationListPage = () => {
                   permission
                   className="p-y-md"
                   doc={ALERTS_DOCS}
-                  heading={t('label.alert')}
+                  heading={t('label.template')}
                   permissionValue={t('label.create-entity', {
-                    entity: t('label.alert'),
+                    entity: t('label.template'),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
@@ -381,14 +356,14 @@ const NotificationListPage = () => {
         </Col>
         <Col span={24}>
           <DeleteWidgetModal
-            afterDeleteAction={handleAlertDelete}
+            afterDeleteAction={handleTemplateDelete}
             allowSoftDelete={false}
-            entityId={selectedAlert?.id ?? ''}
-            entityName={getEntityName(selectedAlert)}
+            entityId={selectedTemplate?.id ?? ''}
+            entityName={getEntityName(selectedTemplate)}
             entityType={EntityType.SUBSCRIPTION}
-            visible={Boolean(selectedAlert)}
+            visible={Boolean(selectedTemplate)}
             onCancel={() => {
-              setSelectedAlert(undefined);
+              setSelectedTemplate(undefined);
             }}
           />
         </Col>
@@ -397,4 +372,4 @@ const NotificationListPage = () => {
   );
 };
 
-export default NotificationListPage;
+export default NotificationTemplatesPage;
