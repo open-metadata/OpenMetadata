@@ -10,35 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Chip,
-  Grid,
-  IconButton,
-  Skeleton,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Button, Grid } from '@mui/material';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
-import DateTimeDisplay from '../../components/common/DateTimeDisplay/DateTimeDisplay';
+import { useNavigate } from 'react-router-dom';
+import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import NotificationTemplateForm from '../../components/NotificationTemplate/NotificationTemplateForm/NotificationTemplateForm';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -53,16 +40,17 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
-import {
-  NotificationTemplate,
-  ProviderType,
-} from '../../generated/entity/events/notificationTemplate';
+import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import {
+  getNotificationTemplateListColumns,
+  TemplatePermissionInfo,
+} from '../../utils/NotificationTemplateUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -73,6 +61,7 @@ const NotificationTemplatesPage = () => {
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] =
     useState<NotificationTemplate>();
+  const [form] = useForm();
   const {
     pageSize,
     currentPage,
@@ -85,15 +74,27 @@ const NotificationTemplatesPage = () => {
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
     usePermissionProvider();
-  const [templatePermissions, setTemplatePermissions] = useState<
-    {
-      id: string;
-      edit: boolean;
-      delete: boolean;
-    }[]
-  >();
+  const [templatePermissions, setTemplatePermissions] =
+    useState<TemplatePermissionInfo[]>();
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>();
+
+  const { formDrawer, openDrawer } = useFormDrawerWithRef({
+    title: t('label.add-entity', { entity: t('label.template') }),
+    anchor: 'right',
+    width: 670,
+    closeOnEscape: false,
+    onCancel: () => {
+      form.resetFields();
+    },
+    form: <NotificationTemplateForm />,
+    formRef: form,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
+    loading: loadingCount > 0,
+  });
 
   const fetchTemplatePermissionByFqn = async (
     templateDetails: NotificationTemplate
@@ -179,14 +180,6 @@ const NotificationTemplatesPage = () => {
     [pageSize]
   );
 
-  useEffect(() => {
-    fetchTemplateResourcePermission();
-  }, []);
-
-  useEffect(() => {
-    fetchTemplates();
-  }, [pageSize]);
-
   const handleTemplateDelete = useCallback(async () => {
     try {
       setSelectedTemplate(undefined);
@@ -208,96 +201,22 @@ const NotificationTemplatesPage = () => {
   );
 
   const columns = useMemo(
-    () => [
-      {
-        title: t('label.name').toString(),
-        dataIndex: 'name',
-        width: '200px',
-        key: 'name',
-        render: (_: string, record: NotificationTemplate) => {
-          return (
-            record.fullyQualifiedName && (
-              <Link data-testid="template-name" to="">
-                {getEntityName(record)}
-              </Link>
-            )
-          );
-        },
-      },
-      {
-        title: t('label.trigger').toString(),
-        dataIndex: 'updatedAt',
-        width: '200px',
-        key: 'updatedAt',
-        render: (updatedAt: number) => (
-          <DateTimeDisplay timestamp={updatedAt} />
-        ),
-      },
-      {
-        title: t('label.entity-type', {
-          entity: t('label.template'),
-        }),
-        dataIndex: 'provider',
-        width: '200px',
-        key: 'provider',
-        render: (provider: string) => <Chip color="primary" label={provider} />,
-      },
-      {
-        title: t('label.action-plural').toString(),
-        dataIndex: 'fullyQualifiedName',
-        width: 90,
-        key: 'fullyQualifiedName',
-        render: (_: string, record: NotificationTemplate) => {
-          const templatePermission = templatePermissions?.find(
-            (template) => template.id === record.id
-          );
-          if (loadingCount > 0) {
-            return <Skeleton className="p-r-lg" variant="rectangular" />;
-          }
-
-          if (
-            isUndefined(templatePermission) ||
-            (!templatePermission.edit && !templatePermission.delete)
-          ) {
-            return (
-              <Typography className="p-l-xs" variant="body1">
-                {NO_DATA_PLACEHOLDER}
-              </Typography>
-            );
-          }
-
-          return (
-            <div className="d-flex items-center">
-              {templatePermission.edit && (
-                <Tooltip placement="bottom" title={t('label.edit')}>
-                  <Link to="">
-                    <IconButton
-                      className="flex flex-center"
-                      data-testid={`template-edit-${record.name}`}
-                      disabled={record.provider === ProviderType.System}>
-                      <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                    </IconButton>
-                  </Link>
-                </Tooltip>
-              )}
-              {templatePermission.delete && (
-                <Tooltip placement="bottom" title={t('label.delete')}>
-                  <IconButton
-                    className="flex flex-center"
-                    data-testid={`template-delete-${record.name}`}
-                    disabled={record.provider === ProviderType.System}
-                    onClick={() => setSelectedTemplate(record)}>
-                    <DeleteIcon height={16} />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </div>
-          );
-        },
-      },
-    ],
+    () =>
+      getNotificationTemplateListColumns(
+        templatePermissions || [],
+        loadingCount,
+        (record: NotificationTemplate) => setSelectedTemplate(record)
+      ),
     [templatePermissions, loadingCount]
   );
+
+  useEffect(() => {
+    fetchTemplateResourcePermission();
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [pageSize]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.template-plural')}>
@@ -320,14 +239,7 @@ const NotificationTemplatesPage = () => {
                 <Button
                   data-testid="create-notification"
                   variant="contained"
-                  onClick={() =>
-                    navigate(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_NOTIFICATION
-                      )
-                    )
-                  }>
+                  onClick={openDrawer}>
                   {t('label.add-entity', { entity: t('label.template') })}
                 </Button>
               </LimitWrapper>
@@ -381,7 +293,7 @@ const NotificationTemplatesPage = () => {
             allowSoftDelete={false}
             entityId={selectedTemplate?.id ?? ''}
             entityName={getEntityName(selectedTemplate)}
-            entityType={EntityType.SUBSCRIPTION}
+            entityType={EntityType.NOTIFICATION_TEMPLATE}
             visible={Boolean(selectedTemplate)}
             onCancel={() => {
               setSelectedTemplate(undefined);
@@ -389,6 +301,7 @@ const NotificationTemplatesPage = () => {
           />
         </Grid>
       </Grid>
+      {formDrawer}
     </PageLayoutV1>
   );
 };

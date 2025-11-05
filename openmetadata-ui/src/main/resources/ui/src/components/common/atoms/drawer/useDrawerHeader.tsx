@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, IconButton, SxProps, Typography } from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
-import drawerHeaderBg from '../../../../assets/img/drawer-header-bg.png';
 
 export interface DrawerHeaderConfig {
   title?: string | ReactNode;
   showCloseButton?: boolean;
   onClose?: () => void;
   actions?: ReactNode;
-  sx?: any;
+  sx?: SxProps;
 }
 
 /**
@@ -68,20 +67,6 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
           justifyContent: 'space-between',
           alignItems: 'center',
           position: 'relative',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `url(${drawerHeaderBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            opacity: 0.3,
-            zIndex: 0,
-          },
           '& > *': {
             position: 'relative',
             zIndex: 1,
