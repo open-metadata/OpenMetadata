@@ -44,7 +44,8 @@ export const getEntityChildDetailsV1 = (
   loading?: boolean
 ) => {
   switch (entityType) {
-    case EntityType.TABLE || EntityType.DASHBOARD_DATA_MODEL:
+    case EntityType.TABLE:
+    case EntityType.DASHBOARD_DATA_MODEL:
       return (
         <SchemaFieldCardsV1
           entityInfo={entityInfo as TableEntity}
