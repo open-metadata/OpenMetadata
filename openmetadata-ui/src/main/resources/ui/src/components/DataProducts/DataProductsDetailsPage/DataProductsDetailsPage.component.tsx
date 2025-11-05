@@ -639,7 +639,6 @@ const DataProductsDetailsPage = ({
               }}>
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
-                  className="h-10"
                   data-testid="data-product-details-add-button"
                   type="primary"
                   onClick={openAssetDrawer}>
