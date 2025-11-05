@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Chip,
+  Grid,
+  IconButton,
+  Skeleton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -226,6 +234,15 @@ const NotificationTemplatesPage = () => {
         ),
       },
       {
+        title: t('label.entity-type', {
+          entity: t('label.template'),
+        }),
+        dataIndex: 'provider',
+        width: '200px',
+        key: 'provider',
+        render: (provider: string) => <Chip color="primary" label={provider} />,
+      },
+      {
         title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
         width: 90,
@@ -235,7 +252,7 @@ const NotificationTemplatesPage = () => {
             (template) => template.id === record.id
           );
           if (loadingCount > 0) {
-            return <Skeleton active className="p-r-lg" paragraph={false} />;
+            return <Skeleton className="p-r-lg" variant="rectangular" />;
           }
 
           if (
@@ -243,9 +260,9 @@ const NotificationTemplatesPage = () => {
             (!templatePermission.edit && !templatePermission.delete)
           ) {
             return (
-              <Typography.Text className="p-l-xs">
+              <Typography className="p-l-xs" variant="body1">
                 {NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             );
           }
 
@@ -254,26 +271,24 @@ const NotificationTemplatesPage = () => {
               {templatePermission.edit && (
                 <Tooltip placement="bottom" title={t('label.edit')}>
                   <Link to="">
-                    <Button
+                    <IconButton
                       className="flex flex-center"
                       data-testid={`template-edit-${record.name}`}
-                      disabled={record.provider === ProviderType.System}
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      type="text"
-                    />
+                      disabled={record.provider === ProviderType.System}>
+                      <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                    </IconButton>
                   </Link>
                 </Tooltip>
               )}
               {templatePermission.delete && (
                 <Tooltip placement="bottom" title={t('label.delete')}>
-                  <Button
+                  <IconButton
                     className="flex flex-center"
                     data-testid={`template-delete-${record.name}`}
                     disabled={record.provider === ProviderType.System}
-                    icon={<DeleteIcon height={16} />}
-                    type="text"
-                    onClick={() => setSelectedTemplate(record)}
-                  />
+                    onClick={() => setSelectedTemplate(record)}>
+                    <DeleteIcon height={16} />
+                  </IconButton>
                 </Tooltip>
               )}
             </div>
@@ -286,19 +301,25 @@ const NotificationTemplatesPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.template-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid container spacing={2}>
+        <Grid size={12}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <div className="d-flex justify-between">
+        </Grid>
+        <Grid
+          container
+          alignItems="center"
+          justifyContent="space-between"
+          size={12}>
+          <Grid>
             <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
+          </Grid>
+          <Grid>
             {(templateResourcePermission?.Create ||
               templateResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
                 <Button
                   data-testid="create-notification"
-                  type="primary"
+                  variant="contained"
                   onClick={() =>
                     navigate(
                       getSettingPath(
@@ -311,9 +332,9 @@ const NotificationTemplatesPage = () => {
                 </Button>
               </LimitWrapper>
             )}
-          </div>
-        </Col>
-        <Col span={24}>
+          </Grid>
+        </Grid>
+        <Grid size={12}>
           <Table
             columns={columns}
             customPaginationProps={{
@@ -353,8 +374,8 @@ const NotificationTemplatesPage = () => {
             rowKey="id"
             size="small"
           />
-        </Col>
-        <Col span={24}>
+        </Grid>
+        <Grid size={12}>
           <DeleteWidgetModal
             afterDeleteAction={handleTemplateDelete}
             allowSoftDelete={false}
@@ -366,8 +387,8 @@ const NotificationTemplatesPage = () => {
               setSelectedTemplate(undefined);
             }}
           />
-        </Col>
-      </Row>
+        </Grid>
+      </Grid>
     </PageLayoutV1>
   );
 };
