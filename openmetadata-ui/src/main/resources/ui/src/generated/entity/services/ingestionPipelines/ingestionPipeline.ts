@@ -550,6 +550,10 @@ export enum AuthProvider {
  *
  * Regex to include/exclude FHIR resource types
  *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
+ *
  * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
@@ -3027,6 +3031,8 @@ export interface ServiceConnection {
  *
  * Alation Sink Connection Config
  *
+ * Collibra Connection Config
+ *
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
@@ -3307,6 +3313,8 @@ export interface ConfigObject {
      *
      * Host and port of the Alation service.
      *
+     * Host and port of the Collibra service.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -3410,6 +3418,8 @@ export interface ConfigObject {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      *
      * Password to connect to Airbyte.
      */
@@ -3523,6 +3533,9 @@ export interface ConfigObject {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      *
      * Username to connect to Airbyte.
      */
@@ -4487,6 +4500,20 @@ export interface ConfigObject {
      */
     ingestUsersAndGroups?: boolean;
     datasourceLinks?:      { [key: string]: string };
+    /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
      */
@@ -6517,6 +6544,8 @@ export enum TokenType {
  *
  * OpenMetadata service type
  *
+ * Collibra service type
+ *
  * Custom pipeline service type
  *
  * Custom Ml model service type
@@ -6562,6 +6591,7 @@ export enum PurpleType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
+    Collibra = "Collibra",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
