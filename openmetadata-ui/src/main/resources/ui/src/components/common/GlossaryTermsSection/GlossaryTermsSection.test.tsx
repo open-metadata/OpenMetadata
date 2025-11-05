@@ -97,13 +97,11 @@ jest.mock(
           onUpdate,
           selectedTerms,
           children,
-          popoverProps,
         }: {
           onCancel?: () => void;
           onUpdate?: (terms: TagLabel[]) => void;
           selectedTerms: TagLabel[];
           children: React.ReactNode;
-          popoverProps?: Record<string, unknown>;
         }) => {
           const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
 
@@ -179,17 +177,15 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 // Mock EditIconButton
 jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest
-    .fn()
-    .mockImplementation(({ onClick, newLook, ...props }) => (
-      <button
-        className="edit-icon"
-        data-testid="edit-icon-button"
-        onClick={onClick}
-        {...props}>
-        Edit
-      </button>
-    )),
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button
+      className="edit-icon"
+      data-testid="edit-icon-button"
+      onClick={onClick}
+      {...props}>
+      Edit
+    </button>
+  )),
 }));
 
 // Mock Loader
@@ -214,7 +210,7 @@ jest.mock('../../../utils/EntityUpdateUtils', () => ({
     }),
 }));
 
-const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+jest.requireMock('../../../utils/ToastUtils');
 const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
 
 const baseGlossaryTags = [
