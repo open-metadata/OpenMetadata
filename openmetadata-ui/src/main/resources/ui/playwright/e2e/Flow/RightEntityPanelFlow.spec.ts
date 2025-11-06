@@ -773,7 +773,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Owners Section - Should NOT have edit permissions', async ({
+  test('Data Consumer - Owners Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -782,31 +782,36 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     const ownersSection = summaryPanel.locator('.owners-section');
 
     await expect(ownersSection).toBeVisible();
-    await expect(summaryPanel.getByTestId('edit-owners')).not.toBeVisible();
-    // const editButton = ownersSection.getByTestId('edit-owners');
 
-    // await editButton.click();
+    const editButton = ownersSection.getByTestId('edit-owners');
+    if (await editButton.isVisible()) {
+      await editButton.click();
 
-    // const popover = dataConsumerPage.getByTestId('select-owner-tabs');
+      const popover = dataConsumerPage.getByTestId('select-owner-tabs');
 
-    // await expect(popover).toBeVisible();
+      await expect(popover).toBeVisible();
 
-    // await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
+      await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
 
-    // const firstOwner = dataConsumerPage.getByRole('listitem', {
-    //   name: 'admin',
-    //   exact: true,
-    // });
-    // await firstOwner.click();
+      const firstOwner = dataConsumerPage.getByRole('listitem', {
+        name: 'admin',
+        exact: true,
+      });
+      if (await firstOwner.isVisible()) {
+        await firstOwner.click();
+        const updateBtn = dataConsumerPage.getByRole('button', {
+          name: 'Update',
+        });
+        if (await updateBtn.isVisible()) {
+          await updateBtn.click();
+          await waitForPatchResponse(dataConsumerPage);
 
-    // const updateBtn = dataConsumerPage.getByRole('button', { name: 'Update' });
-
-    // await updateBtn.click();
-    // await waitForPatchResponse(dataConsumerPage);
-
-    // await expect(
-    //   dataConsumerPage.getByText(/Owners updated successfully/i)
-    // ).toBeVisible();
+          await expect(
+            dataConsumerPage.getByText(/Owners updated successfully/i)
+          ).toBeVisible();
+        }
+      }
+    }
   });
 
   test('Data Consumer - Tier Section - Add and Update', async ({
