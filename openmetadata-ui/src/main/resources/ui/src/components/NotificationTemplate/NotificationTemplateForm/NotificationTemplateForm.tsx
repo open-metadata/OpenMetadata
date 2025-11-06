@@ -11,8 +11,77 @@
  *  limitations under the License.
  */
 
-function NotificationTemplateForm() {
-  return <div />;
+import { Form } from 'antd';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { generateFormFields } from '../../../utils/formUtils';
+import { NotificationTemplateFormProps } from './NotificationTemplateForm.interface';
+
+function NotificationTemplateForm({ formRef }: NotificationTemplateFormProps) {
+  const { t } = useTranslation();
+  const [form] = Form.useForm(formRef);
+
+  const handleFormSubmit = (values: any) => {
+    // Handle form submission logic here
+  };
+
+  const formFields: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'name',
+        required: true,
+        label: t('label.entity-name', {
+          entity: t('label.template'),
+        }),
+        id: 'root/name',
+        type: FieldTypes.TEXT,
+        props: {
+          'data-testid': 'name',
+          initialValue: '',
+        },
+      },
+      {
+        name: 'templateSubject',
+        required: true,
+        label: t('label.template-field-name', {
+          fieldName: t('label.subject'),
+        }),
+        id: 'root/templateSubject',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'templateSubject',
+          initialValue: '',
+          height: '50px',
+        },
+      },
+      {
+        name: 'templateBody',
+        required: true,
+        label: t('label.template-field-name', {
+          fieldName: t('label.body'),
+        }),
+        id: 'root/templateBody',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'templateBody',
+          initialValue: '',
+          height: 'auto',
+        },
+      },
+    ],
+    [t]
+  );
+
+  return (
+    <Form
+      data-testid="template-form"
+      form={form}
+      layout="vertical"
+      onFinish={handleFormSubmit}>
+      {generateFormFields([...formFields])}
+    </Form>
+  );
 }
 
 export default NotificationTemplateForm;
