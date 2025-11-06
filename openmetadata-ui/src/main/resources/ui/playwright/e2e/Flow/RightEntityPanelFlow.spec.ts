@@ -754,16 +754,37 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Should NOT have edit permissions for Owners', async ({
+  test('Data Consumer - Owners Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
     const ownersSection = summaryPanel.locator('.owners-section');
+    const editButton = ownersSection.getByTestId('edit-owners');
 
-    await expect(ownersSection).toBeVisible();
-    await expect(summaryPanel.getByTestId('edit-owners')).not.toBeVisible();
+    await editButton.click();
+
+    const popover = dataConsumerPage.getByTestId('select-owner-tabs');
+
+    await expect(popover).toBeVisible();
+
+    await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
+
+    const firstOwner = dataConsumerPage.getByRole('listitem', {
+      name: 'admin',
+      exact: true,
+    });
+    await firstOwner.click();
+
+    const updateBtn = dataConsumerPage.getByRole('button', { name: 'Update' });
+
+    await updateBtn.click();
+    await waitForPatchResponse(dataConsumerPage);
+
+    await expect(
+      dataConsumerPage.getByText(/Owners updated successfully/i)
+    ).toBeVisible();
   });
 
   test('Data Consumer - Tier Section - Add and Update', async ({
