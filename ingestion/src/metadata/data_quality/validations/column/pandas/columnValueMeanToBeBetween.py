@@ -125,7 +125,8 @@ class ColumnValueMeanToBeBetweenValidator(
 
                 if mean_value is None:
                     logger.warning(
-                        "Skipping '%s' dimension since 'mean' is 'None'",
+                        "Skipping '%s=%s' dimension since 'mean' is 'None'",
+                        dimension_col.name,
                         dimension_value,
                     )
                     continue
