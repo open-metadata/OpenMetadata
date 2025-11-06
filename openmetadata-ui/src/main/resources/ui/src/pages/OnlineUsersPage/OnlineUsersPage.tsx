@@ -304,6 +304,7 @@ const OnlineUsersPage = () => {
               })}...`,
               searchValue: searchValue,
               typingInterval: 400,
+              disabled: isDataLoading && !searchValue,
               onSearch: handleSearch,
             }}
             size="small"

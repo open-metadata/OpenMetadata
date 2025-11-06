@@ -35,6 +35,7 @@ export type SearchBarProps = {
   showClearSearch?: boolean;
   inputProps?: InputProps;
   searchBarDataTestId?: string;
+  disabled?: boolean;
   /**
    * Key to be used for url search
    */
@@ -55,6 +56,7 @@ const Searchbar = ({
   searchBarDataTestId,
   inputProps,
   urlSearchKey,
+  disabled,
 }: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
@@ -113,6 +115,7 @@ const Searchbar = ({
           allowClear={showClearSearch}
           className={classNames('p-y-xs', inputClassName)}
           data-testid={searchBarDataTestId ?? 'searchbar'}
+          disabled={disabled}
           placeholder={placeholder}
           prefix={
             <Icon

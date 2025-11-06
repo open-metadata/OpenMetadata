@@ -437,9 +437,10 @@ const UserListPageV1 = () => {
       searchValue: searchValue,
       typingInterval: 500,
       urlSearchKey: 'user',
+      disabled: isDataLoading && !searchValue,
       onSearch: handleSearch,
     }),
-    [searchValue, handleSearch]
+    [searchValue, handleSearch, isDataLoading]
   );
 
   if (
