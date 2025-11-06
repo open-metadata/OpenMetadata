@@ -13,6 +13,8 @@
 
 import { Box, Button } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
+import classNames from 'classnames';
+import { capitalize } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
@@ -23,9 +25,6 @@ import { ModelType, Table } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import './lineage-node-label.less';
-import { capitalize } from 'lodash';
-import classNames from 'classnames';
 
 interface LineageNodeLabelProps {
   node: SourceType;
@@ -55,7 +54,7 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   return (
     <Col className="items-center entity-label-container">
       <Col className="d-flex items-center" flex="auto">
-        <div className="d-flex entity-button-icon m-r-xs">
+        <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
