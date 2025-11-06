@@ -13,9 +13,12 @@ This is the main used sink for all OM Workflows.
 It picks up the generated Entities and send them
 to the OM API.
 """
+import queue
+import threading
+import time
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Dict, Optional, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -23,6 +26,8 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.data.bulkCreateTable import BulkCreateTable
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -101,6 +106,9 @@ T = TypeVar("T", bound=BaseModel)
 
 class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
+    bulk_sink_batch_size: int = 100
+    enable_async_pipeline: bool = True
+    async_pipeline_workers: int = 2
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -123,6 +131,32 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
+        self.table_buffer: List[CreateTableRequest] = []
+
+        # Async pipeline components
+        if self.config.enable_async_pipeline:
+            self.batch_queue: queue.Queue = queue.Queue(maxsize=5)
+            self.buffer_lock = threading.Lock()
+            self.workers: List[threading.Thread] = []
+            self.stop_workers = threading.Event()
+
+            # Deferred lifecycle data - process after all tables are created
+            self.deferred_lifecycle_records: List[OMetaLifeCycleData] = []
+            self.deferred_lifecycle_processed = False
+
+            # Timing statistics
+            self.bulk_api_total_time = 0.0
+            self.bulk_api_call_count = 0
+            self.bulk_api_total_tables = 0
+
+            # Start worker threads
+            for i in range(self.config.async_pipeline_workers):
+                worker = threading.Thread(
+                    target=self._bulk_api_worker, name=f"BulkAPIWorker-{i}", daemon=True
+                )
+                worker.start()
+                self.workers.append(worker)
+                logger.info(f"Started {worker.name}")
 
     @classmethod
     def create(
@@ -171,6 +205,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Send to OM the request creation received as is.
         :param entity_request: Create Entity request
         """
+        # Special handling for CreateTableRequest - buffer for bulk processing
+        if isinstance(entity_request, CreateTableRequest):
+            self.table_buffer.append(entity_request)
+            if len(self.table_buffer) >= self.config.bulk_sink_batch_size:
+                return self._flush_table_buffer()
+            return None  # Buffered, not yet sent
+
         if type(entity_request).__name__ in self.limit_reached:
             # If the limit has been reached, we don't need to try to ingest the entity
             # Note: We use PatchRequest to update the entity, so updating is not affected by the limit
@@ -195,6 +236,72 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     stackTrace=None,
                 )
             )
+
+    def _bulk_api_worker(self):
+        """Worker thread that processes bulk API requests from the queue"""
+        while not self.stop_workers.is_set():
+            try:
+                batch = self.batch_queue.get(timeout=1.0)
+                if batch is None:
+                    break
+
+                batch_size = len(batch)
+                logger.info(
+                    f"[{threading.current_thread().name}] Processing batch of {batch_size} tables"
+                )
+
+                bulk_request = BulkCreateTable(tables=batch, dryRun=False)
+                start_time = time.time()
+
+                try:
+                    result = self.metadata.bulk_create_or_update_tables(
+                        bulk_request, use_async=False
+                    )
+                    elapsed = time.time() - start_time
+
+                    # Update timing statistics (thread-safe)
+                    with self.buffer_lock:
+                        self.bulk_api_total_time += elapsed
+                        self.bulk_api_call_count += 1
+                        self.bulk_api_total_tables += batch_size
+
+                    logger.info(
+                        f"[{threading.current_thread().name}] Bulk API completed: "
+                        f"{result.numberOfRowsPassed.root}/{result.numberOfRowsProcessed.root} tables successful, "
+                        f"{result.numberOfRowsFailed.root} failed (took {elapsed:.2f}s)"
+                    )
+                except Exception as exc:
+                    logger.error(
+                        f"[{threading.current_thread().name}] Bulk API failed: {exc}"
+                    )
+                    logger.debug(traceback.format_exc())
+            except queue.Empty:
+                continue
+            except Exception as exc:
+                logger.error(f"Worker error: {exc}")
+                logger.debug(traceback.format_exc())
+
+    def _flush_table_buffer(self) -> Either[Entity]:
+        """Flush buffered tables to the bulk API worker queue"""
+        if not self.config.enable_async_pipeline:
+            return None
+
+        with self.buffer_lock:
+            if not self.table_buffer:
+                return None
+            batch = self.table_buffer[:]
+            self.table_buffer = []
+
+        batch_size = len(batch)
+        logger.info(f"Flushing {batch_size} tables to bulk API queue")
+
+        try:
+            self.batch_queue.put(batch, block=True)
+        except Exception as exc:
+            logger.error(f"Failed to queue bulk API batch: {exc}")
+            logger.debug(traceback.format_exc())
+
+        return None
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -599,7 +706,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
+        # In bulk mode - defer ALL lifecycle data until tables are created
+        if self.config.enable_async_pipeline:
+            with self.buffer_lock:
+                self.deferred_lifecycle_records.append(record)
+            return Either(right=None)  # Success - will process at end
 
+        # Normal mode - process immediately
         entity = self.metadata.get_by_name(entity=record.entity, fqn=record.entity_fqn)
 
         if entity:
@@ -748,7 +861,113 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
         return Either(right=pipeline_usage.pipeline)
 
+    def _process_deferred_lifecycle_data(self):
+        """Process all deferred lifecycle records - called after all tables exist"""
+        if self.deferred_lifecycle_processed:
+            logger.debug("Deferred lifecycle processing already completed, skipping")
+            return
+
+        if not self.deferred_lifecycle_records:
+            return
+
+        logger.info(
+            f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
+        )
+
+        success_count = 0
+        error_count = 0
+
+        for record in self.deferred_lifecycle_records:
+            try:
+                entity = self.metadata.get_by_name(
+                    entity=record.entity, fqn=record.entity_fqn
+                )
+                if entity:
+                    self.metadata.patch_life_cycle(
+                        entity=entity, life_cycle=record.life_cycle
+                    )
+                    success_count += 1
+                else:
+                    logger.warning(
+                        f"Table {record.entity_fqn} not found even after bulk processing"
+                    )
+                    error_count += 1
+                    self.status.failed(
+                        StackTraceError(
+                            name=record.entity_fqn,
+                            error=f"Entity not found: {record.entity_fqn}",
+                        )
+                    )
+            except Exception as exc:
+                logger.error(
+                    f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
+                error_count += 1
+                self.status.failed(
+                    StackTraceError(
+                        name=record.entity_fqn,
+                        error=f"Lifecycle processing error: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+        logger.info(
+            f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
+        )
+
+        self.deferred_lifecycle_processed = True
+
     def close(self):
         """
-        We don't have anything to close since we are using the given metadata client
+        Flush any remaining buffered tables and stop worker threads
         """
+        if not self.config.enable_async_pipeline:
+            return
+
+        # Flush any remaining tables in buffer
+        if self.table_buffer:
+            logger.info(f"Flushing {len(self.table_buffer)} remaining tables on close")
+            self._flush_table_buffer()
+
+        # Signal workers to stop (poison pill pattern)
+        logger.info(f"Stopping {len(self.workers)} bulk API worker threads...")
+        self.stop_workers.set()
+
+        # Send poison pills to unblock workers
+        for _ in self.workers:
+            try:
+                self.batch_queue.put(None, block=False)
+            except queue.Full:
+                pass
+
+        # Wait for all workers to finish
+        for worker in self.workers:
+            worker.join(timeout=30.0)
+            if worker.is_alive():
+                logger.warning(f"{worker.name} did not terminate gracefully")
+
+        logger.info("All bulk API workers stopped")
+
+        # Process deferred lifecycle data now that all tables exist
+        self._process_deferred_lifecycle_data()
+
+        # Report bulk API timing statistics
+        if self.bulk_api_call_count > 0:
+            avg_time_per_call = self.bulk_api_total_time / self.bulk_api_call_count
+            avg_tables_per_sec = (
+                self.bulk_api_total_tables / self.bulk_api_total_time
+                if self.bulk_api_total_time > 0
+                else 0
+            )
+            logger.info("=" * 70)
+            logger.info("BULK API PERFORMANCE METRICS")
+            logger.info("=" * 70)
+            logger.info(f"Total bulk API calls: {self.bulk_api_call_count}")
+            logger.info(f"Total tables processed: {self.bulk_api_total_tables}")
+            logger.info(
+                f"Total time in bulk API: {self.bulk_api_total_time:.2f}s ({self.bulk_api_total_time/60:.2f}m)"
+            )
+            logger.info(f"Average time per bulk call: {avg_time_per_call:.2f}s")
+            logger.info(f"Average throughput: {avg_tables_per_sec:.1f} tables/sec")
+            logger.info("=" * 70)
