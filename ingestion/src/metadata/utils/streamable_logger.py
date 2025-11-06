@@ -248,6 +248,43 @@ class StreamableLogHandler(logging.Handler):
             )
             self.worker_thread.start()
 
+    def _drain_queue_to_buffer(self, buffer: list) -> tuple[list, bool]:
+        """
+        Drain all available items from the queue into the buffer.
+
+        Args:
+            buffer: Current buffer to append items to
+
+        Returns:
+            Updated buffer and whether a flush marker was encountered
+        """
+        timeout = min(1.0, self.flush_interval_sec)
+        flush_requested = False
+
+        # Get items from queue until empty
+        while True:
+            try:
+                # Use timeout for first call, then get_nowait for remaining
+                log_entry = (
+                    self.log_queue.get(timeout=timeout)
+                    if timeout
+                    else self.log_queue.get_nowait()
+                )
+
+                if log_entry is None:
+                    # Flush marker encountered
+                    flush_requested = True
+                else:
+                    buffer.append(log_entry)
+
+                # After first successful get, switch to no timeout for draining
+                timeout = None
+
+            except queue.Empty:
+                break
+
+        return buffer, flush_requested
+
     def _worker_loop(self):
         """Background worker that ships logs to the server"""
         buffer = []
@@ -255,17 +292,13 @@ class StreamableLogHandler(logging.Handler):
 
         while not self.stop_event.is_set():
             try:
-                # Try to get log entry with timeout
-                timeout = min(1.0, self.flush_interval_sec)
-                try:
-                    log_entry = self.log_queue.get(timeout=timeout)
-                    buffer.append(log_entry) if log_entry else None
-                except queue.Empty:
-                    pass
+                # Drain all available items from queue
+                buffer, flush_requested = self._drain_queue_to_buffer(buffer)
 
                 # Check if we should flush
                 should_flush = (
-                    len(buffer) >= self.batch_size
+                    flush_requested
+                    or len(buffer) >= self.batch_size
                     or (time.time() - last_flush) >= self.flush_interval_sec
                 )
 
@@ -275,16 +308,16 @@ class StreamableLogHandler(logging.Handler):
                     last_flush = time.time()
 
                 # Let's not flush too often
-                # time.sleep(1.0)
+                time.sleep(1.0)
 
             except Exception as e:
                 logger.error(f"Error in log shipping worker: {e}")
                 # Continue processing to avoid blocking
 
-        # Final flush of any remaining buffered logs
-        if not self.log_queue.empty():
-            log_entry = self.log_queue.get(timeout=5.0)
-            buffer.append(log_entry) if log_entry else None
+        # Final cleanup - drain ALL remaining items from the queue
+        buffer, _ = self._drain_queue_to_buffer(buffer)
+
+        # Send any final buffered logs
         if buffer:
             self._ship_logs(buffer)
 
