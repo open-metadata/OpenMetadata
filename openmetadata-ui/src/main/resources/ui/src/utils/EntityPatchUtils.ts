@@ -12,19 +12,19 @@
  */
 import { Operation } from 'fast-json-patch';
 import { EntityType } from '../enums/entity.enum';
-import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
 import { patchChartDetails } from '../rest/chartsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
-import { patchDataModelDetails } from '../rest/dataModelsAPI';
-import { patchDataProduct } from '../rest/dataProductAPI';
 import {
   patchDatabaseDetails,
   patchDatabaseSchemaDetails,
 } from '../rest/databaseAPI';
+import { patchDataModelDetails } from '../rest/dataModelsAPI';
+import { patchDataProduct } from '../rest/dataProductAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchStoredProceduresDetails } from '../rest/storedProceduresAPI';
 import { patchTableDetails } from '../rest/tableAPI';
