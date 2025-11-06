@@ -201,6 +201,7 @@ const DomainListPage = () => {
       return (
         <Box sx={{ px: 6, pb: 6 }}>
           <DomainTreeView
+            domainCount={domainListing.totalEntities}
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}

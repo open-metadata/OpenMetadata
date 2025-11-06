@@ -27,11 +27,12 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   addFollower,
   getDomainByName,
-  listDomainHierarchy,
+  getDomainChildrenPaginated,
   patchDomains,
   removeFollower,
   searchDomains,
@@ -53,19 +54,20 @@ interface DomainTreeViewProps {
   searchQuery?: string;
   onDomainMutated?: () => void;
   refreshToken?: number;
+  domainCount?: number;
   openAddDomainDrawer?: () => void;
 }
 
-type DomainHierarchyMap = Record<string, Domain>;
-type DomainParentMap = Record<string, string | undefined>;
-
 const TREE_CONTAINER_MIN_WIDTH = 320;
+const INITIAL_PAGE_SIZE = 15;
+const SCROLL_TRIGGER_THRESHOLD = 200;
 
 const DomainTreeView = ({
   searchQuery,
   onDomainMutated,
   refreshToken = 0,
   openAddDomainDrawer,
+  domainCount,
 }: DomainTreeViewProps) => {
   const theme = useTheme();
   const outlineColor =
@@ -87,87 +89,71 @@ const DomainTreeView = ({
   const [isHierarchyLoading, setIsHierarchyLoading] = useState<boolean>(false);
   const [isDomainLoading, setIsDomainLoading] = useState<boolean>(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
+  const [loadingChildren, setLoadingChildren] = useState<
+    Record<string, boolean>
+  >({});
 
-  const [parentMap, setParentMap] = useState<DomainParentMap>({});
+  const [rootPaging, setRootPaging] = useState({
+    offset: 0,
+    limit: INITIAL_PAGE_SIZE,
+    total: 0,
+  });
+  const [hasMore, setHasMore] = useState<boolean>(true);
 
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedFqnRef = useRef<string | null>(null);
 
   const currentUserId = currentUser?.id ?? '';
 
   useEffect(() => {
+    const map: Record<string, Domain> = {};
+
+    const buildIndex = (domains: Domain[]) => {
+      domains.forEach((d) => {
+        map[d.fullyQualifiedName as string] = d;
+        if (d.children?.length) {
+          buildIndex(d.children as unknown as Domain[]);
+        }
+      });
+    };
+
+    buildIndex(hierarchy);
+    setDomainMapper(map);
+  }, [hierarchy]);
+
+  useEffect(() => {
     selectedFqnRef.current = selectedFqn;
   }, [selectedFqn]);
 
-  const buildHierarchyMaps = useCallback((domains: Domain[]) => {
-    const map: DomainHierarchyMap = {};
-    const parents: DomainParentMap = {};
+  const updateExpansionForFqn = useCallback((fqn: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      const current = fqn;
+      next.add(current);
 
-    const traverse = (nodes: Domain[], parentFqn?: string) => {
-      for (const node of nodes) {
-        const identifier = node.fullyQualifiedName || node.name || node.id;
-
-        if (!identifier) {
-          continue;
-        }
-
-        map[identifier] = node;
-
-        if (parentFqn) {
-          parents[identifier] = parentFqn;
-        }
-
-        const childDomains = (node.children as unknown as Domain[]) ?? [];
-
-        if (childDomains.length) {
-          traverse(childDomains, identifier);
-        }
-      }
-    };
-
-    traverse(domains);
-
-    return { map, parents };
+      return Array.from(next);
+    });
   }, []);
 
-  const updateExpansionForFqn = useCallback(
-    (fqn: string, parents: DomainParentMap) => {
-      setExpandedItems((prev) => {
-        const next = new Set(prev);
-        let current = fqn;
-        while (current) {
-          next.add(current);
-          const parent = parents[current];
-          if (parent && !next.has(parent)) {
-            current = parent;
-          } else {
-            break;
-          }
-        }
-
-        return Array.from(next);
-      });
-    },
-    []
-  );
-
   const applySelection = useCallback(
-    (domains: Domain[]) => {
-      const { map, parents } = buildHierarchyMaps(domains);
-      setParentMap(parents);
-
-      const existingSelection = selectedFqnRef.current;
-
+    (domains: Domain[], resetExpandedItems = false) => {
+      const firstDomain = domains?.[0] ?? {};
       const initialFqn =
-        domains[0]?.fullyQualifiedName || domains[0]?.name || domains[0]?.id;
+        firstDomain?.fullyQualifiedName || firstDomain?.name || firstDomain?.id;
 
-      if (existingSelection === initialFqn && map[existingSelection]) {
-        updateExpansionForFqn(existingSelection, parents);
-      } else if (initialFqn) {
-        setSelectedFqn(initialFqn);
-        updateExpansionForFqn(initialFqn, parents);
+      setSelectedFqn(initialFqn);
+      if (resetExpandedItems) {
+        setExpandedItems([initialFqn]);
+      } else {
+        updateExpansionForFqn(initialFqn);
+      }
+      if ((firstDomain?.childrenCount || 0) > 0) {
+        loadDomains(initialFqn);
       }
     },
-    [buildHierarchyMaps]
+    [updateExpansionForFqn, searchQuery]
   );
 
   const searchDomain = async (value: string) => {
@@ -190,37 +176,6 @@ const DomainTreeView = ({
       setIsHierarchyLoading(false);
     }
   };
-
-  const fetchHierarchy = useCallback(async () => {
-    setIsHierarchyLoading(true);
-    try {
-      const response = await listDomainHierarchy({
-        limit: 1000,
-        fields: [
-          TabSpecificField.CHILDREN,
-          TabSpecificField.OWNERS,
-          TabSpecificField.PARENT,
-          TabSpecificField.EXPERTS,
-          TabSpecificField.TAGS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.EXTENSION,
-        ],
-      });
-      const domains = response.data ?? [];
-
-      setHierarchy(domains);
-      applySelection(domains);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.domain-plural'),
-        })
-      );
-    } finally {
-      setIsHierarchyLoading(false);
-    }
-  }, [buildHierarchyMaps, t, updateExpansionForFqn]);
 
   const fetchDomainDetails = useCallback(
     async (fqn: string) => {
@@ -258,20 +213,151 @@ const DomainTreeView = ({
     [t]
   );
 
+  const handleError = useCallback(
+    (error: unknown) => {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.domain-plural'),
+        })
+      );
+    },
+    [t]
+  );
+
+  const loadRootDomains = async (isLoadMore: boolean) => {
+    const setLoadingState = isLoadMore
+      ? setIsLoadingMore
+      : setIsHierarchyLoading;
+    setLoadingState(true);
+
+    if (!isLoadMore) {
+      setRootPaging({ offset: 0, limit: INITIAL_PAGE_SIZE, total: 0 });
+      setHasMore(true);
+    }
+
+    try {
+      const currentOffset = isLoadMore
+        ? rootPaging.offset + rootPaging.limit
+        : 0;
+
+      const response = await getDomainChildrenPaginated(
+        undefined,
+        rootPaging.limit,
+        currentOffset
+      );
+
+      const domains = response.data ?? [];
+      const total = domainCount ?? response.paging.total;
+
+      setHierarchy((prev) => (isLoadMore ? [...prev, ...domains] : domains));
+
+      if (!isLoadMore) {
+        applySelection(domains, true);
+      }
+
+      setRootPaging({
+        offset: currentOffset,
+        limit: rootPaging.limit,
+        total,
+      });
+
+      setHasMore(currentOffset + rootPaging.limit < total);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoadingState(false);
+    }
+  };
+
+  const updateNested = (
+    domains: EntityReference[],
+    targetFqn: string,
+    newChildren: Domain[]
+  ): EntityReference[] => {
+    return domains.map((domain) => {
+      const domainData = domain as unknown as Domain;
+      if (domainData.fullyQualifiedName === targetFqn) {
+        return {
+          ...domainData,
+          children: newChildren,
+        } as unknown as EntityReference;
+      }
+
+      if (domainData.children?.length) {
+        return {
+          ...domainData,
+          children: updateNested(domainData.children, targetFqn, newChildren),
+        } as unknown as EntityReference;
+      }
+
+      return domain;
+    });
+  };
+
+  const loadChildDomains = async (parentFqn: string) => {
+    setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
+
+    try {
+      const response = await getDomainChildrenPaginated(parentFqn, 50, 0);
+      const children = response.data ?? [];
+
+      setHierarchy((prev) => {
+        return prev.map((domain) => {
+          if (domain.fullyQualifiedName === parentFqn) {
+            return {
+              ...domain,
+              children: children as unknown as EntityReference[],
+            };
+          }
+
+          if (domain.children?.length) {
+            return {
+              ...domain,
+              children: updateNested(domain.children, parentFqn, children),
+            };
+          }
+
+          return domain;
+        });
+      });
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
+    }
+  };
+
+  const loadDomains = useCallback(
+    async (parentFqn?: string, isLoadMore = false) => {
+      const key = parentFqn || '__root__';
+      if (loadingChildren[key]) {
+        return;
+      }
+
+      if (!parentFqn) {
+        await loadRootDomains(isLoadMore);
+      } else {
+        await loadChildDomains(parentFqn);
+      }
+    },
+    [loadingChildren, rootPaging, domainCount, applySelection]
+  );
+
   useEffect(() => {
     if (searchQuery) {
       searchDomain(searchQuery);
     } else {
-      fetchHierarchy();
+      loadDomains(undefined);
     }
-  }, [fetchHierarchy, refreshToken, searchQuery]);
+  }, [refreshToken, searchQuery]);
 
   useEffect(() => {
     if (selectedFqn) {
       fetchDomainDetails(selectedFqn);
-      updateExpansionForFqn(selectedFqn, parentMap);
+      updateExpansionForFqn(selectedFqn);
     }
-  }, [fetchDomainDetails, parentMap, selectedFqn, updateExpansionForFqn]);
+  }, [fetchDomainDetails, selectedFqn, updateExpansionForFqn]);
 
   useEffect(() => {
     if (selectedFqn) {
@@ -287,22 +373,53 @@ const DomainTreeView = ({
       }
 
       setSelectedFqn(nextFqn);
-      updateExpansionForFqn(nextFqn, parentMap);
+      updateExpansionForFqn(nextFqn);
     },
-    [parentMap, updateExpansionForFqn]
+    [updateExpansionForFqn]
   );
 
-  const handleExpandedChange = useCallback((_: unknown, ids: string[]) => {
-    setExpandedItems(ids);
-  }, []);
+  const handleExpandedChange = useCallback(
+    (_: unknown, ids: string[]) => {
+      const newlyExpandedIds = ids.filter((id) => !expandedItems.includes(id));
+
+      newlyExpandedIds.forEach((fqn) => {
+        const domain = domainMapper[fqn];
+        if (!domain) {
+          return;
+        }
+
+        const hasLoaded = (domain?.children?.length || 0) > 0;
+        const hasChildrenCount = (domain.childrenCount ?? 0) > 0;
+
+        if (!hasLoaded && hasChildrenCount && !loadingChildren[fqn]) {
+          loadDomains(fqn);
+        }
+      });
+
+      setExpandedItems(ids);
+    },
+    [expandedItems, domainMapper, loadDomains, loadingChildren]
+  );
+
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (!hasMore || isLoadingMore || isHierarchyLoading || searchQuery) {
+        return;
+      }
+
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (distanceFromBottom < SCROLL_TRIGGER_THRESHOLD) {
+        loadDomains(undefined, true);
+      }
+    },
+    [hasMore, isLoadingMore, isHierarchyLoading, searchQuery, loadDomains]
+  );
 
   const refreshAll = useCallback(async () => {
-    if (onDomainMutated) {
-      onDomainMutated();
-    } else {
-      await fetchHierarchy();
-    }
-  }, [fetchHierarchy, onDomainMutated]);
+    await loadDomains(selectedFqn ?? undefined);
+  }, [loadDomains, onDomainMutated, selectedFqn]);
 
   const handleDomainUpdate = useCallback(
     async (updatedData: Domain) => {
@@ -334,13 +451,39 @@ const DomainTreeView = ({
   );
 
   const handleDomainDelete = useCallback(async () => {
-    const parentFqn =
-      selectedDomain?.parent?.fullyQualifiedName ??
-      parentMap[selectedFqnRef.current ?? ''];
+    const deletedFqn = selectedFqnRef.current;
+
+    setHierarchy((prev) => {
+      const removeDomain = (domains: Domain[]): Domain[] => {
+        return domains.reduce<Domain[]>((acc, domain) => {
+          if (domain.fullyQualifiedName === deletedFqn) {
+            return acc;
+          }
+
+          if (domain.children && domain.children.length > 0) {
+            acc.push({
+              ...domain,
+              children: removeDomain(
+                domain.children as unknown as Domain[]
+              ) as unknown as typeof domain.children,
+            });
+          } else {
+            acc.push(domain);
+          }
+
+          return acc;
+        }, []);
+      };
+
+      const result = removeDomain(prev);
+      applySelection(result);
+
+      return result;
+    });
+
     setSelectedDomain(null);
-    setSelectedFqn(parentFqn ?? null);
     await refreshAll();
-  }, [parentMap, refreshAll, selectedDomain]);
+  }, [refreshAll, selectedDomain, applySelection]);
 
   const followDomain = useCallback(async () => {
     if (!selectedDomain?.id || !currentUserId) {
@@ -441,13 +584,13 @@ const DomainTreeView = ({
           setActiveTab(EntityTabs.DOCUMENTATION);
         }
 
-        updateExpansionForFqn(decodedFqn, parentMap);
+        updateExpansionForFqn(decodedFqn);
         fetchDomainDetails(decodedFqn);
       } else {
         navigate(path);
       }
     },
-    [fetchDomainDetails, navigate, parentMap, updateExpansionForFqn]
+    [fetchDomainDetails, navigate, updateExpansionForFqn]
   );
 
   const renderTreeItems = useCallback(
@@ -460,6 +603,9 @@ const DomainTreeView = ({
         }
 
         const childDomains = (node.children as unknown as Domain[]) ?? [];
+        const childrenCount = node.childrenCount || childDomains.length || 0;
+        const hasChildren = childDomains.length > 0 || childrenCount > 0;
+        const isLoading = loadingChildren[identifier] ?? false;
 
         return (
           <TreeItem
@@ -479,9 +625,9 @@ const DomainTreeView = ({
                   }}>
                   {getEntityName(node)}
                 </Typography>
-                {childDomains.length > 0 && (
+                {hasChildren && (
                   <Chip
-                    label={childDomains.length}
+                    label={childrenCount}
                     size="small"
                     sx={{
                       height: 20,
@@ -492,13 +638,24 @@ const DomainTreeView = ({
                     }}
                   />
                 )}
+                {isLoading && <Loader size="small" />}
               </Box>
             }>
-            {childDomains.length > 0 && renderTreeItems(childDomains)}
+            {childDomains.length > 0
+              ? renderTreeItems(childDomains)
+              : hasChildren && <div />}
           </TreeItem>
         );
       }),
-    [childIndent, connectorOffset, outlineColor, theme.palette.allShades?.gray]
+    [
+      childIndent,
+      connectorOffset,
+      outlineColor,
+      theme.palette.allShades?.gray,
+      loadingChildren,
+      t,
+      hierarchy,
+    ]
   );
 
   const renderDomainSection = () => {
@@ -548,107 +705,114 @@ const DomainTreeView = ({
     }
 
     return (
-      <SimpleTreeView
-        expandedItems={expandedItems}
-        selectedItems={selectedFqn}
-        slots={{
-          expandIcon: ArrowCircleDown,
-          collapseIcon: ArrowCircleDown,
-        }}
-        sx={{
-          '--tree-item-center': '22px',
-          '& .MuiTreeItem-content': {
-            borderRadius: 1,
-            gap: 3,
-            p: 0,
-            mb: 1.5,
-            display: 'flex',
-            alignItems: 'center',
-            position: 'relative',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              left: '-20px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '12px',
-              height: '1px',
-              background: theme.palette.allShades?.gray?.[200],
-              zIndex: 0,
-            },
-          },
-
-          '& .MuiTreeItem-label': { p: 1 },
-          '& .MuiChip-root': { px: 3 },
-          '& .MuiChip-label': { fontSize: '10px' },
-
-          '& .MuiTreeItem-iconContainer:empty': { display: 'none' },
-
-          [`& .${treeItemClasses.groupTransition}`]: {
-            ml: 3,
-            pl: 5,
-            position: 'relative',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: '22px',
-              width: '1px',
-              background: theme.palette.allShades?.gray?.[200],
-              zIndex: 0,
-            },
-          },
-
-          '& .MuiTreeItem-root:last-of-type, & .MuiTreeItem-group > .MuiTreeItem-root:last-of-type':
-            {
-              mb: 0,
+      <>
+        <SimpleTreeView
+          expandedItems={expandedItems}
+          selectedItems={selectedFqn}
+          slots={{
+            expandIcon: ArrowCircleDown,
+            collapseIcon: ArrowCircleDown,
+          }}
+          sx={{
+            '--tree-item-center': '22px',
+            '& .MuiTreeItem-content': {
+              borderRadius: 1,
+              gap: 3,
+              p: 0,
+              mb: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                left: '-20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '12px',
+                height: '1px',
+                background: theme.palette.allShades?.gray?.[200],
+                zIndex: 0,
+              },
             },
 
-          '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
-            '&:hover, &.Mui-selected': {
-              backgroundColor: theme.palette.allShades?.blue?.[50],
-            },
-          },
+            '& .MuiTreeItem-label': { p: 1 },
+            '& .MuiChip-root': { px: 3 },
+            '& .MuiChip-label': { fontSize: '10px' },
 
-          '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:not(:empty))':
-            {
+            '& .MuiTreeItem-iconContainer:empty': { display: 'none' },
+
+            [`& .${treeItemClasses.groupTransition}`]: {
+              ml: 3,
+              pl: 5,
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: '22px',
+                width: '1px',
+                background: theme.palette.allShades?.gray?.[200],
+                zIndex: 0,
+              },
+            },
+
+            '& .MuiTreeItem-root:last-of-type, & .MuiTreeItem-group > .MuiTreeItem-root:last-of-type':
+              {
+                mb: 0,
+              },
+
+            '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
               '&:hover, &.Mui-selected': {
-                backgroundColor: 'transparent !important',
-              },
-              '&:hover .MuiTreeItem-label': {
-                backgroundColor: '#0000000A',
-                borderRadius: '8px',
-              },
-              '&.Mui-selected .MuiTreeItem-label': {
                 backgroundColor: theme.palette.allShades?.blue?.[50],
-                borderRadius: '8px',
               },
             },
-          'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg))':
-            {
-              pl: '36px !important',
-            },
-          'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg)) li .MuiTreeItem-content::before':
-            {
-              left: '-35px',
-              width: '28px',
-            },
-          'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
-            {
-              borderBottom: `1px dashed ${BORDER_COLOR}`,
-              backgroundColor: 'transparent',
-            },
-          'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]) .MuiCollapse-vertical::before':
-            {
-              borderLeft: `1px dashed ${BORDER_COLOR}`,
-              backgroundColor: 'transparent',
-            },
-        }}
-        onExpandedItemsChange={handleExpandedChange}
-        onSelectedItemsChange={(_, value) => handleSelectionChange(value)}>
-        {renderTreeItems(hierarchy)}
-      </SimpleTreeView>
+
+            '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:not(:empty))':
+              {
+                '&:hover, &.Mui-selected': {
+                  backgroundColor: 'transparent !important',
+                },
+                '&:hover .MuiTreeItem-label': {
+                  backgroundColor: '#0000000A',
+                  borderRadius: '8px',
+                },
+                '&.Mui-selected .MuiTreeItem-label': {
+                  backgroundColor: theme.palette.allShades?.blue?.[50],
+                  borderRadius: '8px',
+                },
+              },
+            'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg))':
+              {
+                pl: '36px !important',
+              },
+            'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg)) li .MuiTreeItem-content::before':
+              {
+                left: '-35px',
+                width: '28px',
+              },
+            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
+              {
+                borderBottom: `1px dashed ${BORDER_COLOR}`,
+                backgroundColor: 'transparent',
+              },
+            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]) .MuiCollapse-vertical::before':
+              {
+                borderLeft: `1px dashed ${BORDER_COLOR}`,
+                backgroundColor: 'transparent',
+              },
+          }}
+          onExpandedItemsChange={handleExpandedChange}
+          onSelectedItemsChange={(_, value) => handleSelectionChange(value)}>
+          {renderTreeItems(hierarchy)}
+        </SimpleTreeView>
+        {isLoadingMore && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+            <Loader size="small" />
+          </Box>
+        )}
+      </>
     );
   };
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
@@ -678,6 +842,7 @@ const DomainTreeView = ({
         minHeight: 480,
       }}>
       <Box
+        ref={scrollContainerRef}
         sx={{
           width: TREE_CONTAINER_MIN_WIDTH,
           borderRight: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
@@ -685,7 +850,9 @@ const DomainTreeView = ({
           pt: 3,
           mr: 1,
           overflowY: 'auto',
-        }}>
+          maxHeight: 'calc(80vh - 160px)',
+        }}
+        onScroll={handleScroll}>
         {renderHierarchySection()}
       </Box>
 

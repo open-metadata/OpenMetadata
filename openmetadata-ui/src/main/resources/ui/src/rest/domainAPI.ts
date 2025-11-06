@@ -18,6 +18,7 @@ import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
 } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
@@ -120,6 +121,37 @@ export const listDomainHierarchy = async (params?: ListParams) => {
   );
 
   return response.data;
+};
+
+export const getDomainChildrenPaginated = async (
+  parentFQN?: string,
+  pageSize = 15,
+  offset = 0
+) => {
+  const apiUrl = `${BASE_URL}/hierarchy`;
+  const requestParams: Record<string, string | number | string[]> = {
+    limit: pageSize,
+    offset,
+    fields: [
+      TabSpecificField.OWNERS,
+      TabSpecificField.PARENT,
+      TabSpecificField.EXPERTS,
+      TabSpecificField.TAGS,
+      TabSpecificField.FOLLOWERS,
+      TabSpecificField.EXTENSION,
+      TabSpecificField.CHILDREN_COUNT,
+    ],
+  };
+
+  if (parentFQN) {
+    requestParams.directChildrenOf = parentFQN;
+  }
+
+  const { data } = await APIClient.get<PagingResponse<Domain[]>>(apiUrl, {
+    params: requestParams,
+  });
+
+  return data;
 };
 
 export const searchDomains = async (search: string, page = 1) => {
