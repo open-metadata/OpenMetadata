@@ -1553,6 +1553,8 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
     await expect(
       page.getByRole('menuitem', { name: 'Edit Lineage' })
     ).toBeVisible();
+
+    await clickOutside(page);
   }
 };
 

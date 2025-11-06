@@ -104,6 +104,8 @@ export const editLineageClick = async (page: Page) => {
   });
 
   await page.getByRole('menuitem', { name: 'Edit Lineage' }).click();
+  await page.waitForTimeout(1); // wait for the edit mode to activate
+  await clickOutside(page);
 };
 
 export const editLineage = async (page: Page) => {
@@ -576,8 +578,10 @@ export const fillLineageConfigForm = async (
 
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
-  await page.waitForSelector('[data-testid="lineage-layer-column-btn"].active');
-  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
+  await page.waitForSelector(
+    '[data-testid="lineage-layer-column-btn"].Mui-selected'
+  );
+  await clickOutside(page); // Close Layer popover
 };
 
 export const verifyCSVHeaders = async (headers: string[]) => {
