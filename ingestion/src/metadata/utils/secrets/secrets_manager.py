@@ -18,7 +18,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.singleton import Singleton
 
 logger = ingestion_logger()
-SECRET_PREFIX = "secret:"
 
 
 class SecretsManager(metaclass=Singleton):
@@ -35,18 +34,3 @@ class SecretsManager(metaclass=Singleton):
         :param secret_id: The secret id to retrieve
         :return: The value of the secret
         """
-
-    def remove_secret_prefix(self, secret_ref: str) -> str:
-        """
-        Remove the 'secret:' prefix from a secret reference string.
-        In case of external SM, secrets are stored in key,value pair
-        as {'my-secret-id': 'abc'}. secret-id comes with 'secret:' prefix
-
-        Before calling `get_string_value`, call this method to clean secret-id
-
-        :param secret_ref: The secret reference string ('secret:my-secret-id')
-        :return: The secret id without the prefix ('my-secret-id')
-        """
-        if secret_ref and secret_ref.startswith(SECRET_PREFIX):
-            return secret_ref.replace(SECRET_PREFIX, "")
-        return secret_ref

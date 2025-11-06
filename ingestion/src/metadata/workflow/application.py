@@ -24,11 +24,10 @@ from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
 from metadata.ingestion.api.step import Step
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.workflow.base import BaseWorkflow
 
 logger = ingestion_logger()
@@ -53,7 +52,7 @@ class AppRunner(Step, ABC):
         self.metadata = metadata
         self.private_config = self._retrieve_app_private_config(
             config.appPrivateConfig.root if config.appPrivateConfig else None,
-            config.applicationFqn,
+            config.applicationFqn.root if config.applicationFqn else None,
         )
 
         super().__init__()
@@ -73,53 +72,46 @@ class AppRunner(Step, ABC):
             Dictionary containing the private config or None if not found
         """
         try:
-            if isinstance(private_config, dict):
-                logger.debug("Private config is already a dictionary")
-                return private_config
-            # Use the bot to fetch the app from the API (bots get unmasked data)
+            if not applicationFqn:
+                logger.debug(
+                    "ApplicationFqn is not present in OpenMetadataApplicationConfig"
+                )
+                return None
+            # Use the API to fetch the app configs
             app: App = self.metadata.get_by_name(
                 entity=App,
                 fqn=applicationFqn,
             )
             if app and app.privateConfiguration:
-                # The bot gets the unmasked private config from the API
+                # The API Response contains privateConfiguration either
+                # as Dictionary/JSON object
+                # or will be of _CustomSecretStr(masked string)
                 fetched_private_config = app.privateConfiguration.root
                 if isinstance(fetched_private_config, dict):
                     parsed_private_config = self._mask_private_config_token(
                         fetched_private_config
                     )
-                    logger.debug(
-                        "Successfully retrieved app private config from API using bot token"
+                    return parsed_private_config
+                elif isinstance(fetched_private_config, _CustomSecretStr):
+                    # get secret value from secrets manager
+                    fetched_private_config = fetched_private_config.get_secret_value()
+                    if not fetched_private_config:
+                        logger.debug("Private config not found in secrets manager")
+                        return None
+                    parsed_private_config = json.loads(fetched_private_config)
+                    parsed_private_config = self._mask_private_config_token(
+                        parsed_private_config
                     )
                     return parsed_private_config
-                elif isinstance(fetched_private_config, str):
-                    # The user gets the masked private config and fetch the secret from the secrets manager
-                    secrets_manager = SecretsManagerFactory().get_secrets_manager()
-                    secret_id = secrets_manager.remove_secret_prefix(
-                        fetched_private_config
-                    )
-                    fetched_private_config = secrets_manager.get_string_value(secret_id)
-                    if fetched_private_config:
-                        parsed_private_config = json.loads(fetched_private_config)
-                        parsed_private_config = self._mask_private_config_token(
-                            parsed_private_config
-                        )
-                        logger.debug(
-                            "Successfully retrieved private config from secrets manager"
-                        )
-                        return parsed_private_config
-                    else:
-                        logger.debug("No private config found in secrets manager")
-                        return None
                 else:
-                    logger.debug("App private config is not a dictionary or string")
-                    return None
+                    logger.debug(
+                        "App private config is not a dictionary or _CustomSecretStr"
+                    )
             else:
                 logger.debug("App not found or has no private config")
-                return None
         except Exception as exc:
-            logger.debug(f"Failed to retrieve private config: {exc}")
-            logger.debug("App will run without private config due to error")
+            logger.error(f"Failed to retrieve app private config: {exc}")
+            logger.error("App will run without private config.")
         return None
 
     def _mask_private_config_token(
@@ -128,8 +120,8 @@ class AppRunner(Step, ABC):
         """
         Mask the token in the private config
         """
-        if private_config.get("token") and isinstance(private_config["token"], str):
-            private_config["token"] = CustomSecretStr(private_config["token"])
+        if private_config.get("token") and isinstance(private_config.get("token"), str):
+            private_config["token"] = _CustomSecretStr(private_config["token"])
             logger.debug("Masked token in private config")
         return private_config
 

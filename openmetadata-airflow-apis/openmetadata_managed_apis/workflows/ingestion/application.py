@@ -87,6 +87,11 @@ def build_application_workflow_config(
         )
         if application_pipeline_conf.appPrivateConfig
         else None,
+        applicationFqn=(
+            application_pipeline_conf.applicationFqn
+            if application_pipeline_conf.applicationFqn
+            else None
+        ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
