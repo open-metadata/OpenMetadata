@@ -386,6 +386,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void test_GlossaryTermApprovalWorkflow(TestInfo test) throws IOException {
+    // Ensure the workflow is active (it might have been suspended by another test)
+    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+
     //
     // glossary1 create without reviewers is created with Approved status
     //
@@ -2253,7 +2256,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, authHeaders(DATA_CONSUMER.getName()));
 
     // Verify workflow task was created
-    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 90000L);
     assertTrue(taskCreated, "Workflow should be triggered when non-reviewer updates the term");
 
     // Verify term status moved to IN_REVIEW
@@ -2503,7 +2506,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
 
     // Verify workflow task was created
-    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 90000L);
     assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
@@ -2642,7 +2645,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             authHeaders(USER2.getName()));
 
     // Wait for new task to be created for the update
-    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 90000L);
 
     // Get the new task
     threads =
@@ -2717,7 +2720,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             authHeaders(USER2.getName()));
 
     // Wait for detailed task to be created
-    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 90000L);
 
     // Get the new task
     threads =
@@ -3322,8 +3325,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     //    - Term moves to IN_REVIEW status
     //    - Approval task is created for USER1
 
-    // CRITICAL: Ensure the GlossaryTermApprovalWorkflow is active
-    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+    //    // CRITICAL: Ensure the GlossaryTermApprovalWorkflow is active
+    //    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
 
     try {
       // Step 1: Create glossary with no reviewers

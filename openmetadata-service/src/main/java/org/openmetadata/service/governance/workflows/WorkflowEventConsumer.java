@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -26,6 +25,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
+  public static final String GOVERNANCE_BOT = "governance-bot";
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -108,34 +108,13 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
       // Skip events from governance-bot to prevent infinite loops
       // These are system-initiated workflow changes that shouldn't trigger new workflows
-      if ("governance-bot".equals(event.getUserName())) {
+      if (GOVERNANCE_BOT.equals(event.getUserName())
+          || (event.getImpersonatedBy() != null
+              && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
         LOG.debug(
             "Skipping workflow-initiated event from governance-bot for entity {}",
             event.getEntityId());
         return;
-      }
-
-      // For user-initiated changes, check if the entity has impersonatedBy set to governance-bot
-      // If so, this is a workflow-initiated change in response to a user action
-      // We should skip it to prevent loops, but the original user trigger already started the
-      // workflow
-      try {
-        EntityInterface entity =
-            Entity.getEntity(
-                entityType, event.getEntityId(), "impersonatedBy", Include.NON_DELETED);
-        if (entity != null
-            && entity.getImpersonatedBy() != null
-            && "governance-bot".equals(entity.getImpersonatedBy())) {
-          LOG.debug(
-              "Skipping event for entity {} - change was made by governance-bot on behalf of {}",
-              event.getEntityId(),
-              event.getUserName());
-          return;
-        }
-      } catch (Exception e) {
-        // If we can't fetch the entity, proceed with the event
-        LOG.debug(
-            "Could not check impersonation for entity {}: {}", event.getEntityId(), e.getMessage());
       }
 
       if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {

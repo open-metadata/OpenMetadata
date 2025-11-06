@@ -146,6 +146,7 @@ public class EntityFieldUtils {
                 .withEntityType(entityType)
                 .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
                 .withUserName(user)
+                .withImpersonatedBy(impersonatedBy)
                 .withTimestamp(System.currentTimeMillis())
                 .withEntity(entity);
 
