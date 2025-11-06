@@ -454,7 +454,9 @@ class BaseTestValidator(ABC):
         # Import here to avoid circular import (metrics.registry -> utils.importer -> base_test_handler)
         from metadata.profiler.metrics.registry import Metrics
 
-        total_rows = evaluation.get("total_rows", metric_values.get(Metrics.COUNT.name))
+        total_rows = evaluation.get(
+            "total_rows", metric_values.get(Metrics.ROW_COUNT.name)
+        )
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
