@@ -262,6 +262,9 @@ class OpenMetadata(
         if issubclass(entity, CreateBot):
             # Bots schemas don't live inside any subdirectory
             return None
+        if "events.api" in entity.__module__:
+            # EventSubscription entities are in events module, not entity.api
+            return "events"
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
@@ -316,13 +319,17 @@ class OpenMetadata(
             .replace("dataproduct", "dataProduct")
             .replace("datacontract", "dataContract")
             .replace("chatconversation", "chatConversation")
+            .replace("eventsubscription", "eventSubscription")
         )
         class_path = ".".join(
             filter(
                 None,
                 [
                     self.class_root,
-                    self.entity_path if not file_name.startswith("test") else None,
+                    self.entity_path
+                    if not file_name.startswith("test")
+                    and not file_name.startswith("eventSubscription")
+                    else None,
                     self.get_module_path(create),
                     self.update_file_name(create, file_name),
                 ],
