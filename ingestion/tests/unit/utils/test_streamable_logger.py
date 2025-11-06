@@ -142,8 +142,8 @@ class TestStreamableLogHandler(unittest.TestCase):
 
         self.assertEqual(handler.pipeline_fqn, self.pipeline_fqn)
         self.assertEqual(handler.run_id, self.run_id)
-        self.assertEqual(handler.batch_size, 100)
-        self.assertEqual(handler.flush_interval, 5.0)
+        self.assertEqual(handler.batch_size, 500)
+        self.assertEqual(handler.flush_interval_sec, 10.0)
         self.assertFalse(handler.enable_streaming)
         self.assertIsNone(handler.worker_thread)
 
@@ -370,6 +370,274 @@ class TestStreamableLogHandler(unittest.TestCase):
 
         handler.close()
 
+    def test_drain_queue_to_buffer_empty_queue(self):
+        """Test _drain_queue_to_buffer with empty queue"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+        )
+
+        buffer = []
+        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+
+        # Buffer should be unchanged and no flush requested
+        self.assertEqual(result_buffer, [])
+        self.assertFalse(flush_requested)
+
+        handler.close()
+
+    def test_drain_queue_to_buffer_with_logs(self):
+        """Test _drain_queue_to_buffer with regular log entries"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+        )
+
+        # Add some log entries to queue
+        handler.log_queue.put("log entry 1")
+        handler.log_queue.put("log entry 2")
+        handler.log_queue.put("log entry 3")
+
+        buffer = ["existing log"]
+        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+
+        # Buffer should contain all logs
+        expected_buffer = ["existing log", "log entry 1", "log entry 2", "log entry 3"]
+        self.assertEqual(result_buffer, expected_buffer)
+        self.assertFalse(flush_requested)
+
+        handler.close()
+
+    def test_drain_queue_to_buffer_with_flush_marker(self):
+        """Test _drain_queue_to_buffer handles flush markers correctly"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+        )
+
+        # Add log entries and a flush marker
+        handler.log_queue.put("log entry 1")
+        handler.log_queue.put(None)  # Flush marker
+        handler.log_queue.put("log entry 2")
+
+        buffer = []
+        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+
+        # Buffer should contain only log entries, not the flush marker
+        expected_buffer = ["log entry 1", "log entry 2"]
+        self.assertEqual(result_buffer, expected_buffer)
+        self.assertTrue(flush_requested)
+
+        handler.close()
+
+    def test_drain_queue_to_buffer_multiple_flush_markers(self):
+        """Test _drain_queue_to_buffer with multiple flush markers"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+        )
+
+        # Add multiple flush markers
+        handler.log_queue.put("log entry 1")
+        handler.log_queue.put(None)  # First flush marker
+        handler.log_queue.put("log entry 2")
+        handler.log_queue.put(None)  # Second flush marker
+        handler.log_queue.put("log entry 3")
+
+        buffer = []
+        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+
+        # Buffer should contain all log entries
+        expected_buffer = ["log entry 1", "log entry 2", "log entry 3"]
+        self.assertEqual(result_buffer, expected_buffer)
+        self.assertTrue(flush_requested)
+
+        handler.close()
+
+    @patch("time.time")
+    def test_worker_loop_flush_logic(self, mock_time):
+        """Test worker loop flush decision logic"""
+        # Set up consistent time for testing
+        mock_time.return_value = 1000.0
+
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+            batch_size=3,
+            flush_interval_sec=5.0,
+        )
+
+        # Mock the shipping method
+        handler._ship_logs = Mock()
+
+        # Test flush due to batch size
+        handler.log_queue.put("log1")
+        handler.log_queue.put("log2")
+        handler.log_queue.put("log3")
+
+        # Simulate one iteration of worker loop logic
+        buffer = []
+        last_flush = mock_time.return_value
+
+        buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+        should_flush = (
+            flush_requested
+            or len(buffer) >= handler.batch_size
+            or (mock_time.return_value - last_flush) >= handler.flush_interval_sec
+        )
+
+        self.assertTrue(should_flush)  # Should flush due to batch size
+        self.assertEqual(len(buffer), 3)
+
+        handler.close()
+
+    @patch("time.time")
+    def test_worker_loop_time_based_flush(self, mock_time):
+        """Test worker loop time-based flush logic"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+            batch_size=10,
+            flush_interval_sec=5.0,
+        )
+
+        # Add one log (below batch size)
+        handler.log_queue.put("single log")
+
+        # Set up time progression: first call returns 1000.0, subsequent calls return 1006.0
+        mock_time.side_effect = [
+            1000.0,
+            1006.0,
+            1006.0,
+        ]  # Allow for multiple time() calls
+
+        # Simulate worker loop logic with time progression
+        buffer = []
+        last_flush = 1000.0  # Initial time
+
+        buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+        current_time = 1006.0  # Time after drainage
+
+        should_flush = (
+            flush_requested
+            or len(buffer) >= handler.batch_size
+            or (current_time - last_flush) >= handler.flush_interval_sec
+        )
+
+        self.assertTrue(should_flush)  # Should flush due to time interval (6 > 5)
+        self.assertEqual(len(buffer), 1)
+
+        handler.close()
+
+    def test_flush_marker_triggers_immediate_flush(self):
+        """Test that flush markers trigger immediate flush regardless of batch size or time"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            enable_streaming=False,
+            batch_size=10,  # Large batch size
+            flush_interval_sec=60.0,  # Long time interval
+        )
+
+        # Add just one log and a flush marker
+        handler.log_queue.put("single log")
+        handler.log_queue.put(None)  # Flush marker
+
+        buffer = []
+        buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
+
+        # Should request flush despite small buffer and short time
+        self.assertTrue(flush_requested)
+        self.assertEqual(len(buffer), 1)
+
+        handler.close()
+
+    def test_worker_loop_final_drainage_on_shutdown(self):
+        """Test that worker loop drains queue completely on shutdown"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            enable_streaming=False,
+        )
+
+        # Mock _ship_logs to track what gets shipped
+        shipped_logs = []
+
+        def mock_ship_logs(logs):
+            shipped_logs.extend(logs)
+
+        handler._ship_logs = mock_ship_logs
+
+        # Add logs to queue after stop event is set (simulating final drainage)
+        handler.log_queue.put("final log 1")
+        handler.log_queue.put("final log 2")
+        handler.log_queue.put(None)  # Flush marker
+        handler.log_queue.put("final log 3")
+
+        # Simulate final cleanup drainage
+        buffer, _ = handler._drain_queue_to_buffer([])
+        if buffer:
+            handler._ship_logs(buffer)
+
+        # All logs should be shipped
+        expected_logs = ["final log 1", "final log 2", "final log 3"]
+        self.assertEqual(shipped_logs, expected_logs)
+
+        handler.close()
+
+    def test_flush_method_adds_marker_to_queue(self):
+        """Test that flush method properly adds None marker to queue"""
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            enable_streaming=False,
+        )
+
+        # Flush should add None marker
+        handler.flush()
+
+        # Verify marker was added
+        marker = handler.log_queue.get_nowait()
+        self.assertIsNone(marker)
+
+        handler.close()
+
+    def test_close_waits_for_worker_thread(self):
+        """Test that close method properly waits for worker thread"""
+        with patch("threading.Thread") as mock_thread_class:
+            mock_thread = Mock()
+            mock_thread.is_alive.return_value = True
+            mock_thread_class.return_value = mock_thread
+
+            handler = StreamableLogHandler(
+                metadata=self.mock_metadata,
+                pipeline_fqn="test.pipeline",
+                run_id=uuid4(),
+                enable_streaming=True,
+            )
+
+            # Close handler
+            handler.close()
+
+            # Verify stop event was set and thread join was called
+            self.assertTrue(handler.stop_event.is_set())
+            mock_thread.join.assert_called_once_with(timeout=5.0)
+
 
 class TestStreamableLoggingSetup(unittest.TestCase):
     """Test the setup and cleanup functions"""
@@ -543,6 +811,52 @@ class TestStreamableLoggingSetup(unittest.TestCase):
 
         # Cleanup
         cleanup_streamable_logging()
+
+    @patch("logging.getLogger")
+    @patch("metadata.utils.streamable_logger.logger")
+    @patch("metadata.utils.streamable_logger.StreamableLogHandler")
+    def test_cleanup_flushes_before_closing(
+        self, mock_handler_class, mock_logger, mock_get_logger
+    ):
+        """Test that cleanup calls flush before closing handler"""
+        mock_metadata = Mock(spec=OpenMetadata)
+        mock_metadata.config = Mock()
+        mock_metadata.config.host_port = "http://localhost:8585"
+
+        mock_handler = Mock()
+        mock_handler.level = logging.INFO
+        # Mock the specific methods that should be called
+        mock_handler.flush = Mock()
+        mock_handler.close = Mock()
+        mock_handler_class.return_value = mock_handler
+
+        # Setup mock logger
+        mock_metadata_logger = Mock()
+        mock_get_logger.return_value = mock_metadata_logger
+
+        # Setup handler
+        handler = setup_streamable_logging_for_workflow(
+            metadata=mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            enable_streaming=True,
+        )
+
+        # Verify handler was created and returned
+        self.assertIsNotNone(handler)
+        self.assertEqual(handler, mock_handler)
+
+        # Cleanup and verify order of operations
+        cleanup_streamable_logging()
+
+        # Verify flush was called
+        mock_handler.flush.assert_called_once()
+
+        # Verify close was called
+        mock_handler.close.assert_called_once()
+
+        # Verify handler was removed from logger
+        mock_metadata_logger.removeHandler.assert_called_once_with(mock_handler)
 
 
 if __name__ == "__main__":
