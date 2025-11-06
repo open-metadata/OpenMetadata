@@ -49,17 +49,6 @@ class ColumnValuesToBeInSetValidator(
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
 
-    def compute_row_count(self, column: Column):
-        """Compute row count for the given column
-
-        Args:
-            column (Union[SQALikeColumn, Column]): column to compute row count for
-
-        Raises:
-            NotImplementedError:
-        """
-        return self._compute_row_count(self.runner, column)
-
     def _execute_dimensional_validation(
         self,
         column: Column,
@@ -84,8 +73,10 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params["allowed_values"]
-            match_enum = test_params["match_enum"]
+            allowed_values = test_params[
+                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
+            ]
+            match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             # Build metric expressions using enum names as keys
             metric_expressions = {}
@@ -136,3 +127,14 @@ class ColumnValuesToBeInSetValidator(
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
+
+    def compute_row_count(self, column: Column):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        return self._compute_row_count(self.runner, column)

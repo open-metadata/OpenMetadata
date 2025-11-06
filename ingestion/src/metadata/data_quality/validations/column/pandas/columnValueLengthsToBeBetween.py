@@ -138,7 +138,6 @@ class ColumnValueLengthsToBeBetweenValidator(
                         dimension_value,
                     )
                     continue
-
                 failed_count = (
                     total_rows
                     if checker.violates_pandas(

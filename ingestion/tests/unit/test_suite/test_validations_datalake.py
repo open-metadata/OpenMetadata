@@ -1002,6 +1002,26 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.6667),
             ],
         ),
+        (
+            "test_case_column_values_not_in_set_dimensional",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Failed,
+                12000.0,
+                4000.0,
+                75.0,
+                25.0,
+            ),
+            [
+                ("age=NULL", TestCaseStatus.Failed, 2000, 2000, 50, 50, 0.1667),
+                ("age=30.0", TestCaseStatus.Failed, 4000, 2000, 66.67, 33.33, 0.0741),
+                ("age=31.0", TestCaseStatus.Success, 6000, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_datalake(
