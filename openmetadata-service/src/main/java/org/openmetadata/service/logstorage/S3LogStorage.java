@@ -128,7 +128,6 @@ public class S3LogStorage implements LogStorageInterface {
     try {
       LogStorageConfiguration s3Config = (LogStorageConfiguration) config.get("config");
 
-      // Extract metrics if provided
       if (config.get("metrics") != null) {
         this.metrics = (StreamableLogsMetrics) config.get("metrics");
       }
@@ -186,7 +185,6 @@ public class S3LogStorage implements LogStorageInterface {
 
       this.s3Client = s3Builder.build();
 
-      // Initialize async client for multipart uploads
       S3AsyncClientBuilder asyncBuilder =
           S3AsyncClient.builder()
               .region(Region.of(s3Config.getAwsConfig().getAwsRegion()))
@@ -319,12 +317,9 @@ public class S3LogStorage implements LogStorageInterface {
       // Update memory cache for real-time log viewing
       CircularBuffer recentLogs = recentLogsCache.get(streamKey, k -> new CircularBuffer(1000));
       recentLogs.append(logContent);
-
       // Notify listeners for SSE/WebSocket streaming
       notifyListeners(streamKey, logContent);
 
-      // Get or create multipart upload stream for this pipeline run
-      // This avoids the memory leak from read-modify-write pattern
       StreamContext context =
           activeStreams.computeIfAbsent(
               streamKey,
@@ -356,8 +351,6 @@ public class S3LogStorage implements LogStorageInterface {
                 }
               });
 
-      // Write directly to multipart stream - NO READ from S3!
-      // Each write becomes a part in the multipart upload
       byte[] logBytes = logContent.getBytes(StandardCharsets.UTF_8);
       context.stream.write(logBytes);
       context.updateAccessTime();
@@ -391,7 +384,6 @@ public class S3LogStorage implements LogStorageInterface {
       return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Pipeline completed - read from S3
     String key = buildS3Key(pipelineFQN, runId);
 
     Timer.Sample s3Sample = null;
@@ -412,7 +404,6 @@ public class S3LogStorage implements LogStorageInterface {
 
       return result;
     } catch (NoSuchKeyException e) {
-      // File doesn't exist - check memory cache as fallback
       List<String> recentLines = getRecentLogs(pipelineFQN, runId, 1000);
       if (!recentLines.isEmpty()) {
         String content = String.join("\n", recentLines);
