@@ -1022,6 +1022,46 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("age=31.0", TestCaseStatus.Success, 6000, 0, 100, 0, 0),
             ],
         ),
+        (
+            "test_case_column_values_to_match_regex_dimensional",
+            "columnValuesToMatchRegex",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "6000",
+                None,
+                TestCaseStatus.Failed,
+                6000.0,
+                0.0,
+                37.5,
+                62.5,
+            ),
+            [
+                ("age=30.0", TestCaseStatus.Failed, 2000, 4000, 33.33, 66.67, 0.2963),
+                ("age=31.0", TestCaseStatus.Failed, 2000, 4000, 33.33, 66.67, 0.2963),
+                ("age=NULL", TestCaseStatus.Failed, 2000, 2000, 50, 50, 0.1667),
+            ],
+        ),
+        (
+            "test_case_column_values_to_not_match_regex_dimensional",
+            "columnValuesToNotMatchRegex",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "0",
+                None,
+                TestCaseStatus.Success,
+                16000.0,
+                0.0,
+                100.0,
+                0.0,
+            ),
+            [
+                ("age=NULL", TestCaseStatus.Success, 4000, 0, 100, 0, 0),
+                ("age=30.0", TestCaseStatus.Success, 6000, 0, 100, 0, 0),
+                ("age=31.0", TestCaseStatus.Success, 6000, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_datalake(
