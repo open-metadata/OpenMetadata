@@ -15,7 +15,7 @@ Validator for column values to be not null test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.column.base.columnValuesToBeNotNull import (
     BaseColumnValuesToBeNotNullValidator,
@@ -33,17 +33,6 @@ class ColumnValuesToBeNotNullValidator(
     BaseColumnValuesToBeNotNullValidator, SQAValidatorMixin
 ):
     """Validator for column values to be not null test case"""
-
-    def _get_column_name(self) -> Column:
-        """Get column name from the test case entity link
-
-        Returns:
-            Column: column
-        """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            inspect(self.runner.dataset).c,
-        )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case

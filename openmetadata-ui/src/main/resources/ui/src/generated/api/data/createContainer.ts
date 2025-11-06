@@ -527,6 +527,11 @@ export interface ColumnProfile {
  */
 export interface CardinalityDistribution {
     /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
      * List of category names including 'Others'.
      */
     categories?: string[];

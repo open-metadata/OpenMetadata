@@ -36,8 +36,8 @@ const InlineSeverity = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const severityColor = severity
-    ? SEVERITY_COLORS[severity] || SEVERITY_COLORS.Severity5
-    : SEVERITY_COLORS.Severity5;
+    ? SEVERITY_COLORS[severity] || SEVERITY_COLORS.NoSeverity
+    : SEVERITY_COLORS.NoSeverity;
 
   const handleSeverityClick = (event: React.MouseEvent<HTMLElement>) => {
     if (!hasEditPermission) {
@@ -91,7 +91,7 @@ const InlineSeverity = ({
           px: 1,
           backgroundColor: severityColor.bg,
           color: severityColor.color,
-          border: `1px solid ${severityColor.border}`,
+          border: `1px solid ${severityColor.color}`,
           borderRadius: '16px',
           fontWeight: 500,
           fontSize: '12px',
@@ -107,6 +107,7 @@ const InlineSeverity = ({
           '&:hover': hasEditPermission
             ? {
                 backgroundColor: severityColor.bg,
+                color: severityColor.color,
                 opacity: 0.8,
               }
             : {},
