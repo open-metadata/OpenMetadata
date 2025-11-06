@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { get, omit, pick } from 'lodash';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-new.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
+import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/CondensedBreadcrumb.component';
 import {
   ColumnLevelLineageNode,
   EdgeDetails,
@@ -144,4 +146,20 @@ export const getSearchNameEsQuery = (
       ],
     },
   };
+};
+
+export const getTruncatedPath = (path: string, className?: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const parts = path.split(' > ');
+
+  return (
+    <CondensedBreadcrumb
+      className={className}
+      items={parts}
+      separator={<ChevronRightIcon className="right-arrow-icon" />}
+    />
+  );
 };

@@ -125,7 +125,8 @@ class ColumnValueMeanToBeBetweenValidator(
 
                 if mean_value is None:
                     logger.warning(
-                        "Skipping '%s' dimension since 'mean' is 'None'",
+                        "Skipping '%s=%s' dimension since 'mean' is 'None'",
+                        dimension_col.name,
                         dimension_value,
                     )
                     continue
@@ -133,7 +134,11 @@ class ColumnValueMeanToBeBetweenValidator(
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 # Statistical validator: when mean fails, ALL rows in dimension fail
-                failed_count = total_rows if checker.check_pandas(mean_value) else 0
+                failed_count = (
+                    total_rows
+                    if checker.violates_pandas({Metrics.MEAN.name: mean_value})
+                    else 0
+                )
 
                 results_data.append(
                     {
@@ -171,13 +176,19 @@ class ColumnValueMeanToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
+                    agg_functions={
+                        Metrics.SUM.name: "sum",
+                        Metrics.COUNT.name: "sum",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     final_metric_calculators={
                         Metrics.MEAN.name: calculate_weighted_mean
                     },
                     exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metric=Metrics.MEAN.name,
-                    violation_predicate=checker.check_pandas,
+                    violation_metrics=[Metrics.MEAN.name],
+                    violation_predicate=checker.violates_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):
