@@ -435,7 +435,7 @@ const UserListPageV1 = () => {
         type: t('label.user'),
       })}...`,
       searchValue: searchValue,
-      typingInterval: 500,
+      typingInterval: 400,
       urlSearchKey: 'user',
       disabled: isDataLoading && !searchValue,
       onSearch: handleSearch,
