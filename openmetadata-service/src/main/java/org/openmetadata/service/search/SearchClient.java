@@ -420,17 +420,6 @@ public interface SearchClient<T>
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
       throws IOException;
 
-  Response searchEntityRelationship(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException;
-
-  Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
-
-  Response searchSchemaEntityRelationship(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException;
-
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */

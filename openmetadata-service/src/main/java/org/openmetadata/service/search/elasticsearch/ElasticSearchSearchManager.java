@@ -4,8 +4,12 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.ENTITY_RELATIONSHIP_DIRECTION_ENTITY;
+import static org.openmetadata.service.search.SearchClient.ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -38,19 +42,30 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
@@ -62,6 +77,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * ElasticSearch implementation of search management operations.
@@ -74,6 +90,17 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final NLQService nlqService;
+  private static final Set<String> FIELDS_TO_REMOVE =
+      Set.of(
+          "suggest",
+          "service_suggest",
+          "column_suggest",
+          "schema_suggest",
+          "database_suggest",
+          "lifeCycle",
+          "fqnParts",
+          "chart_suggest",
+          "field_suggest");
 
   public ElasticSearchSearchManager(
       ElasticsearchClient client,
@@ -512,6 +539,188 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
           .build();
     }
+  }
+
+  @Override
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    java.util.Map<String, Object> responseMap =
+        searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  @Override
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    java.util.Map<String, Object> responseMap =
+        searchSchemaEntityRelationshipInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  @Override
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<EsLineageData> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  private void searchDataQualityLineageInternal(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Set<EsLineageData> edges,
+      Set<Map<String, Object>> nodes)
+      throws IOException {
+    Map<String, Map<String, Object>> allNodes = new HashMap<>();
+    Map<String, List<EsLineageData>> allEdges = new HashMap<>();
+    Set<String> nodesWithFailures = new HashSet<>();
+
+    collectNodesAndEdgesForDQ(
+        fqn,
+        upstreamDepth,
+        queryFilter,
+        deleted,
+        allEdges,
+        allNodes,
+        nodesWithFailures,
+        new HashSet<>());
+    for (String nodeWithFailure : nodesWithFailures) {
+      traceBackDQLineage(
+          nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
+    }
+  }
+
+  private void collectNodesAndEdgesForDQ(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Map<String, List<EsLineageData>> allEdges,
+      Map<String, Map<String, Object>> allNodes,
+      Set<String> nodesWithFailure,
+      Set<String> processedNode)
+      throws IOException {
+    TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
+    if (upstreamDepth <= 0 || processedNode.contains(fqn)) {
+      return;
+    }
+    processedNode.add(fqn);
+    SearchResponse<JsonData> searchResponse = performLineageSearchForDQ(fqn, queryFilter, deleted);
+    Optional<List> optionalDocs =
+        JsonUtils.readJsonAtPath(
+            serializeSearchResponse(searchResponse), "$.hits.hits[*]._source", List.class);
+
+    if (optionalDocs.isPresent()) {
+      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
+      for (Map<String, Object> doc : docs) {
+        String nodeId = doc.get("id").toString();
+        allNodes.put(nodeId, doc);
+        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
+          nodesWithFailure.add(nodeId);
+        }
+
+        List<EsLineageData> lineageDataList =
+            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
+        for (EsLineageData lineage : lineageDataList) {
+          lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
+          String fromEntityId = lineage.getFromEntity().getId().toString();
+          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+          collectNodesAndEdgesForDQ(
+              lineage.getFromEntity().getFullyQualifiedName(),
+              upstreamDepth - 1,
+              queryFilter,
+              deleted,
+              allEdges,
+              allNodes,
+              nodesWithFailure,
+              processedNode);
+        }
+      }
+    }
+  }
+
+  private void traceBackDQLineage(
+      String nodeFailureId,
+      Set<String> nodesWithFailures,
+      Map<String, List<EsLineageData>> allEdges,
+      Map<String, Map<String, Object>> allNodes,
+      Set<Map<String, Object>> nodes,
+      Set<EsLineageData> edges,
+      Set<String> processedNodes) {
+    if (processedNodes.contains(nodeFailureId)) {
+      return;
+    }
+
+    processedNodes.add(nodeFailureId);
+    if (nodesWithFailures.contains(nodeFailureId)) {
+      Map<String, Object> node = allNodes.get(nodeFailureId);
+      if (node != null) {
+        node.keySet().removeAll(FIELDS_TO_REMOVE);
+        node.remove("upstreamLineage");
+        nodes.add(node);
+      }
+    }
+    List<EsLineageData> edgesForNode = allEdges.get(nodeFailureId);
+    if (edgesForNode != null) {
+      for (EsLineageData edge : edgesForNode) {
+        String fromEntityId = edge.getFromEntity().getId().toString();
+        if (!fromEntityId.equals(nodeFailureId)) continue;
+        edges.add(edge);
+        traceBackDQLineage(
+            edge.getToEntity().getId().toString(),
+            nodesWithFailures,
+            allEdges,
+            allNodes,
+            nodes,
+            edges,
+            processedNodes);
+      }
+    }
+  }
+
+  private SearchResponse<JsonData> performLineageSearchForDQ(
+      String fqn, String queryFilter, boolean deleted) throws IOException {
+    String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+
+    Query fqnHashQuery =
+        Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("fqnHash.keyword")
+                            .value(FieldValue.of(FullyQualifiedName.buildHash(fqn)))));
+
+    Query deletedQuery =
+        Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("deleted").value(FieldValue.of(!nullOrEmpty(deleted) && deleted))));
+
+    List<Query> mustQueries = new ArrayList<>();
+    mustQueries.add(fqnHashQuery);
+    mustQueries.add(deletedQuery);
+
+    List<Query> filterQueries = new ArrayList<>();
+
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      String queryToProcess = EsUtils.parseJsonQuery(queryFilter);
+      Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
+      filterQueries.add(filterQuery);
+    }
+
+    Query boolQuery = Query.of(q -> q.bool(b -> b.must(mustQueries).filter(filterQueries)));
+
+    return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
   }
 
   private void applySearchFilter(String filter, ElasticSearchRequestBuilder requestBuilder)
@@ -1138,6 +1347,213 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(String.format("Failed to execute natural language search: %s", e.getMessage()))
           .build();
+    }
+  }
+
+  private Map<String, Object> searchEntityRelationshipInternal(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+
+    Query query =
+        Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("fullyQualifiedName")
+                            .value(es.co.elastic.clients.elasticsearch._types.FieldValue.of(fqn))));
+
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                    .query(query)
+                    .size(1000));
+
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() != null) {
+        Map<String, Object> tempMap = new HashMap<>(EsUtils.jsonDataToMap(hit.source()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
+      }
+    }
+    getEntityRelationship(
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
+        deleted);
+    getEntityRelationship(
+        fqn,
+        upstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
+        deleted);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  private Map<String, Object> searchSchemaEntityRelationshipInternal(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+
+    Query query =
+        Query.of(q -> q.term(t -> t.field("fullyQualifiedName").value(FieldValue.of(fqn))));
+
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                    .query(query)
+                    .size(1000));
+
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() != null) {
+        Map<String, Object> tempMap = new HashMap<>(EsUtils.jsonDataToMap(hit.source()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
+      }
+    }
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", fqn);
+    List<Table> tables =
+        repository.listAll(repository.getFields("tableConstraints, displayName, owners"), filter);
+    for (Table table : tables) {
+      getEntityRelationship(
+          table.getFullyQualifiedName(),
+          downstreamDepth,
+          edges,
+          nodes,
+          queryFilter,
+          ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
+          deleted);
+      getEntityRelationship(
+          table.getFullyQualifiedName(),
+          upstreamDepth,
+          edges,
+          nodes,
+          queryFilter,
+          ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
+          deleted);
+    }
+    // Add the remaining tables from the list into the nodes
+    // These will the one's that do not have any entity relationship
+    for (Table table : tables) {
+      boolean tablePresent = false;
+      for (Map<String, Object> node : nodes) {
+        if (table.getId().toString().equals(node.get("id"))) {
+          tablePresent = true;
+          break;
+        }
+      }
+      if (!tablePresent) {
+        HashMap<String, Object> tableMap = new HashMap<>(JsonUtils.getMap(table));
+        tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+        tableMap.put("entityType", "table");
+        nodes.add(tableMap);
+      }
+    }
+
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  private void getEntityRelationship(
+      String fqn,
+      int depth,
+      Set<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes,
+      String queryFilter,
+      String direction,
+      boolean deleted)
+      throws IOException {
+    if (depth <= 0) {
+      return;
+    }
+
+    Query directionQuery =
+        Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field(direction)
+                            .value(
+                                es.co.elastic.clients.elasticsearch._types.FieldValue.of(
+                                    FullyQualifiedName.buildHash(fqn)))));
+
+    Query mainQuery = directionQuery;
+    if (!CommonUtil.nullOrEmpty(deleted)) {
+      Query deletedQuery =
+          Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(deleted))));
+      mainQuery = Query.of(q -> q.bool(b -> b.must(directionQuery).must(deletedQuery)));
+    }
+
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        String queryToProcess = EsUtils.parseJsonQuery(queryFilter);
+        Query filterQuery = Query.of(q -> q.withJson(new java.io.StringReader(queryToProcess)));
+        Query finalMainQueryTemp = mainQuery;
+        mainQuery = Query.of(q -> q.bool(b -> b.must(finalMainQueryTemp).filter(filterQuery)));
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    Query finalMainQuery = mainQuery;
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                    .query(finalMainQuery)
+                    .size(1000));
+
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() == null) {
+        continue;
+      }
+      Map<String, Object> sourceAsMap = EsUtils.jsonDataToMap(hit.source());
+      List<Map<String, Object>> entityRelationship =
+          (List<Map<String, Object>>) sourceAsMap.get("entityRelationship");
+      if (entityRelationship == null) {
+        continue;
+      }
+      HashMap<String, Object> tempMap = new HashMap<>(sourceAsMap);
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+      nodes.add(tempMap);
+      for (Map<String, Object> er : entityRelationship) {
+        Map<String, String> entity = (HashMap<String, String>) er.get("entity");
+        Map<String, String> relatedEntity = (HashMap<String, String>) er.get("relatedEntity");
+        if (direction.equalsIgnoreCase(ENTITY_RELATIONSHIP_DIRECTION_ENTITY)) {
+          if (!edges.contains(er) && entity.get("fqn").equals(fqn)) {
+            edges.add(er);
+            getEntityRelationship(
+                relatedEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        } else {
+          if (!edges.contains(er) && relatedEntity.get("fqn").equals(fqn)) {
+            edges.add(er);
+            getEntityRelationship(
+                entity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        }
+      }
     }
   }
 }

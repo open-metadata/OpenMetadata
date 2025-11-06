@@ -127,4 +127,53 @@ public interface SearchManagementClient {
    * @throws IOException if search execution fails
    */
   Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
+
+  /**
+   * Search for entity relationships.
+   * This method searches for entities connected through relationships,
+   * traversing both upstream and downstream relationships up to specified depths.
+   *
+   * @param fqn the fully qualified name of the entity to search relationships for
+   * @param upstreamDepth the depth to traverse for upstream relationships
+   * @param downstreamDepth the depth to traverse for downstream relationships
+   * @param queryFilter JSON filter to apply to the relationship search
+   * @param deleted whether to include deleted entities
+   * @return response containing entity relationship graph data
+   * @throws IOException if search execution fails
+   */
+  Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
+
+  /**
+   * Search for schema entity relationships.
+   * This method searches for relationships of all tables within a database schema,
+   * providing a comprehensive view of the schema's entity relationships.
+   *
+   * @param fqn the fully qualified name of the database schema
+   * @param upstreamDepth the depth to traverse for upstream relationships
+   * @param downstreamDepth the depth to traverse for downstream relationships
+   * @param queryFilter JSON filter to apply to the relationship search
+   * @param deleted whether to include deleted entities
+   * @return response containing schema entity relationship graph data
+   * @throws IOException if search execution fails
+   */
+  Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
+
+  /**
+   * Search for data quality lineage.
+   * This method traverses upstream lineage relationships and identifies entities with test case failures,
+   * providing insights into data quality issues and their propagation through the data pipeline.
+   *
+   * @param fqn the fully qualified name of the entity to search data quality lineage for
+   * @param upstreamDepth the depth to traverse for upstream lineage relationships
+   * @param queryFilter JSON filter to apply to the lineage search
+   * @param deleted whether to include deleted entities
+   * @return response containing data quality lineage graph with nodes and edges
+   * @throws IOException if search execution fails
+   */
+  Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
 }

@@ -1,10 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
-import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
@@ -17,7 +14,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
-import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 
 import com.google.common.cache.CacheBuilder;
@@ -27,12 +23,9 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.KeyStoreException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +43,6 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
@@ -64,22 +56,13 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.jdbi3.TestCaseResultRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -92,11 +75,9 @@ import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.action.update.UpdateResponse;
@@ -110,16 +91,10 @@ import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-import os.org.opensearch.common.ParsingException;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
 import os.org.opensearch.common.unit.Fuzziness;
-import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import os.org.opensearch.common.xcontent.XContentLocation;
-import os.org.opensearch.common.xcontent.XContentParser;
-import os.org.opensearch.common.xcontent.XContentType;
-import os.org.opensearch.index.query.BoolQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
 import os.org.opensearch.index.query.QueryBuilder;
@@ -407,338 +382,26 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
 
-  private void getEntityRelationship(
-      String fqn,
-      int depth,
-      Set<Map<String, Object>> edges,
-      Set<Map<String, Object>> nodes,
-      String queryFilter,
-      String direction,
-      boolean deleted)
-      throws IOException {
-    if (depth <= 0) {
-      return;
-    }
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
-    if (CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
-    searchRequest.source(searchSourceBuilder.size(1000));
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> entityRelationship =
-          (List<Map<String, Object>>) hit.getSourceAsMap().get("entityRelationship");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
-      nodes.add(tempMap);
-      for (Map<String, Object> er : entityRelationship) {
-        Map<String, String> entity = (HashMap<String, String>) er.get("entity");
-        Map<String, String> relatedEntity = (HashMap<String, String>) er.get("relatedEntity");
-        if (direction.equalsIgnoreCase(ENTITY_RELATIONSHIP_DIRECTION_ENTITY)) {
-          if (!edges.contains(er) && entity.get("fqn").equals(fqn)) {
-            edges.add(er);
-            getEntityRelationship(
-                relatedEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
-          }
-        } else {
-          if (!edges.contains(er) && relatedEntity.get("fqn").equals(fqn)) {
-            edges.add(er);
-            getEntityRelationship(
-                entity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
-          }
-        }
-      }
-    }
-  }
-
-  public Map<String, Object> searchEntityRelationshipInternal(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException {
-    Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
-    Set<Map<String, Object>> nodes = new HashSet<>();
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-    searchRequest.source(searchSourceBuilder.size(1000));
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-      responseMap.put("entity", tempMap);
-    }
-    getEntityRelationship(
-        fqn,
-        downstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
-        deleted);
-    getEntityRelationship(
-        fqn,
-        upstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
-        deleted);
-    responseMap.put("edges", edges);
-    responseMap.put("nodes", nodes);
-    return responseMap;
-  }
-
   @Override
   public Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
-    Map<String, Object> responseMap =
-        searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-    return Response.status(OK).entity(responseMap).build();
+    return searchManager.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   @Override
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    Map<String, Object> responseMap = new HashMap<>();
-    Set<EsLineageData> edges = new HashSet<>();
-    Set<Map<String, Object>> nodes = new HashSet<>();
-    searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
-    responseMap.put("edges", edges);
-    responseMap.put("nodes", nodes);
-    return Response.status(OK).entity(responseMap).build();
-  }
-
-  public Map<String, Object> searchSchemaEntityRelationshipInternal(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException {
-    Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
-    Set<Map<String, Object>> nodes = new HashSet<>();
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-    searchRequest.source(searchSourceBuilder.size(1000));
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-      responseMap.put("entity", tempMap);
-    }
-    TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", fqn);
-    List<Table> tables =
-        repository.listAll(repository.getFields("tableConstraints, displayName, owners"), filter);
-    for (Table table : tables) {
-      getEntityRelationship(
-          table.getFullyQualifiedName(),
-          downstreamDepth,
-          edges,
-          nodes,
-          queryFilter,
-          ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
-          deleted);
-      getEntityRelationship(
-          table.getFullyQualifiedName(),
-          upstreamDepth,
-          edges,
-          nodes,
-          queryFilter,
-          ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
-          deleted);
-    }
-    // Add the remaining tables from the list into the nodes
-    // These will the one's that do not have any entity relationship
-    for (Table table : tables) {
-      boolean tablePresent = false;
-      for (Map<String, Object> node : nodes) {
-        if (table.getId().toString().equals(node.get("id"))) {
-          tablePresent = true;
-          break;
-        }
-      }
-      if (!tablePresent) {
-        HashMap<String, Object> tableMap = new HashMap<>(JsonUtils.getMap(table));
-        tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
-        tableMap.put("entityType", "table");
-        nodes.add(tableMap);
-      }
-    }
-    responseMap.put("edges", edges);
-    responseMap.put("nodes", nodes);
-    return responseMap;
+    return searchManager.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
   }
 
   @Override
   public Response searchSchemaEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
-    Map<String, Object> responseMap =
-        searchSchemaEntityRelationshipInternal(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-    return Response.status(OK).entity(responseMap).build();
-  }
-
-  private void searchDataQualityLineage(
-      String fqn,
-      int upstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      Set<EsLineageData> edges,
-      Set<Map<String, Object>> nodes)
-      throws IOException {
-    Map<String, Map<String, Object>> allNodes = new HashMap<>();
-    Map<String, List<EsLineageData>> allEdges = new HashMap<>();
-    Set<String> nodesWithFailures = new HashSet<>();
-
-    collectNodesAndEdges(
-        fqn,
-        upstreamDepth,
-        queryFilter,
-        deleted,
-        allEdges,
-        allNodes,
-        nodesWithFailures,
-        new HashSet<>());
-    for (String nodeWithFailure : nodesWithFailures) {
-      traceBackDQLineage(
-          nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
-    }
-  }
-
-  private void collectNodesAndEdges(
-      String fqn,
-      int upstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      Map<String, List<EsLineageData>> allEdges,
-      Map<String, Map<String, Object>> allNodes,
-      Set<String> nodesWithFailure,
-      Set<String> processedNode)
-      throws IOException {
-    TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
-    if (upstreamDepth <= 0 || processedNode.contains(fqn)) {
-      return;
-    }
-    processedNode.add(fqn);
-    SearchResponse searchResponse = performLineageSearch(fqn, queryFilter, deleted);
-    Optional<List> optionalDocs =
-        JsonUtils.readJsonAtPath(searchResponse.toString(), "$.hits.hits[*]._source", List.class);
-
-    if (optionalDocs.isPresent()) {
-      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
-      for (Map<String, Object> doc : docs) {
-        String nodeId = doc.get("id").toString();
-        allNodes.put(nodeId, doc);
-        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
-          nodesWithFailure.add(nodeId);
-        }
-
-        List<EsLineageData> lineageDataList =
-            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
-        for (EsLineageData lineage : lineageDataList) {
-          // lineage toEntity is the entity itself
-          lineage.withToEntity(getRelationshipRef(doc));
-          String fromEntityId = lineage.getFromEntity().getId().toString();
-          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
-          collectNodesAndEdges(
-              lineage.getFromEntity().getFullyQualifiedName(),
-              upstreamDepth - 1,
-              queryFilter,
-              deleted,
-              allEdges,
-              allNodes,
-              nodesWithFailure,
-              processedNode);
-        }
-      }
-    }
-  }
-
-  private void traceBackDQLineage(
-      String nodeFailureId,
-      Set<String> nodesWithFailures,
-      Map<String, List<EsLineageData>> allEdges,
-      Map<String, Map<String, Object>> allNodes,
-      Set<Map<String, Object>> nodes,
-      Set<EsLineageData> edges,
-      Set<String> processedNodes) {
-    if (processedNodes.contains(nodeFailureId)) {
-      return;
-    }
-
-    processedNodes.add(nodeFailureId);
-    if (nodesWithFailures.contains(nodeFailureId)) {
-      Map<String, Object> node = allNodes.get(nodeFailureId);
-      if (node != null) {
-        node.keySet().removeAll(FIELDS_TO_REMOVE);
-        node.remove("upstreamLineage");
-        nodes.add(node);
-      }
-    }
-    List<EsLineageData> edgesForNode = allEdges.get(nodeFailureId);
-    if (edgesForNode != null) {
-      for (EsLineageData edge : edgesForNode) {
-        String fromEntityId = edge.getFromEntity().getId().toString();
-        if (!fromEntityId.equals(nodeFailureId)) continue;
-        edges.add(edge);
-        traceBackDQLineage(
-            edge.getToEntity().getId().toString(),
-            nodesWithFailures,
-            allEdges,
-            allNodes,
-            nodes,
-            edges,
-            processedNodes);
-      }
-    }
-  }
-
-  private SearchResponse performLineageSearch(String fqn, String queryFilter, boolean deleted)
-      throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
-            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
-
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder.size(1000));
-    return client.search(searchRequest, RequestOptions.DEFAULT);
+    return searchManager.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
@@ -1186,17 +849,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  private XContentParser createXContentParser(String query) throws IOException {
-    try {
-      return XContentType.JSON
-          .xContent()
-          .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-    } catch (IOException e) {
-      LOG.error("Failed to create XContentParser", e);
-      throw e;
-    }
-  }
-
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
   }
@@ -1251,54 +903,9 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  private static void buildSearchSourceFilter(
-      String queryFilter, SearchSourceBuilder searchSourceBuilder) {
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery;
-        if (!nullOrEmpty(searchSourceBuilder.query())) {
-          newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        } else {
-          newQuery = QueryBuilders.boolQuery().filter(filter);
-        }
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
-        String errorMessage =
-            String.format(
-                "Error: %s.\nCause: %s",
-                ex.getMessage(), ex.getCause() != null ? ex.getCause().toString() : "Unknown");
-        throw new ParsingException(XContentLocation.UNKNOWN, errorMessage, ex);
-      }
-    }
-  }
-
   @Override
   public SearchHealthStatus getSearchHealthStatus() throws IOException {
     return genericManager.getSearchHealthStatus();
-  }
-
-  private OpenSearchSourceBuilderFactory getSearchBuilderFactory() {
-    SearchSettings searchSettings =
-        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-
-    if (searchBuilderFactory == null
-        || !searchSettings.equals(searchBuilderFactory.getSearchSettings())) {
-      synchronized (this) {
-        if (searchBuilderFactory == null
-            || !searchSettings.equals(searchBuilderFactory.getSearchSettings())) {
-          searchBuilderFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-          LOG.debug("Created new OpenSearchSourceBuilderFactory singleton");
-        }
-      }
-    }
-    return searchBuilderFactory;
   }
 
   @Override

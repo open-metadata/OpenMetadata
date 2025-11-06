@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +36,6 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
   private ElasticsearchClient client;
   private String testIndexPrefix;
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private static final String GLOBAL_SEARCH_ALIAS = "global_search";
 
   private static final String SAMPLE_ENTITY_JSON =
       """
@@ -100,10 +100,7 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
   void testSearchBySourceUrl_SuccessfulSearch() throws Exception {
     String sourceUrl = "https://example.com/source/test-entity-1";
 
-    String actualIndexName =
-        org.openmetadata.service.Entity.getSearchRepository()
-            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
-
+    String actualIndexName = testIndexPrefix + "_source_url_success";
     createTestIndex(actualIndexName);
 
     client.index(
@@ -118,22 +115,22 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
     assertNotNull(response);
     assertEquals(200, response.getStatus());
     assertNotNull(response.getEntity());
+
+    client.indices().delete(d -> d.index(actualIndexName));
   }
 
   @Test
   void testSearchBySourceUrl_NoResults() throws Exception {
     String sourceUrl = "https://example.com/source/non-existent";
 
-    String actualIndexName =
-        org.openmetadata.service.Entity.getSearchRepository()
-            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
-
+    String actualIndexName = testIndexPrefix + "_source_url_no_results";
     createTestIndex(actualIndexName);
 
     Response response = searchManager.searchBySourceUrl(sourceUrl);
 
     assertNotNull(response);
     assertEquals(200, response.getStatus());
+    client.indices().delete(d -> d.index(actualIndexName));
   }
 
   @Test
@@ -292,7 +289,8 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
                                   .properties("sourceUrl", p -> p.keyword(k -> k))
                                   .properties("deleted", p -> p.boolean_(b -> b))
                                   .properties("created", p -> p.date(d -> d))
-                                  .properties("updated", p -> p.date(d -> d))));
+                                  .properties("updated", p -> p.date(d -> d))
+                                  .properties("entityRelationship", p -> p.nested(n -> n))));
 
       client.indices().create(request);
       LOG.info("Created test index: {}", indexName);
@@ -1663,5 +1661,1213 @@ class ElasticSearchSearchManagerIntegrationTest extends OpenMetadataApplicationT
 
     // Clean up
     client.indices().delete(d -> d.index(actualIndexName));
+  }
+
+  @Test
+  void testSearchEntityRelationship_BasicRelationship() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_entity_relationship";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String entityFqn = "test.table.source";
+    String relatedEntityFqn = "test.table.target";
+
+    String sourceEntityJson =
+        String.format(
+            """
+            {
+              "id": "source-id-1",
+              "name": "Source Table",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "entityRelationship": [
+                {
+                  "entity": {
+                    "id": "source-id-1",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relatedEntity": {
+                    "id": "target-id-1",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relationshipType": "uses"
+                }
+              ]
+            }
+            """,
+            entityFqn, entityFqn, relatedEntityFqn);
+
+    String targetEntityJson =
+        String.format(
+            """
+            {
+              "id": "target-id-1",
+              "name": "Target Table",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            relatedEntityFqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("source-id-1")
+                .document(parseJson(sourceEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("target-id-1")
+                .document(parseJson(targetEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchEntityRelationship(entityFqn, 0, 1, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+    assertNotNull(response.getEntity());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("entity"));
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchEntityRelationship test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchEntityRelationship_WithDepth() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_entity_depth";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String entity1Fqn = "test.table.entity1";
+    String entity2Fqn = "test.table.entity2";
+    String entity3Fqn = "test.table.entity3";
+
+    String entity1Json =
+        String.format(
+            """
+            {
+              "id": "entity-1",
+              "name": "Entity 1",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "entityRelationship": [
+                {
+                  "entity": {
+                    "id": "entity-1",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relatedEntity": {
+                    "id": "entity-2",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relationshipType": "uses"
+                }
+              ]
+            }
+            """,
+            entity1Fqn, entity1Fqn, entity2Fqn);
+
+    String entity2Json =
+        String.format(
+            """
+            {
+              "id": "entity-2",
+              "name": "Entity 2",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "entityRelationship": [
+                {
+                  "entity": {
+                    "id": "entity-2",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relatedEntity": {
+                    "id": "entity-3",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relationshipType": "uses"
+                }
+              ]
+            }
+            """,
+            entity2Fqn, entity2Fqn, entity3Fqn);
+
+    String entity3Json =
+        String.format(
+            """
+            {
+              "id": "entity-3",
+              "name": "Entity 3",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            entity3Fqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("entity-1")
+                .document(parseJson(entity1Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("entity-2")
+                .document(parseJson(entity2Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("entity-3")
+                .document(parseJson(entity3Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchEntityRelationship(entity1Fqn, 0, 2, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("entity"));
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchEntityRelationship with depth test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchEntityRelationship_NoRelationships() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_entity_no_rel";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String entityFqn = "test.table.isolated";
+
+    String isolatedEntityJson =
+        String.format(
+            """
+            {
+              "id": "isolated-id",
+              "name": "Isolated Table",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            entityFqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("isolated-id")
+                .document(parseJson(isolatedEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchEntityRelationship(entityFqn, 1, 1, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("entity"));
+
+    LOG.info("searchEntityRelationship with no relationships test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchEntityRelationship_WithDeletedFilter() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_entity_deleted";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String entityFqn = "test.table.main";
+    String deletedEntityFqn = "test.table.deleted";
+
+    String mainEntityJson =
+        String.format(
+            """
+            {
+              "id": "main-id",
+              "name": "Main Table",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "entityRelationship": [
+                {
+                  "entity": {
+                    "id": "main-id",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relatedEntity": {
+                    "id": "deleted-id",
+                    "fqn": "%s",
+                    "type": "table"
+                  },
+                  "relationshipType": "uses"
+                }
+              ]
+            }
+            """,
+            entityFqn, entityFqn, deletedEntityFqn);
+
+    String deletedEntityJson =
+        String.format(
+            """
+            {
+              "id": "deleted-id",
+              "name": "Deleted Table",
+              "fullyQualifiedName": "%s",
+              "entityType": "table",
+              "deleted": true
+            }
+            """,
+            deletedEntityFqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("main-id")
+                .document(parseJson(mainEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("deleted-id")
+                .document(parseJson(deletedEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response responseNonDeleted =
+        searchManager.searchEntityRelationship(entityFqn, 0, 1, null, false);
+    assertNotNull(responseNonDeleted);
+    assertEquals(200, responseNonDeleted.getStatus());
+
+    Response responseDeleted = searchManager.searchEntityRelationship(entityFqn, 0, 1, null, true);
+    assertNotNull(responseDeleted);
+    assertEquals(200, responseDeleted.getStatus());
+
+    LOG.info("searchEntityRelationship with deleted filter test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchSchemaEntityRelationship_BasicUsage() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_schema_basic";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String schemaFqn = "test.database.schema1";
+
+    String schemaEntityJson =
+        String.format(
+            """
+            {
+              "id": "schema-id-1",
+              "name": "Test Schema",
+              "fullyQualifiedName": "%s",
+              "entityType": "databaseSchema",
+              "deleted": false
+            }
+            """,
+            schemaFqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("schema-id-1")
+                .document(parseJson(schemaEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchSchemaEntityRelationship(schemaFqn, 0, 1, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("entity"));
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchSchemaEntityRelationship basic test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchSchemaEntityRelationship_WithDepth() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_schema_depth";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String schemaFqn = "test.database.schema2";
+
+    String schemaEntityJson =
+        String.format(
+            """
+            {
+              "id": "schema-id-2",
+              "name": "Test Schema 2",
+              "fullyQualifiedName": "%s",
+              "entityType": "databaseSchema",
+              "deleted": false
+            }
+            """,
+            schemaFqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("schema-id-2")
+                .document(parseJson(schemaEntityJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchSchemaEntityRelationship(schemaFqn, 2, 2, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("entity"));
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchSchemaEntityRelationship with depth test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_BasicLineage() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_basic";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String table1Fqn = "test.database.schema.table1";
+    String table2Fqn = "test.database.schema.table2";
+    String table3Fqn = "test.database.schema.table3";
+
+    String table3Json =
+        String.format(
+            """
+            {
+              "id": "33333333-3333-3333-3333-333333333333",
+              "name": "Table 3",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            table3Fqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(table3Fqn));
+
+    String table2Json =
+        String.format(
+            """
+            {
+              "id": "22222222-2222-2222-2222-222222222222",
+              "name": "Table 2",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "33333333-3333-3333-3333-333333333333",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-3-id-table-2-id"
+                }
+              ]
+            }
+            """,
+            table2Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table2Fqn),
+            table3Fqn,
+            table2Fqn);
+
+    String table1Json =
+        String.format(
+            """
+            {
+              "id": "11111111-1111-1111-1111-111111111111",
+              "name": "Table 1",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-2-id-table-1-id"
+                }
+              ]
+            }
+            """,
+            table1Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table1Fqn),
+            table2Fqn,
+            table1Fqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("33333333-3333-3333-3333-333333333333")
+                .document(parseJson(table3Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("22222222-2222-2222-2222-222222222222")
+                .document(parseJson(table2Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("11111111-1111-1111-1111-111111111111")
+                .document(parseJson(table1Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchDataQualityLineage(table1Fqn, 2, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchDataQualityLineage basic test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_WithDepth() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_depth";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String table1Fqn = "test.db.schema.tbl1";
+    String table2Fqn = "test.db.schema.tbl2";
+    String table3Fqn = "test.db.schema.tbl3";
+
+    String table3Json =
+        String.format(
+            """
+            {
+              "id": "33333333-3333-3333-3333-333333333303",
+              "name": "Tbl 3",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            table3Fqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(table3Fqn));
+
+    String table2Json =
+        String.format(
+            """
+            {
+              "id": "22222222-2222-2222-2222-222222222202",
+              "name": "Tbl 2",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "33333333-3333-3333-3333-333333333303",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "22222222-2222-2222-2222-222222222202",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "tbl-3-tbl-2"
+                }
+              ]
+            }
+            """,
+            table2Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table2Fqn),
+            table3Fqn,
+            table2Fqn);
+
+    String table1Json =
+        String.format(
+            """
+            {
+              "id": "11111111-1111-1111-1111-111111111101",
+              "name": "Tbl 1",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "22222222-2222-2222-2222-222222222202",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "11111111-1111-1111-1111-111111111101",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "tbl-2-tbl-1"
+                }
+              ]
+            }
+            """,
+            table1Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table1Fqn),
+            table2Fqn,
+            table1Fqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("33333333-3333-3333-3333-333333333303")
+                .document(parseJson(table3Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("22222222-2222-2222-2222-222222222202")
+                .document(parseJson(table2Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("11111111-1111-1111-1111-111111111101")
+                .document(parseJson(table1Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response responseDepth1 = searchManager.searchDataQualityLineage(table1Fqn, 1, null, false);
+    assertNotNull(responseDepth1);
+    assertEquals(200, responseDepth1.getStatus());
+
+    Response responseDepth2 = searchManager.searchDataQualityLineage(table1Fqn, 2, null, false);
+    assertNotNull(responseDepth2);
+    assertEquals(200, responseDepth2.getStatus());
+
+    LOG.info("searchDataQualityLineage with different depths test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_NoLineage() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_no_lineage";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String tableFqn = "test.db.schema.isolated_table";
+
+    String tableJson =
+        String.format(
+            """
+            {
+              "id": "iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii",
+              "name": "Isolated Table",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            tableFqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(tableFqn));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii")
+                .document(parseJson(tableJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchDataQualityLineage(tableFqn, 2, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchDataQualityLineage with no lineage test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_WithQueryFilter() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_filter";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String table1Fqn = "test.prod.schema.table1";
+    String table2Fqn = "test.dev.schema.table2";
+
+    String table2Json =
+        String.format(
+            """
+            {
+              "id": "22222222-2222-2222-2222-222222220002",
+              "name": "Table 2",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "environment": "dev",
+              "deleted": false
+            }
+            """,
+            table2Fqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(table2Fqn));
+
+    String table1Json =
+        String.format(
+            """
+            {
+              "id": "11111111-1111-1111-1111-111111110001",
+              "name": "Table 1",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "environment": "prod",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "22222222-2222-2222-2222-222222220002",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "11111111-1111-1111-1111-111111110001",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-2-dev-table-1-prod"
+                }
+              ]
+            }
+            """,
+            table1Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table1Fqn),
+            table2Fqn,
+            table1Fqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("22222222-2222-2222-2222-222222220002")
+                .document(parseJson(table2Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("11111111-1111-1111-1111-111111110001")
+                .document(parseJson(table1Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    String queryFilter = "{\"term\":{\"environment\":\"prod\"}}";
+
+    Response response = searchManager.searchDataQualityLineage(table1Fqn, 2, queryFilter, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchDataQualityLineage with query filter test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_WithDeletedEntities() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_deleted";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String table1Fqn = "test.db.schema.active_table";
+    String table2Fqn = "test.db.schema.deleted_table";
+
+    String table2Json =
+        String.format(
+            """
+            {
+              "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+              "name": "Deleted Table",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": true
+            }
+            """,
+            table2Fqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(table2Fqn));
+
+    String table1Json =
+        String.format(
+            """
+            {
+              "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "name": "Active Table",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "deleted-table-active-table"
+                }
+              ]
+            }
+            """,
+            table1Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table1Fqn),
+            table2Fqn,
+            table1Fqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("dddddddd-dddd-dddd-dddd-dddddddddddd")
+                .document(parseJson(table2Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+                .document(parseJson(table1Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response responseNonDeleted = searchManager.searchDataQualityLineage(table1Fqn, 2, null, false);
+    assertNotNull(responseNonDeleted);
+    assertEquals(200, responseNonDeleted.getStatus());
+
+    Response responseDeleted = searchManager.searchDataQualityLineage(table1Fqn, 2, null, true);
+    assertNotNull(responseDeleted);
+    assertEquals(200, responseDeleted.getStatus());
+
+    LOG.info("searchDataQualityLineage with deleted entities test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_ZeroDepth() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_zero_depth";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String tableFqn = "test.db.schema.table_zero";
+
+    String tableJson =
+        String.format(
+            """
+            {
+              "id": "00000000-0000-0000-0000-000000000000",
+              "name": "Table Zero",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            tableFqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(tableFqn));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("00000000-0000-0000-0000-000000000000")
+                .document(parseJson(tableJson))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchDataQualityLineage(tableFqn, 0, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchDataQualityLineage with zero depth test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
+  }
+
+  @Test
+  void testSearchDataQualityLineage_ComplexLineageGraph() throws Exception {
+    String aliasName =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+    String concreteIndexName = testIndexPrefix + "_dq_complex";
+
+    createTestIndex(concreteIndexName);
+
+    try {
+      client.indices().putAlias(a -> a.index(concreteIndexName).name(aliasName).isWriteIndex(true));
+    } catch (Exception e) {
+      LOG.debug("Alias {} might already exist", aliasName);
+    }
+
+    String table1Fqn = "test.db.schema.table_a";
+    String table2Fqn = "test.db.schema.table_b";
+    String table3Fqn = "test.db.schema.table_c";
+    String table4Fqn = "test.db.schema.table_d";
+
+    String table4Json =
+        String.format(
+            """
+            {
+              "id": "dddd4444-dddd-4444-dddd-444444444444",
+              "name": "Table D",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false
+            }
+            """,
+            table4Fqn, org.openmetadata.service.util.FullyQualifiedName.buildHash(table4Fqn));
+
+    String table3Json =
+        String.format(
+            """
+            {
+              "id": "cccc3333-cccc-3333-cccc-333333333333",
+              "name": "Table C",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "dddd4444-dddd-4444-dddd-444444444444",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "cccc3333-cccc-3333-cccc-333333333333",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-d-table-c"
+                }
+              ]
+            }
+            """,
+            table3Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table3Fqn),
+            table4Fqn,
+            table3Fqn);
+
+    String table2Json =
+        String.format(
+            """
+            {
+              "id": "bbbb2222-bbbb-2222-bbbb-222222222222",
+              "name": "Table B",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "dddd4444-dddd-4444-dddd-444444444444",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "bbbb2222-bbbb-2222-bbbb-222222222222",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-d-table-b"
+                }
+              ]
+            }
+            """,
+            table2Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table2Fqn),
+            table4Fqn,
+            table2Fqn);
+
+    String table1Json =
+        String.format(
+            """
+            {
+              "id": "aaaa1111-aaaa-1111-aaaa-111111111111",
+              "name": "Table A",
+              "fullyQualifiedName": "%s",
+              "fqnHash": "%s",
+              "entityType": "table",
+              "deleted": false,
+              "upstreamLineage": [
+                {
+                  "fromEntity": {
+                    "id": "bbbb2222-bbbb-2222-bbbb-222222222222",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "aaaa1111-aaaa-1111-aaaa-111111111111",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-b-table-a"
+                },
+                {
+                  "fromEntity": {
+                    "id": "cccc3333-cccc-3333-cccc-333333333333",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "toEntity": {
+                    "id": "aaaa1111-aaaa-1111-aaaa-111111111111",
+                    "type": "table",
+                    "fullyQualifiedName": "%s"
+                  },
+                  "docUniqueId": "table-c-table-a"
+                }
+              ]
+            }
+            """,
+            table1Fqn,
+            org.openmetadata.service.util.FullyQualifiedName.buildHash(table1Fqn),
+            table2Fqn,
+            table1Fqn,
+            table3Fqn,
+            table1Fqn);
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("dddd4444-dddd-4444-dddd-444444444444")
+                .document(parseJson(table4Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("cccc3333-cccc-3333-cccc-333333333333")
+                .document(parseJson(table3Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("bbbb2222-bbbb-2222-bbbb-222222222222")
+                .document(parseJson(table2Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    client.index(
+        i ->
+            i.index(concreteIndexName)
+                .id("aaaa1111-aaaa-1111-aaaa-111111111111")
+                .document(parseJson(table1Json))
+                .refresh(es.co.elastic.clients.elasticsearch._types.Refresh.True));
+
+    Response response = searchManager.searchDataQualityLineage(table1Fqn, 3, null, false);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatus());
+
+    Map<String, Object> responseMap = (Map<String, Object>) response.getEntity();
+    assertNotNull(responseMap.get("edges"));
+    assertNotNull(responseMap.get("nodes"));
+
+    LOG.info("searchDataQualityLineage with complex lineage graph test completed successfully");
+
+    client.indices().deleteAlias(d -> d.index(concreteIndexName).name(aliasName));
+    client.indices().delete(d -> d.index(concreteIndexName));
   }
 }

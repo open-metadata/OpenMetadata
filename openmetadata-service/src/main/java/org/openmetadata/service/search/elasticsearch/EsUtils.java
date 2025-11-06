@@ -23,9 +23,6 @@ import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
-import es.org.elasticsearch.common.settings.Settings;
-import es.org.elasticsearch.search.SearchModule;
-import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;
@@ -44,12 +41,9 @@ import org.openmetadata.service.Entity;
 @Slf4j
 public class EsUtils {
 
-  public static final NamedXContentRegistry esXContentRegistry;
   private static final ObjectMapper mapper;
 
   static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
-    esXContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
     mapper = new ObjectMapper();
   }
 
