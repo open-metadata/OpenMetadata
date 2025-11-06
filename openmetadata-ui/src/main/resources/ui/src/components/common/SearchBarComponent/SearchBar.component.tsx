@@ -12,13 +12,12 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Input, InputProps } from 'antd';
+import { Input, InputProps, InputRef } from 'antd';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
-import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
 
@@ -39,7 +38,6 @@ export type SearchBarProps = {
   /**
    * Key to be used for url search
    */
-  urlSearchKey?: string;
 };
 
 const Searchbar = ({
@@ -55,34 +53,35 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
   inputProps,
-  urlSearchKey,
   disabled,
 }: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
   const isTypingRef = useRef(false);
-  const { setFilters } = useTableFilters(
-    urlSearchKey
-      ? {
-          [urlSearchKey]: '',
-        }
-      : {}
-  );
+  const inputRef = useRef<HTMLInputElement>(null);
+  const wasDisabledRef = useRef(disabled);
+  const hadFocusRef = useRef(false);
 
   useEffect(() => {
     if (!isTypingRef.current && searchValue !== userSearch) {
       setUserSearch(searchValue ?? '');
+      if (hadFocusRef.current && inputRef.current) {
+        setTimeout(() => inputRef.current?.focus(), 0);
+      }
     }
-  }, [searchValue]);
+  }, [searchValue, userSearch]);
+
+  useEffect(() => {
+    if (wasDisabledRef.current && !disabled && hadFocusRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+    wasDisabledRef.current = disabled;
+  }, [disabled]);
 
   const debouncedOnSearch = useCallback(
     (searchText: string): void => {
       setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
-
-      if (urlSearchKey) {
-        setFilters({ [urlSearchKey]: isEmpty(searchText) ? null : searchText });
-      }
 
       onSearch(searchText);
       isTypingRef.current = false;
@@ -92,7 +91,7 @@ const Searchbar = ({
 
   const debounceOnSearch = useCallback(
     debounce(debouncedOnSearch, typingInterval),
-    [debouncedOnSearch]
+    [typingInterval]
   );
 
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
@@ -127,6 +126,7 @@ const Searchbar = ({
               style={{ fontSize: '16px' }}
             />
           }
+          ref={inputRef as unknown as React.RefObject<InputRef>}
           suffix={
             showLoadingStatus &&
             loadingState === 'waiting' && (
@@ -137,9 +137,15 @@ const Searchbar = ({
           }
           type="text"
           value={userSearch}
-          onBlur={() => setIsSearchBlur(true)}
+          onBlur={() => {
+            setIsSearchBlur(true);
+            hadFocusRef.current = false;
+          }}
           onChange={handleChange}
-          onFocus={() => setIsSearchBlur(false)}
+          onFocus={() => {
+            setIsSearchBlur(false);
+            hadFocusRef.current = true;
+          }}
           {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (

@@ -436,7 +436,6 @@ const UserListPageV1 = () => {
       })}...`,
       searchValue: searchValue,
       typingInterval: 400,
-      urlSearchKey: 'user',
       disabled: isDataLoading && !searchValue,
       onSearch: handleSearch,
     }),
