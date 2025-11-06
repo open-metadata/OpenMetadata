@@ -299,7 +299,7 @@ class StreamableLogHandler(logging.Handler):
         if not logs:
             return
 
-        log_content = "\n".join(logs)
+        log_content = "\n".join(logs) + "\n"  # Ensure newline at end
 
         try:
             # Try to send logs with circuit breaker
