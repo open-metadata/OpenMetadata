@@ -259,16 +259,7 @@ class StreamableLogHandler(logging.Handler):
                 timeout = min(1.0, self.flush_interval_sec)
                 try:
                     log_entry = self.log_queue.get(timeout=timeout)
-
-                    # Handle flush marker - send any buffered logs immediately
-                    if log_entry is None:
-                        if buffer:
-                            self._ship_logs(buffer)
-                            buffer = []
-                            last_flush = time.time()
-                        continue
-
-                    buffer.append(log_entry)
+                    buffer.append(log_entry) if log_entry else None
                 except queue.Empty:
                     pass
 
@@ -284,7 +275,7 @@ class StreamableLogHandler(logging.Handler):
                     last_flush = time.time()
 
                 # Let's not flush too often
-                time.sleep(1.0)
+                # time.sleep(1.0)
 
             except Exception as e:
                 logger.error(f"Error in log shipping worker: {e}")
@@ -293,7 +284,7 @@ class StreamableLogHandler(logging.Handler):
         # Final flush of any remaining buffered logs
         if not self.log_queue.empty():
             log_entry = self.log_queue.get(timeout=5.0)
-            buffer.append(log_entry)
+            buffer.append(log_entry) if log_entry else None
         if buffer:
             self._ship_logs(buffer)
 
@@ -451,15 +442,15 @@ class StreamableLogHandlerManager:
             try:
                 # Force flush any remaining logs before cleanup
                 cls._instance.flush()
-                
+
                 # Close will properly wait for worker thread to finish processing
                 # the flush marker and any remaining buffered logs
                 cls._instance.close()
-                
+
                 # Only remove handler from logger after worker thread has finished
                 metadata_logger = logging.getLogger(METADATA_LOGGER)
                 metadata_logger.removeHandler(cls._instance)
-                
+
                 logger.debug("Streamable logging handler cleaned up")
             except Exception as e:
                 logger.warning(f"Error during handler cleanup: {e}")
