@@ -278,10 +278,6 @@
     .column-container {
       background: @primary-1;
     }
-
-    &.lineage-base-node .lineage-node-badge-container {
-      background: @blue-4;
-    }
   }
 
   &.custom-node-header-tracing {
@@ -346,10 +342,6 @@
     }
   }
 
-  &:hover .lineage-node-badge-container {
-    border-color: rgb(53, 111, 231);
-  }
-
   .lineage-node-content {
     margin-top: 10px;
   }
@@ -384,6 +376,9 @@
 
   .lineage-node {
     border-color: @primary-color;
+    .lineage-node-badge-container {
+      border-color: rgb(53, 111, 231);
+    }
   }
 
   .data-quality-failed-custom-node-header {
@@ -410,16 +405,17 @@
   .lineage-node {
     border-color: @primary-color !important;
     background: #eff8ff;
+
+    .lineage-node-badge-container {
+      border-color: @primary-color;
+      background: #eff8ff;
+    }
+
     &.columns-expanded {
       background-color: #d1e9ff;
       .lineage-node-badge-container {
         background-color: #d1e9ff;
       }
-    }
-
-    .lineage-node-badge-container {
-      border-color: @primary-color;
-      background: #eff8ff;
     }
   }
 
