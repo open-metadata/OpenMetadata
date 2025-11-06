@@ -933,6 +933,29 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("name=Others", TestCaseStatus.Failed, None, None, None, None, 1),
             ],
         ),
+        (
+            "test_case_column_values_to_be_between_dimensional",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                "31",
+                TestCaseStatus.Failed,
+                50,
+                30,
+                62.5,
+                37.5,
+            ),
+            [
+                ("name=Bob", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Jane", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Alice", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Charlie", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Others", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_database(
