@@ -290,7 +290,10 @@ class StreamableLogHandler(logging.Handler):
                 logger.error(f"Error in log shipping worker: {e}")
                 # Continue processing to avoid blocking
 
-        # Final flush on shutdown
+        # Final flush of any remaining buffered logs
+        if not self.log_queue.empty():
+            log_entry = self.log_queue.get(timeout=5.0)
+            buffer.append(log_entry)
         if buffer:
             self._ship_logs(buffer)
 
@@ -396,7 +399,7 @@ class StreamableLogHandler(logging.Handler):
             # Log final metrics
             logger.info(f"StreamableLogHandler metrics: {self.get_metrics()}")
 
-            # Signal worker to stop
+            # Signal worker to stop AFTER ensuring any pending flush is processed
             self.stop_event.set()
 
             # Wait for worker to finish (with timeout)
@@ -448,13 +451,15 @@ class StreamableLogHandlerManager:
             try:
                 # Force flush any remaining logs before cleanup
                 cls._instance.flush()
-
-                # Give a brief moment for the flush to process
-                time.sleep(0.5)
-
+                
+                # Close will properly wait for worker thread to finish processing
+                # the flush marker and any remaining buffered logs
+                cls._instance.close()
+                
+                # Only remove handler from logger after worker thread has finished
                 metadata_logger = logging.getLogger(METADATA_LOGGER)
                 metadata_logger.removeHandler(cls._instance)
-                cls._instance.close()
+                
                 logger.debug("Streamable logging handler cleaned up")
             except Exception as e:
                 logger.warning(f"Error during handler cleanup: {e}")
