@@ -28,6 +28,7 @@
   box-shadow: none;
 }
 
+// Node default state
 .lineage-node {
   width: 100%;
   max-width: 320px; //  Max width of Lineage Node, in case of long columns names
@@ -371,6 +372,7 @@
   font-size: 16px;
 }
 
+// Node hovered state
 .react-flow__node-load-more.selectable:hover,
 .react-flow__node-default.selectable:hover,
 .react-flow__node-input.selectable:hover,
@@ -389,6 +391,7 @@
   }
 }
 
+// Node selected state
 .react-flow__node-default.selectable.selected,
 .react-flow__node-default.selectable:focus,
 .react-flow__node-default.selectable:focus-visible,
@@ -464,6 +467,24 @@
 .react-flow__node-load-more.selectable.selected,
 .react-flow__node-load-more.selectable:focus,
 .react-flow__node-load-more.selectable:focus-visible {
+  .lineage-node {
+    background-color: #eff8ff;
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          background-color: #eff8ff;
+          .entity-footer {
+            background-color: #eff8ff;
+          }
+        }
+      }
+    }
+  }
+  .lineage-base-node {
+    .lineage-node-badge-container {
+      background-color: #eff8ff;
+    }
+  }
   .data-quality-failed-custom-node-header {
     &.lineage-node {
       border-color: @red-3 !important;
