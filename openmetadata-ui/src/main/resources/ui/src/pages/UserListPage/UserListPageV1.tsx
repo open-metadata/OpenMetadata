@@ -217,14 +217,11 @@ const UserListPageV1 = () => {
     setFilters({ isDeleted: value || null, user: null });
   };
 
-  const handleSearch = useCallback(
-    (value: string) => {
-      handlePageChange(INITIAL_PAGING_VALUE);
+  const handleSearch = useCallback(() => {
+    handlePageChange(INITIAL_PAGING_VALUE);
 
-      setFilters({ user: isEmpty(value) ? null : value });
-    },
-    [handlePageChange, setFilters]
-  );
+    //   setFilters({ user: isEmpty(value) ? null : value });
+  }, [handlePageChange, setFilters]);
 
   useEffect(() => {
     // Perform reset
@@ -435,7 +432,7 @@ const UserListPageV1 = () => {
         type: t('label.user'),
       })}...`,
       searchValue: searchValue,
-      typingInterval: 500,
+      typingInterval: 0,
       urlSearchKey: 'user',
       onSearch: handleSearch,
     }),

@@ -38,6 +38,8 @@ test.describe('API Collection Entity Special Test Cases', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
     await afterAction();
