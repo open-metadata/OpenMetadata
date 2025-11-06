@@ -43,7 +43,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
@@ -115,9 +114,10 @@ public class S3LogStorage implements LogStorageInterface {
   private String kmsKeyId = null;
 
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
+  private final Map<String, Long> partialLogOffsets = new ConcurrentHashMap<>();
   private ScheduledExecutorService cleanupExecutor;
 
-  private final Cache<String, CircularBuffer> recentLogsCache =
+  private final Cache<String, SimpleLogBuffer> recentLogsCache =
       Caffeine.newBuilder().maximumSize(200).expireAfterAccess(30, TimeUnit.MINUTES).build();
 
   private final Map<String, List<LogStreamListener>> activeListeners = new ConcurrentHashMap<>();
@@ -220,6 +220,9 @@ public class S3LogStorage implements LogStorageInterface {
       // Update metrics every 30 seconds
       cleanupExecutor.scheduleWithFixedDelay(this::updateStreamMetrics, 30, 30, TimeUnit.SECONDS);
 
+      // Write partial logs every 2 minutes to make them available for reading
+      cleanupExecutor.scheduleWithFixedDelay(this::writePartialLogs, 2, 2, TimeUnit.MINUTES);
+
       if (expirationDays > 0) {
         try {
           configureLifecyclePolicy();
@@ -315,7 +318,7 @@ public class S3LogStorage implements LogStorageInterface {
 
     try {
       // Update memory cache for real-time log viewing
-      CircularBuffer recentLogs = recentLogsCache.get(streamKey, k -> new CircularBuffer(1000));
+      SimpleLogBuffer recentLogs = recentLogsCache.get(streamKey, k -> new SimpleLogBuffer(1000));
       recentLogs.append(logContent);
       // Notify listeners for SSE/WebSocket streaming
       notifyListeners(streamKey, logContent);
@@ -427,14 +430,11 @@ public class S3LogStorage implements LogStorageInterface {
     // Check if pipeline is still running (active multipart upload in progress)
     StreamContext activeStream = activeStreams.get(streamKey);
     if (activeStream != null) {
-      // Pipeline is still running - read from memory cache
-      // The S3 file won't exist until multipart upload completes
-      List<String> recentLines = getRecentLogs(pipelineFQN, runId, limit);
-      result.put("logs", String.join("\n", recentLines));
-      result.put("after", null);
-      result.put("total", 0L);
+      // Pipeline is still running - combine completed logs from S3 + recent logs from memory
+      result = getCombinedLogsForActiveStream(pipelineFQN, runId, afterCursor, limit);
       result.put("streaming", true); // Indicate logs are still being written
-      LOG.debug("Reading from memory cache for active pipeline {}/{}", pipelineFQN, runId);
+      LOG.debug(
+          "Reading combined logs (S3 + memory) for active pipeline {}/{}", pipelineFQN, runId);
       return result;
     }
 
@@ -589,6 +589,7 @@ public class S3LogStorage implements LogStorageInterface {
   @Override
   public void deleteLogs(String pipelineFQN, UUID runId) throws IOException {
     String key = buildS3Key(pipelineFQN, runId);
+    String partialKey = buildPartialS3Key(pipelineFQN, runId);
 
     // Clean up active stream if exists
     String streamKey = pipelineFQN + "/" + runId;
@@ -601,11 +602,24 @@ public class S3LogStorage implements LogStorageInterface {
       }
     }
 
+    // Clean up partial log offset tracking
+    partialLogOffsets.remove(streamKey);
+
     try {
+      // Delete main logs file
       DeleteObjectRequest request =
           DeleteObjectRequest.builder().bucket(bucketName).key(key).build();
-
       s3Client.deleteObject(request);
+
+      // Delete partial logs file if it exists
+      try {
+        DeleteObjectRequest partialRequest =
+            DeleteObjectRequest.builder().bucket(bucketName).key(partialKey).build();
+        s3Client.deleteObject(partialRequest);
+      } catch (Exception e) {
+        // Partial file may not exist, which is fine
+        LOG.debug("Could not delete partial logs file (may not exist): {}", e.getMessage());
+      }
     } catch (Exception e) {
       throw new IOException("Failed to delete logs from S3", e);
     }
@@ -623,6 +637,8 @@ public class S3LogStorage implements LogStorageInterface {
               if (entry.getKey().startsWith(pipelineFQN + "/")) {
                 try {
                   entry.getValue().close();
+                  // Clean up partial log offset tracking
+                  partialLogOffsets.remove(entry.getKey());
                 } catch (Exception e) {
                   LOG.warn("Error closing stream during deleteAll: {}", e.getMessage());
                 }
@@ -790,6 +806,9 @@ public class S3LogStorage implements LogStorageInterface {
         try {
           LOG.debug("Closing expired stream: {}", entry.getKey());
           context.close();
+
+          // Clean up partial log offset tracking
+          partialLogOffsets.remove(entry.getKey());
         } catch (Exception e) {
           LOG.error("Error closing expired stream: {}", entry.getKey(), e);
         }
@@ -799,10 +818,101 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   /**
+   * Periodically write accumulated logs to partial files for active streams
+   * This allows reading complete logs even while ingestion is still running
+   */
+  private void writePartialLogs() {
+    for (String streamKey : activeStreams.keySet()) {
+      try {
+        writePartialLogsForStream(streamKey);
+      } catch (Exception e) {
+        LOG.warn("Failed to write partial logs for stream: {}", streamKey, e);
+      }
+    }
+  }
+
+  private void writePartialLogsForStream(String streamKey) {
+    try {
+      // streamKey format is "pipelineFQN/runId" where runId is the last part after "/"
+      int lastSlashIndex = streamKey.lastIndexOf('/');
+      if (lastSlashIndex == -1) {
+        LOG.warn("Invalid stream key format: {}", streamKey);
+        return;
+      }
+
+      String pipelineFQN = streamKey.substring(0, lastSlashIndex);
+      UUID runId = UUID.fromString(streamKey.substring(lastSlashIndex + 1));
+
+      SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
+      if (buffer == null) {
+        return; // No logs to write
+      }
+
+      List<String> allLines = buffer.getAllLines();
+      if (allLines.isEmpty()) {
+        return;
+      }
+
+      Long currentOffset = partialLogOffsets.getOrDefault(streamKey, 0L);
+      if (currentOffset >= allLines.size()) {
+        return; // No new logs since last write
+      }
+
+      // Get new lines since last partial write
+      List<String> newLines = allLines.subList(currentOffset.intValue(), allLines.size());
+      if (newLines.isEmpty()) {
+        return;
+      }
+
+      String partialKey = buildPartialS3Key(pipelineFQN, runId);
+      String newContent = String.join("\n", newLines) + "\n";
+
+      // Append to existing partial file or create new one
+      if (currentOffset > 0) {
+        // Append mode: get existing content and append new content
+        try {
+          GetObjectRequest getRequest =
+              GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
+          String existingContent;
+          try (InputStream objectContent = s3Client.getObject(getRequest)) {
+            existingContent = new String(objectContent.readAllBytes(), StandardCharsets.UTF_8);
+          }
+          newContent = existingContent + newContent;
+        } catch (NoSuchKeyException e) {
+          // File doesn't exist, create new one
+        }
+      }
+
+      // Write to S3
+      PutObjectRequest putRequest =
+          PutObjectRequest.builder()
+              .bucket(bucketName)
+              .key(partialKey)
+              .contentType("text/plain")
+              .build();
+
+      s3Client.putObject(
+          putRequest, software.amazon.awssdk.core.sync.RequestBody.fromString(newContent));
+
+      // Update offset
+      partialLogOffsets.put(streamKey, (long) allLines.size());
+
+      LOG.debug(
+          "Wrote {} new log lines to partial file for stream: {}", newLines.size(), streamKey);
+
+    } catch (Exception e) {
+      LOG.warn("Failed to write partial logs for stream: {}", streamKey, e);
+    }
+  }
+
+  /**
    * Flush all active streams by closing them to finalize multipart uploads.
    * This is called by tests to ensure logs are written to S3.
    */
   public void flush() {
+    // Write final partial logs before closing
+    writePartialLogs();
+
     // Close all active streams to finalize multipart uploads
     for (Map.Entry<String, StreamContext> entry : activeStreams.entrySet()) {
       try {
@@ -813,6 +923,7 @@ public class S3LogStorage implements LogStorageInterface {
       }
     }
     activeStreams.clear();
+    partialLogOffsets.clear();
   }
 
   /**
@@ -824,7 +935,16 @@ public class S3LogStorage implements LogStorageInterface {
    */
   public void flush(String pipelineFQN, UUID runId) throws IOException {
     String streamKey = pipelineFQN + "/" + runId;
+
+    // Write final partial logs for this specific stream
+    try {
+      writePartialLogsForStream(streamKey);
+    } catch (Exception e) {
+      LOG.warn("Failed to write final partial logs for {}: {}", streamKey, e.getMessage());
+    }
+
     StreamContext context = activeStreams.remove(streamKey);
+    partialLogOffsets.remove(streamKey);
 
     if (context != null) {
       try {
@@ -1153,7 +1273,7 @@ public class S3LogStorage implements LogStorageInterface {
     String key = pipelineFQN + "/" + runId;
     activeListeners.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>()).add(listener);
 
-    CircularBuffer recentLogs = recentLogsCache.getIfPresent(key);
+    SimpleLogBuffer recentLogs = recentLogsCache.getIfPresent(key);
     if (recentLogs != null) {
       List<String> recent = recentLogs.getRecentLines(100);
       for (String line : recent) {
@@ -1197,7 +1317,7 @@ public class S3LogStorage implements LogStorageInterface {
    */
   public List<String> getRecentLogs(String pipelineFQN, UUID runId, int lines) {
     String key = pipelineFQN + "/" + runId;
-    CircularBuffer buffer = recentLogsCache.getIfPresent(key);
+    SimpleLogBuffer buffer = recentLogsCache.getIfPresent(key);
     if (buffer != null) {
       return buffer.getRecentLines(lines);
     }
@@ -1205,23 +1325,109 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   /**
-   * Simple circular buffer for keeping recent logs in memory
+   * Get logs for active streams: try S3 partial file first, fallback to memory cache
+   * This provides the best experience: processed logs when available, recent logs when not
    */
-  private static class CircularBuffer {
-    private static final int MAX_LINE_LENGTH = 10 * 1024; // 10KB per line max
-    private final String[] buffer;
-    private final AtomicInteger writeIndex = new AtomicInteger(0);
-    private final AtomicInteger size = new AtomicInteger(0);
+  private Map<String, Object> getCombinedLogsForActiveStream(
+      String pipelineFQN, UUID runId, String afterCursor, int limit) throws IOException {
+    Map<String, Object> result = new HashMap<>();
+    List<String> allLines = new ArrayList<>();
+    boolean foundPartialFile = false;
 
-    CircularBuffer(int capacity) {
-      this.buffer = new String[capacity];
+    // First, try to read from the processed/partial logs file in S3
+    String partialKey = buildPartialS3Key(pipelineFQN, runId);
+    try {
+      GetObjectRequest getRequest =
+          GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
+      try (InputStream objectContent = s3Client.getObject(getRequest);
+          BufferedReader reader =
+              new BufferedReader(new InputStreamReader(objectContent, StandardCharsets.UTF_8))) {
+
+        String line;
+        while ((line = reader.readLine()) != null) {
+          allLines.add(line);
+        }
+        foundPartialFile = true;
+        LOG.debug(
+            "Read {} processed lines from partial S3 file for {}/{}",
+            allLines.size(),
+            pipelineFQN,
+            runId);
+      }
+    } catch (NoSuchKeyException e) {
+      // No partial file exists yet, which is normal for new streams
+      LOG.debug(
+          "No processed logs file found for {}/{}, will use memory cache", pipelineFQN, runId);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to read processed logs from S3 for {}/{}: {}, will use memory cache",
+          pipelineFQN,
+          runId,
+          e.getMessage());
     }
 
-    synchronized void append(String logLine) {
-      String[] lines = logLine.split("\n");
-      for (String line : lines) {
+    // If no S3 partial file, fallback to memory cache
+    if (!foundPartialFile) {
+      List<String> recentLines = getRecentLogs(pipelineFQN, runId, limit);
+      allLines.addAll(recentLines);
+      LOG.debug(
+          "Using {} lines from memory cache for active pipeline {}/{}",
+          allLines.size(),
+          pipelineFQN,
+          runId);
+    }
+
+    // Apply pagination if needed
+    int startIndex = 0;
+    if (afterCursor != null && !afterCursor.isEmpty()) {
+      try {
+        startIndex = Integer.parseInt(afterCursor);
+      } catch (NumberFormatException e) {
+        LOG.warn("Invalid cursor format: {}", afterCursor);
+      }
+    }
+
+    int endIndex = Math.min(startIndex + limit, allLines.size());
+    List<String> resultLines =
+        startIndex < allLines.size()
+            ? allLines.subList(startIndex, endIndex)
+            : Collections.emptyList();
+
+    result.put("logs", String.join("\n", resultLines));
+    result.put("after", endIndex < allLines.size() ? String.valueOf(endIndex) : null);
+    result.put("total", (long) allLines.size());
+
+    return result;
+  }
+
+  /**
+   * Build S3 key for partial logs (completed parts while stream is still active)
+   */
+  private String buildPartialS3Key(String pipelineFQN, UUID runId) {
+    String sanitizedFQN = pipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_");
+    String cleanPrefix =
+        prefix != null && prefix.endsWith("/")
+            ? prefix.substring(0, prefix.length() - 1)
+            : (prefix != null ? prefix : "");
+    return String.format("%s/%s/%s/partial.txt", cleanPrefix, sanitizedFQN, runId);
+  }
+
+  /**
+   * Simple append-only log buffer that maintains chronological order
+   */
+  private static class SimpleLogBuffer {
+    private static final int MAX_LINE_LENGTH = 10 * 1024; // 10KB per line max
+    private final int maxCapacity;
+    private final List<String> lines = Collections.synchronizedList(new ArrayList<>());
+
+    SimpleLogBuffer(int maxCapacity) {
+      this.maxCapacity = maxCapacity;
+    }
+
+    synchronized void append(String logContent) {
+      String[] newLines = logContent.split("\n");
+      for (String line : newLines) {
         // Truncate individual lines to prevent memory exhaustion
-        // A single giant log line (e.g., 10MB stack trace) shouldn't consume unbounded memory
         String truncatedLine = line;
         if (line.length() > MAX_LINE_LENGTH) {
           truncatedLine =
@@ -1231,27 +1437,30 @@ public class S3LogStorage implements LogStorageInterface {
                   + " chars]";
         }
 
-        int index = writeIndex.getAndIncrement() % buffer.length;
-        buffer[index] = truncatedLine;
-        if (size.get() < buffer.length) {
-          size.incrementAndGet();
+        lines.add(truncatedLine);
+
+        // Keep only the most recent lines to prevent unlimited memory growth
+        if (lines.size() > maxCapacity) {
+          // Remove oldest lines to stay within capacity
+          int excess = lines.size() - maxCapacity;
+          for (int i = 0; i < excess; i++) {
+            lines.remove(0);
+          }
         }
       }
     }
 
     synchronized List<String> getRecentLines(int count) {
-      List<String> result = new ArrayList<>();
-      int currentSize = size.get();
-      int start = Math.max(0, currentSize - count);
-
-      for (int i = start; i < currentSize && result.size() < count; i++) {
-        int index = i % buffer.length;
-        if (buffer[index] != null) {
-          result.add(buffer[index]);
-        }
+      if (lines.isEmpty()) {
+        return Collections.emptyList();
       }
 
-      return result;
+      int start = Math.max(0, lines.size() - count);
+      return new ArrayList<>(lines.subList(start, lines.size()));
+    }
+
+    synchronized List<String> getAllLines() {
+      return new ArrayList<>(lines);
     }
   }
 
