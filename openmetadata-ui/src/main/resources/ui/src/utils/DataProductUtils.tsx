@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Space, Typography } from 'antd';
 import { noop } from 'lodash';
-import { ReactComponent as DefaultDataProductIcon } from '../assets/svg/ic-data-product.svg';
+import {
+  ReactComponent as DataProductIcon,
+  ReactComponent as DefaultDataProductIcon,
+} from '../assets/svg/ic-data-product.svg';
 import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -28,11 +33,17 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityReference } from '../generated/entity/data/table';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
+  convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
+} from './EntityReferenceUtils';
+import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getPrioritizedEditPermission } from './PermissionsUtils';
 
@@ -220,4 +231,31 @@ export const getDataProductDetailTabs = ({
       ),
     },
   ];
+};
+
+export const DataProductListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space direction="vertical" size={0}>
+      <Space>
+        <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
+        <Typography.Text>{getEntityName(props)}</Typography.Text>
+      </Space>
+      {props.description && (
+        <Typography.Text className="text-xs text-grey-muted">
+          {props.description}
+        </Typography.Text>
+      )}
+    </Space>
+  );
+};
+export const convertDataProductsToEntityReferences = (
+  dataProducts: DataProduct[]
+): EntityReference[] => {
+  return convertDataProductsToEntityReferencesUtil(dataProducts);
+};
+
+export const convertEntityReferencesToDataProducts = (
+  refs: EntityReference[]
+): DataProduct[] => {
+  return convertEntityReferencesToDataProductsUtil(refs);
 };

@@ -513,6 +513,46 @@ describe('DataAssetsHeader component', () => {
     expect(button).toBeEnabled();
   });
 
+  it('should render the button with disableRunAgentsButtonMessage prop when provided', () => {
+    const customMessage = 'Custom disable message';
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        disableRunAgentsButton
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButtonMessage={customMessage}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeDisabled();
+    expect(button).toBeInTheDocument();
+  });
+
+  it('should render the button when disableRunAgentsButtonMessage is not provided', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeInTheDocument();
+    expect(button).toBeEnabled();
+  });
+
   describe('dataContractLatestResultButton', () => {
     const mockGetDataContractStatusIcon =
       getDataContractStatusIcon as jest.Mock;

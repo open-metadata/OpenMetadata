@@ -13,9 +13,9 @@
 Validator Mixin for SQA tests cases
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, case, func, select, text
+from sqlalchemy import Column, Table, case, func, inspect, literal, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
@@ -23,6 +23,7 @@ from sqlalchemy.sql.expression import ClauseElement
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_IMPACT_SCORE_KEY,
+    DIMENSION_NULL_LABEL,
     DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
@@ -31,6 +32,7 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_impact_score_expression,
 )
+from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
@@ -61,7 +63,30 @@ DIMENSION_GROUP_LABEL = "dimension_group"
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
-    def get_column_name(self, entity_link: str, columns: List) -> Column:
+    def get_column(
+        self: HasValidatorContext, column_name: Optional[str] = None
+    ) -> Column:
+        """Get column object for the given column name
+
+        Args:
+            column_name: Optional column name. If None, returns the main validation column.
+
+        Returns:
+            Column: Column object
+        """
+        table: Table = cast(Table, inspect(cast(QueryRunner, self.runner).dataset))
+        if column_name is None:
+            return SQAValidatorMixin.get_column_from_list(
+                self.test_case.entityLink.root,
+                table.c,
+            )
+        return SQAValidatorMixin.get_column_from_list(
+            column_name,
+            table.c,
+        )
+
+    @staticmethod
+    def get_column_from_list(entity_link: str, columns: List) -> Column:
         """Given a column name get the column object
 
         Args:
@@ -195,9 +220,18 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_FAILED_COUNT_KEY}' key"
             )
 
+        # Normalize dimension column null valures
+        normalized_dimension = case(
+            [
+                (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+            ],
+            else_=dimension_col,
+        )
+
         # Build expressions using dictionary iteration
         select_expressions = {
-            DIMENSION_VALUE_KEY: dimension_col,
+            DIMENSION_VALUE_KEY: normalized_dimension,
         }
 
         # Add all metric expressions from the dictionary
@@ -217,7 +251,7 @@ class SQAValidatorMixin:
         dimension_stats = (
             select(dimension_stats_columns)
             .select_from(self.runner.dataset)
-            .group_by(dimension_col)
+            .group_by(normalized_dimension)
             .cte(CTE_DIMENSION_STATS)
         )
 
@@ -385,18 +419,27 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}'"
             )
 
+        # Normalize dimension column null valures
+        normalized_dimension = case(
+            [
+                (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+            ],
+            else_=dimension_col,
+        )
+
         final_metric_builders = final_metric_builders or {}
         exclude_from_results = exclude_from_results or []
 
         # ---- CTE 1: Raw aggregates per dimension
-        raw_agg_columns = [dimension_col.label(DIMENSION_VALUE_KEY)]
+        raw_agg_columns = [normalized_dimension.label(DIMENSION_VALUE_KEY)]
         for name, expr in metric_expressions.items():
             raw_agg_columns.append(expr.label(name))
 
         raw_aggregates = (
             select(raw_agg_columns)
             .select_from(self.runner.dataset)
-            .group_by(dimension_col)
+            .group_by(normalized_dimension)
             .cte(CTE_DIMENSION_RAW_METRICS)
         )
 

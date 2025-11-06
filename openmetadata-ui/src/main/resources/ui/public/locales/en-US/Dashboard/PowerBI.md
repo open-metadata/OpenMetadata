@@ -77,6 +77,14 @@ To get the tenant ID, follow these steps:
 $$
 
 $$section
+### API URL $(id="apiURL")
+
+API URL to call powerbi REST Apis to extract metadata.
+
+If you don't specify a URL for the REST Apis, we'll use the default value of `https://api.powerbi.com`.
+$$
+
+$$section
 ### Authority URI $(id="authorityURI")
 
 To identify a token authority, you can provide a URL that points to the authority in question.

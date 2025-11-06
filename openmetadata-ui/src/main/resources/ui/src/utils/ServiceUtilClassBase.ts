@@ -188,6 +188,7 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    MetadataServiceType.Collibra,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

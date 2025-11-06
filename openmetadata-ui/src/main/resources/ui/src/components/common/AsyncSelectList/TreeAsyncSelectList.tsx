@@ -123,9 +123,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
       });
-      setGlossaries((prev) =>
-        filterTreeNodeOptions([...prev, ...data], filterOptions)
-      );
+      setGlossaries(filterTreeNodeOptions(data, filterOptions));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
