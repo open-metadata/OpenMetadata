@@ -256,6 +256,29 @@
     }
   }
 
+  &.custom-node-header-active {
+    background-color: #eff8ff;
+    .lineage-node-content {
+      .label-container {
+        background-color: #eff8ff;
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: #eff8ff;
+          }
+        }
+      }
+    }
+    .lineage-node-badge-container {
+      background-color: #eff8ff;
+    }
+  }
+
+  &.custom-node-header-tracing {
+    .lineage-node-badge-container {
+      border-color: @primary-color;
+    }
+  }
+
   &.columns-expanded {
     .lineage-node-content {
       .label-container {
@@ -265,24 +288,6 @@
           }
         }
       }
-    }
-  }
-
-  &.custom-node-header-active {
-    background-color: @blue-4;
-
-    .label-container {
-      background: @blue-4;
-    }
-
-    .column-container {
-      background: @primary-1;
-    }
-  }
-
-  &.custom-node-header-tracing {
-    .lineage-node-badge-container {
-      border-color: @primary-color;
     }
   }
 }
@@ -402,85 +407,6 @@
 .react-flow__node-load-more.selectable.selected,
 .react-flow__node-load-more.selectable:focus,
 .react-flow__node-load-more.selectable:focus-visible {
-  .lineage-node {
-    border-color: @primary-color !important;
-    background: #eff8ff;
-
-    .lineage-node-badge-container {
-      border-color: @primary-color;
-      background: #eff8ff;
-    }
-
-    &.columns-expanded {
-      background-color: #d1e9ff;
-      .lineage-node-badge-container {
-        background-color: #d1e9ff;
-      }
-    }
-  }
-
-  .lineage-node-handle {
-    border-color: @primary-color;
-
-    svg {
-      color: @primary-color;
-    }
-  }
-
-  .label-container {
-    background: #eff8ff;
-    .entity-label-container::after {
-      background: @primary-1;
-    }
-  }
-
-  .columns-expanded {
-    .label-container {
-      background: #d1e9ff;
-    }
-  }
-  .entity-footer {
-    background: #eff8ff;
-  }
-
-  .column-container {
-    background: #eff8ff;
-  }
-}
-
-.react-flow__node-default.selectable.selected,
-.react-flow__node-default.selectable:focus,
-.react-flow__node-default.selectable:focus-visible,
-.react-flow__node-input.selectable.selected,
-.react-flow__node-input.selectable:focus,
-.react-flow__node-input.selectable:focus-visible,
-.react-flow__node-output.selectable.selected,
-.react-flow__node-output.selectable:focus,
-.react-flow__node-output.selectable:focus-visible,
-.react-flow__node-group.selectable.selected,
-.react-flow__node-group.selectable:focus,
-.react-flow__node-group.selectable:focus-visible,
-.react-flow__node-load-more.selectable.selected,
-.react-flow__node-load-more.selectable:focus,
-.react-flow__node-load-more.selectable:focus-visible {
-  .lineage-node {
-    background-color: #eff8ff;
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          background-color: #eff8ff;
-          .entity-footer {
-            background-color: #eff8ff;
-          }
-        }
-      }
-    }
-  }
-  .lineage-base-node {
-    .lineage-node-badge-container {
-      background-color: #eff8ff;
-    }
-  }
   .data-quality-failed-custom-node-header {
     &.lineage-node {
       border-color: @red-3 !important;
