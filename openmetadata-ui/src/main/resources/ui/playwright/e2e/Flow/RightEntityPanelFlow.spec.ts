@@ -612,6 +612,9 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       dataStewardPage.locator('[data-testid="selectable-list"]')
     ).toBeVisible();
 
+    await dataStewardPage.waitForSelector('.ant-list-item', {
+      state: 'visible',
+    });
     const firstTerm = dataStewardPage.locator('.ant-list-item').first();
     await firstTerm.click();
 
@@ -866,6 +869,9 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await dataConsumerPage.locator('[data-testid="edit-icon-tags"]').click();
 
+    await dataConsumerPage.locator('loader').waitFor({
+      state: 'detached',
+    });
     await dataConsumerPage
       .locator('[data-testid="selectable-list"]')
       .scrollIntoViewIfNeeded();
