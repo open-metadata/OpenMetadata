@@ -282,6 +282,7 @@ export const DataAssetSummaryPanelV1 = ({
       }),
       [entityPermissions, dataAsset]
     );
+
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
     if (!dataAsset.id || isTourPage) {
