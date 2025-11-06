@@ -15,12 +15,6 @@
 @lineage-border: #b1b1b7;
 @lineage-collapse-header: #fafafa;
 
-.lineage-expand-icon {
-  width: 12px;
-  height: 12px;
-  color: inherit;
-}
-
 .ant-btn.ant-btn-background-ghost.expand-btn {
   background-color: white;
   box-shadow: none;
@@ -40,6 +34,12 @@
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
+
+  .lineage-expand-icon {
+    width: 12px;
+    height: 12px;
+    color: inherit;
+  }
 
   .profiler-item {
     margin-right: 4px;
@@ -256,8 +256,14 @@
   }
 
   &.columns-expanded {
-    .entity-footer {
-      background-color: @grey-1;
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: @grey-1;
+          }
+        }
+      }
     }
   }
 
