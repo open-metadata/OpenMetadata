@@ -176,7 +176,7 @@ class StreamableLogHandler(logging.Handler):
         metadata: OpenMetadata,
         pipeline_fqn: str,
         run_id: UUID,
-        batch_size: int = 200,
+        batch_size: int = 500,
         flush_interval_sec: float = 10.0,
         max_queue_size: int = 10000,
         enable_streaming: bool = True,
