@@ -1535,6 +1535,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     // Create extension context for plugins
     const extensionContext: PluginEntityDetailsContext = {
       serviceCategory: serviceCategory as ServiceCategory,
+      serviceDetails,
     };
 
     if (!isMetadataService && !isSecurityService) {
