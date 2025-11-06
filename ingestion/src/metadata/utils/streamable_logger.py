@@ -177,7 +177,7 @@ class StreamableLogHandler(logging.Handler):
         pipeline_fqn: str,
         run_id: UUID,
         batch_size: int = 200,
-        flush_interval_sec: float = 2.0,
+        flush_interval_sec: float = 5.0,
         max_queue_size: int = 10000,
         enable_streaming: bool = True,
     ):
