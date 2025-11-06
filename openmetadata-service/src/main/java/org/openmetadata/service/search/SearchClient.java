@@ -17,9 +17,6 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient<T>
     extends IndexManagementClient,
@@ -448,20 +445,21 @@ public interface SearchClient<T>
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
-  default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
+  void close();
 
-  default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      es.org.elasticsearch.action.bulk.BulkRequest data,
-      es.org.elasticsearch.client.RequestOptions options)
+  default es.co.elastic.clients.elasticsearch.core.BulkResponse bulkElasticSearch(
+      java.util.List<es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation> operations)
       throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  void close();
+  default os.org.opensearch.client.opensearch.core.BulkResponse bulkOpenSearch(
+      java.util.List<os.org.opensearch.client.opensearch.core.bulk.BulkOperation> operations)
+      throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   Object getLowLevelClient();
 

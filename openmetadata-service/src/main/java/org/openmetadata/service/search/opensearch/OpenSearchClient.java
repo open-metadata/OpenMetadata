@@ -54,8 +54,6 @@ import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -64,6 +62,8 @@ import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 
@@ -533,8 +533,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   public void close() {}
 
   @Override
-  public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    return client.bulk(data, RequestOptions.DEFAULT);
+  public BulkResponse bulkOpenSearch(List<BulkOperation> operations) throws IOException {
+    return newClient.bulk(
+        b ->
+            b.operations(operations)
+                .refresh(os.org.opensearch.client.opensearch._types.Refresh.True));
   }
 
   @Override

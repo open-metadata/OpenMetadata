@@ -5,15 +5,15 @@ import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipD
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch.cluster.ClusterStatsResponse;
 import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
+import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.action.bulk.BulkRequest;
-import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
@@ -568,8 +568,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    return client.bulk(data, RequestOptions.DEFAULT);
+  public BulkResponse bulkElasticSearch(List<BulkOperation> operations) throws IOException {
+    return newClient.bulk(b -> b.operations(operations).refresh(Refresh.True));
   }
 
   @Override
