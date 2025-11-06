@@ -183,6 +183,11 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSelfSignup?: boolean;
     /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
@@ -439,6 +444,10 @@ export interface PipelineServiceClientConfiguration {
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
+    /**
+     * Pipeline View Mode for Lineage.
+     */
+    pipelineViewMode?: PipelineViewMode;
     /**
      * Upstream Depth for Lineage.
      */
@@ -926,6 +935,11 @@ export interface AuthenticationConfiguration {
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
@@ -2059,6 +2073,16 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+ * Pipeline View Mode for Lineage.
+ *
+ * Determines the view mode for pipelines in lineage.
+ */
+export enum PipelineViewMode {
+    Edge = "Edge",
+    Node = "Node",
 }
 
 /**

@@ -360,12 +360,14 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void interrupt() {
-    LOG.info("Interrupting the job for app: {}", this.app.getName());
+    String appName = (this.app != null) ? this.app.getName() : "unknown";
+    LOG.info("Interrupting the job for app: {}", appName);
     stop();
   }
 
   protected void stop() {
-    LOG.info("Default stop behavior for app: {}", this.app.getName());
+    String appName = (this.app != null) ? this.app.getName() : "unknown";
+    LOG.info("Default stop behavior for app: {}", appName);
     // Default implementation: no-op or generic cleanup logic
   }
 }

@@ -74,9 +74,9 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
+COPY --chown=airflow:0 ingestion/airflow-constraints-2.10.5.txt /home/airflow/airflow-constraints-2.10.5.txt
 
 USER airflow
-ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.10.txt"
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
@@ -87,7 +87,7 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "${AIRFLOW_CONSTRAINTS_LOCATION}"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-2.10.5.txt"
 
 WORKDIR /home/airflow/ingestion
 

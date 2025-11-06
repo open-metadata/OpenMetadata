@@ -200,9 +200,11 @@ const TabFilters = () => {
         </Box>
       )}
 
-      {[ProfilerTabPath.COLUMN_PROFILE, ProfilerTabPath.DATA_QUALITY].includes(
-        activeTab
-      ) && isEmpty(activeColumnFqn) ? null : (
+      {[
+        ProfilerTabPath.COLUMN_PROFILE,
+        ProfilerTabPath.DATA_QUALITY,
+        ProfilerTabPath.OVERVIEW,
+      ].includes(activeTab) && isEmpty(activeColumnFqn) ? null : (
         <Box alignItems="center" display="flex" gap={2}>
           <Typography
             sx={{
@@ -213,6 +215,7 @@ const TabFilters = () => {
             {`${t('label.date')}:`}
           </Typography>
           <MuiDatePickerMenu
+            showSelectedCustomRange
             defaultDateRange={dateRangeObject}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
