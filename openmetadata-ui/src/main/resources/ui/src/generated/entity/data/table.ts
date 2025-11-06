@@ -24,6 +24,20 @@ export interface Table {
      */
     columns: Column[];
     /**
+     * Compression algorithm/codec used. Examples: LZ4, ZSTD, Snappy, Gorilla, Delta, etc.
+     * Database-specific values allowed.
+     */
+    compressionCodec?: string;
+    /**
+     * Indicates whether compression is enabled on this table. Applicable for databases that
+     * support compression like Snowflake, TimescaleDB, ClickHouse, BigQuery, Redshift, etc.
+     */
+    compressionEnabled?: boolean;
+    /**
+     * Compression strategy configuration including segment/partition/order keys
+     */
+    compressionStrategy?: CompressionStrategy;
+    /**
      * List of Custom Metrics registered for a table.
      */
     customMetrics?: CustomMetric[];
@@ -90,6 +104,10 @@ export interface Table {
      * Unique identifier of this table instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -245,6 +263,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -299,9 +321,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -481,6 +525,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -793,6 +838,11 @@ export interface ColumnProfile {
  */
 export interface CardinalityDistribution {
     /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
      * List of category names including 'Others'.
      */
     categories?: string[];
@@ -829,6 +879,41 @@ export interface HistogramClass {
      * Frequencies of Histogram.
      */
     frequencies?: any[];
+}
+
+/**
+ * Compression strategy configuration including segment/partition/order keys
+ */
+export interface CompressionStrategy {
+    /**
+     * Compression level (1-9) for codecs that support it
+     */
+    compressionLevel?: number;
+    /**
+     * Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED
+     * (TimescaleDB)
+     */
+    compressionType?: CompressionType;
+    /**
+     * Columns defining sort order within compressed blocks (TimescaleDB order-by, ClickHouse
+     * order by)
+     */
+    orderColumns?: string[];
+    /**
+     * Columns used for segmenting/partitioning compressed data (TimescaleDB segment-by,
+     * ClickHouse partition key)
+     */
+    segmentColumns?: string[];
+}
+
+/**
+ * Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED
+ * (TimescaleDB)
+ */
+export enum CompressionType {
+    Automatic = "AUTOMATIC",
+    Manual = "MANUAL",
+    PolicyBased = "POLICY_BASED",
 }
 
 /**
@@ -1133,6 +1218,7 @@ export enum DatabaseServiceType {
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",

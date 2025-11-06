@@ -21,6 +21,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -41,10 +42,12 @@ import static org.openmetadata.schema.type.ColumnDataType.BINARY;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.DATE;
 import static org.openmetadata.schema.type.ColumnDataType.DECIMAL;
+import static org.openmetadata.schema.type.ColumnDataType.DOUBLE;
 import static org.openmetadata.schema.type.ColumnDataType.FLOAT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -62,10 +65,20 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
-import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
@@ -77,17 +90,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -146,6 +149,8 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.CompressionStrategy;
+import org.openmetadata.schema.type.CompressionStrategy.CompressionType;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.Edge;
@@ -169,10 +174,13 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.OM;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -349,6 +357,55 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertTablePartition(partition, created.getTablePartition());
+  }
+
+  @Test
+  void patch_tableCompressionAttributes(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withTableConstraints(null);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("time", TIMESTAMP, null));
+    columns.add(getColumn("device_id", INT, null));
+    columns.add(getColumn("temperature", DOUBLE, null));
+    create.setColumns(columns);
+
+    Table table = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    CompressionStrategy compressionStrategy =
+        new CompressionStrategy()
+            .withCompressionType(CompressionType.POLICY_BASED)
+            .withSegmentColumns(List.of("device_id"))
+            .withOrderColumns(List.of("time"));
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    table
+        .withCompressionEnabled(true)
+        .withCompressionCodec("TimescaleDB Native")
+        .withCompressionStrategy(compressionStrategy);
+    fieldAdded(change, "compressionEnabled", true);
+    fieldAdded(change, "compressionCodec", "TimescaleDB Native");
+    fieldAdded(change, "compressionStrategy", compressionStrategy);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(true, table.getCompressionEnabled());
+    assertEquals("TimescaleDB Native", table.getCompressionCodec());
+    assertCompressionStrategy(compressionStrategy, table.getCompressionStrategy());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionCodec("LZ4");
+    fieldUpdated(change, "compressionCodec", "TimescaleDB Native", "LZ4");
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionEnabled(null).withCompressionCodec(null).withCompressionStrategy(null);
+    fieldDeleted(change, "compressionEnabled", true);
+    fieldDeleted(change, "compressionCodec", "LZ4");
+    fieldDeleted(change, "compressionStrategy", compressionStrategy);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -3801,6 +3858,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
+  private void assertCompressionStrategy(CompressionStrategy expected, CompressionStrategy actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+
+    assertNotNull(expected);
+    assertNotNull(actual);
+    assertEquals(expected.getCompressionType(), actual.getCompressionType());
+    assertEquals(expected.getSegmentColumns(), actual.getSegmentColumns());
+    assertEquals(expected.getOrderColumns(), actual.getOrderColumns());
+    assertEquals(expected.getCompressionLevel(), actual.getCompressionLevel());
+  }
+
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException {
@@ -3831,6 +3901,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
       assertEquals(expectedTableType, actualTableType);
+    } else if (fieldName.endsWith("compressionStrategy")) {
+      CompressionStrategy expectedStrategy =
+          JsonUtils.convertValue(expected, CompressionStrategy.class);
+      CompressionStrategy actualStrategy =
+          JsonUtils.convertValue(actual, CompressionStrategy.class);
+      assertEquals(expectedStrategy, actualStrategy);
+    } else if (fieldName.endsWith("compressionEnabled")) {
+      assertEquals(expected, actual);
+    } else if (fieldName.endsWith("compressionCodec")) {
+      assertEquals(expected, actual);
     } else if (fieldName.endsWith("owners")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedOwners =
@@ -5217,6 +5297,211 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_sdkTableWithColumns(TestInfo test) throws Exception {
+    // Skip if SDK client is not initialized
+    if (sdkClient == null) {
+      return;
+    }
+
+    // Initialize the SDK once
+    OM.init(sdkClient);
+    Tables.setDefaultClient(sdkClient);
+
+    // Create a table with columns
+    String tableName = getEntityName(test) + "_sdk_columns";
+    CreateTable createRequest = createRequest(tableName, "Table with columns test", "", null);
+
+    // Add columns with descriptions
+    List<Column> columns = new ArrayList<>();
+    Column col1 =
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.BIGINT)
+            .withDescription("Primary key column");
+    Column col2 =
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription("Email address");
+    Column col3 =
+        new Column()
+            .withName("created_at")
+            .withDataType(ColumnDataType.TIMESTAMP)
+            .withDescription("Creation timestamp");
+    columns.add(col1);
+    columns.add(col2);
+    columns.add(col3);
+    createRequest
+        .withColumns(columns)
+        .withTableConstraints(null); // Clear constraints since we're using different columns
+
+    // Create table with fluent API
+    Table createdTable = Tables.create(createRequest);
+    assertNotNull(createdTable);
+    assertEquals(3, createdTable.getColumns().size());
+
+    // First update: Change column descriptions
+    createdTable.getColumns().get(0).setDescription("Updated primary key description");
+    createdTable.getColumns().get(1).setDescription("Updated email description");
+    createdTable.getColumns().get(2).setDescription(null); // Remove description
+
+    // Add a new column
+    Column newCol =
+        new Column()
+            .withName("status")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(50)
+            .withDescription("Status column");
+    createdTable.getColumns().add(newCol);
+
+    // Update the table using the clean API
+    var fluentTable = Tables.find(createdTable.getId().toString()).fetch();
+    fluentTable.withColumns(createdTable.getColumns());
+    Table updatedTable = fluentTable.save().get();
+    assertNotNull(updatedTable);
+    assertEquals(4, updatedTable.getColumns().size());
+    assertEquals(
+        "Updated primary key description", updatedTable.getColumns().get(0).getDescription());
+    assertEquals("Updated email description", updatedTable.getColumns().get(1).getDescription());
+    assertNull(updatedTable.getColumns().get(2).getDescription());
+    assertEquals("Status column", updatedTable.getColumns().get(3).getDescription());
+
+    // Second update: Add column-level tags
+    // Fetch with tags field to ensure we get current tags
+    Table tableWithTags = Tables.find(updatedTable.getId().toString()).includeTags().fetch().get();
+
+    // Add PII tag to email column
+    List<TagLabel> emailTags = new ArrayList<>();
+    emailTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Email")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(1).setTags(emailTags);
+
+    // Add tag to status column
+    List<TagLabel> statusTags = new ArrayList<>();
+    statusTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(3).setTags(statusTags);
+
+    // Update with column tags
+    var fluentTable2 = Tables.find(tableWithTags.getId().toString()).fetch();
+    fluentTable2.get().setColumns(tableWithTags.getColumns());
+    Table taggedTable = fluentTable2.save().get();
+    assertNotNull(taggedTable);
+    assertEquals(1, taggedTable.getColumns().get(1).getTags().size());
+    assertEquals("PII.Email", taggedTable.getColumns().get(1).getTags().get(0).getTagFQN());
+    assertEquals(1, taggedTable.getColumns().get(3).getTags().size());
+    assertEquals(
+        "PersonalData.Personal", taggedTable.getColumns().get(3).getTags().get(0).getTagFQN());
+
+    // Third update: Modify tags - remove one, add another
+    taggedTable.getColumns().get(1).getTags().clear();
+    List<TagLabel> newEmailTags = new ArrayList<>();
+    newEmailTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    taggedTable.getColumns().get(1).setTags(newEmailTags);
+
+    // Final update
+    var fluentTable3 = Tables.find(taggedTable.getId().toString()).fetch();
+    fluentTable3.get().setColumns(taggedTable.getColumns());
+    Table finalTable = fluentTable3.save().get();
+    assertEquals(1, finalTable.getColumns().get(1).getTags().size());
+    assertEquals("PII.Sensitive", finalTable.getColumns().get(1).getTags().get(0).getTagFQN());
+
+    // Clean up
+    deleteEntity(createdTable.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_sdkTableColumnTags(TestInfo test) throws Exception {
+    // Skip if SDK client is not initialized
+    if (sdkClient == null) {
+      return;
+    }
+
+    OM.init(sdkClient);
+    Tables.setDefaultClient(sdkClient);
+
+    // Create a table with columns
+    String tableName = getEntityName(test) + "_sdk_column_tags";
+    CreateTable createRequest = createRequest(tableName, "Table with column tags test", "", null);
+
+    // Add columns
+    List<Column> columns = new ArrayList<>();
+    Column col1 =
+        new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column col2 =
+        new Column().withName("ssn").withDataType(ColumnDataType.VARCHAR).withDataLength(11);
+    columns.add(col1);
+    columns.add(col2);
+    createRequest
+        .withColumns(columns)
+        .withTableConstraints(null); // Clear constraints since we're using different columns
+
+    // Create table with fluent API
+    Table createdTable = Tables.create(createRequest);
+    assertNotNull(createdTable);
+
+    // Fetch with tags field to get column tags
+    Table tableWithTags = Tables.find(createdTable.getId().toString()).includeTags().fetch().get();
+
+    // Add tags to columns
+    List<TagLabel> emailTags = new ArrayList<>();
+    emailTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Email")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(0).setTags(emailTags);
+
+    List<TagLabel> ssnTags = new ArrayList<>();
+    ssnTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    ssnTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.SpecialCategory")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(1).setTags(ssnTags);
+
+    // Update table with column tags
+    var fluentTable4 = Tables.find(tableWithTags.getId().toString()).fetch();
+    fluentTable4.get().setColumns(tableWithTags.getColumns());
+    Table updatedTable = fluentTable4.save().get();
+    assertNotNull(updatedTable);
+    assertEquals(1, updatedTable.getColumns().get(0).getTags().size());
+    assertEquals("PII.Email", updatedTable.getColumns().get(0).getTags().get(0).getTagFQN());
+    assertEquals(2, updatedTable.getColumns().get(1).getTags().size());
+
+    // Remove a tag from SSN column
+    updatedTable.getColumns().get(1).getTags().remove(0);
+
+    // Update again
+    var fluentTable5 = Tables.find(updatedTable.getId().toString()).fetch();
+    fluentTable5.get().setColumns(updatedTable.getColumns());
+    Table finalTable = fluentTable5.save().get();
+    assertEquals(1, finalTable.getColumns().get(1).getTags().size());
+    assertEquals(
+        "PersonalData.SpecialCategory",
+        finalTable.getColumns().get(1).getTags().get(0).getTagFQN());
+
+    // Clean up
+    deleteEntity(createdTable.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void testTableSoftDeleteAndRestoreWithDataProducts(TestInfo test) throws IOException {
     // This test verifies the fix for the issue where restoring a soft-deleted table
     // with dataProducts fails with "Domain cannot be empty when data products are provided"
@@ -5262,14 +5547,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, tableWithDomain.getDomains().size());
     assertEquals(domain.getId(), tableWithDomain.getDomains().getFirst().getId());
 
-    // Step 6: Add the table to the dataProduct
-    String originalJson = JsonUtils.pojoToJson(dataProduct);
-    dataProduct.setAssets(List.of(table.getEntityReference()));
-    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
-    fieldAdded(change, "assets", List.of(table.getEntityReference()));
-    dataProduct =
-        dataProductTest.patchEntityAndCheck(
-            dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Step 6: Add the table to the dataProduct using the bulk add API
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    jakarta.ws.rs.client.WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add");
+    TestUtils.put(bulkAddTarget, bulkAssets, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Verify table has the dataProduct
     Table tableWithDataProduct =
@@ -5311,12 +5593,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(dataProduct.getId(), fullyRestoredTable.getDataProducts().getFirst().getId());
 
     // Additional verification: Check that the dataProduct still lists the table as an asset
-    DataProduct verifyDataProduct =
-        dataProductTest.getEntity(dataProduct.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertNotNull(verifyDataProduct.getAssets());
+    // Note: Assets field is deprecated, use the paginated assets API instead
+    ResultList<EntityReference> assets =
+        dataProductTest.getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets);
     assertTrue(
-        verifyDataProduct.getAssets().stream()
-            .anyMatch(asset -> asset.getId().equals(table.getId())),
+        assets.getData().stream().anyMatch(asset -> asset.getId().equals(table.getId())),
         "Table should still be an asset of the data product after restore");
 
     // Cleanup: Hard delete all test entities
@@ -5325,5 +5607,118 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
     dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
     domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities(TestInfo test) throws IOException, InterruptedException {
+    CreateTable createTable1 = createRequest(test, 1).withName("reindex_test_table_1");
+    Table table1 = createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 = createRequest(test, 2).withName("reindex_test_table_2");
+    Table table2 = createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 = createRequest(test, 3).withName("reindex_test_table_3");
+    Table table3 = createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> entityRefs =
+        Arrays.asList(
+            table1.getEntityReference(), table2.getEntityReference(), table3.getEntityReference());
+
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(entityRefs));
+
+    Thread.sleep(2000);
+
+    Table verifyTable1 = getEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable1);
+    assertEquals(table1.getName(), verifyTable1.getName());
+
+    Table verifyTable2 = getEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable2);
+    assertEquals(table2.getName(), verifyTable2.getName());
+
+    Table verifyTable3 = getEntity(table3.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable3);
+    assertEquals(table3.getName(), verifyTable3.getName());
+
+    deleteEntity(table1.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table2.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table3.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities_EmptyList() {
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(listOf()));
+  }
+
+  @Test
+  void testReindexEntities_NullList() {
+    assertDoesNotThrow(() -> Entity.getSearchRepository().getSearchClient().reindexEntities(null));
+  }
+
+  @Test
+  void test_columnWithMultipleTags_withClassificationReason(TestInfo test) throws IOException {
+    // Patch a table:
+    // 1. PII.Sensitive - from classification with reason "Classified with score 1.0"
+    // 2. Personal.Name - manual tag with no reason (null)
+    Column column = getColumn(C1, ColumnDataType.STRING, null);
+
+    CreateTable request = createRequest(test).withColumns(List.of(column));
+    Table table = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    TagLabel personalTagLabel = PERSONAL_DATA_TAG_LABEL;
+    TagLabel sensitiveTagLabel =
+        PII_SENSITIVE_TAG_LABEL.withReason("Classified with score 1.0"); // Classification reason
+
+    // Create a column with sensitive tag
+    Column columnWithAutoClassification = column.withTags(List.of(sensitiveTagLabel));
+
+    String originalTable = JsonUtils.pojoToJson(table);
+
+    table = table.withColumns(List.of(columnWithAutoClassification));
+
+    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedTable.getColumns());
+    assertEquals(1, patchedTable.getColumns().size());
+    Column patchedColumn = patchedTable.getColumns().getFirst();
+    List<TagLabel> tags = patchedColumn.getTags();
+    assertNotNull(tags);
+    assertEquals(1, tags.size());
+
+    TagLabel piiTag = tags.getFirst();
+    assertNotNull(piiTag);
+    assertEquals("Sensitive", piiTag.getName());
+    assertEquals("PII.Sensitive", piiTag.getTagFQN());
+    assertEquals("Classified with score 1.0", piiTag.getReason());
+
+    // Now add personal tag manually
+    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+
+    originalTable = JsonUtils.pojoToJson(patchedTable);
+
+    table = patchedTable.withColumns(List.of(columnWithBothTags));
+
+    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedTable.getColumns());
+    assertEquals(1, patchedTable.getColumns().size());
+    patchedColumn = patchedTable.getColumns().getFirst();
+    tags = patchedColumn.getTags();
+    assertNotNull(tags);
+    assertEquals(2, tags.size());
+
+    piiTag = tags.getFirst();
+    assertNotNull(piiTag);
+    assertEquals("Sensitive", piiTag.getName());
+    assertEquals("PII.Sensitive", piiTag.getTagFQN());
+    assertEquals("Classified with score 1.0", piiTag.getReason());
+
+    TagLabel personalTag = tags.getLast();
+    assertNotNull(personalTag);
+    assertEquals("Personal", personalTag.getName());
+    assertEquals("PersonalData.Personal", personalTag.getTagFQN());
+    assertNull(personalTag.getReason());
   }
 }

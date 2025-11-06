@@ -48,14 +48,7 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
   EntityReferenceFields.DELETED,
 ];
 
-export const SEMANTIC_OPERATORS = [
-  'select_any_in',
-  'select_not_any_in',
-  'is_null',
-  'is_not_null',
-  'array_contains',
-  'array_not_contains',
-];
+export const SEMANTIC_TAG_OPERATORS = ['array_contains', 'array_not_contains'];
 
 export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
 
@@ -71,6 +64,7 @@ export enum DATA_CONTRACT_SLA {
   MAX_LATENCY = 'max_latency',
   TIME_AVAILABILITY = 'time_availability',
   RETENTION = 'retention',
+  COLUMN_NAME = 'columnName',
 }
 
 export const DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS: {

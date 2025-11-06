@@ -17,7 +17,7 @@ import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contra
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
-import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
+import { SEMANTIC_TAG_OPERATORS } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -29,6 +29,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { getTermQuery } from '../SearchUtils';
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
@@ -149,14 +150,17 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
-            queryFilter:
-              'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+            queryFilter: getTermQuery({}, 'must_not', undefined, {
+              wildcardMustNotQueries: {
+                fullyQualifiedName: ['Certification.*', 'Tier.*'],
+              },
+            }),
           }),
           useAsyncSearch: true,
         },
@@ -176,7 +180,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -201,7 +205,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
           useAsyncSearch: true,
@@ -212,6 +216,8 @@ export const getSematicRuleFields = () => {
   };
 
   delete allFields[EntityReferenceFields.EXTENSION];
+  delete allFields[EntityReferenceFields.SERVICE];
+  delete allFields[EntityReferenceFields.NAME];
 
   allFields[EntityReferenceFields.TAG] = tagField;
   allFields[EntityReferenceFields.GLOSSARY_TERM] = glossaryTermField;
@@ -236,6 +242,7 @@ export const processContractExecutionData = (
       failed: status === ContractExecutionStatus.Failed ? 1 : 0,
       success: status === ContractExecutionStatus.Success ? 1 : 0,
       aborted: status === ContractExecutionStatus.Aborted ? 1 : 0,
+      running: status === ContractExecutionStatus.Running ? 1 : 0,
       data: item,
     };
   });
@@ -297,14 +304,14 @@ export const generateMonthTickPositions = (
   const uniqueMonths = new Set();
   const tickPositions: string[] = [];
 
-  processedData.forEach((item) => {
+  for (const item of processedData) {
     const monthKey = new Date(item.displayTimestamp).toISOString().slice(0, 7); // YYYY-MM format
     if (!uniqueMonths.has(monthKey)) {
       uniqueMonths.add(monthKey);
       // Use the first occurrence of each month as the tick position
       tickPositions.push(item.name); // Use the unique name for the tick
     }
-  });
+  }
 
   return tickPositions;
 };

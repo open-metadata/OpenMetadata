@@ -183,6 +183,11 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSelfSignup?: boolean;
     /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
@@ -280,6 +285,14 @@ export interface PipelineServiceClientConfiguration {
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
     /**
      * Configuration for natural language search capabilities
      */
@@ -431,6 +444,10 @@ export interface PipelineServiceClientConfiguration {
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
+    /**
+     * Pipeline View Mode for Lineage.
+     */
+    pipelineViewMode?: PipelineViewMode;
     /**
      * Upstream Depth for Lineage.
      */
@@ -918,6 +935,11 @@ export interface AuthenticationConfiguration {
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
@@ -1488,6 +1510,11 @@ export enum ProviderType {
  */
 export interface ExecutorConfiguration {
     /**
+     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for new jobs.
+     */
+    asyncJobAcquisitionInterval?: number;
+    /**
      * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
      */
     corePoolSize?: number;
@@ -1509,6 +1536,11 @@ export interface ExecutorConfiguration {
      * more.
      */
     tasksDuePerAcquisition?: number;
+    /**
+     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for scheduled jobs.
+     */
+    timerJobAcquisitionInterval?: number;
 }
 
 export interface GlobalSettings {
@@ -1578,6 +1610,10 @@ export interface LogStorageConfiguration {
      */
     bucketName?: string;
     /**
+     * Enable it for pipelines deployed in the server
+     */
+    enabled?: boolean;
+    /**
      * Enable server-side encryption for S3 objects
      */
     enableServerSideEncryption?: boolean;
@@ -1585,6 +1621,10 @@ export interface LogStorageConfiguration {
      * Number of days after which logs are automatically deleted (0 means no expiration)
      */
     expirationDays?: number;
+    /**
+     * KMS Key ID for server-side encryption (if applicable)
+     */
+    kmsKeyId?: string;
     /**
      * Maximum number of concurrent log streams allowed
      */
@@ -1594,9 +1634,9 @@ export interface LogStorageConfiguration {
      */
     prefix?: string;
     /**
-     * AWS region for the S3 bucket (required for S3 type)
+     * Server-side encryption algorithm (if applicable)
      */
-    region?: string;
+    sseAlgorithm?: SSEAlgorithm;
     /**
      * S3 storage class for log objects
      */
@@ -1657,6 +1697,14 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Server-side encryption algorithm (if applicable)
+ */
+export enum SSEAlgorithm {
+    Aes256 = "AES256",
+    AwsKms = "aws:kms",
 }
 
 /**
@@ -1722,6 +1770,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -1831,6 +1880,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
     embeddingProvider?: string;
@@ -1876,6 +1929,16 @@ export interface Bedrock {
      * Set to true to use IAM role based authentication instead of access/secret keys.
      */
     useIamRole?: boolean;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
 }
 
 /**
@@ -2010,6 +2073,16 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+ * Pipeline View Mode for Lineage.
+ *
+ * Determines the view mode for pipelines in lineage.
+ */
+export enum PipelineViewMode {
+    Edge = "Edge",
+    Node = "Node",
 }
 
 /**

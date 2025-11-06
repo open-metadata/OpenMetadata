@@ -37,11 +37,14 @@ class BaseTableColumnToMatchSetValidator(BaseTestValidator):
     def compare(self, expected_names, actual_names) -> bool:
         return collections.Counter(expected_names) == collections.Counter(actual_names)
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         try:
             names = self._run_results()

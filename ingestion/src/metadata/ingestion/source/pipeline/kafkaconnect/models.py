@@ -13,12 +13,21 @@
 KafkaConnect Source Model module
 """
 
+from enum import Enum
 from typing import List, Optional, Type, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
+
+
+class ConnectorType(str, Enum):
+    """Kafka Connect connector types"""
+
+    SOURCE = "source"
+    SINK = "sink"
+    UNKNOWN = "UNKNOWN"
 
 
 class KafkaConnectTasks(BaseModel):
@@ -33,12 +42,25 @@ class KafkaConnectTasks(BaseModel):
 
 class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
+    fqn: Optional[str] = Field(
+        default=None, description="Fully qualified name of the topic in OpenMetadata"
+    )
+
+
+class KafkaConnectColumnMapping(BaseModel):
+    """Model for column-level mapping between source and target"""
+
+    source_column: str = Field(..., description="Source column name")
+    target_column: str = Field(..., description="Target column/field name")
 
 
 class KafkaConnectDatasetDetails(BaseModel):
     table: Optional[str] = None
     database: Optional[str] = None
     container_name: Optional[str] = None
+    column_mappings: List[KafkaConnectColumnMapping] = Field(
+        default_factory=list, description="Column-level mappings if available"
+    )
 
     @property
     def dataset_type(self) -> Optional[Type[Union[Table, Container]]]:
@@ -63,3 +85,15 @@ class KafkaConnectPipelineDetails(BaseModel):
     description: Optional[str] = None
     dataset: Optional[KafkaConnectDatasetDetails] = None
     config: Optional[dict] = Field(default_factory=dict)
+
+    @field_validator("conn_type", mode="before")
+    @classmethod
+    def normalize_connector_type(cls, value: str) -> str:
+        """Normalize connector type to enum value"""
+        if value:
+            value_lower = value.lower()
+            if value_lower == "source":
+                return ConnectorType.SOURCE.value
+            elif value_lower == "sink":
+                return ConnectorType.SINK.value
+        return ConnectorType.UNKNOWN.value

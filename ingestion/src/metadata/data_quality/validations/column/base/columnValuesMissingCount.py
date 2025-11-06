@@ -38,14 +38,17 @@ NULL_COUNT = "nullCount"
 class BaseColumnValuesMissingCountValidator(BaseTestValidator):
     """Validator for column value missing count to be equal test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             null_res = self._run_results(
                 Metrics.NULL_MISSING_COUNT,
                 column,
@@ -100,10 +103,6 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             f"Found nullCount={null_res} vs. the expected nullCount={missing_count_value}.",
             [TestResultValue(name=NULL_COUNT, value=str(null_res))],
         )
-
-    @abstractmethod
-    def _get_column_name(self):
-        raise NotImplementedError
 
     @abstractmethod
     def _run_results(

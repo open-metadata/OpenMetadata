@@ -184,6 +184,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -264,6 +265,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -425,6 +427,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
     fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
     fieldSupportMap.put(FIELD_VOTES, Pair.of(supportsVotes, this::fetchAndSetVotes));
+    fieldSupportMap.put(FIELD_EXPERTS, Pair.of(supportsExperts, this::fetchAndSetExperts));
     fieldSupportMap.put(
         FIELD_DATA_PRODUCTS, Pair.of(supportsDataProducts, this::fetchAndSetDataProducts));
     fieldSupportMap.put(
@@ -753,6 +756,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T entity =
           JsonUtils.deepCopy(
               (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
+
+      // Validate the entity retrieved from cache
+      if (entity != null && entity.getId() == null) {
+        LOG.error(
+            "CRITICAL: Entity from cache has null ID! Type: {}, Expected ID: {}", entityType, id);
+        // Invalidate the corrupted cache entry and reload from database
+        CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+        // Try one more time without cache
+        entity = dao.findEntityById(id, include);
+        if (entity == null) {
+          throw new EntityNotFoundException(entityNotFound(entityType, id));
+        }
+      }
+
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -1128,7 +1145,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
+  public final T create(UriInfo uriInfo, T entity, String updatedBy, String impersonatedBy) {
+    entity = withHref(uriInfo, createInternal(entity, updatedBy, impersonatedBy));
+    return entity;
+  }
+
   public final T createInternal(T entity) {
+    return createInternal(entity, null, null);
+  }
+
+  private T createInternal(T entity, String updatedBy, String impersonatedBy) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -1140,6 +1166,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     prepareInternal(entity, false);
+
+    // Set updatedBy and impersonatedBy after prepare but before storing
+    if (updatedBy != null) {
+      entity.setUpdatedBy(updatedBy);
+    }
+    if (impersonatedBy != null) {
+      entity.setImpersonatedBy(impersonatedBy);
+    }
+
     return createNewEntity(entity);
   }
 
@@ -1166,6 +1201,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
+    // Revert to original implementation without optimization logic
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setCertification(
@@ -1191,6 +1227,185 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
+  /**
+   * Optimized version that fetches ALL relationships in a SINGLE database query
+   * and then filters them in memory. This completely solves the N+1 query problem.
+   */
+  // Commented out - using original setFieldsInternal instead to fix test failures
+  // TODO: Investigate why optimized version causes test failures with dataProducts field
+  /*
+  private void setFieldsInternalOptimized(T entity, Fields fields) {
+    // Fetch ALL relationships for this entity in ONE query
+    List<CollectionDAO.EntityRelationshipObject> allRelationships =
+        daoCollection.relationshipDAO().findAllRelationshipsForEntity(entity.getId(), entityType);
+    LOG.debug(
+        "Retrieved {} total relationships for entity {}:{}",
+        allRelationships.size(),
+        entityType,
+        entity.getId());
+
+    // Group relationships by type and direction for efficient processing
+    Map<Integer, List<EntityReference>> fromRelationships = new HashMap<>();
+    Map<Integer, List<EntityReference>> toRelationships = new HashMap<>();
+
+    // Process all relationships and group them
+    for (CollectionDAO.EntityRelationshipObject rel : allRelationships) {
+      int relationOrdinal = rel.getRelation();
+
+      // Check if this is a FROM relationship (entity -> other)
+      if (rel.getFromId().equals(entity.getId().toString())) {
+        // This entity points TO another entity
+        UUID targetId = UUID.fromString(rel.getToId());
+        EntityReference ref = Entity.getEntityReferenceById(rel.getToEntity(), targetId, ALL);
+        if (ref != null) {
+          fromRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
+        }
+      } else {
+        // Another entity points TO this entity
+        UUID sourceId = UUID.fromString(rel.getFromId());
+        EntityReference ref = Entity.getEntityReferenceById(rel.getFromEntity(), sourceId, ALL);
+        if (ref != null) {
+          toRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
+        }
+      }
+    }
+
+    // Now set all the fields from the grouped relationships - NO additional queries!
+    // IMPORTANT: Only set fields that are requested to avoid overwriting existing values
+    if (fields.contains(FIELD_OWNERS)) {
+      entity.setOwners(
+          toRelationships.getOrDefault(Relationship.OWNS.ordinal(), Collections.emptyList()));
+    }
+
+    if (fields.contains(FIELD_FOLLOWERS)) {
+      entity.setFollowers(
+          toRelationships.getOrDefault(Relationship.FOLLOWS.ordinal(), Collections.emptyList()));
+    }
+
+    // Handle domains and data products - both use HAS relationship but are stored as
+    // "domain/dataProduct HAS entity"
+    // So we need to look in toRelationships (where this entity is the target of HAS)
+    List<EntityReference> hasRelationships =
+        toRelationships.getOrDefault(Relationship.HAS.ordinal(), Collections.emptyList());
+
+    if (fields.contains(FIELD_DOMAINS)) {
+      // Filter HAS relationships for DOMAIN type
+      List<EntityReference> domains =
+          hasRelationships.stream()
+              .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
+              .collect(Collectors.toList());
+      entity.setDomains(domains);
+    }
+    // Don't set domains if not requested - leave existing value
+
+    if (fields.contains(FIELD_DATA_PRODUCTS)) {
+      // Filter HAS relationships for DATA_PRODUCT type
+      List<EntityReference> dataProducts =
+          hasRelationships.stream()
+              .filter(ref -> Entity.DATA_PRODUCT.equals(ref.getType()))
+              .collect(Collectors.toList());
+      entity.setDataProducts(dataProducts);
+    }
+    // Don't set dataProducts if not requested - leave existing value
+
+    if (fields.contains(FIELD_CHILDREN)) {
+      List<EntityReference> children = new ArrayList<>();
+      children.addAll(
+          fromRelationships.getOrDefault(Relationship.CONTAINS.ordinal(), Collections.emptyList()));
+      children.addAll(
+          fromRelationships.getOrDefault(
+              Relationship.PARENT_OF.ordinal(), Collections.emptyList()));
+      entity.setChildren(children);
+    }
+
+    if (fields.contains(FIELD_EXPERTS)) {
+      entity.setExperts(
+          fromRelationships.getOrDefault(Relationship.EXPERT.ordinal(), Collections.emptyList()));
+    }
+
+    if (fields.contains(FIELD_REVIEWERS)) {
+      entity.setReviewers(
+          toRelationships.getOrDefault(Relationship.REVIEWS.ordinal(), Collections.emptyList()));
+    }
+
+    // Handle votes separately as it needs special processing
+    if (fields.contains(FIELD_VOTES)) {
+      entity.setVotes(getVotes(entity)); // This one still needs special handling
+    }
+
+    // Handle tags separately as they come from tag_usage table
+    if (fields.contains(FIELD_TAGS)) {
+      entity.setTags(getTags(entity));
+    }
+
+    // Handle certification
+    if (fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)) {
+      entity.setCertification(getCertification(entity));
+    }
+
+    // Handle extension if needed
+    if (fields.contains(FIELD_EXTENSION)) {
+      entity.setExtension(getExtension(entity));
+    }
+  }
+  */
+
+  /**
+   * Invalidate cache entries when entity is deleted
+   */
+  protected void invalidateCache(T entity) {
+    try {
+      // Invalidate Guava LoadingCache entries
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+
+      // Invalidate Redis cache entries
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        cachedEntityDao.invalidateBase(entityType, entity.getId());
+        cachedEntityDao.invalidateByName(entityType, entity.getFullyQualifiedName());
+        cachedEntityDao.invalidateReference(entityType, entity.getId());
+        cachedEntityDao.invalidateReferenceByName(entityType, entity.getFullyQualifiedName());
+      }
+
+      // Invalidate relationship caches
+      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+      if (cachedRelationshipDao != null) {
+        cachedRelationshipDao.invalidateOwners(entityType, entity.getId());
+        cachedRelationshipDao.invalidateDomains(entityType, entity.getId());
+      }
+
+      // Invalidate tag caches
+      var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+      if (cachedTagUsageDao != null) {
+        cachedTagUsageDao.invalidateTags(entityType, entity.getId());
+      }
+
+      LOG.debug("Invalidated cache for deleted entity: {} {}", entityType, entity.getId());
+    } catch (Exception e) {
+      LOG.warn("Failed to invalidate cache for entity: {} {}", entityType, entity.getId(), e);
+    }
+  }
+
+  /**
+   * Count how many relationship fields are requested to determine if batch fetching is beneficial
+   */
+  private int countRelationshipFields(Fields fields) {
+    int count = 0;
+    if (fields.contains(FIELD_OWNERS)) count++;
+    if (fields.contains(FIELD_TAGS)) count++;
+    if (fields.contains(FIELD_CERTIFICATION)) count++;
+    if (fields.contains(FIELD_EXTENSION)) count++;
+    if (fields.contains(FIELD_DOMAINS)) count++;
+    if (fields.contains(FIELD_DATA_PRODUCTS)) count++;
+    if (fields.contains(FIELD_FOLLOWERS)) count++;
+    if (fields.contains(FIELD_CHILDREN)) count++;
+    if (fields.contains(FIELD_EXPERTS)) count++;
+    if (fields.contains(FIELD_REVIEWERS)) count++;
+    if (fields.contains(FIELD_VOTES)) count++;
+    return count;
+  }
+
   public final void clearFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
@@ -1207,6 +1422,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, String updatedBy) {
+    return createOrUpdate(uriInfo, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public final PutResponse<T> createOrUpdate(
+      UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -1219,20 +1440,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
+      if (impersonatedBy != null) {
+        updated.setImpersonatedBy(impersonatedBy);
+      }
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return update(uriInfo, original, updated, updatedBy);
+    return update(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
   @Transaction
   public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
+    return createOrUpdateForImport(uriInfo, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public PutResponse<T> createOrUpdateForImport(
+      UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
+      if (impersonatedBy != null) {
+        updated.setImpersonatedBy(impersonatedBy);
+      }
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return updateForImport(uriInfo, original, updated, updatedBy);
+    return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
   @SuppressWarnings("unused")
@@ -1241,6 +1474,95 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Update RDF
     RdfUpdater.updateEntity(entity);
+  }
+
+  /**
+   * Helper method to write entity to cache from static context
+   */
+  @SuppressWarnings("unchecked")
+  void writeThroughCacheForEntity(EntityInterface entity, boolean update) {
+    try {
+      writeThroughCache((T) entity, update);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to write entity to cache from static context: {} {}",
+          entityType,
+          entity.getId(),
+          e);
+    }
+  }
+
+  /**
+   * Validates entity has required fields for caching
+   */
+  private static boolean isValidEntityForCache(EntityInterface entity) {
+    return entity != null && entity.getId() != null && entity.getFullyQualifiedName() != null;
+  }
+
+  /**
+   * Write to Redis cache after DB operations
+   * This is completely separate from Guava cache which manages itself through loaders
+   * Redis cache is optional and only used when configured for distributed caching
+   */
+  protected void writeThroughCache(T entity, boolean update) {
+    // This method should ONLY handle Redis cache, not Guava cache
+    // Guava cache is self-managing through its CacheLoader implementation
+
+    // Only write to Redis if configured
+    writeToRedisCache(entity, update);
+  }
+
+  /**
+   * Write entity to Redis cache if available
+   * This reduces database calls in distributed deployments
+   */
+  private void writeToRedisCache(T entity, boolean update) {
+    // Only proceed if Redis cache is configured
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null) {
+      return; // No Redis cache configured
+    }
+
+    try {
+      // Validate entity
+      if (!isValidEntityForCache(entity)) {
+        LOG.debug(
+            "Invalid entity for Redis cache: {} {}",
+            entityType,
+            entity != null ? entity.getId() : "null");
+        return;
+      }
+
+      // Skip user entities
+      if ("user".equals(entityType)) {
+        return;
+      }
+
+      if (update) {
+        // For updates, repopulate Redis cache with the updated entity
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+          LOG.debug("Updated Redis cache after PATCH: {} {}", entityType, entity.getId());
+        }
+      } else {
+        // For creates, populate Redis cache with complete entity
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+          LOG.debug("Populated Redis cache for new entity: {} {}", entityType, entity.getId());
+        }
+      }
+    } catch (Exception e) {
+      // Redis cache failures should not affect the operation
+      LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+    }
   }
 
   protected void postCreate(List<T> entities) {
@@ -1256,8 +1578,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T original, T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
-
-    // Update RDF
     RdfUpdater.updateEntity(updated);
   }
 
@@ -1265,17 +1585,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
-
-    // Update RDF
     RdfUpdater.updateEntity(updated);
   }
 
   @Transaction
   public final PutResponse<T> update(UriInfo uriInfo, T original, T updated, String updatedBy) {
+    return update(uriInfo, original, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public final PutResponse<T> update(
+      UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
+    if (impersonatedBy != null) {
+      updated.setImpersonatedBy(impersonatedBy);
+    }
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1296,10 +1623,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PutResponse<T> updateForImport(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
+    return updateForImport(uriInfo, original, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public final PutResponse<T> updateForImport(
+      UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
+    if (impersonatedBy != null) {
+      updated.setImpersonatedBy(impersonatedBy);
+    }
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1323,13 +1659,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Deprecated
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
-    return patch(uriInfo, id, user, patch, null);
+    return patch(uriInfo, id, user, patch, null, null, null);
   }
 
   @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
-    return patch(uriInfo, id, user, patch, changeSource, null);
+    return patch(uriInfo, id, user, patch, changeSource, null, null);
   }
 
   @Transaction
@@ -1339,7 +1675,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String user,
       JsonPatch patch,
       ChangeSource changeSource,
-      String ifMatchHeader) {
+      String impersonatedBy) {
+    return patch(uriInfo, id, user, patch, changeSource, null, impersonatedBy);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader,
+      String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1358,7 +1706,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
   }
 
   /**
@@ -1366,12 +1714,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
-    return patch(uriInfo, fqn, user, patch, null);
+    return patch(uriInfo, fqn, user, patch, null, null, null);
   }
 
   public final PatchResponse<T> patch(
       UriInfo uriInfo, String fqn, String user, JsonPatch patch, ChangeSource changeSource) {
-    return patch(uriInfo, fqn, user, patch, changeSource, null);
+    return patch(uriInfo, fqn, user, patch, changeSource, null, null);
   }
 
   @Transaction
@@ -1382,6 +1730,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonPatch patch,
       ChangeSource changeSource,
       String ifMatchHeader) {
+    return patch(uriInfo, fqn, user, patch, changeSource, ifMatchHeader, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader,
+      String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1400,12 +1760,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
   }
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
-    return patchCommonWithOptimisticLocking(original, patch, user, uriInfo, changeSource, false);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, false, null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -1415,6 +1776,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
+  }
+
+  private PatchResponse<T> patchCommonWithOptimisticLocking(
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      String impersonatedBy) {
+    // Start timing JSON patch application
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -1431,6 +1805,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setDomains(validatedDomains);
     restorePatchAttributes(original, updated);
 
+    // Set impersonatedBy after all attribute restoration to prevent it from being overwritten
+    if (impersonatedBy != null) {
+      updated.setImpersonatedBy(impersonatedBy);
+    }
+
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
     if (useOptimisticLocking) {
@@ -1443,6 +1822,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
       entityUpdater.update();
     }
+
     if (entityUpdater.fieldsChanged()) {
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
@@ -1931,6 +2311,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+
+    // Also invalidate Redis cache
+    invalidateCache(entity);
   }
 
   @Transaction
@@ -1990,6 +2373,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
     postCreate(entity);
+
+    // Write-through cache: store entity in cache after creation
+    writeThroughCache(entity, false);
+
     return entity;
   }
 
@@ -2465,7 +2852,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getTagFQN(),
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
-                tagLabel.getState().ordinal());
+                tagLabel.getState().ordinal(),
+                tagLabel.getReason());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -2538,7 +2926,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<TagLabel> getTags(T entity) {
-    return !supportsTags ? null : getTags(entity.getFullyQualifiedName());
+    if (!supportsTags) {
+      return null;
+    }
+
+    // Try to get from cache first
+    var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    if (cachedTagUsageDao != null) {
+      List<TagLabel> cached = cachedTagUsageDao.getTags(entityType, entity.getId());
+      if (cached != null) {
+        LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
+        return cached;
+      }
+    }
+
+    // Fall back to database
+    List<TagLabel> tags = getTags(entity.getFullyQualifiedName());
+
+    // Cache the result for next time
+    if (cachedTagUsageDao != null && tags != null) {
+      String tagsJson = JsonUtils.pojoToJson(tags);
+      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
+    }
+
+    return tags;
   }
 
   protected List<TagLabel> getTags(String fqn) {
@@ -3006,9 +3417,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(T entity) {
-    return supportsOwners
-        ? findFrom(entity.getId(), entityType, Relationship.OWNS, null)
-        : Collections.emptyList();
+    if (!supportsOwners) {
+      return Collections.emptyList();
+    }
+
+    // Try to get from cache first
+    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    if (cachedRelationshipDao != null) {
+      List<EntityReference> cached = cachedRelationshipDao.getOwners(entityType, entity.getId());
+      if (cached != null) {
+        LOG.debug("CACHE HIT: Retrieved owners from cache for {} {}", entityType, entity.getId());
+        return cached;
+      }
+    }
+
+    // Fall back to database
+    List<EntityReference> owners = findFrom(entity.getId(), entityType, Relationship.OWNS, null);
+
+    // Cache the result for next time
+    if (cachedRelationshipDao != null && owners != null) {
+      String ownersJson = JsonUtils.pojoToJson(owners);
+      cachedRelationshipDao.putOwners(entityType, entity.getId(), ownersJson);
+    }
+
+    return owners;
   }
 
   public final List<EntityReference> getOwners(EntityReference ref) {
@@ -3016,7 +3448,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getDomains(T entity) {
-    return supportsDomains ? getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN) : null;
+    if (!supportsDomains) {
+      return null;
+    }
+    if (entity.getId() == null) {
+      LOG.error(
+          "Entity has null ID when getting domains! Entity type: {}, Entity: {}",
+          entityType,
+          entity);
+      return null;
+    }
+
+    // Try to get from cache first
+    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    if (cachedRelationshipDao != null) {
+      List<EntityReference> cached = cachedRelationshipDao.getDomains(entityType, entity.getId());
+      if (cached != null) {
+        LOG.debug("CACHE HIT: Retrieved domains from cache for {} {}", entityType, entity.getId());
+        return cached;
+      }
+    }
+
+    // Fall back to database
+    List<EntityReference> domains = getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN);
+
+    // Cache the result for next time
+    if (cachedRelationshipDao != null && domains != null) {
+      String domainsJson = JsonUtils.pojoToJson(domains);
+      cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
+    }
+
+    return domains;
   }
 
   private List<EntityReference> getDataProducts(T entity) {
@@ -3693,6 +4155,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (consolidateChanges) {
         revert();
       }
+
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
       updateInternal();
@@ -3710,6 +4173,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (consolidateChanges) {
         revert();
       }
+
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
       updateInternal();
@@ -4053,7 +4517,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Record changes for audit trail
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      recordListChange(
+          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 
@@ -4243,6 +4708,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       validateDataProducts(updatedDataProducts);
 
+      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+        // Revert change to non-empty DataProduct if it is being updated by a bot
+        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+        // updated with a PATCH request
+        updated.setDataProducts(original.getDataProducts());
+        return;
+      }
+
       if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
@@ -4395,6 +4868,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           "Updating certification - Original: {}, Updated: {}",
           origCertification,
           updatedCertification);
+
+      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
+        // Revert change to non-empty certification if it is being updated by a bot
+        // This is to prevent bots from overwriting the certification. Certification need to be
+        // updated with a PATCH request
+        updated.setCertification(original.getCertification());
+        return;
+      }
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
@@ -4781,7 +5262,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void storeUpdate() {
-      if (updateVersion(original.getVersion())) { // Update changed the entity version
+      boolean versionChanged = updateVersion(original.getVersion());
+      LOG.info(
+          "storeUpdate: versionChanged={}, entityChanged={}, entityType={}, id={}",
+          versionChanged,
+          entityChanged,
+          entityType,
+          updated.getId());
+
+      if (versionChanged) { // Update changed the entity version
         storeEntityHistory(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
       } else if (entityChanged) {
@@ -4790,6 +5279,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         storeNewVersion();
       } else { // Update did not change the entity version
+        LOG.info("No version change and entityChanged=false, checking previous");
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
@@ -4854,13 +5344,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
+      LOG.info("storeNewVersion called for entity: {} {}", entityType, updated.getId());
       EntityRepository.this.storeEntity(updated, true);
+      // Write-through cache after update
+      EntityRepository.this.writeThroughCache(updated, true);
     }
 
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
       EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+      // Write-through cache after update
+      EntityRepository.this.writeThroughCache(updated, true);
     }
 
     public final boolean updatedByBot() {
@@ -4928,7 +5423,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityType, original.getChangeDescription().getPreviousVersion());
       String json =
           daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
-      return JsonUtils.readValue(json, entityClass);
+      T previousVersion = JsonUtils.readValue(json, entityClass);
+
+      // IMPORTANT: Do NOT call setFieldsInternal here!
+      // The JSON already contains the correct historical state of all fields including experts.
+      // Calling setFieldsInternal would fetch current relationships from DB which is wrong.
+      // The version history JSON is a complete snapshot of the entity at that point in time.
+
+      return previousVersion;
     }
   }
 
@@ -5106,7 +5608,82 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-      return repository.getDao().findEntityByName(fqn, ALL);
+
+      // Skip cache for user entities to avoid authentication issues
+      if ("user".equals(entityType)) {
+        LOG.debug("Skipping cache for user entity to ensure fresh auth data: {}", fqn);
+        EntityInterface entity = repository.getDao().findEntityByName(fqn, ALL);
+        return entity;
+      }
+
+      // Try to load from external cache first (read-through) for non-user entities
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
+        if (cachedJson.isPresent()) {
+          LOG.debug("CACHE HIT: Loading entity by name from Redis cache: {} {}", entityType, fqn);
+          try {
+            // Get the entity class from the repository and deserialize with proper type
+            Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+            EntityInterface entity = JsonUtils.readValue(cachedJson.get(), entityClass);
+
+            // Validate the cached entity - if invalid, evict and fall back to database
+            if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
+              LOG.error(
+                  "CACHE ERROR: Cached entity from name lookup is invalid! Evicting bad cache entry. Type: {}, Name: {}",
+                  entityType,
+                  fqn);
+              // Evict the corrupted cache entry
+              cachedEntityDao.deleteByName(entityType, fqn);
+              // Fall back to database load below
+            } else {
+              // Valid cached entity, return it
+              return entity;
+            }
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
+                entityType,
+                fqn,
+                e);
+            // Evict the corrupted cache entry
+            try {
+              cachedEntityDao.deleteByName(entityType, fqn);
+            } catch (Exception evictError) {
+              LOG.debug(
+                  "Failed to evict bad cache entry by name: {} {}", entityType, fqn, evictError);
+            }
+          }
+        }
+        LOG.debug("CACHE MISS: Entity not in Redis cache by name: {} {}", entityType, fqn);
+      }
+
+      // If not in cache, load from database
+      LOG.debug("Loading entity by name from database: {} {}", entityType, fqn);
+      EntityInterface entity = repository.getDao().findEntityByName(fqn, ALL);
+
+      // Validate entity loaded from database
+      if (!isValidEntityForCache(entity)) {
+        if (entity == null) {
+          LOG.error("Entity not found in database by name: {} {}", entityType, fqn);
+          throw new EntityNotFoundException(
+              String.format("Entity not found: %s %s", entityType, fqn));
+        }
+        // For name lookups, we can't fix missing ID since we don't know it
+        LOG.error(
+            "CRITICAL: Entity loaded from database by name is invalid! Type: {}, Name: {}, ID: {}",
+            entityType,
+            fqn,
+            entity.getId());
+        throw new IllegalStateException(
+            String.format("Invalid entity from database: %s %s", entityType, fqn));
+      }
+
+      // Note: Do NOT write to Redis cache here - this loader is part of Guava cache
+      // Redis caching is handled separately by writeThroughCache after DB operations
+      // This maintains clean separation between Guava (local) and Redis (distributed) caching
+
+      return entity;
     }
   }
 
@@ -5117,7 +5694,88 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-      return repository.getDao().findEntityById(id, ALL);
+
+      // Skip cache for user entities to avoid authentication issues
+      if ("user".equals(entityType)) {
+        LOG.debug("Skipping cache for user entity to ensure fresh auth data: {}", id);
+        EntityInterface entity = repository.getDao().findEntityById(id, ALL);
+        return entity;
+      }
+
+      // Try to load from external cache first (read-through) for non-user entities
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        String cachedJson = cachedEntityDao.getBase(id, entityType);
+        if (cachedJson != null && !cachedJson.isEmpty()) {
+          LOG.debug("CACHE HIT: Loading entity from Redis cache: {} {}", entityType, id);
+          try {
+            // Get the entity class from the repository and deserialize with proper type
+            Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+            EntityInterface entity = JsonUtils.readValue(cachedJson, entityClass);
+
+            // Validate the cached entity - if invalid, evict and fall back to database
+            if (entity.getId() == null) {
+              LOG.error(
+                  "CACHE ERROR: Cached entity has null ID! Evicting bad cache entry. Type: {}, Expected ID: {}",
+                  entityType,
+                  id);
+              // Evict the corrupted cache entry
+              cachedEntityDao.deleteBase(entityType, id);
+              // Fall back to database load below
+            } else {
+              // Valid cached entity, return it
+              return entity;
+            }
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
+                entityType,
+                id,
+                e);
+            // Evict the corrupted cache entry
+            try {
+              cachedEntityDao.deleteBase(entityType, id);
+            } catch (Exception evictError) {
+              LOG.debug("Failed to evict bad cache entry: {} {}", entityType, id, evictError);
+            }
+          }
+        }
+        LOG.debug("CACHE MISS: Entity not in Redis cache: {} {}", entityType, id);
+      }
+
+      // If not in cache, load from database
+      LOG.debug("Loading entity from database: {} {}", entityType, id);
+      EntityInterface entity = repository.getDao().findEntityById(id, ALL);
+
+      // Validate entity loaded from database
+      if (!isValidEntityForCache(entity)) {
+        if (entity == null) {
+          LOG.error("Entity not found in database: {} {}", entityType, id);
+          throw new EntityNotFoundException(
+              String.format("Entity not found: %s %s", entityType, id));
+        }
+        // Try to fix missing ID if entity exists but ID is null
+        if (entity.getId() == null) {
+          LOG.error(
+              "CRITICAL: Entity loaded from database has null ID! Type: {}, Expected ID: {}, FQN: {}",
+              entityType,
+              id,
+              entity.getFullyQualifiedName());
+          entity.setId(id);
+        }
+        // If still invalid, throw exception
+        if (!isValidEntityForCache(entity)) {
+          LOG.error("Entity from database is invalid for caching: {} {}", entityType, id);
+          throw new IllegalStateException(
+              String.format("Invalid entity from database: %s %s", entityType, id));
+        }
+      }
+
+      // Note: Do NOT write to Redis cache here - this loader is part of Guava cache
+      // Redis caching is handled separately by writeThroughCache after DB operations
+      // This maintains clean separation between Guava (local) and Redis (distributed) caching
+
+      return entity;
     }
   }
 
@@ -5235,6 +5893,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : entities) {
       entity.setChildren(childrenMap.get(entity.getId()));
+    }
+  }
+
+  private void fetchAndSetExperts(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_EXPERTS) || !supportsExperts || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> expertsMap = batchFetchExperts(entities);
+
+    for (T entity : entities) {
+      entity.setExperts(expertsMap.getOrDefault(entity.getId(), Collections.emptyList()));
     }
   }
 
@@ -5589,6 +6259,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return result;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchExperts(List<T> entities) {
+    if (!supportsExperts || nullOrEmpty(entities)) {
+      return Collections.emptyMap();
+    }
+
+    // Batch fetch all expert relationships - experts are TO relationships
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(entities), Relationship.EXPERT.ordinal(), USER);
+
+    Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
+
+    // Collect all expert user IDs
+    List<UUID> expertIds =
+        records.stream()
+            .map(record -> UUID.fromString(record.getFromId()))
+            .collect(Collectors.toList());
+
+    // Batch fetch all expert references
+    Map<UUID, EntityReference> expertRefs =
+        Entity.getEntityReferencesByIds(USER, expertIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    // Group experts by entity
+    records.forEach(
+        record -> {
+          UUID entityId = UUID.fromString(record.getToId());
+          UUID expertId = UUID.fromString(record.getFromId());
+          EntityReference expertRef = expertRefs.get(expertId);
+          if (expertRef != null) {
+            expertsMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(expertRef);
+          }
+        });
+
+    LOG.debug(
+        "batchFetchExperts: Found {} expert relationships for {} entities",
+        records.size(),
+        entities.size());
+
+    return expertsMap;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchChildren(List<T> entities) {

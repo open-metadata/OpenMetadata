@@ -247,6 +247,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "domains": {
         "properties": {
           "id": {
@@ -384,6 +387,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

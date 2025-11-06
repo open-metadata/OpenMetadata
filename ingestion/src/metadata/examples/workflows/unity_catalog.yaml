@@ -6,7 +6,13 @@ source:
       type: UnityCatalog
       catalog: hive_metastore
       databaseSchema: default
-      token: <databricks token>
+      authType:
+        token: <databricks token>
+        # clientId: databricks service principal client id
+        # clientSecret: databricks service principal client secret
+        # azureClientSecret: azure client secret
+        # azureClientId: azure client id
+        # azureTenantId: azure tenant id
       hostPort: localhost:443
       connectionTimeout: 120
       connectionArguments:

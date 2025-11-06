@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
@@ -41,31 +42,13 @@ import { sidebarClick } from './sidebar';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
-  dataTestId = 'loader'
+  dataTestId = 'loader',
+  timeout = 30000
 ) => {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const allLoaders = page.locator(`[data-testid="${dataTestId}"]`);
-    const count = await allLoaders.count();
+  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
 
-    let allLoadersGone = true;
-
-    for (let i = 0; i < count; i++) {
-      const loader = allLoaders.nth(i);
-      try {
-        if (await loader.isVisible()) {
-          await loader.waitFor({ state: 'detached', timeout: 1000 });
-          allLoadersGone = false;
-        }
-      } catch {
-        // Do nothing
-      }
-    }
-
-    if (allLoadersGone) {
-      break;
-    }
-    await page.waitForTimeout(100); // slight buffer before next retry
-  }
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout });
 };
 
 export const visitEntityPage = async (data: {
@@ -120,7 +103,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=*&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -179,7 +162,7 @@ export const addOwnerWithoutValidation = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -1113,7 +1096,8 @@ const announcementForm = async (
     startDate: string;
     endDate: string;
     description: string;
-  }
+  },
+  hideAlert = true
 ) => {
   await page.fill('#title', data.title);
 
@@ -1134,12 +1118,15 @@ const announcementForm = async (
   await page.click('#announcement-submit');
   await announcementSubmit;
   await page.click('[data-testid="announcement-close"]');
-  await page.click('[data-testid="alert-icon-close"]');
+  if (hideAlert) {
+    await page.click('[data-testid="alert-icon-close"]');
+  }
 };
 
 export const createAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  hideAlert?: boolean
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1159,7 +1146,7 @@ export const createAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate });
+  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
   await page.reload();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
@@ -1332,7 +1319,8 @@ export const editAnnouncement = async (
 
 export const createInactiveAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  hideAlert?: boolean
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1351,7 +1339,7 @@ export const createInactiveAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate });
+  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
   await page.getByTestId('inActive-announcements').isVisible();
   await page.reload();
 };
@@ -1359,7 +1347,8 @@ export const createInactiveAnnouncement = async (
 export const updateDisplayNameForEntity = async (
   page: Page,
   displayName: string,
-  endPoint: string
+  endPoint: string,
+  isRemoved?: boolean
 ) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
@@ -1377,9 +1366,15 @@ export const updateDisplayNameForEntity = async (
   await page.click('[data-testid="save-button"]');
   await updateNameResponse;
 
-  await expect(
-    page.locator('[data-testid="entity-header-display-name"]')
-  ).toHaveText(displayName);
+  if (isRemoved) {
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).not.toBeVisible();
+  } else {
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).toHaveText(displayName);
+  }
 };
 
 export const updateDisplayNameForEntityChildren = async (
@@ -1894,7 +1889,9 @@ export const getTextFromHtmlString = (description?: string): string => {
     return '';
   }
 
-  return description.replace(/<[^>]*>/g, '').trim();
+  const dom = new JSDOM(description);
+
+  return dom.window.document.body.textContent?.trim() ?? '';
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
