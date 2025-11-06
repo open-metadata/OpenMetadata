@@ -143,7 +143,7 @@ class TestStreamableLogHandler(unittest.TestCase):
         self.assertEqual(handler.pipeline_fqn, self.pipeline_fqn)
         self.assertEqual(handler.run_id, self.run_id)
         self.assertEqual(handler.batch_size, 200)
-        self.assertEqual(handler.flush_interval_sec, 5.0)
+        self.assertEqual(handler.flush_interval_sec, 10.0)
         self.assertFalse(handler.enable_streaming)
         self.assertIsNone(handler.worker_thread)
 
