@@ -69,6 +69,10 @@ SET json = JSON_SET(
 )
 WHERE JSON_EXTRACT(json, '$.name') = 'DataRetentionApplication';
 
+UPDATE notification_template_entity
+SET json = JSON_REMOVE(json, '$.defaultTemplateChecksum')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.defaultTemplateChecksum');
+
 -- Update appType from 'internal' to 'external' and add sourcePythonClass for CollateAIQualityAgentApplication and CollateAITierAgentApplication
 UPDATE apps_marketplace
 SET json = JSON_SET(
