@@ -70,6 +70,8 @@ SET json = jsonb_set(
 )
 WHERE json->>'name' = 'DataRetentionApplication';
 
+UPDATE notification_template_entity
+SET json = json::jsonb - 'defaultTemplateChecksum';
 
 -- Update appType from 'internal' to 'external' and add sourcePythonClass for CollateAIQualityAgentApplication and CollateAITierAgentApplication
 UPDATE apps_marketplace
