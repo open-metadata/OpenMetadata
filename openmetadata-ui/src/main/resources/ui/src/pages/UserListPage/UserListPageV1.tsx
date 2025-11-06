@@ -15,7 +15,7 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
@@ -84,6 +84,8 @@ const UserListPageV1 = () => {
     user: '',
   });
 
+  const latestSearchRef = useRef<string>('');
+
   const showRestore = isDeleted && !isDataLoading;
 
   const { getResourceLimit } = useLimitStore();
@@ -138,7 +140,7 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    return new Promise<Array<User>>((resolve) => {
+    return new Promise<{ data: Array<User>; searchTerm: string }>((resolve) => {
       const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
 
       const queryFilter = getTermQuery({
@@ -159,7 +161,7 @@ const UserListPageV1 = () => {
           handlePagingChange({
             total: res.hits.total.value,
           });
-          resolve(data);
+          resolve({ data, searchTerm: text });
         })
         .catch((err: AxiosError) => {
           showErrorToast(
@@ -168,18 +170,21 @@ const UserListPageV1 = () => {
               entity: t('label.user'),
             })
           );
-          resolve([]);
+          resolve({ data: [], searchTerm: text });
         });
     });
   };
 
   const getSearchedUsers = (value: string, pageNumber: number) => {
     setIsDataLoading(true);
+    latestSearchRef.current = value;
 
     userQuerySearch(value, pageNumber, isAdminPage, isDeleted).then(
-      (resUsers) => {
-        setUserList(resUsers);
-        setIsDataLoading(false);
+      (response) => {
+        if (latestSearchRef.current === response.searchTerm) {
+          setUserList(response.data);
+          setIsDataLoading(false);
+        }
       }
     );
   };
