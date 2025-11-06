@@ -2,7 +2,6 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
-import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -19,8 +18,6 @@ import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
-import es.org.elasticsearch.index.query.QueryBuilders;
-import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -72,10 +69,8 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.nlq.NLQService;
-import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -715,19 +710,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public SearchHealthStatus getSearchHealthStatus() throws IOException {
     return genericManager.getSearchHealthStatus();
-  }
-
-  private void buildSearchRBACQuery(
-      SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
-      if (rbacQuery != null) {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .filter(((ElasticQueryBuilder) rbacQuery).build()));
-      }
-    }
   }
 
   @Override

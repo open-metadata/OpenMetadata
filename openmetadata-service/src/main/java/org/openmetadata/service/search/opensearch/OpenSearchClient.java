@@ -1,24 +1,8 @@
 package org.openmetadata.service.search.opensearch;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
-import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
-import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -28,12 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -69,18 +49,13 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
-import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
-import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.action.support.WriteRequest;
-import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.action.update.UpdateResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -91,20 +66,6 @@ import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-import os.org.opensearch.common.lucene.search.function.CombineFunction;
-import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
-import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
-import os.org.opensearch.common.unit.Fuzziness;
-import os.org.opensearch.index.query.MultiMatchQueryBuilder;
-import os.org.opensearch.index.query.Operator;
-import os.org.opensearch.index.query.QueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
-import os.org.opensearch.index.query.QueryStringQueryBuilder;
-import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.builder.SearchSourceBuilder;
-import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -128,43 +89,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
   private final OpenSearchSearchManager searchManager;
 
-  // Singleton factory to avoid object creation on every request
-  private volatile OpenSearchSourceBuilderFactory searchBuilderFactory = null;
-
-  // RBAC cache to avoid expensive query building on every request
-  private static final LoadingCache<String, QueryBuilder> RBAC_CACHE =
-      CacheBuilder.newBuilder()
-          .maximumSize(10000)
-          .expireAfterWrite(5, TimeUnit.MINUTES)
-          .build(
-              new CacheLoader<String, QueryBuilder>() {
-                @Override
-                public QueryBuilder load(String key) {
-                  // Will be loaded via computeIfAbsent pattern
-                  return null;
-                }
-              });
-
-  private static final Set<String> FIELDS_TO_REMOVE =
-      Set.of(
-          "suggest",
-          "service_suggest",
-          "column_suggest",
-          "schema_suggest",
-          "database_suggest",
-          "lifeCycle",
-          "fqnParts",
-          "chart_suggest",
-          "field_suggest");
-
-  private static final RequestOptions OPENSEARCH_REQUEST_OPTIONS;
-
   static {
     RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
     builder.addHeader("Content-Type", "application/json");
     builder.addHeader("Accept", "application/json");
     builder.setWarningsHandler(WarningsHandler.PERMISSIVE);
-    OPENSEARCH_REQUEST_OPTIONS = builder.build();
   }
 
   private NLQService nlqService;
@@ -404,65 +333,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
-  private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier1"),
-            ScoreFunctionBuilders.weightFactorFunction(50.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier2Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier2"),
-            ScoreFunctionBuilders.weightFactorFunction(30.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier3Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier3"),
-            ScoreFunctionBuilders.weightFactorFunction(15.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder weeklyStatsBoost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.rangeQuery("usageSummary.weeklyStats.count").gt(0),
-            ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
-                .factor(4.0f)
-                .modifier(FieldValueFactorFunction.Modifier.SQRT)
-                .missing(1));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder totalVotesBoost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.rangeQuery("totalVotes").gt(0),
-            ScoreFunctionBuilders.fieldValueFactorFunction("totalVotes")
-                .factor(3.0f)
-                .modifier(FieldValueFactorFunction.Modifier.LN1P)
-                .missing(0));
-
-    // FunctionScoreQueryBuilder with an array of score functions
-    return QueryBuilders.functionScoreQuery(
-            queryBuilder,
-            new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-              tier1Boost, tier2Boost, tier3Boost, weeklyStatsBoost, totalVotesBoost
-            })
-        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
-        .boostMode(CombineFunction.MULTIPLY);
-  }
-
-  private static HighlightBuilder buildHighlights(List<String> fields) {
-    List<String> defaultFields =
-        List.of(FIELD_DISPLAY_NAME, FIELD_DESCRIPTION, FIELD_DISPLAY_NAME_NGRAM);
-    defaultFields = Stream.concat(defaultFields.stream(), fields.stream()).toList();
-    HighlightBuilder hb = new HighlightBuilder();
-    for (String field : defaultFields) {
-      HighlightBuilder.Field highlightField = new HighlightBuilder.Field(field);
-      highlightField.highlighterType(UNIFIED);
-      hb.field(highlightField);
-    }
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-    hb.maxAnalyzerOffset(MAX_ANALYZED_OFFSET);
-    hb.requireFieldMatch(false);
-    return hb;
-  }
-
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
@@ -490,78 +360,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
     return aggregationManager.aggregate(query, index, searchAggregation, filter);
-  }
-
-  @SneakyThrows
-  public void updateSearch(UpdateRequest updateRequest) {
-    if (updateRequest != null) {
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-
-      // Time the actual HTTP request to OpenSearch
-      long startHttp = System.currentTimeMillis();
-      UpdateResponse response = client.update(updateRequest, RequestOptions.DEFAULT);
-      long httpTime = System.currentTimeMillis() - startHttp;
-
-      LOG.debug(
-          "OpenSearch HTTP update - Doc ID: {}, HTTP time: {}ms, Result: {}",
-          updateRequest.id(),
-          httpTime,
-          response.getResult());
-    }
-  }
-
-  private static QueryStringQueryBuilder buildSearchQueryBuilder(
-      String query, Map<String, Float> fields) {
-    return QueryBuilders.queryStringQuery(query)
-        .fields(fields)
-        .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-        .defaultOperator(Operator.AND)
-        .fuzziness(Fuzziness.AUTO)
-        .fuzzyPrefixLength(3)
-        .tieBreaker(0.5f);
-  }
-
-  private static SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
-    builder
-        .aggregation(
-            AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("service.displayName.keyword")
-                .field("service.displayName.keyword")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("certification.tagLabel.tagFQN")
-                .field("certification.tagLabel.tagFQN")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
-                .field(OWNER_DISPLAY_NAME_KEYWORD)
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
-                .field(DOMAIN_DISPLAY_NAME_KEYWORD)
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD))
-        .aggregation(
-            AggregationBuilders.terms("index_count").field("_index").size(MAX_AGGREGATE_SIZE));
-    return builder;
-  }
-
-  private static SearchSourceBuilder searchBuilder(
-      QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
-    SearchSourceBuilder builder =
-        new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
-    if (hb != null) {
-      hb.preTags(PRE_TAG);
-      hb.postTags(POST_TAG);
-      builder.highlighter(hb);
-    }
-    return builder;
   }
 
   @Override
@@ -856,51 +654,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public RestHighLevelClient getHighLevelClient() {
     return client;
-  }
-
-  private void buildSearchRBACQuery(
-      SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (!shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      return;
-    }
-
-    // Create cache key from user ID and roles
-    String cacheKey =
-        subjectContext.user().getId()
-            + ":"
-            + subjectContext.user().getRoles().stream()
-                .map(r -> r.getId().toString())
-                .sorted()
-                .collect(Collectors.joining(","));
-
-    try {
-      QueryBuilder cachedQuery =
-          RBAC_CACHE.get(
-              cacheKey,
-              () -> {
-                OMQueryBuilder rbacQuery =
-                    rbacConditionEvaluator.evaluateConditions(subjectContext);
-                if (rbacQuery != null) {
-                  return ((OpenSearchQueryBuilder) rbacQuery).build();
-                }
-                return null;
-              });
-
-      if (cachedQuery != null) {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(cachedQuery));
-      }
-    } catch (Exception e) {
-      LOG.warn("RBAC cache miss, building query", e);
-      // Fallback to original implementation
-      OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
-      if (rbacQuery != null) {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .filter(((OpenSearchQueryBuilder) rbacQuery).build()));
-      }
-    }
   }
 
   @Override
