@@ -303,6 +303,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsExperts;
   protected final boolean supportsReviewers;
   protected final boolean supportsCertification;
+  protected boolean supportsBulkAPI = false;
 
   // SDK client for new API calls
   protected OpenMetadataClient sdkClient;
@@ -8149,6 +8150,120 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     } finally {
       // Clean up
       deleteEntity(entityId, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  protected Object prepareBulkRequest(List<K> createRequests, boolean dryRun) {
+    return createRequests;
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_entity_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk");
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        TestUtils.put(
+            target,
+            requestBody,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(5, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertNotNull(result.getSuccessRequest());
+    assertEquals(5, result.getSuccessRequest().size());
+
+    for (org.openmetadata.schema.type.api.BulkResponse bulkResponse : result.getSuccessRequest()) {
+      String fqn = (String) bulkResponse.getRequest();
+      assertNotNull(fqn, "FQN should not be null in success response");
+
+      T retrievedEntity = getEntityByName(fqn, "", ADMIN_AUTH_HEADERS);
+      assertNotNull(retrievedEntity, "Entity should be retrievable by FQN: " + fqn);
+      assertEquals(
+          fqn, retrievedEntity.getFullyQualifiedName(), "Retrieved entity FQN should match");
+    }
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_partialFailure() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      K createRequest = createRequest("bulk_partial_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    K invalidCreate = createRequest("", "", "", null);
+    createRequests.add(invalidCreate);
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk");
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        TestUtils.put(
+            target,
+            requestBody,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertTrue(result.getNumberOfRowsProcessed() >= 3);
+    assertTrue(result.getNumberOfRowsPassed() >= 3);
+    assertTrue(result.getNumberOfRowsFailed() >= 1);
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_async() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_async_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk").queryParam("async", "true");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .method(
+                "PUT", jakarta.ws.rs.client.Entity.entity(requestBody, MediaType.APPLICATION_JSON));
+
+    assertEquals(Status.ACCEPTED.getStatusCode(), response.getStatus());
+
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        response.readEntity(org.openmetadata.schema.type.api.BulkOperationResult.class);
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    TestUtils.simulateWork(2000);
+
+    for (int i = 0; i < 5; i++) {
+      String entityName = "bulk_async_" + i;
+      try {
+        T entity = getEntityByName(entityName, "", ADMIN_AUTH_HEADERS);
+        assertNotNull(entity, "Async created entity should exist: " + entityName);
+      } catch (Exception e) {
+      }
     }
   }
 
