@@ -16,7 +16,8 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToExplorePage } from '../../utils/common';
+import { getApiContext, redirectToExplorePage } from '../../utils/common';
+import { addPipelineBetweenNodes } from '../../utils/lineage';
 
 const testEntity = new TableClass();
 const testDataProduct = new DataProduct(
@@ -351,23 +352,148 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     });
   });
 
-  test('Tab Navigation - Lineage Tab', async ({ adminPage }) => {
+  test('Tab Navigation - Lineage Tab - No Lineage', async ({ adminPage }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const lineageTab = summaryPanel.getByRole('menuitem', {
       name: /lineage/i,
     });
 
-    if (await lineageTab.isVisible()) {
+    await lineageTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    await expect(tabContent).toBeVisible();
+
+    // When there's no lineage, verify empty state
+    await expect(adminPage.getByText(/No data found/i)).toBeVisible();
+  });
+
+  test('Tab Navigation - Lineage Tab - With Upstream and Downstream', async ({
+    adminPage,
+  }) => {
+    // Create additional entities for lineage
+    const { apiContext } = await getApiContext(adminPage);
+    const upstreamTable = new TableClass();
+    const downstreamTable = new TableClass();
+
+    try {
+      await upstreamTable.create(apiContext);
+      await downstreamTable.create(apiContext);
+
+      // Add lineage connections: upstream -> testEntity -> downstream
+      await addPipelineBetweenNodes(adminPage, upstreamTable, testEntity);
+      await addPipelineBetweenNodes(adminPage, testEntity, downstreamTable);
+
+      // Navigate back to explore and open the entity panel
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const lineageTab = summaryPanel.getByRole('menuitem', {
+        name: /lineage/i,
+      });
+
       await lineageTab.click();
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await adminPage.waitForLoadState('networkidle');
 
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify lineage content is loaded
+      const lineageContainer = summaryPanel.locator('.lineage-tab-content');
+
+      await expect(lineageContainer).toBeVisible();
+
+      // Verify upstream/downstream filter buttons exist
+      const filterButtons = lineageContainer.locator('.lineage-filter-buttons');
+
+      await expect(filterButtons).toBeVisible();
+
+      // Get the filter buttons by their text content
+      const upstreamButton = lineageContainer.getByTestId(
+        'upstream-button-text'
+      );
+      const downstreamButton = lineageContainer.getByTestId(
+        'downstream-button-text'
+      );
+
+      await expect(upstreamButton).toHaveText('Upstream');
+      await expect(downstreamButton).toHaveText('Downstream');
+
+      // Verify upstream entity card is visible
+      const upstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      const downstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      await expect(downstreamCard).toBeVisible();
+      await expect(downstreamCard).toContainText(
+        downstreamTable.entity.displayName
+      );
+
+      // Verify downstream icon is present
+      const downstreamIcon = downstreamCard.locator(
+        '.lineage-item-direction svg'
+      );
+
+      await expect(downstreamIcon).toBeVisible();
+
+      await upstreamButton.click();
+
+      await expect(upstreamCard).toBeVisible();
+      await expect(upstreamCard).toContainText(
+        upstreamTable.entity.displayName
+      );
+
+      // Verify upstream icon is present
+      const upstreamIcon = upstreamCard.locator('.lineage-item-direction svg');
+
+      await expect(upstreamIcon).toBeVisible();
+
+      // Verify card structure and content
+      const card = lineageContainer.locator('.lineage-item-card').first();
+
+      // Verify service icon
+      const serviceIcon = card.locator('.service-icon');
+
+      await expect(serviceIcon).toBeVisible();
+
+      // Verify entity name
+      const entityName = card.locator('.item-name-text');
+
+      await expect(entityName).toBeVisible();
+
+      // Verify entity type
+      const entityType = card.locator('.item-entity-type-text');
+
+      await expect(entityType).toContainText(/table/i);
+
+      // Verify owner info is present (either owner label or no owner)
+      const ownerSection = card.locator('.lineage-info-container');
+
+      await expect(ownerSection).toBeVisible();
+
+      // Verify card is clickable link
+      const cardLink = card.locator('.breadcrumb-menu-button');
+
+      await expect(cardLink).toBeVisible();
+    } finally {
+      // Cleanup
+      await upstreamTable.delete(apiContext);
+      await downstreamTable.delete(apiContext);
     }
   });
 
@@ -658,7 +784,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     }
   });
 
-  test('Data Steward - Tab Navigation - Lineage Tab', async ({
+  test('Data Steward - Tab Navigation - Lineage Tab - No Lineage', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -668,17 +794,148 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       name: /lineage/i,
     });
 
-    if (await lineageTab.isVisible()) {
+    await lineageTab.click();
+    await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    await expect(tabContent).toBeVisible();
+
+    // When there's no lineage, verify empty state
+    await expect(dataStewardPage.getByText(/No data found/i)).toBeVisible();
+  });
+
+  test('Data Steward - Tab Navigation - Lineage Tab - With Upstream and Downstream', async ({
+    dataStewardPage,
+  }) => {
+    // Create additional entities for lineage
+    const { apiContext } = await getApiContext(dataStewardPage);
+    const upstreamTable = new TableClass();
+    const downstreamTable = new TableClass();
+
+    try {
+      await upstreamTable.create(apiContext);
+      await downstreamTable.create(apiContext);
+
+      // Add lineage connections: upstream -> testEntity -> downstream
+      await addPipelineBetweenNodes(dataStewardPage, upstreamTable, testEntity);
+      await addPipelineBetweenNodes(
+        dataStewardPage,
+        testEntity,
+        downstreamTable
+      );
+
+      // Navigate back to explore and open the entity panel
+      await navigateToExploreAndSelectTable(dataStewardPage);
+
+      const summaryPanel = dataStewardPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const lineageTab = summaryPanel.getByRole('menuitem', {
+        name: /lineage/i,
+      });
+
       await lineageTab.click();
       await dataStewardPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await dataStewardPage.waitForLoadState('networkidle');
 
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify lineage content is loaded
+      const lineageContainer = summaryPanel.locator('.lineage-tab-content');
+
+      await expect(lineageContainer).toBeVisible();
+
+      // Verify upstream/downstream filter buttons exist
+      const filterButtons = lineageContainer.locator('.lineage-filter-buttons');
+
+      await expect(filterButtons).toBeVisible();
+
+      // Get the filter buttons by their text content
+      const upstreamButton = lineageContainer.getByTestId(
+        'upstream-button-text'
+      );
+      const downstreamButton = lineageContainer.getByTestId(
+        'downstream-button-text'
+      );
+
+      await expect(upstreamButton).toHaveText('Upstream');
+      await expect(downstreamButton).toHaveText('Downstream');
+
+      // Verify upstream entity card is visible
+      const upstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      const downstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      await expect(downstreamCard).toBeVisible();
+      await expect(downstreamCard).toContainText(
+        downstreamTable.entity.displayName
+      );
+
+      // Verify downstream icon is present
+      const downstreamIcon = downstreamCard.locator(
+        '.lineage-item-direction svg'
+      );
+
+      await expect(downstreamIcon).toBeVisible();
+
+      await upstreamButton.click();
+
+      await expect(upstreamCard).toBeVisible();
+      await expect(upstreamCard).toContainText(
+        upstreamTable.entity.displayName
+      );
+
+      // Verify upstream icon is present
+      const upstreamIcon = upstreamCard.locator('.lineage-item-direction svg');
+
+      await expect(upstreamIcon).toBeVisible();
+
+      // Verify card structure and content
+      const card = lineageContainer.locator('.lineage-item-card').first();
+
+      // Verify service icon
+      const serviceIcon = card.locator('.service-icon');
+
+      await expect(serviceIcon).toBeVisible();
+
+      // Verify entity name
+      const entityName = card.locator('.item-name-text');
+
+      await expect(entityName).toBeVisible();
+
+      // Verify entity type
+      const entityType = card.locator('.item-entity-type-text');
+
+      await expect(entityType).toContainText(/table/i);
+
+      // Verify owner info is present (either owner label or no owner)
+      const ownerSection = card.locator('.lineage-info-container');
+
+      await expect(ownerSection).toBeVisible();
+
+      // Verify card is clickable link
+      const cardLink = card.locator('.breadcrumb-menu-button');
+
+      await expect(cardLink).toBeVisible();
+    } finally {
+      // Cleanup
+      await upstreamTable.delete(apiContext);
+      await downstreamTable.delete(apiContext);
     }
   });
 
@@ -985,7 +1242,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Tab Navigation - Lineage Tab', async ({
+  test('Data Consumer - Tab Navigation - Lineage Tab - No Lineage', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -995,17 +1252,152 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       name: /lineage/i,
     });
 
-    if (await lineageTab.isVisible()) {
+    await lineageTab.click();
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    await expect(tabContent).toBeVisible();
+
+    // When there's no lineage, verify empty state
+    await expect(dataConsumerPage.getByText(/No data found/i)).toBeVisible();
+  });
+
+  test('Data Consumer - Tab Navigation - Lineage Tab - With Upstream and Downstream', async ({
+    dataConsumerPage,
+  }) => {
+    // Create additional entities for lineage
+    const { apiContext } = await getApiContext(dataConsumerPage);
+    const upstreamTable = new TableClass();
+    const downstreamTable = new TableClass();
+
+    try {
+      await upstreamTable.create(apiContext);
+      await downstreamTable.create(apiContext);
+
+      // Add lineage connections: upstream -> testEntity -> downstream
+      await addPipelineBetweenNodes(
+        dataConsumerPage,
+        upstreamTable,
+        testEntity
+      );
+      await addPipelineBetweenNodes(
+        dataConsumerPage,
+        testEntity,
+        downstreamTable
+      );
+
+      // Navigate back to explore and open the entity panel
+      await navigateToExploreAndSelectTable(dataConsumerPage);
+
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const lineageTab = summaryPanel.getByRole('menuitem', {
+        name: /lineage/i,
+      });
+
       await lineageTab.click();
       await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await dataConsumerPage.waitForLoadState('networkidle');
 
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify lineage content is loaded
+      const lineageContainer = summaryPanel.locator('.lineage-tab-content');
+
+      await expect(lineageContainer).toBeVisible();
+
+      // Verify upstream/downstream filter buttons exist
+      const filterButtons = lineageContainer.locator('.lineage-filter-buttons');
+
+      await expect(filterButtons).toBeVisible();
+
+      // Get the filter buttons by their text content
+      const upstreamButton = lineageContainer.getByTestId(
+        'upstream-button-text'
+      );
+      const downstreamButton = lineageContainer.getByTestId(
+        'downstream-button-text'
+      );
+
+      await expect(upstreamButton).toHaveText('Upstream');
+      await expect(downstreamButton).toHaveText('Downstream');
+
+      // Verify upstream entity card is visible
+      const upstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      const downstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      await expect(downstreamCard).toBeVisible();
+      await expect(downstreamCard).toContainText(
+        downstreamTable.entity.displayName
+      );
+
+      // Verify downstream icon is present
+      const downstreamIcon = downstreamCard.locator(
+        '.lineage-item-direction svg'
+      );
+
+      await expect(downstreamIcon).toBeVisible();
+
+      await upstreamButton.click();
+
+      await expect(upstreamCard).toBeVisible();
+      await expect(upstreamCard).toContainText(
+        upstreamTable.entity.displayName
+      );
+
+      // Verify upstream icon is present
+      const upstreamIcon = upstreamCard.locator('.lineage-item-direction svg');
+
+      await expect(upstreamIcon).toBeVisible();
+
+      // Verify card structure and content
+      const card = lineageContainer.locator('.lineage-item-card').first();
+
+      // Verify service icon
+      const serviceIcon = card.locator('.service-icon');
+
+      await expect(serviceIcon).toBeVisible();
+
+      // Verify entity name
+      const entityName = card.locator('.item-name-text');
+
+      await expect(entityName).toBeVisible();
+
+      // Verify entity type
+      const entityType = card.locator('.item-entity-type-text');
+
+      await expect(entityType).toContainText(/table/i);
+
+      // Verify owner info is present (either owner label or no owner)
+      const ownerSection = card.locator('.lineage-info-container');
+
+      await expect(ownerSection).toBeVisible();
+
+      // Verify card is clickable link
+      const cardLink = card.locator('.breadcrumb-menu-button');
+
+      await expect(cardLink).toBeVisible();
+    } finally {
+      // Cleanup
+      await upstreamTable.delete(apiContext);
+      await downstreamTable.delete(apiContext);
     }
   });
 
