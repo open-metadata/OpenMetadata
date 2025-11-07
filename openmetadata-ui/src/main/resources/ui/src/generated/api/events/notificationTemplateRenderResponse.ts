@@ -11,6 +11,39 @@
  *  limitations under the License.
  */
 /**
+ * Response from rendering a notification template with mock data, including validation and
+ * rendered output.
+ */
+export interface NotificationTemplateRenderResponse {
+    /**
+     * Actual rendering results with mock data. Null if validation failed.
+     */
+    render?: TemplateRenderResult;
+    /**
+     * Syntax validation results for the template.
+     */
+    validation: NotificationTemplateValidationResponse;
+}
+
+/**
+ * Actual rendering results with mock data. Null if validation failed.
+ *
+ * Rendered template output with subject and body strings.
+ */
+export interface TemplateRenderResult {
+    /**
+     * Rendered template body.
+     */
+    body: string;
+    /**
+     * Rendered template subject.
+     */
+    subject: string;
+}
+
+/**
+ * Syntax validation results for the template.
+ *
  * Response from notification template validation
  */
 export interface NotificationTemplateValidationResponse {
