@@ -26,6 +26,8 @@ import { Callout } from './Callout/Callout';
 import DiffView from './diff-view';
 import FileNode from './File/FileNode';
 import { Focus } from './focus';
+import { Handlebars, HandlebarsBlock } from './handlebars';
+import { handlebarsSuggestion } from './handlebars/handlebarsSuggestion';
 import { Hashtag } from './hashtag';
 import { hashtagSuggestion } from './hashtag/hashtagSuggestion';
 import { LinkExtension } from './link';
@@ -113,6 +115,10 @@ export const extensions = [
   Hashtag.configure({
     suggestion: hashtagSuggestion(),
   }),
+  Handlebars.configure({
+    suggestion: handlebarsSuggestion(),
+  }),
+  HandlebarsBlock,
   DiffView,
   TextHighlightView,
   BlockAndDragDrop,

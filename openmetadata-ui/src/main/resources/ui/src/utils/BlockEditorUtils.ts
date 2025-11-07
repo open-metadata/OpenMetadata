@@ -20,6 +20,10 @@ import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio
 import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
+import {
+  parseHandlebarsFromBackend,
+  serializeHandlebarsForBackend,
+} from '../components/BlockEditor/Extensions/handlebars';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
@@ -122,7 +126,12 @@ export const formatContent = (
       tag.textContent = `${prefix}${label}`;
     });
   }
-  const modifiedHtmlString = doc.body.innerHTML;
+  let modifiedHtmlString = doc.body.innerHTML;
+
+  // Clean up handlebars blocks when formatting for server
+  if (formatFor === 'server') {
+    modifiedHtmlString = serializeHandlebarsForBackend(modifiedHtmlString);
+  }
 
   return modifiedHtmlString;
 };
@@ -245,6 +254,9 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
 
   // Transform img tags to file-attachment divs before Tiptap processes them
   htmlString = transformImgTagsToFileAttachment(htmlString);
+
+  // Parse handlebars from backend format
+  htmlString = parseHandlebarsFromBackend(htmlString);
 
   editor.commands.setContent(htmlString);
 
