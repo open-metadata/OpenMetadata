@@ -14,17 +14,25 @@
 import { Box, Button } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize } from 'lodash';
-import { useMemo } from 'react';
+import { capitalize, isUndefined } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as MappingIcon } from '../../../assets/svg/node-mapping.svg';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
+import { LineageLayer } from '../../../generated/settings/settings';
+import {
+  EntityReference,
+  TestSummary,
+} from '../../../generated/tests/testCase';
+import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
   node: SourceType;
@@ -95,6 +103,61 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   );
 };
 
+const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
+  const { entityType } = node;
+  const [summary, setSummary] = useState<TestSummary>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
+    setIsLoading(true);
+    try {
+      const response = await getTestCaseExecutionSummary(testSuite.id);
+      setSummary(response);
+    } catch {
+      setSummary(undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const { activeLayer } = useLineageProvider();
+
+  const { showDataObservability } = useMemo(() => {
+    return {
+      showDataObservability: activeLayer.includes(
+        LineageLayer.DataObservability
+      ),
+    };
+  }, [activeLayer]);
+
+  const showDataObservabilitySummary = useMemo(() => {
+    return Boolean(
+      showDataObservability &&
+        entityType === EntityType.TABLE &&
+        (node as Table).testSuite
+    );
+  }, [node, showDataObservability, entityType]);
+
+  useEffect(() => {
+    const testSuite = (node as Table)?.testSuite;
+    if (showDataObservabilitySummary && testSuite && isUndefined(summary)) {
+      fetchTestSuiteSummary(testSuite);
+    } else {
+      setIsLoading(false);
+    }
+  }, [node, showDataObservabilitySummary, summary]);
+
+  return (
+    showDataObservabilitySummary && (
+      <TestSuiteSummaryWidget
+        isLoading={isLoading}
+        size="small"
+        summary={summary}
+      />
+    )
+  );
+};
+
 const EntityFooter = ({
   isColumnsListExpanded,
   node,
@@ -117,7 +180,7 @@ const EntityFooter = ({
   };
 
   return (
-    <Box className="flex justify-between entity-footer">
+    <Box className="entity-footer">
       <Button
         className={classNames(
           'columns-info-dropdown-label',
@@ -127,7 +190,13 @@ const EntityFooter = ({
         onClick={handleClickColumnInfoDropdown}>
         {columnsInfoDropdownLabel}
       </Button>
-      <MappingIcon className="mapping-icon" onClick={handleClickNodeMapping} />
+      <Box className="test-summary-and-mapping">
+        <TestSuiteSummaryContainer node={node} />
+        <MappingIcon
+          className="mapping-icon"
+          onClick={handleClickNodeMapping}
+        />
+      </Box>
     </Box>
   );
 };

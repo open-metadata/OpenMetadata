@@ -33,7 +33,6 @@ import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils'
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getColumnContent } from '../CustomNode.utils';
-import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 import { IconButton, Stack, Typography, Pagination } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -365,12 +364,6 @@ const NodeChildren = ({
   ) {
     return (
       <div className="column-container">
-        <div className="d-flex justify-between items-center">
-          {showDataObservabilitySummary && (
-            <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
-          )}
-        </div>
-
         {(isColumnLayerEnabled || isColumnsListExpanded) && (
           <div className="search-box">
             <Input

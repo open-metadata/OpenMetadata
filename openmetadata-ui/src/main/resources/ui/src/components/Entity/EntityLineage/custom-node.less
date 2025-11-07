@@ -118,6 +118,14 @@
         .entity-footer {
           padding: 8px 16px 8px 16px;
           background-color: #ffffff;
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          .test-summary-and-mapping {
+            display: flex;
+            gap: 5px;
+          }
+
           .columns-info-dropdown-label {
             min-width: fit-content;
             padding: 0px @size-xs 0 @size-sm;
@@ -540,9 +548,9 @@
 .data-quality-failed-custom-node-header {
   .custom-node-column-container {
     &:hover {
-      border-left-color: @red-14;
-      background-color: @red-9;
-      color: @red-20;
+      // border-left-color: @red-14;
+      // background-color: @red-9;
+      // color: @red-20;
     }
   }
 }
