@@ -848,7 +848,7 @@ const TableDetailsPageV1: React.FC = () => {
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
+        entity: entityName,
       })}
       title="Table details">
       <GenericProvider<Table>

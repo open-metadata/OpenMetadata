@@ -345,7 +345,7 @@ function AlertDetailsPage({
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.alert'),
+        entity: getEntityName(alertDetails),
       })}>
       {loadingCount ? (
         <Loader />

@@ -396,7 +396,7 @@ function SpreadsheetDetails({
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.spreadsheet'),
+        entity: entityName,
       })}>
       <Row gutter={[0, 12]}>
         <Col span={24}>

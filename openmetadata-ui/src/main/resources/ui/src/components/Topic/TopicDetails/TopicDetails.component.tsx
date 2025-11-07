@@ -423,7 +423,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.topic'),
+        entity: entityName,
       })}>
       <Row gutter={[0, 12]}>
         <Col span={24}>

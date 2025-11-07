@@ -33,6 +33,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -235,7 +236,7 @@ const DataModelDetails = ({
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.data-model'),
+        entity: getEntityName(dataModelData),
       })}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
