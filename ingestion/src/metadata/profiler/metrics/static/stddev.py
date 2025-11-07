@@ -68,12 +68,11 @@ def _(element, compiler, **kw):
 @compiles(StdDevFn, Dialects.SQLite)  # Needed for unit tests
 def _(element, compiler, **kw):
     """
-    This actually returns the squared STD, but as
-    it is only required for tests we can live with it.
+    SQLite standard deviation using computational formula.
+    Requires SQRT function (registered via tests/unit/conftest.py for unit tests).
     """
-
     proc = compiler.process(element.clauses, **kw)
-    return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
+    return "SQRT(AVG(%s * %s) - AVG(%s) * AVG(%s))" % ((proc,) * 4)
 
 
 @compiles(StdDevFn, Dialects.Trino)
@@ -145,7 +144,7 @@ class StdDev(StaticMetric):
         accumulator = computation.create_accumulator()
         for df in dfs:
             try:
-                accumulator = computation.update_accumulator(accumulator, df) 
+                accumulator = computation.update_accumulator(accumulator, df)
             except MemoryError:
                 logger.error(
                     f"Unable to compute 'Standard Deviation' for {self.col.name} due to memory constraints."
@@ -210,7 +209,7 @@ class StdDev(StaticMetric):
                 return sum_sum_squares_count
 
             chunk_sum = numeric_df.sum()
-            chunk_sum_squares = (numeric_df ** 2).sum()
+            chunk_sum_squares = (numeric_df**2).sum()
             chunk_count = len(numeric_df)
 
         else:
@@ -221,7 +220,8 @@ class StdDev(StaticMetric):
 
         return SumSumSquaresCount(
             sum_value=sum_sum_squares_count.sum_value + chunk_sum,
-            sum_squares_value=sum_sum_squares_count.sum_squares_value + chunk_sum_squares,
+            sum_squares_value=sum_sum_squares_count.sum_squares_value
+            + chunk_sum_squares,
             count_value=sum_sum_squares_count.count_value + chunk_count,
         )
 
@@ -249,7 +249,7 @@ class StdDev(StaticMetric):
             sum_sum_squares_count.sum_squares_value / sum_sum_squares_count.count_value
         )
 
-        variance = mean_of_squares - (mean ** 2)
+        variance = mean_of_squares - (mean**2)
 
         # Handle floating point precision issues
         if variance < 0:

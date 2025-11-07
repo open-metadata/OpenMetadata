@@ -36,6 +36,7 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.stddev import StdDev, SumSumSquaresCount
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -121,13 +122,20 @@ class ColumnValueStdDevToBeBetweenValidator(
                     dimension_aggregates[dimension_value][
                         DIMENSION_TOTAL_COUNT_KEY
                     ] += row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY]
+                        dimension_aggregates[dimension_value][
+                            DIMENSION_TOTAL_COUNT_KEY
+                        ],
+                        group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                stddev_value = stddev_impl.aggregate_accumulator(agg[Metrics.STDDEV.name])
-                total_rows = row_count_impl.aggregate_accumulator(agg[DIMENSION_TOTAL_COUNT_KEY])
+                stddev_value = stddev_impl.aggregate_accumulator(
+                    agg[Metrics.STDDEV.name]
+                )
+                total_rows = row_count_impl.aggregate_accumulator(
+                    agg[DIMENSION_TOTAL_COUNT_KEY]
+                )
 
                 if stddev_value is None:
                     logger.warning(
@@ -165,39 +173,39 @@ class ColumnValueStdDevToBeBetweenValidator(
                     total_column=DIMENSION_TOTAL_COUNT_KEY,
                 )
 
-                def calculate_weighted_stddev(df_aggregated, others_mask, metric_column):
-                    """Calculate weighted stddev for Others using variance formula
+                def calculate_weighted_stddev(
+                    df_aggregated, others_mask, metric_column
+                ):
+                    """Calculate weighted stddev for Others using StdDev accumulator
 
-                    For "Others" group, we need to compute stddev from aggregated statistics:
-                    variance = (sum_squares / count) - (sum / count)²
-                    stddev = √variance
+                    For "Others" group, we recompute stddev from aggregated statistics
+                    by constructing an accumulator and using the exact same aggregation
+                    logic as the StdDev metric (ensuring consistency and DRY principle).
 
                     For top N dimensions, we use the pre-computed stddev.
                     """
-                    import math
-
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
-                        others_sum = df_aggregated.loc[others_mask, Metrics.SUM.name].iloc[0]
-                        others_count = df_aggregated.loc[others_mask, Metrics.COUNT.name].iloc[0]
-                        others_sum_squares = df_aggregated.loc[others_mask, SUM_SQUARES_KEY].iloc[0]
+                        others_sum = df_aggregated.loc[
+                            others_mask, Metrics.SUM.name
+                        ].iloc[0]
+                        others_count = df_aggregated.loc[
+                            others_mask, Metrics.COUNT.name
+                        ].iloc[0]
+                        others_sum_squares = df_aggregated.loc[
+                            others_mask, SUM_SQUARES_KEY
+                        ].iloc[0]
 
-                        if others_count > 0:
-                            mean = others_sum / others_count
-                            mean_of_squares = others_sum_squares / others_count
-                            variance = mean_of_squares - (mean ** 2)
+                        accumulator = SumSumSquaresCount(
+                            sum_value=others_sum,
+                            sum_squares_value=others_sum_squares,
+                            count_value=others_count,
+                        )
 
-                            # Handle floating point precision issues
-                            if variance < 0:
-                                if abs(variance) < 1e-10:
-                                    variance = 0
-                                else:
-                                    logger.warning(
-                                        f"Negative variance ({variance}) for 'Others', setting to 0"
-                                    )
-                                    variance = 0
+                        others_stddev = StdDev.aggregate_accumulator(accumulator)
 
-                            result.loc[others_mask] = math.sqrt(variance)
+                        if others_stddev is not None:
+                            result.loc[others_mask] = others_stddev
 
                     return result
 
@@ -214,7 +222,11 @@ class ColumnValueStdDevToBeBetweenValidator(
                     final_metric_calculators={
                         Metrics.STDDEV.name: calculate_weighted_stddev
                     },
-                    exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name, SUM_SQUARES_KEY],
+                    exclude_from_final=[
+                        Metrics.SUM.name,
+                        Metrics.COUNT.name,
+                        SUM_SQUARES_KEY,
+                    ],
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[Metrics.STDDEV.name],
                     violation_predicate=checker.violates_pandas,
