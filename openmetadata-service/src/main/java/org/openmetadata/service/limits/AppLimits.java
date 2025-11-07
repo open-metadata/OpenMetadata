@@ -3,6 +3,7 @@ package org.openmetadata.service.limits;
 import jakarta.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -18,11 +19,13 @@ public abstract class AppLimits {
 
   private final CollectionDAO.AppExtensionTimeSeries dao;
   private final @Getter AppRepository repository;
+  protected final @Getter LimitsConfiguration limitsConfiguration;
   private @Getter App app;
 
-  public AppLimits(CollectionDAO collectionDAO) {
+  public AppLimits(CollectionDAO collectionDAO, LimitsConfiguration limitsConfiguration) {
     this.dao = collectionDAO.appExtensionTimeSeriesDao();
     this.repository = new AppRepository();
+    this.limitsConfiguration = limitsConfiguration;
   }
 
   // This can only happen with runtime loaded apps with the private config
