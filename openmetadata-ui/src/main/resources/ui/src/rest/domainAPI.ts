@@ -132,15 +132,7 @@ export const getDomainChildrenPaginated = async (
   const requestParams: Record<string, string | number | string[]> = {
     limit: pageSize,
     offset,
-    fields: [
-      TabSpecificField.OWNERS,
-      TabSpecificField.PARENT,
-      TabSpecificField.EXPERTS,
-      TabSpecificField.TAGS,
-      TabSpecificField.FOLLOWERS,
-      TabSpecificField.EXTENSION,
-      TabSpecificField.CHILDREN_COUNT,
-    ],
+    fields: [TabSpecificField.PARENT, TabSpecificField.CHILDREN_COUNT],
   };
 
   if (parentFQN) {
