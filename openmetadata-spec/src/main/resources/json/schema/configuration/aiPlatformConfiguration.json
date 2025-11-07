@@ -56,21 +56,6 @@
       "description": "Path to the trusted CA certificate for the AI Platform server",
       "type": "string"
     },
-    "credits": {
-      "description": "Collate platform credits",
-      "type": "integer",
-      "default": 100
-    },
-    "billingCycleStart": {
-      "title": "Cycle Start",
-      "description": "The start of this limit cycle.",
-      "$ref": "../type/basic.json#/definitions/date"
-    },
-    "actionCreditsMultiplier": {
-      "description": "Multiplier to calculate credits per action",
-      "type": "number",
-      "default": 0.5
-    },
     "grpc": {
       "description": "gRPC configuration for the AI Platform server",
       "$ref": "#/definitions/grpcConfiguration"
