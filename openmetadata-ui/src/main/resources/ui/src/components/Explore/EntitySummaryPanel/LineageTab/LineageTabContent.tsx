@@ -129,6 +129,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'upstream' ? 'active' : ''
           }`}
+          data-testid={`upstream-button-${
+            filter === 'upstream' ? 'active' : ''
+          }`}
           size="small"
           onClick={() => onFilterChange('upstream')}>
           <span
@@ -145,6 +148,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
         </Button>
         <Button
           className={`lineage-filter-button ${
+            filter === 'downstream' ? 'active' : ''
+          }`}
+          data-testid={`downstream-button-${
             filter === 'downstream' ? 'active' : ''
           }`}
           size="small"
