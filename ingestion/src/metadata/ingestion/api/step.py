@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    Progress,
     StepSummary,
 )
 from metadata.ingestion.api.closeable import Closeable
@@ -75,6 +76,29 @@ class Summary(StepSummary):
     @classmethod
     def from_step(cls, step: Step) -> "Summary":
         """Compute summary from Step"""
+        # Extract progress tracking if available (for database connectors)
+        progress_data = None
+        if hasattr(step, "source") and hasattr(step.source, "progress_tracking"):
+            progress_tracking = step.source.progress_tracking
+            if progress_tracking:
+                progress_data = {}
+                for entity_type, counts in progress_tracking.items():
+                    if (
+                        counts.get("total", 0) > 0
+                    ):  # Only include entity types with data
+                        # Calculate estimated remaining time
+                        est_time = None
+                        if hasattr(step.source, "calculate_estimated_remaining_time"):
+                            est_time = step.source.calculate_estimated_remaining_time(
+                                entity_type
+                            )
+
+                        progress_data[entity_type] = Progress(
+                            total=counts.get("total", 0),
+                            processed=counts.get("processed", 0),
+                            estimatedRemainingSeconds=est_time,
+                        )
+
         return Summary(
             name=step.name,
             records=step.status.record_count
@@ -85,6 +109,7 @@ class Summary(StepSummary):
             errors=len(step.status.failures),
             filtered=len(step.status.filtered),
             failures=step.status.failures[0:10] if step.status.failures else None,
+            progress=progress_data,
         )
 
     def __str__(self):

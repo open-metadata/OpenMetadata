@@ -276,6 +276,7 @@ public class StoredProcedureResource
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, storedProcedure);
   }
+
   @PUT
   @Path("/bulk")
   @Operation(
@@ -291,14 +292,20 @@ public class StoredProcedureResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = org.openmetadata.schema.type.api.BulkOperationResult.class))),
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(
             responseCode = "202",
             description = "Bulk operation accepted for async processing",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = org.openmetadata.schema.type.api.BulkOperationResult.class))),
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(

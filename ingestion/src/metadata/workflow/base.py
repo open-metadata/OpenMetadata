@@ -347,6 +347,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def _report_ingestion_status(self):
         """
         Given a logger, use it to INFO the workflow status
+        Also reports progress to the server for real-time UI updates
         """
         try:
             for step in self.workflow_steps():
@@ -357,11 +358,20 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     else len(step.status.records)
                 )
 
+                # Check if source has comprehensive progress tracking (for database connectors)
+                progress_info = ""
+                if hasattr(step, "source") and hasattr(
+                    step.source, "progress_tracking"
+                ):
+                    progress_summary = step.source.get_progress_summary()
+                    if progress_summary and progress_summary != "No progress data":
+                        progress_info = f"\n  Progress: {progress_summary}"
+
                 logger.info(
                     f"{step.name}: Processed {record_count} records,"
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
-                    f" found {len(step.status.failures)} errors"
+                    f" found {len(step.status.failures)} errors{progress_info}"
                 )
 
             # Only calculate resource metrics when debug is enabled
@@ -376,6 +386,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"{metrics.memory_total_mb:.2f}MB "
                     f"({metrics.memory_usage_percent:.2f}%) | "
                     f"Processes: {metrics.active_processes}"
+                )
+
+            # Report current progress to the server for real-time UI updates
+            # Build and send the current ingestion status
+            ingestion_status = self.build_ingestion_status()
+            if ingestion_status:
+                self.set_ingestion_pipeline_status(
+                    state=PipelineState.running, ingestion_status=ingestion_status
                 )
 
         except Exception as exc:

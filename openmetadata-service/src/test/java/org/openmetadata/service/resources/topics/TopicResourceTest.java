@@ -47,8 +47,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.entity.data.Topic;
@@ -71,6 +74,7 @@ import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   public static final String SCHEMA_TEXT =
@@ -625,6 +629,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertFields(expectedField.getChildren(), actualField.getChildren());
   }
 
+  @Order(1)
   @Test
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     // Use existing tags that are already set up in the test environment
