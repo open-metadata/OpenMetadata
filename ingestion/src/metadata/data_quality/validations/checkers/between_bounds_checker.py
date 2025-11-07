@@ -13,11 +13,14 @@
 BetweenBoundsChecker implements the checker for any metric that should be between two bounds
 """
 import math
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Mapping
 
 from metadata.data_quality.validations.checkers.base_checker import (
     BaseValidationChecker,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ClauseElement
 
 
 class BetweenBoundsChecker(BaseValidationChecker):
@@ -27,40 +30,39 @@ class BetweenBoundsChecker(BaseValidationChecker):
         self.min_bound = min_bound
         self.max_bound = max_bound
 
-    def check_pandas(self, value: Any) -> bool:
-        """Check if value is outside [min_bound, max_bound]. Used on Pandas Data Quality."""
+    def _value_violates(self, value: Any) -> bool:
+        """Check violation of one value"""
         import pandas as pd
 
         if value is None or pd.isna(value):
             return False
-
         return not (self.min_bound <= value <= self.max_bound)
 
-    def get_sqa_failed_rows_builder(
-        self, metric_col_name: str, total_count_col_name: str
-    ) -> Callable:
-        """Builds SQA Failed Rows Expression. If metric is outside bounds, failed rows count = total rows count. Else, failed rows count = 0."""
-        from sqlalchemy import case, literal, or_
+    def violates_pandas(self, metrics: Mapping[str, Any]) -> bool:
+        """Check if any value is outside [min_bound, max_bound]. Used on Pandas Data Quality."""
+        return any(self._value_violates(value) for value in metrics.values())
 
-        def build_sqa_failed_rows_expression(cte):
-            conditions = []
-            metric_col = getattr(cte.c, metric_col_name)
-            total_count_col = getattr(cte.c, total_count_col_name)
+    def build_violation_sqa(
+        self, metrics: Mapping[str, "ClauseElement"]
+    ) -> "ClauseElement":
+        """Build SQA Violation Expression"""
+        from sqlalchemy import and_, literal, or_
+
+        conditions = []
+        for expr in metrics.values():
+            expr_conditions = []
 
             if not math.isinf(self.min_bound):
-                conditions.append(metric_col < self.min_bound)
+                expr_conditions.append(and_(expr.isnot(None), expr < self.min_bound))
             if not math.isinf(self.max_bound):
-                conditions.append(metric_col > self.max_bound)
+                expr_conditions.append(and_(expr.isnot(None), expr > self.max_bound))
 
-            if not conditions:
-                return literal(0)
-
-            violation = or_(*conditions) if len(conditions) > 1 else conditions[0]
-
-            return case(
-                (metric_col.is_(None), literal(0)),
-                (violation, total_count_col),
-                else_=literal(0),
-            )
-
-        return build_sqa_failed_rows_expression
+            if expr_conditions:
+                conditions.append(
+                    or_(*expr_conditions)
+                    if len(expr_conditions) > 1
+                    else expr_conditions[0]
+                )
+        if not conditions:
+            return literal(False)
+        return or_(*conditions) if len(conditions) > 1 else conditions[0]

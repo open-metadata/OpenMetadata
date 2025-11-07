@@ -27,11 +27,16 @@ def parse_databricks_native_query_source(
         catalog_info = details.get("catalog_info", "")
         catalog_parameters = details.get("catalog_parameters", "")
         catalog_info_match = re.match(
-            r".*Catalog\s*=\s*(?P<catalog>.*?)\s*,", catalog_info
-        ).groupdict()
-        catalog = catalog_info_match.get("catalog", None)
+            r".*Catalog\s*=\s*(?P<catalog>[^,]+?)\s*,", catalog_info
+        )
+        if not catalog_info_match:
+            logger.error(f"Could not find catalog in info: {catalog_info}")
+            catalog = None
+        else:
+            catalog_groups = catalog_info_match.groupdict()
+            catalog = catalog_groups.get("catalog", None)
         database_match = re.search(
-            r'Name\s*=\s*(?P<database>.*?)\s*,\s*Kind\s*=\s*"Database"',
+            r'Name\s*=\s*(?P<database>[^,]+?)\s*,\s*Kind\s*=\s*"Database"',
             catalog_parameters,
         )
         database = None
@@ -44,7 +49,7 @@ def parse_databricks_native_query_source(
             logger.error(f"Could not find database in {source_expression}")
             return None
 
-        database = database.strip('"')
+        database = database.strip('"').strip()
         parser_query = details.get("query")
 
         # Clean the query for parser
@@ -78,7 +83,8 @@ def parse_databricks_native_query_source(
             parser = LineageParser(
                 parser_query, dialect=Dialect.DATABRICKS, timeout_seconds=30
             )
-
+            if parser.query_parsing_success is False:
+                raise Exception(parser.query_parsing_failure_reason)
         except Exception as parser_exc:
             logger.error(
                 f"LineageParser failed parsing query with error {parser_query[:200]} ",

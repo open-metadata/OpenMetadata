@@ -121,10 +121,19 @@ class ColumnValueMinToBeBetweenValidator(
                 min_value = agg[Metrics.MIN.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not min_value:
+                if min_value is None:
+                    logger.warning(
+                        "Skipping '%s=%s' dimension since 'min' is 'None'",
+                        dimension_col.name,
+                        dimension_value,
+                    )
                     continue
 
-                failed_count = total_rows if checker.check_pandas(min_value) else 0
+                failed_count = (
+                    total_rows
+                    if checker.violates_pandas({Metrics.MIN.name: min_value})
+                    else 0
+                )
 
                 results_data.append(
                     {
@@ -147,10 +156,14 @@ class ColumnValueMinToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={Metrics.MIN.name: "min"},
+                    agg_functions={
+                        Metrics.MIN.name: "min",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metric=Metrics.MIN.name,
-                    violation_predicate=checker.check_pandas,
+                    violation_metrics=[Metrics.MIN.name],
+                    violation_predicate=checker.violates_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):
