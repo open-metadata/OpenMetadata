@@ -1249,7 +1249,11 @@ public class FeedRepository {
           dao.feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
         }
       } catch (Exception ex) {
-        LOG.error("Failed to anonymize thread for user {}", userName, ex);
+        LOG.error(
+            "Failed to anonymize thread {} for user {}",
+            threadJson != null ? JsonUtils.extractValue(threadJson, "$.id") : "unknown",
+            userName,
+            ex);
         // Continue with next thread
       }
     }
