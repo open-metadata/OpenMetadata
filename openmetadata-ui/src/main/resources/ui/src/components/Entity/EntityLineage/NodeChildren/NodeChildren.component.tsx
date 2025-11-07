@@ -363,8 +363,8 @@ const NodeChildren = ({
     (isColumnLayerEnabled || showDataObservability || isColumnsListExpanded)
   ) {
     return (
-      <div className="column-container">
-        {(isColumnLayerEnabled || isColumnsListExpanded) && (
+      (isColumnLayerEnabled || isColumnsListExpanded) && (
+        <div className="column-container">
           <div className="search-box">
             <Input
               placeholder={t('label.search-entity', {
@@ -384,8 +384,8 @@ const NodeChildren = ({
               </section>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )
     );
   } else {
     return null;
