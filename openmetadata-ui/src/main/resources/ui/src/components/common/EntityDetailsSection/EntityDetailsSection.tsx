@@ -40,7 +40,13 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     return null;
   }
 
-  return <div className="entity-details-section">{entityDetails}</div>;
+  return (
+    <div
+      className="entity-details-section"
+      data-testid="entity-details-section">
+      {entityDetails}
+    </div>
+  );
 };
 
 export default EntityDetailsSection;

@@ -153,7 +153,7 @@ export const getTruncatedPath = (path: string, className?: string) => {
     return path;
   }
 
-  const parts = path.split(' > ');
+  const parts = path.split('>');
 
   return (
     <CondensedBreadcrumb

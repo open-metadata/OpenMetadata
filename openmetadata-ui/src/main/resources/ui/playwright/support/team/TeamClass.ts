@@ -56,7 +56,7 @@ export class TeamClass {
   async visitTeamPage(page: Page) {
     // complete url since we are making basic and advance call to get the details of the team
     const fetchOrganizationResponse = page.waitForResponse(
-      `/api/v1/teams/name/Organization?fields=users%2CdefaultRoles%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
     );
     await settingClick(page, GlobalSettingOptions.TEAMS);
     await fetchOrganizationResponse;
