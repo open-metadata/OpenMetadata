@@ -16,7 +16,7 @@ import { Input, InputProps, InputRef } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
@@ -35,9 +35,6 @@ export type SearchBarProps = {
   inputProps?: InputProps;
   searchBarDataTestId?: string;
   disabled?: boolean;
-  /**
-   * Key to be used for url search
-   */
 };
 
 const Searchbar = ({
@@ -60,23 +57,17 @@ const Searchbar = ({
   const [isSearchBlur, setIsSearchBlur] = useState(true);
   const isTypingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const wasDisabledRef = useRef(disabled);
-  const hadFocusRef = useRef(false);
 
   useEffect(() => {
     if (!isTypingRef.current && searchValue !== userSearch) {
       setUserSearch(searchValue ?? '');
-      if (hadFocusRef.current && inputRef.current) {
-        setTimeout(() => inputRef.current?.focus(), 0);
-      }
     }
   }, [searchValue]);
 
   useEffect(() => {
-    if (wasDisabledRef.current && !disabled && hadFocusRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 0);
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus();
     }
-    wasDisabledRef.current = disabled;
   }, [disabled]);
 
   const debouncedOnSearch = useCallback(
@@ -126,7 +117,7 @@ const Searchbar = ({
               style={{ fontSize: '16px' }}
             />
           }
-          ref={inputRef as unknown as React.RefObject<InputRef>}
+          ref={inputRef as unknown as RefObject<InputRef>}
           suffix={
             showLoadingStatus &&
             loadingState === 'waiting' && (
@@ -137,15 +128,9 @@ const Searchbar = ({
           }
           type="text"
           value={userSearch}
-          onBlur={() => {
-            setIsSearchBlur(true);
-            hadFocusRef.current = false;
-          }}
+          onBlur={() => setIsSearchBlur(true)}
           onChange={handleChange}
-          onFocus={() => {
-            setIsSearchBlur(false);
-            hadFocusRef.current = true;
-          }}
+          onFocus={() => setIsSearchBlur(false)}
           {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (

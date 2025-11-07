@@ -25,14 +25,6 @@ jest.mock('lodash', () => ({
   debounce: (fn: () => void) => fn,
 }));
 
-const mockSetFilters = jest.fn();
-
-jest.mock('../../../hooks/useTableFilters', () => ({
-  useTableFilters: jest.fn().mockImplementation(() => ({
-    setFilters: mockSetFilters,
-  })),
-}));
-
 describe('Test Searchbar Component', () => {
   it('Renders the searchbar with the search text sent to it', async () => {
     act(() => {
