@@ -107,6 +107,32 @@ const DomainTreeView = ({
 
   const currentUserId = currentUser?.id ?? '';
 
+  const recalculateChildrenCounts = useCallback(
+    (domains: Domain[]): Domain[] => {
+      return domains.map((domain) => {
+        if (!domain.children?.length) {
+          return domain;
+        }
+
+        const updatedChildren = recalculateChildrenCounts(
+          domain.children as unknown as Domain[]
+        );
+
+        const totalChildrenCount = updatedChildren.reduce(
+          (count, child) => count + 1 + (child.childrenCount || 0),
+          0
+        );
+
+        return {
+          ...domain,
+          children: updatedChildren as unknown as EntityReference[],
+          childrenCount: totalChildrenCount,
+        };
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     const map: Record<string, Domain> = {};
 
@@ -303,38 +329,43 @@ const DomainTreeView = ({
     });
   };
 
-  const loadChildDomains = async (parentFqn: string) => {
-    setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
+  const loadChildDomains = useCallback(
+    async (parentFqn: string) => {
+      setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
 
-    try {
-      const response = await getDomainChildrenPaginated(parentFqn, 50, 0);
-      const children = response.data ?? [];
+      try {
+        const response = await getDomainChildrenPaginated(parentFqn, 50, 0);
+        const children = response.data ?? [];
 
-      setHierarchy((prev) => {
-        return prev.map((domain) => {
-          if (domain.fullyQualifiedName === parentFqn) {
-            return {
-              ...domain,
-              children: children as unknown as EntityReference[],
-            };
-          }
+        setHierarchy((prev) => {
+          const updated = prev.map((domain) => {
+            if (domain.fullyQualifiedName === parentFqn) {
+              return {
+                ...domain,
+                children: children as unknown as EntityReference[],
+              };
+            }
 
-          if (domain.children?.length) {
-            return {
-              ...domain,
-              children: updateNested(domain.children, parentFqn, children),
-            };
-          }
+            if (domain.children?.length) {
+              return {
+                ...domain,
+                children: updateNested(domain.children, parentFqn, children),
+              };
+            }
 
-          return domain;
+            return domain;
+          });
+
+          return recalculateChildrenCounts(updated);
         });
-      });
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
-    }
-  };
+      } catch (error) {
+        handleError(error);
+      } finally {
+        setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
+      }
+    },
+    [handleError, recalculateChildrenCounts]
+  );
 
   const loadDomains = useCallback(
     async (parentFqn?: string, isLoadMore = false) => {
@@ -349,7 +380,7 @@ const DomainTreeView = ({
         await loadRootDomains(isLoadMore);
       }
     },
-    [loadingChildren, rootPaging, domainCount, applySelection]
+    [loadingChildren, rootPaging, domainCount, applySelection, loadChildDomains]
   );
 
   useEffect(() => {
@@ -496,7 +527,7 @@ const DomainTreeView = ({
     });
 
     setSelectedDomain(null);
-  }, [refreshAll, domainMapper, applySelection]);
+  }, [domainMapper, applySelection]);
 
   const followDomain = useCallback(async () => {
     if (!selectedDomain?.id || !currentUserId) {
