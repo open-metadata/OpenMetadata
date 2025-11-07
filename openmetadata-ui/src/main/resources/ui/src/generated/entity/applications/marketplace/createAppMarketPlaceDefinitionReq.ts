@@ -144,14 +144,14 @@ export enum AgentType {
  *
  * This schema defines the Slack App Token Configuration
  *
+ * Configuration for the Collate AI Quality Agent.
+ *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
  * Cache Warmup Application Configuration.
- *
- * Configuration for the Collate AI Quality Agent.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -164,6 +164,8 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
+     *
+     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -186,7 +188,13 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?:             string;
+    userToken?: string;
+    /**
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?:                boolean;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -264,12 +272,6 @@ export interface CollateAIAppConfig {
      * Force cache warmup even if another instance is detected (use with caution).
      */
     force?: boolean;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -520,6 +522,9 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface EntityReference {
     /**
@@ -617,6 +622,9 @@ export enum MetadataAttribute {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface TagLabel {
     /**
@@ -1055,6 +1063,7 @@ export enum Type {
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -1113,6 +1122,11 @@ export interface CreateEventSubscription {
      * Name that uniquely identifies this Alert.
      */
     name: string;
+    /**
+     * Optional custom notification template for this subscription. When not set, system default
+     * template will be used. Only USER templates can be assigned.
+     */
+    notificationTemplate?: EntityReference;
     /**
      * Owners of this Alert.
      */
