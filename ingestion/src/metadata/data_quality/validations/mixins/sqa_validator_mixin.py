@@ -15,7 +15,7 @@ Validator Mixin for SQA tests cases
 
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, Table, case, func, inspect, select, text
+from sqlalchemy import Column, Table, case, func, inspect, literal, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
@@ -23,6 +23,7 @@ from sqlalchemy.sql.expression import ClauseElement
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_IMPACT_SCORE_KEY,
+    DIMENSION_NULL_LABEL,
     DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
@@ -219,9 +220,18 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_FAILED_COUNT_KEY}' key"
             )
 
+        # Normalize dimension column null valures
+        normalized_dimension = case(
+            [
+                (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+            ],
+            else_=dimension_col,
+        )
+
         # Build expressions using dictionary iteration
         select_expressions = {
-            DIMENSION_VALUE_KEY: dimension_col,
+            DIMENSION_VALUE_KEY: normalized_dimension,
         }
 
         # Add all metric expressions from the dictionary
@@ -241,7 +251,7 @@ class SQAValidatorMixin:
         dimension_stats = (
             select(dimension_stats_columns)
             .select_from(self.runner.dataset)
-            .group_by(dimension_col)
+            .group_by(normalized_dimension)
             .cte(CTE_DIMENSION_STATS)
         )
 
@@ -409,18 +419,27 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}'"
             )
 
+        # Normalize dimension column null valures
+        normalized_dimension = case(
+            [
+                (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+            ],
+            else_=dimension_col,
+        )
+
         final_metric_builders = final_metric_builders or {}
         exclude_from_results = exclude_from_results or []
 
         # ---- CTE 1: Raw aggregates per dimension
-        raw_agg_columns = [dimension_col.label(DIMENSION_VALUE_KEY)]
+        raw_agg_columns = [normalized_dimension.label(DIMENSION_VALUE_KEY)]
         for name, expr in metric_expressions.items():
             raw_agg_columns.append(expr.label(name))
 
         raw_aggregates = (
             select(raw_agg_columns)
             .select_from(self.runner.dataset)
-            .group_by(dimension_col)
+            .group_by(normalized_dimension)
             .cte(CTE_DIMENSION_RAW_METRICS)
         )
 
