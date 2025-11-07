@@ -14,6 +14,7 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import base64
+import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 
@@ -37,6 +38,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
+from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
@@ -349,11 +351,6 @@ class OMetaTableMixin:
         Returns:
             BulkOperationResult: Result containing success/failure details
         """
-        import json
-
-        from metadata.generated.schema.type.bulkOperationResult import (
-            BulkOperationResult,
-        )
 
         # Backend endpoint expects List<CreateTable> directly, not wrapped in BulkCreateTable
         # Serialize the tables list to JSON

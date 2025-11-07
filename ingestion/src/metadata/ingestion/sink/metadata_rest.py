@@ -14,11 +14,9 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 import queue
-import threading
-import time
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, Dict, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -59,6 +57,7 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
     TestCaseResolutionStatus,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
@@ -131,32 +130,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
-        self.table_buffer: List[CreateTableRequest] = []
-
-        # Async pipeline components
-        if self.config.enable_async_pipeline:
-            self.batch_queue: queue.Queue = queue.Queue(maxsize=5)
-            self.buffer_lock = threading.Lock()
-            self.workers: List[threading.Thread] = []
-            self.stop_workers = threading.Event()
-
-            # Deferred lifecycle data - process after all tables are created
-            self.deferred_lifecycle_records: List[OMetaLifeCycleData] = []
-            self.deferred_lifecycle_processed = False
-
-            # Timing statistics
-            self.bulk_api_total_time = 0.0
-            self.bulk_api_call_count = 0
-            self.bulk_api_total_tables = 0
-
-            # Start worker threads
-            for i in range(self.config.async_pipeline_workers):
-                worker = threading.Thread(
-                    target=self._bulk_api_worker, name=f"BulkAPIWorker-{i}", daemon=True
-                )
-                worker.start()
-                self.workers.append(worker)
-                logger.info(f"Started {worker.name}")
+        self.table_buffer: list[CreateTableRequest] = []
+        self.deferred_lifecycle_records: list[OMetaLifeCycleData] = []
+        self.deferred_lifecycle_processed = False
 
     @classmethod
     def create(
@@ -210,12 +186,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.table_buffer.append(entity_request)
             if len(self.table_buffer) >= self.config.bulk_sink_batch_size:
                 return self._flush_table_buffer()
-            return None  # Buffered, not yet sent
+            return Either(right=None)  # Buffered, not yet sent
 
         if type(entity_request).__name__ in self.limit_reached:
             # If the limit has been reached, we don't need to try to ingest the entity
             # Note: We use PatchRequest to update the entity, so updating is not affected by the limit
-            return None
+            return Either(right=None)
         try:
             created = self.metadata.create_or_update(entity_request)
             if created:
@@ -237,71 +213,45 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 )
             )
 
-    def _bulk_api_worker(self):
-        """Worker thread that processes bulk API requests from the queue"""
-        while not self.stop_workers.is_set():
-            try:
-                batch = self.batch_queue.get(timeout=1.0)
-                if batch is None:
-                    break
-
-                batch_size = len(batch)
-                logger.info(
-                    f"[{threading.current_thread().name}] Processing batch of {batch_size} tables"
-                )
-
-                bulk_request = BulkCreateTable(tables=batch, dryRun=False)
-                start_time = time.time()
-
-                try:
-                    result = self.metadata.bulk_create_or_update_tables(
-                        bulk_request, use_async=False
-                    )
-                    elapsed = time.time() - start_time
-
-                    # Update timing statistics (thread-safe)
-                    with self.buffer_lock:
-                        self.bulk_api_total_time += elapsed
-                        self.bulk_api_call_count += 1
-                        self.bulk_api_total_tables += batch_size
-
-                    logger.info(
-                        f"[{threading.current_thread().name}] Bulk API completed: "
-                        f"{result.numberOfRowsPassed.root}/{result.numberOfRowsProcessed.root} tables successful, "
-                        f"{result.numberOfRowsFailed.root} failed (took {elapsed:.2f}s)"
-                    )
-                except Exception as exc:
-                    logger.error(
-                        f"[{threading.current_thread().name}] Bulk API failed: {exc}"
-                    )
-                    logger.debug(traceback.format_exc())
-            except queue.Empty:
-                continue
-            except Exception as exc:
-                logger.error(f"Worker error: {exc}")
-                logger.debug(traceback.format_exc())
-
     def _flush_table_buffer(self) -> Either[Entity]:
         """Flush buffered tables to the bulk API worker queue"""
-        if not self.config.enable_async_pipeline:
-            return None
-
-        with self.buffer_lock:
-            if not self.table_buffer:
-                return None
-            batch = self.table_buffer[:]
-            self.table_buffer = []
-
-        batch_size = len(batch)
-        logger.info(f"Flushing {batch_size} tables to bulk API queue")
-
+        if not self.table_buffer:
+            return Either(
+                right=None,
+                left=StackTraceError(
+                    name="Table Buffer",
+                    error="No tables to flush, yet _flush_table_buffer was called",
+                    stackTrace=None,
+                ),
+            )
+        bulk_request = BulkCreateTable(tables=self.table_buffer, dryRun=False)
         try:
-            self.batch_queue.put(batch, block=True)
+            result = self.metadata.bulk_create_or_update_tables(
+                bulk_request, use_async=False
+            )
         except Exception as exc:
-            logger.error(f"Failed to queue bulk API batch: {exc}")
+            logger.error(f"Failed to flush tables to bulk API: {exc}")
             logger.debug(traceback.format_exc())
+            return Either(
+                left=StackTraceError(
+                    name="Table Buffer",
+                    error=f"Failed to flush tables to bulk API: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
 
-        return None
+        self.table_buffer = []
+        if result.status == basic.Status.success:
+            return Either(right=result, left=None)
+        return Either(
+            right=None,
+            left=StackTraceError(
+                name="Table Buffer",
+                error=f"Failed to flush tables to bulk API: {result.failedRequest}",
+                stackTrace=None,
+            ),
+        )
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -707,9 +657,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Ingest the life cycle data
         """
         # In bulk mode - defer ALL lifecycle data until tables are created
-        if self.config.enable_async_pipeline:
-            with self.buffer_lock:
-                self.deferred_lifecycle_records.append(record)
+        if record.entity is Table:
+            self.deferred_lifecycle_records.append(record)
             return Either(right=None)  # Success - will process at end
 
         # Normal mode - process immediately
@@ -922,9 +871,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Flush any remaining buffered tables and stop worker threads
         """
-        if not self.config.enable_async_pipeline:
-            return
-
         # Flush any remaining tables in buffer
         if self.table_buffer:
             logger.info(f"Flushing {len(self.table_buffer)} remaining tables on close")
