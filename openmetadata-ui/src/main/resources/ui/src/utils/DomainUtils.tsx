@@ -315,6 +315,9 @@ export const convertDomainsToTreeOptions = (
 ): TreeListItem[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
+    const domainOption = option as unknown as Domain;
+    const hasChildrenCount =
+      'childrenCount' in domainOption && (domainOption.childrenCount ?? 0) > 0;
 
     return {
       id: option.id,
@@ -346,11 +349,11 @@ export const convertDomainsToTreeOptions = (
         </div>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
-      isLeaf: !hasChildren,
+      isLeaf: !hasChildren && !hasChildrenCount,
       selectable: !multiple,
       children: hasChildren
         ? convertDomainsToTreeOptions(
-            (option as unknown as Domain)?.children as EntityReference[],
+            domainOption?.children as EntityReference[],
             level + 1,
             multiple
           )

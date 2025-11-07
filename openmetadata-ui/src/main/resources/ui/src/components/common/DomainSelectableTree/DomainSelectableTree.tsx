@@ -13,19 +13,28 @@
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
-import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { debounce, isEmpty } from 'lodash';
+import {
+  FC,
+  Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { EntityReference } from '../../../generated/tests/testCase';
-import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
+import type { EntityReference } from '../../../generated/type/entityReference';
 import {
-  convertDomainsToTreeOptions,
-  isDomainExist,
-} from '../../../utils/DomainUtils';
+  getDomainChildrenPaginated,
+  getDomainCount,
+  searchDomains,
+} from '../../../rest/domainAPI';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import {
@@ -44,6 +53,11 @@ import classNames from 'classnames';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+
+const INITIAL_PAGE_SIZE = 15;
+const SCROLL_TRIGGER_THRESHOLD = 200;
+const INITIAL_PAGING_STATE = { offset: 0, limit: INITIAL_PAGE_SIZE, total: 0 };
+
 const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   onSubmit,
   value,
@@ -60,7 +74,57 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [paging, setPaging] = useState(INITIAL_PAGING_STATE);
+  const [totalDomainCount, setTotalDomainCount] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [loadingChildren, setLoadingChildren] = useState<
+    Record<string, boolean>
+  >({});
+  const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
+
   const { activeDomain } = useDomainStore();
+  const pagingRef = useRef(INITIAL_PAGING_STATE);
+  const totalDomainCountRef = useRef<number>(0);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    pagingRef.current = paging;
+  }, [paging]);
+
+  useEffect(() => {
+    totalDomainCountRef.current = totalDomainCount;
+  }, [totalDomainCount]);
+
+  useEffect(() => {
+    const map: Record<string, Domain> = {};
+
+    const buildIndex = (domainList: Domain[]) => {
+      for (const d of domainList) {
+        map[d.fullyQualifiedName as string] = d;
+
+        if (d.children?.length) {
+          buildIndex(d.children as unknown as Domain[]);
+        }
+      }
+    };
+
+    buildIndex(domains);
+    setDomainMapper(map);
+
+    if (domains.length > 0 && !searchTerm) {
+      setTreeData(convertDomainsToTreeOptions(domains, 0, isMultiple));
+    }
+  }, [domains, searchTerm, isMultiple]);
+
+  const fetchTotalCount = async () => {
+    try {
+      const count = await getDomainCount();
+      setTotalDomainCount(count);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const handleMyDomainsClick = async () => {
     await onSubmit([]);
@@ -71,15 +135,15 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       .sort((a, b) => (a ?? '').localeCompare(b ?? ''));
     const initialFqns = (value as string[]).sort((a, b) => a.localeCompare(b));
 
-    if (JSON.stringify(selectedFqns) !== JSON.stringify(initialFqns)) {
+    if (JSON.stringify(selectedFqns) === JSON.stringify(initialFqns)) {
+      onCancel();
+    } else {
       setIsSubmitLoading(true);
       const domains1 = selectedDomains.map((item) =>
         getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
       );
       await onSubmit(domains1);
       setIsSubmitLoading(false);
-    } else {
-      onCancel();
     }
   };
 
@@ -88,7 +152,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     const selectedFqn = availableDomains[0]?.fullyQualifiedName;
     const initialFqn = value?.[0];
 
-    if (selectedFqn !== initialFqn) {
+    if (selectedFqn === initialFqn) {
+      onCancel();
+    } else {
       setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
       if (availableDomains.length > 0) {
@@ -103,34 +169,109 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       } finally {
         setIsSubmitLoading(false);
       }
-    } else {
-      onCancel();
     }
   };
 
-  const fetchAPI = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await listDomainHierarchy({ limit: 100 });
-
-      const combinedData = [...data.data];
-      initialDomains?.forEach((selectedDomain) => {
-        const exists = combinedData.some((domain: Domain) =>
-          isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
-        );
-        if (!exists) {
-          combinedData.push(selectedDomain as unknown as Domain);
+  const updateNested = useCallback(
+    (
+      domainList: Domain[],
+      targetFqn: string,
+      newChildren: Domain[]
+    ): Domain[] => {
+      return domainList.map((domain) => {
+        if (domain.fullyQualifiedName === targetFqn) {
+          return {
+            ...domain,
+            children: newChildren as unknown as EntityReference[],
+          };
         }
-      });
 
-      setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
-      setDomains(combinedData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [initialDomains]);
+        if (domain.children?.length) {
+          return {
+            ...domain,
+            children: updateNested(
+              domain.children as unknown as Domain[],
+              targetFqn,
+              newChildren
+            ) as unknown as EntityReference[],
+          };
+        }
+
+        return domain;
+      });
+    },
+    []
+  );
+
+  const loadChildDomains = useCallback(
+    async (parentFqn: string): Promise<void> => {
+      setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
+
+      try {
+        const response = await getDomainChildrenPaginated(parentFqn, 50, 0);
+        const children = response.data ?? [];
+
+        setDomains((prev) => updateNested(prev, parentFqn, children));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
+      }
+    },
+    [updateNested]
+  );
+
+  const fetchAPI = useCallback(
+    async (isLoadMore = false) => {
+      const setLoadingState = isLoadMore ? setIsLoadingMore : setIsLoading;
+      setLoadingState(true);
+
+      if (!isLoadMore) {
+        setPaging(INITIAL_PAGING_STATE);
+        setHasMore(true);
+      }
+
+      try {
+        const currentPaging = pagingRef.current;
+        const currentTotalCount = totalDomainCountRef.current;
+        const currentOffset = isLoadMore
+          ? currentPaging.offset + currentPaging.limit
+          : 0;
+
+        const data = await getDomainChildrenPaginated(
+          undefined,
+          currentPaging.limit,
+          currentOffset
+        );
+
+        const fetchedData = data.data ?? [];
+        const total = currentTotalCount || 0;
+
+        let combinedData: Domain[];
+        if (isLoadMore) {
+          combinedData = [...domains, ...fetchedData];
+        } else {
+          combinedData = [...fetchedData];
+        }
+
+        setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
+        setDomains(combinedData);
+
+        setPaging({
+          offset: currentOffset,
+          limit: currentPaging.limit,
+          total,
+        });
+
+        setHasMore(currentOffset + currentPaging.limit < total);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setLoadingState(false);
+      }
+    },
+    [domains, isMultiple]
+  );
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
@@ -177,15 +318,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
         const combinedData = [...results];
 
-        initialDomains?.forEach((selectedDomain) => {
-          const exists = combinedData.some((domain: Domain) =>
-            isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
-          );
-          if (!exists) {
-            combinedData.push(selectedDomain as unknown as Domain);
-          }
-        });
-
         const updatedTreeData = convertDomainsToTreeOptions(
           combinedData,
           0,
@@ -205,6 +337,43 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
+  const onLoadData = useCallback(
+    async (node: TreeListItem) => {
+      const nodeFqn = node.key as string;
+      const domain = domainMapper[nodeFqn];
+
+      if (!domain) {
+        return false;
+      }
+
+      const hasLoaded = (domain.children?.length || 0) > 0;
+      const hasChildrenCount = (domain.childrenCount ?? 0) > 0;
+
+      if (!hasLoaded && hasChildrenCount && !loadingChildren[nodeFqn]) {
+        return loadChildDomains(nodeFqn);
+      }
+
+      return true;
+    },
+    [domainMapper, loadingChildren, loadChildDomains]
+  );
+
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (!hasMore || isLoadingMore || isLoading || searchTerm) {
+        return;
+      }
+
+      if (distanceFromBottom < SCROLL_TRIGGER_THRESHOLD) {
+        fetchAPI(true);
+      }
+    },
+    [hasMore, isLoadingMore, isLoading, searchTerm, fetchAPI, domains.length]
+  );
+
   const treeContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
@@ -219,35 +388,91 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
     } else {
       return (
-        <Spin indicator={<Loader size="small" />} spinning={isSubmitLoading}>
-          <Tree
-            blockNode
-            checkStrictly
-            defaultExpandAll
-            showLine
-            autoExpandParent={Boolean(searchTerm)}
-            checkable={isMultiple}
-            className="domain-selectable-tree"
-            defaultCheckedKeys={isMultiple ? value : []}
-            defaultExpandedKeys={value}
-            defaultSelectedKeys={isMultiple ? [] : value}
-            multiple={isMultiple}
-            switcherIcon={switcherIcon}
-            treeData={treeData}
-            onCheck={onCheck}
-            onSelect={onSelect}
-          />
-        </Spin>
+        <>
+          <Spin indicator={<Loader size="small" />} spinning={isSubmitLoading}>
+            <div
+              ref={scrollContainerRef}
+              style={{ maxHeight: 300, overflowY: 'auto' }}
+              onScroll={handleScroll}>
+              <Tree
+                blockNode
+                checkStrictly
+                showLine
+                autoExpandParent={Boolean(searchTerm)}
+                checkable={isMultiple}
+                className="domain-selectable-tree"
+                defaultCheckedKeys={isMultiple ? value : []}
+                defaultExpandedKeys={value}
+                defaultSelectedKeys={isMultiple ? [] : value}
+                loadData={searchTerm ? undefined : onLoadData}
+                multiple={isMultiple}
+                switcherIcon={switcherIcon}
+                treeData={treeData}
+                virtual={false}
+                onCheck={onCheck}
+                onSelect={onSelect}
+              />
+            </div>
+          </Spin>
+          {isLoadingMore && (
+            <div style={{ textAlign: 'center', padding: '8px' }}>
+              <Loader size="small" />
+            </div>
+          )}
+        </>
       );
     }
-  }, [isLoading, treeData, value, onSelect, isMultiple, searchTerm]);
+  }, [
+    isLoading,
+    isLoadingMore,
+    isSubmitLoading,
+    treeData,
+    value,
+    onSelect,
+    isMultiple,
+    searchTerm,
+    handleScroll,
+    onCheck,
+    switcherIcon,
+    onLoadData,
+    t,
+  ]);
 
   useEffect(() => {
-    if (visible) {
+    fetchTotalCount();
+  }, []);
+
+  useEffect(() => {
+    if (visible && totalDomainCount) {
       setSearchTerm('');
       fetchAPI();
     }
-  }, [visible]);
+  }, [visible, totalDomainCount]);
+
+  useEffect(() => {
+    const loadSelectedDomainChildren = async () => {
+      if (value?.length === 0 || !visible || isEmpty(domainMapper)) {
+        return;
+      }
+
+      for (const fqn of value ?? []) {
+        const domain = domainMapper[fqn];
+        if (!domain) {
+          continue;
+        }
+
+        const hasLoaded = (domain.children?.length || 0) > 0;
+        const hasChildrenCount = (domain.childrenCount ?? 0) > 0;
+
+        if (!hasLoaded && hasChildrenCount && !loadingChildren[fqn]) {
+          await loadChildDomains(fqn);
+        }
+      }
+    };
+
+    loadSelectedDomainChildren();
+  }, [value, visible, domainMapper]);
+
   const handleAllDomainKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // To pass Sonar test
     if (e.key === 'Enter' || e.key === ' ') {

@@ -37,6 +37,17 @@ export const getDomainList = async (params?: ListParams) => {
   return response.data;
 };
 
+export const getDomainCount = async () => {
+  const response = await APIClient.get<PagingResponse<Domain[]>>(BASE_URL, {
+    params: {
+      limit: 0,
+      fields: TabSpecificField.PARENT,
+    },
+  });
+
+  return response.data.paging.total;
+};
+
 export const addDomains = async (data: CreateDomain) => {
   const response = await APIClient.post<CreateDomain, AxiosResponse<Domain>>(
     BASE_URL,
