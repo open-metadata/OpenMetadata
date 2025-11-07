@@ -1177,6 +1177,29 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.6667),
             ],
         ),
+        (
+            "test_case_column_values_to_be_at_expected_location_dimensional",
+            "columnValuesToBeAtExpectedLocation",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "16000",
+                "0",
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Alice", TestCaseStatus.Success, 2000, 0, 100, 0, 0),
+                ("name=Bob", TestCaseStatus.Success, 2000, 0, 100, 0, 0),
+                ("name=Charlie", TestCaseStatus.Success, 2000, 0, 100, 0, 0),
+                ("name=Diana", TestCaseStatus.Success, 2000, 0, 100, 0, 0),
+                ("name=Eve", TestCaseStatus.Success, 2000, 0, 100, 0, 0),
+                ("name=Others", TestCaseStatus.Success, 6000, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_datalake(
