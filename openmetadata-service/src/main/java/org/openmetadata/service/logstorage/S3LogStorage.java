@@ -298,9 +298,10 @@ public class S3LogStorage implements LogStorageInterface {
             storageClass,
             isCustomEndpoint,
             sseAlgorithm,
-            kmsKeyId);
+            kmsKeyId,
+            metrics);
 
-    StreamContext context = new StreamContext(stream, System.currentTimeMillis());
+    StreamContext context = new StreamContext(stream, System.currentTimeMillis(), metrics);
     activeStreams.put(streamKey, context);
 
     return stream;
@@ -346,9 +347,10 @@ public class S3LogStorage implements LogStorageInterface {
                           storageClass,
                           isCustomEndpoint,
                           sseAlgorithm,
-                          kmsKeyId);
+                          kmsKeyId,
+                          metrics);
                   LOG.info("Created multipart upload stream for {}/{}", pipelineFQN, runId);
-                  return new StreamContext(stream, System.currentTimeMillis());
+                  return new StreamContext(stream, System.currentTimeMillis(), metrics);
                 } catch (IOException e) {
                   throw new RuntimeException("Failed to create multipart upload stream", e);
                 }
@@ -454,14 +456,57 @@ public class S3LogStorage implements LogStorageInterface {
       try {
         headResponse = s3Client.headObject(headRequest);
       } catch (NoSuchKeyException e) {
-        // File doesn't exist - check memory cache as fallback
-        List<String> recentLines = getRecentLogs(pipelineFQN, runId, limit);
-        if (!recentLines.isEmpty()) {
-          result.put("logs", String.join("\n", recentLines));
-          result.put("after", null);
-          result.put("total", 0L);
-          result.put("streaming", true);
-          return result;
+        // Main file doesn't exist - check for partial file first
+        String partialKey = buildPartialS3Key(pipelineFQN, runId);
+        try {
+          GetObjectRequest getRequest =
+              GetObjectRequest.builder().bucket(bucketName).key(partialKey).build();
+          try (InputStream objectContent = s3Client.getObject(getRequest);
+              BufferedReader reader =
+                  new BufferedReader(
+                      new InputStreamReader(objectContent, StandardCharsets.UTF_8))) {
+
+            List<String> allLines = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+              allLines.add(line);
+            }
+
+            // Apply pagination
+            int startIndex = 0;
+            if (afterCursor != null && !afterCursor.isEmpty()) {
+              try {
+                startIndex = Integer.parseInt(afterCursor);
+              } catch (NumberFormatException ex) {
+                LOG.warn("Invalid cursor format: {}", afterCursor);
+              }
+            }
+
+            int endIndex = Math.min(startIndex + limit, allLines.size());
+            List<String> resultLines =
+                startIndex < allLines.size()
+                    ? allLines.subList(startIndex, endIndex)
+                    : Collections.emptyList();
+
+            result.put("logs", String.join("\n", resultLines));
+            result.put("after", endIndex < allLines.size() ? String.valueOf(endIndex) : null);
+            result.put("total", (long) allLines.size());
+
+            if (metrics != null && s3Sample != null) {
+              metrics.recordS3Read();
+              metrics.recordS3Operation(s3Sample);
+            }
+            return result;
+          }
+        } catch (NoSuchKeyException ex) {
+          // Neither main nor partial file exists - this means truly no logs
+          LOG.debug("No logs found (neither main nor partial) for {}/{}", pipelineFQN, runId);
+        } catch (Exception ex) {
+          LOG.warn(
+              "Failed to read partial logs from S3 for {}/{}: {}",
+              pipelineFQN,
+              runId,
+              ex.getMessage());
         }
 
         result.put("logs", "");
@@ -604,6 +649,9 @@ public class S3LogStorage implements LogStorageInterface {
 
     // Clean up partial log offset tracking
     partialLogOffsets.remove(streamKey);
+
+    // Clear memory cache for this stream
+    recentLogsCache.invalidate(streamKey);
 
     try {
       // Delete main logs file
@@ -894,6 +942,11 @@ public class S3LogStorage implements LogStorageInterface {
       s3Client.putObject(
           putRequest, software.amazon.awssdk.core.sync.RequestBody.fromString(newContent));
 
+      // Record S3 write metrics
+      if (metrics != null) {
+        metrics.recordS3Write();
+      }
+
       // Update offset
       partialLogOffsets.put(streamKey, (long) allLines.size());
 
@@ -1032,10 +1085,13 @@ public class S3LogStorage implements LogStorageInterface {
   private static class StreamContext {
     final MultipartS3OutputStream stream;
     volatile long lastAccessTime;
+    private final StreamableLogsMetrics metrics;
 
-    StreamContext(MultipartS3OutputStream stream, long creationTime) {
+    StreamContext(
+        MultipartS3OutputStream stream, long creationTime, StreamableLogsMetrics metrics) {
       this.stream = stream;
       this.lastAccessTime = creationTime;
+      this.metrics = metrics;
     }
 
     void updateAccessTime() {
@@ -1063,6 +1119,7 @@ public class S3LogStorage implements LogStorageInterface {
     private final List<CompletedPart> completedParts;
     private final List<CompletableFuture<CompletedPart>> pendingUploads;
     private final ByteArrayOutputStream buffer;
+    private final StreamableLogsMetrics metrics;
     private String uploadId;
     private int partNumber = 1;
     private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -1076,7 +1133,8 @@ public class S3LogStorage implements LogStorageInterface {
         StorageClass storageClass,
         boolean isCustomEndpoint,
         ServerSideEncryption sseAlgorithm,
-        String kmsKeyId)
+        String kmsKeyId,
+        StreamableLogsMetrics metrics)
         throws IOException {
       this.s3AsyncClient = s3AsyncClient;
       this.bucketName = bucketName;
@@ -1086,6 +1144,7 @@ public class S3LogStorage implements LogStorageInterface {
       this.isCustomEndpoint = isCustomEndpoint;
       this.sseAlgorithm = sseAlgorithm;
       this.kmsKeyId = kmsKeyId;
+      this.metrics = metrics;
       this.completedParts = new ArrayList<>();
       this.pendingUploads = new ArrayList<>();
       this.buffer = new ByteArrayOutputStream(PART_SIZE);
@@ -1177,6 +1236,11 @@ public class S3LogStorage implements LogStorageInterface {
                     .build();
 
             s3AsyncClient.completeMultipartUpload(completeRequest).join();
+
+            // Record S3 write metrics for multipart upload completion
+            if (metrics != null) {
+              metrics.recordS3Write();
+            }
           } else if (uploadId != null) {
             AbortMultipartUploadRequest abortRequest =
                 AbortMultipartUploadRequest.builder()
@@ -1368,13 +1432,16 @@ public class S3LogStorage implements LogStorageInterface {
 
     // If no S3 partial file, fallback to memory cache
     if (!foundPartialFile) {
-      List<String> recentLines = getRecentLogs(pipelineFQN, runId, limit);
-      allLines.addAll(recentLines);
-      LOG.debug(
-          "Using {} lines from memory cache for active pipeline {}/{}",
-          allLines.size(),
-          pipelineFQN,
-          runId);
+      String streamKey = pipelineFQN + "/" + runId;
+      SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
+      if (buffer != null) {
+        allLines.addAll(buffer.getAllLines());
+        LOG.debug(
+            "Using {} lines from memory cache for active pipeline {}/{}",
+            allLines.size(),
+            pipelineFQN,
+            runId);
+      }
     }
 
     // Apply pagination if needed
