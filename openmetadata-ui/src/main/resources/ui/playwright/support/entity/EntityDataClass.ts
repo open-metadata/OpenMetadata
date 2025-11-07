@@ -13,7 +13,6 @@
 import { APIRequestContext } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-// import { getCIJobId, resetSeed } from '../../utils/common';
 import { uuid } from '../../utils/common';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
@@ -595,19 +594,15 @@ export class EntityDataClass {
           this.dataProduct3.responseData = responseData.dataProduct3;
         }
         if (responseData.table1) {
-          //   console.log('Loading table1 data:', responseData.table1);
           this.table1.set(responseData.table1);
         }
         if (responseData.table2) {
-          //   console.log('Loading table2 data:', responseData.table2);
           this.table2.set(responseData.table2);
         }
         if (responseData.topic1) {
-          //   console.log('Loading topic1 data:', responseData.topic1);
           this.topic1.set(responseData.topic1);
         }
         if (responseData.topic2) {
-          //   console.log('Loading topic2 data:', responseData.topic2);
           this.topic2.set(responseData.topic2);
         }
         if (responseData.dashboard1) {
