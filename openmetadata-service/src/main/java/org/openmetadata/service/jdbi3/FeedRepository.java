@@ -1206,8 +1206,8 @@ public class FeedRepository {
    */
   @Transaction
   public void anonymizeUserFromThreads(String userName) {
-    // Find all threads created by this user
-    List<String> threadJsons = dao.feedDAO().listThreadsByCreatedBy(userName);
+    // Find all threads where the user was involved (created by or updated by the user)
+    List<String> threadJsons = dao.feedDAO().listThreadsByUser(userName);
     for (String threadJson : threadJsons) {
       try {
         Thread thread = JsonUtils.readValue(threadJson, Thread.class);
