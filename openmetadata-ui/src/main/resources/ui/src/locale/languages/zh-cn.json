@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 天",
     "1-hr": "1 小时",
     "a-to-z": "A到Z",
@@ -17,6 +18,7 @@
     "account": "帐号",
     "account-email": "帐号邮箱",
     "account-name": "帐号名称",
+    "ack": "Ack",
     "acknowledged": "已确认",
     "action": "操作",
     "action-plural": "操作",
@@ -1396,6 +1398,7 @@
     "resolved": "Resolved",
     "resolved-by": "Resolved By",
     "resolved-incident-plural": "Resolved Incidents",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",
