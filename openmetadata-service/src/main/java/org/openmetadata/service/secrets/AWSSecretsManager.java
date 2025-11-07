@@ -56,7 +56,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         CreateSecretRequest.builder()
             .name(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+            .secretString(secretValue)
             .tags(
                 SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
                     .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
@@ -71,13 +71,13 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         UpdateSecretRequest.builder()
             .secretId(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(cleanNullOrEmpty(secretValue))
+            .secretString(secretValue)
             .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }
 
   @Override
-  public String getSecret(String secretName) {
+  protected String getSecretInternal(String secretName) {
     GetSecretValueRequest getSecretValueRequest =
         GetSecretValueRequest.builder().secretId(secretName).build();
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();

@@ -84,7 +84,7 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   @Override
   void storeSecret(String secretName, String secretValue) {
     client.setSecret(
-        new KeyVaultSecret(secretName, cleanNullOrEmpty(secretValue))
+        new KeyVaultSecret(secretName, secretValue)
             .setProperties(
                 new SecretProperties().setTags(SecretsManager.getTags(getSecretsConfig()))));
   }
@@ -96,7 +96,7 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   }
 
   @Override
-  String getSecret(String secretName) {
+  protected String getSecretInternal(String secretName) {
     return client.getSecret(secretName).getValue();
   }
 

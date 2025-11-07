@@ -73,7 +73,7 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   @Override
-  public String getSecret(String secretName) {
+  protected String getSecretInternal(String secretName) {
     GetParameterRequest parameterRequest =
         GetParameterRequest.builder().name(secretName).withDecryption(true).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
