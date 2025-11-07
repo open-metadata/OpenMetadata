@@ -3325,9 +3325,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     //    - Term moves to IN_REVIEW status
     //    - Approval task is created for USER1
 
-    //    // CRITICAL: Ensure the GlossaryTermApprovalWorkflow is active
-    //    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
-
     try {
       // Step 1: Create glossary with no reviewers
       // Use simple names without special characters to avoid SQL syntax issues

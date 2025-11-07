@@ -112,8 +112,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           || (event.getImpersonatedBy() != null
               && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
         LOG.debug(
-            "Skipping workflow-initiated event from governance-bot for entity {}",
-            event.getEntityId());
+            "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+            event.getEntityFullyQualifiedName(),
+            event.getEntityType());
         return;
       }
 
