@@ -33,6 +33,7 @@ public class EventSubscriptionMapper
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())
         .withInput(create.getInput())
+        .withNotificationTemplate(create.getNotificationTemplate())
         .withClassName(
             validateConsumerClass(
                 Optional.ofNullable(create.getClassName())
