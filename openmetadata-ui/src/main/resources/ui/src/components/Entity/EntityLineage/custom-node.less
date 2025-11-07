@@ -61,15 +61,15 @@
     }
 
     &.green {
-      border: 1px solid @green-5;
+      border: 1px solid #23aa66;
     }
 
     &.amber {
-      border: 1px solid @yellow-4;
+      border: 1px solid #dc6803;
     }
 
     &.red {
-      border: 1px solid @red-5;
+      border: 1px solid #d92d20;
     }
   }
 
@@ -410,6 +410,17 @@
     border-color: @red-3;
     .lineage-node-badge-container {
       border-color: @red-3;
+    }
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container {
+          &:hover {
+            background-color: #fef3f2;
+            color: #bc1b06;
+            border-left-color: #d92d20;
+          }
+        }
+      }
     }
   }
 }
