@@ -73,9 +73,6 @@ public class OpenMetadata {
       apiClient = new ApiClient();
     }
 
-    AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
-    builder.requestInterceptor(factory.getAuthProvider(config));
-
     if (config.getExtraHeaders() != null
         && config.getExtraHeaders().getAdditionalProperties() != null
         && !config.getExtraHeaders().getAdditionalProperties().isEmpty()) {
@@ -86,6 +83,8 @@ public class OpenMetadata {
     }
 
     apiClient.setFeignBuilder(builder);
+    AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
+    apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
     String basePath = config.getHostPort() + "/";
     apiClient.setBasePath(basePath);
     apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
