@@ -15,7 +15,7 @@ import { Col, Row, Select, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import moment from 'moment';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -47,6 +47,7 @@ const OnlineUsersPage = () => {
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [userList, setUserList] = useState<User[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
+  const latestSearchRef = useRef<string>('');
 
   const {
     currentPage,
@@ -116,6 +117,8 @@ const OnlineUsersPage = () => {
   const searchUsers = useCallback(
     async (value: string) => {
       setIsDataLoading(true);
+      latestSearchRef.current = value;
+
       try {
         // For search, we still need to use searchQuery API and filter client-side
         // as the online users endpoint doesn't support search yet
@@ -126,6 +129,11 @@ const OnlineUsersPage = () => {
           queryFilter: getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
         });
+
+        if (latestSearchRef.current !== value) {
+          return;
+        }
+
         const data = res.hits.hits.map(({ _source }) => _source);
 
         // Filter users based on lastLoginTime
@@ -144,6 +152,9 @@ const OnlineUsersPage = () => {
         });
         setUserList(onlineUsers);
       } catch (error) {
+        if (latestSearchRef.current !== value) {
+          return;
+        }
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
@@ -152,7 +163,9 @@ const OnlineUsersPage = () => {
         );
         setUserList([]);
       } finally {
-        setIsDataLoading(false);
+        if (latestSearchRef.current === value) {
+          setIsDataLoading(false);
+        }
       }
     },
     [currentPage, pageSize, handlePagingChange]
@@ -165,6 +178,7 @@ const OnlineUsersPage = () => {
       if (value) {
         searchUsers(value);
       } else {
+        latestSearchRef.current = '';
         fetchUsersList();
       }
     },

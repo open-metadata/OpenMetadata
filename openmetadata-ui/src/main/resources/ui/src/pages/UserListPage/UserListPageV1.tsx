@@ -15,7 +15,7 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
@@ -76,6 +76,7 @@ const UserListPageV1 = () => {
   const [showReactiveModal, setShowReactiveModal] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const latestSearchRef = useRef<string>('');
   const {
     filters: { isDeleted, user: searchValue },
     setFilters,
@@ -175,11 +176,14 @@ const UserListPageV1 = () => {
 
   const getSearchedUsers = (value: string, pageNumber: number) => {
     setIsDataLoading(true);
+    latestSearchRef.current = value;
 
     userQuerySearch(value, pageNumber, isAdminPage, isDeleted).then(
       (resUsers) => {
-        setUserList(resUsers);
-        setIsDataLoading(false);
+        if (latestSearchRef.current === value) {
+          setUserList(resUsers);
+          setIsDataLoading(false);
+        }
       }
     );
   };
@@ -238,6 +242,7 @@ const UserListPageV1 = () => {
     if (searchValue) {
       getSearchedUsers(searchValue, 1);
     } else {
+      latestSearchRef.current = '';
       fetchUsersList({
         isAdmin: isAdminPage,
         include: isDeleted ? Include.Deleted : Include.NonDeleted,
