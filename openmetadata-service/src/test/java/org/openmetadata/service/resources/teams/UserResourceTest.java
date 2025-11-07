@@ -99,7 +99,10 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.feed.CreatePost;
+import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -113,6 +116,7 @@ import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -127,7 +131,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PersonaPreferences;
+import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
@@ -136,6 +142,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -144,6 +151,7 @@ import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.UserActivityTracker;
@@ -2612,5 +2620,80 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Clean up
     deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_deletedUserAnonymizedInThreads(TestInfo test) throws HttpResponseException {
+    // Create a user who will create threads and posts
+    CreateUser createUserRequest =
+        createRequest(test)
+            .withName("userToDelete")
+            .withDisplayName("User To Delete")
+            .withEmail("usertodelete@email.com")
+            .withIsBot(false)
+            .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+            .withPassword("Test@1234")
+            .withConfirmPassword("Test@1234");
+
+    User userToDelete = createEntity(createUserRequest, ADMIN_AUTH_HEADERS);
+    Map<String, String> USER_AUTH_HEADERS = authHeaders("usertodelete@email.com");
+
+    // Create a table entity to post threads about
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    tableResourceTest.setup(test);
+    CreateTable createTable = tableResourceTest.createRequest(test);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Create a thread with a post by the user
+    FeedResourceTest feedResourceTest = new FeedResourceTest();
+    feedResourceTest.setup(test);
+    CreateThread createThread =
+        new CreateThread()
+            .withMessage("Test message from user")
+            .withFrom(userToDelete.getName())
+            .withAbout(table.getFullyQualifiedName())
+            .withType(ThreadType.Conversation);
+    Thread thread = feedResourceTest.createEntity(createThread, USER_AUTH_HEADERS);
+
+    // Add a reply post by the same user
+    CreatePost createPost =
+        new CreatePost().withMessage("Test reply").withFrom(userToDelete.getName());
+    Post post = feedResourceTest.addPost(thread.getId(), createPost, USER_AUTH_HEADERS);
+
+    // Verify the thread and post have the user's name
+    Thread threadBeforeDelete = feedResourceTest.getEntity(thread.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(userToDelete.getName(), threadBeforeDelete.getCreatedBy());
+    assertTrue(
+        threadBeforeDelete.getPosts().stream()
+            .anyMatch(p -> userToDelete.getName().equals(p.getFrom())));
+
+    // Delete the user
+    deleteEntity(userToDelete.getId(), ADMIN_AUTH_HEADERS);
+
+    // Wait a bit for async operation to complete
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+
+    // Verify the thread and posts are anonymized
+    Thread threadAfterDelete = feedResourceTest.getEntity(thread.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        FeedRepository.DELETED_USER_NAME,
+        threadAfterDelete.getCreatedBy(),
+        "Thread createdBy should be anonymized");
+
+    // Verify all posts from the deleted user are anonymized
+    for (Post p : threadAfterDelete.getPosts()) {
+      if (p.getId().equals(post.getId())) {
+        assertEquals(
+            FeedRepository.DELETED_USER_NAME, p.getFrom(), "Post from field should be anonymized");
+      }
+    }
+
+    // Clean up
+    feedResourceTest.deleteEntity(thread.getId(), ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
   }
 }
