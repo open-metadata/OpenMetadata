@@ -59,13 +59,17 @@ Example Scores:
     - 10,000 rows, 1,000 failed (10%): 0.010 (low - minor issue despite volume)
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Float, case, func
 from sqlalchemy.sql.expression import ClauseElement
 
-from metadata.data_quality.validations.base_test_handler import DIMENSION_OTHERS_LABEL
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+if TYPE_CHECKING:
+    pass
 
 # Configuration constants
 DEFAULT_SAMPLE_WEIGHT_THRESHOLD = 100.0  # Samples needed for full weight
@@ -178,8 +182,8 @@ def get_impact_score_expression(
     raw_impact = failure_severity * volume_factor * sample_weight
 
     # Normalize to approximately 0-1 range
-    # Max theoretical value is 1.0 * log10(large_number) * 1.0
-    # For 10K rows: 1.0 * 4 * 1.0 = 4, so we divide by 4
+    # Max theoretical value: 1.0 (failure²) × 1.5 (max volume tier) × 1.0 (sample) = 1.5
+    # Divide by normalization_factor (1.5) to normalize to 0-1 range
     normalized_impact = raw_impact / normalization_factor
 
     # Ensure final score is between 0 and 1 using case expressions for compatibility
@@ -271,102 +275,3 @@ def calculate_impact_score_pandas(
     )
 
     return df
-
-
-def aggregate_others_pandas(
-    df,
-    dimension_column: str,
-    top_n: int = DEFAULT_TOP_DIMENSIONS,
-    impact_column: str = "impact_score",
-    others_label: str = DIMENSION_OTHERS_LABEL,
-):
-    """
-    Aggregate low-impact dimensions into an "Others" category for pandas DataFrames.
-
-    Similar to the cardinality distribution pattern, this keeps the top N
-    dimensions by impact score and groups the rest into "Others".
-
-    Args:
-        df: DataFrame with dimension results and impact scores
-        dimension_column: Name of the dimension column
-        top_n: Number of top dimensions to keep (default: 5)
-        impact_column: Name of the impact score column
-        others_label: Label for aggregated dimensions (default: "Others")
-
-    Returns:
-        DataFrame with top N dimensions plus "Others"
-
-    Example:
-        >>> df = pd.DataFrame({
-        ...     'country': ['USA', 'UK', 'FR', 'DE', 'IT', 'ES', 'PT'],
-        ...     'failed_count': [9000, 800, 700, 50, 30, 20, 10],
-        ...     'total_count': [10000, 1000, 1000, 100, 100, 100, 100],
-        ...     'impact_score': [0.81, 0.32, 0.25, 0.03, 0.01, 0.004, 0.001]
-        ... })
-        >>> result = aggregate_others_pandas(df, 'country', top_n=3)
-        >>> print(result)
-           country  failed_count  total_count  impact_score
-        0      USA          9000        10000         0.810
-        1       UK           800         1000         0.320
-        2       FR           700         1000         0.250
-        3   Others           110          400         0.007
-    """
-    import numpy as np
-
-    # Sort by impact score descending
-    df_sorted = df.sort_values(by=impact_column, ascending=False)
-
-    # Get top N dimensions
-    top_dimensions = df_sorted.head(top_n)[dimension_column].tolist()
-
-    # Create a new column for grouping
-    df["dimension_group"] = np.where(
-        df[dimension_column].isin(top_dimensions), df[dimension_column], others_label
-    )
-
-    # Aggregate by dimension_group
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    agg_dict = {col: "sum" for col in numeric_cols if col != impact_column}
-
-    df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_dict)
-
-    # Recalculate impact score for "Others"
-    if others_label in df_aggregated["dimension_group"].values:
-        others_mask = df_aggregated["dimension_group"] == others_label
-        if (
-            "failed_count" in df_aggregated.columns
-            and "total_count" in df_aggregated.columns
-        ):
-            others_row = df_aggregated[others_mask]
-            if not others_row.empty:
-                # Recalculate impact score using the pandas formula
-                failed = others_row["failed_count"].values[0]
-                total = others_row["total_count"].values[0]
-
-                if total > 0:
-                    failure_rate = failed / total
-                    failure_severity = failure_rate**2
-                    volume_factor = get_volume_factor(total)  # Use the helper function
-                    sample_weight = min(1.0, total / DEFAULT_SAMPLE_WEIGHT_THRESHOLD)
-                    raw_impact = failure_severity * volume_factor * sample_weight
-                    normalized_impact = raw_impact / DEFAULT_NORMALIZATION_FACTOR
-                    impact_score = min(1.0, max(0.0, normalized_impact))
-                else:
-                    impact_score = 0.0
-
-                df_aggregated.loc[others_mask, impact_column] = impact_score
-
-    # For non-Others rows, take the max impact score from original
-    for dim in top_dimensions:
-        dim_mask = df_aggregated["dimension_group"] == dim
-        if dim_mask.any():
-            original_score = df[df[dimension_column] == dim][impact_column].max()
-            df_aggregated.loc[dim_mask, impact_column] = original_score
-
-    # Sort by impact score again
-    df_aggregated = df_aggregated.sort_values(by=impact_column, ascending=False)
-
-    # Rename dimension_group back to original column name
-    df_aggregated.rename(columns={"dimension_group": dimension_column}, inplace=True)
-
-    return df_aggregated

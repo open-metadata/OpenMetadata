@@ -3608,21 +3608,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void getAndValidateTestSummary(String testSuiteId) throws IOException {
-    // Retry logic to handle ES async operations
-    int maxRetries = 5;
-    int retries = 0;
-
-    while (true) {
-      try {
-        TestSummary testSummary = getTestSummary(testSuiteId);
-        validateTestSummary(testSummary, testSuiteId);
-        break;
-      } catch (Exception e) {
-        if (retries++ >= maxRetries) {
-          throw e;
-        }
-      }
-    }
+    // With synchronous search updates, we can directly validate
+    TestSummary testSummary = getTestSummary(testSuiteId);
+    validateTestSummary(testSummary, testSuiteId);
   }
 
   private void validateTestSummary(TestSummary testSummary, String testSuiteId)
@@ -4579,6 +4567,56 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     assertNull(nullValueResult.getPassedRows(), "Passed rows should be null when not set");
     assertNull(nullValueResult.getFailedRows(), "Failed rows should be null when not set");
+  }
+
+  @Test
+  @Order(999)
+  void delete_testCaseResults_verifyDeletionByTimestamp(TestInfo testInfo)
+      throws IOException, ParseException {
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(TABLE_LINK)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    long baseTimestamp = dateToTimestamp("2024-03-01");
+    long dayInMs = 24 * 60 * 60 * 1000L;
+
+    for (int i = 0; i < 5; i++) {
+      CreateTestCaseResult createTestCaseResult =
+          new CreateTestCaseResult()
+              .withResult("result " + i)
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(baseTimestamp + (i * dayInMs));
+      postTestCaseResult(
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    long cutoffTs = baseTimestamp + (3 * dayInMs);
+    int limit = 10000;
+
+    int deletedCount =
+        org.openmetadata.service.Entity.getCollectionDAO()
+            .testCaseResultTimeSeriesDao()
+            .deleteRecordsBeforeCutOff(cutoffTs, limit);
+
+    ResultList<TestCaseResult> remainingResults =
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            baseTimestamp,
+            baseTimestamp + (5 * dayInMs),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(remainingResults);
+
+    for (TestCaseResult result : remainingResults.getData()) {
+      long resultTimestamp = result.getTimestamp();
+      assertTrue(
+          resultTimestamp >= cutoffTs,
+          "All remaining test case results should have timestamps >= cutoff");
+    }
   }
 
   @Test

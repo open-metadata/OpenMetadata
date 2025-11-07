@@ -224,6 +224,7 @@ describe('Test NotificationFeedCard Component', () => {
       const conversationProps = {
         ...mockProps,
         feedType: ThreadType.Conversation,
+        isConversationFeed: true,
       };
 
       await act(async () => {
@@ -243,6 +244,25 @@ describe('Test NotificationFeedCard Component', () => {
       expect(linkElement).toHaveAttribute('data-to', conversationUrl);
     });
 
+    it('should call getTaskDetailPath for task feed entity links in mention notifications tab', async () => {
+      const entityLinkUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: false,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      // Should be called twice - once for main link, once for entity name link
+      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(2);
+      expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
+    });
+
     it('should call prepareFeedLink with ALL subtab for entity links in conversation notifications', async () => {
       const entityLinkUrl = '/database/test.entity/activity_feed/all';
       mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
@@ -250,6 +270,7 @@ describe('Test NotificationFeedCard Component', () => {
       const conversationProps = {
         ...mockProps,
         feedType: ThreadType.Conversation,
+        isConversationFeed: true,
       };
 
       await act(async () => {
