@@ -15,12 +15,18 @@ package org.openmetadata.client.gateway;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import feign.Feign;
+import feign.RequestTemplate;
 import feign.form.FormEncoder;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.api.SystemApi;
@@ -32,6 +38,7 @@ import org.openmetadata.schema.utils.VersionUtils;
 @Slf4j
 public class OpenMetadata {
   private static final OpenMetadataServerVersion OPENMETADATA_VERSION_CLIENT;
+  private static final Pattern TEMPLATE_PATTERN = Pattern.compile("%\\(([^)]+)\\)s");
 
   static {
     OPENMETADATA_VERSION_CLIENT = VersionUtils.getOpenMetadataServerVersion("/catalog/VERSION");
@@ -66,9 +73,19 @@ public class OpenMetadata {
       apiClient = new ApiClient();
     }
 
-    apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
-    apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
+    builder.requestInterceptor(factory.getAuthProvider(config));
+
+    if (config.getExtraHeaders() != null
+        && config.getExtraHeaders().getAdditionalProperties() != null
+        && !config.getExtraHeaders().getAdditionalProperties().isEmpty()) {
+      builder.requestInterceptor(
+          requestTemplate ->
+              applyExtraHeaders(
+                  requestTemplate, config.getExtraHeaders().getAdditionalProperties()));
+    }
+
+    apiClient.setFeignBuilder(builder);
     String basePath = config.getHostPort() + "/";
     apiClient.setBasePath(basePath);
     apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -100,5 +117,52 @@ public class OpenMetadata {
 
   public String[] getClientVersion() {
     return VersionUtils.getVersionFromString(OPENMETADATA_VERSION_CLIENT.getVersion());
+  }
+
+  private void applyExtraHeaders(RequestTemplate template, Map<String, Object> extraHeaders) {
+    Map<String, String> currentHeaders = extractCurrentHeaders(template);
+
+    for (Map.Entry<String, Object> entry : extraHeaders.entrySet()) {
+      String headerName = entry.getKey();
+      String headerValue = entry.getValue() != null ? entry.getValue().toString() : "";
+
+      String resolvedValue = resolveTemplateValue(headerValue, currentHeaders);
+
+      template.header(headerName, resolvedValue);
+
+      LOG.debug("Applied extra header: {} = {}", headerName, resolvedValue);
+    }
+  }
+
+  private Map<String, String> extractCurrentHeaders(RequestTemplate template) {
+    Map<String, String> headers = new HashMap<>();
+    Map<String, Collection<String>> templateHeaders = template.headers();
+
+    for (Map.Entry<String, Collection<String>> entry : templateHeaders.entrySet()) {
+      Collection<String> values = entry.getValue();
+      if (!values.isEmpty()) {
+        headers.put(entry.getKey(), values.iterator().next());
+      }
+    }
+
+    return headers;
+  }
+
+  private String resolveTemplateValue(String value, Map<String, String> currentHeaders) {
+    if (value == null) {
+      return "";
+    }
+
+    Matcher matcher = TEMPLATE_PATTERN.matcher(value);
+    StringBuffer result = new StringBuffer();
+
+    while (matcher.find()) {
+      String headerName = matcher.group(1);
+      String headerValue = currentHeaders.getOrDefault(headerName, "");
+      matcher.appendReplacement(result, Matcher.quoteReplacement(headerValue));
+    }
+
+    matcher.appendTail(result);
+    return result.toString();
   }
 }
