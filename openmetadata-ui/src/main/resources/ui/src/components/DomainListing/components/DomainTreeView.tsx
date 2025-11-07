@@ -111,12 +111,13 @@ const DomainTreeView = ({
     const map: Record<string, Domain> = {};
 
     const buildIndex = (domains: Domain[]) => {
-      domains.forEach((d) => {
+      for (const d of domains) {
         map[d.fullyQualifiedName as string] = d;
+
         if (d.children?.length) {
           buildIndex(d.children as unknown as Domain[]);
         }
-      });
+      }
     };
 
     buildIndex(hierarchy);
@@ -138,10 +139,17 @@ const DomainTreeView = ({
   }, []);
 
   const applySelection = useCallback(
-    (domains: Domain[], resetExpandedItems = false) => {
+    (
+      domains: Domain[],
+      resetExpandedItems = false,
+      domainFqn?: string | undefined
+    ) => {
       const firstDomain = domains?.[0] ?? {};
       const initialFqn =
-        firstDomain?.fullyQualifiedName || firstDomain?.name || firstDomain?.id;
+        domainFqn ??
+        (firstDomain?.fullyQualifiedName ||
+          firstDomain?.name ||
+          firstDomain?.id);
 
       setSelectedFqn(initialFqn);
       if (resetExpandedItems) {
@@ -335,10 +343,10 @@ const DomainTreeView = ({
         return;
       }
 
-      if (!parentFqn) {
-        await loadRootDomains(isLoadMore);
-      } else {
+      if (parentFqn) {
         await loadChildDomains(parentFqn);
+      } else {
+        await loadRootDomains(isLoadMore);
       }
     },
     [loadingChildren, rootPaging, domainCount, applySelection]
@@ -348,7 +356,7 @@ const DomainTreeView = ({
     if (searchQuery) {
       searchDomain(searchQuery);
     } else {
-      loadDomains(undefined);
+      loadDomains();
     }
   }, [refreshToken, searchQuery]);
 
@@ -382,19 +390,19 @@ const DomainTreeView = ({
     (_: unknown, ids: string[]) => {
       const newlyExpandedIds = ids.filter((id) => !expandedItems.includes(id));
 
-      newlyExpandedIds.forEach((fqn) => {
+      for (const fqn of newlyExpandedIds) {
         const domain = domainMapper[fqn];
         if (!domain) {
-          return;
+          continue;
         }
 
-        const hasLoaded = (domain?.children?.length || 0) > 0;
+        const hasLoaded = (domain.children?.length || 0) > 0;
         const hasChildrenCount = (domain.childrenCount ?? 0) > 0;
 
         if (!hasLoaded && hasChildrenCount && !loadingChildren[fqn]) {
           loadDomains(fqn);
         }
-      });
+      }
 
       setExpandedItems(ids);
     },
@@ -452,38 +460,43 @@ const DomainTreeView = ({
 
   const handleDomainDelete = useCallback(async () => {
     const deletedFqn = selectedFqnRef.current;
+    const domainToDelete = domainMapper[deletedFqn as string];
+    const parentDomainFqn = domainToDelete?.parent?.fullyQualifiedName;
 
     setHierarchy((prev) => {
       const removeDomain = (domains: Domain[]): Domain[] => {
-        return domains.reduce<Domain[]>((acc, domain) => {
+        const result: Domain[] = [];
+
+        for (const domain of domains) {
           if (domain.fullyQualifiedName === deletedFqn) {
-            return acc;
+            continue;
           }
 
-          if (domain.children && domain.children.length > 0) {
-            acc.push({
+          if (domain.children?.length) {
+            const newChildren = removeDomain(
+              domain.children as unknown as Domain[]
+            );
+            result.push({
               ...domain,
-              children: removeDomain(
-                domain.children as unknown as Domain[]
-              ) as unknown as typeof domain.children,
+              children: newChildren as unknown as EntityReference[],
             });
           } else {
-            acc.push(domain);
+            result.push(domain);
           }
+        }
 
-          return acc;
-        }, []);
+        return result;
       };
 
       const result = removeDomain(prev);
-      applySelection(result);
+
+      applySelection(result, false, parentDomainFqn);
 
       return result;
     });
 
     setSelectedDomain(null);
-    await refreshAll();
-  }, [refreshAll, selectedDomain, applySelection]);
+  }, [refreshAll, domainMapper, applySelection]);
 
   const followDomain = useCallback(async () => {
     if (!selectedDomain?.id || !currentUserId) {
