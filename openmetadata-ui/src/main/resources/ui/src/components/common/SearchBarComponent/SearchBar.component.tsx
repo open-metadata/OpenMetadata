@@ -70,7 +70,7 @@ const Searchbar = ({
         setTimeout(() => inputRef.current?.focus(), 0);
       }
     }
-  }, [searchValue, userSearch]);
+  }, [searchValue]);
 
   useEffect(() => {
     if (wasDisabledRef.current && !disabled && hadFocusRef.current) {

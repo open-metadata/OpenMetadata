@@ -22,7 +22,7 @@ jest.mock('../Loader/Loader', () => {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: unknown) => fn, // Make debounce execute immediately
+  debounce: (fn: () => void) => fn,
 }));
 
 const mockSetFilters = jest.fn();
