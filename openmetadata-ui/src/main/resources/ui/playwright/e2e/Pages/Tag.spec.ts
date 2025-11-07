@@ -107,7 +107,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test.slow(true);
 
-  base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await classification1.create(apiContext);
@@ -326,7 +326,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     classification: classification.data.name,
   });
 
-  base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await tag.create(apiContext);
@@ -383,7 +383,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
     classification: classification.data.name,
   });
 
-  base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await tag.create(apiContext);
@@ -433,7 +433,7 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     classification: classification.data.name,
   });
 
-  base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await tag.create(apiContext);
