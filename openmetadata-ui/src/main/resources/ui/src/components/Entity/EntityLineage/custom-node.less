@@ -76,7 +76,7 @@
   .lineage-node-content {
     .label-container {
       .custom-node-label-container {
-        width: 19rem;
+        width: 100%;
         min-height: 84px;
         .lineage-breadcrumb {
           .lineage-breadcrumb-item {
@@ -271,6 +271,18 @@
     .lineage-node-badge-container {
       background-color: #eff8ff;
     }
+
+    &.columns-expanded {
+      background-color: #d1e9ff;
+      .lineage-node-content {
+        .label-container {
+          background-color: #d1e9ff;
+        }
+      }
+      .lineage-node-badge-container {
+        background-color: #d1e9ff;
+      }
+    }
   }
 
   &.custom-node-header-tracing {
@@ -462,7 +474,7 @@
     border-color: @lineage-border !important;
     background: @white !important;
     top: 60px !important;
-    left: 257px;
+    left: 247px;
     gap: 1px;
     border: 1px solid;
 
