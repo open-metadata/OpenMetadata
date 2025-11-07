@@ -40,6 +40,9 @@ The connector also accesses `information_schema.tables` and `information_schema.
 ```sql
 -- Grant USAGE on schemas to allow metadata extraction
 GRANT USAGE ON SCHEMA your_schema TO your_user;
+
+-- For multiple schemas, repeat for each schema you want to discover
+GRANT USAGE ON SCHEMA schema1, schema2, schema3 TO your_user;
 ```
 
 If you want to extract metadata for specific tables without granting broad access, you can grant `SELECT` on individual tables. However, for metadata extraction alone, `USAGE` on the schema is typically sufficient.
@@ -83,10 +86,13 @@ CREATE USER openmetadata_user WITH PASSWORD 'your_password';
 GRANT CONNECT ON DATABASE your_database TO openmetadata_user;
 
 -- Grant USAGE on schemas for metadata extraction
-GRANT USAGE ON SCHEMA your_schema TO openmetadata_user;
+-- Repeat for each schema you want OpenMetadata to discover
+GRANT USAGE ON SCHEMA schema1, schema2, schema3 TO openmetadata_user;
 
 -- For profiling and data quality (optional, only if needed)
-GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO openmetadata_user;
+-- Repeat for each schema where you want to run profiling/tests
+GRANT SELECT ON ALL TABLES IN SCHEMA schema1 TO openmetadata_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA schema2 TO openmetadata_user;
 
 -- For usage and lineage extraction (optional, only if needed)
 GRANT pg_read_all_stats TO openmetadata_user;
