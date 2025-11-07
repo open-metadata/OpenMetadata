@@ -12,14 +12,12 @@
  */
 @import (reference) '../../styles/variables.less';
 
-@platform-page-header-height: 114px;
+@platform-page-header-height: 212px;
 
 .platform-lineage-container {
+  height: calc(100vh - @om-navbar-height - @platform-page-header-height);
   .lineage-card {
-    height: calc(
-      100vh - @om-navbar-height - @platform-page-header-height - @size-md
-    );
-
+    height: 100%;
     .ant-card-body {
       height: 100%;
     }
@@ -29,11 +27,13 @@
     height: calc(100vh - @om-navbar-height - @size-md);
 
     .lineage-card {
-      height: calc(100vh - @om-navbar-height - @size-md);
+      height: 100%;
     }
 
-    .lineage-container {
-      height: calc(100vh - @om-navbar-height - @size-md);
-    }
+    // .lineage-card {
+    //   height: calc(
+    //     100vh - @om-navbar-height - @size-md - 32px
+    //   ); // 32px breadcrumb
+    // }
   }
 }

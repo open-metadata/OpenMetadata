@@ -41,6 +41,7 @@ const Lineage = ({
   entityType,
   isPlatformLineage,
   hasEditAccess,
+  platformHeader,
 }: LineageProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
@@ -110,7 +111,9 @@ const Lineage = ({
       className="lineage-card card-padding-0"
       data-testid="lineage-details"
       title={
-        isPlatformLineage ? null : (
+        isPlatformLineage ? (
+          platformHeader
+        ) : (
           <div
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
