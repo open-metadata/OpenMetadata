@@ -13,6 +13,7 @@
 
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
+import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import { useCallback } from 'react';
@@ -20,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSV.utils';
+import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
 
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
@@ -39,6 +41,16 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
 
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
+
+  // Check if this is a URL field that needs validation
+  const isUrlField =
+    props.idSchema.$id.includes('publicKeyUrls') ||
+    props.idSchema.$id.includes('Url') ||
+    props.uiSchema?.['ui:validateUrl'] === true;
+
+  // Check if this is the OIDC scope field that needs array UI with string backend
+  const isScopeField = props.idSchema.$id.includes('scope');
+
   const isFilterPatternField = (id: string) => {
     return /FilterPattern/.test(id);
   };
@@ -78,9 +90,27 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   };
 
   const id = props.idSchema.$id;
-  const value = props.formData ?? [];
+
+  // Handle scope field conversion between string (backend) and array (UI)
+  let value: string[];
+  if (isScopeField) {
+    // Convert string to array for UI display
+    value =
+      typeof props.formData === 'string'
+        ? props.formData.split(' ').filter(Boolean)
+        : props.formData ?? [];
+  } else {
+    value = props.formData ?? [];
+  }
+
   const options = generateOptions();
   const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
+
+  // Check if field has errors (including invalid URLs)
+  const hasInvalidUrls =
+    isUrlField && value.some((url: string) => !isValidUrl(url));
+  const hasError =
+    (props.rawErrors && props.rawErrors.length > 0) || hasInvalidUrls;
 
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
@@ -104,26 +134,69 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     if (!isEmpty(processedValues)) {
       // Use Set to ensure unique values
       const uniqueValues = Array.from(new Set([...value, ...processedValues]));
-      props.onChange(uniqueValues);
+      const convertedValue = isScopeField
+        ? uniqueValues.join(' ')
+        : uniqueValues;
+      props.onChange(convertedValue);
     }
-  }, [onPasteFromClipBoard, props.onChange, value]);
+  }, [onPasteFromClipBoard, props.onChange, value, isUrlField, isScopeField]);
 
   const handleInputSplit = useCallback(
     (inputValue: string) => {
       if (isEmpty(inputValue)) {
         return;
       }
-      const processedValues = splitCSV(inputValue);
 
-      // Use Set to ensure unique values
-      const uniqueValues = Array.from(new Set([...value, ...processedValues]));
-      props.onChange(uniqueValues);
+      // Add the input value (valid or invalid)
+      if (isUrlField) {
+        const uniqueValues = Array.from(new Set([...value, inputValue]));
+        const convertedValue = isScopeField
+          ? uniqueValues.join(' ')
+          : uniqueValues;
+        props.onChange(convertedValue);
+
+        // No temporary error handling needed - persistent validation handles it
+      } else {
+        // For non-URL fields, use CSV splitting
+        const processedValues = splitCSV(inputValue);
+        // Use Set to ensure unique values
+        const uniqueValues = Array.from(
+          new Set([...value, ...processedValues])
+        );
+        const convertedValue = isScopeField
+          ? uniqueValues.join(' ')
+          : uniqueValues;
+        props.onChange(convertedValue);
+      }
     },
-    [value, props.onChange]
+    [value, props.onChange, isUrlField, isScopeField]
   );
 
+  const handleChange = useCallback(
+    (newValue: string[]) => {
+      // Handle scope field conversion from array (UI) to string (backend)
+      const convertedValue = isScopeField
+        ? Array.isArray(newValue)
+          ? newValue.join(' ')
+          : newValue
+        : newValue;
+
+      props.onChange(convertedValue);
+      // Clear field-specific error when value changes
+      if (props.formContext?.clearFieldError) {
+        props.formContext.clearFieldError(props.idSchema.$id);
+      }
+    },
+    [isScopeField, props.onChange, props.formContext, props.idSchema.$id]
+  );
+
+  const handleBlur = useCallback(() => {
+    const convertedValue = isScopeField ? value.join(' ') : value;
+    props.onBlur(id, convertedValue);
+  }, [isScopeField, value, props.onBlur, id]);
+
   return (
-    <Row>
+    <Row className={classNames('field-error', { 'has-error': hasError })}>
       <Col span={24}>
         <Typography
           className={`array-field-label ${
@@ -134,7 +207,9 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       </Col>
       <Col className="sso-select-container" span={24}>
         <Select
-          className="m-t-xss w-full"
+          className={classNames('m-t-xss w-full', {
+            'ant-select-status-error': hasError,
+          })}
           data-testid={`sso-configuration-form-array-field-template-${props.name}`}
           disabled={props.disabled}
           id={id}
@@ -142,10 +217,11 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           open={options ? undefined : false}
           options={options}
           placeholder={getPlaceholderText()}
+          status={hasError ? 'error' : undefined}
           tagRender={SsoCustomTagRenderer}
           value={value}
-          onBlur={() => props.onBlur(id, value)}
-          onChange={(value) => props.onChange(value)}
+          onBlur={handleBlur}
+          onChange={handleChange}
           onFocus={handleFocus}
           onKeyDown={(e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
@@ -162,6 +238,11 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
             }
           }}
         />
+        {hasInvalidUrls && (
+          <div className="ant-form-item-explain-error m-t-xss">
+            {t('message.valid-urls-required')}
+          </div>
+        )}
       </Col>
     </Row>
   );

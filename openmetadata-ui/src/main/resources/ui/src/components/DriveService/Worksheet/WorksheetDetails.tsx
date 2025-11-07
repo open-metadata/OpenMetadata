@@ -13,11 +13,17 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
@@ -59,11 +65,16 @@ import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { WorksheetDetailsProps } from './WorksheetDetails.interface';
+
+const EntityLineageTab = lazy(() =>
+  import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
+    default: module.EntityLineageTab,
+  }))
+);
 
 function WorksheetDetails({
   worksheetDetails,
@@ -301,14 +312,14 @@ function WorksheetDetails({
         />
       ),
       lineageTab: (
-        <LineageProvider>
-          <Lineage
-            deleted={worksheetDetails.deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={worksheetDetails as SourceType}
             entityType={EntityType.WORKSHEET}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
       customPropertiesTab: worksheetDetails && (
         <CustomPropertyTable<EntityType.WORKSHEET>

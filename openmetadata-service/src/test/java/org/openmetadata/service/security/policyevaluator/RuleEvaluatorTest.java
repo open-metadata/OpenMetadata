@@ -202,7 +202,7 @@ class RuleEvaluatorTest {
         Mockito.spy(new CreateResourceContext<>(Entity.DATA_PRODUCT, dataProduct));
 
     resourceContext = new ResourceContext<>(Entity.TABLE, table, tableRepository);
-    subjectContext = new SubjectContext(user);
+    subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
   }
@@ -277,13 +277,13 @@ class RuleEvaluatorTest {
             policy.getName(),
             compiledRules);
 
-    subjectContext = new SubjectContext(ownerUser);
+    subjectContext = new SubjectContext(ownerUser, null);
     RuleEvaluator ruleEvaluator =
         new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
 
-    subjectContext = new SubjectContext(nonOwnerUser);
+    subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
@@ -306,7 +306,7 @@ class RuleEvaluatorTest {
             policy.getName(),
             compiledRules);
 
-    subjectContext = new SubjectContext(ownerUser);
+    subjectContext = new SubjectContext(ownerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
@@ -315,7 +315,7 @@ class RuleEvaluatorTest {
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
 
-    subjectContext = new SubjectContext(nonOwnerUser);
+    subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
@@ -983,7 +983,7 @@ class RuleEvaluatorTest {
 
   @AfterEach
   void resetContext() {
-    subjectContext = new SubjectContext(user);
+    subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     LOG.info("Context reset to default state after test completion.");

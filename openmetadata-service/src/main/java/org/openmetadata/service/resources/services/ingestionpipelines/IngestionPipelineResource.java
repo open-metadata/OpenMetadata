@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
@@ -76,6 +77,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -950,14 +952,50 @@ public class IngestionPipelineResource
               description = "Returns log chunk after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Maximum number of lines to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("1000")
+          int limit) {
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
-    Map<String, String> lastIngestionLogs =
-        pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+        getInternal(
+            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner", Include.NON_DELETED);
+    Map<String, String> lastIngestionLogs;
+    boolean useStreamableLogs =
+        ingestionPipeline.getEnableStreamableLogs()
+            || (ingestionPipeline.getIngestionRunner() != null
+                && repository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
+    if (useStreamableLogs) {
+      // Get logs using the repository's log storage picking up the last runId
+      String runId = ingestionPipeline.getPipelineStatuses().getRunId();
+      if (!CommonUtil.nullOrEmpty(runId)) {
+        Map<String, Object> lastIngestionLogsMap =
+            repository.getLogs(
+                ingestionPipeline.getFullyQualifiedName(), UUID.fromString(runId), after, limit);
+        lastIngestionLogs =
+            lastIngestionLogsMap.entrySet().stream()
+                .filter(entry -> entry.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().toString()));
+        Object logs = lastIngestionLogs.remove("logs");
+        if (logs != null) {
+          lastIngestionLogs.put(
+              TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()), logs.toString());
+        }
+      } else {
+        throw new PipelineServiceClientException(
+            "No runId found for the last ingestion pipeline run");
+      }
+    } else {
+      // Get the logs from the service client
+      lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+    }
+
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
@@ -986,11 +1024,22 @@ public class IngestionPipelineResource
         return Response.status(200).entity("Pipeline Client Disabled").build();
       }
       IngestionPipeline ingestionPipeline =
-          getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+          getInternal(
+              uriInfo,
+              securityContext,
+              id,
+              "pipelineStatuses,ingestionRunner",
+              Include.NON_DELETED);
 
       String filename =
           String.format(
               "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
+
+      boolean useStreamableLogs =
+          ingestionPipeline.getEnableStreamableLogs()
+              || (ingestionPipeline.getIngestionRunner() != null
+                  && repository.isIngestionRunnerStreamableLogsEnabled(
+                      ingestionPipeline.getIngestionRunner()));
 
       StreamingOutput streamingOutput =
           output -> {
@@ -998,8 +1047,38 @@ public class IngestionPipelineResource
             boolean hasMoreData = true;
 
             while (hasMoreData) {
-              Map<String, String> logChunk =
-                  pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+              Map<String, String> logChunk;
+
+              if (useStreamableLogs) {
+                // Get logs using the repository's log storage picking up the last runId
+                String runId = ingestionPipeline.getPipelineStatuses().getRunId();
+                if (CommonUtil.nullOrEmpty(runId)) {
+                  throw new PipelineServiceClientException(
+                      "No runId found for the last ingestion pipeline run");
+                }
+
+                Map<String, Object> lastIngestionLogsMap =
+                    repository.getLogs(
+                        ingestionPipeline.getFullyQualifiedName(),
+                        UUID.fromString(runId),
+                        cursor,
+                        1000);
+                logChunk =
+                    lastIngestionLogsMap.entrySet().stream()
+                        .filter(entry -> entry.getValue() != null)
+                        .collect(
+                            Collectors.toMap(
+                                Map.Entry::getKey, entry -> entry.getValue().toString()));
+                Object logs = logChunk.remove("logs");
+                if (logs != null) {
+                  logChunk.put(
+                      TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
+                      logs.toString());
+                }
+              } else {
+                // Get the logs from the service client
+                logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+              }
 
               if (logChunk == null || logChunk.isEmpty()) {
                 break;
@@ -1181,7 +1260,9 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    if (repository.isS3LogStorageEnabled()) {
+    // Flag the ingestion pipeline with streamable logs only if configured and enabled for use
+    if (repository.isS3LogStorageEnabled()
+        && repository.getLogStorageConfiguration().getEnabled()) {
       ingestionPipeline.setEnableStreamableLogs(true);
     }
     PipelineServiceClientResponse status =

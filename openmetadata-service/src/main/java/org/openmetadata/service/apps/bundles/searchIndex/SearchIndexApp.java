@@ -10,6 +10,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFI
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
@@ -62,8 +63,9 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
-import org.openmetadata.service.search.RecreateIndexHandler.ReindexContext;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -258,7 +260,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
       success = jobData != null && jobData.getStatus() == EventPublisherJob.Status.COMPLETED;
       handleJobCompletion();
     } finally {
-      finalizeRecreateIndexes(success);
+      finalizeAllEntityReindex(success);
+    }
+  }
+
+  private void finalizeAllEntityReindex(boolean finalSuccess) {
+    try {
+      recreateContext
+          .getEntities()
+          .forEach(
+              entityType -> {
+                try {
+                  // Always promote indices regardless of failures
+                  // This handles common scenarios like partial deletions and corrupted data
+                  finalizeEntityReindex(entityType, true);
+                } catch (Exception ex) {
+                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+                }
+              });
+    } finally {
+      recreateContext = null;
     }
   }
 
@@ -370,17 +391,36 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return Optional.empty();
   }
 
-  private void finalizeRecreateIndexes(boolean success) {
+  private void finalizeEntityReindex(String entityType, boolean success) {
     if (recreateIndexHandler == null || recreateContext == null) {
       return;
     }
 
+    String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
+    String activeIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String stagedIndex = recreateContext.getStagedIndex(entityType).orElse(null);
+    String canonicalAlias = recreateContext.getCanonicalAlias(entityType).orElse(null);
+    Set<String> existingAliases = recreateContext.getExistingAliases(entityType);
+    Set<String> parentAliases =
+        new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType)));
+
+    EntityReindexContext entityReindexContext =
+        EntityReindexContext.builder()
+            .entityType(entityType)
+            .originalIndex(originalIndex)
+            .canonicalIndex(canonicalIndex)
+            .activeIndex(activeIndex)
+            .stagedIndex(stagedIndex)
+            .canonicalAliases(canonicalAlias)
+            .existingAliases(existingAliases)
+            .parentAliases(parentAliases)
+            .build();
+
     try {
-      recreateIndexHandler.finalizeReindex(recreateContext, success);
+      recreateIndexHandler.finalizeReindex(entityReindexContext, success);
     } catch (Exception ex) {
       LOG.error("Failed to finalize index recreation flow", ex);
-    } finally {
-      recreateContext = null;
     }
   }
 
@@ -871,10 +911,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       int totalEntityRecords = getTotalEntityRecords(entityType);
-      int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
+      int currentBatchSize = batchSize.get();
+      int loadPerThread = calculateNumberOfThreads(totalEntityRecords, currentBatchSize);
 
       if (totalEntityRecords > 0) {
-        submitBatchTasks(entityType, loadPerThread, producerLatch);
+        submitBatchTasks(entityType, loadPerThread, currentBatchSize, producerLatch);
       }
 
       if (jobLogger != null) {
@@ -886,10 +927,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void submitBatchTasks(
-      String entityType, int loadPerThread, CountDownLatch producerLatch) {
+      String entityType, int loadPerThread, int fixedBatchSize, CountDownLatch producerLatch) {
     for (int i = 0; i < loadPerThread; i++) {
       LOG.debug("Submitting virtual thread producer task for batch {}/{}", i + 1, loadPerThread);
-      int currentOffset = i * batchSize.get();
+      int currentOffset = i * fixedBatchSize;
       producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
     }
   }
@@ -1554,6 +1595,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, jobData.getRecreateIndex());
+    contextData.put(RECREATE_CONTEXT, recreateContext);
     getTargetIndexForEntity(entityType)
         .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
     return contextData;
@@ -1730,11 +1772,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return entities.size();
     }
 
+    int currentBatchSize = batchSize.get();
     return entities.stream()
         .mapToInt(
             entityType -> {
               int totalRecords = getTotalEntityRecords(entityType);
-              return calculateNumberOfThreads(totalRecords);
+              return calculateNumberOfThreads(totalRecords, currentBatchSize);
             })
         .sum();
   }
@@ -1874,12 +1917,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     updateStats(entityType, new StepStats().withSuccessRecords(0).withFailedRecords(failedCount));
   }
 
-  private int calculateNumberOfThreads(int totalEntityRecords) {
-    int mod = totalEntityRecords % batchSize.get();
+  private int calculateNumberOfThreads(int totalEntityRecords, int fixedBatchSize) {
+    int mod = totalEntityRecords % fixedBatchSize;
     if (mod == 0) {
-      return totalEntityRecords / batchSize.get();
+      return totalEntityRecords / fixedBatchSize;
     } else {
-      return (totalEntityRecords / batchSize.get()) + 1;
+      return (totalEntityRecords / fixedBatchSize) + 1;
     }
   }
 

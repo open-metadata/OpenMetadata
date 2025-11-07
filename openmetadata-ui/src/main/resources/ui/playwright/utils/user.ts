@@ -96,7 +96,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
@@ -116,7 +116,7 @@ export const softDeleteUserProfilePage = async (
   displayName: string
 ) => {
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
@@ -317,7 +317,7 @@ export const softDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.fill('[data-testid="searchbar"]', username);
   await searchResponse;
@@ -615,7 +615,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await page.waitForLoadState('networkidle');
 
   // Check if the edit tier button is visible
-  await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
+  await expect(page.locator('[data-testid="edit-icon-tier"]')).toBeVisible();
 };
 
 export const checkStewardPermissions = async (page: Page) => {

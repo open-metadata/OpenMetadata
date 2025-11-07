@@ -56,6 +56,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
+    conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
@@ -154,6 +155,20 @@ public class ListFilter extends Filter<ListFilter> {
     }
   }
 
+  private String getNotificationTemplateCondition() {
+    String notificationTemplate = queryParams.get("notificationTemplate");
+    if (notificationTemplate == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format(
+            "JSON_EXTRACT(json, '$.notificationTemplate.id') = '%s'", notificationTemplate);
+      } else {
+        return String.format("json->'notificationTemplate'->>'id' = '%s'", notificationTemplate);
+      }
+    }
+  }
+
   private String getTestCaseResolutionStatusType() {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
     return testFailureStatus == null
@@ -176,9 +191,18 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getDatabaseSchemaCondition(String tableName) {
     String databaseSchema = queryParams.get("databaseSchema");
-    return databaseSchema == null
-        ? ""
-        : getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
+    if (databaseSchema == null) {
+      return "";
+    }
+
+    if (!nullOrEmpty(tableName)
+        && (tableName.equals("table_entity") || tableName.equals("stored_procedure_entity"))) {
+      String databaseSchemaHash = FullyQualifiedName.buildHash(databaseSchema);
+      queryParams.put("databaseSchemaHashExact", databaseSchemaHash);
+      return String.format("%s.databaseSchemaHash = :databaseSchemaHashExact", tableName);
+    }
+
+    return getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
   }
 
   public String getServiceCondition(String tableName) {
@@ -386,6 +410,7 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     if (testSuiteId != null) {
+      queryParams.put("testSuiteId", testSuiteId);
       conditions.add(
           String.format(
               "id IN (SELECT toId FROM entity_relationship WHERE fromId=:testSuiteId AND toEntity='%s' AND relation=%d AND fromEntity='%s')",

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
@@ -29,7 +30,17 @@ import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
+import { createIconWithStroke } from '../utils/IconUtils';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+
+const DataProductIcon = createIconWithStroke(
+  Cube01 as React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  1.2
+);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
@@ -97,11 +108,26 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: ROUTES.DOMAIN,
+    key: 'domains-section',
     title: 'label.domain-plural',
-    redirect_url: ROUTES.DOMAIN,
     icon: DomainsIcon,
-    dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+    dataTestId: SidebarItem.DOMAINS_SECTION,
+    children: [
+      {
+        key: ROUTES.DOMAIN,
+        title: 'label.domain-plural',
+        redirect_url: ROUTES.DOMAIN,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+      },
+      {
+        key: ROUTES.DATA_PRODUCT,
+        title: 'label.data-product-plural',
+        redirect_url: ROUTES.DATA_PRODUCT,
+        icon: DataProductIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
+      },
+    ],
   },
   {
     key: 'governance',

@@ -87,30 +87,98 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"
 
-DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB = textwrap.dedent(
+DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB = """
+SELECT 
+    entity_id AS job_id,
+    source_table_full_name,
+    target_table_full_name
+FROM system.access.table_lineage
+WHERE entity_type = 'JOB'
+    AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
+    AND source_table_full_name IS NOT NULL
+    AND target_table_full_name IS NOT NULL
+GROUP BY entity_id, source_table_full_name, target_table_full_name
+"""
+
+DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = """
+SELECT
+    entity_id as job_id,
+    source_table_full_name,
+    source_column_name,
+    target_table_full_name,
+    target_column_name
+FROM system.access.column_lineage
+WHERE entity_type = 'JOB'
+    AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
+    AND source_table_full_name IS NOT NULL
+    AND target_table_full_name IS NOT NULL
+    AND source_column_name IS NOT NULL
+    AND target_column_name IS NOT NULL
+GROUP BY
+    entity_id,
+    source_table_full_name,
+    source_column_name,
+    target_table_full_name,
+    target_column_name
+"""
+
+# Test connection queries
+TEST_VIEW_DEFINITIONS = textwrap.dedent(
     """
-    SELECT DISTINCT
-        entity_id as job_id,
-        entity_type as job_type,
-        source_table_full_name as source_table_full_name,
-        target_table_full_name as target_table_full_name
-    FROM system.access.table_lineage
-    WHERE entity_type ILIKE 'job'
-        AND event_time >= current_date() - INTERVAL 90 DAYS
+    SELECT
+        TABLE_NAME,
+        TABLE_SCHEMA,
+        VIEW_DEFINITION
+    FROM INFORMATION_SCHEMA.VIEWS
+    WHERE VIEW_DEFINITION IS NOT NULL
+    LIMIT 1
     """
 )
 
-DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = textwrap.dedent(
+TEST_CATALOG_TAGS = textwrap.dedent(
     """
-    SELECT DISTINCT
-        entity_id as job_id,
-        entity_type as job_type,
-        source_table_full_name as source_table_full_name,
-        source_column_name as source_column_name,
-        target_table_full_name as target_table_full_name,
-        target_column_name as target_column_name
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.catalog_tags
+    WHERE 1=0
+    """
+)
+
+TEST_SCHEMA_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.schema_tags
+    WHERE 1=0
+    """
+)
+
+TEST_TABLE_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.table_tags
+    WHERE 1=0
+    """
+)
+
+TEST_COLUMN_TAGS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM `{database_name}`.information_schema.column_tags
+    WHERE 1=0
+    """
+)
+
+TEST_TABLE_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM system.access.table_lineage
+    WHERE 1=0
+    """
+)
+
+TEST_COLUMN_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
     FROM system.access.column_lineage
-    WHERE entity_type ILIKE 'job'
-        AND event_time >= current_date() - INTERVAL 90 DAYS
+    WHERE 1=0
     """
 )

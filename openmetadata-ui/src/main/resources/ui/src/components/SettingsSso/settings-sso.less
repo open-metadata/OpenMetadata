@@ -88,7 +88,7 @@
     width: @size-2xl;
     height: @size-2xl;
     border-radius: 50%;
-    background-color: @red-22;
+    background-color: @alert-error-icon-bg-1;
   }
 
   .scim-modal-delete-title {
@@ -135,6 +135,7 @@
     padding: @size-sm - 2px @size-xl;
     border-radius: @border-rad-xs;
     width: @size-3xl * 2 + @size-lg + @size-sm;
+    font-weight: @font-medium;
   }
   .scim-modal-delete-button {
     background-color: @red-14;
@@ -227,6 +228,7 @@
   padding: @size-lg;
   height: calc(100vh - (@om-navbar-height + @size-2xl));
   margin-top: @size-xs;
+  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   // Tab styling for configured SSO
   .ant-tabs .ant-tabs-tab {
@@ -254,6 +256,13 @@
   }
 }
 
+// When alert is visible with configured SSO, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .settings-sso {
+    height: calc(100vh - (@om-navbar-height + @size-2xl) - 78px) !important;
+  }
+}
+
 .sso-provider-header {
   display: flex;
   justify-content: space-between;
@@ -272,6 +281,18 @@
   .content-height-with-resizable-panel {
     height: calc(100vh - var(--ant-navbar-height) - @size-2xl + @size-md);
   }
+}
+
+// When alert is visible in SSO settings page, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .content-height-with-resizable-panel {
+    height: calc(
+      100vh - var(--ant-navbar-height) - @size-2xl + @size-md - 78px
+    ) !important;
+  }
+}
+
+.sso-settings-page {
   .right-panel-splitter {
     margin-left: @size-sm;
   }
@@ -332,5 +353,17 @@
         }
       }
     }
+  }
+}
+.scim-modal-delete.ant-modal {
+  width: @size-3xl * 6 + @size-md !important;
+}
+
+.sso-settings-page,
+.sso-configuration-form-card,
+.sso-field-group,
+.settings-sso {
+  .ant-select-dropdown {
+    border-radius: @border-rad-xs;
   }
 }

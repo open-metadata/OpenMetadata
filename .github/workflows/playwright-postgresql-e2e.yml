@@ -44,8 +44,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -92,9 +92,9 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           args: "-d postgresql"
-          ingestion_dependency: "playwright"
+          ingestion_dependency: "all"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

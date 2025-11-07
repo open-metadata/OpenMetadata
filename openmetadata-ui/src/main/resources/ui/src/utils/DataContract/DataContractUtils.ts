@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import yaml from 'js-yaml';
-import { isEmpty, omit } from 'lodash';
+import { omit } from 'lodash';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
-import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
+import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
+import { SEMANTIC_TAG_OPERATORS } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -28,6 +29,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { getTermQuery } from '../SearchUtils';
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
@@ -145,16 +147,20 @@ export const getSematicRuleFields = () => {
     subfields: {
       tagFQN: {
         label: 'Tags',
-        type: 'select',
+        type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
-            queryFilter:
-              'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+            queryFilter: getTermQuery({}, 'must_not', undefined, {
+              wildcardMustNotQueries: {
+                fullyQualifiedName: ['Certification.*', 'Tier.*'],
+              },
+            }),
           }),
           useAsyncSearch: true,
         },
@@ -171,9 +177,10 @@ export const getSematicRuleFields = () => {
     subfields: {
       tagFQN: {
         label: 'Tags',
-        type: 'select',
+        type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -196,8 +203,9 @@ export const getSematicRuleFields = () => {
       tagFQN: {
         label: 'Tags',
         type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
           useAsyncSearch: true,
@@ -208,6 +216,8 @@ export const getSematicRuleFields = () => {
   };
 
   delete allFields[EntityReferenceFields.EXTENSION];
+  delete allFields[EntityReferenceFields.SERVICE];
+  delete allFields[EntityReferenceFields.NAME];
 
   allFields[EntityReferenceFields.TAG] = tagField;
   allFields[EntityReferenceFields.GLOSSARY_TERM] = glossaryTermField;
@@ -216,31 +226,102 @@ export const getSematicRuleFields = () => {
   return allFields;
 };
 
-// Create month ticks at regular intervals
-export const getContractExecutionMonthTicks = (
-  data: {
-    name: number;
-    failed: number;
-    success: number;
-    aborted: number;
-  }[]
+export const processContractExecutionData = (
+  executionData: DataContractResult[]
+): DataContractProcessedResultCharts[] => {
+  return executionData.map((item, index) => {
+    // Add a unique identifier to distinguish items with same timestamp
+    const uniqueName = `${item.timestamp}_${index}`;
+    const status = item.contractExecutionStatus;
+
+    return {
+      name: uniqueName, // Use unique identifier for positioning
+      displayTimestamp: item.timestamp, // Keep original timestamp for display
+      value: 1, // Always 1 for the bar height
+      status: status, // Store status for color determination
+      failed: status === ContractExecutionStatus.Failed ? 1 : 0,
+      success: status === ContractExecutionStatus.Success ? 1 : 0,
+      aborted: status === ContractExecutionStatus.Aborted ? 1 : 0,
+      running: status === ContractExecutionStatus.Running ? 1 : 0,
+      data: item,
+    };
+  });
+};
+
+// Create custom scale function for positioning bars from left
+export const createContractExecutionCustomScale = (
+  data: DataContractProcessedResultCharts[]
 ) => {
-  if (isEmpty(data)) {
-    return [];
+  const domainValues = data.map((d) => d.name);
+  let rangeValues = [0, 800];
+
+  const scale = (value: string) => {
+    const index = data.findIndex((item) => item.name === value);
+    if (index === -1) {
+      return 0;
+    }
+
+    // Calculate position starting from the left edge
+    const maxBarWidth = 20; // Wider bars for better visibility
+    const spacing = 8; // More spacing between bars
+    const position = rangeValues[0] + index * (maxBarWidth + spacing);
+
+    return position;
+  };
+
+  // Implement chainable methods like d3-scale
+  scale.domain = (domain?: string[]) => {
+    if (domain === undefined) {
+      return domainValues;
+    }
+
+    return scale;
+  };
+
+  scale.range = (range?: number[]) => {
+    if (range === undefined) {
+      return rangeValues;
+    }
+    rangeValues = range;
+
+    return scale;
+  };
+
+  scale.ticks = () => [];
+  scale.tickFormat = () => formatMonth;
+  scale.bandwidth = () => 20; // Match the maxBarWidth
+  scale.copy = () => createContractExecutionCustomScale(data);
+  scale.nice = () => scale;
+  scale.type = 'band';
+
+  return scale;
+};
+
+// Generate tick positions for month labels
+export const generateMonthTickPositions = (
+  processedData: DataContractProcessedResultCharts[]
+) => {
+  const uniqueMonths = new Set();
+  const tickPositions: string[] = [];
+
+  for (const item of processedData) {
+    const monthKey = new Date(item.displayTimestamp).toISOString().slice(0, 7); // YYYY-MM format
+    if (!uniqueMonths.has(monthKey)) {
+      uniqueMonths.add(monthKey);
+      // Use the first occurrence of each month as the tick position
+      tickPositions.push(item.name); // Use the unique name for the tick
+    }
   }
 
-  // Group data by month and find the first occurrence of each month
-  const monthMap = new Map<string, number>();
+  return tickPositions;
+};
 
-  data.forEach((item) => {
-    const month = formatMonth(item.name);
-    // Only add if we haven't seen this month before (keeps the earliest timestamp)
-    if (!monthMap.has(month)) {
-      monthMap.set(month, item.name);
-    }
-  });
+// Format tick value for month display
+export const formatContractExecutionTick = (value: string) => {
+  // Extract timestamp from the unique name (format: timestamp_index)
+  const timestamp = value.split('_')[0];
 
-  return Array.from(monthMap.values());
+  return formatMonth(Number(timestamp));
 };
 
 // Utility function to convert string to options array for Ant Design Select

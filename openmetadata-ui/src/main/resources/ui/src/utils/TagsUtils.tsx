@@ -12,13 +12,14 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Tag as AntdTag, Tooltip, Typography } from 'antd';
+import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
 import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -37,6 +38,7 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
   AssetCertification,
   Column,
+  EntityReference,
   TagSource,
 } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
@@ -48,9 +50,15 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
+import { getEntityName } from './EntityUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
-import { getExplorePath } from './RouterUtils';
+import {
+  getClassificationTagPath,
+  getExplorePath,
+  getGlossaryPath,
+} from './RouterUtils';
+import { getTermQuery } from './SearchUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -587,13 +595,15 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
 };
 
 export const getTagAssetsQueryFilter = (fqn: string) => {
+  let fieldName = 'tags.tagFQN';
+
   if (fqn.includes('Tier.')) {
-    return `(tier.tagFQN:"${fqn}")`;
+    fieldName = 'tier.tagFQN';
   } else if (fqn.includes('Certification.')) {
-    return `(certification.tagLabel.tagFQN:"${fqn}")`;
-  } else {
-    return `(tags.tagFQN:"${fqn}")`;
+    fieldName = 'certification.tagLabel.tagFQN';
   }
+
+  return getTermQuery({ [fieldName]: fqn });
 };
 
 export const getTagImageSrc = (iconURL: string) => {
@@ -606,4 +616,50 @@ export const getTagImageSrc = (iconURL: string) => {
   }
 
   return `${window.location.origin}/${iconURL}`;
+};
+
+/**
+ * Check if a tag is a glossary tag
+ */
+export const isGlossaryTag = (tag: EntityTags): boolean => {
+  return tag.source === TagSource.Glossary;
+};
+
+/**
+ * Get the display name for a tag
+ */
+export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
+  return (
+    getEntityName(tag) ||
+    getTagDisplay(
+      showOnlyName
+        ? tag.tagFQN
+            .split(FQN_SEPARATOR_CHAR)
+            .slice(-2)
+            .join(FQN_SEPARATOR_CHAR)
+        : tag.tagFQN
+    ) ||
+    tag.tagFQN
+  );
+};
+
+/**
+ * Get the redirect link for a tag
+ */
+export const getTagRedirectLink = (
+  tag: EntityTags,
+  tagType?: TagSource
+): string => {
+  return (tagType ?? tag.source) === TagSource.Glossary
+    ? getGlossaryPath(tag.tagFQN)
+    : getClassificationTagPath(tag.tagFQN);
+};
+
+export const TagListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space>
+      <ClassificationIcon className="d-block'" height={22} width={16} />
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
+    </Space>
+  );
 };

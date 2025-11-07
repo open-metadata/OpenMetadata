@@ -21,6 +21,7 @@
         "Redshift",
         "Snowflake",
         "Postgres",
+        "Timescale",
         "Mssql",
         "Oracle",
         "Athena",
@@ -83,6 +84,9 @@
         },
         {
           "name": "Postgres"
+        },
+        {
+          "name": "Timescale"
         },
         {
           "name": "Mssql"
@@ -283,6 +287,9 @@
               "$ref": "./connections/database/postgresConnection.json"
             },
             {
+              "$ref": "./connections/database/timescaleConnection.json"
+            },
+            {
               "$ref": "./connections/database/prestoConnection.json"
             },
             {
@@ -427,6 +434,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "owners": {
       "description": "Owners of this database service.",

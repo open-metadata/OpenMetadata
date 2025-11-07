@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-entity-created",
-  "fullyQualifiedName": "system-notification-entity-created",
-  "displayName": "Entity Created Notification",
-  "description": "System default template for entity creation notifications",
-  "provider": "system",
-  "templateSubject": "{{entity.entityType}} {{entity.name}} created",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> created {{entity.entityType}} <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#if entity.description}}<br/>Description: {{entity.description}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}
