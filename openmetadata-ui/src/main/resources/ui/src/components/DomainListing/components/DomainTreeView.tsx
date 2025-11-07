@@ -753,6 +753,17 @@ const DomainTreeView = ({
             '& .MuiChip-root': { px: 3 },
             '& .MuiChip-label': { fontSize: '10px' },
 
+            '& .MuiTreeItem-iconContainer': {
+              transition: 'transform 0.2s ease-in-out',
+              '& svg': {
+                transform: 'rotate(-90deg)',
+              },
+            },
+
+            '& .Mui-expanded > .MuiTreeItem-iconContainer svg': {
+              transform: 'rotate(0deg)',
+            },
+
             '& .MuiTreeItem-iconContainer:empty': { display: 'none' },
 
             [`& .${treeItemClasses.groupTransition}`]: {
