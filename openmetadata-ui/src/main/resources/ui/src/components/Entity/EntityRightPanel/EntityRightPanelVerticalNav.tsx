@@ -39,6 +39,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           key: EntityRightPanelTab.OVERVIEW,
           icon: <ExploreIcon height={16} width={16} />,
           label: t('label.overview'),
+          'data-testid': 'overview-tab',
         },
       ];
 
@@ -48,6 +49,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
           label: t('label.schema'),
+          'data-testid': 'schema-tab',
         });
       }
       // Add lineage tab for most entities
@@ -56,6 +58,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
           label: t('label.lineage'),
+          'data-testid': 'lineage-tab',
         });
       }
 
@@ -65,6 +68,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           key: EntityRightPanelTab.DATA_QUALITY,
           icon: <DataQualityIcon height={16} width={16} />,
           label: t('label.data-quality'),
+          'data-testid': 'data-quality-tab',
         });
       }
 
@@ -74,6 +78,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           key: EntityRightPanelTab.CUSTOM_PROPERTIES,
           icon: <CustomPropertiesIcon height={16} width={16} />,
           label: t('label.custom-property'),
+          'data-testid': 'custom-properties-tab',
         });
       }
 

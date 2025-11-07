@@ -59,17 +59,6 @@ class ColumnValuesToBeInSetValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column, **kwargs)
 
-    def compute_row_count(self, column: SQALikeColumn):
-        """Compute row count for the given column
-
-        Args:
-            column (Union[SQALikeColumn, Column]): column to compute row count for
-
-        Raises:
-            NotImplementedError:
-        """
-        return self._compute_row_count(self.runner, column)
-
     def _execute_dimensional_validation(
         self,
         column: SQALikeColumn,
@@ -101,8 +90,10 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params["allowed_values"]
-            match_enum = test_params["match_enum"]
+            allowed_values = test_params[
+                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
+            ]
+            match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
             count_in_set_impl = add_props(values=allowed_values)(
@@ -141,8 +132,12 @@ class ColumnValuesToBeInSetValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                count_in_set = agg[Metrics.COUNT_IN_SET.name]
-                row_count = agg[Metrics.ROW_COUNT.name]
+                count_in_set = count_in_set_impl.aggregate_accumulator(
+                    agg[Metrics.COUNT_IN_SET.name]
+                )
+                row_count = row_count_impl.aggregate_accumulator(
+                    agg[Metrics.ROW_COUNT.name]
+                )
 
                 if match_enum:
                     failed_count = row_count - count_in_set
@@ -206,3 +201,14 @@ class ColumnValuesToBeInSetValidator(
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
+
+    def compute_row_count(self, column: SQALikeColumn):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        return self._compute_row_count(self.runner, column)
