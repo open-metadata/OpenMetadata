@@ -14,6 +14,7 @@ import { ReactElement } from 'react';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
 import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
+import DimensionalityTab from '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab';
 import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -40,7 +41,8 @@ class TestCaseClassBase {
 
   public getTab(
     openTaskCount: number,
-    isVersionPage: boolean
+    isVersionPage: boolean,
+    showDimensionalityTab = false
   ): TestCaseTabType[] {
     return [
       {
@@ -52,6 +54,19 @@ class TestCaseClassBase {
         Tab: TestCaseResultTab,
         key: TestCasePageTabs.TEST_CASE_RESULTS,
       },
+      ...(showDimensionalityTab
+        ? [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'dimensionality',
+                name: i18n.t('label.dimensionality'),
+              },
+              Tab: DimensionalityTab,
+              key: TestCasePageTabs.DIMENSIONALITY,
+            },
+          ]
+        : []),
       ...(isVersionPage
         ? []
         : [

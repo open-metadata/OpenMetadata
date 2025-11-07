@@ -125,9 +125,12 @@ const IncidentManagerDetailPage = ({
   }, [isTabExpanded, setIsTabExpanded]);
 
   const tabDetails: TabsProps['items'] = useMemo(() => {
+    const isDimensionalityTabVisible =
+      testCase?.dimensionColumns && testCase.dimensionColumns.length > 0;
     const tabs = testCaseClassBase.getTab(
       feedCount.openTaskCount,
-      isVersionPage
+      isVersionPage,
+      isDimensionalityTabVisible
     );
 
     return tabs.map(({ LabelComponent, labelProps, key, Tab }) => ({
@@ -135,7 +138,11 @@ const IncidentManagerDetailPage = ({
       label: <LabelComponent {...labelProps} />,
       children: <Tab />,
     }));
-  }, [feedCount.openTaskCount, testCaseClassBase.showSqlQueryTab]);
+  }, [
+    feedCount.openTaskCount,
+    testCaseClassBase.showSqlQueryTab,
+    testCase?.dimensionColumns,
+  ]);
 
   const fetchTestCasePermission = async () => {
     setIsPermissionLoading(true);

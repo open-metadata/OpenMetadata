@@ -1,0 +1,161 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.dimensionality-heatmap {
+  width: 100%;
+  overflow-x: auto;
+
+  &__container {
+    overflow-x: auto;
+    overflow-y: visible;
+    width: 100%;
+    position: relative;
+  }
+
+  &__grid {
+    display: grid;
+    column-gap: 2px;
+    row-gap: 2px;
+    margin-top: 12px;
+    min-width: min-content;
+  }
+
+  &__header-corner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    height: 24px;
+    padding-bottom: 2px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+    background-color: #ffffff;
+    z-index: 20;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+  }
+
+  &__header-cell {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 24px;
+    padding-bottom: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+
+  &__dimension-label {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0;
+    padding-right: 8px;
+    height: 32px;
+    font-size: 13px;
+    font-weight: 400;
+    color: #111827;
+    background-color: #ffffff;
+    border-radius: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+  }
+
+  &__cell {
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+
+    &:hover {
+      opacity: 0.85;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      z-index: 10;
+    }
+
+    &--success {
+      background-color: #10b981;
+    }
+
+    &--failed {
+      background-color: #ef4444;
+    }
+
+    &--no-data {
+      background-color: #e5e7eb;
+    }
+  }
+
+  &__legend {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 16px;
+    padding: 0;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  &__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 400;
+  }
+
+  &__legend-box {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+
+    &--success {
+      background-color: #10b981;
+    }
+
+    &--failed {
+      background-color: #ef4444;
+    }
+
+    &--no-data {
+      background-color: #e5e7eb;
+    }
+  }
+
+  &__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+}

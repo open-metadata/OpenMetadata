@@ -19,6 +19,7 @@ import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
+import { DimensionResult } from '../generated/tests/dimensionResult';
 import {
   TestCase,
   TestCaseResult,
@@ -226,6 +227,22 @@ export const getTestCaseVersionDetails = async (
   const url = `${testCaseUrl}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);
+
+  return response.data;
+};
+
+// Test case dimensionality
+
+export const getTestCaseDimensionResultsByFqn = async (
+  fqn: string,
+  params?: Record<string, string | number>
+) => {
+  const response = await APIClient.get<PagingResponse<DimensionResult[]>>(
+    `${testCaseUrl}/dimensionResults/${fqn}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
