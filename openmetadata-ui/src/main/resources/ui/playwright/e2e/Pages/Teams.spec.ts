@@ -714,6 +714,37 @@ test.describe('Teams Page', () => {
 
     await hardDeleteTeam(page);
   });
+
+  test('Total User Count should be rendered', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+    const user2 = new UserClass();
+    const user3 = new UserClass();
+
+    await user.create(apiContext);
+    await user2.create(apiContext);
+    await user3.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw%percent-${id}`,
+      displayName: `pw team percent ${id}`,
+      description: 'playwright team with percent description',
+      teamType: 'Group',
+      users: [
+        user.responseData.id,
+        user2.responseData.id,
+        user3.responseData.id,
+      ],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+
+    await expect(page.getByTestId('team-user-count')).toContainText('3');
+
+    await afterAction();
+  });
 });
 
 test.describe('Teams Page with EditUser Permission', () => {
