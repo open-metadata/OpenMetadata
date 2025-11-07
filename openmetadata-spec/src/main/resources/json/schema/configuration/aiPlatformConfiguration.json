@@ -64,7 +64,7 @@
     "billingCycleStart": {
       "title": "Cycle Start",
       "description": "The start of this limit cycle.",
-      "$ref": "../../type/basic.json#/definitions/date"
+      "$ref": "../type/basic.json#/definitions/date"
     },
     "actionCreditsMultiplier": {
       "description": "Multiplier to calculate credits per action",
