@@ -71,6 +71,7 @@ VERSIONS = {
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
+    "griffe2md": "griffe2md~=1.2",
 }
 
 COMMONS = {
@@ -471,6 +472,10 @@ test = {
     VERSIONS["kafka-connect"],
 }
 
+docs = {
+    VERSIONS["griffe2md"],
+}
+
 if sys.version_info >= (3, 9):
     test.add("locust~=2.32.0")
 
@@ -541,5 +546,6 @@ setup(
                 "sklearn",
             }
         ),
+        "docs": docs,
     },
 )

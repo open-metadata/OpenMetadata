@@ -139,9 +139,9 @@ class ValidationResult(BaseModel):
 
         from collections import defaultdict
 
-        aggregated_results: dict[
-            str, List[Tuple[TestCase, TestCaseResult]]
-        ] = defaultdict(list)
+        aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = (
+            defaultdict(list)
+        )
         total_execution_time = 0.0
 
         for result in results:
