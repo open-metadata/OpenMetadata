@@ -164,27 +164,37 @@ const DomainTreeView = ({
     });
   }, []);
 
+  const selectDomain = (
+    domains: Domain[],
+    resetExpandedItems = false,
+    domainFqn?: string
+  ) => {
+    const firstDomain = domains?.[0] ?? {};
+    const initialFqn =
+      domainFqn ??
+      (firstDomain?.fullyQualifiedName || firstDomain?.name || firstDomain?.id);
+
+    setSelectedFqn(initialFqn);
+
+    if (resetExpandedItems) {
+      setExpandedItems([initialFqn]);
+    } else {
+      updateExpansionForFqn(initialFqn);
+    }
+
+    return firstDomain;
+  };
+
   const applySelection = useCallback(
     (
       domains: Domain[],
       resetExpandedItems = false,
       domainFqn?: string | undefined
     ) => {
-      const firstDomain = domains?.[0] ?? {};
-      const initialFqn =
-        domainFqn ??
-        (firstDomain?.fullyQualifiedName ||
-          firstDomain?.name ||
-          firstDomain?.id);
+      const firstDomain = selectDomain(domains, resetExpandedItems, domainFqn);
 
-      setSelectedFqn(initialFqn);
-      if (resetExpandedItems) {
-        setExpandedItems([initialFqn]);
-      } else {
-        updateExpansionForFqn(initialFqn);
-      }
       if ((firstDomain?.childrenCount || 0) > 0) {
-        loadDomains(initialFqn);
+        loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
     [updateExpansionForFqn, searchQuery]
@@ -196,9 +206,10 @@ const DomainTreeView = ({
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const results: Domain[] = await searchDomains(encodedValue);
 
-      const updatedTreeData = convertDomainsToTreeOptions(results);
+      let updatedTreeData = convertDomainsToTreeOptions(results);
+      updatedTreeData = recalculateChildrenCounts(updatedTreeData as Domain[]);
       setHierarchy(updatedTreeData as Domain[]);
-      applySelection(updatedTreeData as Domain[]);
+      selectDomain(updatedTreeData as Domain[]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -457,6 +468,11 @@ const DomainTreeView = ({
   );
 
   const refreshAll = useCallback(async () => {
+    if (searchQuery) {
+      await searchDomain(searchQuery);
+
+      return;
+    }
     await loadDomains(selectedFqn ?? undefined);
   }, [loadDomains, onDomainMutated, selectedFqn]);
 
