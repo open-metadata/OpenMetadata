@@ -1436,11 +1436,18 @@ public class S3LogStorage implements LogStorageInterface {
       SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
       if (buffer != null) {
         if (afterCursor != null && !afterCursor.isEmpty()) {
-          // For pagination, use all lines to support proper cursor-based navigation
+          // Cursor provided - this is pagination, use all lines
           allLines.addAll(buffer.getAllLines());
         } else {
-          // For live logs (no cursor), show recent lines for better performance
-          allLines.addAll(buffer.getRecentLines(limit));
+          // No cursor - check if this looks like pagination (reasonable page size) or live logs
+          List<String> allBufferLines = buffer.getAllLines();
+          if (limit > 0 && limit < allBufferLines.size() && limit <= 100) {
+            // Looks like pagination starting from beginning - use all lines
+            allLines.addAll(allBufferLines);
+          } else {
+            // Looks like live logs request - use recent lines for performance
+            allLines.addAll(buffer.getRecentLines(limit));
+          }
         }
         LOG.debug(
             "Using {} lines from memory cache for active pipeline {}/{}",
