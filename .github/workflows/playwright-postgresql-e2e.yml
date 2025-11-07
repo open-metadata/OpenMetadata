@@ -109,10 +109,15 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
-            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          if [ "${{ matrix.shardIndex }}" -eq "6" ]; then
+            # Shard 6 runs ONLY DataAssetRules tests
+            npx playwright test --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled
+          elif [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
+            # Shards 1-5 run ingestion tests if ingestion files changed
+            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/5
           else
-            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+            # Shards 1-5 run all other tests (excluding DataAssetRules)
+            npx playwright test --shard=${{ matrix.shardIndex }}/5
           fi
         env:
           PLAYWRIGHT_IS_OSS: true

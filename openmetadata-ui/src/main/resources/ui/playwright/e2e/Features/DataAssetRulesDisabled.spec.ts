@@ -160,20 +160,21 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-for (const EntityClass of entities) {
-  const entity = new EntityClass();
-  const entityName = entity.getType();
-
-  test.describe(`Data Asset Rules Disabled ${entityName}`, () => {
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.create(apiContext);
-      await afterAction();
-    });
+test.describe(`Data Asset Rules Disabled`, () => {
+  for (const EntityClass of entities) {
+    const entity = new EntityClass();
+    const entityName = entity.getType();
 
     test(`Verify the ${entityName} entity item action after rules disabled`, async ({
       page,
+      browser,
     }) => {
+      test.slow(true);
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.create(apiContext);
+      await afterAction();
+
       await redirectToHomePage(page);
       await entity.visitEntityPage(page);
 
@@ -256,5 +257,5 @@ for (const EntityClass of entities) {
       await assignGlossaryTerm(page, glossaryTerm.responseData);
       await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
     });
-  });
-}
+  }
+});

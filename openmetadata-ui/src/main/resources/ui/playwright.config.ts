@@ -93,12 +93,16 @@ export default defineConfig({
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
+      // Tests within this project run in parallel
+      fullyParallel: true,
     },
     {
       name: 'DataAssetRulesDisabled',
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
+      // Tests within this project run in parallel, but only after DataAssetRulesEnabled completes
+      fullyParallel: true,
     },
   ],
 
