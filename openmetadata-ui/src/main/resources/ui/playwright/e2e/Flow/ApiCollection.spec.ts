@@ -13,7 +13,7 @@
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { performAdminLogin } from '../../utils/admin';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addMultiOwner,
   addOwner,
@@ -35,14 +35,6 @@ test.describe('API Collection Entity Special Test Cases', () => {
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
     await entity.visitEntityPage(page);
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await entity.delete(apiContext);
-    await afterAction();
   });
 
   test("Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async ({
