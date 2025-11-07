@@ -235,9 +235,7 @@ const DataModelDetails = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(dataModelData),
-      })}
+      pageTitle={getEntityName(dataModelData)}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
         <Col span={24}>

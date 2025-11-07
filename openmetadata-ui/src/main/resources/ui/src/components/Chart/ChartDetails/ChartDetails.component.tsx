@@ -274,11 +274,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(chartDetails),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(chartDetails)} title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

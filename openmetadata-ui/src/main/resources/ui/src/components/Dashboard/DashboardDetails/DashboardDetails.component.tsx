@@ -306,9 +306,7 @@ const DashboardDetails = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(dashboardDetails),
-      })}
+      pageTitle={getEntityName(dashboardDetails)}
       title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>
