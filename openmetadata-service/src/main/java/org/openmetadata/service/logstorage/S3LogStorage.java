@@ -1435,7 +1435,13 @@ public class S3LogStorage implements LogStorageInterface {
       String streamKey = pipelineFQN + "/" + runId;
       SimpleLogBuffer buffer = recentLogsCache.getIfPresent(streamKey);
       if (buffer != null) {
-        allLines.addAll(buffer.getAllLines());
+        if (afterCursor != null && !afterCursor.isEmpty()) {
+          // For pagination, use all lines to support proper cursor-based navigation
+          allLines.addAll(buffer.getAllLines());
+        } else {
+          // For live logs (no cursor), show recent lines for better performance
+          allLines.addAll(buffer.getRecentLines(limit));
+        }
         LOG.debug(
             "Using {} lines from memory cache for active pipeline {}/{}",
             allLines.size(),
