@@ -32,6 +32,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicationConfig> {
   private PrometheusMeterRegistry prometheusMeterRegistry;
   private OpenMetadataMetrics openMetadataMetrics;
+  private StreamableLogsMetrics streamableLogsMetrics;
 
   @Override
   public void initialize(Bootstrap<?> bootstrap) {
@@ -57,6 +58,9 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     // Create OpenMetadataMetrics instance
     openMetadataMetrics = new OpenMetadataMetrics(prometheusMeterRegistry);
 
+    // Create StreamableLogsMetrics instance
+    streamableLogsMetrics = new StreamableLogsMetrics(prometheusMeterRegistry);
+
     // Register Prometheus endpoint on admin connector
     registerPrometheusEndpoint(environment);
 
@@ -72,6 +76,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
               protected void configure() {
                 bind(prometheusMeterRegistry).to(PrometheusMeterRegistry.class);
                 bind(openMetadataMetrics).to(OpenMetadataMetrics.class);
+                bind(streamableLogsMetrics).to(StreamableLogsMetrics.class);
               }
             });
 
@@ -111,14 +116,6 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
         .addMapping("/prometheus");
 
     LOG.info("Prometheus metrics endpoint registered at admin port on /prometheus");
-
-    // Register user metrics endpoint
-    environment
-        .admin()
-        .addServlet("user-metrics", new UserMetricsServlet())
-        .addMapping("/user-metrics");
-
-    LOG.info("User metrics endpoint registered at admin port on /user-metrics");
   }
 
   private void registerJdbiMetrics(Environment environment) {
@@ -189,6 +186,10 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     return openMetadataMetrics;
   }
 
+  public StreamableLogsMetrics getStreamableLogsMetrics() {
+    return streamableLogsMetrics;
+  }
+
   /**
    * Servlet that exposes Prometheus metrics in the text exposition format.
    */
@@ -203,6 +204,27 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
       // Scrape all metrics from the Prometheus registry
       String metrics = prometheusMeterRegistry.scrape();
       resp.getWriter().write(metrics);
+      resp.getWriter().flush();
+    }
+  }
+
+  /**
+   * Servlet that exposes user-friendly metrics in JSON format.
+   */
+  private class UserMetricsServlet extends HttpServlet {
+    private static final String CONTENT_TYPE = "application/json; charset=utf-8";
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+      resp.setStatus(HttpServletResponse.SC_OK);
+      resp.setContentType(CONTENT_TYPE);
+
+      // Return a simple JSON response with basic metrics info
+      String json =
+          String.format(
+              "{\"status\":\"ok\",\"metricsCount\":%d}",
+              prometheusMeterRegistry.getMeters().size());
+      resp.getWriter().write(json);
       resp.getWriter().flush();
     }
   }

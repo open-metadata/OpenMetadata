@@ -65,12 +65,19 @@ export const AddTestCaseList = ({
   };
 
   const fetchTestCases = useCallback(
-    async ({ searchText = WILD_CARD_CHAR, page = 1 }) => {
+    async ({
+      searchText,
+      page = 1,
+    }: {
+      searchText?: string;
+      page?: number;
+    }) => {
       try {
         setIsLoading(true);
+        const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
 
         const testCaseResponse = await getListTestCaseBySearch({
-          q: filters ? `${searchText} && ${filters}` : searchText,
+          q: filters ? `${globalSearch} && ${filters}` : globalSearch,
           limit: PAGE_SIZE_MEDIUM,
           offset: (page - 1) * PAGE_SIZE_MEDIUM,
           ...(testCaseParams ?? {}),

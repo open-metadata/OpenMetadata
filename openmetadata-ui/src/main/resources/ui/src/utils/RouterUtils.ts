@@ -145,13 +145,22 @@ export const getDomainPath = (fqn?: string) => {
   return path;
 };
 
-export const getDomainDetailsPath = (fqn: string, tab?: string) => {
+export const getDomainDetailsPath = (
+  fqn: string,
+  tab?: string,
+  subTab = 'all'
+) => {
   let path = tab ? ROUTES.DOMAIN_DETAILS_WITH_TAB : ROUTES.DOMAIN_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.DOMAIN_DETAILS_WITH_SUBTAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };
@@ -577,12 +586,22 @@ export const getClassificationDetailsPath = (classificationFqn: string) => {
   return path;
 };
 
-export const getClassificationTagPath = (tagFqn: string, tab?: string) => {
-  let path = tab ? ROUTES.TAG_ITEM_WITH_TAB : ROUTES.TAG_ITEM;
+export const getClassificationTagPath = (
+  tagFqn: string,
+  tab?: string,
+  subTab?: string
+) => {
+  let path = ROUTES.TAG_ITEM;
 
-  if (tab) {
+  if (tab && subTab) {
+    path = ROUTES.TAG_ITEM_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  } else if (tab) {
+    path = ROUTES.TAG_ITEM_WITH_TAB;
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tagFqn));
 
   return path;
@@ -764,13 +783,19 @@ export const getEntityDetailsPath = (
   entityType: EntityType,
   fqn: string,
   tab?: string,
-  subTab = 'all'
+  subTab?: string
 ) => {
   let path = tab ? ROUTES.ENTITY_DETAILS_WITH_TAB : ROUTES.ENTITY_DETAILS;
 
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.ENTITY_DETAILS_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  // Handle tabs with subtabs (ACTIVITY_FEED and PROFILER)
+  // For ACTIVITY_FEED without subTab, default to 'all' for backward compatibility
+  if (tab === EntityTabs.ACTIVITY_FEED || tab === EntityTabs.PROFILER) {
+    const resolvedSubTab =
+      subTab || (tab === EntityTabs.ACTIVITY_FEED ? 'all' : undefined);
+    if (resolvedSubTab) {
+      path = ROUTES.ENTITY_DETAILS_WITH_SUB_TAB;
+      path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, resolvedSubTab);
+    }
   }
 
   if (tab) {

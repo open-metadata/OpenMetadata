@@ -25,9 +25,15 @@
 
 .domain-link-container {
   max-width: 100%;
+  border: 1px solid @grey-200;
+  background-color: #f9fafc;
+  border-radius: 6px;
+  padding: 2px 8px;
   .domain-link-text {
+    font-size: 12px;
     text-overflow: ellipsis;
     overflow: hidden;
+    color: #21263c;
     white-space: nowrap;
   }
 }
@@ -42,14 +48,22 @@
 
 .domain-count-button {
   background-color: @primary-button-background;
-  height: 32px;
-  width: 32px;
+  height: auto;
+  width: auto;
+  padding: 0 4px;
   border-radius: 200px;
   text-align: center;
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   span {
     color: @blue-24;
   }
   border: 1px solid @blue-24;
   margin-left: -4px;
+}
+
+.domain-count-label {
+  font-size: 10px;
 }

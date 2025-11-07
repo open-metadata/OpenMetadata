@@ -37,7 +37,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
@@ -166,11 +166,18 @@ public class SubscriptionUtil {
   }
 
   private static Set<String> getTaskAssignees(
+      SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
+
+    if (category == SubscriptionDestination.SubscriptionCategory.EXTERNAL
+        && action.getReceivers() != null) {
+      receiversList.addAll(action.getReceivers());
+    }
+
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
     addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
@@ -264,11 +271,18 @@ public class SubscriptionUtil {
   }
 
   public static Set<String> handleConversationNotification(
+      SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
+
+    if (category == SubscriptionDestination.SubscriptionCategory.EXTERNAL
+        && action.getReceivers() != null) {
+      receiversList.addAll(action.getReceivers());
+    }
+
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
@@ -383,17 +397,17 @@ public class SubscriptionUtil {
   }
 
   public static Set<String> getTargetsForAlert(
-      SubscriptionAction action,
-      SubscriptionDestination.SubscriptionCategory category,
-      SubscriptionDestination.SubscriptionType type,
-      ChangeEvent event) {
+      SubscriptionAction action, SubscriptionDestination destination, ChangeEvent event) {
+    SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
+    SubscriptionDestination.SubscriptionType type = destination.getType();
+
     Set<String> receiverUrls = new HashSet<>();
     if (event.getEntityType().equals(THREAD)) {
       Thread thread = AlertsRuleEvaluator.getThread(event);
       switch (thread.getType()) {
-        case Task -> receiverUrls.addAll(getTaskAssignees(category, type, event));
+        case Task -> receiverUrls.addAll(getTaskAssignees(action, category, type, event));
         case Conversation -> receiverUrls.addAll(
-            handleConversationNotification(category, type, event));
+            handleConversationNotification(action, category, type, event));
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
         case Announcement -> {
@@ -410,6 +424,21 @@ public class SubscriptionUtil {
       EntityInterface entityInterface = getEntity(event);
       receiverUrls.addAll(
           buildReceivers(action, category, type, event.getEntityType(), entityInterface.getId()));
+
+      // Add lineage downstream receivers if enabled
+      if (Boolean.TRUE.equals(destination.getNotifyDownstream())
+          && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
+        LineageGraphExplorer lineageExplorer = new LineageGraphExplorer(Entity.getCollectionDAO());
+
+        Set<EntityReference> downstreamEntities =
+            lineageExplorer.findUniqueEntitiesDownstream(
+                entityInterface.getId(), event.getEntityType(), destination.getDownstreamDepth());
+
+        for (EntityReference downstream : downstreamEntities) {
+          receiverUrls.addAll(
+              buildReceivers(action, category, type, downstream.getType(), downstream.getId()));
+        }
+      }
     }
 
     return receiverUrls;
@@ -430,13 +459,12 @@ public class SubscriptionUtil {
 
   public static List<Invocation.Builder> getTargetsForWebhookAlert(
       Webhook webhook,
-      SubscriptionDestination.SubscriptionCategory category,
-      SubscriptionDestination.SubscriptionType type,
+      SubscriptionDestination destination,
       Client client,
       ChangeEvent event,
       String outgoingMessage) {
     List<Invocation.Builder> targets = new ArrayList<>();
-    for (String url : getTargetsForAlert(webhook, category, type, event)) {
+    for (String url : getTargetsForAlert(webhook, destination, event)) {
       targets.add(appendHeadersAndQueryParamsToTarget(client, url, webhook, outgoingMessage));
     }
     return targets;

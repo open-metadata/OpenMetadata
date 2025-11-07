@@ -1080,6 +1080,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+
+        if (app.getSupportsIngestionRunner()) {
+          service.setIngestionRunner(app.getIngestionRunner());
+        }
+
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
         return Response.status(response.getCode()).entity(response).build();
@@ -1165,6 +1170,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+
+        if (app.getSupportsIngestionRunner()) {
+          service.setIngestionRunner(app.getIngestionRunner());
+        }
+
         PipelineServiceClientResponse status =
             pipelineServiceClient.deployPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {

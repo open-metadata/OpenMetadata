@@ -27,6 +27,7 @@ import './owner-label.less';
 import { OwnerLabelProps } from './OwnerLabel.interface';
 
 export const OwnerLabel = ({
+  showDashPlaceholder,
   owners = [],
   showLabel = true,
   className,
@@ -44,6 +45,7 @@ export const OwnerLabel = ({
   avatarSize = 32,
   isAssignee = false,
   onEditClick,
+  ownerLabelClassName,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -102,8 +104,8 @@ export const OwnerLabel = ({
     .slice(maxVisibleOwners);
   const renderMultipleType = useMemo(() => {
     return (
-      <div className="flex-wrap w-max-full d-flex relative items-center">
-        <div className="flex w-full gap-2 flex-wrap relative">
+      <div className="w-max-full d-flex relative items-center">
+        <div className="flex w-full gap-2 relative">
           {showMultipleTypeTeam.map((owner, index) => (
             <div className="w-max-full" key={owner.id}>
               <OwnerItem
@@ -197,6 +199,7 @@ export const OwnerLabel = ({
           multiple={multiple}
           owners={owners}
           placeHolder={placeHolder}
+          showDashPlaceholder={showDashPlaceholder}
           showLabel={showLabel}
           tooltipText={tooltipText}
           onUpdate={onUpdate}
@@ -211,7 +214,7 @@ export const OwnerLabel = ({
     return (
       <div
         className={classNames({
-          'owner-label-container w-full d-flex flex-col items-start flex-start':
+          'owner-label-container d-flex flex-col items-start flex-start':
             !isCompactView,
           'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
@@ -231,10 +234,13 @@ export const OwnerLabel = ({
             {renderVisibleOwners.map(
               (owner: EntityReference, index: number) => (
                 <div
-                  className={classNames({
-                    'w-full': owner.type === OwnerType.TEAM,
-                    'w-max-full': isCompactView,
-                  })}
+                  className={classNames(
+                    {
+                      'w-full': owner.type === OwnerType.TEAM,
+                      'w-max-full': isCompactView,
+                    },
+                    ownerLabelClassName
+                  )}
                   key={owner.id}>
                   <OwnerItem
                     avatarSize={avatarSize}
@@ -261,18 +267,16 @@ export const OwnerLabel = ({
           </div>
 
           {showMoreButton && !isCompactView && (
-            <div className="m-l-xs">
-              <OwnerReveal
-                avatarSize={isCompactView ? 24 : avatarSize}
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
-            </div>
+            <OwnerReveal
+              avatarSize={isCompactView ? 24 : avatarSize}
+              isCompactView={isCompactView}
+              isDropdownOpen={isDropdownOpen}
+              owners={owners.slice(maxVisibleOwners)}
+              remainingCount={remainingOwnersCount}
+              setIsDropdownOpen={setIsDropdownOpen}
+              setShowAllOwners={setShowAllOwners}
+              showAllOwners={showAllOwners}
+            />
           )}
         </div>
         {isCompactView && onUpdate && (

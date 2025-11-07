@@ -30,16 +30,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public class EmailPublisher implements Destination<ChangeEvent> {
-  private final MessageDecorator<EmailMessage> emailDecorator = new EmailMessageDecorator();
+  private final HandlebarsNotificationMessageEngine messageEngine;
   private final EmailAlertConfig emailAlertConfig;
-  private final CollectionDAO daoCollection;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -51,7 +51,10 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       this.subscriptionDestination = subscriptionDestination;
       this.emailAlertConfig =
           JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
-      this.daoCollection = Entity.getCollectionDAO();
+      this.messageEngine =
+          new HandlebarsNotificationMessageEngine(
+              (NotificationTemplateRepository)
+                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
     }
@@ -60,13 +63,20 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      Set<String> receivers =
-          getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
-      EmailMessage emailMessage =
-          emailDecorator.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
-      for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(getDisplayNameOrFqn(eventSubscription), email, emailMessage);
+      // Generate message using new Handlebars pipeline
+      NotificationMessage message =
+          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
+      EmailMessage emailMessage = (EmailMessage) message;
+
+      // Get receivers
+      Set<String> receivers = getTargetsForAlert(emailAlertConfig, subscriptionDestination, event);
+
+      // Send using new helper method
+      for (String receiver : receivers) {
+        EmailUtil.sendNotificationEmail(
+            receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
       }
+
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
       setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());

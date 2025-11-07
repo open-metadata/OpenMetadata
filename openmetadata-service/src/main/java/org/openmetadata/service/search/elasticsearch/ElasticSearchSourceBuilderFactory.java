@@ -2,6 +2,7 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static es.org.elasticsearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIELDS;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
@@ -20,6 +21,7 @@ import es.org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBu
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import java.util.ArrayList;
@@ -36,7 +38,11 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.*;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
+import org.openmetadata.service.search.indexes.UserIndex;
 
 public class ElasticSearchSourceBuilderFactory
     implements SearchSourceBuilderFactory<
@@ -77,7 +83,7 @@ public class ElasticSearchSourceBuilderFactory
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
+            .fuzziness(Fuzziness.ONE)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
             .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -120,11 +126,21 @@ public class ElasticSearchSourceBuilderFactory
         .getGlobalSettings()
         .getAggregations()
         .forEach(
-            agg ->
-                searchSourceBuilder.aggregation(
-                    AggregationBuilders.terms(agg.getName())
-                        .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
+            agg -> {
+              TermsAggregationBuilder termsAgg =
+                  AggregationBuilders.terms(agg.getName())
+                      .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg.field(agg.getField());
+              }
+
+              if (!nullOrEmpty(agg.getScript())) {
+                termsAgg.script(new es.org.elasticsearch.script.Script(agg.getScript()));
+              }
+
+              searchSourceBuilder.aggregation(termsAgg);
+            });
     return searchSourceBuilder;
   }
 
@@ -259,7 +275,7 @@ public class ElasticSearchSourceBuilderFactory
         .fields(fields)
         .defaultOperator(Operator.AND)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
         .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -376,7 +392,7 @@ public class ElasticSearchSourceBuilderFactory
       MultiMatchQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
               .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
+              .fuzziness(Fuzziness.ONE)
               .maxExpansions(10)
               .prefixLength(1)
               .operator(Operator.OR)
@@ -417,7 +433,7 @@ public class ElasticSearchSourceBuilderFactory
   private MultiMatchQueryBuilder createStandardFuzzyQuery(String query) {
     return QueryBuilders.multiMatchQuery(query)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .maxExpansions(10)
         .prefixLength(1)
         .operator(Operator.OR)
@@ -646,10 +662,20 @@ public class ElasticSearchSourceBuilderFactory
 
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
-      searchSourceBuilder.aggregation(
+
+      TermsAggregationBuilder termsAgg =
           AggregationBuilders.terms(agg.getName())
-              .field(agg.getField())
-              .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+              .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg.field(agg.getField());
+      }
+
+      if (!nullOrEmpty(agg.getScript())) {
+        termsAgg.script(new es.org.elasticsearch.script.Script(agg.getScript()));
+      }
+
+      searchSourceBuilder.aggregation(termsAgg);
     }
   }
 

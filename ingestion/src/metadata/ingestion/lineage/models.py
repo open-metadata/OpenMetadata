@@ -40,6 +40,9 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
     ExasolType,
 )
+from metadata.generated.schema.entity.services.connections.database.greenplumConnection import (
+    GreenplumType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveType,
 )
@@ -143,6 +146,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(ExasolType.Exasol.value): Dialect.EXASOL,
     str(TrinoType.Trino.value): Dialect.TRINO,
     str(VerticaType.Vertica.value): Dialect.VERTICA,
+    str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
 }
 
 

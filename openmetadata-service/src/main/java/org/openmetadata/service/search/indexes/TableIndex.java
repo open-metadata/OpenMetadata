@@ -14,7 +14,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmbedding {
+public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
@@ -64,6 +64,8 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmb
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", table.getServiceType());
     doc.put("locationPath", table.getLocationPath());
     doc.put("schemaDefinition", table.getSchemaDefinition());
@@ -82,9 +84,6 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmb
             .map(ChangeSummaryMap::getAdditionalProperties)
             .orElse(null));
 
-    // Enrich with semantic data (embeddings + RDF context)
-    enrichWithSemanticData(doc, table);
-
     return doc;
   }
 
@@ -95,34 +94,5 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmb
     fields.put("columns.description", 2.0f);
     fields.put("columns.children.name", 3.0f);
     return fields;
-  }
-
-  @Override
-  public String getAdditionalTextForEmbedding(org.openmetadata.schema.EntityInterface entity) {
-    StringBuilder text = new StringBuilder();
-    Table table = (Table) entity;
-
-    // Add column information
-    if (table.getColumns() != null) {
-      table
-          .getColumns()
-          .forEach(
-              col -> {
-                text.append(col.getName()).append(" ");
-                if (col.getDescription() != null) {
-                  text.append(col.getDescription()).append(" ");
-                }
-              });
-    }
-
-    // Add database/schema context
-    if (table.getDatabase() != null) {
-      text.append(table.getDatabase().getName()).append(" ");
-    }
-    if (table.getDatabaseSchema() != null) {
-      text.append(table.getDatabaseSchema().getName()).append(" ");
-    }
-
-    return text.toString();
   }
 }

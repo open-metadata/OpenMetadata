@@ -46,6 +46,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     WorkSpaceScanResponse,
 )
 from metadata.utils.filters import validate_regex
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -74,7 +75,7 @@ class PowerBiApiClient:
             authority=self.config.authorityURI + self.config.tenantId,
         )
         client_config = ClientConfig(
-            base_url="https://api.powerbi.com",
+            base_url=clean_uri(self.config.apiURL),
             api_version="v1.0",
             auth_token=self.get_auth_token,
             auth_header="Authorization",

@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -444,7 +444,7 @@ class DbtSource(DbtServiceSource):
                 fetch_multiple_entities=True,
             )
             logger.debug(
-                f"Found table entities from {fqn_search_string}: {table_entities}"
+                f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
             )
             return (
                 next(iter(filter(None, table_entities)), None)
@@ -455,6 +455,10 @@ class DbtSource(DbtServiceSource):
         try:
             table_entity = search_table(table_fqn)
             if table_entity:
+                logger.debug(
+                    f"Using Table Entity: {table_entity.fullyQualifiedName.root}"
+                    f"with id {table_entity.id}"
+                )
                 return table_entity
 
             if self.source_config.searchAcrossDatabases:
@@ -511,6 +515,7 @@ class DbtSource(DbtServiceSource):
             self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
+
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
             if (
@@ -520,6 +525,9 @@ class DbtSource(DbtServiceSource):
                 self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
+            dbt_project_name = getattr(
+                dbt_objects.dbt_manifest.metadata, "project_name", None
+            )
             for key, manifest_node in manifest_entities.items():
                 try:
                     resource_type = getattr(
@@ -616,7 +624,8 @@ class DbtSource(DbtServiceSource):
 
                     if table_entity := self._get_table_entity(table_fqn=table_fqn):
                         logger.debug(
-                            f"Using Table Entity for datamodel: {table_entity}"
+                            f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
+                            f"with id {table_entity.id}"
                         )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
@@ -644,6 +653,7 @@ class DbtSource(DbtServiceSource):
                                     catalog_node=catalog_node,
                                 ),
                                 tags=dbt_table_tags_list or [],
+                                dbtSourceProject=dbt_project_name,
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -1141,7 +1151,7 @@ class DbtSource(DbtServiceSource):
                             name=manifest_node.name,
                             description=manifest_node.description,
                             entityType=entity_type,
-                            testPlatforms=[TestPlatform.DBT],
+                            testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(
                                 manifest_node
                             ),

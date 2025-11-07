@@ -1500,9 +1500,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     post.withReactions(List.of(reaction1, reaction2));
     Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, TEST_AUTH_HEADERS);
     assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2)));
-    ThreadList threads = listThreads(null, 5, USER_AUTH_HEADERS);
-    thread = threads.getData().get(0);
-    assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
+    // Get the specific thread by ID instead of assuming it's the first one in the list
+    Thread updatedThread = getThread(thread.getId(), USER_AUTH_HEADERS);
+    assertEquals(TEST_USER_NAME, updatedThread.getUpdatedBy());
   }
 
   private Table createTableWithDomain(EntityReference domain)

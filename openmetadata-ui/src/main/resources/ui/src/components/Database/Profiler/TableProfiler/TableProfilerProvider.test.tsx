@@ -12,10 +12,14 @@
  */
 /* eslint-disable i18next/no-literal-string */
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { useContext } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
-import { TableProfilerProvider } from './TableProfilerProvider';
+import {
+  TableProfilerContext,
+  TableProfilerProvider,
+} from './TableProfilerProvider';
 
 // Mock dependencies
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -24,13 +28,26 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
     .mockImplementation(() => ({ search: '?activeTab=Data%20Quality' }));
 });
 
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockReturnValue({ subTab: 'data-quality' }),
+}));
+
 jest.mock('../../../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockReturnValue({ isTourOpen: false }),
 }));
+// Create a mock for usePaging that tracks state changes
+const mockPagingState = { total: 0 };
+const mockHandlePagingChange = jest.fn((newPaging) => {
+  mockPagingState.total = newPaging.total;
+});
+
 jest.mock('../../../../hooks/paging/usePaging', () => ({
-  usePaging: jest
-    .fn()
-    .mockReturnValue({ handlePagingChange: jest.fn(), pageSize: 10 }),
+  usePaging: jest.fn(() => ({
+    handlePagingChange: mockHandlePagingChange,
+    pageSize: 10,
+    paging: mockPagingState,
+  })),
 }));
 jest.mock('../../../../rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest.fn().mockResolvedValue({}),
@@ -96,9 +113,31 @@ const mockPermissions = {
   ViewTests: true,
 } as OperationPermission;
 
+// Test component to access context and display state
+const TestComponent = () => {
+  const context = useContext(TableProfilerContext);
+  if (!context) {
+    return <div>No Context</div>;
+  }
+
+  const { allTestCases, testCasePaging, table } = context;
+
+  return (
+    <div>
+      <div data-testid="test-cases-count">{allTestCases.length}</div>
+      <div data-testid="paging-total">{testCasePaging.paging?.total || 0}</div>
+      <div data-testid="table-test-suite">
+        {table?.testSuite?.name || 'no-test-suite'}
+      </div>
+    </div>
+  );
+};
+
 describe('TableProfilerProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset mock paging state
+    mockPagingState.total = 0;
   });
 
   it('renders children without crashing', async () => {
@@ -162,6 +201,52 @@ describe('TableProfilerProvider', () => {
         includeAllTests: true,
         limit: 10,
         include: 'deleted',
+      });
+    });
+  });
+
+  describe('State Management for Test Cases', () => {
+    it('should initialize with empty test cases array and zero pagination', async () => {
+      const mockTable = { ...MOCK_TABLE, testSuite: undefined };
+
+      await act(async () => {
+        render(
+          <TableProfilerProvider
+            permissions={mockPermissions}
+            table={mockTable}>
+            <TestComponent />
+          </TableProfilerProvider>
+        );
+      });
+
+      // Wait for component to initialize
+      await waitFor(() => {
+        expect(screen.getByTestId('test-cases-count')).toBeInTheDocument();
+      });
+
+      // Initial state should be empty
+      expect(screen.getByTestId('table-test-suite')).toHaveTextContent(
+        'no-test-suite'
+      );
+      expect(screen.getByTestId('test-cases-count')).toHaveTextContent('0');
+      expect(screen.getByTestId('paging-total')).toHaveTextContent('0');
+    });
+
+    it('should provide context values to consuming components', async () => {
+      await act(async () => {
+        render(
+          <TableProfilerProvider
+            permissions={mockPermissions}
+            table={MOCK_TABLE}>
+            <TestComponent />
+          </TableProfilerProvider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-cases-count')).toBeInTheDocument();
+        expect(screen.getByTestId('paging-total')).toBeInTheDocument();
+        expect(screen.getByTestId('table-test-suite')).toBeInTheDocument();
       });
     });
   });

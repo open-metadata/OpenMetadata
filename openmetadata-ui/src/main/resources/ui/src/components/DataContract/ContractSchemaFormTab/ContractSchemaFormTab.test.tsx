@@ -20,6 +20,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { Column } from '../../../generated/entity/data/table';
+import { useFqn } from '../../../hooks/useFqn';
+import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { ContractSchemaFormTab } from './ContractScehmaFormTab';
 
@@ -49,6 +51,12 @@ jest.mock('../../../utils/TableUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTableData,
+  })),
+}));
+
 jest.mock('../../common/Table/Table', () => {
   return function MockTable({
     columns,
@@ -70,7 +78,9 @@ jest.mock('../../common/Table/Table', () => {
             <span>{item.name}</span>
             <button
               data-testid={`select-row-${item.name}`}
-              onClick={() => rowSelection?.onChange?.([item.name])}>
+              onClick={() =>
+                rowSelection?.onChange?.([item.fullyQualifiedName])
+              }>
               Select {item.name}
             </button>
           </div>
@@ -174,7 +184,7 @@ describe('ContractSchemaFormTab', () => {
     it('should render with selected schema columns', () => {
       render(
         <ContractSchemaFormTab
-          selectedSchema={['id', 'name']}
+          selectedSchema={[mockColumns[0], mockColumns[1]]}
           onChange={mockOnChange}
           onNext={mockOnNext}
           onPrev={mockOnPrev}
@@ -198,59 +208,6 @@ describe('ContractSchemaFormTab', () => {
 
       expect(screen.getByText('Custom Next')).toBeInTheDocument();
       expect(screen.getByText('Custom Previous')).toBeInTheDocument();
-    });
-  });
-
-  describe('Data Fetching', () => {
-    it('should fetch table columns on component mount', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
-
-      await waitFor(() => {
-        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
-          'service.database.schema.table',
-          expect.objectContaining({ fields: 'tags', limit: 15, offset: 0 })
-        );
-      });
-    });
-
-    it('should show loading state during data fetch', async () => {
-      (getTableColumnsByFQN as jest.Mock).mockImplementationOnce(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
-
-      expect(screen.getByText('Loading: true')).toBeInTheDocument();
-    });
-
-    it('should not fetch data when table FQN is missing', () => {
-      const mockUseFqn = jest.requireMock('../../../hooks/useFqn').useFqn;
-      mockUseFqn.mockReturnValueOnce({ fqn: undefined });
-
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
-
-      expect(getTableColumnsByFQN).not.toHaveBeenCalled();
     });
   });
 
@@ -285,7 +242,7 @@ describe('ContractSchemaFormTab', () => {
     it('should display selected rows in table', async () => {
       render(
         <ContractSchemaFormTab
-          selectedSchema={['id']}
+          selectedSchema={[mockColumns[0]]}
           onChange={mockOnChange}
           onNext={mockOnNext}
           onPrev={mockOnPrev}
@@ -434,25 +391,6 @@ describe('ContractSchemaFormTab', () => {
     });
   });
 
-  describe('Data Processing', () => {
-    it('should process column data correctly', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('id')).toBeInTheDocument();
-        expect(screen.getByText('name')).toBeInTheDocument();
-        expect(screen.getByText('email')).toBeInTheDocument();
-      });
-    });
-  });
-
   describe('Error Handling', () => {
     it('should handle empty table FQN', () => {
       const mockUseFqn = jest.requireMock('../../../hooks/useFqn').useFqn;
@@ -487,6 +425,60 @@ describe('ContractSchemaFormTab', () => {
 
       expect(nextButton).toBeInTheDocument();
       expect(prevButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Fetching', () => {
+    it('should fetch table columns on component mount', async () => {
+      render(
+        <ContractSchemaFormTab
+          selectedSchema={[]}
+          onChange={mockOnChange}
+          onNext={mockOnNext}
+          onPrev={mockOnPrev}
+        />
+      );
+
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          'service.database.schema.table',
+          expect.objectContaining({ fields: 'tags', limit: 15, offset: 0 })
+        );
+      });
+    });
+
+    it('should show loading state during data fetch', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockImplementationOnce(
+        () => new Promise((resolve) => setTimeout(resolve, 100))
+      );
+
+      render(
+        <ContractSchemaFormTab
+          selectedSchema={[]}
+          onChange={mockOnChange}
+          onNext={mockOnNext}
+          onPrev={mockOnPrev}
+        />
+      );
+
+      expect(screen.getByText('Loading: true')).toBeInTheDocument();
+    });
+
+    it('should not fetch data when table FQN is missing', () => {
+      (useFqn as jest.Mock).mockImplementation(() => ({
+        fqn: undefined,
+      }));
+
+      render(
+        <ContractSchemaFormTab
+          selectedSchema={[]}
+          onChange={mockOnChange}
+          onNext={mockOnNext}
+          onPrev={mockOnPrev}
+        />
+      );
+
+      expect(getTableColumnsByFQN).not.toHaveBeenCalled();
     });
   });
 });

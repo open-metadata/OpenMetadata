@@ -72,7 +72,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         data_context: great expectation data context
         database_service_name: name of the service for the table
         api_version: default to v1
-        config_file_path: path to the open metdata config path
+        config_file_path: path to the open metadata config path
     """
 
     type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"
@@ -86,7 +86,8 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     # This will be initialized in the run method
     ometa_conn: Optional[OpenMetadata] = None
 
-    def run(  # pylint: disable=unused-argument, arguments-differ
+    # pylint: disable=unused-argument,arguments-differ
+    def run(
         self,
         checkpoint_result: CheckpointResult,
         action_context: Union[ActionContext, None],

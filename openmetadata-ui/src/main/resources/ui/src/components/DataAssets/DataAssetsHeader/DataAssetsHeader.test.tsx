@@ -269,7 +269,7 @@ describe('DataAssetsHeader component', () => {
   it('should not render the Tier data if not  present', () => {
     render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
 
-    expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
+    expect(screen.getByTestId('Tier')).toContainHTML('--');
   });
 
   it('should not call getDataQualityLineage, if isDqAlertSupported and alert supported is false', () => {
@@ -389,9 +389,7 @@ describe('DataAssetsHeader component', () => {
     // Test without certification when serviceCategory is undefined
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(screen.getByTestId('certification-label')).toContainHTML(
-      'label.no-entity'
-    );
+    expect(screen.getByTestId('certification-label')).toContainHTML('--');
 
     // Reset the mock to original value
     useRequiredParamsMock.mockReturnValue({
@@ -492,6 +490,46 @@ describe('DataAssetsHeader component', () => {
 
     const button = screen.getByTestId('trigger-auto-pilot-application-button');
 
+    expect(button).toBeEnabled();
+  });
+
+  it('should render the button with disableRunAgentsButtonMessage prop when provided', () => {
+    const customMessage = 'Custom disable message';
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        disableRunAgentsButton
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButtonMessage={customMessage}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeDisabled();
+    expect(button).toBeInTheDocument();
+  });
+
+  it('should render the button when disableRunAgentsButtonMessage is not provided', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeInTheDocument();
     expect(button).toBeEnabled();
   });
 
