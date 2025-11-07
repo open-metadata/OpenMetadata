@@ -16,7 +16,6 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;

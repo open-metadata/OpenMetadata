@@ -55,7 +55,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       deleteSecretIfExists(secretName);
       return;
     }
-    
+
     if (existSecret(secretName)) {
       updateSecret(secretName, secretValue);
       sleep();

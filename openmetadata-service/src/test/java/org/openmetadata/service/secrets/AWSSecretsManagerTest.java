@@ -110,7 +110,8 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
   @Test
   void testNullSecretNotStored() {
     // Test that null secrets are not stored in the secrets manager
-    Map<String, Map<String, String>> mysqlConnectionWithNull = Map.of("authType", Map.of("password", (String) null));
+    Map<String, Map<String, String>> mysqlConnectionWithNull =
+        Map.of("authType", Map.of("password", (String) null));
 
     // Encrypt with null password
     MysqlConnection connection =
@@ -125,8 +126,7 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
     // Verify that no secret was created in the mock storage for null values
     String expectedSecretId = "/prefix/openmetadata/database/test-null-secret/authtype/password";
     assertNull(
-        mockSecretStorage.get(expectedSecretId),
-        "Null secret should not exist in secrets manager");
+        mockSecretStorage.get(expectedSecretId), "Null secret should not exist in secrets manager");
   }
 
   @Test
@@ -150,7 +150,8 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
     mockSecretStorage.put(secretId, "valid-password");
 
     // Now encrypt with null password - this should delete the existing secret
-    Map<String, Map<String, String>> mysqlConnectionWithNull = Map.of("authType", Map.of("password", (String) null));
+    Map<String, Map<String, String>> mysqlConnectionWithNull =
+        Map.of("authType", Map.of("password", (String) null));
 
     secretsManager.encryptServiceConnectionConfig(
         mysqlConnectionWithNull, "Mysql", "test-delete", ServiceType.DATABASE);
