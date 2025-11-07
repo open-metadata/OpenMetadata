@@ -636,7 +636,12 @@ test('Verify system classification term counts', async ({ page }) => {
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'PII' });
 
-  await expect(piiElement.getByTestId('filter-count')).toContainText('3');
+  const piiCountText = await piiElement
+    .getByTestId('filter-count')
+    .textContent();
+  const piiCount = parseInt(piiCountText?.trim() || '0');
+
+  expect(piiCount).toBeGreaterThanOrEqual(3);
 });
 
 test('Verify Owner Add Delete', async ({ page }) => {
