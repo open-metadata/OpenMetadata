@@ -268,19 +268,38 @@ export const DataAssetSummaryPanelV1 = ({
         break;
     }
   };
-  const { editDomainPermission, editOwnerPermission, editTierPermission } =
-    useMemo(
-      () => ({
-        editDomainPermission: entityPermissions?.EditAll && !dataAsset.deleted,
-        editOwnerPermission:
-          (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
-          !dataAsset.deleted,
-        editTierPermission:
-          (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
-          !dataAsset.deleted,
-      }),
-      [entityPermissions, dataAsset]
-    );
+  const {
+    editDomainPermission,
+    editOwnerPermission,
+    editTierPermission,
+    editTagsPermission,
+    editDataProductPermission,
+    editDescriptionPermission,
+    editGlossaryTermsPermission,
+  } = useMemo(
+    () => ({
+      editDomainPermission: entityPermissions?.EditAll && !dataAsset.deleted,
+      editDescriptionPermission:
+        (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
+        !dataAsset.deleted,
+      editGlossaryTermsPermission:
+        (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
+        !dataAsset.deleted,
+      editOwnerPermission:
+        (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
+        !dataAsset.deleted,
+      editTierPermission:
+        (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
+        !dataAsset.deleted,
+      editTagsPermission:
+        (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
+        !dataAsset.deleted,
+      editDataProductPermission:
+        entityPermissions?.EditAll && !dataAsset.deleted,
+    }),
+    [entityPermissions, dataAsset]
+  );
+
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
     if (!dataAsset.id || isTourPage) {
@@ -380,9 +399,7 @@ export const DataAssetSummaryPanelV1 = ({
             )}
             <DescriptionSection
               description={dataAsset.description}
-              hasPermission={
-                entityPermissions?.EditDescription || entityPermissions?.EditAll
-              }
+              hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
             <OverviewSection
@@ -447,7 +464,7 @@ export const DataAssetSummaryPanelV1 = ({
               <GlossaryTermsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditGlossaryTerms}
+                hasPermission={editGlossaryTermsPermission}
                 key={`glossary-terms-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
@@ -460,7 +477,7 @@ export const DataAssetSummaryPanelV1 = ({
               <TagsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditTags}
+                hasPermission={editTagsPermission}
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
@@ -476,9 +493,7 @@ export const DataAssetSummaryPanelV1 = ({
                 dataProducts={dataAsset.dataProducts as EntityReference[]}
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={editDataProductPermission}
                 key={`data-products-${dataAsset.id}-${
                   (dataAsset.dataProducts as unknown[])?.length || 0
                 }`}
@@ -493,9 +508,7 @@ export const DataAssetSummaryPanelV1 = ({
             <span className="d-none" data-testid="KnowledgePageSummary" />
             <DescriptionSection
               description={dataAsset.description}
-              hasPermission={
-                entityPermissions?.EditDescription || entityPermissions?.EditAll
-              }
+              hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
             <div>
@@ -514,7 +527,7 @@ export const DataAssetSummaryPanelV1 = ({
               <TagsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditTags}
+                hasPermission={editTagsPermission}
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
@@ -526,7 +539,7 @@ export const DataAssetSummaryPanelV1 = ({
               <GlossaryTermsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={entityPermissions?.EditGlossaryTerms}
+                hasPermission={editGlossaryTermsPermission}
                 key={`glossary-terms-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
@@ -542,9 +555,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <DescriptionSection
               description={dataAsset.description}
-              hasPermission={
-                entityPermissions?.EditDescription || entityPermissions?.EditAll
-              }
+              hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
             <div>
@@ -587,9 +598,7 @@ export const DataAssetSummaryPanelV1 = ({
               <TagsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={editTagsPermission}
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
