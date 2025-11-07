@@ -40,9 +40,12 @@ const FieldCard: React.FC<FieldCardProps> = ({
 
   return (
     <div
-      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}>
-      <div className="field-card-header">
-        <Badge className="data-type-badge">
+      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
+      data-testid={`field-card-${fieldName}`}>
+      <div className="field-card-header" data-testid="field-card-header">
+        <Badge
+          className="data-type-badge"
+          data-testid={`data-type-badge-${dataType}`}>
           {getDataTypeString(startCase(dataType))}
         </Badge>
         <div className="field-name-container">
@@ -57,14 +60,19 @@ const FieldCard: React.FC<FieldCardProps> = ({
               })}
             </span>
           )}
-          <Typography.Text strong className="field-name">
+          <Typography.Text
+            strong
+            className="field-name"
+            data-testid={`field-name-${fieldName}`}>
             {fieldName}
           </Typography.Text>
         </div>
       </div>
 
-      <div className="field-card-content">
-        <Paragraph className="field-description">
+      <div className="field-card-content" data-testid="field-card-content">
+        <Paragraph
+          className="field-description"
+          data-testid={`field-description-${fieldName}`}>
           {description ? (
             <RichTextEditorPreviewerV1
               markdown={description}

@@ -18,9 +18,19 @@ import Loader from '../components/common/Loader/Loader';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Container } from '../generated/entity/data/container';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table as TableEntity } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { Field } from '../generated/type/schema';
+import { TagLabel } from '../generated/type/tagLabel';
 import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
 import { getTableColumnsByFQN, getTableList } from '../rest/tableAPI';
 import { t } from './i18next/LocalUtil';
@@ -36,6 +46,7 @@ export const getEntityChildDetailsV1 = (
   // kept for potential future use; remove unused to satisfy linter
   switch (entityType) {
     case EntityType.TABLE:
+    case EntityType.DASHBOARD_DATA_MODEL:
       return (
         <SchemaFieldCardsV1
           entityInfo={entityInfo as TableEntity}
@@ -48,7 +59,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.DATABASE_SCHEMA:
       return (
         <DatabaseSchemaTablesV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as DatabaseSchema}
           highlights={highlights}
           loading={loading}
         />
@@ -57,17 +68,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.DASHBOARD:
       return (
         <DashboardChartsV1
-          entityInfo={entityInfo as any}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return (
-        <SchemaFieldCardsV1
-          entityInfo={entityInfo as any}
-          entityType={entityType}
+          entityInfo={entityInfo as Dashboard}
           highlights={highlights}
           loading={loading}
         />
@@ -76,7 +77,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.TOPIC:
       return (
         <TopicFieldCardsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as Topic}
           highlights={highlights}
           loading={loading}
         />
@@ -85,7 +86,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.CONTAINER:
       return (
         <ContainerFieldCardsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as Container}
           highlights={highlights}
           loading={loading}
         />
@@ -94,7 +95,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.SEARCH_INDEX:
       return (
         <SearchIndexFieldCardsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as SearchIndex}
           highlights={highlights}
           loading={loading}
         />
@@ -103,7 +104,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.API_ENDPOINT:
       return (
         <APIEndpointSchemaV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as APIEndpoint}
           highlights={highlights}
           loading={loading}
         />
@@ -112,7 +113,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.DATABASE:
       return (
         <DatabaseSchemasV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo}
           highlights={highlights}
           loading={loading}
         />
@@ -121,7 +122,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.PIPELINE:
       return (
         <PipelineTasksV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as Pipeline}
           highlights={highlights}
           loading={loading}
         />
@@ -130,7 +131,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.API_COLLECTION:
       return (
         <APICollectionEndpointsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as APICollection}
           highlights={highlights}
           loading={loading}
         />
@@ -143,7 +144,7 @@ export const getEntityChildDetailsV1 = (
 
 // Component for Table and Dashboard Data Model schema fields
 const SchemaFieldCardsV1: React.FC<{
-  entityInfo: TableEntity | any;
+  entityInfo: TableEntity;
   entityType: EntityType;
   highlights?: Record<string, string[]>;
   loading?: boolean;
@@ -298,7 +299,7 @@ const SchemaFieldCardsV1: React.FC<{
 
 // Component for Topic schema fields
 const TopicFieldCardsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Topic;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -346,7 +347,7 @@ const TopicFieldCardsV1: React.FC<{
 
 // Component for Container schema fields
 const ContainerFieldCardsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Container;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -394,7 +395,7 @@ const ContainerFieldCardsV1: React.FC<{
 
 // Component for Pipeline tasks
 const PipelineTasksV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Pipeline;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -442,11 +443,11 @@ const PipelineTasksV1: React.FC<{
 
 // Component for API Collection endpoints
 const APICollectionEndpointsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: APICollection;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
-  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
   const fqn = entityInfo.fullyQualifiedName ?? '';
@@ -555,7 +556,7 @@ const APICollectionEndpointsV1: React.FC<{
 
 // Component for Database Schema tables
 const DatabaseSchemaTablesV1: React.FC<{
-  entityInfo: any;
+  entityInfo: DatabaseSchema;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -653,7 +654,7 @@ const DatabaseSchemaTablesV1: React.FC<{
 
 // Component for Dashboard charts
 const DashboardChartsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Dashboard;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -700,10 +701,10 @@ const DashboardChartsV1: React.FC<{
 
 // Component for API Endpoint schema fields
 const APIEndpointSchemaV1: React.FC<{
-  entityInfo: any;
+  entityInfo: APIEndpoint;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
   >('request-schema');
@@ -730,15 +731,15 @@ const APIEndpointSchemaV1: React.FC<{
   }, [viewType, requestSchemaFields, responseSchemaFields]);
 
   // Get all row keys for expandable functionality
-  const getAllRowKeys = (fields: any[]): string[] => {
+  const getAllRowKeys = (fields: Field[]): string[] => {
     const keys: string[] = [];
-    const traverse = (fieldList: any[]) => {
-      fieldList.forEach((field) => {
+    const traverse = (fieldList: Field[]) => {
+      for (const field of fieldList) {
         keys.push(field.name);
         if (field.children && field.children.length > 0) {
           traverse(field.children);
         }
-      });
+      }
     };
     traverse(fields);
 
@@ -768,7 +769,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (name: string, record: any) => (
+      render: (name: string, record: Record<string, any>) => (
         <div className="d-inline-flex w-max-90">
           <span className="break-word">{record.displayName || name}</span>
         </div>
@@ -779,7 +780,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'dataType',
       key: 'dataType',
       width: 150,
-      render: (dataType: string, record: any) => (
+      render: (dataType: string, record: Record<string, any>) => (
         <Typography.Text>
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography.Text>
@@ -802,7 +803,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'tags',
       key: 'tags',
       width: 200,
-      render: (tags: any[]) => (
+      render: (tags: TagLabel[]) => (
         <div className="d-flex flex-wrap gap-2">
           {tags?.map((tag) => (
             <span className="tag-container" key={tag.tagFQN}>
@@ -849,8 +850,11 @@ const APIEndpointSchemaV1: React.FC<{
         </Button>
       </div>
 
-      {/* Schema Fields Table */}
-      {!isEmpty(activeSchemaFields) ? (
+      {isEmpty(activeSchemaFields) ? (
+        <div className="no-data-container m-x-md">
+          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        </div>
+      ) : (
         <div className="m-l-md">
           <Table
             columns={columns}
@@ -866,10 +870,6 @@ const APIEndpointSchemaV1: React.FC<{
             scroll={{ x: 800 }}
             size="small"
           />
-        </div>
-      ) : (
-        <div className="no-data-container m-x-md">
-          <Text className="no-data-text">{t('message.no-data-available')}</Text>
         </div>
       )}
     </div>
@@ -922,7 +922,7 @@ const DatabaseSchemasV1: React.FC<{
 
 // Component for Search Index fields
 const SearchIndexFieldCardsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: SearchIndex;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
