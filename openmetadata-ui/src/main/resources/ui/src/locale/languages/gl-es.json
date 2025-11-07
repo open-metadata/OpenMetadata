@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 día",
     "1-hr": "1 hora",
     "a-to-z": "A a Z",
@@ -17,6 +18,7 @@
     "account": "Conta",
     "account-email": "Correo electrónico da conta",
     "account-name": "Nome da conta",
+    "ack": "Ack",
     "acknowledged": "Recoñecido",
     "action": "Acción",
     "action-plural": "Accións",
@@ -1395,6 +1397,7 @@
     "resolved": "Resolto",
     "resolved-by": "Resolto por",
     "resolved-incident-plural": "Incidentes resoltos",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",
@@ -1935,6 +1938,7 @@
     "alerts-source-description": "Especifica a fonte que activará a alerta.",
     "alerts-trigger-description": "Selecciona eventos de activación importantes como 'Cambio de esquema' ou 'Fallos de proba' para xerar unha alerta.",
     "all-charts-are-mapped": "Todos os gráficos están mapeados con KPI existentes.",
+    "all-values-unique-no-distribution-available": "Todos os valores desta columna son únicos. Non hai distribución dispoñible.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Xa es usuario?",
     "and-followed-owned-by-name": "e o equipo que estás seguindo é propiedade de {{userName}}",

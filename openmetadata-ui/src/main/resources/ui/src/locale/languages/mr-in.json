@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 दिवस",
     "1-hr": "1 तास",
     "a-to-z": "अ ते ज",
@@ -17,6 +18,7 @@
     "account": "खाते",
     "account-email": "खाते ईमेल",
     "account-name": "खात्याचे नाव",
+    "ack": "Ack",
     "acknowledged": "मान्य केले",
     "action": "कृती",
     "action-plural": "कृती",
@@ -1395,6 +1397,7 @@
     "resolved": "सोडवले",
     "resolved-by": "द्वारे सोडवले",
     "resolved-incident-plural": "सोडवलेल्या घटना",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",
@@ -1935,6 +1938,7 @@
     "alerts-source-description": "अलर्ट सक्रिय करणार्‍या स्रोत निर्दिष्ट करा.",
     "alerts-trigger-description": "'स्कीमा बदल' किंवा 'चाचणी अयशस्वी' सारख्या महत्त्वाच्या ट्रिगर इव्हेंट निवडा जेणेकरून अलर्ट व्युत्पन्न होईल.",
     "all-charts-are-mapped": "सर्व चार्ट्स विद्यमान KPI शी नकाशांकित केले आहेत.",
+    "all-values-unique-no-distribution-available": "या स्तंभातील सर्व मूल्ये अद्वितीय आहेत. वितरण उपलब्ध नाही.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "आधीच वापरकर्ता आहात?",
     "and-followed-owned-by-name": "आणि आपण अनुसरण करत असलेली टीम {{userName}} द्वारे मालकीची आहे",

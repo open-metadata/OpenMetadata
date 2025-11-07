@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 gün",
     "1-hr": "1 saat",
     "a-to-z": "A'dan Z'ye",
@@ -17,6 +18,7 @@
     "account": "Hesap",
     "account-email": "Hesap e-postası",
     "account-name": "Hesap Adı",
+    "ack": "Ack",
     "acknowledged": "Onaylandı",
     "action": "Eylem",
     "action-plural": "Eylemler",
@@ -1395,6 +1397,7 @@
     "resolved": "Çözüldü",
     "resolved-by": "Çözen",
     "resolved-incident-plural": "Çözülmüş Olaylar",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",
@@ -1935,6 +1938,7 @@
     "alerts-source-description": "Uyarıyı etkinleştirecek kaynağı belirtin.",
     "alerts-trigger-description": "Bir uyarı oluşturmak için 'Şema Değişikliği' veya 'Test Başarısızlığı' gibi önemli tetikleyici olayları seçin.",
     "all-charts-are-mapped": "Tüm grafikler mevcut KPI'larla eşleştirilmiştir.",
+    "all-values-unique-no-distribution-available": "Bu sütundaki tüm değerler benzersizdir. Dağıtım mevcut değil.",
     "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "Zaten bir kullanıcı mısınız?",
     "and-followed-owned-by-name": "ve takip ettiğiniz takım {{userName}} adlı kullanıcıya ait",
