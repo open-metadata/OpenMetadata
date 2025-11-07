@@ -97,13 +97,11 @@ jest.mock(
           onUpdate,
           selectedTerms,
           children,
-          popoverProps,
         }: {
           onCancel?: () => void;
           onUpdate?: (terms: TagLabel[]) => void;
           selectedTerms: TagLabel[];
           children: React.ReactNode;
-          popoverProps?: Record<string, unknown>;
         }) => {
           const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
 
@@ -179,17 +177,15 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 // Mock EditIconButton
 jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest
-    .fn()
-    .mockImplementation(({ onClick, newLook, ...props }) => (
-      <button
-        className="edit-icon"
-        data-testid="edit-icon-button"
-        onClick={onClick}
-        {...props}>
-        Edit
-      </button>
-    )),
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button
+      className="edit-icon"
+      data-testid="edit-icon-button"
+      onClick={onClick}
+      {...props}>
+      Edit
+    </button>
+  )),
 }));
 
 // Mock Loader
@@ -214,7 +210,7 @@ jest.mock('../../../utils/EntityUpdateUtils', () => ({
     }),
 }));
 
-const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+jest.requireMock('../../../utils/ToastUtils');
 const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
 
 const baseGlossaryTags = [
@@ -320,7 +316,7 @@ describe('GlossaryTermsSection', () => {
         <GlossaryTermsSection
           hasPermission
           showEditButton
-          tags={baseGlossaryTags as any}
+          tags={baseGlossaryTags as TagLabel[]}
         />
       );
 
@@ -345,7 +341,7 @@ describe('GlossaryTermsSection', () => {
           showEditButton
           entityId="123"
           entityType={EntityType.TABLE}
-          tags={[...nonGlossaryTags, ...baseGlossaryTags] as any}
+          tags={[...nonGlossaryTags, ...baseGlossaryTags] as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
@@ -365,10 +361,10 @@ describe('GlossaryTermsSection', () => {
 
         // Should contain non-glossary tag and new selections
         expect(
-          arg.find((t: any) => t.tagFQN === 'Classification.PII')
+          arg.find((t: TagLabel) => t.tagFQN === 'Classification.PII')
         ).toBeTruthy();
-        expect(arg.find((t: any) => t.tagFQN === 'g.term.1')).toBeTruthy();
-        expect(arg.find((t: any) => t.tagFQN === 'g.term.2')).toBeTruthy();
+        expect(arg.find((t: TagLabel) => t.tagFQN === 'g.term.1')).toBeTruthy();
+        expect(arg.find((t: TagLabel) => t.tagFQN === 'g.term.2')).toBeTruthy();
       });
     });
 
@@ -384,7 +380,7 @@ describe('GlossaryTermsSection', () => {
           showEditButton
           entityId="123"
           entityType={EntityType.TABLE}
-          tags={baseGlossaryTags as any}
+          tags={baseGlossaryTags as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
@@ -410,7 +406,7 @@ describe('GlossaryTermsSection', () => {
           showEditButton
           entityId="123"
           entityType={EntityType.TABLE}
-          tags={nonGlossaryTags as any}
+          tags={nonGlossaryTags as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
@@ -425,8 +421,12 @@ describe('GlossaryTermsSection', () => {
 
         const updated = onUpdate.mock.calls[0][0];
 
-        expect(updated.find((t: any) => t.tagFQN === 'g.term.1')).toBeTruthy();
-        expect(updated.find((t: any) => t.tagFQN === 'g.term.2')).toBeTruthy();
+        expect(
+          updated.find((t: TagLabel) => t.tagFQN === 'g.term.1')
+        ).toBeTruthy();
+        expect(
+          updated.find((t: TagLabel) => t.tagFQN === 'g.term.2')
+        ).toBeTruthy();
       });
 
       // form should be gone
@@ -444,7 +444,7 @@ describe('GlossaryTermsSection', () => {
           showEditButton
           entityId="123"
           entityType={EntityType.TABLE}
-          tags={nonGlossaryTags as any}
+          tags={nonGlossaryTags as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
         />
       );
@@ -458,7 +458,7 @@ describe('GlossaryTermsSection', () => {
         expect(onUpdate).toHaveBeenCalled();
 
         const updated = onUpdate.mock.calls[0][0];
-        const obj = updated.find((t: any) => t.tagFQN === 'g.term.obj');
+        const obj = updated.find((t: TagLabel) => t.tagFQN === 'g.term.obj');
 
         expect(obj).toBeTruthy();
         expect(obj.source).toBe(TagSource.Glossary);
