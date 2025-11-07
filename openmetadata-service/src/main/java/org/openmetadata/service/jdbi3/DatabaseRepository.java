@@ -85,7 +85,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("service", this::fetchAndSetService);
     fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -325,13 +324,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database;
   }
 
-  private void fetchAndSetService(List<Database> entities, Fields fields) {
-    if (!fields.contains("service") || entities == null || entities.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, entities, batchFetchServices(entities), Database::setService);
-  }
-
   private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
     var schemasMap = new HashMap<UUID, List<EntityReference>>();
     if (databases == null || databases.isEmpty()) {
@@ -421,10 +413,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<Database> databases) {
+    LOG.info(
+        "[batchFetchServices] Called with {} databases", databases != null ? databases.size() : 0);
+
     var serviceMap = new HashMap<UUID, EntityReference>();
     if (databases == null || databases.isEmpty()) {
+      LOG.info("[batchFetchServices] Returning empty map - databases null or empty");
       return serviceMap;
     }
+
+    // Log database IDs being queried
+
+    databases.forEach(
+        db ->
+            LOG.info(
+                "[batchFetchServices] Querying service for database '{}' (ID: {})",
+                db.getName(),
+                db.getId()));
 
     // Single batch query to get all services for all databases
     // Use Include.ALL to get all relationships including those for soft-deleted entities
@@ -434,6 +439,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
             .findFromBatch(
                 entityListToStrings(databases), Relationship.CONTAINS.ordinal(), Include.ALL);
 
+    LOG.info(
+        "[batchFetchServices] Found {} relationship records from findFromBatch", records.size());
+
     // Collect all unique service IDs first
     var serviceIds =
         records.stream()
@@ -442,11 +450,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
             .distinct()
             .toList();
 
+    LOG.info(
+        "[batchFetchServices] Extracted {} unique service IDs from relationships",
+        serviceIds.size());
+
     // Batch fetch all service entity references
     var serviceRefs =
         Entity.getEntityReferencesByIds(Entity.DATABASE_SERVICE, serviceIds, Include.ALL);
     var serviceRefMap =
         serviceRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    LOG.info("[batchFetchServices] Fetched {} service entity references", serviceRefMap.size());
 
     // Map databases to their services
     records.forEach(
@@ -457,9 +471,24 @@ public class DatabaseRepository extends EntityRepository<Database> {
             var serviceRef = serviceRefMap.get(serviceId);
             if (serviceRef != null) {
               serviceMap.put(databaseId, serviceRef);
+              LOG.info(
+                  "[batchFetchServices] Mapped database ID {} to service '{}' (ID: {})",
+                  databaseId,
+                  serviceRef.getName(),
+                  serviceId);
+            } else {
+              LOG.warn(
+                  "[batchFetchServices] Service reference not found for database ID {} and service ID {}",
+                  databaseId,
+                  serviceId);
             }
           }
         });
+
+    LOG.info(
+        "[batchFetchServices] Returning {} service mappings for {} databases",
+        serviceMap.size(),
+        databases.size());
 
     return serviceMap;
   }
