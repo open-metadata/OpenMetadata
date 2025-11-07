@@ -85,7 +85,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("name", this::fetchAndSetService);
+    fieldFetchers.put("service", this::fetchAndSetService);
     fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -326,21 +326,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private void fetchAndSetService(List<Database> entities, Fields fields) {
-    if (entities == null || entities.isEmpty() || (!fields.contains("name"))) {
+    if (!fields.contains("service") || entities == null || entities.isEmpty()) {
       return;
     }
-
-    // Use batch fetch to get correct service for each database
-    var serviceMap = batchFetchServices(entities);
-
-    // Set the correct service for each database
-    entities.forEach(
-        database -> {
-          EntityReference service = serviceMap.get(database.getId());
-          if (service != null) {
-            database.setService(service);
-          }
-        });
+    setFieldFromMap(true, entities, batchFetchServices(entities), Database::setService);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
