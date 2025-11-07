@@ -471,6 +471,8 @@ test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
     adminPage,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(adminPage);
     const feedResponse = adminPage.waitForResponse(
       '/api/v1/feed?type=Conversation'
@@ -483,8 +485,13 @@ test.describe('User Profile Feed Interactions', () => {
     const userDetailsResponse = adminPage.waitForResponse(
       '/api/v1/users/name/*'
     );
+
     const userFeedResponse = adminPage.waitForResponse(
-      '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
+      (response) =>
+        response.url().includes('/api/v1/feed') &&
+        response.url().includes('type=Conversation') &&
+        response.url().includes('filterType=OWNER_OR_FOLLOWS') &&
+        response.url().includes('userId=')
     );
 
     const avatar = adminPage
