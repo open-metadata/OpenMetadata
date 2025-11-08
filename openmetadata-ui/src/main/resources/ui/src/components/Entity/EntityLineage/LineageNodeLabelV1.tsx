@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@mui/material';
+import { Box, Button, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
@@ -192,10 +192,24 @@ const EntityFooter = ({
       </Button>
       <Box className="test-summary-and-mapping">
         <TestSuiteSummaryContainer node={node} />
-        <MappingIcon
-          className="mapping-icon"
-          onClick={handleClickNodeMapping}
-        />
+        <Tooltip
+          arrow
+          placement="right"
+          slotProps={{
+            tooltip: {
+              sx: {
+                padding: '4px 8px',
+              },
+            },
+          }}
+          title="Only show icons with lineage">
+          <Box sx={{ height: '28px' }}>
+            <MappingIcon
+              className="mapping-icon"
+              onClick={handleClickNodeMapping}
+            />
+          </Box>
+        </Tooltip>
       </Box>
     </Box>
   );

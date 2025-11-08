@@ -18,8 +18,6 @@ import classNames from 'classnames';
 import { Fragment, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
-// import { ReactComponent as DataFlowIcon } from '../../../assets/svg/ic-format-delete-row.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
