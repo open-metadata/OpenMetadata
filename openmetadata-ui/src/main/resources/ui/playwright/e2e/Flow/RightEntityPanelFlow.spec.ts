@@ -12,11 +12,13 @@
  */
 import { expect, Page } from '@playwright/test';
 import { DataProduct } from '../../support/domain/DataProduct';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
+import { createCustomPropertyForEntity } from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
 
@@ -971,23 +973,96 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
   test('Admin - Custom Properties Tab - View Custom Properties', async ({
     adminPage,
   }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    // Create custom properties for Table entity via API
+    const { customProperties } = await createCustomPropertyForEntity(
+      apiContext,
+      EntityTypeEndpoint.Table
+    );
+
+    // Set custom property values on the entity via PATCH API
+    const propertyTypes = Object.keys(customProperties).slice(0, 3);
+    const extensionData: Record<string, string> = {};
+
+    for (const propertyType of propertyTypes) {
+      const { property, value } = customProperties[propertyType];
+      const propertyName = property.name as string;
+      extensionData[propertyName] = value;
+    }
+
+    // Patch the entity to add custom property values
+    await testEntity.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/extension',
+          value: extensionData,
+        },
+      ],
+    });
+
+    // Navigate to explore and select the entity
+    await navigateToExploreAndSelectTable(adminPage);
+
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const cpTab = summaryPanel.getByRole('menuitem', {
       name: /custom propert/i,
     });
 
-    if (await cpTab.isVisible()) {
-      await cpTab.click();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await cpTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
-      );
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
 
-      await expect(tabContent).toBeVisible();
+    await expect(tabContent).toBeVisible();
+
+    const customPropertiesContainer =
+      adminPage.getByTestId('custom_properties');
+
+    await expect(customPropertiesContainer).toBeVisible();
+
+    const displayedPropertyCards = customPropertiesContainer.locator(
+      '[data-testid^="custom-property-"]'
+    );
+    const displayedCount = await displayedPropertyCards.count();
+
+    // Verify at least some properties are displayed (max 5)
+    expect(displayedCount).toBeGreaterThan(0);
+    expect(displayedCount).toBeLessThanOrEqual(5);
+
+    for (let i = 0; i < displayedCount; i++) {
+      const propertyCard = displayedPropertyCards.nth(i);
+
+      await expect(propertyCard).toBeVisible();
+
+      const propertyNameElement = propertyCard.locator('.property-name');
+
+      await expect(propertyNameElement).toBeVisible();
+
+      const propertyValueElement = propertyCard.locator('.property-value');
+
+      await expect(propertyValueElement).toBeVisible();
     }
+
+    const totalPropertyCount = Object.keys(customProperties).length;
+    if (totalPropertyCount > 5) {
+      const viewAllLink = summaryPanel.locator('.view-all-container');
+
+      await expect(viewAllLink).toBeVisible();
+      await expect(viewAllLink.locator('.text-primary')).toContainText(
+        'View All'
+      );
+    }
+
+    await afterAction();
   });
 });
 
@@ -1316,7 +1391,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     await expect(docLink).toBeVisible();
   });
 
-  test('Data Steward - Tab Navigation - Custom Properties Tab', async ({
+  test('Data Steward - Custom Properties Tab - View Custom Properties', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -1337,6 +1412,31 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify custom properties container is visible (if custom properties exist from Admin test)
+      const customPropertiesContainer =
+        dataStewardPage.getByTestId('custom_properties');
+
+      // Custom properties should be visible if they were created by Admin
+      if (await customPropertiesContainer.isVisible()) {
+        await expect(customPropertiesContainer).toBeVisible();
+
+        // Verify at least one custom property card is displayed
+        const propertyCards = customPropertiesContainer.locator(
+          '[data-testid^="custom-property-"]'
+        );
+        const cardCount = await propertyCards.count();
+
+        if (cardCount > 0) {
+          const firstCard = propertyCards.first();
+
+          await expect(firstCard).toBeVisible();
+
+          // Verify property name and value elements exist
+          await expect(firstCard.locator('.property-name')).toBeVisible();
+          await expect(firstCard.locator('.property-value')).toBeVisible();
+        }
+      }
     }
   });
 });
@@ -1727,6 +1827,31 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify custom properties container is visible (if custom properties exist from Admin test)
+      const customPropertiesContainer =
+        dataConsumerPage.getByTestId('custom_properties');
+
+      // Custom properties should be visible if they were created by Admin
+      if (await customPropertiesContainer.isVisible()) {
+        await expect(customPropertiesContainer).toBeVisible();
+
+        // Verify at least one custom property card is displayed
+        const propertyCards = customPropertiesContainer.locator(
+          '[data-testid^="custom-property-"]'
+        );
+        const cardCount = await propertyCards.count();
+
+        if (cardCount > 0) {
+          const firstCard = propertyCards.first();
+
+          await expect(firstCard).toBeVisible();
+
+          // Verify property name and value elements exist
+          await expect(firstCard.locator('.property-name')).toBeVisible();
+          await expect(firstCard.locator('.property-value')).toBeVisible();
+        }
+      }
     }
   });
 });
