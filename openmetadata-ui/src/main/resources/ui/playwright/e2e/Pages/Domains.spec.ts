@@ -64,7 +64,11 @@ import {
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
-import { followEntity, unFollowEntity } from '../../utils/entity';
+import {
+  followEntity,
+  unFollowEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   settingClick,
   SettingOptionsType,

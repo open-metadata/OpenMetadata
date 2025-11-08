@@ -430,7 +430,7 @@ export const addAssetsToDomain = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    "Looks like you haven't added any data assets yet."
+    'Adding a new Asset is easy, just give it a spin!'
   );
 
   await page.getByTestId('domain-details-add-button').click();
@@ -533,7 +533,7 @@ export const addAssetsToDataProduct = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    "Looks like you haven't added any data assets yet."
+    'Adding a new Asset is easy, just give it a spin!'
   );
 
   await page.getByTestId('data-product-details-add-button').click();
