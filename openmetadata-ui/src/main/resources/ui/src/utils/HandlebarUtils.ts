@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { ReactRenderer } from '@tiptap/react';
+import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
+import { isEmpty } from 'lodash';
+import tippy, { Instance, Props } from 'tippy.js';
+import { ExtensionRef } from '../components/BlockEditor/BlockEditor.interface';
+import HandlebarsList, {
+  HandlebarsItem,
+} from '../components/BlockEditor/Extensions/handlebars/HandlebarsList';
+import { DEFAULT_HELPERS } from '../constants/Handlebar.constants';
 
 /**
  * Converts editor HTML to backend-compatible format by unwrapping handlebars blocks
@@ -146,3 +156,116 @@ export const parseHandlebarsFromBackend = (html: string): string => {
 
   return tempDiv.innerHTML;
 };
+
+// Function to generate the placeholders (variables) for Handlebars
+export const fetchHandlebarsVariables = async (): Promise<HandlebarsItem[]> => {
+  // Mock variables for now
+  return [
+    {
+      id: 'userName',
+      name: 'userName',
+      label: 'userName',
+      type: 'variable',
+      description: 'Current user name',
+    },
+    {
+      id: 'userEmail',
+      name: 'userEmail',
+      label: 'userEmail',
+      type: 'variable',
+      description: 'Current user email',
+    },
+    {
+      id: 'currentDate',
+      name: 'currentDate',
+      label: 'currentDate',
+      type: 'variable',
+      description: 'Current date',
+    },
+  ];
+};
+
+export const handlebarsSuggestion = () => ({
+  items: async ({ query }: { query: string }) => {
+    // Fetch variables if not cached
+    const PLACEHOLDERS = await fetchHandlebarsVariables();
+
+    // Combine helpers and variables
+    const allItems = [...DEFAULT_HELPERS, ...PLACEHOLDERS];
+
+    // Filter based on query
+    if (!query) {
+      return allItems;
+    }
+
+    return allItems.filter((item) =>
+      item.name.toLowerCase().includes(query.toLowerCase())
+    );
+  },
+
+  render: () => {
+    let component: ReactRenderer;
+    let popup: Instance<Props>[] = [];
+    let hasPopup = !isEmpty(popup);
+
+    return {
+      onStart: (props: SuggestionProps) => {
+        component = new ReactRenderer(HandlebarsList, {
+          props,
+          editor: props.editor,
+        });
+
+        if (!props.clientRect) {
+          return;
+        }
+
+        popup = tippy('body', {
+          getReferenceClientRect:
+            props.clientRect as Props['getReferenceClientRect'],
+          appendTo: () => document.body,
+          content: component.element,
+          showOnCreate: true,
+          interactive: true,
+          trigger: 'manual',
+          placement: 'bottom-start',
+        });
+        hasPopup = !isEmpty(popup);
+      },
+
+      onUpdate(props: SuggestionProps) {
+        component.updateProps(props);
+
+        if (!props.clientRect) {
+          return;
+        }
+
+        if (hasPopup) {
+          popup[0].setProps({
+            getReferenceClientRect:
+              props.clientRect as Props['getReferenceClientRect'],
+          });
+        }
+      },
+
+      onKeyDown(props: SuggestionKeyDownProps) {
+        if (
+          props.event.key === 'Escape' &&
+          hasPopup &&
+          !popup[0].state.isDestroyed
+        ) {
+          popup[0].hide();
+
+          return true;
+        }
+
+        return (component?.ref as ExtensionRef)?.onKeyDown(props);
+      },
+
+      onExit() {
+        if (hasPopup && !popup[0].state.isDestroyed) {
+          popup[0].destroy();
+        }
+      },
+    };
+  },
+});

@@ -26,11 +26,11 @@ export type HandlebarsOptions = {
 
 export const HandlebarsPluginKey = new PluginKey('handlebars');
 
-export { HandlebarsBlock } from './HandlebarsBlock';
 export {
   parseHandlebarsFromBackend,
   serializeHandlebarsForBackend,
-} from './handlebarsUtils';
+} from '../../../../utils/HandlebarUtils';
+export { HandlebarsBlock } from './HandlebarsBlock';
 
 export const Handlebars = Node.create<HandlebarsOptions>({
   name: 'handlebars',

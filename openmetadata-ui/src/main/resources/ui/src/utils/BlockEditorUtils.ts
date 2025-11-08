@@ -20,13 +20,13 @@ import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio
 import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
-import {
-  parseHandlebarsFromBackend,
-  serializeHandlebarsForBackend,
-} from '../components/BlockEditor/Extensions/handlebars';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
+import {
+  parseHandlebarsFromBackend,
+  serializeHandlebarsForBackend,
+} from './HandlebarUtils';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
