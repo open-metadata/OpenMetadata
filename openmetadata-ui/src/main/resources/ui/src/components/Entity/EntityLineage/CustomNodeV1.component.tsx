@@ -264,7 +264,7 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const showDqTracing = useMemo(
     () =>
-      activeLayer.includes(LineageLayer.DataObservability) ||
+      activeLayer.includes(LineageLayer.DataObservability) &&
       dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === id),
     [activeLayer, dataQualityLineage, id]
   );

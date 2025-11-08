@@ -293,6 +293,46 @@
     }
   }
 
+  &.custom-node-header-active.data-quality-failed-custom-node-header {
+    background-color: #fffbfa;
+    .lineage-node-content {
+      .label-container {
+        background-color: #fffbfa;
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: #fffbfa;
+          }
+        }
+      }
+    }
+    .lineage-node-badge-container {
+      background-color: #fffbfa;
+      border-color: #d92d20;
+    }
+
+    &.columns-expanded {
+      background-color: #fee4e2;
+
+      .lineage-node-badge-container {
+        background-color: #fee4e2;
+      }
+
+      .lineage-node-content {
+        .label-container {
+          background-color: #fee4e2;
+          .custom-node-label-container {
+            .entity-footer {
+              background-color: #fffbfa;
+            }
+          }
+        }
+        .column-container {
+          background-color: #fffbfa;
+        }
+      }
+    }
+  }
+
   &.custom-node-header-tracing {
     .lineage-node-badge-container {
       border-color: @primary-color;
@@ -423,56 +463,18 @@
       }
     }
   }
-}
 
-// Node selected state
-.react-flow__node-default.selectable.selected,
-.react-flow__node-default.selectable:focus,
-.react-flow__node-default.selectable:focus-visible,
-.react-flow__node-input.selectable.selected,
-.react-flow__node-input.selectable:focus,
-.react-flow__node-input.selectable:focus-visible,
-.react-flow__node-output.selectable.selected,
-.react-flow__node-output.selectable:focus,
-.react-flow__node-output.selectable:focus-visible,
-.react-flow__node-group.selectable.selected,
-.react-flow__node-group.selectable:focus,
-.react-flow__node-group.selectable:focus-visible,
-.react-flow__node-load-more.selectable.selected,
-.react-flow__node-load-more.selectable:focus,
-.react-flow__node-load-more.selectable:focus-visible {
-  .data-quality-failed-custom-node-header {
-    &.lineage-node {
-      border-color: @red-3 !important;
-    }
-
-    .lineage-node-handle {
-      border-color: @red-3;
-
-      svg {
-        color: @red-3;
+  .custom-node-header-active.data-quality-failed-custom-node-header {
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container {
+          &:hover {
+            background-color: #ffffff;
+            border-color: #d92d20;
+          }
+        }
       }
     }
-
-    .label-container {
-      background: fade(@red-3, 10%);
-    }
-
-    .column-container {
-      background: fade(@red-3, 10%);
-      border-top: 1px solid @border-color;
-    }
-  }
-}
-
-.data-quality-failed-custom-node-header.custom-node-header-active {
-  .label-container {
-    background: fade(@red-3, 10%);
-  }
-
-  .column-container {
-    background: fade(@red-3, 10%);
-    border-top: 1px solid @red-3;
   }
 }
 
@@ -556,16 +558,6 @@
 
   &.react-flow__handle-right {
     right: 0;
-  }
-}
-
-.data-quality-failed-custom-node-header {
-  .custom-node-column-container {
-    &:hover {
-      // border-left-color: @red-14;
-      // background-color: @red-9;
-      // color: @red-20;
-    }
   }
 }
 

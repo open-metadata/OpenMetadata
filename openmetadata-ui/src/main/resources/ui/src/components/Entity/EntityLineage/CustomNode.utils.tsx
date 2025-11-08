@@ -271,7 +271,7 @@ export function getNodeClassNames({
     'lineage-node p-0',
     isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
     {
-      'data-quality-failed-custom-node-header': showDqTracing || isBaseNode,
+      'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
       'columns-expanded': isColumnsListExpanded,
