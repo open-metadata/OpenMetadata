@@ -27,6 +27,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { Plus, Dataflow01 } from '@untitledui/icons';
+import { capitalize } from 'lodash';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -157,7 +158,7 @@ const getColumnNameContent = (column: Column, isLoading: boolean) => {
         ellipsis={{
           tooltip: true,
         }}>
-        {getEntityName(column)}
+        {capitalize(getEntityName(column))}
       </Typography.Text>
     </>
   );
