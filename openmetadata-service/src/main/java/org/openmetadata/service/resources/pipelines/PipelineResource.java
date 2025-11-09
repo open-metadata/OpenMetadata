@@ -651,7 +651,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "getPipelineMetrics",
       summary = "Get aggregated pipeline metrics",
-      description = "Get aggregated metrics about pipelines from Elasticsearch.",
+      description =
+          "Get aggregated metrics about pipelines from Elasticsearch. Optionally filter results using the q parameter.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -662,14 +663,20 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                     schema = @Schema(implementation = PipelineMetrics.class)))
       })
   public Response getPipelineMetrics(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Search query to filter the aggregation results",
+              schema = @Schema(type = "String"))
+          @QueryParam("q")
+          String query) {
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
 
     try {
       authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
-      PipelineMetrics metrics = repository.getPipelineMetrics();
+      PipelineMetrics metrics = repository.getPipelineMetrics(query);
       return Response.ok(metrics).build();
     } catch (Exception e) {
       PipelineMetrics emptyMetrics =
