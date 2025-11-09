@@ -524,8 +524,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("offset")
           int offset) {
 
-    return new EntityHierarchyList(
-        repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset));
+    return repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
   }
 
   @PUT

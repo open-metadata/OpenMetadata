@@ -304,7 +304,8 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
     // Test 1: Get root domains (no directChildrenOf parameter) - should include our test root
     // domains
-    List<EntityHierarchy> rootDomains = getDomainsHierarchy(ADMIN_AUTH_HEADERS).getData();
+    EntityHierarchyList rootDomainsResult = getDomainsHierarchy(ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> rootDomains = rootDomainsResult.getData();
     assertTrue(
         rootDomains.size() >= 2,
         "Should have at least our 2 root domains (may have more from other tests)");
@@ -314,27 +315,61 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertTrue(
         rootDomains.stream().anyMatch(h -> h.getId().equals(secondRootDomainId)),
         "Should contain second root domain");
+    assertNotNull(rootDomainsResult.getPaging(), "Paging should not be null");
+    assertTrue(
+        rootDomainsResult.getPaging().getTotal() >= 2,
+        "Total count should be at least 2 (may have more from other tests)");
 
     // Test 2: Get direct children of root domain
-    List<EntityHierarchy> rootChildren =
-        getDomainsHierarchyWithDirectChildrenOf(rootDomainFqn, ADMIN_AUTH_HEADERS).getData();
+    EntityHierarchyList rootChildrenResult =
+        getDomainsHierarchyWithDirectChildrenOf(rootDomainFqn, ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> rootChildren = rootChildrenResult.getData();
     assertEquals(3, rootChildren.size());
     assertTrue(rootChildren.stream().anyMatch(h -> h.getId().equals(subDomain1Id)));
     assertTrue(rootChildren.stream().anyMatch(h -> h.getId().equals(subDomain2Id)));
     assertTrue(rootChildren.stream().anyMatch(h -> h.getId().equals(subDomain3Id)));
+    assertNotNull(rootChildrenResult.getPaging(), "Paging should not be null");
+    assertEquals(3, rootChildrenResult.getPaging().getTotal(), "Total count should be 3");
+
+    // Test 2b: Test pagination - limit results but verify total count is still correct
+    // This specifically tests that total != data.size() when limit is applied
+    EntityHierarchyList rootChildrenPage1 =
+        getDomainsHierarchyWithPagination(rootDomainFqn, 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2,
+        rootChildrenPage1.getData().size(),
+        "Should return only 2 items due to limit, even though there are 3 total");
+    assertNotNull(rootChildrenPage1.getPaging(), "Paging should not be null");
+    assertEquals(
+        3,
+        rootChildrenPage1.getPaging().getTotal(),
+        "Total should still be 3 even though only 2 items returned due to limit");
+
+    EntityHierarchyList rootChildrenPage2 =
+        getDomainsHierarchyWithPagination(rootDomainFqn, 2, 2, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1, rootChildrenPage2.getData().size(), "Should return only 1 remaining item on page 2");
+    assertNotNull(rootChildrenPage2.getPaging(), "Paging should not be null");
+    assertEquals(3, rootChildrenPage2.getPaging().getTotal(), "Total should still be 3 on page 2");
 
     // Test 3: Get direct children of subDomain1
-    List<EntityHierarchy> subDomain1Children =
-        getDomainsHierarchyWithDirectChildrenOf(subDomain1Fqn, ADMIN_AUTH_HEADERS).getData();
+    EntityHierarchyList subDomain1ChildrenResult =
+        getDomainsHierarchyWithDirectChildrenOf(subDomain1Fqn, ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> subDomain1Children = subDomain1ChildrenResult.getData();
     assertEquals(3, subDomain1Children.size());
     assertTrue(subDomain1Children.stream().anyMatch(h -> h.getId().equals(subSubDomain1Id)));
     assertTrue(subDomain1Children.stream().anyMatch(h -> h.getId().equals(subSubDomain2Id)));
     assertTrue(subDomain1Children.stream().anyMatch(h -> h.getId().equals(subSubDomain3Id)));
+    assertNotNull(subDomain1ChildrenResult.getPaging(), "Paging should not be null");
+    assertEquals(3, subDomain1ChildrenResult.getPaging().getTotal(), "Total count should be 3");
 
     // Test 4: Verify second root domain has no children
-    List<EntityHierarchy> secondRootChildren =
-        getDomainsHierarchyWithDirectChildrenOf(secondRootDomainFqn, ADMIN_AUTH_HEADERS).getData();
+    EntityHierarchyList secondRootChildrenResult =
+        getDomainsHierarchyWithDirectChildrenOf(secondRootDomainFqn, ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> secondRootChildren = secondRootChildrenResult.getData();
     assertEquals(0, secondRootChildren.size());
+    assertNotNull(secondRootChildrenResult.getPaging(), "Paging should not be null");
+    assertEquals(0, secondRootChildrenResult.getPaging().getTotal(), "Total count should be 0");
   }
 
   @Test

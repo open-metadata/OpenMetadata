@@ -340,7 +340,7 @@ public class DomainRepository extends EntityRepository<Domain> {
         : null;
   }
 
-  public List<EntityHierarchy> buildHierarchy(
+  public ResultList<EntityHierarchy> buildHierarchy(
       String fieldsParam, int limit, String directChildrenOf, int offset) {
     fieldsParam = EntityUtil.addField(fieldsParam, Entity.FIELD_PARENT);
     Fields fields = getFields(fieldsParam);
@@ -350,9 +350,14 @@ public class DomainRepository extends EntityRepository<Domain> {
     ResultList<Domain> resultList = listAfter(null, fields, filter, limit, null);
     List<Domain> domains = resultList.getData();
 
-    return domains.stream()
-        .map(domain -> JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class))
-        .collect(Collectors.toList());
+    List<EntityHierarchy> hierarchyList =
+        domains.stream()
+            .map(domain -> JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class))
+            .collect(Collectors.toList());
+
+    int total =
+        resultList.getPaging() != null ? resultList.getPaging().getTotal() : hierarchyList.size();
+    return new ResultList<>(hierarchyList, null, null, total);
   }
 
   public class DomainUpdater extends EntityUpdater {
