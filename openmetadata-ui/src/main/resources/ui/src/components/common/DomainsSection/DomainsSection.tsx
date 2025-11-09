@@ -230,7 +230,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       showEditButton &&
       hasPermission && (
         <DomainSelectableList
-          multiple
           hasPermission={hasPermission}
           overlayClassName="domain-popover"
           popoverProps={{

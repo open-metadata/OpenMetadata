@@ -27,7 +27,10 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
+import { PipelineViewMode } from '../../../generated/settings/settings';
+import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
@@ -68,7 +71,7 @@ export default function EntitySummaryPanel({
   highlights,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
-  const NAV_OPTIONS = (DRAWER_NAVIGATION_OPTIONS as any) || {
+  const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
     explore: 'Explore',
     lineage: 'Lineage',
   };
@@ -248,6 +251,7 @@ export default function EntitySummaryPanel({
           upstreamDepth: 2,
           downstreamDepth: 1,
           nodesPerLayer: 50,
+          pipelineViewMode: PipelineViewMode.Node,
         },
       });
       setLineageData(response);
@@ -259,8 +263,8 @@ export default function EntitySummaryPanel({
     }
   }, [entityDetails?.details?.fullyQualifiedName, entityType]);
 
-  const updateEntityData = (updatedData: Partial<any>) => {
-    setEntityData((prevData: any) => {
+  const updateEntityData = (updatedData: Partial<EntityData>) => {
+    setEntityData((prevData: EntityData | null) => {
       // Use entityDetails.details as a fallback if prevData is null.
       // This handles the initial update before fetchEntityData completes.
       const baseData = prevData || entityDetails.details;
@@ -295,13 +299,13 @@ export default function EntitySummaryPanel({
   );
 
   const handleTagsUpdate = useCallback(
-    (updatedTags: any[]) => {
+    (updatedTags: TagLabel[]) => {
       // updatedTags from TagsSection only contains classification tags
       const currentTags = entityData?.tags ?? [];
       const glossaryTags = currentTags.filter(
-        (tag: any) => tag.source === TagSource.Glossary
+        (tag: TagLabel) => tag.source === TagSource.Glossary
       );
-      const tierTags = currentTags.filter((tag: any) =>
+      const tierTags = currentTags.filter((tag: TagLabel) =>
         tag.tagFQN?.startsWith('Tier.')
       );
       updateEntityData({
@@ -312,10 +316,10 @@ export default function EntitySummaryPanel({
   );
 
   const handleTierUpdate = useCallback(
-    (updatedTier?: any) => {
+    (updatedTier?: TagLabel) => {
       const currentTags = entityData?.tags ?? [];
       const tagsWithoutTier = currentTags.filter(
-        (tag: any) => !tag.tagFQN?.startsWith('Tier.')
+        (tag: TagLabel) => !tag.tagFQN?.startsWith('Tier.')
       );
       const newTags = updatedTier
         ? [...tagsWithoutTier, updatedTier]
@@ -333,7 +337,7 @@ export default function EntitySummaryPanel({
   );
 
   const handleGlossaryTermsUpdate = useCallback(
-    async (updatedTags: any[]) => {
+    async (updatedTags: TagLabel[]) => {
       // The child component (`GlossaryTermsSection`) now handles the API call.
       // We just need to update the parent's state with the new tags.
       updateEntityData({ tags: updatedTags });

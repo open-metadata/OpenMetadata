@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../styles/variables.less';
+import { test as setup } from '@playwright/test';
+import { EntityDataClass } from '../support/entity/EntityDataClass';
+import { performAdminLogin } from '../utils/admin';
 
-.breadcrumb-menu-button {
-  color: @grey-500 !important;
-  padding: 0 !important;
-  margin-left: 2px !important;
-  margin-right: 2px !important;
-}
-.breadcrumb-container {
-  ol {
-    gap: 0px !important;
-    font-size: 11px !important;
+setup('create entity data prerequisites', async ({ browser }) => {
+  setup.setTimeout(300 * 1000);
+
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
+    EntityDataClass.saveResponseData();
+  } finally {
+    await afterAction();
   }
-}
-.breadcrumb-menu-item {
-  color: @grey-500 !important;
-  margin: 0px !important;
-  padding-top: 2px !important;
-  padding-bottom: 2px !important;
-}
+});

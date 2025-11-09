@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   LabelType,
   State,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { SelectableListProps } from '../SelectableList/SelectableList.interface';
 import { TagSelectableList } from './TagSelectableList.component';
 
 jest.mock('react-i18next', () => ({
@@ -36,9 +38,11 @@ const mockSelectableList = jest
       onUpdate,
       onCancel,
       selectedItems,
-      fetchOptions,
-      customTagRenderer,
-    }: any) => (
+    }: {
+      onUpdate?: (tags: EntityReference[]) => void;
+      onCancel?: () => void;
+      selectedItems?: EntityReference[];
+    }) => (
       <div data-testid="selectable-list">
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button
@@ -66,18 +70,20 @@ const mockSelectableList = jest
 const mockGetTags = jest.fn();
 
 jest.mock('../SelectableList/SelectableList.component', () => ({
-  SelectableList: (props: any) => mockSelectableList(props),
+  SelectableList: (props: SelectableListProps) => mockSelectableList(props),
 }));
 
 jest.mock('../../../utils/TagClassBase', () => ({
   __esModule: true,
   default: {
-    getTags: (...args: any[]) => mockGetTags(...args),
+    getTags: (...args: Parameters<typeof mockGetTags>) => mockGetTags(...args),
   },
 }));
 
 jest.mock('../FocusTrap/FocusTrapWithContainer', () => ({
-  FocusTrapWithContainer: ({ children }: any) => <div>{children}</div>,
+  FocusTrapWithContainer: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 const mockTags: TagLabel[] = [
