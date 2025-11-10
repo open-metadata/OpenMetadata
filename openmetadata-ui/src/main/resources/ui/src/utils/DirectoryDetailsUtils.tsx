@@ -14,6 +14,7 @@
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import DirectoryChildrenTable from '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -86,6 +87,18 @@ export const getDirectoryDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: lineageTab,
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={i18n.t('label.contract')}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

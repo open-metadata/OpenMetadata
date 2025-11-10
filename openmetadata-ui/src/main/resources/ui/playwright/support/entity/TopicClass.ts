@@ -44,6 +44,7 @@ export class TopicClass extends EntityClass {
     name: string;
     displayName: string;
     service: string;
+    description: string;
     messageSchema: {
       schemaText: string;
       schemaType: string;
@@ -129,6 +130,7 @@ export class TopicClass extends EntityClass {
       name: this.topicName,
       displayName: this.topicName,
       service: this.service.name,
+      description: `Description for ${this.topicName}`,
       messageSchema: {
         schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
     "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,

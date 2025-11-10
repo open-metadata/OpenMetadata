@@ -59,6 +59,7 @@ export class FileClass extends EntityClass {
     name: this.fileName,
     displayName: this.fileName,
     service: this.service.name,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -89,6 +90,7 @@ export class FileClass extends EntityClass {
       {
         data: {
           name: this.fileName,
+          description: this.entity.description,
           service: this.serviceResponseData.fullyQualifiedName,
         },
       }
