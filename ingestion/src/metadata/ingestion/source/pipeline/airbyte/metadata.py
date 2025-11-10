@@ -156,7 +156,7 @@ class AirbyteSource(PipelineServiceSource):
 
         # Airbyte does not offer specific attempt link, just at pipeline level
         log_link = (
-            f"{self.source_url_prefix}workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"{self.source_url_prefix}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}/status"
         )
 
