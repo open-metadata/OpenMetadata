@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { KeyboardArrowDown } from '@mui/icons-material';
 import {
   Box,
   MenuItem,
@@ -215,8 +216,47 @@ const DimensionalityTab = () => {
 
   return (
     <Stack p={5} spacing={4}>
-      <Box alignItems="center" display="flex" flexWrap="nowrap" gap={3}>
-        <Box alignItems="center" display="flex" flexWrap="nowrap" gap={1}>
+      <Box alignItems="center" display="flex" flexWrap="nowrap" gap={7.5}>
+        <Box alignItems="center" display="flex" flexWrap="nowrap" gap={2.5}>
+          <Typography
+            sx={{
+              color: theme.palette.grey[900],
+              fontSize: theme.typography.pxToRem(13),
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+            }}>
+            {`${t('label.select-dimension')}:`}
+          </Typography>
+          <Select
+            IconComponent={KeyboardArrowDown}
+            size="small"
+            sx={{
+              minWidth: 150,
+              fontWeight: 600,
+              '& .MuiSvgIcon-root': {
+                color: theme.palette.grey[900],
+              },
+              '& .MuiSelect-select': {
+                fontSize: '12px !important',
+                lineHeight: '18px !important',
+                padding: '6px 12px !important',
+                'box-shadow': 'none !important',
+                border: `1px solid ${theme.palette.grey[200]}`,
+              },
+              '&:hover .MuiSelect-select': {
+                bgcolor: theme.palette.grey[50],
+              },
+            }}
+            value={selectedDimension}
+            onChange={handleDimensionChange}>
+            {dimensionColumnsOptions.map((column) => (
+              <MenuItem key={column} value={column}>
+                {column}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+        <Box alignItems="center" display="flex" flexWrap="nowrap" gap={2.5}>
           <Typography
             sx={{
               color: theme.palette.grey[900],
@@ -231,40 +271,6 @@ const DimensionalityTab = () => {
             handleDateRangeChange={handleDateRangeChange}
             size="small"
           />
-        </Box>
-        <Box alignItems="center" display="flex" flexWrap="nowrap" gap={1}>
-          <Typography
-            sx={{
-              color: theme.palette.grey[900],
-              fontSize: theme.typography.pxToRem(13),
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-            }}>
-            {`${t('label.select-dimension')}:`}
-          </Typography>
-          <Select
-            size="small"
-            sx={{
-              minWidth: 150,
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.grey[300],
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.grey[400],
-              },
-              '& .MuiSelect-select': {
-                fontSize: '12px',
-                padding: '6px 12px',
-              },
-            }}
-            value={selectedDimension}
-            onChange={handleDimensionChange}>
-            {dimensionColumnsOptions.map((column) => (
-              <MenuItem key={column} value={column}>
-                {column}
-              </MenuItem>
-            ))}
-          </Select>
         </Box>
       </Box>
 
