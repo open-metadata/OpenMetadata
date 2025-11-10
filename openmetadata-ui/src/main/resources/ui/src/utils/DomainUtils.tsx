@@ -55,6 +55,7 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
+import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import { getPrioritizedEditPermission } from './PermissionsUtils';
@@ -586,4 +587,31 @@ export const getDomainIcon = (iconURL?: string) => {
 
   // Otherwise return the default domain icon
   return <DomainIcon className="domain-default-icon" />;
+};
+
+export const DomainListItemRenderer = (props: EntityReference) => {
+  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
+  const fqn = `(${props.fullyQualifiedName ?? ''})`;
+
+  return (
+    <div className="d-flex items-center gap-2">
+      <DomainIcon
+        color={DE_ACTIVE_COLOR}
+        height={20}
+        name="folder"
+        width={20}
+      />
+      <div className="d-flex items-center w-max-400">
+        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
+        {isSubDomain && (
+          <Typography.Text
+            ellipsis
+            className="m-l-xss text-xs"
+            type="secondary">
+            {fqn}
+          </Typography.Text>
+        )}
+      </div>
+    </div>
+  );
 };
