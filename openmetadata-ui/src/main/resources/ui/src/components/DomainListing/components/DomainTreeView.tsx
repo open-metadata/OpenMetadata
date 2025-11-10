@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Chip, Typography, useTheme } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
 import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
@@ -91,6 +92,16 @@ const DomainTreeView = ({
   const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
+  >({});
+  const [childPaging, setChildPaging] = useState<
+    Record<
+      string,
+      {
+        offset: number;
+        limit: number;
+        total: number;
+      }
+    >
   >({});
 
   const [rootPaging, setRootPaging] = useState({
@@ -289,21 +300,32 @@ const DomainTreeView = ({
   const updateNested = (
     domains: EntityReference[],
     targetFqn: string,
-    newChildren: Domain[]
+    newChildren: Domain[],
+    isAppend = false
   ): EntityReference[] => {
     return domains.map((domain) => {
       const domainData = domain as unknown as Domain;
       if (domainData.fullyQualifiedName === targetFqn) {
         return {
           ...domainData,
-          children: newChildren,
+          children: isAppend
+            ? [
+                ...(domainData.children ?? []),
+                ...(newChildren as unknown as EntityReference[]),
+              ]
+            : (newChildren as unknown as EntityReference[]),
         } as unknown as EntityReference;
       }
 
       if (domainData.children?.length) {
         return {
           ...domainData,
-          children: updateNested(domainData.children, targetFqn, newChildren),
+          children: updateNested(
+            domainData.children,
+            targetFqn,
+            newChildren,
+            isAppend
+          ),
         } as unknown as EntityReference;
       }
 
@@ -312,26 +334,60 @@ const DomainTreeView = ({
   };
 
   const loadChildDomains = useCallback(
-    async (parentFqn: string) => {
+    async (parentFqn: string, isLoadMore = false) => {
       setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
 
       try {
-        const response = await getDomainChildrenPaginated(parentFqn, 50, 0);
+        const currentPaging = childPaging[parentFqn] || {
+          offset: 0,
+          limit: INITIAL_PAGE_SIZE,
+          total: 0,
+        };
+
+        const currentOffset = isLoadMore
+          ? currentPaging.offset + currentPaging.limit
+          : 0;
+
+        const response = await getDomainChildrenPaginated(
+          parentFqn,
+          INITIAL_PAGE_SIZE,
+          currentOffset
+        );
         const children = response.data ?? [];
+        const total = response.paging.total;
+
+        setChildPaging((prev) => ({
+          ...prev,
+          [parentFqn]: {
+            offset: currentOffset,
+            limit: INITIAL_PAGE_SIZE,
+            total,
+          },
+        }));
 
         setHierarchy((prev) => {
           const updated = prev.map((domain) => {
             if (domain.fullyQualifiedName === parentFqn) {
               return {
                 ...domain,
-                children: children as unknown as EntityReference[],
+                children: isLoadMore
+                  ? [
+                      ...(domain.children ?? []),
+                      ...(children as unknown as EntityReference[]),
+                    ]
+                  : (children as unknown as EntityReference[]),
               };
             }
 
             if (domain.children?.length) {
               return {
                 ...domain,
-                children: updateNested(domain.children, parentFqn, children),
+                children: updateNested(
+                  domain.children,
+                  parentFqn,
+                  children,
+                  isLoadMore
+                ),
               };
             }
 
@@ -346,7 +402,7 @@ const DomainTreeView = ({
         setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
       }
     },
-    [handleError]
+    [handleError, childPaging]
   );
 
   const loadDomains = useCallback(
@@ -357,7 +413,7 @@ const DomainTreeView = ({
       }
 
       if (parentFqn) {
-        await loadChildDomains(parentFqn);
+        await loadChildDomains(parentFqn, isLoadMore);
       } else {
         await loadRootDomains(isLoadMore);
       }
@@ -624,9 +680,17 @@ const DomainTreeView = ({
     [fetchDomainDetails, navigate, updateExpansionForFqn]
   );
 
+  const handleLoadMoreChildren = useCallback(
+    (parentFqn: string, event: React.MouseEvent) => {
+      event.stopPropagation();
+      loadDomains(parentFqn, true);
+    },
+    [loadDomains]
+  );
+
   const renderTreeItems = useCallback(
-    (nodes: Domain[]) =>
-      nodes.map((node) => {
+    (nodes: Domain[], parentFqn?: string) => {
+      const items = nodes.map((node) => {
         const identifier = node.fullyQualifiedName || node.name || node.id;
 
         if (!identifier) {
@@ -673,17 +737,66 @@ const DomainTreeView = ({
               </Box>
             }>
             {childDomains.length > 0
-              ? renderTreeItems(childDomains)
+              ? renderTreeItems(childDomains, identifier)
               : hasChildren && <div />}
           </TreeItem>
         );
-      }),
+      });
+
+      if (parentFqn) {
+        const paging = childPaging[parentFqn];
+        if (paging) {
+          const hasMoreChildren = paging.offset + paging.limit < paging.total;
+          const isLoadingMore = loadingChildren[parentFqn] ?? false;
+
+          if (hasMoreChildren) {
+            items.push(
+              <Box
+                key={`${parentFqn}-load-more`}
+                sx={{
+                  ml: 1,
+                  mb: 1.5,
+                }}>
+                <Button
+                  startIcon={isLoadingMore ? null : <AddIcon />}
+                  sx={{
+                    p: 0,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: theme.palette.primary.main,
+                    fontWeight: theme.typography.fontWeightMedium,
+                    '&:hover': {
+                      color: theme.palette.primary.dark,
+                      backgroundColor: 'transparent',
+                    },
+                  }}
+                  variant="text"
+                  onClick={(e) => handleLoadMoreChildren(parentFqn, e)}>
+                  {isLoadingMore ? (
+                    <Loader size="small" />
+                  ) : (
+                    <div>{t('label.load-more')}</div>
+                  )}
+                </Button>
+              </Box>
+            );
+          }
+        }
+      }
+
+      return items;
+    },
     [
       childIndent,
       connectorOffset,
       outlineColor,
       theme.palette.allShades?.gray,
+      theme.palette.primary.main,
+      theme.typography.fontWeightMedium,
+      theme.typography.fontWeightRegular,
       loadingChildren,
+      childPaging,
+      handleLoadMoreChildren,
       t,
       hierarchy,
     ]
