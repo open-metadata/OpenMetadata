@@ -38,7 +38,10 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import {
+  convertDomainsToTreeOptions,
+  domainBuildESQuery,
+} from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   escapeESReservedCharacters,
@@ -53,6 +56,7 @@ import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
 
 interface DomainTreeViewProps {
   searchQuery?: string;
+  filters?: Record<string, string[]>;
   onDomainMutated?: () => void;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
@@ -64,6 +68,7 @@ const SCROLL_TRIGGER_THRESHOLD = 200;
 
 const DomainTreeView = ({
   searchQuery,
+  filters,
   onDomainMutated,
   refreshToken = 0,
   openAddDomainDrawer,
@@ -115,6 +120,22 @@ const DomainTreeView = ({
   const selectedFqnRef = useRef<string | null>(null);
 
   const currentUserId = currentUser?.id ?? '';
+
+  const hasActiveFilters = useMemo(() => {
+    if (!filters) {
+      return false;
+    }
+
+    return Object.values(filters).some((values) => values && values.length > 0);
+  }, [filters]);
+
+  const queryFilter = useMemo(() => {
+    if (!hasActiveFilters || !filters) {
+      return undefined;
+    }
+
+    return domainBuildESQuery(filters);
+  }, [filters, hasActiveFilters]);
 
   useEffect(() => {
     const map: Record<string, Domain> = {};
@@ -183,26 +204,33 @@ const DomainTreeView = ({
     [updateExpansionForFqn, searchQuery]
   );
 
-  const searchDomain = async (value: string) => {
-    try {
-      setIsHierarchyLoading(true);
-      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
-      const results: Domain[] = await searchDomains(encodedValue);
+  const searchDomain = useCallback(
+    async (value?: string) => {
+      try {
+        setIsHierarchyLoading(true);
+        const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+        const results: Domain[] = await searchDomains(
+          encodedValue,
+          1,
+          queryFilter
+        );
 
-      const updatedTreeData = convertDomainsToTreeOptions(results);
-      setHierarchy(updatedTreeData as Domain[]);
-      selectDomain(updatedTreeData as Domain[]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.domain-plural'),
-        })
-      );
-    } finally {
-      setIsHierarchyLoading(false);
-    }
-  };
+        const updatedTreeData = convertDomainsToTreeOptions(results);
+        setHierarchy(updatedTreeData as Domain[]);
+        selectDomain(updatedTreeData as Domain[]);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.domain-plural'),
+          })
+        );
+      } finally {
+        setIsHierarchyLoading(false);
+      }
+    },
+    [queryFilter, t]
+  );
 
   const fetchDomainDetails = useCallback(
     async (fqn: string) => {
@@ -420,14 +448,13 @@ const DomainTreeView = ({
     },
     [loadingChildren, rootPaging, applySelection, loadChildDomains]
   );
-
   useEffect(() => {
-    if (searchQuery) {
+    if (searchQuery || hasActiveFilters) {
       searchDomain(searchQuery);
     } else {
       loadDomains();
     }
-  }, [refreshToken, searchQuery]);
+  }, [refreshToken, searchQuery, hasActiveFilters]);
 
   useEffect(() => {
     if (selectedFqn) {
@@ -480,7 +507,13 @@ const DomainTreeView = ({
 
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      if (!hasMore || isLoadingMore || isHierarchyLoading || searchQuery) {
+      if (
+        !hasMore ||
+        isLoadingMore ||
+        isHierarchyLoading ||
+        searchQuery ||
+        hasActiveFilters
+      ) {
         return;
       }
 
@@ -491,7 +524,14 @@ const DomainTreeView = ({
         loadDomains(undefined, true);
       }
     },
-    [hasMore, isLoadingMore, isHierarchyLoading, searchQuery, loadDomains]
+    [
+      hasMore,
+      isLoadingMore,
+      isHierarchyLoading,
+      searchQuery,
+      hasActiveFilters,
+      loadDomains,
+    ]
   );
 
   const refreshAll = useCallback(async () => {
@@ -501,7 +541,7 @@ const DomainTreeView = ({
       return;
     }
     await loadDomains(selectedFqn ?? undefined);
-  }, [loadDomains, onDomainMutated, selectedFqn]);
+  }, [loadDomains, onDomainMutated, selectedFqn, searchDomain, searchQuery]);
 
   const handleDomainUpdate = useCallback(
     async (updatedData: Domain) => {

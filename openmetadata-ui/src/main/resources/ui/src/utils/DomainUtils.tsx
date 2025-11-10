@@ -42,6 +42,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
@@ -619,4 +620,58 @@ export const DomainListItemRenderer = (props: EntityReference) => {
       </div>
     </div>
   );
+};
+
+export const domainBuildESQuery = (
+  filters: Record<string, string[]>,
+  baseFilter?: string
+): Record<string, unknown> => {
+  let query = baseFilter ? JSON.parse(baseFilter) : null;
+
+  if (!query) {
+    query = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+  }
+
+  if (!query.query) {
+    query.query = { bool: { must: [] } };
+  }
+  if (!query.query.bool) {
+    query.query.bool = { must: [] };
+  }
+  if (!query.query.bool.must) {
+    query.query.bool.must = [];
+  }
+
+  Object.entries(filters).forEach(([filterKey, values]) => {
+    const filterUpdatedKey = [
+      EntityFields.GLOSSARY_TERMS,
+      EntityFields.CLASSIFICATION_TAGS,
+    ].includes(filterKey as EntityFields)
+      ? EntityFields.TAG
+      : filterKey;
+
+    if (values && values.length > 0) {
+      if (values.length === 1) {
+        query.query.bool.must.push({
+          term: {
+            [filterUpdatedKey]: values[0],
+          },
+        });
+      } else {
+        query.query.bool.must.push({
+          terms: {
+            [filterUpdatedKey]: values,
+          },
+        });
+      }
+    }
+  });
+
+  return query;
 };

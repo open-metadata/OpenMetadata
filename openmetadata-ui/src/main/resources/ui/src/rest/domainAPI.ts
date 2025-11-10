@@ -157,18 +157,28 @@ export const getDomainChildrenPaginated = async (
   return data;
 };
 
-export const searchDomains = async (search: string, page = 1) => {
+export const searchDomains = async (
+  search: string,
+  page = 1,
+  queryFilter?: Record<string, unknown>
+) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
+  const params: Record<string, string | number | boolean> = {
+    index: SearchIndex.DOMAIN,
+    from: (page - 1) * PAGE_SIZE_MEDIUM,
+    size: PAGE_SIZE_MEDIUM,
+    deleted: false,
+    track_total_hits: true,
+    getHierarchy: true,
+  };
+
+  if (queryFilter) {
+    params.query_filter = JSON.stringify(queryFilter);
+  }
+
   const { data } = await APIClient.get(apiUrl, {
-    params: {
-      index: SearchIndex.DOMAIN,
-      from: (page - 1) * PAGE_SIZE_MEDIUM,
-      size: PAGE_SIZE_MEDIUM,
-      deleted: false,
-      track_total_hits: true,
-      getHierarchy: true,
-    },
+    params,
   });
 
   return data;
