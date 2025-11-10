@@ -26,16 +26,17 @@
       "type": "string",
       "format": "uri"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username to connect to Airbyte.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Airbyte.",
-      "type": "string",
-      "format": "password"
+    "auth": {
+      "title": "Authentication",
+      "description": "Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials (for Airbyte Cloud)",
+      "oneOf": [
+        {
+          "$ref": "./airbyte/basicAuth.json"
+        },
+        {
+          "$ref": "./airbyte/oauthClientAuth.json"
+        }
+      ]
     },
     "apiVersion": {
       "title": "API Version",
