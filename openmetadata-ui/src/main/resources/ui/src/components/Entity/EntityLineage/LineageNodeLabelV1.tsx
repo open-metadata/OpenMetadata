@@ -202,7 +202,7 @@ const EntityFooter = ({
               },
             },
           }}
-          title="Only show icons with lineage">
+          title="Only Show column with Lineage">
           <Box sx={{ height: '28px' }}>
             <MappingIcon
               className="mapping-icon"
