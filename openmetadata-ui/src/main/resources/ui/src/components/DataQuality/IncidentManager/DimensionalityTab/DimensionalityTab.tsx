@@ -29,6 +29,7 @@ import { Link } from 'react-router-dom';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
+import { getTestCaseDimensionsDetailPagePath } from '../../../../utils/RouterUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import MuiDatePickerMenu from '../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
@@ -174,7 +175,7 @@ const DimensionalityTab = () => {
       dataIndex: 'dimensionValue',
       key: 'dimensionValue',
       width: 200,
-      render: (dimensionValue: string) => {
+      render: (dimensionValue: string, record) => {
         return (
           <Typography
             sx={{
@@ -186,7 +187,11 @@ const DimensionalityTab = () => {
                 textDecoration: 'underline',
               },
             }}>
-            <Link to="#" onClick={(e) => e.preventDefault()}>
+            <Link
+              to={getTestCaseDimensionsDetailPagePath(
+                testCase?.fullyQualifiedName || '',
+                record.result.dimensionKey || ''
+              )}>
               {dimensionValue}
             </Link>
           </Typography>

@@ -59,6 +59,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
   getTestCaseDetailPagePath,
+  getTestCaseDimensionsDetailPagePath,
   getTestCaseVersionPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -77,10 +78,18 @@ const IncidentManagerDetailPage = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS, version } =
-    useRequiredParams<{ tab: EntityTabs; version: string }>();
+  const {
+    tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS,
+    version,
+    dimensionKey,
+  } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+    dimensionKey?: string;
+  }>();
 
   const { fqn: testCaseFQN } = useFqn();
+  const isDimensionPage = Boolean(dimensionKey);
 
   const {
     isLoading,
@@ -195,18 +204,45 @@ const IncidentManagerDetailPage = ({
           },
         ];
 
-    return [
-      ...data,
-      {
+    if (isDimensionPage) {
+      data.push(
+        ...[
+          {
+            name: testCase?.name ?? '',
+            url: getTestCaseDetailPagePath(
+              testCaseFQN,
+              activeTab as TestCasePageTabs
+            ),
+            activeTitle: false,
+          },
+          {
+            name: dimensionKey || '',
+            url: '',
+            activeTitle: true,
+          },
+        ]
+      );
+    } else {
+      data.push({
         name: testCase?.name ?? '',
         url: '',
         activeTitle: true,
-      },
-    ];
-  }, [testCase]);
+      });
+    }
+
+    return data;
+  }, [testCase, location, isDimensionPage, dimensionKey]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
+      const testCaseDetailsPath = isDimensionPage
+        ? getTestCaseDimensionsDetailPagePath(
+            testCaseFQN,
+            dimensionKey || '',
+            activeKey as TestCasePageTabs
+          )
+        : getTestCaseDetailPagePath(testCaseFQN, activeKey as TestCasePageTabs);
+
       navigate(
         isVersionPage
           ? getTestCaseVersionPath(
@@ -214,10 +250,7 @@ const IncidentManagerDetailPage = ({
               version,
               activeKey as TestCasePageTabs
             )
-          : getTestCaseDetailPagePath(
-              testCaseFQN,
-              activeKey as TestCasePageTabs
-            )
+          : testCaseDetailsPath
       );
     }
   };
@@ -392,15 +425,17 @@ const IncidentManagerDetailPage = ({
                 className="data-asset-button-group spaced"
                 data-testid="asset-header-btn-group"
                 size="small">
-                <Tooltip title={t('label.version-plural-history')}>
-                  <Button
-                    className="version-button"
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={onVersionClick}>
-                    <Typography.Text>{testCase?.version}</Typography.Text>
-                  </Button>
-                </Tooltip>
+                {!isDimensionPage && (
+                  <Tooltip title={t('label.version-plural-history')}>
+                    <Button
+                      className="version-button"
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={onVersionClick}>
+                      <Typography.Text>{testCase?.version}</Typography.Text>
+                    </Button>
+                  </Tooltip>
+                )}
                 {!isVersionPage && (
                   <ManageButton
                     isRecursiveDelete
