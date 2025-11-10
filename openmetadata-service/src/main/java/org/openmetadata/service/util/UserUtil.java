@@ -44,7 +44,9 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -162,10 +164,66 @@ public final class UserUtil {
             .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
   }
 
+  /**
+   * Create and persist a ChangeEvent for SSO/LDAP user operations.
+   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   */
+  private static void createUserChangeEvent(User user, EventType eventType) {
+    try {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(eventType)
+              .withEntityId(user.getId())
+              .withEntityType(Entity.USER)
+              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
+              .withUserName("External Authentication Flow")
+              .withTimestamp(user.getUpdatedAt())
+              .withCurrentVersion(user.getVersion())
+              .withPreviousVersion(
+                  user.getChangeDescription() != null
+                      ? user.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
+              .withEntity(user);
+
+      // Include changeDescription if present (for updates)
+      if (user.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(user.getChangeDescription());
+      }
+
+      // Populate domains if available
+      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+        changeEvent.withDomains(
+            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+      }
+
+      // Insert directly into change event DAO
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      // Don't fail user creation if ChangeEvent fails
+      LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);
+    }
+  }
+
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
+      // Check if user exists BEFORE createOrUpdate to determine event type
+      User existingUser = null;
+      try {
+        existingUser = userRepository.findByNameOrNull(user.getFullyQualifiedName(), NON_DELETED);
+      } catch (Exception e) {
+        // User doesn't exist, will be created
+      }
+      boolean isCreate = (existingUser == null);
+
+      // Perform the actual create/update
       PutResponse<User> addedUser = userRepository.createOrUpdate(null, user, ADMIN_USER_NAME);
+
+      // Create ChangeEvent for EventSubscription evaluation
+      EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      createUserChangeEvent(addedUser.getEntity(), eventType);
+
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
