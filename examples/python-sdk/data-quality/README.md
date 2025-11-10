@@ -1,13 +1,13 @@
 # Data Quality as Code examples
 
-Hi! Here you will find a couple of Jupyter notebook examples describing how to use OpenMetadata's Python SDK to run the data quality tests you are already know directly from your ETLs.
+Hi! Here you will find a couple of Jupyter notebook examples describing how to use OpenMetadata's Python SDK to run the data quality tests you already know directly from your ETLs.
 
 We're using Docker to run OpenMetadata's stack locally. The jupyter notebooks in `notebooks` will be injected in the jupyter server so you can run the examples in that self-contained environment.
 
-We're going to use the [NYC Yellow Taxi Ride Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) dataset for these examples. Using docker we will work on a Postgres database where we will load the initial data run our ETL against. 
+We're going to use the [NYC Yellow Taxi Ride Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) dataset for these examples. Using docker we will work on a Postgres database where we will load the initial data and run our ETL against it. 
 
-We will be working with theses two files:
-- Yellow Taxi Ride for september 2025 ([link to parquet file](https://python-sdk-resources.s3.eu-west-3.amazonaws.com/data-quality/yellow_tripdata_2025-09.parquet)) 
+We will be working with these two files:
+- Yellow Taxi Ride for September 2025 ([link to parquet file](https://python-sdk-resources.s3.eu-west-3.amazonaws.com/data-quality/yellow_tripdata_2025-09.parquet)) 
 - Taxi Zones Lookup ([link to csv file](https://python-sdk-resources.s3.eu-west-3.amazonaws.com/data-quality/taxi_zone_lookup.csv))
 
 ## Table of Contents
@@ -17,7 +17,7 @@ We will be working with theses two files:
 
 ## Setup
 
-The initial set up will require that you run `./start -v <version>`. It will fetch OpenMetadata's docker compose for the `<version>` release and will boot all the Stack plus instances of `jupyter` and `postgres` for the sake of this tutorial.
+The initial setup will require that you run `./start [-v <version>]`. It will fetch OpenMetadata's docker compose for the `<version>` release and will boot the full stack plus instances of `jupyter` and `postgres` for this tutorial.
 
 Once the whole system is running, you can start following these instructions:
 
@@ -41,28 +41,28 @@ Once the whole system is running, you can start following these instructions:
    7. Verify the ingestion is done and our `taxi_yellow` table appears in our `raw` database.
       ![Taxi Yellow table](public/setup/taxi-yellow-table.png)
 
-Now you go back to the console where you ran `./start` and check the logs. You should find a line saying "You can access `jupyter` instance at http://localhost:8888/?token=9e3bba6aba264fa8d4d476730f5fa1c03292598499d72513". Follow the link, and you'll be set up to move on to the next steps.
+Now go back to the console where you ran `./start` and check the logs. You should find a line saying "You can access `jupyter` instance at http://localhost:8888/?token=9e3bba6aba264fa8d4d476730f5fa1c03292598499d72513". Follow the link, and you'll be ready to move on to the next steps.
 
 ## Running Data Quality tests for tables in OpenMetadata
 
-In this example, we're going data quality tests against our `taxi_yellow` table from an ETL that simply takes the data from a parquet file in an S3 bucket and loads it on our `raw` database.
+In this example, we're going to run data quality tests against our `taxi_yellow` table from an ETL that simply takes the data from a parquet file in an S3 bucket and loads it into our `raw` database.
 
-For this we will be working on the `notebooks/test_workflows.ipynb` notebook, which will be using the `metadata.sdk.data_quality` to show case how we leverage OpenMetadata and the Python SDK to trigger test case workflows directly from the ETL.
+For this we will be working on the `notebooks/test_workflows.ipynb` notebook, which will be using the `metadata.sdk.data_quality` to showcase how we leverage OpenMetadata and the Python SDK to trigger test case workflows directly from the ETL.
 
 The ultimate goal is to make every stakeholder an owner of the data quality. So while engineers just need to make sure their ETLs work, data stewards can update their Data Quality tests on the fly and have the ETL pick them up in the next run.
 
-But first, let's make sure we have some tests in place. Follow the next steps:
+But first, let's make sure we have some tests in place. Follow these steps:
 
 1. Go to the table's `Data Observability` tab and move to [`Data Quality`](http://localhost:8585/table/Tutorial%20Postgres.raw.public.taxi_yellow/profiler/data-quality)
    ![Table's Data Quality tab](public/test_workflow/table-data-quality.png)
 2. Click on `Add` and choose the `Test Case` option
-3. Set up the test. The data we will be pushing to the table in each ETL run should have 10000 rows. Let's set that up.
+3. Set up the test. The data we will be pushing to the table in each ETL run should have 10,000 rows. Let's set that up.
    1. Select `Table Row Count To Equal` as Test Type
    2. Set `Count` to 10000
    3. Name the test `taxi_yellow_table_row_count_is_10000`
    4. If prompted, scroll down to the pipeline section and click on the `On Demand` button
    5. Create it
-4. Let's add a couple more tests. Our ETL will keep taxi rides that start and end in a location of Yellow Zone, so let's add tests that verify that `PUZone` and `DOZone` equal to `Yellow Zone` and nothing more:
+4. Let's add a couple more tests. Our ETL will keep taxi rides that start and end in a Yellow Zone location, so let's add tests that verify that `PUZone` and `DOZone` equal `Yellow Zone` and nothing more:
    1. Indicate the test should be performed at `Column Level`
    2. Select the column `PUZone`
    3. Select the test type `Column Values To Match Regex Pattern`
@@ -71,7 +71,7 @@ But first, let's make sure we have some tests in place. Follow the next steps:
 
 Check it out in [Jupyter](http://localhost:8888/lab/tree/notebooks/test_workflow.ipynb)
 
-> **NOTE**: the link above takes you to Jupyter running on localhost. It requires that you follow the [previous steps](#setup) and access jupyter with the login token beforehand
+> **NOTE**: the link above takes you to Jupyter running on localhost. It requires that you follow the [previous steps](#setup) and access Jupyter with the login token beforehand
 
 By the end of the notebook, you should have the following results:
 
@@ -90,14 +90,14 @@ In this example we're going to use `pandas` to transform the data from the `taxi
 
 For this we will be working on the `notebooks/test_dataframe.ipynb` notebook, which will be using the `metadata.sdk.data_quality.dataframes` package to showcase how we leverage OpenMetadata and the Python SDK to run validations right between transforming and loading data in our ETLs.
 
-But first, let's make sure we have some tests in place. Follow the next steps:
+But first, let's make sure we have some tests in place. Follow these steps:
 
 1. Go to the table's `Data Observability` tab and move to [`Data Quality`](http://localhost:8585/table/Tutorial%20Postgres.stg.public.dw_taxi_rides/profiler/data-quality)
 2. Click on `Add` and choose the `Test Case` option
-3. Set up a first test. Let's make sure all rows have a `total_amount` greater than 0.
+3. Set up the first test. Let's make sure all rows have a `total_amount` greater than 0.
    1. Indicate the test should be performed at `Column Level`
    2. Select `Column Values To Be Between` as Test Type
-   3. Let's set a sensible minimum count of 1 and a leave maximum blank
+   3. Let's set a sensible minimum count of 1 and leave maximum blank
    4. Name the test `amount_is_greater_than_0`
    5. If prompted, scroll down to the pipeline section and click on the `On Demand` button
    6. Create it
