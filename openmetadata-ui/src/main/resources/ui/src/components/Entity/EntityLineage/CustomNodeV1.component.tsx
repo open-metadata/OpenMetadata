@@ -39,6 +39,7 @@ import {
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
 import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
+import { centerNodePosition } from '../../../utils/EntityLineageUtils';
 
 const NodeHandles = memo(
   ({
@@ -238,6 +239,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
     activeLayer,
     dataQualityLineage,
+    reactFlowInstance,
   } = useLineageProvider();
 
   const {
@@ -279,7 +281,9 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const onExpand = useCallback(
     (direction: LineageDirection, depth = 1) => {
-      loadChildNodesHandler(node, direction, depth);
+      loadChildNodesHandler(node, direction, depth).then(() => {
+        centerNodePosition(node, reactFlowInstance);
+      });
     },
     [loadChildNodesHandler, node]
   );
