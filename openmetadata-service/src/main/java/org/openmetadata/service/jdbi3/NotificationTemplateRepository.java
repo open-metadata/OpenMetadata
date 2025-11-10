@@ -21,9 +21,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -91,6 +94,54 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
   @Override
   public void storeRelationships(NotificationTemplate entity) {}
+
+  @Override
+  protected void preDelete(NotificationTemplate template, String deletedBy) {
+    if (ProviderType.SYSTEM.equals(template.getProvider())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Cannot delete SYSTEM template '%s'. System templates are protected and cannot be deleted.",
+              template.getName()));
+    }
+
+    // Nullify stale references in EventSubscription JSON blobs before deletion
+    // This ensures ListFilter queries on JSON don't return stale data
+    List<EntityReference> subscriptions =
+        findFrom(
+            template.getId(),
+            Entity.NOTIFICATION_TEMPLATE,
+            Relationship.USES,
+            Entity.EVENT_SUBSCRIPTION);
+
+    EventSubscriptionRepository subscriptionRepository =
+        (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+
+    for (EntityReference subRef : subscriptions) {
+      try {
+        EventSubscription original =
+            Entity.getEntity(Entity.EVENT_SUBSCRIPTION, subRef.getId(), "*", Include.ALL);
+
+        EventSubscription updated = JsonUtils.deepCopy(original, EventSubscription.class);
+        updated.setNotificationTemplate(null);
+
+        EntityRepository<EventSubscription>.EntityUpdater updater =
+            subscriptionRepository.getUpdater(original, updated, Operation.PUT, null);
+        updater.update();
+
+        LOG.debug(
+            "Nullified template reference in subscription {} before deleting template {}",
+            original.getId(),
+            template.getId());
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to nullify template reference in subscription {}: {}",
+            subRef.getId(),
+            e.getMessage());
+      }
+    }
+
+    super.preDelete(template, deletedBy);
+  }
 
   @Override
   public EntityRepository<NotificationTemplate>.EntityUpdater getUpdater(

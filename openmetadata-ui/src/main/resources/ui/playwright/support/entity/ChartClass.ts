@@ -27,27 +27,27 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ChartClass extends EntityClass {
-  private chartName = `pw-chart-${uuid()}`;
-  service = {
-    name: `pw-chart-service-${uuid()}`,
-    serviceType: 'Superset',
+  private chartName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Superset',
-        hostPort: 'http://localhost:8088',
+        type: string;
+        hostPort: string;
         connection: {
-          provider: 'ldap',
-          username: 'admin',
-          password: 'admin',
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
+          provider: string;
+          username: string;
+          password: string;
+        };
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
-  entity = {
-    name: this.chartName,
-    displayName: this.chartName,
-    service: this.service.name,
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -56,7 +56,32 @@ export class ChartClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Chart);
-    this.service.name = name ?? this.service.name;
+
+    this.chartName = `pw-chart-${uuid()}`;
+
+    this.service = {
+      name: name ?? `pw-chart-service-${uuid()}`,
+      serviceType: 'Superset',
+      connection: {
+        config: {
+          type: 'Superset',
+          hostPort: 'http://localhost:8088',
+          connection: {
+            provider: 'ldap',
+            username: 'admin',
+            password: 'admin',
+          },
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.entity = {
+      name: this.chartName,
+      displayName: this.chartName,
+      service: this.service.name,
+    };
+
     this.type = 'Chart';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
@@ -107,11 +132,19 @@ export class ChartClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
+  }
+
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
   }
 
   async visitEntityPage(page: Page) {

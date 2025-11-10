@@ -313,6 +313,10 @@
         "$ref": "#/definitions/destination"
       }
     },
+    "notificationTemplate": {
+      "description": "Optional custom notification template for this subscription. When not set, system default template will be used. Only USER templates can be assigned.",
+      "$ref": "../type/entityReference.json"
+    },
     "enabled": {
       "description": "Is the event Subscription enabled.",
       "type": "boolean",
