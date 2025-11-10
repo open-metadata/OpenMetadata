@@ -436,30 +436,6 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
   }
 };
 
-export const getSearchPlaceholderKey = (serviceName?: ServiceTypes): string => {
-  switch (serviceName) {
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return t('label.dashboard');
-    case ServiceCategory.MESSAGING_SERVICES:
-      return t('label.topic');
-    case ServiceCategory.PIPELINE_SERVICES:
-      return t('label.pipeline');
-    case ServiceCategory.ML_MODEL_SERVICES:
-      return t('label.ml-model');
-    case ServiceCategory.STORAGE_SERVICES:
-      return t('label.container');
-    case ServiceCategory.SEARCH_SERVICES:
-      return t('label.search-index');
-    case ServiceCategory.API_SERVICES:
-      return t('label.collection');
-    case ServiceCategory.DRIVE_SERVICES:
-      return t('label.directory');
-    case ServiceCategory.DATABASE_SERVICES:
-    default:
-      return t('label.database');
-  }
-};
-
 export const getTestConnectionName = (connectionType: string) => {
   return `test-connection-${connectionType}-${cryptoRandomString({
     length: 8,

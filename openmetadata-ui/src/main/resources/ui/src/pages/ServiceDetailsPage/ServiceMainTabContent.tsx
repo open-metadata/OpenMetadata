@@ -39,6 +39,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { servicesDisplayName } from '../../constants/Services.constant';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -62,7 +63,6 @@ import {
 import {
   getEntityTypeFromServiceCategory,
   getSearchIndexForService,
-  getSearchPlaceholderKey,
 } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
@@ -312,13 +312,13 @@ function ServiceMainTabContent({
   const searchProps = useMemo(
     () => ({
       placeholder: t('label.search-for-type', {
-        type: t(getSearchPlaceholderKey(serviceCategory)),
+        type: servicesDisplayName[serviceCategory],
       }),
       typingInterval: 500,
       searchValue: searchValue,
       onSearch: onServiceSearch,
     }),
-    [onServiceSearch, t]
+    [onServiceSearch, t, serviceCategory]
   );
 
   const handleEditTable = () => {
