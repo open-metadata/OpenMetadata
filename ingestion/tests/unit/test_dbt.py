@@ -588,6 +588,43 @@ class DbtUnitTest(TestCase):
             result,
         )
 
+    def test_dbt_generate_entity_link_with_column(self):
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertTrue(len(result) > 0)
+        self.assertIn("::columns::order_id>", result[0])
+
+    def test_dbt_generate_entity_link_without_column(self):
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        if hasattr(manifest_node, "column_name"):
+            delattr(manifest_node, "column_name")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertTrue(len(result) > 0)
+        self.assertNotIn("::columns::", result[0])
+        self.assertIn(
+            "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers>", result[0]
+        )
+
     def test_dbt_compiled_query(self):
         expected_query = "sample customers compile code"
 
