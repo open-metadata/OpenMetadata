@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Collapse, Input, Space } from 'antd';
-import classNames from 'classnames';
+import { SearchOutlined } from '@ant-design/icons';
+import { Collapse, Input } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,12 +32,14 @@ import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import searchClassBase from '../../../../utils/SearchClassBase';
 import { getColumnContent } from '../CustomNode.utils';
-import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
-const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
+const NodeChildren = ({
+  node,
+  isConnectable,
+  isColumnsListExpanded,
+}: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
   const {
@@ -53,13 +54,14 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
 
-  const { showColumns, showDataObservability } = useMemo(() => {
+  const { isColumnLayerEnabled, showDataObservability } = useMemo(() => {
     return {
-      showColumns: activeLayer.includes(LineageLayer.ColumnLevelLineage),
+      isColumnLayerEnabled: activeLayer.includes(
+        LineageLayer.ColumnLevelLineage
+      ),
       showDataObservability: activeLayer.includes(
         LineageLayer.DataObservability
       ),
@@ -109,6 +111,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         // If search value is empty, show all columns
         const filterColumns = Object.values(children ?? {});
         setFilteredColumns(filterColumns);
+        setShowAllColumns(false);
       } else {
         // Filter columns based on search value
         const filtered = Object.values(children ?? {}).filter((column) =>
@@ -121,20 +124,26 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
-  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowAllColumns(true);
-  };
-
   const isColumnVisible = useCallback(
     (record: Column) => {
-      if (expandAllColumns || isEditMode || showAllColumns) {
+      if (
+        expandAllColumns ||
+        isEditMode ||
+        showAllColumns ||
+        isColumnsListExpanded
+      ) {
         return true;
       }
 
       return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
     },
-    [isEditMode, columnsHavingLineage, expandAllColumns, showAllColumns]
+    [
+      isEditMode,
+      columnsHavingLineage,
+      expandAllColumns,
+      showAllColumns,
+      isColumnsListExpanded,
+    ]
   );
 
   useEffect(() => {
@@ -292,97 +301,34 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       .filter(Boolean);
   }, [filteredColumns, renderColumnsData]);
 
-  // Memoize the expand/collapse icon to prevent unnecessary re-renders
-  const expandCollapseIcon = useMemo(() => {
-    return isExpanded ? (
-      <UpOutlined style={{ fontSize: '12px' }} />
-    ) : (
-      <DownOutlined style={{ fontSize: '12px' }} />
-    );
-  }, [isExpanded]);
-
-  // Memoize the entity icon to prevent unnecessary re-renders
-  const entityIcon = useMemo(() => {
-    return searchClassBase.getEntityIcon(node.entityType ?? '');
-  }, [node.entityType]);
-
-  const shouldShowMoreButton = useMemo(() => {
+  if (
+    supportsColumns &&
+    (isColumnLayerEnabled || showDataObservability || isColumnsListExpanded)
+  ) {
     return (
-      !showAllColumns &&
-      !isEmpty(children) &&
-      renderedColumns.length !== children.length &&
-      !searchValue
-    );
-  }, [showAllColumns, children, renderedColumns, searchValue]);
-
-  // Memoize the expand/collapse click handler
-  const handleExpandCollapseClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
-  }, []);
-
-  if (supportsColumns && (showColumns || showDataObservability)) {
-    return (
-      <div className="column-container">
-        <div className="d-flex justify-between items-center">
-          <div>
-            {showColumns && (
-              <Button
-                className="flex-center text-primary rounded-4 p-xss h-9"
-                data-testid="expand-cols-btn"
-                type="text"
-                onClick={handleExpandCollapseClick}>
-                <Space>
-                  <div className=" w-5 h-5 text-base-color">{entityIcon}</div>
-                  {childrenHeading}
-                  {expandCollapseIcon}
-                </Space>
-              </Button>
-            )}
-          </div>
-          {showDataObservabilitySummary && (
-            <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
-          )}
-        </div>
-
-        {showColumns && isExpanded && (
-          <div className="m-t-md">
-            <div className="search-box">
-              <Input
-                placeholder={t('label.search-entity', {
-                  entity: childrenHeading,
-                })}
-                suffix={<SearchOutlined color={BORDER_COLOR} />}
-                value={searchValue}
-                onChange={handleSearchChange}
-              />
-            </div>
+      (isColumnLayerEnabled || isColumnsListExpanded) && (
+        <div className="column-container">
+          <div className="search-box">
+            <Input
+              placeholder={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              suffix={<SearchOutlined color={BORDER_COLOR} />}
+              value={searchValue}
+              onChange={handleSearchChange}
+              onClick={(e) => e.stopPropagation()}
+            />
 
             {!isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
-                <div
-                  className={classNames('rounded-4 overflow-hidden', {
-                    border: !showAllColumns,
-                  })}>
+                <div className="rounded-4 overflow-hidden">
                   {renderedColumns}
                 </div>
               </section>
             )}
-
-            {shouldShowMoreButton && (
-              <Button
-                className="m-t-xs text-primary"
-                data-testid="show-more-columns-btn"
-                type="text"
-                onClick={handleShowMoreClick}>
-                {t('label.show-more-entity', {
-                  entity: t('label.column-plural'),
-                })}
-              </Button>
-            )}
           </div>
-        )}
-      </div>
+        </div>
+      )
     );
   } else {
     return null;
