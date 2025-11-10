@@ -109,6 +109,11 @@ jest.mock('../pages/WorksheetDetailsPage/WorksheetDetailsPage', () =>
   jest.fn()
 );
 
+jest.mock('../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
+}));
+
 describe('EntityUtilClassBase', () => {
   let entityUtil: EntityUtilClassBase;
 

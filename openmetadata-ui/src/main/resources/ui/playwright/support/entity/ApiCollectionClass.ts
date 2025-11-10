@@ -41,6 +41,7 @@ export class ApiCollectionClass extends EntityClass {
   entity: {
     name: string;
     service: string;
+    description: string;
   };
   apiEndpoint: {
     name: string;
@@ -81,6 +82,7 @@ export class ApiCollectionClass extends EntityClass {
     this.entity = {
       name: this.apiCollectionName,
       service: this.service.name,
+      description: `Description for ${this.apiCollectionName}`,
     };
 
     this.apiEndpoint = {

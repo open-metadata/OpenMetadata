@@ -79,6 +79,7 @@ class APICollectionClassBase {
     return [
       EntityTabs.API_ENDPOINT,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

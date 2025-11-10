@@ -41,6 +41,7 @@ export class MlModelClass extends EntityClass {
   entity: {
     name: string;
     displayName: string;
+    description: string;
     service: string;
     algorithm: string;
     mlFeatures: Array<{ name: string; dataType: string; description: string }>;
@@ -92,6 +93,7 @@ export class MlModelClass extends EntityClass {
       service: this.service.name,
       algorithm: 'Time Series',
       mlFeatures: this.children,
+      description: `Description for ${this.mlModelName}`,
     };
 
     this.childrenSelectorId = `feature-card-${this.children[0].name}`;

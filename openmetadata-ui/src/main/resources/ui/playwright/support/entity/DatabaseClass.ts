@@ -59,6 +59,7 @@ export class DatabaseClass extends EntityClass {
   entity = {
     name: `pw-database-${uuid()}`,
     service: this.service.name,
+    description: 'description',
   };
   schema = {
     name: `pw-database-schema-${uuid()}`,

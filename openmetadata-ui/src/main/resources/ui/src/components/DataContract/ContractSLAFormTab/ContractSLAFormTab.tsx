@@ -51,8 +51,12 @@ export const ContractSLAFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
   initialValues?: Partial<DataContract>;
-  prevLabel?: string;
-}> = ({ onChange, onPrev, prevLabel, initialValues }) => {
+  buttonProps: {
+    nextLabel?: string;
+    prevLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({ onChange, onPrev, buttonProps, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { data: tableData } = useGenericContext();
@@ -404,7 +408,7 @@ export const ContractSLAFormTab: React.FC<{
           className="contract-prev-button"
           icon={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
-          {prevLabel ?? t('label.previous')}
+          {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
       </div>
     </>
