@@ -15,7 +15,6 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, InputProps, InputRef } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import { LoadingState } from 'Models';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import Loader from '../Loader/Loader';
@@ -35,6 +34,7 @@ export type SearchBarProps = {
   inputProps?: InputProps;
   searchBarDataTestId?: string;
   disabled?: boolean;
+  isLoading?: boolean;
 };
 
 const Searchbar = ({
@@ -51,18 +51,20 @@ const Searchbar = ({
   searchBarDataTestId,
   inputProps,
   disabled,
+  isLoading = false,
 }: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
-  const [loadingState, setLoadingState] = useState<LoadingState>('initial');
+  const [isTyping, setIsTyping] = useState(false);
   const [isSearchBlur, setIsSearchBlur] = useState(true);
   const isTypingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const latestSearchTextRef = useRef<string>('');
 
   useEffect(() => {
     if (!isTypingRef.current && searchValue !== userSearch) {
       setUserSearch(searchValue ?? '');
     }
-  }, [searchValue]);
+  }, [searchValue, userSearch]);
 
   useEffect(() => {
     if (!disabled && inputRef.current) {
@@ -71,27 +73,24 @@ const Searchbar = ({
   }, [disabled]);
 
   const debouncedOnSearch = useCallback(
-    (searchText: string): void => {
-      setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
-
-      onSearch(searchText);
+    debounce(() => {
+      setIsTyping(false);
+      onSearch(latestSearchTextRef.current);
       isTypingRef.current = false;
-    },
-    [onSearch]
-  );
-
-  const debounceOnSearch = useCallback(
-    debounce(debouncedOnSearch, typingInterval),
-    [typingInterval]
+    }, typingInterval),
+    [typingInterval, onSearch]
   );
 
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
     isTypingRef.current = true;
     setUserSearch(searchText);
-    setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
-    debounceOnSearch(searchText);
+    latestSearchTextRef.current = searchText;
+    setIsTyping(true);
+    debouncedOnSearch();
   };
+
+  const showLoading = showLoadingStatus && (isLoading || isTyping);
 
   return (
     <div
@@ -119,8 +118,7 @@ const Searchbar = ({
           }
           ref={inputRef as unknown as RefObject<InputRef>}
           suffix={
-            showLoadingStatus &&
-            loadingState === 'waiting' && (
+            showLoading && (
               <div className="absolute d-block text-center">
                 <Loader size="small" type="default" />
               </div>
@@ -133,11 +131,6 @@ const Searchbar = ({
           onFocus={() => setIsSearchBlur(false)}
           {...inputProps}
         />
-        {showLoadingStatus && loadingState === 'waiting' && (
-          <div className="absolute d-block text-center">
-            <Loader size="small" type="default" />
-          </div>
-        )}
       </div>
     </div>
   );

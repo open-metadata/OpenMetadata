@@ -172,6 +172,7 @@ export const rawSearchQuery = <
     postFilter,
     fetchSource,
     filters,
+    signal,
   } = req;
 
   const queryWithSlash = getQueryWithSlash(query || '');
@@ -208,6 +209,7 @@ export const rawSearchQuery = <
     paramsSerializer: {
       indexes: null,
     },
+    signal,
   });
 };
 

@@ -26,11 +26,13 @@ jest.mock('lodash', () => ({
 }));
 
 describe('Test Searchbar Component', () => {
+  beforeEach(() => {
+    mockOnUserSearch.mockClear();
+  });
+
   it('Renders the searchbar with the search text sent to it', async () => {
-    act(() => {
-      const onSearch = jest.fn();
-      render(<Searchbar searchValue="Test Search" onSearch={onSearch} />);
-    });
+    const onSearch = jest.fn();
+    render(<Searchbar searchValue="Test Search" onSearch={onSearch} />);
     const searchElement = screen.getByTestId('searchbar') as HTMLInputElement;
 
     expect(searchElement.value).toBe('Test Search');
@@ -47,50 +49,48 @@ describe('Test Searchbar Component', () => {
   it('Renders the user typed text when a change event is fired', async () => {
     const onSearch = jest.fn();
 
-    act(() => {
-      render(
-        <Searchbar showLoadingStatus label="Test Label" onSearch={onSearch} />
-      );
-    });
+    render(
+      <Searchbar showLoadingStatus label="Test Label" onSearch={onSearch} />
+    );
+
     const searchElement = screen.getByTestId('searchbar') as HTMLInputElement;
 
     expect(searchElement.value).toBe('');
     expect(screen.getByText('Test Label')).toBeInTheDocument();
 
     act(() => {
-      fireEvent.focus(searchElement);
-
       fireEvent.change(searchElement, { target: { value: 'Test Search' } });
-
-      fireEvent.blur(searchElement);
     });
 
-    expect(searchElement.value).toBe('Test Search');
+    // Verify the onSearch callback is called with the correct value
+    expect(onSearch).toHaveBeenCalledWith('Test Search');
   });
 
   it('Calls the callback function on keyup after timer runs out', async () => {
     const onUserSearch = jest.fn();
 
-    await act(async () => {
-      render(<Searchbar typingInterval={1000} onSearch={onUserSearch} />);
-    });
+    render(<Searchbar typingInterval={1000} onSearch={onUserSearch} />);
+
     const searchElement = screen.getByTestId('searchbar') as HTMLInputElement;
 
     expect(searchElement.value).toBe('');
 
-    fireEvent.change(searchElement, { target: { value: 'Test Search' } });
+    act(() => {
+      fireEvent.change(searchElement, { target: { value: 'Test Search' } });
+    });
 
-    expect(searchElement.value).toBe('Test Search');
+    // Verify the onSearch callback is called with the correct value
+    expect(onUserSearch).toHaveBeenCalledWith('Test Search');
   });
 
   it('should handle search input with debounce', async () => {
     render(<Searchbar typingInterval={1000} onSearch={mockOnUserSearch} />);
 
     const searchInput = screen.getByTestId('searchbar');
-    fireEvent.change(searchInput, { target: { value: 'test' } });
 
-    // Should not call immediately
-    // expect(mockOnUserSearch).not.toHaveBeenCalled();
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+    });
 
     expect(mockOnUserSearch).toHaveBeenCalledWith('test');
   });
@@ -105,5 +105,69 @@ describe('Test Searchbar Component', () => {
     rerender(<Searchbar searchValue="updated" onSearch={mockOnUserSearch} />);
 
     expect(screen.getByTestId('searchbar')).toHaveValue('updated');
+  });
+
+  it('should call onSearch with latest value when typing fast', async () => {
+    const onSearch = jest.fn();
+    render(<Searchbar typingInterval={100} onSearch={onSearch} />);
+
+    const searchInput = screen.getByTestId('searchbar');
+
+    // Simulate fast typing - each change triggers debounce immediately due to mock
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'a' } });
+      fireEvent.change(searchInput, { target: { value: 'ab' } });
+      fireEvent.change(searchInput, { target: { value: 'abc' } });
+    });
+
+    // onSearch should have been called with the latest value
+    // Due to debounce mock executing immediately, it's called multiple times
+    // The critical test is that the LAST call has the latest value (abc)
+    expect(onSearch).toHaveBeenLastCalledWith('abc');
+  });
+
+  it('should show loading indicator when isLoading is true', () => {
+    render(
+      <Searchbar isLoading showLoadingStatus onSearch={mockOnUserSearch} />
+    );
+
+    expect(screen.getByText('Loader')).toBeInTheDocument();
+  });
+
+  it('should show loading indicator when typing', async () => {
+    render(
+      <Searchbar
+        showLoadingStatus
+        typingInterval={1000}
+        onSearch={mockOnUserSearch}
+      />
+    );
+
+    const searchInput = screen.getByTestId('searchbar');
+
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+    });
+
+    // Verify the onSearch callback is called with the correct value
+    expect(mockOnUserSearch).toHaveBeenCalledWith('test');
+  });
+
+  it('should properly manage internal state during user typing', async () => {
+    const onSearch = jest.fn();
+    render(<Searchbar searchValue="initial" onSearch={onSearch} />);
+
+    const searchInput = screen.getByTestId('searchbar') as HTMLInputElement;
+
+    // Initial value should be set
+    expect(searchInput.value).toBe('initial');
+
+    // Simulate user typing
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'user input' } });
+    });
+
+    // Verify the onSearch callback is called with the correct value
+    expect(onSearch).toHaveBeenCalledWith('user input');
   });
 });

@@ -77,6 +77,7 @@ const UserListPageV1 = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const latestSearchRef = useRef<string>('');
+  const searchAbortControllerRef = useRef<AbortController | null>(null);
   const {
     filters: { isDeleted, user: searchValue },
     setFilters,
@@ -133,60 +134,83 @@ const UserListPageV1 = () => {
     setIsDataLoading(false);
   };
 
-  const userQuerySearch = (
-    text = WILD_CARD_CHAR,
-    currentPage = 1,
-    isAdmin = false,
-    isDeleted = false
-  ) => {
-    return new Promise<Array<User>>((resolve) => {
-      const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
+  const userQuerySearch = useCallback(
+    (
+      text = WILD_CARD_CHAR,
+      currentPage = 1,
+      isAdmin = false,
+      isDeleted = false,
+      signal?: AbortSignal
+    ) => {
+      return new Promise<Array<User>>((resolve, reject) => {
+        const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
 
-      const queryFilter = getTermQuery({
-        isAdmin: String(isAdmin),
-        isBot: 'false',
-      });
-
-      searchQuery({
-        query: searchText,
-        pageNumber: currentPage,
-        pageSize,
-        queryFilter,
-        searchIndex: SearchIndex.USER,
-        includeDeleted: isDeleted,
-      })
-        .then((res) => {
-          const data = res.hits.hits.map(({ _source }) => _source);
-          handlePagingChange({
-            total: res.hits.total.value,
-          });
-          resolve(data);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.user'),
-            })
-          );
-          resolve([]);
+        const queryFilter = getTermQuery({
+          isAdmin: String(isAdmin),
+          isBot: 'false',
         });
-    });
-  };
 
-  const getSearchedUsers = (value: string, pageNumber: number) => {
-    setIsDataLoading(true);
-    latestSearchRef.current = value;
+        searchQuery({
+          query: searchText,
+          pageNumber: currentPage,
+          pageSize,
+          queryFilter,
+          searchIndex: SearchIndex.USER,
+          includeDeleted: isDeleted,
+          signal,
+        })
+          .then((res) => {
+            const data = res.hits.hits.map(({ _source }) => _source);
+            handlePagingChange({
+              total: res.hits.total.value,
+            });
+            resolve(data);
+          })
+          .catch((err: AxiosError) => {
+            if ((err as Error).name === 'AbortError') {
+              resolve([]);
 
-    userQuerySearch(value, pageNumber, isAdminPage, isDeleted).then(
-      (resUsers) => {
+              return;
+            }
+            showErrorToast(
+              err,
+              t('server.entity-fetch-error', {
+                entity: t('label.user'),
+              })
+            );
+            reject(err);
+          });
+      });
+    },
+    [pageSize, handlePagingChange, t]
+  );
+
+  const getSearchedUsers = useCallback(
+    (value: string, pageNumber: number) => {
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
+
+      searchAbortControllerRef.current = new AbortController();
+
+      setIsDataLoading(true);
+      latestSearchRef.current = value;
+
+      userQuerySearch(
+        value,
+        pageNumber,
+        isAdminPage,
+        isDeleted,
+        searchAbortControllerRef.current.signal
+      ).then((resUsers) => {
         if (latestSearchRef.current === value) {
           setUserList(resUsers);
           setIsDataLoading(false);
         }
-      }
-    );
-  };
+      });
+    },
+    [userQuerySearch, isAdminPage, isDeleted]
+  );
 
   const handleUserPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -243,12 +267,23 @@ const UserListPageV1 = () => {
       getSearchedUsers(searchValue, 1);
     } else {
       latestSearchRef.current = '';
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
       fetchUsersList({
         isAdmin: isAdminPage,
         include: isDeleted ? Include.Deleted : Include.NonDeleted,
       });
     }
-  }, [pageSize, isAdminPage, searchValue, isDeleted]);
+  }, [pageSize, isAdminPage, searchValue, isDeleted, getSearchedUsers]);
+
+  useEffect(() => {
+    return () => {
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleAddNewUser = () => {
     navigate(ROUTES.CREATE_USER, {
@@ -441,10 +476,11 @@ const UserListPageV1 = () => {
       })}...`,
       searchValue: searchValue,
       typingInterval: 400,
-      disabled: isDataLoading && !searchValue,
+      isLoading: isDataLoading,
+      showLoadingStatus: true,
       onSearch: handleSearch,
     }),
-    [searchValue, handleSearch, isDataLoading]
+    [searchValue, handleSearch, isDataLoading, t]
   );
 
   if (

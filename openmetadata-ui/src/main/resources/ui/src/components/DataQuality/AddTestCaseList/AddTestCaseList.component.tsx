@@ -266,6 +266,7 @@ export const AddTestCaseList = ({
           removeMargin
           showClearSearch
           showLoadingStatus
+          isLoading={isLoading}
           placeholder={t('label.search-entity', {
             entity: t('label.test-case-plural'),
           })}

@@ -322,23 +322,26 @@ describe('Test UserListPage component', () => {
     render(<UserListPageV1 />);
 
     await waitFor(() => {
-      expect(searchQuery).toHaveBeenCalledWith({
-        query: `*${mockSearchValue}*`,
-        pageNumber: 1,
-        pageSize: 15,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                { term: { isAdmin: 'false' } },
-                { term: { isBot: 'false' } },
-              ],
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: `*${mockSearchValue}*`,
+          pageNumber: 1,
+          pageSize: 15,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  { term: { isAdmin: 'false' } },
+                  { term: { isBot: 'false' } },
+                ],
+              },
             },
           },
-        },
-        searchIndex: 'user_search_index',
-        includeDeleted: false,
-      });
+          searchIndex: 'user_search_index',
+          includeDeleted: false,
+          signal: expect.any(AbortSignal),
+        })
+      );
     });
   });
 
@@ -355,23 +358,26 @@ describe('Test UserListPage component', () => {
     render(<UserListPageV1 />);
 
     await waitFor(() => {
-      expect(searchQuery).toHaveBeenCalledWith({
-        query: `*${mockSearchValue}*`,
-        pageNumber: 1,
-        pageSize: 15,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                { term: { isAdmin: 'true' } },
-                { term: { isBot: 'false' } },
-              ],
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: `*${mockSearchValue}*`,
+          pageNumber: 1,
+          pageSize: 15,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  { term: { isAdmin: 'true' } },
+                  { term: { isBot: 'false' } },
+                ],
+              },
             },
           },
-        },
-        searchIndex: 'user_search_index',
-        includeDeleted: false,
-      });
+          searchIndex: 'user_search_index',
+          includeDeleted: false,
+          signal: expect.any(AbortSignal),
+        })
+      );
     });
 
     // reset mockParam
@@ -624,6 +630,70 @@ describe('Test UserListPage component', () => {
 
       // onSearch handler reference should be stable (useCallback)
       expect(lastOnSearch).toBe(firstOnSearch);
+    });
+  });
+
+  it('should cancel previous search request when new search is initiated', async () => {
+    const mockSearchValue1 = 'first';
+    const mockSearchValue2 = 'second';
+
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {
+        user: mockSearchValue1,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    const { rerender } = render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: `*${mockSearchValue1}*`,
+          signal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    // Simulate fast typing - change search value
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {
+        user: mockSearchValue2,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    rerender(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: `*${mockSearchValue2}*`,
+          signal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    // Reset to default mock
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {},
+      setFilters: mockSetFilters,
+    }));
+  });
+
+  it('should pass isLoading and showLoadingStatus to searchbar', async () => {
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchProps: expect.objectContaining({
+            isLoading: expect.any(Boolean),
+            showLoadingStatus: true,
+          }),
+        }),
+        expect.anything()
+      );
     });
   });
 });

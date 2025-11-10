@@ -48,6 +48,7 @@ const OnlineUsersPage = () => {
   const [userList, setUserList] = useState<User[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
   const latestSearchRef = useRef<string>('');
+  const searchAbortControllerRef = useRef<AbortController | null>(null);
 
   const {
     currentPage,
@@ -83,7 +84,6 @@ const OnlineUsersPage = () => {
     async (params?: OnlineUsersQueryParams) => {
       setIsDataLoading(true);
       try {
-        // Use the new online users endpoint
         const response = await getOnlineUsers({
           timeWindow: timeWindow,
           fields: [
@@ -111,23 +111,28 @@ const OnlineUsersPage = () => {
         setIsDataLoading(false);
       }
     },
-    [pageSize, handlePagingChange, timeWindow]
+    [pageSize, handlePagingChange, timeWindow, t]
   );
 
   const searchUsers = useCallback(
     async (value: string) => {
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
+
+      searchAbortControllerRef.current = new AbortController();
+
       setIsDataLoading(true);
       latestSearchRef.current = value;
 
       try {
-        // For search, we still need to use searchQuery API and filter client-side
-        // as the online users endpoint doesn't support search yet
         const res = await searchQuery({
           query: value,
           pageNumber: currentPage,
           pageSize,
           queryFilter: getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
+          signal: searchAbortControllerRef.current.signal,
         });
 
         if (latestSearchRef.current !== value) {
@@ -136,7 +141,6 @@ const OnlineUsersPage = () => {
 
         const data = res.hits.hits.map(({ _source }) => _source);
 
-        // Filter users based on lastLoginTime
         const onlineUsers = data.filter((user: User) => {
           if (!user.lastLoginTime) {
             return false;
@@ -152,6 +156,9 @@ const OnlineUsersPage = () => {
         });
         setUserList(onlineUsers);
       } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return;
+        }
         if (latestSearchRef.current !== value) {
           return;
         }
@@ -168,7 +175,7 @@ const OnlineUsersPage = () => {
         }
       }
     },
-    [currentPage, pageSize, handlePagingChange]
+    [currentPage, pageSize, handlePagingChange, timeWindow, t]
   );
 
   const handleSearch = useCallback(
@@ -179,6 +186,9 @@ const OnlineUsersPage = () => {
         searchUsers(value);
       } else {
         latestSearchRef.current = '';
+        if (searchAbortControllerRef.current) {
+          searchAbortControllerRef.current.abort();
+        }
         fetchUsersList();
       }
     },
@@ -191,7 +201,16 @@ const OnlineUsersPage = () => {
     }
     handlePageChange(INITIAL_PAGING_VALUE);
     fetchUsersList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize, isAdminUser, timeWindow]);
+
+  useEffect(() => {
+    return () => {
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const columns: ColumnsType<User> = useMemo(() => {
     const baseColumns = commonUserDetailColumns(isDataLoading);
@@ -318,7 +337,8 @@ const OnlineUsersPage = () => {
               })}...`,
               searchValue: searchValue,
               typingInterval: 400,
-              disabled: isDataLoading && !searchValue,
+              isLoading: isDataLoading,
+              showLoadingStatus: true,
               onSearch: handleSearch,
             }}
             size="small"

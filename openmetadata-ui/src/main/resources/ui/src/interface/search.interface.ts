@@ -316,6 +316,7 @@ export type SearchRequest<
   trackTotalHits?: boolean;
   filters?: string;
   excludeSourceFields?: string[];
+  signal?: AbortSignal;
 } & (
   | {
       fetchSource: true;

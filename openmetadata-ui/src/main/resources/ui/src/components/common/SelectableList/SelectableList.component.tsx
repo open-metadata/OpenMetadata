@@ -156,18 +156,25 @@ export const SelectableList = ({
 
   const handleSearch = useCallback(
     async (search: string) => {
-      const { data, paging } = await fetchOptions(search);
+      setFetching(true);
+      try {
+        const { data, paging } = await fetchOptions(search);
 
-      setUniqueOptions(
-        isEmpty(search)
-          ? sortUniqueListFromSelectedList(selectedItemsInternal, data)
-          : data
-      );
+        setUniqueOptions(
+          isEmpty(search)
+            ? sortUniqueListFromSelectedList(selectedItemsInternal, data)
+            : data
+        );
 
-      setPagingInfo(paging);
-      setSearchText(search);
+        setPagingInfo(paging);
+        setSearchText(search);
+      } catch (error) {
+        setFetchOptionFailed(true);
+      } finally {
+        setFetching(false);
+      }
     },
-    [selectedItemsInternal]
+    [selectedItemsInternal, sortUniqueListFromSelectedList, fetchOptions]
   );
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
@@ -283,6 +290,8 @@ export const SelectableList = ({
       header={
         <Searchbar
           removeMargin
+          showLoadingStatus
+          isLoading={fetching}
           placeholder={searchPlaceholder ?? t('label.search')}
           searchBarDataTestId={searchBarDataTestId}
           typingInterval={500}
