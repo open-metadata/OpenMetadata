@@ -182,9 +182,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        # SQLITE STD custom implementation returns the squared STD.
-        # Only useful for testing purposes
-        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.5
 
     def test_earliest_time(self):
         """

@@ -46,6 +46,7 @@ export class ContainerClass extends EntityClass {
   entity: {
     name: string;
     displayName: string;
+    description: string;
     service: string;
     dataModel: {
       isPartitioned: boolean;
@@ -100,6 +101,7 @@ export class ContainerClass extends EntityClass {
       name: this.containerName,
       displayName: this.containerName,
       service: this.service.name,
+      description: `Description for ${this.containerName}`,
       dataModel: {
         isPartitioned: true,
         columns: [
