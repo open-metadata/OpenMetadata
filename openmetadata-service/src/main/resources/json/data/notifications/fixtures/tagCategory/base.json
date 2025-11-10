@@ -1,0 +1,15 @@
+{
+  "id": "4b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+  "name": "sample_classification",
+  "displayName": "Sample Classification",
+  "fullyQualifiedName": "sample_classification",
+  "description": "Mock classification (tag category) for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/classifications/4b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+  "mutuallyExclusive": false,
+  "disabled": false,
+  "provider": "User"
+}

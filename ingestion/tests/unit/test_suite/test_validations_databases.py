@@ -979,6 +979,29 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.0667),
             ],
         ),
+        (
+            "test_case_column_values_to_be_at_expected_location_dimensional",
+            "columnValuesToBeAtExpectedLocation",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "80",
+                "0",
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Alice", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Bob", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Charlie", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Diana", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Eve", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Others", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
+        ),
     ],
 )
 def test_suite_validation_database(

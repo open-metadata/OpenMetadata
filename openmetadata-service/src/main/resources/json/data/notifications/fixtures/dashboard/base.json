@@ -1,0 +1,63 @@
+{
+  "id": "a1b2c3d4-1111-2222-3333-444444444444",
+  "name": "sample_dashboard",
+  "displayName": "Sample Dashboard",
+  "fullyQualifiedName": "sample-dashboard-service.sample_dashboard",
+  "description": "Mock dashboard for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1234567890000,
+  "updatedBy": "admin",
+  "href": "http://localhost:8585/api/v1/dashboards/a1b2c3d4-1111-2222-3333-444444444444",
+  "dashboardType": "Dashboard",
+  "charts": [
+    {
+      "id": "b2c3d4e5-2222-3333-4444-555555555555",
+      "type": "chart",
+      "name": "revenue_chart",
+      "fullyQualifiedName": "sample-dashboard-service.revenue_chart",
+      "displayName": "Revenue Overview"
+    },
+    {
+      "id": "c3d4e5f6-3333-4444-5555-666666666666",
+      "type": "chart",
+      "name": "users_chart",
+      "fullyQualifiedName": "sample-dashboard-service.users_chart",
+      "displayName": "Active Users"
+    }
+  ],
+  "service": {
+    "id": "d4e5f6a7-4444-5555-6666-777777777777",
+    "type": "dashboardService",
+    "name": "sample-dashboard-service",
+    "fullyQualifiedName": "sample-dashboard-service",
+    "displayName": "Sample Dashboard Service"
+  },
+  "serviceType": "Superset",
+  "dataModels": [
+    {
+      "id": "e5f6a7b8-5555-6666-7777-888888888888",
+      "type": "dashboardDataModel",
+      "name": "sample_data_model",
+      "fullyQualifiedName": "sample-dashboard-service.sample_data_model",
+      "displayName": "Sample Data Model"
+    }
+  ],
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": [],
+  "deleted": false
+}
