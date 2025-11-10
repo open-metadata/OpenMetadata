@@ -495,9 +495,15 @@
     border-color: @lineage-border !important;
     background: @white !important;
     top: 60px !important;
-    left: 249px;
+    left: 100%;
+    transform: translate(-50%, -50%);
+
     gap: 1px;
     border: 1px solid;
+
+    &:hover {
+      transform: translate(-10px, -50%);
+    }
 
     svg {
       color: @grey-4;
