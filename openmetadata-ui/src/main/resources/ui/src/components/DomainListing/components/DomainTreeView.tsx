@@ -107,32 +107,6 @@ const DomainTreeView = ({
 
   const currentUserId = currentUser?.id ?? '';
 
-  const recalculateChildrenCounts = useCallback(
-    (domains: Domain[]): Domain[] => {
-      return domains.map((domain) => {
-        if (!domain.children?.length) {
-          return domain;
-        }
-
-        const updatedChildren = recalculateChildrenCounts(
-          domain.children as unknown as Domain[]
-        );
-
-        const totalChildrenCount = updatedChildren.reduce(
-          (count, child) => count + 1 + (child.childrenCount || 0),
-          0
-        );
-
-        return {
-          ...domain,
-          children: updatedChildren as unknown as EntityReference[],
-          childrenCount: totalChildrenCount,
-        };
-      });
-    },
-    []
-  );
-
   useEffect(() => {
     const map: Record<string, Domain> = {};
 
@@ -206,8 +180,7 @@ const DomainTreeView = ({
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const results: Domain[] = await searchDomains(encodedValue);
 
-      let updatedTreeData = convertDomainsToTreeOptions(results);
-      updatedTreeData = recalculateChildrenCounts(updatedTreeData as Domain[]);
+      const updatedTreeData = convertDomainsToTreeOptions(results);
       setHierarchy(updatedTreeData as Domain[]);
       selectDomain(updatedTreeData as Domain[]);
     } catch (error) {
@@ -367,7 +340,7 @@ const DomainTreeView = ({
             return domain;
           });
 
-          return recalculateChildrenCounts(updated);
+          return updated;
         });
       } catch (error) {
         handleError(error);
@@ -375,7 +348,7 @@ const DomainTreeView = ({
         setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
       }
     },
-    [handleError, recalculateChildrenCounts]
+    [handleError]
   );
 
   const loadDomains = useCallback(

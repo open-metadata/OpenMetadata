@@ -326,6 +326,8 @@ export const convertDomainsToTreeOptions = (
       label: option.name,
       key: option.fullyQualifiedName,
       displayName: option.displayName,
+      childrenCount:
+        domainOption.childrenCount || domainOption.children?.length || 0,
       fullyQualifiedName: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
