@@ -386,7 +386,7 @@ class TestBaseTestValidator:
         validator._run_dimensional_validation.assert_called_once()
 
 
-def test_get_test_parameters_default_returns_none():
+def test_get_test_parameters_default_returns_empty_dict():
     """Test that default _get_test_parameters implementation returns None"""
     test_case = MagicMock(spec=TestCase)
     test_case.name = "test_default_params"
@@ -400,7 +400,7 @@ def test_get_test_parameters_default_returns_none():
 
     result = validator._get_test_parameters()
 
-    assert result is None
+    assert result == {}
 
 
 def test_evaluate_test_condition_not_implemented_error():
