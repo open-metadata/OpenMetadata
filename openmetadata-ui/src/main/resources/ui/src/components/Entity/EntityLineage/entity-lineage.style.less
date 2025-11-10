@@ -48,10 +48,36 @@
     }
   }
 }
+.custom-node-header-column-tracing {
+  border: 1px solid @primary-color;
+  border-left-width: 6px;
+  background-color: @white;
+  color: @blue-44;
+  .custom-node-column-label {
+    color: inherit;
+    font-weight: 500;
+  }
+}
+
+.data-quality-failed-custom-node-header {
+  .custom-node-header-column-tracing {
+    border-color: @red-14;
+    color: @red-20;
+    .custom-node-column-label {
+      color: inherit;
+    }
+    .profiler-item {
+      color: black;
+    }
+  }
+}
 
 .data-quality-failed-custom-node-header {
   &.custom-node-header-normal {
     border: 1px solid @red-3;
+    .lineage-node-badge-container {
+      border-color: @red-3;
+    }
   }
 
   .react-flow__handle {
@@ -77,7 +103,7 @@
 
 .custom-node-column-lineage {
   background: @background-primary;
-  border: 1px solid;
+  border: 10px solid;
   border-radius: 4px;
 
   .custom-node-column-lineage-body {
@@ -88,7 +114,6 @@
 
     .custom-node-column-container {
       padding: 4px;
-      border-radius: 4px;
       position: relative;
     }
   }
