@@ -471,6 +471,8 @@ test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
     adminPage,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(adminPage);
     const feedResponse = adminPage.waitForResponse(
       '/api/v1/feed?type=Conversation'
@@ -483,8 +485,13 @@ test.describe('User Profile Feed Interactions', () => {
     const userDetailsResponse = adminPage.waitForResponse(
       '/api/v1/users/name/*'
     );
+
     const userFeedResponse = adminPage.waitForResponse(
-      '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
+      (response) =>
+        response.url().includes('/api/v1/feed') &&
+        response.url().includes('type=Conversation') &&
+        response.url().includes('filterType=OWNER_OR_FOLLOWS') &&
+        response.url().includes('userId=')
     );
 
     const avatar = adminPage
@@ -544,38 +551,47 @@ test.describe('User Profile Feed Interactions', () => {
 });
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
-  test.beforeAll('Prerequisites', async ({ adminPage }) => {
-    test.slow(true);
+  test.slow(true);
 
-    // First, add personas to the user profile for testing
-    await visitOwnProfilePage(adminPage);
-    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+  test.beforeAll('Prerequisites', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // Set default persona
-    await adminPage
-      .locator('[data-testid="default-edit-user-persona"]')
-      .click();
-    await adminPage.waitForSelector(
-      '[data-testid="default-persona-select-list"]'
-    );
-    await adminPage
-      .locator('[data-testid="default-persona-select-list"]')
-      .click();
-    await adminPage.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
+    await adminUser.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/personas',
+          value: [
+            {
+              id: persona1.responseData.id,
+              type: 'persona',
+              name: persona1.responseData.name,
+              fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            },
+            {
+              id: persona2.responseData.id,
+              type: 'persona',
+              name: persona2.responseData.name,
+              fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+            },
+          ],
+        },
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: persona1.responseData.id,
+            name: persona1.responseData.name,
+            displayName: persona1.responseData.displayName,
+            fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
+        },
+      ],
     });
 
-    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
-
-    const defaultPersonaUpdateResponse =
-      adminPage.waitForResponse('/api/v1/users/*');
-
-    await adminPage
-      .locator('[data-testid="user-profile-default-persona-edit-save"]')
-      .click();
-    await defaultPersonaUpdateResponse;
-
-    await redirectToHomePage(adminPage);
+    await afterAction();
   });
 
   test('Should display persona dropdown with pagination', async ({

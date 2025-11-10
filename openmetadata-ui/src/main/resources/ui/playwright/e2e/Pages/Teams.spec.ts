@@ -396,10 +396,19 @@ test.describe('Teams Page', () => {
 
     await page.getByRole('link', { name: publicTeam.displayName }).click();
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page
       .getByTestId('team-details-collapse')
       .getByTestId('manage-button')
       .click();
+
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).toBeVisible();
 
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
