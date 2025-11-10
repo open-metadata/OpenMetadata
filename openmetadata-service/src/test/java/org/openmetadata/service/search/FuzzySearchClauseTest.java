@@ -28,10 +28,10 @@ import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
-import os.org.opensearch.search.builder.SearchSourceBuilder;
 
 class FuzzySearchClauseTest {
 
@@ -125,11 +125,12 @@ class FuzzySearchClauseTest {
     String problematicQuery = "int_snowplow_experiment_evaluation";
 
     try {
-      SearchSourceBuilder sourceBuilder =
-          factory.buildDataAssetSearchBuilder("table_search_index", problematicQuery, 0, 10);
+      OpenSearchRequestBuilder sourceBuilder =
+          factory.buildDataAssetSearchBuilderV2(
+              "table_search_index", problematicQuery, 0, 10, false);
 
       assertNotNull(sourceBuilder, "Search source builder should be created successfully");
-      assertNotNull(sourceBuilder.query(), "Query should be built successfully");
+      assertNotNull(sourceBuilder.build().query(), "Query should be built successfully");
 
     } catch (Exception e) {
       throw new AssertionError("Query building should not throw exceptions with the fix", e);

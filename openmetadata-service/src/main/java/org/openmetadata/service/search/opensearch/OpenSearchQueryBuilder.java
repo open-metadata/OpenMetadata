@@ -265,4 +265,65 @@ public class OpenSearchQueryBuilder {
   public static Query nestedQuery(String path, Query query) {
     return Query.of(q -> q.nested(n -> n.path(path).query(query)));
   }
+
+  public static Query functionScoreQuery(
+      Query query,
+      java.util.List<os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore> functions,
+      os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode scoreMode,
+      os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode boostMode,
+      Float boost) {
+    return Query.of(
+        q ->
+            q.functionScore(
+                fs -> {
+                  fs.query(query);
+                  if (!functions.isEmpty()) {
+                    fs.functions(functions);
+                  }
+                  if (scoreMode != null) {
+                    fs.scoreMode(scoreMode);
+                  }
+                  if (boostMode != null) {
+                    fs.boostMode(boostMode);
+                  }
+                  if (boost != null) {
+                    fs.boost(boost);
+                  }
+                  return fs;
+                }));
+  }
+
+  public static os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore weightFunction(
+      Query filter, double weight) {
+    return os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore.of(
+        f -> f.filter(filter).weight(weight));
+  }
+
+  public static os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore
+      fieldValueFactorFunction(
+          Query filter,
+          String field,
+          Double factor,
+          Double missing,
+          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier modifier) {
+    return os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore.of(
+        f -> {
+          f.filter(filter);
+          f.fieldValueFactor(
+              fvf -> {
+                fvf.field(field);
+                if (factor != null) {
+                  fvf.factor(factor);
+                }
+                if (missing != null) {
+                  fvf.missing(missing);
+                }
+                if (modifier != null) {
+                  fvf.modifier(modifier);
+                }
+                return fvf;
+              });
+          return f;
+        });
+  }
 }

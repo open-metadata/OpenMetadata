@@ -39,6 +39,21 @@ class SearchRepositoryTest {
         .when(openSearchClient.getClient())
         .thenReturn(mock(os.org.opensearch.client.RestHighLevelClient.class));
 
+    // Mock the new Java API clients
+    es.co.elastic.clients.elasticsearch.ElasticsearchClient mockEsNewClient =
+        mock(es.co.elastic.clients.elasticsearch.ElasticsearchClient.class);
+    es.co.elastic.clients.transport.ElasticsearchTransport mockEsTransport =
+        mock(es.co.elastic.clients.transport.ElasticsearchTransport.class);
+    lenient().when(mockEsNewClient._transport()).thenReturn(mockEsTransport);
+    lenient().when(elasticSearchClient.getNewClient()).thenReturn(mockEsNewClient);
+
+    os.org.opensearch.client.opensearch.OpenSearchClient mockOsNewClient =
+        mock(os.org.opensearch.client.opensearch.OpenSearchClient.class);
+    os.org.opensearch.client.transport.OpenSearchTransport mockOsTransport =
+        mock(os.org.opensearch.client.transport.OpenSearchTransport.class);
+    lenient().when(mockOsNewClient._transport()).thenReturn(mockOsTransport);
+    lenient().when(openSearchClient.getNewClient()).thenReturn(mockOsNewClient);
+
     // Enable calling real methods for the methods we want to test
     lenient().when(searchRepository.createBulkSink(10, 2, 1000000L)).thenCallRealMethod();
     lenient().when(searchRepository.createBulkSink(1, 1, 1L)).thenCallRealMethod();
