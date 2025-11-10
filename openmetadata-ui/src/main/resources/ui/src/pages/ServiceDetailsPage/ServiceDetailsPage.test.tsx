@@ -289,6 +289,7 @@ jest.mock(
       onDisplayNameUpdate,
       onRestoreDataAsset,
       disableRunAgentsButton,
+      disableRunAgentsButtonMessage,
     }: any) => (
       <div data-testid="data-assets-header">
         <button data-testid="follow-button" onClick={onFollowClick}>
@@ -302,7 +303,10 @@ jest.mock(
         <button data-testid="restore-button" onClick={onRestoreDataAsset}>
           Restore
         </button>
-        <button data-testid="run-agents" disabled={disableRunAgentsButton}>
+        <button
+          data-testid="run-agents"
+          disabled={disableRunAgentsButton}
+          title={disableRunAgentsButtonMessage}>
           Run Agents
         </button>
       </div>
@@ -1096,6 +1100,104 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       expect(screen.getByTestId('run-agents')).toBeEnabled();
+    });
+
+    it('Should return disableRunAgentsButton as true and disableRunAgentsButtonMessage as undefined when workflow is loading', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        () => new Promise(noop)
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeDisabled();
+        expect(runAgentsButton).not.toHaveAttribute('title');
+      });
+    });
+
+    it('Should return disableRunAgentsButton as false and disableRunAgentsButtonMessage as undefined when workflow status is empty', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({})
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeEnabled();
+        expect(runAgentsButton).not.toHaveAttribute('title');
+      });
+    });
+
+    it('Should return disableRunAgentsButton as true and disableRunAgentsButtonMessage with message when workflow is running', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          data: [{ id: 'workflow1', status: WorkflowStatus.Running }],
+        })
+      );
+      (getWorkflowInstanceStateById as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          mainInstanceState: { status: WorkflowStatus.Running },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeDisabled();
+        expect(runAgentsButton).toHaveAttribute(
+          'title',
+          'message.auto-pilot-already-running'
+        );
+      });
+    });
+
+    it('Should return disableRunAgentsButton as false and disableRunAgentsButtonMessage with message as undefined when workflow has failed', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          data: [{ id: 'workflow1', status: WorkflowStatus.Failure }],
+        })
+      );
+      (getWorkflowInstanceStateById as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          mainInstanceState: { status: WorkflowStatus.Failure },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeEnabled();
+        expect(runAgentsButton).not.toHaveAttribute('title');
+      });
+    });
+
+    it('Should return disableRunAgentsButton as false when workflow has completed', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          data: [{ id: 'workflow1', status: WorkflowStatus.Finished }],
+        })
+      );
+      (getWorkflowInstanceStateById as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          mainInstanceState: { status: WorkflowStatus.Finished },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeEnabled();
+      });
     });
   });
 

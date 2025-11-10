@@ -16,7 +16,7 @@ import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
@@ -56,9 +56,10 @@ const Searchbar = ({
   inputProps,
   urlSearchKey,
 }: SearchBarProps) => {
-  const [userSearch, setUserSearch] = useState('');
+  const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
+  const isTypingRef = useRef(false);
   const { setFilters } = useTableFilters(
     urlSearchKey
       ? {
@@ -68,7 +69,9 @@ const Searchbar = ({
   );
 
   useEffect(() => {
-    setUserSearch(searchValue ?? '');
+    if (!isTypingRef.current && searchValue !== userSearch) {
+      setUserSearch(searchValue ?? '');
+    }
   }, [searchValue]);
 
   const debouncedOnSearch = useCallback(
@@ -80,6 +83,7 @@ const Searchbar = ({
       }
 
       onSearch(searchText);
+      isTypingRef.current = false;
     },
     [onSearch]
   );
@@ -91,6 +95,7 @@ const Searchbar = ({
 
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
+    isTypingRef.current = true;
     setUserSearch(searchText);
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
     debounceOnSearch(searchText);
