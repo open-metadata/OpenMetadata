@@ -31,14 +31,6 @@ class SearchRepositoryTest {
     // Create a real instance for testing the new methods
     searchRepository = mock(SearchRepository.class);
 
-    // Mock the getClient() methods to return mock clients
-    lenient()
-        .when(elasticSearchClient.getClient())
-        .thenReturn(mock(es.org.elasticsearch.client.RestHighLevelClient.class));
-    lenient()
-        .when(openSearchClient.getClient())
-        .thenReturn(mock(os.org.opensearch.client.RestHighLevelClient.class));
-
     // Mock the new Java API clients
     es.co.elastic.clients.elasticsearch.ElasticsearchClient mockEsNewClient =
         mock(es.co.elastic.clients.elasticsearch.ElasticsearchClient.class);

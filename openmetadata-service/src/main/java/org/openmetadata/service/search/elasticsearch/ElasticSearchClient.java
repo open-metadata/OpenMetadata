@@ -16,8 +16,6 @@ import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
-import es.org.elasticsearch.client.RestHighLevelClient;
-import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -77,14 +75,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
-public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
-
-  @SuppressWarnings("deprecated")
-  @Getter
-  protected final RestHighLevelClient client;
+public class ElasticSearchClient implements SearchClient {
 
   // New Java API client support for migration
   @Getter protected final ElasticsearchClient newClient;
+  private final RestClient lowLevelClient;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -139,11 +134,10 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   // Update the constructor to accept NLQService
   public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    RestClient lowLevelClient = getLowLevelRestClient(config);
-    this.client = createElasticSearchLegacyClient(lowLevelClient);
+    this.lowLevelClient = getLowLevelRestClient(config);
     this.newClient = createElasticSearchNewClient(lowLevelClient);
     clusterAlias = config != null ? config.getClusterAlias() : "";
-    isClientAvailable = client != null;
+    isClientAvailable = newClient != null;
     isNewClientAvailable = newClient != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
@@ -182,6 +176,17 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public boolean isNewClientAvailable() {
     return isNewClientAvailable;
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getHighLevelClient() {
+    return (T) newClient;
+  }
+
+  @Override
+  public Object getLowLevelClient() {
+    return lowLevelClient;
   }
 
   @Override
@@ -684,27 +689,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       LOG.error("Failed to create low level rest client as esConfig is null");
       return null;
     }
-  }
-
-  public RestHighLevelClient createElasticSearchLegacyClient(RestClient lowLevelClient) {
-    try {
-      RestHighLevelClientBuilder restHighLevelClientBuilder =
-          new RestHighLevelClientBuilder(lowLevelClient).setApiCompatibilityMode(true);
-      LOG.info("Successfully initialized legacy Elasticsearch Java API client");
-      return restHighLevelClientBuilder.build();
-    } catch (Exception e) {
-      LOG.error("Failed to initialize legacy Elasticsearch client", e);
-      return null;
-    }
-  }
-
-  public Object getLowLevelClient() {
-    return client.getLowLevelClient();
-  }
-
-  @Override
-  public RestHighLevelClient getHighLevelClient() {
-    return client;
   }
 
   @Override

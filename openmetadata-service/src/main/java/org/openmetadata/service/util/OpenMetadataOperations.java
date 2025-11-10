@@ -1485,7 +1485,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private Set<String> getAllIndices() {
     Set<String> indices = new HashSet<>();
     try {
-      SearchClient<?> searchClient = searchRepository.getSearchClient();
+      SearchClient searchClient = searchRepository.getSearchClient();
 
       if (searchClient instanceof ElasticSearchClient) {
         es.org.elasticsearch.client.Request request =

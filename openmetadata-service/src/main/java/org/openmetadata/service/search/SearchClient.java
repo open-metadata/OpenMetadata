@@ -18,7 +18,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 
-public interface SearchClient<T>
+public interface SearchClient
     extends IndexManagementClient,
         EntityManagementClient,
         GenericClient,
@@ -393,6 +393,10 @@ public interface SearchClient<T>
 
   ElasticSearchConfiguration.SearchType getSearchType();
 
+  <T> T getHighLevelClient();
+
+  Object getLowLevelClient();
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
@@ -460,12 +464,6 @@ public interface SearchClient<T>
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
-
-  Object getLowLevelClient();
-
-  Object getClient();
-
-  T getHighLevelClient();
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;

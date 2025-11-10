@@ -57,7 +57,6 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
-import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
@@ -69,14 +68,14 @@ import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
-public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
-  @Getter protected final RestHighLevelClient client;
+public class OpenSearchClient implements SearchClient {
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   // New OpenSearch Java API client
   @Getter private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private final boolean isNewClientAvailable;
+  private final os.org.opensearch.client.RestClient lowLevelClient;
 
   private final OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
@@ -103,11 +102,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    RestClientBuilder restClientBuilder = getLowLevelClient(config);
-    this.client = createOpenSearchLegacyClient(restClientBuilder);
-    this.newClient = createOpenSearchNewClient(restClientBuilder);
+    RestClientBuilder restClientBuilder = getLowLevelRestClient(config);
+    this.lowLevelClient = restClientBuilder != null ? restClientBuilder.build() : null;
+    this.newClient = createOpenSearchNewClient(lowLevelClient);
     clusterAlias = config != null ? config.getClusterAlias() : "";
-    isClientAvailable = client != null;
+    isClientAvailable = newClient != null;
     isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
@@ -116,7 +115,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
-    genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
+    genericManager = new OpenSearchGenericManager(newClient, lowLevelClient);
     aggregationManager = new OpenSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
     searchManager =
@@ -124,11 +123,14 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
-      RestClientBuilder restClientBuilder) {
+      os.org.opensearch.client.RestClient restClient) {
     try {
+      if (restClient == null) {
+        LOG.error("Cannot create OpenSearch client with null RestClient");
+        return null;
+      }
       // Create transport and new client
-      RestClientTransport transport =
-          new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
+      RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
           new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
 
@@ -148,6 +150,17 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public boolean isNewClientAvailable() {
     return isNewClientAvailable;
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getHighLevelClient() {
+    return (T) newClient;
+  }
+
+  @Override
+  public Object getLowLevelClient() {
+    return lowLevelClient;
   }
 
   @Override
@@ -568,7 +581,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
-  private RestClientBuilder getLowLevelClient(ElasticSearchConfiguration esConfig) {
+  private RestClientBuilder getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
         RestClientBuilder restClientBuilder =
@@ -637,26 +650,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       LOG.error("Failed to create low level rest client as esConfig is null");
       return null;
     }
-  }
-
-  public RestHighLevelClient createOpenSearchLegacyClient(RestClientBuilder restClientBuilder) {
-    try {
-      RestHighLevelClient legacyClient = new RestHighLevelClient(restClientBuilder);
-      LOG.info("Successfully initialized legacy OpenSearch Java API client");
-      return legacyClient;
-    } catch (Exception e) {
-      LOG.error("Failed to initialize legacy OpenSearch client", e);
-      return null;
-    }
-  }
-
-  public Object getLowLevelClient() {
-    return client.getLowLevelClient();
-  }
-
-  @Override
-  public RestHighLevelClient getHighLevelClient() {
-    return client;
   }
 
   @Override
