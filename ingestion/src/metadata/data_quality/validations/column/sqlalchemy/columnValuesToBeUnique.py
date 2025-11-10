@@ -16,7 +16,7 @@ Validator for column values to be unique test case
 import logging
 from typing import List, Optional
 
-from sqlalchemy import Column, func, inspect, literal_column
+from sqlalchemy import Column, func, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -41,31 +41,6 @@ class ColumnValuesToBeUniqueValidator(
     BaseColumnValuesToBeUniqueValidator, SQAValidatorMixin
 ):
     """Validator for column values to be unique test case"""
-
-    def _get_column_name(self, column_name: Optional[str] = None) -> Column:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            Column: Column object
-        """
-        if column_name is None:
-            # Get the main column being validated (original behavior)
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                inspect(self.runner.dataset).c,
-            )
-        else:
-            # Get a specific column by name (for dimension columns)
-            return self.get_column_name(
-                column_name,
-                inspect(self.runner.dataset).c,
-            )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case
@@ -113,7 +88,11 @@ class ColumnValuesToBeUniqueValidator(
         return self.value.get(metric.name)
 
     def _execute_dimensional_validation(
-        self, column: Column, dimension_col: Column, metrics_to_compute: dict
+        self,
+        column: Column,
+        dimension_col: Column,
+        metrics_to_compute: dict,
+        test_params: Optional[dict] = None,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -124,6 +103,7 @@ class ColumnValuesToBeUniqueValidator(
             column: The column being validated
             dimension_col: Single Column object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
+            test_params: Optional test parameters (empty dict for uniqueness validator)
 
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
@@ -131,27 +111,39 @@ class ColumnValuesToBeUniqueValidator(
         dimension_results = []
 
         try:
-            # Build metric expressions dictionary using enum names as keys
-            metric_expressions = {}
-            for metric_name, metric in metrics_to_compute.items():
-                metric_instance = metric.value(column)
+            # For UNIQUE_COUNT, we need a correlated subquery that counts values
+            # appearing exactly once within each dimension
+            # SQL pattern: SELECT COUNT(*) FROM (
+            #   SELECT column FROM table WHERE dimension_col = outer.dimension_col
+            #   GROUP BY column HAVING COUNT(*) = 1
+            # )
 
-                if metric_name == Metrics.UNIQUE_COUNT.name:
-                    # For UNIQUE_COUNT in dimensional context, use COUNT(DISTINCT column)
-                    metric_expressions[metric_name] = func.count(func.distinct(column))
-                elif hasattr(metric_instance, "fn"):
-                    # StaticMetric - use fn() method
-                    metric_expressions[metric_name] = metric_instance.fn()
-                else:
-                    # Skip unsupported metrics
-                    logger.warning(
-                        f"Unsupported metric type for {metric_name}, skipping"
-                    )
-                    continue
+            # Get the table object from the ORM class
+            table = self.runner.dataset.__table__
+            inner_table = table.alias("inner_table")
 
-            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
-                Metrics.COUNT.name
-            ]
+            # Correlated subquery: values appearing exactly once in this dimension
+            unique_values_subquery = (
+                select(literal_column("1"))
+                .select_from(inner_table)
+                .where(getattr(inner_table.c, dimension_col.name) == dimension_col)
+                .group_by(getattr(inner_table.c, column.name))
+                .having(func.count() == 1)
+            ).subquery("unique_values")
+
+            # Count those unique values
+            unique_count_expr = (
+                select(func.count())
+                .select_from(unique_values_subquery)
+                .scalar_subquery()
+            )
+
+            metric_expressions = {
+                Metrics.COUNT.name: func.count(column),
+                Metrics.UNIQUE_COUNT.name: unique_count_expr,
+                DIMENSION_TOTAL_COUNT_KEY: func.count(),
+            }
+
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
                 metric_expressions[Metrics.COUNT.name]
                 - metric_expressions[Metrics.UNIQUE_COUNT.name]
@@ -164,15 +156,15 @@ class ColumnValuesToBeUniqueValidator(
             for row in result_rows:
                 # Build metric_values dict using helper method
                 metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute
+                    row, metrics_to_compute, test_params
                 )
 
                 # Evaluate test condition
-                evaluation = self._evaluate_test_condition(metric_values)
+                evaluation = self._evaluate_test_condition(metric_values, test_params)
 
                 # Create dimension result using helper method
                 dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation
+                    row, dimension_col.name, metric_values, evaluation, test_params
                 )
 
                 dimension_results.append(dimension_result)

@@ -16,7 +16,6 @@ Each test should validate the Success, Failure and Aborted statuses
 """
 from datetime import date, datetime
 from unittest.mock import patch
-from uuid import uuid4
 
 import pytest
 
@@ -25,9 +24,7 @@ from metadata.data_quality.validations.models import (
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.metrics.registry import Metrics
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -46,7 +43,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
-    "test_case_name,test_case_type,test_type,expected",
+    "test_case_name,test_case_type,test_type,expected,expected_dimension",
     [
         (
             "test_case_column_values_to_be_between_date",
@@ -58,10 +55,11 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 "2021-07-01 23:59:59.999999",
                 TestCaseStatus.Failed,
                 0.0,
-                30.0,
+                80.0,
                 0.0,
                 100.0,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_between_datetime",
@@ -77,6 +75,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_length_to_be_between",
@@ -87,35 +86,40 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 "0",
                 "8",
                 TestCaseStatus.Failed,
-                20.0,
+                70.0,
                 10.0,
-                66.67,
-                33.33,
+                87.5,
+                12.5,
             ),
+            None,
         ),
         (
             "test_case_column_value_length_to_be_between_col_space",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-            (TestCaseResult, "2", "3", TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
+            (TestCaseResult, "2", "3", TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            None,
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-            (TestCaseResult, None, None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
+            (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            None,
         ),
         (
             "test_case_column_value_max_to_be_between",
             "columnValueMaxToBeBetween",
             "COLUMN",
             (TestCaseResult, "31", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_value_max_to_be_between_no_min",
             "columnValueMaxToBeBetween",
             "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_value_mean_to_be_between",
@@ -131,6 +135,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_mean_to_be_between_no_max",
@@ -146,12 +151,23 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_median_to_be_between",
             "columnValueMedianToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30", None, TestCaseStatus.Failed, None, None, None, None),
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            None,
         ),
         (
             "test_case_column_value_min_to_be_between",
@@ -167,6 +183,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_min_to_be_between_no_min",
@@ -182,6 +199,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_stddev_to_be_between",
@@ -197,6 +215,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_stddev_to_be_between_no_min",
@@ -212,6 +231,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_in_set",
@@ -223,10 +243,11 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 TestCaseStatus.Success,
                 20.0,
-                10.0,
-                66.67,
-                33.33,
+                60.0,
+                25.0,
+                75.0,
             ),
+            None,
         ),
         (
             "test_case_column_values_missing_count_to_be_equal",
@@ -242,12 +263,14 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_missing_count_to_be_equal_missing_values",
             "columnValuesMissingCount",
             "COLUMN",
             (TestCaseResult, "30", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_values_not_in_set",
@@ -258,11 +281,12 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 "20",
                 None,
                 TestCaseStatus.Failed,
-                10.0,
+                60.0,
                 20.0,
-                33.33,
-                66.67,
+                75.0,
+                25.0,
             ),
+            None,
         ),
         (
             "test_case_column_sum_to_be_between",
@@ -270,7 +294,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "COLUMN",
             (
                 TestCaseResult,
-                "610",
+                "1830",
                 None,
                 TestCaseStatus.Failed,
                 None,
@@ -278,12 +302,23 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_between",
             "columnValuesToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30", None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Success,
+                80,
+                0,
+                100,
+                0,
+            ),
+            None,
         ),
         (
             "test_case_column_values_to_be_not_null",
@@ -294,29 +329,33 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 "10",
                 None,
                 TestCaseStatus.Failed,
-                20.0,
+                70.0,
                 10.0,
-                66.67,
-                33.33,
+                87.5,
+                12.5,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
             "COLUMN",
-            (TestCaseResult, "20", "0", TestCaseStatus.Failed, 0.0, 20.0, 0.0, 100.0),
+            (TestCaseResult, "70", "0", TestCaseStatus.Failed, 0.0, 70.0, 0.0, 100.0),
+            None,
         ),
         (
             "test_case_column_values_to_match_regex",
             "columnValuesToMatchRegex",
             "COLUMN",
-            (TestCaseResult, "30", None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
+            (TestCaseResult, "30", None, TestCaseStatus.Failed, 30.0, 50.0, 37.5, 62.5),
+            None,
         ),
         (
             "test_case_column_values_to_not_match_regex",
             "columnValuesToNotMatchRegex",
             "COLUMN",
-            (TestCaseResult, "0", None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
+            (TestCaseResult, "0", None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            None,
         ),
         (
             "test_case_table_column_count_to_be_between",
@@ -332,18 +371,21 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
             (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_column_name_to_exist",
             "tableColumnNameToExist",
             "TABLE",
             (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_to_match_set",
@@ -359,34 +401,78 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_to_match_set_ordered",
             "tableColumnToMatchSet",
             "TABLE",
             (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_custom_sql_query",
             "tableCustomSQLQuery",
             "TABLE",
-            (TestCaseResult, "20", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "60", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_custom_sql_query_success",
             "tableCustomSQLQuery",
             "TABLE",
             (TestCaseResult, "0", None, TestCaseStatus.Success, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_custom_sql_with_partition_condition",
             "tableCustomSQLQuery",
             "TABLE",
             (TestCaseResult, "10", None, TestCaseStatus.Failed, 10, 10, 50.0, 50.0),
+            None,
         ),
         (
             "test_case_table_row_count_to_be_between",
             "tableRowCountToBeBetween",
+            "TABLE",
+            (
+                TestCaseResult,
+                "80",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            None,
+        ),
+        (
+            "test_case_table_row_count_to_be_equal",
+            "tableRowCountToEqual",
+            "TABLE",
+            (TestCaseResult, "80", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_table_row_inserted_count_to_be_between",
+            "tableRowInsertedCountToBeBetween",
+            "TABLE",
+            (
+                TestCaseResult,
+                "16",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            None,
+        ),
+        (
+            "test_case_table_custom_sql_query_with_threshold_success",
+            "tableCustomSQLQuery",
             "TABLE",
             (
                 TestCaseResult,
@@ -398,33 +484,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
-        ),
-        (
-            "test_case_table_row_count_to_be_equal",
-            "tableRowCountToEqual",
-            "TABLE",
-            (TestCaseResult, "30", None, TestCaseStatus.Failed, None, None, None, None),
-        ),
-        (
-            "test_case_table_row_inserted_count_to_be_between",
-            "tableRowInsertedCountToBeBetween",
-            "TABLE",
-            (TestCaseResult, "6", None, TestCaseStatus.Success, None, None, None, None),
-        ),
-        (
-            "test_case_table_custom_sql_query_with_threshold_success",
-            "tableCustomSQLQuery",
-            "TABLE",
-            (
-                TestCaseResult,
-                "10",
-                None,
-                TestCaseStatus.Success,
-                None,
-                None,
-                None,
-                None,
-            ),
+            None,
         ),
         (
             "test_case_table_custom_sql_unsafe_query_aborted",
@@ -440,6 +500,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_at_expected_location",
@@ -447,7 +508,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "COLUMN",
             (
                 TestCaseResult,
-                "30",
+                "80",
                 "0",
                 TestCaseStatus.Success,
                 None,
@@ -455,12 +516,445 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_in_set_boolean",
             "columnValuesToBeInSet",
             "COLUMN",
-            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 66.67, 0.0),
+            (
+                TestCaseResult,
+                "70",
+                None,
+                TestCaseStatus.Success,
+                70.0,
+                10.0,
+                87.5,
+                12.5,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_values_to_be_in_set_dimensional_match_enum",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, "20", None, TestCaseStatus.Failed, 20.0, 60.0, 25.0, 75.0),
+            [
+                ("fullname=Alice Smith", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("fullname=Bob Johnson", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                (
+                    "fullname=Charlie Brown",
+                    TestCaseStatus.Failed,
+                    0,
+                    10,
+                    0,
+                    100,
+                    0.0333,
+                ),
+                ("fullname=Diana Prince", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("fullname=Eve Wilson", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                (
+                    "fullname=Others",
+                    TestCaseStatus.Failed,
+                    20,
+                    10,
+                    66.67,
+                    33.33,
+                    0.0111,
+                ),
+            ],
+        ),
+        (
+            "test_case_column_values_to_be_in_set_dimensional_no_match_enum",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 25.0, 0.0),
+            [
+                ("fullname=Alice Smith", TestCaseStatus.Failed, 0, 0, 0, 0, None),
+                ("fullname=Bob Johnson", TestCaseStatus.Failed, 0, 0, 0, 0, None),
+                ("fullname=Charlie Brown", TestCaseStatus.Failed, 0, 0, 0, 0, None),
+                ("fullname=Diana Prince", TestCaseStatus.Failed, 0, 0, 0, 0, None),
+                ("fullname=Eve Wilson", TestCaseStatus.Failed, 0, 0, 0, 0, None),
+                ("fullname=Others", TestCaseStatus.Success, 20, 0, 100, 0, None),
+            ],
+        ),
+        (
+            "test_case_column_values_to_be_unique_dimensional",
+            "columnValuesToBeUnique",
+            "COLUMN",
+            (TestCaseResult, "80", "0", TestCaseStatus.Failed, 0.0, 80.0, 0.0, 100.0),
+            [
+                ("name=John", TestCaseStatus.Failed, 0, 20, 0, 100, 0.0667),
+                ("name=Alice", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Bob", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Charlie", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Others", TestCaseStatus.Failed, 0, 20, 0, 100, 0.0667),
+            ],
+        ),
+        (
+            "test_case_column_value_mean_to_be_between_dimensional",
+            "columnValueMeanToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30.5",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+            ],
+        ),
+        (
+            "test_case_column_value_mean_to_be_between_dimensional_without_max",
+            "columnValueMeanToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30.5",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0.0),
+                ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0.0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0.0),
+            ],
+        ),
+        (
+            "test_case_column_value_max_to_be_between_dimensional",
+            "columnValueMaxToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "31",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
+            ],
+        ),
+        (
+            "test_case_column_value_max_to_be_between_dimensional_without_max",
+            "columnValueMaxToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "31",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0.0),
+                ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0.0),
+                ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0.0),
+            ],
+        ),
+        (
+            "test_case_column_value_min_to_be_between_dimensional",
+            "columnValueMinToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
+            ],
+        ),
+        (
+            "test_case_column_value_min_to_be_between_dimensional_without_min",
+            "columnValueMinToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
+            ],
+        ),
+        (
+            "test_case_column_value_length_to_be_between_dimensional",
+            "columnValueLengthsToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "0",
+                "8",
+                TestCaseStatus.Failed,
+                70,
+                10,
+                87.5,
+                12.5,
+            ),
+            [
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
+            ],
+        ),
+        (
+            "test_case_column_value_length_to_be_between_dimensional_without_min",
+            "columnValueLengthsToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "2",
+                "3",
+                TestCaseStatus.Success,
+                80,
+                0,
+                100,
+                0,
+            ),
+            [
+                ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Eve", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
+            ],
+        ),
+        (
+            "test_case_column_value_median_to_be_between_dimensional",
+            "columnValueMedianToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+            ],
+        ),
+        (
+            "test_case_column_sum_to_be_between_dimensional",
+            "columnValuesSumToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "1830",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.0333),
+                ("name=Alice", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Charlie", TestCaseStatus.Success, None, None, None, None, 0),
+                ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
+            ],
+        ),
+        (
+            "test_case_column_values_not_in_set_dimensional",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "20",
+                None,
+                TestCaseStatus.Failed,
+                60.0,
+                20.0,
+                75.0,
+                25.0,
+            ),
+            [
+                ("age=NULL", TestCaseStatus.Failed, 10, 10, 50, 50, 0.0167),
+                ("age=30", TestCaseStatus.Failed, 20, 10, 66.67, 33.33, 0.0111),
+                ("age=31", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
+        ),
+        (
+            "test_case_column_values_to_match_regex_dimensional",
+            "columnValuesToMatchRegex",
+            "COLUMN",
+            (TestCaseResult, "30", None, TestCaseStatus.Failed, 30.0, 50.0, 37.5, 62.5),
+            [
+                ("age=31", TestCaseStatus.Failed, 10, 20, 33.33, 66.67, 0.0444),
+                ("age=30", TestCaseStatus.Failed, 10, 20, 33.33, 66.67, 0.0444),
+                ("age=NULL", TestCaseStatus.Failed, 10, 10, 50, 50, 0.0167),
+            ],
+        ),
+        (
+            "test_case_column_values_to_not_match_regex_dimensional",
+            "columnValuesToNotMatchRegex",
+            "COLUMN",
+            (TestCaseResult, "0", None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            [
+                ("age=NULL", TestCaseStatus.Success, 20, 0, 100, 0, 0),
+                ("age=30", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+                ("age=31", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
+        ),
+        (
+            "test_case_column_values_to_be_not_null_dimensional",
+            "columnValuesToBeNotNull",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "20",
+                None,
+                TestCaseStatus.Failed,
+                60.0,
+                20.0,
+                75.0,
+                25.0,
+            ),
+            [
+                ("name=Eve", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=John", TestCaseStatus.Failed, 10, 10, 50, 50, 0.0167),
+                ("name=Alice", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Bob", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Charlie", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Others", TestCaseStatus.Success, 20, 0, 100, 0, 0),
+            ],
+        ),
+        (
+            "test_case_column_values_missing_count_to_be_equal_dimensional",
+            "columnValuesMissingCount",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "20",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Eve", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Others", TestCaseStatus.Failed, None, None, None, None, 1),
+            ],
+        ),
+        (
+            "test_case_column_values_missing_count_to_be_equal_missing_values_dimensional",
+            "columnValuesMissingCount",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Eve", TestCaseStatus.Failed, None, None, None, None, 1),
+                ("name=Others", TestCaseStatus.Failed, None, None, None, None, 1),
+            ],
+        ),
+        (
+            "test_case_column_values_to_be_between_dimensional",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                "31",
+                TestCaseStatus.Failed,
+                50,
+                30,
+                62.5,
+                37.5,
+            ),
+            [
+                ("name=Bob", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Diana", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Jane", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=Alice", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Charlie", TestCaseStatus.Success, 10, 0, 100, 0, 0),
+                ("name=Others", TestCaseStatus.Success, 30, 0, 100, 0, 0),
+            ],
         ),
     ],
 )
@@ -469,6 +963,7 @@ def test_suite_validation_database(
     test_case_type,
     test_type,
     expected,
+    expected_dimension,
     request,
     create_sqlite_table,
 ):
@@ -575,240 +1070,31 @@ def test_suite_validation_database(
         assert res.passedRows is not None
         assert res.passedRowsPercentage is not None
 
+    if expected_dimension:
+        assert res.dimensionResults is not None
+        assert len(res.dimensionResults) == len(expected_dimension)
+        for expected_dim in expected_dimension:
+            dim = next(
+                (
+                    dim
+                    for dim in res.dimensionResults
+                    if dim.dimensionKey == expected_dim[0]
+                ),
+                None,
+            )
+            assert dim is not None
+            assert dim.testCaseStatus == expected_dim[1]
+            assert dim.passedRows == expected_dim[2]
+            assert dim.failedRows == expected_dim[3]
 
-# Test cases for dimensional validation
-def test_column_values_to_be_in_set_backward_compatibility(create_sqlite_table):
-    """Test backward compatibility: non-dimensional ColumnValuesToBeInSet still works"""
-    test_case = TestCase(
-        name="test_dimensional_backward_compatibility",
-        entityLink="<#E::table::service.db.users::columns::nickname>",
-        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-        parameterValues=[
-            TestCaseParameterValue(
-                name="allowedValues", value='["john", "jane", "bob"]'
-            ),
-            TestCaseParameterValue(name="matchEnum", value="false"),
-        ],
-        # No dimensionColumns - this should work exactly as before
-    )
+            if expected_dim[4]:
+                assert round(dim.passedRowsPercentage, 2) == expected_dim[4]
+            else:
+                assert dim.passedRowsPercentage == expected_dim[4]
 
-    test_handler_obj = import_test_case_class(
-        "COLUMN",
-        "sqlalchemy",
-        "columnValuesToBeInSet",
-    )
+            if expected_dim[5]:
+                assert round(dim.failedRowsPercentage, 2) == expected_dim[5]
+            else:
+                assert dim.failedRowsPercentage == expected_dim[5]
 
-    test_handler = test_handler_obj(
-        create_sqlite_table,
-        test_case=test_case,
-        execution_date=EXECUTION_DATE.timestamp(),
-    )
-
-    # Verify this is not a dimensional test
-    assert not test_handler.is_dimensional_test()
-
-    # Mock the query result
-    with patch.object(test_handler, "_run_results", return_value=25):
-        res = test_handler.run_validation()
-
-    # Verify standard behavior
-    assert isinstance(res, TestCaseResult)
-    assert res.testCaseStatus in [TestCaseStatus.Success, TestCaseStatus.Failed]
-    assert res.dimensionResults is None  # No dimensional results
-    assert len(res.testResultValue) == 1
-    assert res.testResultValue[0].name == "allowedValueCount"
-
-
-def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
-    """Test dimensional validation functionality"""
-    test_case = TestCase(
-        id=uuid4(),
-        name="my_test_case",
-        fullyQualifiedName="my_test_case_fqn",
-        entityLink="<#E::table::service.db.users::columns::nickname>",
-        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-        parameterValues=[
-            TestCaseParameterValue(
-                name="allowedValues", value='["john", "jane", "bob"]'
-            ),
-            TestCaseParameterValue(name="matchEnum", value="false"),
-        ],
-        dimensionColumns=["name"],  # Enable dimensional analysis on name column
-        computePassedFailedRowCount=True,
-    )  # type: ignore
-
-    test_handler_obj = import_test_case_class(
-        "COLUMN",
-        "sqlalchemy",
-        "columnValuesToBeInSet",
-    )
-
-    test_handler = test_handler_obj(
-        create_sqlite_table,
-        test_case=test_case,
-        execution_date=EXECUTION_DATE.timestamp(),
-    )
-
-    # Verify this is a dimensional test
-    assert test_handler.is_dimensional_test()
-
-    # Mock the main query result and dimensional query results
-    # Simulate realistic data: John and Jane are in the allowed set, Alice is not
-    # Note: Using Metrics enum names as keys after refactoring
-    mock_dimensional_data = [
-        {
-            "dimension_value": "John",
-            Metrics.COUNT_IN_SET.name: 2,
-            "impact_score": 0.3,
-        },  # 2 Johns in allowed set
-        {
-            "dimension_value": "Jane",
-            Metrics.COUNT_IN_SET.name: 1,
-            "impact_score": 0.15,
-        },  # 1 Jane in allowed set
-        {
-            "dimension_value": "Alice",
-            Metrics.COUNT_IN_SET.name: 0,
-            "impact_score": 0.0,
-        },  # Alice not in allowed set
-    ]
-
-    with patch.object(test_handler, "_run_results", return_value=23), patch.object(
-        test_handler,
-        "_execute_with_others_aggregation",
-        return_value=mock_dimensional_data,
-    ), patch.object(test_handler, "_get_column_name") as mock_get_column:
-
-        # Mock column objects with required attributes for COUNT_IN_SET metric
-        from unittest.mock import MagicMock
-
-        from sqlalchemy import Column, String
-
-        # Create proper SQLAlchemy Column mocks
-        mock_main_column = MagicMock(spec=Column)
-        mock_main_column.name = "nickname"
-        mock_main_column.type = String()
-        mock_main_column.label = MagicMock(
-            return_value=mock_main_column
-        )  # Add label method
-
-        mock_name_column = MagicMock(spec=Column)
-        mock_name_column.name = "name"
-        mock_name_column.type = String()
-        mock_name_column.label = MagicMock(
-            return_value=mock_name_column
-        )  # Add label method
-
-        def mock_get_column_side_effect(column_name=None):
-            if column_name == "name":
-                return mock_name_column
-            return mock_main_column
-
-        mock_get_column.side_effect = mock_get_column_side_effect
-
-        res = test_handler.run_validation()
-
-    # Verify main test result
-    assert isinstance(res, TestCaseResult)
-    assert res.testCaseStatus in [TestCaseStatus.Success, TestCaseStatus.Failed]
-    assert len(res.testResultValue) == 1
-    assert res.testResultValue[0].name == "allowedValueCount"
-
-    # Verify dimensional results exist
-    assert res.dimensionResults is not None
-    assert len(res.dimensionResults) == 3  # Three dimension values: John, Jane, Alice
-
-    # Create a map for easier verification
-    dimension_results_map = {
-        dr.dimensionValues[0].value: dr for dr in res.dimensionResults
-    }
-
-    # Verify John's results (2 matches - should pass)
-    john_result = dimension_results_map["John"]
-    assert john_result.dimensionKey == "name=John"
-    assert (
-        john_result.testCaseStatus == TestCaseStatus.Success
-    )  # Has matches, so success
-    assert john_result.passedRows == 2  # 2 Johns in allowed set
-    assert john_result.failedRows == 0  # No failures for non-enum mode
-    assert john_result.testResultValue[0].value == "2"  # count_in_set = 2
-
-    # Verify Jane's results (1 match - should pass)
-    jane_result = dimension_results_map["Jane"]
-    assert jane_result.dimensionKey == "name=Jane"
-    assert (
-        jane_result.testCaseStatus == TestCaseStatus.Success
-    )  # Has matches, so success
-    assert jane_result.passedRows == 1  # 1 Jane in allowed set
-    assert jane_result.failedRows == 0  # No failures for non-enum mode
-    assert jane_result.testResultValue[0].value == "1"  # count_in_set = 1
-
-    # Verify Alice's results (0 matches - should fail)
-    alice_result = dimension_results_map["Alice"]
-    assert alice_result.dimensionKey == "name=Alice"
-    assert alice_result.testCaseStatus == TestCaseStatus.Failed  # No matches, so failed
-    assert alice_result.passedRows == 0  # 0 Alices in allowed set
-    assert alice_result.failedRows == 0  # No failures tracked in non-enum mode
-    assert alice_result.testResultValue[0].value == "0"  # count_in_set = 0
-
-
-def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table):
-    """Test error handling for invalid dimension columns"""
-    test_case = TestCase(
-        name="test_invalid_dimension_column",
-        entityLink="<#E::table::service.db.users::columns::nickname>",
-        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-        parameterValues=[
-            TestCaseParameterValue(
-                name="allowedValues", value='["john", "jane", "bob"]'
-            ),
-        ],
-        dimensionColumns=["invalid_column"],  # Invalid dimension column
-    )
-
-    test_handler_obj = import_test_case_class(
-        "COLUMN",
-        "sqlalchemy",
-        "columnValuesToBeInSet",
-    )
-
-    test_handler = test_handler_obj(
-        create_sqlite_table,
-        test_case=test_case,
-        execution_date=EXECUTION_DATE.timestamp(),
-    )
-
-    # Verify this is a dimensional test
-    assert test_handler.is_dimensional_test()
-
-    # Mock column resolution to raise ValueError for invalid column
-    with patch.object(test_handler, "_run_results", return_value=23), patch.object(
-        test_handler, "_get_column_name"
-    ) as mock_get_column:
-
-        # Mock main column resolution
-        from unittest.mock import MagicMock
-
-        from sqlalchemy import Column, String
-
-        mock_main_column = MagicMock(spec=Column)
-        mock_main_column.name = "nickname"
-        mock_main_column.type = String()
-        mock_get_column.return_value = mock_main_column
-
-        res = test_handler.run_validation()
-
-    # Main test should still succeed even when dimension columns are invalid
-    assert isinstance(res, TestCaseResult)
-    assert res.testCaseStatus == TestCaseStatus.Success  # Main test succeeds
-
-    # Dimensional results should be None due to invalid columns
-    assert res.dimensionResults is None
-
-    # Main test result should still be valid
-    assert len(res.testResultValue) == 1
-    assert res.testResultValue[0].name == "allowedValueCount"
-    assert res.testResultValue[0].value == "23"  # From mock _run_results
+            assert dim.impactScore == expected_dim[6]

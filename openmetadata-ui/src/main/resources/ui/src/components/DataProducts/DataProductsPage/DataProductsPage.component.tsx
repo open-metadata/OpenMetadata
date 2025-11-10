@@ -128,6 +128,7 @@ const DataProductsPage = () => {
           TabSpecificField.EXTENSION,
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
+          TabSpecificField.REVIEWERS,
         ],
       });
       setDataProduct(data);

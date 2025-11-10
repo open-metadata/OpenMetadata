@@ -124,6 +124,12 @@ services.forEach((ServiceClass) => {
         ).toBeVisible();
 
         if (service.serviceType === 'Mysql') {
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
           await page.getByTestId('agent-status-widget-view-more').click();
 
           await page.waitForSelector(

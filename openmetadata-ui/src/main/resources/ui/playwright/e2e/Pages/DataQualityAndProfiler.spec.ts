@@ -1185,7 +1185,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     // Test case filter by platform
     const testCasePlatformByDBT = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*testPlatforms=DBT*`
+      `/api/v1/dataQuality/testCases/search/list?*testPlatforms=dbt*`
     );
     await page.getByTestId('platform-select-filter').click();
     await page.getByTitle('DBT').click();
