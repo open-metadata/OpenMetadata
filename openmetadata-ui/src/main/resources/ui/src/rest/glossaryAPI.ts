@@ -292,7 +292,7 @@ export const removeAssetsFromGlossaryTerm = async (
 };
 
 export const searchGlossaryTerms = async (search: string, page = 1) => {
-  const apiUrl = `/search/query?q=*${search ?? ''}*`;
+  const apiUrl = `/search/query?q=${search ?? ''}`;
 
   const { data } = await APIClient.get(apiUrl, {
     params: {
