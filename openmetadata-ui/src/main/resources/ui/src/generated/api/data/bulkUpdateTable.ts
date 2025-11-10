@@ -11,96 +11,65 @@
  *  limitations under the License.
  */
 /**
- * Schema for bulk creating or updating multiple tables
+ * Schema for bulk updating multiple tables with differential updates
  */
-export interface BulkCreateTable {
+export interface BulkUpdateTable {
     /**
      * If true, validate requests without persisting changes
      */
     dryRun?: boolean;
     /**
-     * List of table create requests to be processed
+     * List of table update requests with differential changes
      */
-    tables: CreateTableRequest[];
+    updates: TableUpdate[];
 }
 
 /**
- * Schema corresponding to a table that belongs to a database
+ * Partial table update - only include fields that have changed
  */
-export interface CreateTableRequest {
+export interface TableUpdate {
     /**
-     * Name of the tables in the database
+     * Updated columns list (replaces existing columns). Only include if changed.
      */
-    columns: Column[];
+    columns?: Column[];
     /**
-     * FullyQualified name of the Schema corresponding to this table
+     * Updated data model. Only include if changed.
      */
-    databaseSchema: string;
-    dataModel?:     DataModel;
+    dataModel?: DataModel;
     /**
-     * List of fully qualified names of data products this entity is part of.
-     */
-    dataProducts?: string[];
-    /**
-     * Description of entity instance.
+     * Updated description. Only include if changed.
      */
     description?: string;
     /**
-     * Display Name that identifies this table.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified names of the domains the Table belongs to.
-     */
-    domains?: string[];
-    /**
-     * Entity extension data with custom attributes added to the entity.
+     * Updated custom properties extension. Only include if changed.
      */
     extension?: any;
     /**
-     * File format in case of file/datalake tables.
+     * Fully qualified name of the table to update
      */
-    fileFormat?: FileFormat;
+    fqn: string;
     /**
-     * Life Cycle of the entity
+     * Updated owner. Only include if changed.
      */
-    lifeCycle?: LifeCycle;
+    owner?: EntityReference;
     /**
-     * Full storage path in case of external and managed tables.
-     */
-    locationPath?: string;
-    /**
-     * Name that identifies the this entity instance uniquely. Same as id if when name is not
-     * unique
-     */
-    name: string;
-    /**
-     * Owners of this entity
-     */
-    owners?: EntityReference[];
-    /**
-     * Retention period of the data in the database. Period is expressed as duration in ISO 8601
-     * format in UTC. Example - `P23DT23H`.
+     * Updated retention period. Only include if changed.
      */
     retentionPeriod?: string;
     /**
-     * DDL for Tables and Views
+     * Updated source URL. Only include if changed.
      */
-    schemaDefinition?: string;
+    sourceUrl?: string;
     /**
-     * Source hash of the entity
+     * Updated table constraints. Only include if changed.
      */
-    sourceHash?: string;
+    tableConstraints?: TableConstraint[];
     /**
-     * Source URL of table.
+     * Updated table partition details. Only include if changed.
      */
-    sourceUrl?:           string;
-    tableConstraints?:    TableConstraint[];
-    tablePartition?:      TablePartition;
-    tableProfilerConfig?: TableProfilerConfig;
-    tableType?:           TableType;
+    tablePartition?: TablePartition;
     /**
-     * Tags for this table
+     * Updated tags. Only include if changed.
      */
     tags?: TagLabel[];
 }
@@ -342,7 +311,7 @@ export interface CustomMetric {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * User, Pipeline, Query that created,updated or accessed the data asset
+ * Updated owner. Only include if changed.
  */
 export interface EntityReference {
     /**
@@ -678,6 +647,8 @@ export interface CoverImage {
 }
 
 /**
+ * Updated data model. Only include if changed.
+ *
  * This captures information about how the table is modeled. Currently only DBT and DDL
  * model is supported.
  */
@@ -736,71 +707,6 @@ export enum ModelType {
 }
 
 /**
- * File format in case of file/datalake tables.
- */
-export enum FileFormat {
-    Avro = "avro",
-    CSV = "csv",
-    CSVGz = "csv.gz",
-    JSON = "json",
-    JSONGz = "json.gz",
-    JSONZip = "json.zip",
-    Jsonl = "jsonl",
-    JsonlGz = "jsonl.gz",
-    JsonlZip = "jsonl.zip",
-    Parq = "parq",
-    Parquet = "parquet",
-    ParquetSnappy = "parquet.snappy",
-    Pq = "pq",
-    Pqt = "pqt",
-    Tsv = "tsv",
-}
-
-/**
- * Life Cycle of the entity
- *
- * This schema defines Life Cycle Properties.
- */
-export interface LifeCycle {
-    /**
-     * Access Details about accessed aspect of the data asset
-     */
-    accessed?: AccessDetails;
-    /**
-     * Access Details about created aspect of the data asset
-     */
-    created?: AccessDetails;
-    /**
-     * Access Details about updated aspect of the data asset
-     */
-    updated?: AccessDetails;
-}
-
-/**
- * Access Details about accessed aspect of the data asset
- *
- * Access details of an entity
- *
- * Access Details about created aspect of the data asset
- *
- * Access Details about updated aspect of the data asset
- */
-export interface AccessDetails {
-    /**
-     * User, Pipeline, Query that created,updated or accessed the data asset
-     */
-    accessedBy?: EntityReference;
-    /**
-     * Any process that accessed the data asset that is not captured in OpenMetadata.
-     */
-    accessedByAProcess?: string;
-    /**
-     * Timestamp of data asset accessed for creation, update, read.
-     */
-    timestamp: number;
-}
-
-/**
  * This enum defines the type for table constraint.
  */
 export interface TableConstraint {
@@ -833,6 +739,8 @@ export enum RelationshipType {
 }
 
 /**
+ * Updated table partition details. Only include if changed.
+ *
  * This schema defines the partition column of a table and format the partition is created.
  */
 export interface TablePartition {
@@ -868,186 +776,4 @@ export enum PartitionIntervalTypes {
     IntegerRange = "INTEGER-RANGE",
     Other = "OTHER",
     TimeUnit = "TIME-UNIT",
-}
-
-/**
- * This schema defines the type for Table profile config.
- */
-export interface TableProfilerConfig {
-    /**
-     * Option to turn on/off column metric computation. If enabled, profiler will compute column
-     * level metrics.
-     */
-    computeColumnMetrics?: boolean;
-    /**
-     * Option to turn on/off table metric computation. If enabled, profiler will compute table
-     * level metrics.
-     */
-    computeTableMetrics?: boolean;
-    /**
-     * column names to exclude from profiling.
-     */
-    excludeColumns?: string[];
-    /**
-     * Only run profiler on included columns with specific metrics.
-     */
-    includeColumns?: ColumnProfilerConfig[];
-    /**
-     * Partitioning configuration
-     */
-    partitioning?: PartitionProfilerConfig;
-    /**
-     * Users' raw SQL query to fetch sample data and profile the table
-     */
-    profileQuery?: string;
-    /**
-     * Percentage of data or no. of rows used to compute the profiler metrics and run data
-     * quality tests
-     */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
-    /**
-     * Whether to randomize the sample data or not.
-     */
-    randomizedSample?: boolean;
-    /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
-     */
-    sampleDataCount?:    number;
-    samplingMethodType?: SamplingMethodType;
-    /**
-     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
-     * other engines.
-     */
-    sparkTableProfilerConfig?: SparkTableProfilerConfig;
-    [property: string]: any;
-}
-
-/**
- * This schema defines the type for Table profile config include Columns.
- */
-export interface ColumnProfilerConfig {
-    /**
-     * Column Name of the table to be included.
-     */
-    columnName?: string;
-    /**
-     * Include only following metrics.
-     */
-    metrics?: string[];
-    [property: string]: any;
-}
-
-/**
- * Partitioning configuration
- *
- * This schema defines the partition configuration used by profiler.
- */
-export interface PartitionProfilerConfig {
-    /**
-     * whether to use partition
-     */
-    enablePartitioning?: boolean;
-    /**
-     * name of the column to use for the partition
-     */
-    partitionColumnName?: string;
-    /**
-     * end of the integer range for partitioning
-     */
-    partitionIntegerRangeEnd?: number;
-    /**
-     * start of the integer range for partitioning
-     */
-    partitionIntegerRangeStart?: number;
-    /**
-     * The interval to use for the partitioning
-     */
-    partitionInterval?:     number;
-    partitionIntervalType?: PartitionIntervalTypes;
-    /**
-     * unit used for the partition interval
-     */
-    partitionIntervalUnit?: PartitionIntervalUnit;
-    /**
-     * unit used for the partition interval
-     */
-    partitionValues?: any[];
-    [property: string]: any;
-}
-
-/**
- * unit used for the partition interval
- */
-export enum PartitionIntervalUnit {
-    Day = "DAY",
-    Hour = "HOUR",
-    Month = "MONTH",
-    Year = "YEAR",
-}
-
-/**
- * Type of Profile Sample (percentage or rows)
- */
-export enum ProfileSampleType {
-    Percentage = "PERCENTAGE",
-    Rows = "ROWS",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
-}
-
-/**
- * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
- * other engines.
- */
-export interface SparkTableProfilerConfig {
-    /**
-     * When reading big tables from sources, we optimize the reading by partitioning the data.
-     * This configuration is responsible for it.
-     */
-    partitioning?: Partitioning;
-}
-
-/**
- * When reading big tables from sources, we optimize the reading by partitioning the data.
- * This configuration is responsible for it.
- */
-export interface Partitioning {
-    /**
-     * Lower bound of the partition range. If not provided, it will be fetched from the source.
-     */
-    lowerBound?: string;
-    /**
-     * Column to partition on. It should be a date, timestamp or integer column. It is important
-     * for the data to be reasonably equally distributed across the partitions.
-     */
-    partitionColumn: string;
-    /**
-     * Upper bound of the partition range. If not provided, it will be fetched from the source.
-     */
-    upperBound?: string;
-}
-
-/**
- * This schema defines the type used for describing different types of tables.
- */
-export enum TableType {
-    Dynamic = "Dynamic",
-    External = "External",
-    Foreign = "Foreign",
-    Iceberg = "Iceberg",
-    Local = "Local",
-    MaterializedView = "MaterializedView",
-    Partitioned = "Partitioned",
-    Regular = "Regular",
-    SecureView = "SecureView",
-    Stream = "Stream",
-    Transient = "Transient",
-    View = "View",
 }
