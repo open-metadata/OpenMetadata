@@ -11,26 +11,43 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
-import { Fragment, useMemo } from 'react';
+import { Box, Button } from '@mui/material';
+import { Col, Space, Typography } from 'antd';
+import classNames from 'classnames';
+import { capitalize, isUndefined } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
+import { LineageLayer } from '../../../generated/settings/settings';
 import {
-  getBreadcrumbsFromFqn,
-  getEntityName,
-} from '../../../utils/EntityUtils';
-import { getServiceIcon } from '../../../utils/TableUtils';
+  EntityReference,
+  TestSummary,
+} from '../../../generated/tests/testCase';
+import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import './lineage-node-label.less';
+import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
   node: SourceType;
+  isColumnsListExpanded?: boolean;
+  toggleColumnsList?: () => void;
 }
 
-const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
+interface LineageNodeLabelPropsExtended
+  extends Omit<LineageNodeLabelProps, 'node'> {
+  node: LineageNodeLabelProps['node'] & {
+    serviceType?: string;
+    columnNames?: string[];
+  };
+}
+
+const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -42,18 +59,25 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   }, [node]);
 
   return (
-    <Row className="items-center" wrap={false}>
-      <Col className="d-flex items-center" flex="auto">
-        <div className="d-flex entity-button-icon m-r-xs">
+    <Col className="items-center entity-label-container">
+      <Col className="d-flex items-center m-b-sm" flex="auto">
+        <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
-          <Typography.Text
-            className="m-b-0 d-block text-left text-grey-muted w-54"
-            data-testid="entity-header-name"
-            ellipsis={{ tooltip: true }}>
-            {node.name}
-          </Typography.Text>
+          <Space
+            align="start"
+            className="entity-header-name"
+            direction="horizontal"
+            size={6}>
+            <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-service-type">
+              {node.serviceType}
+            </Typography.Text>
+            {getEntityTypeIcon(node.entityType)}
+            <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-entity-type">
+              {capitalize(node.entityType)}
+            </Typography.Text>
+          </Space>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
@@ -74,39 +98,112 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
           </div>
         )}
       </Col>
-    </Row>
+    </Col>
   );
 };
 
-const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
-  const { t } = useTranslation();
-  const breadcrumbs = getBreadcrumbsFromFqn(node.fullyQualifiedName ?? '');
+const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
+  const { entityType } = node;
+  const [summary, setSummary] = useState<TestSummary>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
+    setIsLoading(true);
+    try {
+      const response = await getTestCaseExecutionSummary(testSuite.id);
+      setSummary(response);
+    } catch {
+      setSummary(undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const { activeLayer } = useLineageProvider();
+
+  const { showDataObservability } = useMemo(() => {
+    return {
+      showDataObservability: activeLayer.includes(
+        LineageLayer.DataObservability
+      ),
+    };
+  }, [activeLayer]);
+
+  const showDataObservabilitySummary = useMemo(() => {
+    return Boolean(
+      showDataObservability &&
+        entityType === EntityType.TABLE &&
+        (node as Table).testSuite
+    );
+  }, [node, showDataObservability, entityType]);
+
+  useEffect(() => {
+    const testSuite = (node as Table)?.testSuite;
+    if (showDataObservabilitySummary && testSuite && isUndefined(summary)) {
+      fetchTestSuiteSummary(testSuite);
+    } else {
+      setIsLoading(false);
+    }
+  }, [node, showDataObservabilitySummary, summary]);
 
   return (
-    <div className="custom-node-label-container">
-      <div className="w-full m-0 p-x-md p-y-xs">
-        {breadcrumbs.length > 0 && (
-          <div className="d-flex gap-2 items-center m-b-xs lineage-breadcrumb">
-            {breadcrumbs.map((breadcrumb, index) => (
-              <Fragment key={breadcrumb.name}>
-                <Typography.Text
-                  className="text-grey-muted lineage-breadcrumb-item"
-                  ellipsis={{ tooltip: true }}>
-                  {breadcrumb.name}
-                </Typography.Text>
-                {index !== breadcrumbs.length - 1 && (
-                  <Typography.Text className="text-xss">
-                    {t('label.slash-symbol')}
-                  </Typography.Text>
-                )}
-              </Fragment>
-            ))}
-          </div>
-        )}
+    showDataObservabilitySummary && (
+      <TestSuiteSummaryWidget
+        isLoading={isLoading}
+        size="small"
+        summary={summary}
+      />
+    )
+  );
+};
 
-        <EntityLabel node={node} />
-      </div>
-    </div>
+const EntityFooter = ({
+  isColumnsListExpanded,
+  node,
+  toggleColumnsList,
+}: LineageNodeLabelPropsExtended) => {
+  const { t } = useTranslation();
+
+  const columnsCount = node.columnNames?.length ?? 0;
+  const columnsInfoDropdownLabel = `${columnsCount} ${t(
+    columnsCount === 1 ? 'label.column' : 'label.column-plural'
+  )}`;
+
+  const handleClickColumnInfoDropdown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleColumnsList?.();
+  };
+
+  return (
+    <Box className="entity-footer">
+      <Button
+        className={classNames(
+          'columns-info-dropdown-label',
+          isColumnsListExpanded ? 'expanded' : 'collapsed'
+        )}
+        variant="outlined"
+        onClick={handleClickColumnInfoDropdown}>
+        {columnsInfoDropdownLabel}
+      </Button>
+      <TestSuiteSummaryContainer node={node} />
+    </Box>
+  );
+};
+
+const LineageNodeLabelV1 = ({
+  node,
+  isColumnsListExpanded,
+  toggleColumnsList,
+}: LineageNodeLabelProps) => {
+  return (
+    <Box className="custom-node-label-container m-0">
+      <EntityLabel node={node} />
+      <EntityFooter
+        isColumnsListExpanded={isColumnsListExpanded}
+        node={node}
+        toggleColumnsList={toggleColumnsList}
+      />
+    </Box>
   );
 };
 

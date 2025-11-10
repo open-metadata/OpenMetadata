@@ -15,18 +15,6 @@
 @lineage-border: #b1b1b7;
 @lineage-collapse-header: #fafafa;
 
-.lineage-node-card {
-  .ant-card-body {
-    padding: 0 !important;
-  }
-}
-
-.lineage-expand-icon {
-  width: 16px;
-  height: 16px;
-  color: inherit;
-}
-
 .ant-btn.ant-btn-background-ghost.expand-btn {
   background-color: white;
   box-shadow: none;
@@ -40,12 +28,19 @@
   box-shadow: none;
 }
 
+// Node default state
 .lineage-node {
   width: 100%;
   max-width: 320px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
+
+  .lineage-expand-icon {
+    width: 12px;
+    height: 12px;
+    color: inherit;
+  }
 
   .profiler-item {
     margin-right: 4px;
@@ -66,46 +61,348 @@
     }
 
     &.green {
-      border: 1px solid @green-5;
+      border: 1px solid #23aa66;
     }
 
     &.amber {
-      border: 1px solid @yellow-4;
+      border: 1px solid #dc6803;
     }
 
     &.red {
-      border: 1px solid @red-5;
+      border: 1px solid #d92d20;
     }
   }
 
-  .column-container {
-    min-height: 48px;
-    padding: 12px;
-    background-color: @grey-1;
+  .lineage-node-content {
+    .label-container {
+      .custom-node-label-container {
+        width: 100%;
+        min-height: 84px;
+        .lineage-breadcrumb {
+          .lineage-breadcrumb-item {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+        .entity-header-name {
+          .node-service-type::after {
+            content: '|';
+            margin-left: 6px;
+          }
+          svg {
+            width: 18px;
+            color: @grey-4;
+          }
+        }
 
-    .lineage-collapse-column.ant-collapse {
-      border: none;
-      border-radius: 0;
+        .entity-label-container {
+          padding: 8px 16px 0 16px;
 
-      .ant-collapse-header {
-        padding: 4px;
-        font-size: 12px;
-        display: inherit; // to fix the overflow issue of parent column node, which has children.
+          .entity-service-icon svg {
+            height: 28px;
+            width: 28px;
+          }
 
-        .custom-node-column-container {
-          background-color: @lineage-collapse-header;
+          &::after {
+            display: block;
+            width: 100%;
+            height: 1px;
+
+            background: @grey-200;
+            content: '';
+          }
+        }
+
+        .entity-footer {
+          padding: 8px 16px 8px 16px;
+          background-color: #ffffff;
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          .test-summary-and-mapping {
+            display: flex;
+            gap: 5px;
+          }
+
+          .columns-info-dropdown-label {
+            min-width: fit-content;
+            padding: 2px @size-xs 2px @size-sm;
+            border: none;
+            border-radius: 16px;
+            box-shadow: none;
+
+            background-color: @primary-1;
+            color: @blue-7;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 18px;
+            text-transform: none;
+            cursor: pointer;
+
+            &:hover {
+              box-shadow: none;
+              background-color: @primary-1;
+              color: @blue-7;
+            }
+
+            &::after {
+              margin-left: @size-xxs;
+              width: @size-sm;
+              height: @size-sm;
+              content: '';
+            }
+
+            &.collapsed::after {
+              background: no-repeat center / contain
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            }
+
+            &.expanded::after {
+              background: no-repeat center / contain
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'/></svg>");
+            }
+          }
+
+          .mapping-icon {
+            cursor: pointer;
+          }
         }
       }
+    }
+    .column-container {
+      min-height: 48px;
+      padding: 12px;
+      padding-top: 0;
+      background-color: @grey-1;
 
-      .ant-collapse-content-box {
-        padding: 4px;
-      }
-
-      .ant-collapse-item {
+      .lineage-collapse-column.ant-collapse {
         border: none;
         border-radius: 0;
+
+        .ant-collapse-header {
+          padding: 4px;
+          font-size: 12px;
+          display: inherit; // to fix the overflow issue of parent column node, which has children.
+
+          .custom-node-column-container {
+            background-color: @lineage-collapse-header;
+          }
+        }
+
+        .ant-collapse-content-box {
+          padding: 4px;
+        }
+
+        .ant-collapse-item {
+          border: none;
+          border-radius: 0;
+        }
+      }
+      .custom-node-column-container {
+        padding: 6px 8px;
+        background-color: inherit;
+        position: relative;
+        font-size: 12px;
+        font-weight: 400;
+        border: 1px solid transparent;
+        border-left: 6px solid transparent;
+        border-radius: 4px;
+        border-top-left-radius: 6px;
+        border-bottom-left-radius: 6px;
+
+        &:hover {
+          background-color: @primary-1;
+          color: @blue-44;
+          .custom-node-column-label {
+            color: inherit;
+            font-weight: 500;
+          }
+          border-left-color: @primary-color;
+        }
+
+        .custom-node-name-container {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          text-align: left;
+          gap: 4px;
+
+          .custom-node-name-icon {
+            width: 14px;
+            display: flex;
+          }
+
+          .custom-node-column-label {
+            width: 100%;
+            display: block;
+          }
+        }
+
+        .custom-node-constraint {
+          padding-left: 4px;
+          padding-right: 12px;
+        }
+
+        .ant-skeleton-element {
+          .ant-skeleton-button-sm {
+            height: 32px; // Height of the skeleton button, to match the height of the column name
+          }
+        }
       }
     }
+  }
+
+  &.custom-node-header-active {
+    background-color: #eff8ff;
+    .lineage-node-content {
+      .label-container {
+        background-color: #eff8ff;
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: #eff8ff;
+          }
+        }
+      }
+    }
+    .lineage-node-badge-container {
+      background-color: #eff8ff;
+    }
+
+    &.columns-expanded {
+      background-color: #d1e9ff;
+      .lineage-node-content {
+        .label-container {
+          background-color: #d1e9ff;
+        }
+      }
+      .lineage-node-badge-container {
+        background-color: #d1e9ff;
+      }
+    }
+  }
+
+  &.custom-node-header-active.data-quality-failed-custom-node-header {
+    background-color: #fffbfa;
+    .lineage-node-content {
+      .label-container {
+        background-color: #fffbfa;
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: #fffbfa;
+          }
+        }
+      }
+    }
+    .lineage-node-badge-container {
+      background-color: #fffbfa;
+      border-color: #d92d20;
+    }
+
+    &.columns-expanded {
+      background-color: #fee4e2;
+
+      .lineage-node-badge-container {
+        background-color: #fee4e2;
+      }
+
+      .lineage-node-content {
+        .label-container {
+          background-color: #fee4e2;
+          .custom-node-label-container {
+            .entity-footer {
+              background-color: #fffbfa;
+            }
+          }
+        }
+        .column-container {
+          background-color: #fffbfa;
+        }
+      }
+    }
+  }
+
+  &.custom-node-header-tracing {
+    .lineage-node-badge-container {
+      border-color: @primary-color;
+    }
+  }
+
+  &.columns-expanded {
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          .entity-label-container {
+            &::after {
+              content: none;
+            }
+          }
+          .entity-footer {
+            background-color: @grey-1;
+          }
+        }
+      }
+    }
+  }
+}
+
+.lineage-base-node {
+  border-top-left-radius: 0px;
+
+  .lineage-node-badge-container {
+    position: absolute;
+    top: -14px;
+    left: 0px;
+    width: 68px;
+    height: 15px;
+
+    border: 1px solid rgb(177, 177, 183);
+    border-bottom: 0px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+
+    background: rgb(255, 255, 255);
+
+    .lineage-node-badge {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+
+      width: 60px;
+      padding: 2px;
+      border-radius: 7px;
+
+      background-color: #175cd3;
+      color: white;
+
+      font-size: 12px;
+      font-weight: 500;
+
+      &::before {
+        display: inline-block;
+        width: 12px;
+        height: 13px;
+
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='13' viewBox='0 0 12 13' fill='none'><path d='M4.5 11.5V6.5H7.5V11.5M1.5 5L6 1.5L10.5 5V10.5C10.5 10.7652 10.3946 11.0196 10.2071 11.2071C10.0196 11.3946 9.76522 11.5 9.5 11.5H2.5C2.23478 11.5 1.98043 11.3946 1.79289 11.2071C1.60536 11.0196 1.5 10.7652 1.5 10.5V5Z' stroke='%23EFF8FF' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+        background-repeat: no-repeat;
+        background-size: contain;
+
+        content: '';
+      }
+
+      &::after {
+        content: 'Base';
+      }
+    }
+  }
+
+  .lineage-node-content {
+    margin-top: 10px;
   }
 }
 
@@ -126,6 +423,7 @@
   font-size: 16px;
 }
 
+// Node hovered state
 .react-flow__node-load-more.selectable:hover,
 .react-flow__node-default.selectable:hover,
 .react-flow__node-input.selectable:hover,
@@ -136,105 +434,44 @@
   }
 
   .lineage-node {
-    border-color: @primary-color !important;
-  }
-}
-
-.react-flow__node-default.selectable.selected,
-.react-flow__node-default.selectable:focus,
-.react-flow__node-default.selectable:focus-visible,
-.react-flow__node-input.selectable.selected,
-.react-flow__node-input.selectable:focus,
-.react-flow__node-input.selectable:focus-visible,
-.react-flow__node-output.selectable.selected,
-.react-flow__node-output.selectable:focus,
-.react-flow__node-output.selectable:focus-visible,
-.react-flow__node-group.selectable.selected,
-.react-flow__node-group.selectable:focus,
-.react-flow__node-group.selectable:focus-visible,
-.react-flow__node-load-more.selectable.selected,
-.react-flow__node-load-more.selectable:focus,
-.react-flow__node-load-more.selectable:focus-visible {
-  .lineage-node {
-    border-color: @primary-color !important;
-  }
-
-  .lineage-node-handle {
     border-color: @primary-color;
-
-    svg {
-      color: @primary-color;
+    .lineage-node-badge-container {
+      border-color: rgb(53, 111, 231);
     }
   }
 
-  .label-container {
-    background: @primary-1;
-  }
-
-  .column-container {
-    background: @primary-1;
-    border-top: 1px solid @border-color;
-  }
-}
-
-.react-flow__node-default.selectable.selected,
-.react-flow__node-default.selectable:focus,
-.react-flow__node-default.selectable:focus-visible,
-.react-flow__node-input.selectable.selected,
-.react-flow__node-input.selectable:focus,
-.react-flow__node-input.selectable:focus-visible,
-.react-flow__node-output.selectable.selected,
-.react-flow__node-output.selectable:focus,
-.react-flow__node-output.selectable:focus-visible,
-.react-flow__node-group.selectable.selected,
-.react-flow__node-group.selectable:focus,
-.react-flow__node-group.selectable:focus-visible,
-.react-flow__node-load-more.selectable.selected,
-.react-flow__node-load-more.selectable:focus,
-.react-flow__node-load-more.selectable:focus-visible {
   .data-quality-failed-custom-node-header {
-    &.lineage-node {
-      border-color: @red-3 !important;
-    }
-
-    .lineage-node-handle {
+    border-color: @red-3;
+    .lineage-node-badge-container {
       border-color: @red-3;
-
-      svg {
-        color: @red-3;
+    }
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container {
+          &:hover {
+            background-color: #fef3f2;
+            color: #bc1b06;
+            border-left-color: #d92d20;
+            .profiler-item {
+              color: black;
+            }
+          }
+        }
       }
     }
+  }
 
-    .label-container {
-      background: fade(@red-3, 10%);
+  .custom-node-header-active.data-quality-failed-custom-node-header {
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container {
+          &:hover {
+            background-color: #ffffff;
+            border-color: #d92d20;
+          }
+        }
+      }
     }
-
-    .column-container {
-      background: fade(@red-3, 10%);
-      border-top: 1px solid @border-color;
-    }
-  }
-}
-
-.custom-node-header-active {
-  .label-container {
-    background: @primary-1;
-  }
-
-  .column-container {
-    background: @primary-1;
-    border-top: 1px solid @border-color;
-  }
-}
-
-.data-quality-failed-custom-node-header.custom-node-header-active {
-  .label-container {
-    background: fade(@red-3, 10%);
-  }
-
-  .column-container {
-    background: fade(@red-3, 10%);
-    border-top: 1px solid @red-3;
   }
 }
 
@@ -244,22 +481,57 @@
 
 .react-flow {
   .lineage-node-handle.react-flow__handle-left {
-    left: -22px;
+    left: -10px;
   }
 
   .lineage-node-handle.react-flow__handle-right {
-    right: -22px;
+    right: -10px;
+  }
+  .lineage-node-handle-expand-all {
+    width: max-content !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    border-radius: 4px !important;
+    border-color: @lineage-border !important;
+    background: @white !important;
+    top: 60px !important;
+    left: 249px;
+    gap: 1px;
+    border: 1px solid;
+
+    svg {
+      color: @grey-4;
+      cursor: pointer;
+      padding: 1px;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      &:hover {
+        color: @primary-color;
+        background-color: #eff8ff;
+      }
+    }
+
+    .lineage-expand-icons-separator::after {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 2px;
+      width: 1px;
+      height: 14px;
+      background: @blue-20;
+    }
   }
 }
 
 .react-flow .lineage-node-handle {
-  width: 35px !important;
-  min-width: 35px !important;
-  height: 35px !important;
-  border-radius: 50% !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  border-radius: 20% !important;
   border-color: @lineage-border !important;
   background: @white !important;
-  top: 43px !important; // Need to show handles on top half
+  top: 60px !important; // Need to show handles on top half
 
   svg {
     color: @text-grey-muted;
@@ -286,40 +558,18 @@
   }
 }
 
-.custom-node-column-container {
-  padding: 6px 8px;
-  background: @white;
+.custom-node-column-container-tooltip {
+  cursor: pointer;
   position: relative;
-  font-size: 12px;
-  font-weight: 400;
+  padding: 0;
 
-  .custom-node-name-container {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    text-align: left;
-    gap: 4px;
-
-    .custom-node-name-icon {
-      width: 14px;
-      display: flex;
-    }
-
-    .custom-node-column-label {
-      width: 100%;
-      display: block;
-    }
+  svg {
+    width: 16px;
   }
-
-  .custom-node-constraint {
-    padding-left: 4px;
-    padding-right: 12px;
-  }
-
-  .ant-skeleton-element {
-    .ant-skeleton-button-sm {
-      height: 32px; // Height of the skeleton button, to match the height of the column name
-    }
+  svg:first-child {
+    border-right: 1px solid @grey-15;
+    width: 22px;
+    padding-right: 6px;
   }
 }
 
@@ -327,4 +577,16 @@
   border-radius: 4px;
   border: 1px solid @error-color;
   background-color: @white;
+}
+
+.manage-node {
+  position: absolute;
+  top: 10px;
+  right: 4px;
+}
+
+.manage-node-menu .MuiMenuItem-root {
+  display: flex;
+  gap: 10px;
+  margin: 0px;
 }

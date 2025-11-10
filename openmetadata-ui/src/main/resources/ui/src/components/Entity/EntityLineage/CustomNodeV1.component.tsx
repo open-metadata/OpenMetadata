@@ -121,8 +121,8 @@ const ExpandCollapseHandles = memo(
 
         {!hasOutgoers &&
           !downstreamExpandPerformed &&
-          getExpandHandle(LineageDirection.Downstream, () =>
-            onExpand(LineageDirection.Downstream)
+          getExpandHandle(LineageDirection.Downstream, (depth = 1) =>
+            onExpand(LineageDirection.Downstream, depth)
           )}
 
         {hasIncomers &&
@@ -134,8 +134,8 @@ const ExpandCollapseHandles = memo(
         {!hasIncomers &&
           !upstreamExpandPerformed &&
           upstreamLineageLength > 0 &&
-          getExpandHandle(LineageDirection.Upstream, () =>
-            onExpand(LineageDirection.Upstream)
+          getExpandHandle(LineageDirection.Upstream, (depth = 1) =>
+            onExpand(LineageDirection.Upstream, depth)
           )}
       </>
     );
@@ -144,6 +144,10 @@ const ExpandCollapseHandles = memo(
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
+  const [isColumnsListExpanded, setIsColumnsListExpanded] = useState(false);
+  const toggleColumnsList = useCallback(() => {
+    setIsColumnsListExpanded((prev) => !prev);
+  }, []);
 
   const {
     isEditMode,
@@ -190,11 +194,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     showDqTracing: showDqTracing ?? false,
     isTraced,
     isBaseNode: isRootNode,
+    isColumnsListExpanded,
   });
 
   const onExpand = useCallback(
-    (direction: LineageDirection) => {
-      loadChildNodesHandler(node, direction);
+    (direction: LineageDirection, depth = 1) => {
+      loadChildNodesHandler(node, direction, depth);
     },
     [loadChildNodesHandler, node]
   );
@@ -213,13 +218,25 @@ const CustomNodeV1 = (props: NodeProps) => {
 
     return (
       <>
-        <LineageNodeLabelV1 node={node} />
+        <LineageNodeLabelV1
+          isColumnsListExpanded={isColumnsListExpanded}
+          node={node}
+          toggleColumnsList={toggleColumnsList}
+        />
         {isSelected && isEditMode && !isRootNode && (
           <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
         )}
       </>
     );
-  }, [node.id, isNewNode, label, isSelected, isEditMode, isRootNode]);
+  }, [
+    node.id,
+    isNewNode,
+    label,
+    isSelected,
+    isEditMode,
+    isRootNode,
+    isColumnsListExpanded,
+  ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
     () => ({
@@ -263,16 +280,25 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
+      {isRootNode && (
+        <div className="lineage-node-badge-container">
+          <div className="lineage-node-badge" />
+        </div>
+      )}
+      <div className="lineage-node-content">
+        <div className="label-container bg-white">{nodeLabel}</div>
+        <NodeChildren
+          isColumnsListExpanded={isColumnsListExpanded}
+          isConnectable={isConnectable}
+          node={node}
+        />
+      </div>
       <NodeHandles
         expandCollapseHandles={handlesElement}
         id={id}
         isConnectable={isConnectable}
         nodeType={nodeType}
       />
-      <div className="lineage-node-content">
-        <div className="label-container bg-white">{nodeLabel}</div>
-        <NodeChildren isConnectable={isConnectable} node={node} />
-      </div>
     </div>
   );
 };
