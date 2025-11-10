@@ -442,7 +442,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs h-10"
+          className="m-l-xs"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"

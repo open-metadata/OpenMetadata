@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 天",
     "1-hr": "1 小時",
     "a-to-z": "A 到 Z",
@@ -17,6 +18,7 @@
     "account": "帳戶",
     "account-email": "帳戶電子郵件",
     "account-name": "帳戶名稱",
+    "ack": "Ack",
     "acknowledged": "已確認",
     "action": "操作",
     "action-plural": "操作",
@@ -1395,6 +1397,7 @@
     "resolved": "已解決",
     "resolved-by": "解決者",
     "resolved-incident-plural": "已解決的事件",
+    "resolved-with-colon": "Resolved:",
     "resource": "資源",
     "resource-fqn-or-id": "資源 FQN 或 ID",
     "resource-id": "資源 ID",
