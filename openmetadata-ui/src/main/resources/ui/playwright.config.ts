@@ -63,13 +63,18 @@ export default defineConfig({
     // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
       name: 'setup',
-      testMatch: '**/*.setup.ts',
+      testMatch: '**/auth.setup.ts',
+    },
+    {
+      name: 'entity-data-setup',
+      testMatch: '**/entity-data.setup.ts',
+      dependencies: ['setup'],
     },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
       testIgnore: [
         '**/nightly/**',
@@ -78,8 +83,12 @@ export default defineConfig({
       ],
     },
     {
+      name: 'entity-data-teardown',
+      testMatch: '**/entity-data.teardown.ts',
+    },
+    {
       name: 'data-insight-application',
-      dependencies: ['DataAssetRulesDisabled'],
+      dependencies: ['setup', 'entity-data-setup'],
       testMatch: '**/dataInsightApp.ts',
     },
     {
@@ -87,6 +96,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
+      teardown: 'entity-data-teardown',
     },
     {
       name: 'DataAssetRulesEnabled',

@@ -58,6 +58,11 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
 
   await createTeamResponse;
 
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   return teamData;
 };
 

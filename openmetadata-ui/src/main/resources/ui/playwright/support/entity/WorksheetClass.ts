@@ -172,12 +172,22 @@ export class WorksheetClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
       spreadsheet: this.spreadsheetResponseData,
     };
+  }
+
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    spreadsheet: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.spreadsheetResponseData = data.spreadsheet;
   }
 
   async visitEntityPage(page: Page) {
