@@ -14,6 +14,7 @@
 import { ComponentType, ReactNode } from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
+import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ServicesType } from '../interface/service.interface';
 
@@ -41,6 +42,9 @@ export const EXTENSION_POINTS = {
   // Database Details Page
   DATABASE_DETAILS_TABS: 'database-details.tabs',
 
+  // User Profile Page
+  PROFILE_TABS: 'profile.tabs',
+
   // Global UI
   GLOBAL_FLOATING_BUTTONS: 'global.floating-buttons',
 } as const;
@@ -65,6 +69,8 @@ export interface PluginEntityDetailsContext {
   permissions?: OperationPermission;
   entityType?: string;
   entity?: EntityReference;
+  userData?: User;
+  isLoggedInUser?: boolean;
 }
 
 // ============================================================================
