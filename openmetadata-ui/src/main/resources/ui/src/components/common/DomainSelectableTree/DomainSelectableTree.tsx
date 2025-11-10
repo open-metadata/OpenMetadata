@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import AddIcon from '@mui/icons-material/Add';
+import { Button as MUIButton, useTheme } from '@mui/material';
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
@@ -66,6 +69,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   initialDomains,
   showAllDomains = false,
 }) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -79,6 +83,16 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
   >({});
+  const [childPaging, setChildPaging] = useState<
+    Record<
+      string,
+      {
+        offset: number;
+        limit: number;
+        total: number;
+      }
+    >
+  >({});
   const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
 
   const { activeDomain } = useDomainStore();
@@ -88,6 +102,164 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   useEffect(() => {
     pagingRef.current = paging;
   }, [paging]);
+
+  const updateNested = useCallback(
+    (
+      domainList: Domain[],
+      targetFqn: string,
+      newChildren: Domain[],
+      isAppend = false
+    ): Domain[] => {
+      return domainList.map((domain) => {
+        if (domain.fullyQualifiedName === targetFqn) {
+          return {
+            ...domain,
+            children: isAppend
+              ? [
+                  ...(domain.children ?? []),
+                  ...(newChildren as unknown as EntityReference[]),
+                ]
+              : (newChildren as unknown as EntityReference[]),
+          };
+        }
+
+        if (domain.children?.length) {
+          return {
+            ...domain,
+            children: updateNested(
+              domain.children as unknown as Domain[],
+              targetFqn,
+              newChildren,
+              isAppend
+            ) as unknown as EntityReference[],
+          };
+        }
+
+        return domain;
+      });
+    },
+    []
+  );
+
+  const loadChildDomains = useCallback(
+    async (parentFqn: string, isLoadMore = false): Promise<void> => {
+      setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
+
+      try {
+        const currentPaging = childPaging[parentFqn] || {
+          offset: 0,
+          limit: INITIAL_PAGE_SIZE,
+          total: 0,
+        };
+
+        const currentOffset = isLoadMore
+          ? currentPaging.offset + currentPaging.limit
+          : 0;
+
+        const response = await getDomainChildrenPaginated(
+          parentFqn,
+          INITIAL_PAGE_SIZE,
+          currentOffset
+        );
+        const children = response.data ?? [];
+        const total = response.paging.total;
+
+        setChildPaging((prev) => ({
+          ...prev,
+          [parentFqn]: {
+            offset: currentOffset,
+            limit: INITIAL_PAGE_SIZE,
+            total,
+          },
+        }));
+
+        setDomains((prev) =>
+          updateNested(prev, parentFqn, children, isLoadMore)
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
+      }
+    },
+    [updateNested, childPaging]
+  );
+
+  const addLoadMoreNodes = useCallback(
+    (
+      treeItems: TreeListItem[],
+      parentFqn?: string,
+      handleLoadMore?: (fqn: string) => void
+    ): TreeListItem[] => {
+      const processedItems: TreeListItem[] = [];
+
+      for (const item of treeItems) {
+        const itemFqn = item.key as string;
+        const domain = domainMapper[itemFqn];
+
+        if (domain?.children && item.children) {
+          processedItems.push({
+            ...item,
+            children: addLoadMoreNodes(item.children, itemFqn, handleLoadMore),
+          });
+        } else {
+          processedItems.push(item);
+        }
+      }
+
+      if (parentFqn && handleLoadMore) {
+        const paging = childPaging[parentFqn];
+        if (paging) {
+          const hasMoreChildren = paging.offset + paging.limit < paging.total;
+          const isLoadingMore = loadingChildren[parentFqn] ?? false;
+
+          if (hasMoreChildren) {
+            processedItems.push({
+              key: `${parentFqn}-load-more`,
+              value: `${parentFqn}-load-more`,
+              name: 'Load More',
+              label: 'Load More',
+              isLeaf: true,
+              selectable: false,
+              disabled: true,
+              className: 'load-more-node',
+              title: (
+                <MUIButton
+                  startIcon={isLoadingMore ? null : <AddIcon />}
+                  sx={{
+                    p: 0,
+                    ml: 7,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: theme.palette.primary.main,
+                    fontWeight: theme.typography.fontWeightMedium,
+                    textTransform: 'none',
+                    '&:hover': {
+                      color: theme.palette.primary.dark,
+                      backgroundColor: 'transparent',
+                    },
+                  }}
+                  variant="text"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLoadMore(parentFqn);
+                  }}>
+                  {isLoadingMore ? (
+                    <Loader size="small" />
+                  ) : (
+                    t('label.load-more')
+                  )}
+                </MUIButton>
+              ),
+            } as TreeListItem);
+          }
+        }
+      }
+
+      return processedItems;
+    },
+    [childPaging, loadingChildren, domainMapper, t]
+  );
 
   useEffect(() => {
     const map: Record<string, Domain> = {};
@@ -106,9 +278,23 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     setDomainMapper(map);
 
     if (domains.length > 0 && !searchTerm) {
-      setTreeData(convertDomainsToTreeOptions(domains, 0, isMultiple));
+      const baseTreeData = convertDomainsToTreeOptions(domains, 0, isMultiple);
+      const treeDataWithLoadMore = addLoadMoreNodes(
+        baseTreeData,
+        undefined,
+        (fqn: string) => loadChildDomains(fqn, true)
+      );
+      setTreeData(treeDataWithLoadMore);
     }
-  }, [domains, searchTerm, isMultiple]);
+  }, [
+    domains,
+    searchTerm,
+    isMultiple,
+    childPaging,
+    loadingChildren,
+    addLoadMoreNodes,
+    loadChildDomains,
+  ]);
 
   const handleMyDomainsClick = async () => {
     await onSubmit([]);
@@ -155,55 +341,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       }
     }
   };
-
-  const updateNested = useCallback(
-    (
-      domainList: Domain[],
-      targetFqn: string,
-      newChildren: Domain[]
-    ): Domain[] => {
-      return domainList.map((domain) => {
-        if (domain.fullyQualifiedName === targetFqn) {
-          return {
-            ...domain,
-            children: newChildren as unknown as EntityReference[],
-          };
-        }
-
-        if (domain.children?.length) {
-          return {
-            ...domain,
-            children: updateNested(
-              domain.children as unknown as Domain[],
-              targetFqn,
-              newChildren
-            ) as unknown as EntityReference[],
-          };
-        }
-
-        return domain;
-      });
-    },
-    []
-  );
-
-  const loadChildDomains = useCallback(
-    async (parentFqn: string): Promise<void> => {
-      setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
-
-      try {
-        const response = await getDomainChildrenPaginated(parentFqn, 50, 0);
-        const children = response.data ?? [];
-
-        setDomains((prev) => updateNested(prev, parentFqn, children));
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
-      }
-    },
-    [updateNested]
-  );
 
   const fetchAPI = useCallback(
     async (isLoadMore = false) => {

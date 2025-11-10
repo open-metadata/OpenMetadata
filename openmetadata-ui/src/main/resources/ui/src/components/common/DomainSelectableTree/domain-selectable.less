@@ -21,6 +21,29 @@
       }
     }
   }
+
+  .load-more-node {
+    border: none;
+    border-radius: 0;
+    &.ant-tree-treenode {
+      &::before {
+        display: none !important;
+      }
+    }
+
+    .ant-tree-switcher {
+      display: none !important;
+    }
+
+    .ant-tree-node-content-wrapper {
+      cursor: default !important;
+      padding: 0 !important;
+
+      &:hover {
+        background-color: transparent !important;
+      }
+    }
+  }
 }
 .domain-selectable-tree-new {
   overflow: auto;
