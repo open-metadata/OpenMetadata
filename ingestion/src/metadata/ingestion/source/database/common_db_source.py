@@ -143,35 +143,6 @@ class CommonDbSourceService(
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
         self.context.set_threads(self.source_config.threads)
-
-        # Progress tracking for all entity types in the topology
-        self.progress_tracking = {
-            "databases": {
-                "total": 0,
-                "processed": 0,
-                "start_time": None,
-                "first_processed_time": None,
-            },
-            "schemas": {
-                "total": 0,
-                "processed": 0,
-                "start_time": None,
-                "first_processed_time": None,
-            },
-            "tables": {
-                "total": 0,
-                "processed": 0,
-                "start_time": None,
-                "first_processed_time": None,
-            },
-            "stored_procedures": {
-                "total": 0,
-                "processed": 0,
-                "start_time": None,
-                "first_processed_time": None,
-            },
-        }
-
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -190,80 +161,6 @@ class CommonDbSourceService(
 
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
-
-    def prepare(self):
-        """
-        Populate progress tracking with total counts before starting ingestion.
-        This provides accurate progress reporting with ETA.
-        """
-        try:
-            logger.info("Initializing progress tracking - counting total entities...")
-
-            # Count databases
-            database_names = list(self.get_database_names())
-            self.progress_tracking["databases"]["total"] = len(database_names)
-            logger.info(f"Found {len(database_names)} database(s)")
-
-            # Count schemas, tables, and stored procedures across all databases
-            total_schemas = 0
-            total_tables = 0
-            total_stored_procedures = 0
-
-            for database_name in database_names:
-                try:
-                    # Set inspector for this database
-                    if hasattr(self, "set_inspector"):
-                        self.set_inspector(database_name)
-
-                    # Count schemas
-                    schema_names = list(self.get_database_schema_names())
-                    total_schemas += len(schema_names)
-
-                    # Count tables and stored procedures per schema
-                    for schema_name in schema_names:
-                        try:
-                            # Set context for filtering
-                            self.context.get().database = database_name
-                            self.context.get().database_schema = schema_name
-
-                            # Count tables
-                            table_names = list(self.get_tables_name_and_type())
-                            total_tables += len(table_names)
-
-                            # Count stored procedures
-                            if hasattr(self, "get_stored_procedures"):
-                                stored_proc_names = list(self.get_stored_procedures())
-                                total_stored_procedures += len(stored_proc_names)
-                        except Exception as sp_exc:
-                            logger.debug(
-                                f"Could not count entities in schema {schema_name}: {sp_exc}"
-                            )
-                            continue
-
-                except Exception as db_exc:
-                    logger.debug(
-                        f"Could not count entities in database {database_name}: {db_exc}"
-                    )
-                    continue
-
-            self.progress_tracking["schemas"]["total"] = total_schemas
-            self.progress_tracking["tables"]["total"] = total_tables
-            self.progress_tracking["stored_procedures"][
-                "total"
-            ] = total_stored_procedures
-
-            logger.info(
-                f"Progress tracking initialized: "
-                f"{self.progress_tracking['databases']['total']} databases, "
-                f"{total_schemas} schemas, "
-                f"{total_tables} tables, "
-                f"{total_stored_procedures} stored procedures"
-            )
-
-        except Exception as exc:
-            logger.warning(
-                f"Could not initialize progress tracking: {exc}. Progress reporting will be limited."
-            )
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -349,9 +246,6 @@ class CommonDbSourceService(
         yield Either(right=database_request)
         self.register_record_database_request(database_request=database_request)
 
-        # Track database processed count
-        self.update_progress("databases", increment_processed=True)
-
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
@@ -425,19 +319,6 @@ class CommonDbSourceService(
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-        # Track schema processed count
-        self.update_progress("schemas", increment_processed=True)
-
-        # Count tables for progress tracking (efficient COUNT query)
-        table_count = self.get_table_count(schema_name)
-        for _ in range(table_count):
-            self.update_progress("tables", increment_processed=False)
-
-        logger.info(
-            f"Schema {schema_name}: {table_count} tables/views found. "
-            f"Progress: {self.get_progress_summary()}"
-        )
-
     @staticmethod
     @calculate_execution_time()
     def get_table_description(
@@ -489,125 +370,6 @@ class CommonDbSourceService(
             TableNameAndType(name=table_name, type_=TableType.View)
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
-
-    def get_table_count(self, schema_name: str) -> int:
-        """
-        Efficiently count tables and views in a schema using COUNT queries.
-        This is used for progress tracking without fetching all table names.
-
-        :param schema_name: Schema name to count tables in
-        :return: Total count of tables and views based on config
-        """
-        total_count = 0
-
-        try:
-            if self.source_config.includeTables:
-                tables = self.inspector.get_table_names(schema_name) or []
-                total_count += len(tables)
-
-            if self.source_config.includeViews:
-                views = self.inspector.get_view_names(schema_name) or []
-                total_count += len(views)
-
-        except Exception as err:
-            logger.warning(f"Failed to count tables in schema {schema_name}: {err}")
-            return 0
-
-        return total_count
-
-    def update_progress(self, entity_type: str, increment_processed: bool = False):
-        """
-        Update progress tracking for a specific entity type.
-
-        :param entity_type: Type of entity (databases, schemas, tables, stored_procedures)
-        :param increment_processed: If True, increment processed count; otherwise increment total
-        """
-        from datetime import datetime
-
-        if entity_type in self.progress_tracking:
-            if increment_processed:
-                # Record first processed time for rate calculation
-                if self.progress_tracking[entity_type]["first_processed_time"] is None:
-                    self.progress_tracking[entity_type][
-                        "first_processed_time"
-                    ] = datetime.now()
-                self.progress_tracking[entity_type]["processed"] += 1
-            else:
-                # Record start time when we first discover entities
-                if (
-                    self.progress_tracking[entity_type]["start_time"] is None
-                    and self.progress_tracking[entity_type]["total"] == 0
-                ):
-                    self.progress_tracking[entity_type]["start_time"] = datetime.now()
-                self.progress_tracking[entity_type]["total"] += 1
-
-    def calculate_estimated_remaining_time(self, entity_type: str) -> Optional[int]:
-        """
-        Calculate estimated remaining time in seconds for an entity type.
-
-        :param entity_type: Type of entity
-        :return: Estimated remaining seconds, or None if cannot calculate
-        """
-        from datetime import datetime
-
-        if entity_type not in self.progress_tracking:
-            return None
-
-        counts = self.progress_tracking[entity_type]
-        processed = counts.get("processed", 0)
-        total = counts.get("total", 0)
-        first_processed_time = counts.get("first_processed_time")
-
-        # Need at least 2 processed items and first_processed_time to calculate rate
-        if processed < 2 or first_processed_time is None or total == 0:
-            return None
-
-        remaining = total - processed
-        if remaining <= 0:
-            return 0
-
-        # Calculate processing rate (items per second)
-        elapsed_seconds = (datetime.now() - first_processed_time).total_seconds()
-        if elapsed_seconds <= 0:
-            return None
-
-        rate = processed / elapsed_seconds  # items per second
-        if rate <= 0:
-            return None
-
-        # Estimate remaining time
-        estimated_seconds = int(remaining / rate)
-        return estimated_seconds
-
-    def get_progress_summary(self) -> str:
-        """
-        Get a formatted summary of progress across all entity types.
-
-        :return: Formatted progress string
-        """
-        summary_parts = []
-        for entity_type, counts in self.progress_tracking.items():
-            total = counts["total"]
-            processed = counts["processed"]
-            if total > 0:
-                pct = (processed / total * 100) if total > 0 else 0
-                remaining = max(0, total - processed)
-
-                # Add estimated time if available
-                est_time = self.calculate_estimated_remaining_time(entity_type)
-                time_str = ""
-                if est_time is not None and est_time > 0:
-                    if est_time < 60:
-                        time_str = f", ~{est_time}s remaining"
-                    elif est_time < 3600:
-                        time_str = f", ~{est_time // 60}m remaining"
-                    else:
-                        time_str = f", ~{est_time // 3600}h {(est_time % 3600) // 60}m remaining"
-
-                summary_parts.append(
-                    f"{entity_type}: {processed}/{total} ({pct:.1f}%, {remaining} remaining{time_str})"
-                )
-        return " | ".join(summary_parts) if summary_parts else "No progress data"
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
@@ -864,9 +626,6 @@ class CommonDbSourceService(
 
             # Register the request that we'll handle during the deletion checks
             self.register_record(table_request=table_request)
-
-            # Track table processed count
-            self.update_progress("tables", increment_processed=True)
 
         except Exception as exc:
             error = (
