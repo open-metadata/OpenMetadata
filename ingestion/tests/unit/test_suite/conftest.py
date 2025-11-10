@@ -1171,3 +1171,20 @@ def test_case_column_values_missing_count_to_be_equal_missing_values_dimensional
         dimensionColumns=["name"],
         computePassedFailedRowCount=True,
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_dimensional():
+    """Test case for test column_values_to_be_between with dimensional analysis"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="30"),
+            TestCaseParameterValue(name="maxValue", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
