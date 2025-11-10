@@ -19,6 +19,11 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     agentType?: AgentType;
     /**
+     * If true, multiple instances of this app can run concurrently. This is useful for apps
+     * like QueryRunner that support parallel executions with different configurations.
+     */
+    allowConcurrentExecution?: boolean;
+    /**
      * Allow users to configure the app from the UI. If `false`, the `configure` step will be
      * hidden.
      */
