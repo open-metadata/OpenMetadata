@@ -104,46 +104,18 @@ def create_test_case_parameter_values(dbt_test):
     return None
 
 
-def get_matched_column_name(table_entity: Table, dbt_node):
+def generate_entity_link(dbt_test):
     """
-    Method to fetch the matched column name from dbt
-    """
-    dbt_column_name = getattr(dbt_node, "column_name", None)
-    if dbt_column_name:
-        # Case-insensitive lookup to find the actual column name
-        for col in getattr(table_entity, "columns", []) or []:
-            if col.name.root.lower() == dbt_column_name.lower():
-                return col.name.root
-        logger.warning(f"No Matching Column found for {dbt_column_name}")
-        # Fall back to the original DBT column name when no match is found
-        return dbt_column_name
-    return None
-
-
-def generate_entity_link(dbt_test, table_entity: Optional[Table] = None):
-    """
-    Method returns entity link with case-matched column names.
-
-    For databases like Snowflake that store unquoted identifiers in uppercase,
-    this function matches DBT column names (typically lowercase) against the
-    actual column names in the table entity to ensure correct entity links.
-
-    Args:
-        dbt_test: DBT test dictionary containing manifest node and upstream tables
-        table_entity: Optional Table entity to match column names against
-
-    Returns:
-        List of entity link strings with correctly cased column names
+    Method returns entity link
     """
     manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-
-    dbt_column_name = get_matched_column_name(table_entity, manifest_node)
-
     entity_link_list = [
         entity_link.get_entity_link(
             Table,
             fqn=table_fqn,
-            column_name=dbt_column_name,
+            column_name=manifest_node.column_name
+            if hasattr(manifest_node, "column_name")
+            else None,
         )
         for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
     ]
