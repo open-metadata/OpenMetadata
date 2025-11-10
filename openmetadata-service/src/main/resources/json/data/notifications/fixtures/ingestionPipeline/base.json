@@ -1,0 +1,40 @@
+{
+  "id": "2d1c0b9a-8f7e-6d5c-4b3a-2f1e0d9c8b7a",
+  "name": "sample_ingestion_pipeline",
+  "displayName": "Sample Ingestion Pipeline",
+  "fullyQualifiedName": "sample-database-service.sample_ingestion_pipeline",
+  "description": "Mock ingestion pipeline for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/ingestionPipelines/2d1c0b9a-8f7e-6d5c-4b3a-2f1e0d9c8b7a",
+  "pipelineType": "metadata",
+  "service": {
+    "id": "4a3f2e1d-0c9b-8a7f-6e5d-4c3b2a1f0e9d",
+    "type": "databaseService",
+    "name": "sample-database-service",
+    "fullyQualifiedName": "sample-database-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/databaseServices/4a3f2e1d-0c9b-8a7f-6e5d-4c3b2a1f0e9d"
+  },
+  "sourceConfig": {
+    "config": {
+      "type": "DatabaseMetadata"
+    }
+  },
+  "airflowConfig": {
+    "scheduleInterval": "0 0 * * *"
+  },
+  "enabled": true,
+  "deployed": true,
+  "loggerLevel": "INFO",
+  "processingEngine": {
+    "type": "Default",
+    "configuration": {}
+  },
+  "pipelineStatuses": {
+    "timestamp": 1699564800000,
+    "pipelineState": "success"
+  }
+}

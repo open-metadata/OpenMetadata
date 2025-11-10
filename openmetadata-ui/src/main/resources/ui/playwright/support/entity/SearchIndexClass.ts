@@ -61,6 +61,7 @@ export class SearchIndexClass extends EntityClass {
   entity: {
     name: string;
     displayName: string;
+    description: string;
     service: string;
     fields: Array<{
       name: string;
@@ -149,6 +150,7 @@ export class SearchIndexClass extends EntityClass {
     this.entity = {
       name: this.searchIndexName,
       displayName: this.searchIndexName,
+      description: `Description for ${this.searchIndexName}`,
       service: this.service.name,
       fields: this.children,
     };
