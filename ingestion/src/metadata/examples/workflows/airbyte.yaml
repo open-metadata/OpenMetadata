@@ -5,8 +5,6 @@ source:
     config:
       type: Airbyte
       hostPort: http://localhost:8000
-      # OAuth 2.0 Authentication (for Airbyte Cloud)
-      # To get credentials: Settings → Account Settings → Access Management → Create Application
       auth:
       # OAuth 2.0 Authentication (for Airbyte Cloud)
         clientId: <client id>
