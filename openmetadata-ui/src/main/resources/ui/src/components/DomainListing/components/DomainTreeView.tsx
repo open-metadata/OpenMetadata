@@ -54,7 +54,6 @@ interface DomainTreeViewProps {
   searchQuery?: string;
   onDomainMutated?: () => void;
   refreshToken?: number;
-  domainCount?: number;
   openAddDomainDrawer?: () => void;
 }
 
@@ -67,7 +66,6 @@ const DomainTreeView = ({
   onDomainMutated,
   refreshToken = 0,
   openAddDomainDrawer,
-  domainCount,
 }: DomainTreeViewProps) => {
   const theme = useTheme();
   const outlineColor =
@@ -266,7 +264,7 @@ const DomainTreeView = ({
       );
 
       const domains = response.data ?? [];
-      const total = domainCount ?? response.paging.total;
+      const total = response.paging.total;
 
       setHierarchy((prev) => (isLoadMore ? [...prev, ...domains] : domains));
 
@@ -364,7 +362,7 @@ const DomainTreeView = ({
         await loadRootDomains(isLoadMore);
       }
     },
-    [loadingChildren, rootPaging, domainCount, applySelection, loadChildDomains]
+    [loadingChildren, rootPaging, applySelection, loadChildDomains]
   );
 
   useEffect(() => {

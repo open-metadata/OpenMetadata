@@ -31,7 +31,6 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import type { EntityReference } from '../../../generated/type/entityReference';
 import {
   getDomainChildrenPaginated,
-  getDomainCount,
   searchDomains,
 } from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
@@ -75,7 +74,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [paging, setPaging] = useState(INITIAL_PAGING_STATE);
-  const [totalDomainCount, setTotalDomainCount] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [loadingChildren, setLoadingChildren] = useState<
@@ -85,16 +83,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
   const { activeDomain } = useDomainStore();
   const pagingRef = useRef(INITIAL_PAGING_STATE);
-  const totalDomainCountRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     pagingRef.current = paging;
   }, [paging]);
-
-  useEffect(() => {
-    totalDomainCountRef.current = totalDomainCount;
-  }, [totalDomainCount]);
 
   useEffect(() => {
     const map: Record<string, Domain> = {};
@@ -116,15 +109,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       setTreeData(convertDomainsToTreeOptions(domains, 0, isMultiple));
     }
   }, [domains, searchTerm, isMultiple]);
-
-  const fetchTotalCount = async () => {
-    try {
-      const count = await getDomainCount();
-      setTotalDomainCount(count);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
 
   const handleMyDomainsClick = async () => {
     await onSubmit([]);
@@ -233,7 +217,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
       try {
         const currentPaging = pagingRef.current;
-        const currentTotalCount = totalDomainCountRef.current;
         const currentOffset = isLoadMore
           ? currentPaging.offset + currentPaging.limit
           : 0;
@@ -245,7 +228,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         );
 
         const fetchedData = data.data ?? [];
-        const total = currentTotalCount || 0;
+        const total = data.paging.total ?? 0;
 
         let combinedData: Domain[];
         if (isLoadMore) {
@@ -439,15 +422,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   ]);
 
   useEffect(() => {
-    fetchTotalCount();
-  }, []);
-
-  useEffect(() => {
-    if (visible && totalDomainCount) {
+    if (visible) {
       setSearchTerm('');
       fetchAPI();
     }
-  }, [visible, totalDomainCount]);
+  }, [visible]);
 
   useEffect(() => {
     const loadSelectedDomainChildren = async () => {
