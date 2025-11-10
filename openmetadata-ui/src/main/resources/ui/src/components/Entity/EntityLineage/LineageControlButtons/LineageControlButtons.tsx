@@ -180,6 +180,7 @@ const LineageControlButtons: FC<{
         </MenuItem>
       </StyledMenu>
 
+      {/* Remove this after we have paginated column view inside nodes */}
       {isColumnLayerActive && !isEditMode && (
         <Tooltip
           arrow
