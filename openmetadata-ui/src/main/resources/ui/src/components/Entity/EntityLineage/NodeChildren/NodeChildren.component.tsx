@@ -319,7 +319,7 @@ const NodeChildren = ({
               onClick={(e) => e.stopPropagation()}
             />
 
-            {!isEmpty(renderedColumns) && (
+            {isColumnsListExpanded && !isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   {renderedColumns}
