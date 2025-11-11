@@ -73,7 +73,7 @@ public class OpenSearchClient implements SearchClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   // New OpenSearch Java API client
-  @Getter private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
+  @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private final boolean isNewClientAvailable;
   private final os.org.opensearch.client.RestClient lowLevelClient;
 
