@@ -268,13 +268,7 @@ test.describe('Pagination tests for Classification Tags page', () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    test.setTimeout(8 * 60 * 1000);
-
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    for (const tag of tags.reverse()) {
-      await tag.delete(apiContext);
-    }
     await classification.delete(apiContext);
 
     await afterAction();
@@ -306,8 +300,6 @@ test.describe('Pagination tests for Metrics page', () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    test.setTimeout(8 * 60 * 1000);
-
     const { apiContext, afterAction } = await createNewPage(browser);
 
     for (const metric of metrics.reverse()) {
