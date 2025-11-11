@@ -41,10 +41,11 @@ public class NotHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("not")
         .withDescription("Logical NOT operation on a value")
+        .withCursorOffset(6)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (not condition)}}...{{/if}}")
+                    .withSyntax("{{not }}")
                     .withExample("{{#if (not hasErrors)}}All tests passed{{/if}}")));
   }
 }

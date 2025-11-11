@@ -153,10 +153,11 @@ public class ProcessMentionsHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("processMentions")
         .withDescription("Convert @mentions to clickable links")
+        .withCursorOffset(19)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{{processMentions text}}}")
+                    .withSyntax("{{{processMentions }}}")
                     .withExample("{{{processMentions message}}}")));
   }
 }

@@ -134,10 +134,11 @@ public class ParseEntityLinkHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("parseEntityLink")
         .withDescription("Parse entity link into components")
+        .withCursorOffset(18)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#with (parseEntityLink entityLink) as |parsed|}}...{{/with}}")
+                    .withSyntax("{{parseEntityLink }}")
                     .withExample(
                         "{{#with (parseEntityLink about) as |link|}}{{link.entityType}}{{/with}}")));
   }

@@ -79,10 +79,11 @@ public class FilterHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("filter")
         .withDescription("Filter array by property values")
+        .withCursorOffset(9)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#with (filter list property=value)}}...{{/with}}")
+                    .withSyntax("{{filter }}")
                     .withExample(
                         "{{#with (filter testResults status=\"Failed\") as |failed|}}{{length failed}} failed{{/with}}")));
   }

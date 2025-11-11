@@ -52,11 +52,13 @@ public class HasFieldInChangesHelper implements HandlebarsHelper {
   public HandlebarsHelperMetadata getMetadata() {
     return new HandlebarsHelperMetadata()
         .withName("hasFieldInChanges")
-        .withDescription("Check if specific field changed in event")
+        .withDescription(
+            "Checks if a specific field name exists in any change category (updates, adds, or deletes) within a change event.")
+        .withCursorOffset(20)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (hasFieldInChanges changeEvent \"fieldName\")}}...{{/if}}")
+                    .withSyntax("{{hasFieldInChanges }}")
                     .withExample(
                         "{{#if (hasFieldInChanges changes \"testCaseResult\")}}Test results changed{{/if}}")));
   }

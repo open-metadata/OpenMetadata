@@ -70,10 +70,11 @@ public class LimitHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("limit")
         .withDescription("Limit array to first N items")
+        .withCursorOffset(8)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#each (limit list n)}}...{{/each}}")
+                    .withSyntax("{{limit }}")
                     .withExample("{{#each (limit failedTests 5)}}{{name}}{{/each}}")));
   }
 }

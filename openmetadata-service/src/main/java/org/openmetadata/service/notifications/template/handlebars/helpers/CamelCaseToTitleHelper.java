@@ -75,10 +75,11 @@ public class CamelCaseToTitleHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("camelCaseToTitle")
         .withDescription("Convert camelCase to Title Case")
+        .withCursorOffset(19)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{camelCaseToTitle string}}")
+                    .withSyntax("{{camelCaseToTitle }}")
                     .withExample("{{camelCaseToTitle \"entityType\"}}")));
   }
 }

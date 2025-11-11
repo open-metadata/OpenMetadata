@@ -50,10 +50,11 @@ public class GtHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("gt")
         .withDescription("Check if first value is greater than second")
+        .withCursorOffset(5)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (gt value1 value2)}}...{{/if}}")
+                    .withSyntax("{{gt }}")
                     .withExample(
                         "{{#if (gt entity.summary.total 0)}}Total: {{entity.summary.total}}{{/if}}")));
   }

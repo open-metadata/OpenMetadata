@@ -38,6 +38,10 @@
           "description": "Brief description of what the helper does (max 15 words)",
           "type": "string"
         },
+        "cursorOffset": {
+          "description": "Character offset position in the template where the cursor should be placed after helper insertion",
+          "type": "integer"
+        },
         "usages": {
           "description": "List of usage examples showing different ways to use the helper",
           "type": "array",

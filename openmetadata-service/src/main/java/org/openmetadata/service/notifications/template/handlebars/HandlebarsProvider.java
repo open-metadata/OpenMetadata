@@ -9,7 +9,6 @@ import org.openmetadata.service.notifications.template.handlebars.helpers.CamelC
 import org.openmetadata.service.notifications.template.handlebars.helpers.EndsWithHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.EqHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.FilterHelper;
-import org.openmetadata.service.notifications.template.handlebars.helpers.FormatColumnValueHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.FormatDateHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.GroupEventChangesHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.GtHelper;
@@ -65,7 +64,6 @@ public class HandlebarsProvider {
         new CamelCaseToTitleHelper(),
         new ResolveDomainHelper(),
         new FormatDateHelper(),
-        new FormatColumnValueHelper(),
         new GroupEventChangesHelper(),
         new HasFieldInChangesHelper(),
         new SplitHelper(),

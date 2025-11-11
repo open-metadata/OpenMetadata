@@ -44,10 +44,11 @@ public class SplitHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("split")
         .withDescription("Split string into array by delimiter")
+        .withCursorOffset(8)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#each (split string delimiter)}}...{{/each}}")
+                    .withSyntax("{{split }}")
                     .withExample("{{#each (split fieldName \".\")}}{{this}}{{/each}}")));
   }
 }

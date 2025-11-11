@@ -62,10 +62,11 @@ public class AndHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("and")
         .withDescription("Logical AND operation on two values")
+        .withCursorOffset(6)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (and condition1 condition2)}}...{{/if}}")
+                    .withSyntax("{{and }}")
                     .withExample("{{#if (and hasChanges isPublished)}}Show changes{{/if}}")));
   }
 }

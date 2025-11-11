@@ -93,13 +93,14 @@ public class MathHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("math")
         .withDescription("Perform mathematical operations")
+        .withCursorOffset(8)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{math value1 operator value2}}")
+                    .withSyntax("{{math }}")
                     .withExample("{{math @index '+' 1}}"),
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{math value 'round' decimalPlaces}}")
+                    .withSyntax("{{math }}")
                     .withExample("{{math 3.14159 'round' 2}}")));
   }
 }

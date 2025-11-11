@@ -149,13 +149,14 @@ public class PluckHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("pluck")
         .withDescription("Extract property from objects in array")
+        .withCursorOffset(8)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{pluck list \"propertyName\"}}")
+                    .withSyntax("{{pluck }}")
                     .withExample("{{pluck tags \"tagFQN\"}}"),
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#with (pluck object \"property\")}}...{{/with}}")
+                    .withSyntax("{{pluck }}")
                     .withExample("{{#with (pluck certification \"tagLabel\")}}{{name}}{{/with}}")));
   }
 }

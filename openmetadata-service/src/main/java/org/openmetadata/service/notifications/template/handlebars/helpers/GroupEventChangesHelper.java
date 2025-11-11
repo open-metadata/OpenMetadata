@@ -221,11 +221,11 @@ public class GroupEventChangesHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("groupEventChanges")
         .withDescription("Group change event fields by category")
+        .withCursorOffset(20)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax(
-                        "{{#with (groupEventChanges changeEvent) as |grouped|}}...{{/with}}")
+                    .withSyntax("{{groupEventChanges }}")
                     .withExample(
                         "{{#with (groupEventChanges event.changeDescription) as |grouped|}}{{#if grouped.updates}}Updates: {{grouped.updates}}{{/if}}{{/with}}")));
   }

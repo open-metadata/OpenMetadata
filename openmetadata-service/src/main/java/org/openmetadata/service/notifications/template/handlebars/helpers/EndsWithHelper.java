@@ -42,10 +42,11 @@ public class EndsWithHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("endsWith")
         .withDescription("Check if string ends with suffix")
+        .withCursorOffset(11)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (endsWith string suffix)}}...{{/if}}")
+                    .withSyntax("{{endsWith }}")
                     .withExample("{{#if (endsWith fieldName \".tags\")}}Field is tags{{/if}}")));
   }
 }

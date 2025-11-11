@@ -62,10 +62,11 @@ public class OrHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("or")
         .withDescription("Logical OR operation on two values")
+        .withCursorOffset(5)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (or condition1 condition2)}}...{{/if}}")
+                    .withSyntax("{{or }}")
                     .withExample("{{#if (or hasUpdates hasAdds)}}Changes detected{{/if}}")));
   }
 }

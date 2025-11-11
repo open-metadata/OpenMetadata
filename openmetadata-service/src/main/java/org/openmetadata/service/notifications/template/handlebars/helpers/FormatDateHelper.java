@@ -92,10 +92,11 @@ public class FormatDateHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("formatDate")
         .withDescription("Format timestamp to readable date")
+        .withCursorOffset(14)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{formatDate timestamp}}")
+                    .withSyntax("{{formatDate }}")
                     .withExample("{{formatDate entity.updatedAt}}")));
   }
 }

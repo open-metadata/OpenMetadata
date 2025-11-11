@@ -355,10 +355,11 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("buildEntityUrl")
         .withDescription("Build UI URL for entity reference")
+        .withCursorOffset(17)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{buildEntityUrl entityReference}}")
+                    .withSyntax("{{buildEntityUrl }}")
                     .withExample("{{buildEntityUrl entity}}")));
   }
 }

@@ -43,10 +43,11 @@ public class StartsWithHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("startsWith")
         .withDescription("Check if string starts with prefix")
+        .withCursorOffset(13)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (startsWith string prefix)}}...{{/if}}")
+                    .withSyntax("{{startsWith }}")
                     .withExample(
                         "{{#if (startsWith fieldName \"columns.\")}}Field is a column{{/if}}")));
   }

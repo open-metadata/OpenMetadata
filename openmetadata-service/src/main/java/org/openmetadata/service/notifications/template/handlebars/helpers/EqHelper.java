@@ -39,10 +39,11 @@ public class EqHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("eq")
         .withDescription("Check if two values are equal")
+        .withCursorOffset(5)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{#if (eq value1 value2)}}...{{/if}}")
+                    .withSyntax("{{eq }}")
                     .withExample("{{#if (eq status \"Success\")}}Test passed{{/if}}")));
   }
 }

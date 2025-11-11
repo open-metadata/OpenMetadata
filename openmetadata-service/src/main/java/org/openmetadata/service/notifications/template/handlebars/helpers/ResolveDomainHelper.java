@@ -97,10 +97,11 @@ public class ResolveDomainHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("resolveDomain")
         .withDescription("Resolve domain UUID to domain name")
+        .withCursorOffset(17)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
-                    .withSyntax("{{resolveDomain domainId}}")
+                    .withSyntax("{{resolveDomain }}")
                     .withExample("{{resolveDomain entity.domain.id}}")));
   }
 }
