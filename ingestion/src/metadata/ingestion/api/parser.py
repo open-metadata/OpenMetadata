@@ -277,17 +277,8 @@ def get_connection_class(
     """
     module_path = ".".join(service_type.__module__.split(".")[:-1])
     connection_path = service_type.__name__.lower().replace("connection", "")
-
-    # Handle all-uppercase source types (e.g., SAS, SSAS) by lowercasing entirely
-    # For mixed-case types (e.g., BigQuery, AzureSQL), lowercase only the first character
-    if source_type.isupper():
-        connection_module = source_type.lower() + "Connection"
-    else:
-        connection_module = source_type[0].lower() + source_type[1:] + "Connection"
-
     class_name = source_type + "Connection"
 
-    # Try standard camelCase pattern first (BigQuery -> bigQueryConnection)
     connection_module = source_type[0].lower() + source_type[1:] + "Connection"
     class_path = f"{module_path}.connections.{connection_path}.{connection_module}"
 
@@ -297,8 +288,7 @@ def get_connection_class(
             class_name,
         )
     except (ImportError, ModuleNotFoundError):
-        # Fallback to all-lowercase for services with non-standard naming
-        # (SAS, SQLite, SSAS)
+        # Fallback to all-lowercase for services with non-standard naming (SAS, SQLite, SSAS)
         connection_module = source_type.lower() + "Connection"
         class_path = f"{module_path}.connections.{connection_path}.{connection_module}"
         return getattr(

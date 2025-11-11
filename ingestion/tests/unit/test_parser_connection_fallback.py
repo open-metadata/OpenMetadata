@@ -286,12 +286,7 @@ class TestConnectionFallbackMechanism:
                 f"🔄 Fallback path: {len(fallback_used)} services ({fallback_used})"
             )
 
-        # Success message with statistics
-        print(f"\n✅ All {success_count} database services working!")
-        print(f"📊 Standard camelCase path: {len(standard_path)} services")
-        print(
-            f"🔄 Lowercase fallback path: {len(fallback_used)} services: {fallback_used}"
-        )
+        assert success_count == total_services
 
     def test_sas_connection_original_issue(self):
         """
@@ -353,10 +348,9 @@ class TestConnectionFallbackMechanism:
         assert standard_time < 1.0, "Standard path should be fast"
         assert fallback_time < 1.0, "Fallback path should be fast"
 
-        # Fallback should be at most 2x slower (but still negligible)
-        # In practice, the difference is microseconds
-        print(
-            f"\n⚡ Performance: Standard={standard_time:.4f}s, Fallback={fallback_time:.4f}s"
+        assert fallback_time < standard_time * 3, (
+            f"Fallback path ({fallback_time:.4f}s) should not be significantly slower "
+            f"than standard path ({standard_time:.4f}s)"
         )
 
     def test_edge_case_numeric_service_name(self):
