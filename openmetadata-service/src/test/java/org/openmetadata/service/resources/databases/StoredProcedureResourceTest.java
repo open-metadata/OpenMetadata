@@ -49,6 +49,7 @@ public class StoredProcedureResourceTest
         StoredProcedureResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
+    supportsBulkAPI = true;
   }
 
   @Test

@@ -83,6 +83,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     super(
         Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsBulkAPI = true;
   }
 
   @Test
