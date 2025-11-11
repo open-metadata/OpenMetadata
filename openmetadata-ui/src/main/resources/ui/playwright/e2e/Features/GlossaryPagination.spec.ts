@@ -13,7 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../utils/common';
+import { createNewPage, testPaginationNavigation } from '../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -189,5 +189,44 @@ test.describe('Glossary tests', () => {
     // Clear search
     await searchInput.clear();
     await page.waitForResponse('api/v1/glossaryTerms?*');
+  });
+});
+
+test.describe('Pagination tests for all pages', () => {
+  test('should test pagination on Users page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto('/settings/members/users');
+    await testPaginationNavigation(page, 'table');
+  });
+
+  test('should test pagination on Roles page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto('/settings/access/roles');
+    await testPaginationNavigation(page, 'table');
+  });
+
+  test('should test pagination on Policies page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto('/settings/access/policies');
+    await testPaginationNavigation(page, 'table');
+  });
+
+  test('should test pagination on Database Services page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(
+      '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false'
+    );
+    await testPaginationNavigation(page, 'table');
+  });
+
+  test('should test pagination on Bots page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto('/settings/bots');
+    await testPaginationNavigation(page, 'table');
   });
 });
