@@ -54,6 +54,7 @@ export class StoredProcedureClass extends EntityClass {
   entity: {
     name: string;
     databaseSchema: string;
+    description: string;
     storedProcedureCode: {
       code: string;
     };
@@ -102,6 +103,7 @@ export class StoredProcedureClass extends EntityClass {
 
     this.entity = {
       name: `pw-stored-procedure-${uuid()}`,
+      description: `Description for pw-stored-procedure-${uuid()}`,
       databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
       storedProcedureCode: {
         code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',

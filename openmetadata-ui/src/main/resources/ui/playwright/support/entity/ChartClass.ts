@@ -48,6 +48,7 @@ export class ChartClass extends EntityClass {
     name: string;
     displayName: string;
     service: string;
+    description: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -80,6 +81,7 @@ export class ChartClass extends EntityClass {
       name: this.chartName,
       displayName: this.chartName,
       service: this.service.name,
+      description: `Description for ${this.chartName}`,
     };
 
     this.type = 'Chart';

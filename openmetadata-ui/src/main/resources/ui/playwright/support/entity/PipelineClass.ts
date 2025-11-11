@@ -43,6 +43,7 @@ export class PipelineClass extends EntityClass {
     name: string;
     displayName: string;
     service: string;
+    description: string;
     tasks: Array<{ name: string; displayName: string }>;
   };
 
@@ -85,6 +86,7 @@ export class PipelineClass extends EntityClass {
       displayName: this.pipelineName,
       service: this.service.name,
       tasks: this.children,
+      description: `Description for ${this.pipelineName}`,
     };
 
     this.childrenSelectorId = this.children[0].name;
