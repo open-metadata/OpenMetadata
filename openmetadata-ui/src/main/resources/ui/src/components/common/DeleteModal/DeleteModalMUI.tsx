@@ -114,6 +114,7 @@ export const DeleteModalMUI = ({
             },
           }}>
           <Button
+            data-testid="cancel-button"
             disabled={isDeleting}
             size="large"
             sx={{
@@ -126,6 +127,7 @@ export const DeleteModalMUI = ({
           </Button>
           <Button
             color="error"
+            data-testid="confirm-button"
             disabled={isDeleting}
             size="large"
             sx={{
