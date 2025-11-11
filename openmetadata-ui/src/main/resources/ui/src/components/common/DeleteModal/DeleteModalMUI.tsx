@@ -36,7 +36,7 @@ export const DeleteModalMUI = ({
   isDeleting = false,
   onCancel,
   onDelete,
-  width = 400,
+  additionalStyle,
 }: DeleteModalMUIProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -48,8 +48,9 @@ export const DeleteModalMUI = ({
         paper: {
           sx: {
             borderRadius: 2,
-            width: width,
+            width: 400,
             maxWidth: '100%',
+            ...additionalStyle,
           },
         },
       }}
