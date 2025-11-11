@@ -78,6 +78,7 @@ class DatabaseClassBase {
     return [
       EntityTabs.SCHEMAS,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
