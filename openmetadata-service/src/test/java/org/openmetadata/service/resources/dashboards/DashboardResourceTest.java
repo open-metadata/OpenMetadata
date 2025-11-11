@@ -833,27 +833,40 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     GlossaryTerm glossaryTerm =
         glossaryTermTest.createEntity(glossaryTermTest.createRequest(test), ADMIN_AUTH_HEADERS);
 
-    Entity.getCollectionDAO()
-        .relationshipDAO()
-        .insert(
-            dashboard.getId(),
-            glossaryTerm.getId(),
-            Entity.DASHBOARD,
-            Entity.GLOSSARY_TERM,
-            org.openmetadata.schema.type.Relationship.HAS.ordinal(),
-            null);
+    // Simulate orphaned glossary term tag: Insert into tag_usage table
+    // source=1 means glossary term, source=0 means classification tag
+    String tagFQN = glossaryTerm.getFullyQualifiedName();
+    String tagFQNHash = org.openmetadata.service.util.FullyQualifiedName.buildHash(tagFQN);
+    String targetFQNHash =
+        org.openmetadata.service.util.FullyQualifiedName.buildHash(
+            dashboard.getFullyQualifiedName());
 
+    Entity.getCollectionDAO()
+        .tagUsageDAO()
+        .applyTag(
+            1, // source: 1 for glossary term
+            tagFQN,
+            tagFQNHash,
+            targetFQNHash,
+            0, // labelType: 0 for MANUAL
+            0, // state: 0 for CONFIRMED
+            null); // reason
+
+    // Delete the glossary term directly from the database
+    // but leave the tag_usage entry intact (simulating what happens when deletion cleanup fails)
     Entity.getCollectionDAO().glossaryTermDAO().delete(glossaryTerm.getId());
 
-    Dashboard retrievedDashboard =
-        getEntity(dashboard.getId(), "owners,tags,followers,votes", ADMIN_AUTH_HEADERS);
+    // Now try to get the dashboard with tags field (which triggers tag resolution from tag_usage)
+    // This should NOT fail with 404, but should filter out the orphaned glossary term reference
+    Dashboard retrievedDashboard = getEntity(dashboard.getId(), "tags", ADMIN_AUTH_HEADERS);
 
+    // Verify the dashboard is retrieved successfully
     assertNotNull(retrievedDashboard);
     assertEquals(dashboard.getId(), retrievedDashboard.getId());
     assertEquals(dashboard.getFullyQualifiedName(), retrievedDashboard.getFullyQualifiedName());
 
     LOG.info(
-        "Successfully retrieved dashboard {} even with orphaned glossary term relationship",
+        "Successfully retrieved dashboard {} even with orphaned glossary term in tag_usage",
         dashboard.getFullyQualifiedName());
   }
 }
