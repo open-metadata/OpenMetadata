@@ -38,7 +38,6 @@ import { ReactComponent as MetadataIcon } from '../assets/svg/metadata-colored-n
 import { ReactComponent as MetricIcon } from '../assets/svg/metric-colored-new.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-models-colored-new.svg';
 import { ReactComponent as NotificationAlertIcon } from '../assets/svg/notification-alert-colored-new.svg';
-import { ReactComponent as NotificationTemplateIcon } from '../assets/svg/notification-template-colored-new.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipelines-colored-new.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored-new.svg';
@@ -287,16 +286,6 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.${GlobalSettingOptions.ALERTS}`,
             icon: NotificationAlertIcon,
             description: t('message.notification-description'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.EVENT_SUBSCRIPTION,
-              permissions
-            ),
-          },
-          {
-            category: t('label.template-plural'),
-            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.${GlobalSettingOptions.TEMPLATES}`,
-            icon: NotificationTemplateIcon,
-            description: t('message.notification-template-description'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions

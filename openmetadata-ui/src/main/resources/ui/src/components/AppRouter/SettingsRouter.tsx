@@ -40,7 +40,6 @@ import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSetti
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
-import NotificationTemplatesPage from '../../pages/NotificationTemplatesPage/NotificationTemplatesPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import OnlineUsersPage from '../../pages/OnlineUsersPage/OnlineUsersPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
@@ -203,21 +202,6 @@ const SettingsRouter = () => {
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
-      />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
-              ResourceEntity.NOTIFICATION_TEMPLATE,
-              permissions
-            )}>
-            <NotificationTemplatesPage />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.NOTIFICATION_ALERT_TEMPLATES_LIST.replace(
-          ROUTES.SETTINGS,
-          ''
-        )}
       />
 
       <Route
