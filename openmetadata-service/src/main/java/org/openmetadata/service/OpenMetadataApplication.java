@@ -237,6 +237,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
+    // Instantiate JWT Token Generator
+    JWTTokenGenerator.getInstance()
+        .init(
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            catalogConfig.getJwtTokenConfiguration());
+
     initializeWebsockets(catalogConfig, environment);
 
     // init Secret Manager
@@ -245,12 +251,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker();
-
-    // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance()
-        .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-            catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
@@ -393,7 +393,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
-    cookieConfig.setSecure(isHttps(config));
+    cookieConfig.setSecure(
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds

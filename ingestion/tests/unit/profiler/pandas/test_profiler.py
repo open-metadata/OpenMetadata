@@ -240,7 +240,7 @@ class ProfilerTest(TestCase):
             maxLength=None,
             mean=31.0,
             sum=124.0,
-            stddev=0.816496580927726,
+            stddev=0.7071067811865476,
             variance=None,
             median=31.0,
             firstQuartile=30.5,

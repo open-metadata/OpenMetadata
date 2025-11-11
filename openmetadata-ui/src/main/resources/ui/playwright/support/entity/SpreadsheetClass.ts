@@ -71,6 +71,7 @@ export class SpreadsheetClass extends EntityClass {
     name: this.spreadsheetName,
     displayName: this.spreadsheetName,
     service: this.service.name,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -101,6 +102,7 @@ export class SpreadsheetClass extends EntityClass {
       {
         data: {
           name: this.spreadsheetName,
+          description: this.entity.description,
           service: this.serviceResponseData.fullyQualifiedName,
         },
       }
@@ -137,11 +139,19 @@ export class SpreadsheetClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
+  }
+
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
   }
 
   async visitEntityPage(page: Page) {

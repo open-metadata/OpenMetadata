@@ -56,6 +56,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
+    conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
@@ -150,6 +151,20 @@ public class ListFilter extends Filter<ListFilter> {
         return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
       } else {
         return String.format("json->>'alertType' = '%s'", alertType);
+      }
+    }
+  }
+
+  private String getNotificationTemplateCondition() {
+    String notificationTemplate = queryParams.get("notificationTemplate");
+    if (notificationTemplate == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format(
+            "JSON_EXTRACT(json, '$.notificationTemplate.id') = '%s'", notificationTemplate);
+      } else {
+        return String.format("json->'notificationTemplate'->>'id' = '%s'", notificationTemplate);
       }
     }
   }
