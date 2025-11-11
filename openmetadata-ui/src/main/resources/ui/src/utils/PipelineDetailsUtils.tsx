@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
@@ -22,6 +23,7 @@ import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import ExecutionsTab from '../components/Pipeline/Execution/Execution.component';
 import { PipelineTaskTab } from '../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -70,6 +72,7 @@ export const getPipelineDetailPageTabs = ({
   deleted,
   fetchPipeline,
   tab,
+  labelMap,
 }: PipelineDetailPageTabProps) => {
   return [
     {
@@ -128,6 +131,17 @@ export const getPipelineDetailPageTabs = ({
           />
         </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

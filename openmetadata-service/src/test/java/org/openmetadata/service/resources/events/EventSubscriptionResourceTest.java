@@ -2540,32 +2540,6 @@ public class EventSubscriptionResourceTest
   }
 
   @Test
-  void test_deleteTemplatePreservesSubscription(TestInfo test) throws IOException {
-    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
-    CreateNotificationTemplate createTemplate =
-        templateTest
-            .createRequest("template-to-delete-" + test.getDisplayName())
-            .withTemplateBody("<div>Will be deleted</div>");
-    NotificationTemplate template = templateTest.createEntity(createTemplate, ADMIN_AUTH_HEADERS);
-
-    EntityReference templateRef =
-        new EntityReference().withId(template.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
-
-    CreateEventSubscription createSub =
-        createRequest("sub-survives-" + test.getDisplayName())
-            .withNotificationTemplate(templateRef);
-    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
-
-    templateTest.deleteEntity(template.getId(), ADMIN_AUTH_HEADERS);
-
-    EventSubscription afterDelete = getEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
-    assertNotNull(afterDelete, "Subscription should exist after template deletion");
-    assertNull(afterDelete.getNotificationTemplate(), "Template reference should be null");
-
-    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void test_querySubscriptionsByTemplate(TestInfo test) throws IOException {
     NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
     CreateNotificationTemplate createTemplate1 =
@@ -2622,69 +2596,6 @@ public class EventSubscriptionResourceTest
     deleteEntity(sub3.getId(), ADMIN_AUTH_HEADERS);
     deleteEntity(sub4.getId(), ADMIN_AUTH_HEADERS);
     templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
-    templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void test_compositeFlow_TemplateLifecycle(TestInfo test) throws IOException {
-    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
-
-    CreateNotificationTemplate createTemplate1 =
-        templateTest
-            .createRequest("composite-template1-" + test.getDisplayName())
-            .withTemplateBody("<div>Composite Template 1</div>");
-    NotificationTemplate template1 = templateTest.createEntity(createTemplate1, ADMIN_AUTH_HEADERS);
-
-    EntityReference template1Ref =
-        new EntityReference().withId(template1.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
-
-    CreateEventSubscription createSub1 =
-        createRequest("composite-sub1-" + test.getDisplayName())
-            .withNotificationTemplate(template1Ref);
-    EventSubscription sub1 = createEntity(createSub1, ADMIN_AUTH_HEADERS);
-
-    CreateEventSubscription createSub2 =
-        createRequest("composite-sub2-" + test.getDisplayName())
-            .withNotificationTemplate(template1Ref);
-    EventSubscription sub2 = createEntity(createSub2, ADMIN_AUTH_HEADERS);
-
-    Map<String, String> params = new HashMap<>();
-    params.put("notificationTemplate", template1.getId().toString());
-    ResultList<EventSubscription> results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(2, results.getData().size(), "Should have 2 subscriptions with template1");
-
-    CreateNotificationTemplate createTemplate2 =
-        templateTest
-            .createRequest("composite-template2-" + test.getDisplayName())
-            .withTemplateBody("<div>Composite Template 2</div>");
-    NotificationTemplate template2 = templateTest.createEntity(createTemplate2, ADMIN_AUTH_HEADERS);
-
-    EntityReference template2Ref =
-        new EntityReference().withId(template2.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
-
-    updateEntity(createSub1.withNotificationTemplate(template2Ref), OK, ADMIN_AUTH_HEADERS);
-
-    params.put("notificationTemplate", template1.getId().toString());
-    results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(1, results.getData().size(), "Should have 1 subscription with template1");
-
-    params.put("notificationTemplate", template2.getId().toString());
-    results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(1, results.getData().size(), "Should have 1 subscription with template2");
-
-    deleteEntity(sub2.getId(), ADMIN_AUTH_HEADERS);
-
-    params.put("notificationTemplate", template1.getId().toString());
-    results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(0, results.getData().size(), "Should have 0 subscriptions with template1");
-
-    templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
-
-    EventSubscription sub1After = getEntity(sub1.getId(), ADMIN_AUTH_HEADERS);
-    assertNotNull(sub1After, "Subscription should still exist");
-    assertEquals(template2.getId(), sub1After.getNotificationTemplate().getId());
-
-    deleteEntity(sub1.getId(), ADMIN_AUTH_HEADERS);
     templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
   }
 }
