@@ -51,7 +51,6 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { DataContract } from '../../generated/entity/data/dataContract';
 import { Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
@@ -67,7 +66,6 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
-import { getContractByEntityId } from '../../rest/contractAPI';
 import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
@@ -136,7 +134,6 @@ const TableDetailsPageV1: React.FC = () => {
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [dataContract, setDataContract] = useState<DataContract>();
 
   const tableFqn = useMemo(
     () =>
@@ -273,7 +270,7 @@ const TableDetailsPageV1: React.FC = () => {
         TestCaseStatus.Failed
       );
       const failureCount = data.reduce(
-        (acc, curr) => acc + parseInt(curr.document_count ?? '0'),
+        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
         0
       );
 
@@ -299,15 +296,6 @@ const TableDetailsPageV1: React.FC = () => {
       setQueryCount(response.paging.total);
     } catch {
       setQueryCount(0);
-    }
-  };
-
-  const fetchDataContract = async (tableId: string) => {
-    try {
-      const contract = await getContractByEntityId(tableId, EntityType.TABLE);
-      setDataContract(contract);
-    } catch {
-      // Do nothing
     }
   };
 
@@ -795,12 +783,6 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableDetails?.fullyQualifiedName]);
 
-  useEffect(() => {
-    if (tableDetails) {
-      fetchDataContract(tableDetails.id);
-    }
-  }, [tableDetails?.id]);
-
   useSub(
     'updateDetails',
     (suggestion: Suggestion) => {
@@ -864,7 +846,6 @@ const TableDetailsPageV1: React.FC = () => {
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
               dataAsset={tableDetails}
-              dataContract={dataContract}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}

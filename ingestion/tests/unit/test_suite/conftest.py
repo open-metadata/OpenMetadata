@@ -1171,3 +1171,54 @@ def test_case_column_values_missing_count_to_be_equal_missing_values_dimensional
         dimensionColumns=["name"],
         computePassedFailedRowCount=True,
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_dimensional():
+    """Test case for test column_values_to_be_between with dimensional analysis"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="30"),
+            TestCaseParameterValue(name="maxValue", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_stddev_to_be_between_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForStdDevInCol", value="20"),
+            TestCaseParameterValue(name="maxValueForStdDevInCol", value="40"),
+        ],
+        dimensionColumns=["name"],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_at_expected_location_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_EXPECTED_LOCATION,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="locationReferenceType", value="POSTAL_CODE"),
+            TestCaseParameterValue(name="longitudeColumnName", value="lon"),
+            TestCaseParameterValue(name="latitudeColumnName", value="lat"),
+            TestCaseParameterValue(name="radius", value="1000"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
