@@ -108,7 +108,11 @@ const ExpandHandle = ({
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
+        aria-hidden="false"
+        aria-label="expand"
         className="lineage-expand-icon"
+        role="button"
+        tabIndex={0}
         onClick={handleLineageExpandIconClick}
       />
       {showExpandAll && (
