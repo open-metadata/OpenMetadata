@@ -582,6 +582,39 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     }
   }
 
+  @Test
+  void testCloseLogStream() throws Exception {
+    setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.closestream";
+    UUID runId = UUID.randomUUID();
+
+    // First, write some logs to create an active stream
+    Map<String, Object> logData = Map.of("logs", "Test log content for close stream");
+    WebTarget writeTarget =
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+    Response writeResponse =
+        writeTarget
+            .request(MediaType.APPLICATION_JSON)
+            .headers(ADMIN_AUTH_HEADERS)
+            .post(Entity.json(logData));
+    assertEquals(200, writeResponse.getStatus());
+
+    // Now close the stream
+    WebTarget closeTarget =
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
+    Response closeResponse =
+        closeTarget
+            .request(MediaType.APPLICATION_JSON)
+            .headers(ADMIN_AUTH_HEADERS)
+            .post(Entity.json(""));
+    assertEquals(200, closeResponse.getStatus());
+
+    // Verify the response indicates success
+    Map<?, ?> responseMap = closeResponse.readEntity(Map.class);
+    assertTrue(responseMap.containsKey("message"));
+    assertEquals("Log stream closed successfully", responseMap.get("message"));
+  }
+
   private static IngestionPipeline createTestPipeline() throws IOException {
     try {
       DatabaseServiceMetadataPipeline sourceConfig =

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -1359,7 +1360,7 @@ public class IngestionPipelineResource
       } else if (logData instanceof Map) {
         LogBatch batch = JsonUtils.convertValue(logData, LogBatch.class);
         logContent = batch.getDecompressedLogs();
-        if (batch.getConnectorId() != null) {
+        if (batch.getConnectorId() != null && !nullOrEmpty(logContent)) {
           logContent = String.format("[%s] %s", batch.getConnectorId(), logContent);
         }
       } else {
@@ -1374,12 +1375,62 @@ public class IngestionPipelineResource
               "PIPELINE_SESSION=%s_%s; Path=/; Max-Age=86400",
               fqn.replaceAll("[^a-zA-Z0-9]", "_"), runId);
 
-      // Write logs using the repository's log storage
-      repository.appendLogs(fqn, runId, logContent);
+      // Write logs using the repository's log storage - only if we have content
+      if (!nullOrEmpty(logContent)) {
+        repository.appendLogs(fqn, runId, logContent);
+      }
 
       return Response.ok().header("Set-Cookie", sessionCookie).build();
     } catch (Exception e) {
       LOG.error("Failed to write logs for pipeline: {}, runId: {}", fqn, runId, e);
+      return Response.serverError()
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    }
+  }
+
+  @POST
+  @Path("/logs/{fqn}/{runId}/close")
+  @Operation(
+      operationId = "closePipelineLogStream",
+      summary = "Close log stream for a pipeline run",
+      description =
+          "Close and finalize the log stream for a specific pipeline run identified by FQN and runId. "
+              + "This ensures any buffered data is written and the stream is properly closed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully closed log stream",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response closePipelineLogStream(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
+          UUID runId) {
+    try {
+      // Authorize the request
+      OperationContext operationContext =
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+
+      // Close the log stream
+      repository.closeStream(fqn, runId);
+
+      return Response.ok()
+          .entity(Map.of("message", "Log stream closed successfully"))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    } catch (Exception e) {
+      LOG.error("Failed to close log stream for pipeline: {}, runId: {}", fqn, runId, e);
       return Response.serverError()
           .entity(Map.of("message", e.getMessage()))
           .type(MediaType.APPLICATION_JSON_TYPE)
