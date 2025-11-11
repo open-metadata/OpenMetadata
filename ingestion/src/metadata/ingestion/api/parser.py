@@ -276,7 +276,13 @@ def get_connection_class(
     # From metadata.generated.schema.entity.services.databaseService we get metadata.generated.schema.entity.services
     module_path = ".".join(service_type.__module__.split(".")[:-1])
     connection_path = service_type.__name__.lower().replace("connection", "")
-    connection_module = source_type[0].lower() + source_type[1:] + "Connection"
+
+    # Handle all-uppercase source types (e.g., SAS, SSAS) by lowercasing entirely
+    # For mixed-case types (e.g., BigQuery, AzureSQL), lowercase only the first character
+    if source_type.isupper():
+        connection_module = source_type.lower() + "Connection"
+    else:
+        connection_module = source_type[0].lower() + source_type[1:] + "Connection"
 
     class_name = source_type + "Connection"
     class_path = f"{module_path}.connections.{connection_path}.{connection_module}"
