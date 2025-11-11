@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage, testPaginationNavigation } from '../../utils/common';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import {
+  createNewPage,
+  testPaginationNavigation,
+  uuid,
+} from '../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -227,6 +234,93 @@ test.describe('Pagination tests for all pages', () => {
     test.slow(true);
 
     await page.goto('/settings/bots');
+    await testPaginationNavigation(page, 'table');
+  });
+
+  test('should test pagination on Service version page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/service/dashboardServices/sample_superset/versions/0.1`);
+    await testPaginationNavigation(page, 'table');
+  });
+});
+
+test.describe('Pagination tests for Classification Tags page', () => {
+  const classification = new ClassificationClass();
+  const tags: TagClass[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await classification.create(apiContext);
+
+    for (let i = 1; i <= 20; i++) {
+      const tag = new TagClass({
+        classification: classification.responseData.name,
+        name: `pw-tag-pagination-${uuid()}-${i}`,
+        displayName: `PW Tag Pagination ${i}`,
+        description: `Tag ${i} for pagination testing`,
+      });
+      await tag.create(apiContext);
+      tags.push(tag);
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    test.setTimeout(8 * 60 * 1000);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (const tag of tags.reverse()) {
+      await tag.delete(apiContext);
+    }
+    await classification.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('should test pagination on Classification Tags page', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await page.goto(`/tags/${classification.responseData.name}`);
+    await testPaginationNavigation(page, 'table');
+  });
+});
+
+test.describe('Pagination tests for Metrics page', () => {
+  const metrics: MetricClass[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (let i = 1; i <= 20; i++) {
+      const metric = new MetricClass();
+      await metric.create(apiContext);
+      metrics.push(metric);
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    test.setTimeout(8 * 60 * 1000);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (const metric of metrics.reverse()) {
+      await metric.delete(apiContext);
+    }
+
+    await afterAction();
+  });
+
+  test('should test pagination on Metrics page', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto('/metrics');
     await testPaginationNavigation(page, 'table');
   });
 });
