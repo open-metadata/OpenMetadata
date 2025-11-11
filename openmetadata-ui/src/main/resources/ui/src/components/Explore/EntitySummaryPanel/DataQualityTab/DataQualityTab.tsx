@@ -509,16 +509,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
       ),
       children:
         statusCounts.total === 0 ? (
-          <div className="lineage-items-list empty-state">
-            <ErrorPlaceHolderNew
-              className="text-grey-14"
-              icon={<AddPlaceHolderIcon height={100} width={100} />}
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center p-x-md m-t-sm no-data-placeholder">
-                {t('message.no-data-quality-test-message')}
-              </Typography.Paragraph>
-            </ErrorPlaceHolderNew>
-          </div>
+          <ErrorPlaceHolderNew
+            className="text-grey-14 m-t-lg"
+            icon={<AddPlaceHolderIcon height={100} width={100} />}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
+              {t('message.no-data-quality-test-message')}
+            </Typography.Paragraph>
+          </ErrorPlaceHolderNew>
         ) : (
           <div className="data-quality-tab-content">
             <DataQualitySection
@@ -579,12 +577,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
       ),
       children:
         incidentCounts.total === 0 ? (
-          <div className="lineage-items-list empty-state">
+          <div className="m-t-lg">
             <ErrorPlaceHolderNew
               className="text-grey-14"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center p-x-md m-t-sm no-data-placeholder">
+              <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
                 {t('message.no-data-quality-test-message')}
               </Typography.Paragraph>
             </ErrorPlaceHolderNew>
