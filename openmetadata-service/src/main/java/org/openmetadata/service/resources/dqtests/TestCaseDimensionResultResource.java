@@ -67,7 +67,8 @@ public class TestCaseDimensionResultResource
           "Get a list of dimensional results for a specific test case. "
               + "Results can be filtered by time range and specific dimension values. "
               + "Use `startTs` and `endTs` to filter results within a time range. "
-              + "Use `dimensionalityKey` to filter results for a specific dimension value combination.",
+              + "Use `dimensionalityKey` to filter results for a specific dimension value combination. "
+              + "Use `dimensionName` to filter results for all values of a specific dimension (e.g., 'column' to get all column dimension results).",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -99,7 +100,13 @@ public class TestCaseDimensionResultResource
               description = "Filter by specific dimension key (e.g., 'column=address')",
               schema = @Schema(type = "string"))
           @QueryParam("dimensionalityKey")
-          String dimensionalityKey)
+          String dimensionalityKey,
+      @Parameter(
+              description =
+                  "Filter by dimension name (e.g., 'column' to get all column dimension results)",
+              schema = @Schema(type = "string"))
+          @QueryParam("dimensionName")
+          String dimensionName)
       throws IOException {
     TestCase testCase = getTestCase(testCaseFQN);
     ResourceContextInterface testCaseResourceContext =
@@ -119,7 +126,8 @@ public class TestCaseDimensionResultResource
             new AuthRequest(entityOperationContext, entityResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
-    return repository.listDimensionResults(testCaseFQN, startTs, endTs, dimensionalityKey);
+    return repository.listDimensionResults(
+        testCaseFQN, startTs, endTs, dimensionalityKey, dimensionName);
   }
 
   @GET

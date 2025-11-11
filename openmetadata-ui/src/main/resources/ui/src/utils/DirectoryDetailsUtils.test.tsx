@@ -30,6 +30,10 @@ jest.mock('../components/common/TabsLabel/TabsLabel.component', () => {
   ));
 });
 
+jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {
+  return jest.fn().mockImplementation(() => <p>DataContractComponent</p>);
+});
+
 jest.mock('../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest
     .fn()
@@ -88,6 +92,7 @@ const mockProps: DirectoryDetailPageTabProps = {
     [EntityTabs.CHILDREN]: 'Children',
     [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
     [EntityTabs.LINEAGE]: 'Lineage',
+    [EntityTabs.CONTRACT]: 'Contract',
     [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
   } as Record<EntityTabs, string>,
 };
@@ -97,7 +102,7 @@ describe('DirectoryDetailsUtils', () => {
     it('should return correct number of tabs', () => {
       const tabs = getDirectoryDetailsPageTabs(mockProps);
 
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
     });
 
     it('should return tabs with correct keys', () => {
@@ -108,6 +113,7 @@ describe('DirectoryDetailsUtils', () => {
         EntityTabs.CHILDREN,
         EntityTabs.ACTIVITY_FEED,
         EntityTabs.LINEAGE,
+        EntityTabs.CONTRACT,
         EntityTabs.CUSTOM_PROPERTIES,
       ]);
     });
@@ -150,9 +156,21 @@ describe('DirectoryDetailsUtils', () => {
       expect(screen.getByText('label.lineage')).toBeInTheDocument();
     });
 
+    it('should render contract tab without count', () => {
+      const tabs = getDirectoryDetailsPageTabs(mockProps);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByTestId('tab-label-label.contract')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.contract')).toBeInTheDocument();
+    });
+
     it('should render custom properties tab without count', () => {
       const tabs = getDirectoryDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.label}</MemoryRouter>);
 
@@ -194,7 +212,7 @@ describe('DirectoryDetailsUtils', () => {
 
     it('should render custom properties tab content correctly', () => {
       const tabs = getDirectoryDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.children}</MemoryRouter>);
 
