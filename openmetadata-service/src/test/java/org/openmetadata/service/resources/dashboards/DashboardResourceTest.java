@@ -51,6 +51,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -61,6 +62,7 @@ import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
+import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RdfTestUtils;
@@ -593,5 +595,41 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
     // Verify dashboard no longer exists in RDF after hard delete
     RdfTestUtils.verifyEntityNotInRdf(dashboard.getFullyQualifiedName());
+  }
+
+  @Test
+  void testDashboardWithOrphanedGlossaryTermReference_shouldNotFail(TestInfo test)
+      throws IOException {
+
+    CreateDashboard createDashboard = createRequest(test).withService(getContainer().getName());
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    GlossaryTermResourceTest glossaryTermTest =
+        new org.openmetadata.service.resources.glossary.GlossaryTermResourceTest();
+    GlossaryTerm glossaryTerm =
+        glossaryTermTest.createEntity(glossaryTermTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .insert(
+            dashboard.getId(),
+            glossaryTerm.getId(),
+            Entity.DASHBOARD,
+            Entity.GLOSSARY_TERM,
+            org.openmetadata.schema.type.Relationship.HAS.ordinal(),
+            null);
+
+    Entity.getCollectionDAO().glossaryTermDAO().delete(glossaryTerm.getId());
+
+    Dashboard retrievedDashboard =
+        getEntity(dashboard.getId(), "owners,tags,followers,votes", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(retrievedDashboard);
+    assertEquals(dashboard.getId(), retrievedDashboard.getId());
+    assertEquals(dashboard.getFullyQualifiedName(), retrievedDashboard.getFullyQualifiedName());
+
+    LOG.info(
+        "Successfully retrieved dashboard {} even with orphaned glossary term relationship",
+        dashboard.getFullyQualifiedName());
   }
 }

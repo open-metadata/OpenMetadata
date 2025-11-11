@@ -200,10 +200,21 @@ public final class EntityUtil {
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
-      for (EntityReference ref : list) {
-        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
-        EntityUtil.copy(ref2, ref);
-      }
+      list.removeIf(
+          ref -> {
+            try {
+              EntityReference ref2 = Entity.getEntityReference(ref, ALL);
+              EntityUtil.copy(ref2, ref);
+              return false;
+            } catch (EntityNotFoundException e) {
+              LOG.info(
+                  "Skipping deleted entity reference in populateEntityReferences: {} {} - {}",
+                  ref.getType(),
+                  ref.getId() != null ? ref.getId() : ref.getFullyQualifiedName(),
+                  e.getMessage());
+              return true;
+            }
+          });
       list.sort(compareEntityReference);
     }
     return list;
