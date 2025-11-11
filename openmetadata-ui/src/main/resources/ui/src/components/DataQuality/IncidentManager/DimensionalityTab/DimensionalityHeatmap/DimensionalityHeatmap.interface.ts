@@ -26,9 +26,11 @@ export interface DimensionalityHeatmapProps {
   isLoading?: boolean;
 }
 
+export type HeatmapStatus = 'success' | 'failed' | 'aborted' | 'no-data';
+
 export interface HeatmapCellData {
   date: string;
-  status: 'success' | 'failed' | 'no-data';
+  status: HeatmapStatus;
   dimensionValue: string;
   result?: DimensionResultWithTimestamp;
 }

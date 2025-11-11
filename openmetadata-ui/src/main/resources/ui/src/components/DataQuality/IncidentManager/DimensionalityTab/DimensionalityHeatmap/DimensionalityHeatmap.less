@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../../../../../styles/variables.less');
+
 .dimensionality-heatmap {
   width: 100%;
   overflow-x: auto;
@@ -24,9 +26,8 @@
 
   &__grid {
     display: grid;
-    column-gap: 2px;
-    row-gap: 2px;
-    margin-top: 12px;
+    column-gap: 4px;
+    row-gap: 4px;
     min-width: min-content;
   }
 
@@ -34,28 +35,22 @@
     display: flex;
     align-items: flex-end;
     justify-content: flex-start;
-    height: 24px;
+    height: 20px;
     padding-bottom: 2px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #374151;
     white-space: nowrap;
     position: sticky;
     left: 0;
-    background-color: #ffffff;
-    z-index: 20;
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+    background-color: @white;
   }
 
   &__header-cell {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
-    height: 24px;
+    height: 30px;
     padding-bottom: 2px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
-    color: #6b7280;
     white-space: nowrap;
   }
 
@@ -65,9 +60,9 @@
     justify-content: flex-start;
     padding: 0;
     padding-right: 8px;
-    height: 32px;
-    font-size: 13px;
-    font-weight: 400;
+    height: 20px;
+    font-size: 10px;
+    font-weight: 500;
     color: #111827;
     background-color: #ffffff;
     border-radius: 0;
@@ -77,12 +72,11 @@
     position: sticky;
     left: 0;
     z-index: 10;
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
   }
 
   &__cell {
-    height: 32px;
-    border-radius: 6px;
+    height: 20px;
+    border-radius: 3px;
     cursor: pointer;
     transition: all 0.15s ease;
     position: relative;
@@ -92,18 +86,6 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
       z-index: 10;
     }
-
-    &--success {
-      background-color: #10b981;
-    }
-
-    &--failed {
-      background-color: #ef4444;
-    }
-
-    &--no-data {
-      background-color: #e5e7eb;
-    }
   }
 
   &__legend {
@@ -111,6 +93,7 @@
     align-items: center;
     gap: 24px;
     margin-top: 16px;
+    margin-left: 154px;
     padding: 0;
     background-color: transparent;
     border-radius: 0;
@@ -120,27 +103,35 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
-    color: #6b7280;
-    font-weight: 400;
+    font-size: 10px;
+    color: @grey-700;
+    font-weight: 500;
   }
 
   &__legend-box {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
+    width: 11px;
+    height: 9px;
+    border-radius: 2px;
+  }
 
-    &--success {
-      background-color: #10b981;
-    }
+  &__cell--success,
+  &__legend-box--success {
+    background-color: @green-500;
+  }
 
-    &--failed {
-      background-color: #ef4444;
-    }
+  &__cell--failed,
+  &__legend-box--failed {
+    background-color: @red-22;
+  }
 
-    &--no-data {
-      background-color: #e5e7eb;
-    }
+  &__cell--aborted,
+  &__legend-box--aborted {
+    background-color: @orange-8;
+  }
+
+  &__cell--no-data,
+  &__legend-box--no-data {
+    background-color: @grey-300;
   }
 
   &__empty {

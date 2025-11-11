@@ -17,6 +17,7 @@ import {
   DimensionResultWithTimestamp,
   HeatmapCellData,
   HeatmapRowData,
+  HeatmapStatus,
 } from './DimensionalityHeatmap.interface';
 
 export const generateDateRange = (startTs: number, endTs: number): string[] => {
@@ -36,13 +37,14 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
 
 export const mapStatusToHeatmapStatus = (
   status: TestCaseStatus
-): 'success' | 'failed' | 'no-data' => {
+): HeatmapStatus => {
   switch (status) {
     case TestCaseStatus.Success:
       return 'success';
     case TestCaseStatus.Failed:
       return 'failed';
     case TestCaseStatus.Aborted:
+      return 'aborted';
     case TestCaseStatus.Queued:
     default:
       return 'no-data';

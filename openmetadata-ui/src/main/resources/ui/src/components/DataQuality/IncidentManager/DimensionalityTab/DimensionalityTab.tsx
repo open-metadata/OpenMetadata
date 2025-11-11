@@ -13,6 +13,7 @@
 import { KeyboardArrowDown } from '@mui/icons-material';
 import {
   Box,
+  Card,
   MenuItem,
   Select,
   SelectChangeEvent,
@@ -30,6 +31,10 @@ import { Link } from 'react-router-dom';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
+import {
+  getEndOfDayInMillis,
+  getStartOfDayInMillis,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getTestCaseDimensionsDetailPagePath } from '../../../../utils/RouterUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import MuiDatePickerMenu from '../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
@@ -38,9 +43,6 @@ import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
-import { getMockDimensionResults } from './DimensionalityHeatmap/DimensionalityHeatmap.mock';
-
-const USE_MOCK_DATA = false;
 
 const DimensionalityTab = () => {
   const theme = useTheme();
@@ -63,8 +65,8 @@ const DimensionalityTab = () => {
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     setDateRange({
-      startTs: value.startTs,
-      endTs: value.endTs,
+      startTs: getStartOfDayInMillis(value.startTs),
+      endTs: getEndOfDayInMillis(value.endTs),
     });
   };
 
@@ -75,27 +77,18 @@ const DimensionalityTab = () => {
   const fetchDimensionColumnData = async () => {
     setIsLoading(true);
     try {
-      if (USE_MOCK_DATA) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const mockData = getMockDimensionResults(
-          dateRange.startTs,
-          dateRange.endTs
-        );
-        setDimensionData(mockData);
-      } else {
-        if (!testCase?.fullyQualifiedName || !selectedDimension) {
-          return;
-        }
-        const response = await getTestCaseDimensionResultsByFqn(
-          testCase.fullyQualifiedName,
-          {
-            // dimensionalityKey: selectedDimension,
-            // startTs: dateRange.startTs,
-            // endTs: dateRange.endTs,
-          }
-        );
-        setDimensionData(response.data);
+      if (!testCase?.fullyQualifiedName || !selectedDimension) {
+        return;
       }
+      const response = await getTestCaseDimensionResultsByFqn(
+        testCase.fullyQualifiedName,
+        {
+          dimensionName: selectedDimension,
+          startTs: dateRange.startTs,
+          endTs: dateRange.endTs,
+        }
+      );
+      setDimensionData(response.data);
     } catch (error) {
       setDimensionData([]);
     } finally {
@@ -104,7 +97,7 @@ const DimensionalityTab = () => {
   };
 
   useEffect(() => {
-    if (USE_MOCK_DATA || selectedDimension) {
+    if (selectedDimension) {
       fetchDimensionColumnData();
     }
   }, [selectedDimension, dateRange]);
@@ -215,7 +208,7 @@ const DimensionalityTab = () => {
   ];
 
   return (
-    <Stack p={5} spacing={4}>
+    <Stack p={5} spacing={7}>
       <Box alignItems="center" display="flex" flexWrap="nowrap" gap={7.5}>
         <Box alignItems="center" display="flex" flexWrap="nowrap" gap={2.5}>
           <Typography
@@ -274,19 +267,40 @@ const DimensionalityTab = () => {
         </Box>
       </Box>
 
-      <DimensionalityHeatmap
-        data={dimensionData}
-        endDate={dateRange.endTs}
-        isLoading={isLoading}
-        startDate={dateRange.startTs}
-      />
-      <Table
-        bordered
-        columns={tableColumns}
-        dataSource={getLatestResultPerDimension}
-        loading={isLoading}
-        pagination={false}
-      />
+      <Card
+        sx={{
+          p: 4,
+          boxShadow: 'none',
+          border: `1px solid ${theme.palette.grey[200]}`,
+          borderRadius: '10px',
+        }}>
+        <DimensionalityHeatmap
+          data={dimensionData}
+          endDate={dateRange.endTs}
+          isLoading={isLoading}
+          startDate={dateRange.startTs}
+        />
+      </Card>
+      <Box>
+        <Typography
+          sx={{
+            mb: 2.5,
+            color: theme.palette.grey[900],
+            fontSize: theme.typography.pxToRem(14),
+            fontWeight: 500,
+          }}>
+          {t('label.entity-text-table', {
+            entityText: selectedDimension || '',
+          })}
+        </Typography>
+        <Table
+          bordered
+          columns={tableColumns}
+          dataSource={getLatestResultPerDimension}
+          loading={isLoading}
+          pagination={false}
+        />
+      </Box>
     </Stack>
   );
 };

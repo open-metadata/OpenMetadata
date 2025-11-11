@@ -62,11 +62,9 @@ const DimensionalityHeatmap = ({
         <Box
           className="dimensionality-heatmap__grid"
           sx={{
-            gridTemplateColumns: `200px repeat(${dateRange.length}, 60px)`,
+            gridTemplateColumns: `150px repeat(${dateRange.length}, 44px)`,
           }}>
-          <Box className="dimensionality-heatmap__header-corner">
-            {t('label.dimension-value')}
-          </Box>
+          <Box className="dimensionality-heatmap__header-corner" />
           {dateRange.map((date) => (
             <Box className="dimensionality-heatmap__header-cell" key={date}>
               {getDateLabel(date)}
@@ -86,6 +84,7 @@ const DimensionalityHeatmap = ({
               {row.cells.map((cell) => (
                 <Tooltip
                   key={`${cell.dimensionValue}-${cell.date}`}
+                  placement="right"
                   title={
                     <Box>
                       <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
@@ -99,9 +98,11 @@ const DimensionalityHeatmap = ({
                       <Typography sx={{ fontSize: 11 }}>
                         {t('label.status')}:{' '}
                         {cell.status === 'success'
-                          ? t('label.passed')
+                          ? t('label.success')
                           : cell.status === 'failed'
                           ? t('label.failed')
+                          : cell.status === 'aborted'
+                          ? t('label.aborted')
                           : t('label.no-data')}
                       </Typography>
                       {cell.result && (
@@ -136,22 +137,20 @@ const DimensionalityHeatmap = ({
 
       <Box className="dimensionality-heatmap__legend">
         <Box className="dimensionality-heatmap__legend-item">
-          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--failed" />
-          <Typography sx={{ fontSize: 12, color: '#6B7280' }}>
-            {t('label.failed')}
-          </Typography>
+          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--success" />
+          {t('label.success')}
         </Box>
         <Box className="dimensionality-heatmap__legend-item">
-          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--success" />
-          <Typography sx={{ fontSize: 12, color: '#6B7280' }}>
-            {t('label.passed')}
-          </Typography>
+          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--failed" />
+          {t('label.failed')}
+        </Box>
+        <Box className="dimensionality-heatmap__legend-item">
+          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--aborted" />
+          {t('label.aborted')}
         </Box>
         <Box className="dimensionality-heatmap__legend-item">
           <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--no-data" />
-          <Typography sx={{ fontSize: 12, color: '#6B7280' }}>
-            {t('label.no-data')}
-          </Typography>
+          {t('label.no-data')}
         </Box>
       </Box>
     </Box>

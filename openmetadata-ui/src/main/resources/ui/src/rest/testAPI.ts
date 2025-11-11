@@ -116,6 +116,13 @@ export type DataQualityReportParamsType = {
   index: string;
 };
 
+export type TestCaseDimensionResultParams = {
+  dimensionalityKey?: string;
+  startTs?: number;
+  endTs?: number;
+  dimensionName?: string;
+};
+
 const testCaseUrl = '/dataQuality/testCases';
 const testSuiteUrl = '/dataQuality/testSuites';
 const testDefinitionUrl = '/dataQuality/testDefinitions';
@@ -231,11 +238,10 @@ export const getTestCaseVersionDetails = async (
   return response.data;
 };
 
-// Test case dimensionality
-
+// Test case dimensionality results
 export const getTestCaseDimensionResultsByFqn = async (
   fqn: string,
-  params?: Record<string, string | number | undefined>
+  params?: TestCaseDimensionResultParams
 ) => {
   const response = await APIClient.get<
     PagingResponse<TestCaseDimensionResult[]>
