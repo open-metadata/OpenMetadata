@@ -233,7 +233,9 @@ describe('CustomPropertiesSection', () => {
         container.querySelector('.entity-summary-panel-tab-content')
       ).toBeInTheDocument();
       expect(container.querySelector('.text-justify')).toBeInTheDocument();
-      expect(container.querySelector('.text-grey-muted')).toBeInTheDocument();
+      expect(
+        container.querySelector('.no-data-placeholder')
+      ).toBeInTheDocument();
     });
   });
 
@@ -241,11 +243,11 @@ describe('CustomPropertiesSection', () => {
     it('should render custom properties when available', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-      expect(screen.getByText('Property 2')).toBeInTheDocument();
-      expect(screen.getByText('Property 3')).toBeInTheDocument();
-      expect(screen.getByText('Property 4')).toBeInTheDocument();
-      expect(screen.getByText('Property 5')).toBeInTheDocument();
+      expect(screen.getAllByText('Property 1')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 2')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 3')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 4')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 5')[0]).toBeInTheDocument();
     });
 
     it('should render with correct CSS classes', () => {
@@ -280,7 +282,7 @@ describe('CustomPropertiesSection', () => {
     it('should show view all button when more than 5 properties', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('label.view-all')).toBeInTheDocument();
+      expect(screen.getAllByText('label.view-all').length).toBeGreaterThan(0);
     });
 
     it('should not show view all button when 5 or fewer properties', () => {
@@ -294,7 +296,6 @@ describe('CustomPropertiesSection', () => {
       render(<CustomPropertiesSection {...limitedProps} />);
 
       expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
   });
 

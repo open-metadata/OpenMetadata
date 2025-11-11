@@ -139,7 +139,7 @@ const CustomPropertiesSection = ({
       )}
       <div className="p-x-md">
         <div className="custom-properties-list">
-          {customProperties.length < 0 ? (
+          {customProperties.length > 0 ? (
             customProperties.slice(0, 5).map((property: CustomProperty) => {
               const value = extensionData[property.name];
 
