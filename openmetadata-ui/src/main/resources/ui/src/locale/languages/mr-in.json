@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} {{value}} या वेळी चालविण्यासाठी नियोजित",
     "entity-service": "{{entity}} सेवा",
     "entity-status": "{{entity}} स्थिती",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "एन्टिटी टाइप",
     "entity-type-plural": "{{entity}} प्रकार",
     "entity-version": "{{entity}} version",

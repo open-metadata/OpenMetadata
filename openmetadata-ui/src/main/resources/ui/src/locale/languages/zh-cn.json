@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}}计划在{{value}}运行",
     "entity-service": "{{entity}} 服务",
     "entity-status": "{{entity}} 状态",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "实体类型",
     "entity-type-plural": "{{entity}}类型",
     "entity-version": "{{entity}}版本",

@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} programado para executar {{value}}",
     "entity-service": "Servizo de {{entity}}",
     "entity-status": "Estado {{entity}}",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "Tipo de entidade",
     "entity-type-plural": "Tipos de {{entity}}",
     "entity-version": "{{entity}} version",

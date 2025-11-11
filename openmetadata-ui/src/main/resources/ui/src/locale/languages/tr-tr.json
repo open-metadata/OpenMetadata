@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} {{value}} için çalıştırılacak şekilde planlandı",
     "entity-service": "{{entity}} Servisi",
     "entity-status": "{{entity}} Durumu",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "Varlık Türü",
     "entity-type-plural": "{{entity}} Türü",
     "entity-version": "{{entity}} sürümü",

@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} 가 {{value}} 에 실행되도록 예약됨",
     "entity-service": "{{entity}} 서비스",
     "entity-status": "{{entity}} 상태",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "엔티티 유형",
     "entity-type-plural": "{{entity}} 유형",
     "entity-version": "{{entity}} 버전",

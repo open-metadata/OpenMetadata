@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} מתוכנן לרוץ {{value}}",
     "entity-service": "שירות {{entity}}",
     "entity-status": "סטטוס {{entity}}",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "סוג האובייקט",
     "entity-type-plural": "סוגי {{entity}}",
     "entity-version": "{{entity}} version",

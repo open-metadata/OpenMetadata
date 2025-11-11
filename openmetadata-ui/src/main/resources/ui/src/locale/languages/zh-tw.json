@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} 排程於 {{value}} 執行",
     "entity-service": "{{entity}} 服務",
     "entity-status": "{{entity}} 狀態",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "實體類型",
     "entity-type-plural": "{{entity}} 類型",
     "entity-version": "{{entity}} 版本",

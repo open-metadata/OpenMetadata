@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} برای اجرا در {{value}} زمان‌بندی شده",
     "entity-service": "سرویس {{entity}}",
     "entity-status": "وضعیت {{entity}}",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "نوع جسم",
     "entity-type-plural": "انواع {{entity}}",
     "entity-version": "{{entity}} version",

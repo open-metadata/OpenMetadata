@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} запланировано к выполнению {{value}}",
     "entity-service": "Сервис «{{entity}}»",
     "entity-status": "Статус {{entity}}",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "Тип объекта",
     "entity-type-plural": "Типы объектов «{{entity}}»",
     "entity-version": "Версия объекта «{{entity}}»",

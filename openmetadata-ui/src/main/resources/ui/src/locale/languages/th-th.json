@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}} ถูกกำหนดให้ทำงาน {{value}}",
     "entity-service": "บริการ {{entity}}",
     "entity-status": "สถานะ {{entity}}",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "ประเภทเอนทิตี",
     "entity-type-plural": "ประเภทของ {{entity}}",
     "entity-version": "{{entity}} version",

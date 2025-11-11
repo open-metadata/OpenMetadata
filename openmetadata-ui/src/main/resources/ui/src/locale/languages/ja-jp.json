@@ -641,6 +641,7 @@
     "entity-scheduled-to-run-value": "{{entity}}が{{value}}に実行予定",
     "entity-service": "{{entity}}サービス",
     "entity-status": "{{entity}}ステータス",
+    "entity-text-table": "{{entityText}} Table",
     "entity-type": "エンティティタイプ",
     "entity-type-plural": "{{entity}}タイプ",
     "entity-version": "{{entity}} バージョン",
