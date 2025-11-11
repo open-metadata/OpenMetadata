@@ -284,7 +284,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   protected void addEntityToVectorIndex(
       CustomBulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
 
-  static class CustomBulkProcessor {
+  public static class CustomBulkProcessor {
     private final ElasticsearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
     private long currentBufferSize = 0;

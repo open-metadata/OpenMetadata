@@ -282,7 +282,7 @@ public class OpenSearchBulkSink implements BulkSink {
       boolean recreateIndex,
       ReindexContext reindexContext) {}
 
-  static class CustomBulkProcessor {
+  public static class CustomBulkProcessor {
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
     private long currentBufferSize = 0;
