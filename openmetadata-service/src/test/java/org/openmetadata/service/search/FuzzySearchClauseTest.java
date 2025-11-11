@@ -30,8 +30,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
-import os.org.opensearch.index.query.MultiMatchQueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 
 class FuzzySearchClauseTest {
 
@@ -101,10 +100,11 @@ class FuzzySearchClauseTest {
     };
 
     String flatColumnNames = String.join(" ", columnNames);
-    MultiMatchQueryBuilder flatQuery =
-        QueryBuilders.multiMatchQuery("test_query")
-            .field("columnNamesFuzzy", 1.5f)
-            .fuzziness("AUTO");
+    Query flatQuery =
+        Query.of(
+            q ->
+                q.multiMatch(
+                    m -> m.query("test_query").fields("columnNamesFuzzy^1.5").fuzziness("AUTO")));
 
     assertNotNull(flatQuery, "Flat query should be created successfully");
     assertTrue(

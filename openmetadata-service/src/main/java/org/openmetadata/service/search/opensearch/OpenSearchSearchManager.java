@@ -911,10 +911,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     // Check if semantic search is enabled and override the query
     if (Boolean.TRUE.equals(request.getSemanticSearch())) {
       SemanticSearchQueryBuilder semanticBuilder = new SemanticSearchQueryBuilder();
-      os.org.opensearch.index.query.QueryBuilder semanticQuery =
-          semanticBuilder.buildSemanticQuery(request);
+      Query semanticQuery = semanticBuilder.buildSemanticQuery(request);
       if (semanticQuery != null) {
-        // Convert semantic query if needed
+        requestBuilder.query(semanticQuery);
         LOG.debug("Semantic search is enabled for this query");
       }
     }
