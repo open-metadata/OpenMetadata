@@ -35,7 +35,9 @@ from metadata.ingestion.source.pipeline.airbyte.client import (
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: AirbyteConnection):
+def get_connection(
+    connection: AirbyteConnection,
+) -> Union[AirbyteClient, AirbyteCloudClient]:
     """
     Create connection - returns appropriate client based on auth type.
     OAuth authentication indicates Airbyte Cloud, otherwise self-hosted instance.

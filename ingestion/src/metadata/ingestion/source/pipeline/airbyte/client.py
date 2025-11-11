@@ -13,7 +13,7 @@ Client to interact with airbyte apis
 """
 import json
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import requests
 
@@ -141,10 +141,9 @@ class AirbyteCloudClient(AirbyteClient):
 
         self.client = REST(client_config)
 
-    def _fetch_oauth_token(self) -> str:
+    def _fetch_oauth_token(self) -> Tuple[str, int]:
         """
-        Fetch OAuth 2.0 access token using client credentials.
-        Token is valid for 3 minutes as per Airbyte documentation.
+        Fetch OAuth 2.0 access token using client credentials
         """
         token_url = f"{clean_uri(self.config.hostPort)}/v1/applications/token"
         payload = {
@@ -167,7 +166,7 @@ class AirbyteCloudClient(AirbyteClient):
                 raise APIError("No access_token in OAuth response")
 
             logger.info("Successfully obtained OAuth access token for Airbyte Cloud")
-            return access_token
+            return access_token, token_data.get("expires_in", 180)
 
         except requests.exceptions.RequestException as exc:
             logger.error(f"Failed to fetch OAuth token: {exc}")
@@ -176,14 +175,13 @@ class AirbyteCloudClient(AirbyteClient):
     def _get_oauth_token(self):
         """
         Get OAuth token with automatic refresh.
-        Tokens are valid for 3 minutes, we refresh if less than 30 seconds remaining.
         Returns tuple of (token, expiry_timestamp)
         """
         current_time = time.time()
 
         if not self._oauth_token or current_time >= (self._oauth_token_expiry - 30):
-            self._oauth_token = self._fetch_oauth_token()
-            self._oauth_token_expiry = current_time + 180
+            self._oauth_token, expires_in = self._fetch_oauth_token()
+            self._oauth_token_expiry = current_time + expires_in
 
         return (self._oauth_token, 0)
 
