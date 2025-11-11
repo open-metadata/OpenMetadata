@@ -35,8 +35,13 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 
+import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
-import { createMuiTheme } from '@openmetadata/ui-core-components';
+import {
+  createMuiTheme,
+  SnackbarContent,
+} from '@openmetadata/ui-core-components';
+import { SnackbarProvider } from 'notistack';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DEFAULT_THEME } from './constants/Appearance.constants';
@@ -102,27 +107,43 @@ const App: FC = () => {
               <ErrorBoundary>
                 <AntDConfigProvider>
                   <ThemeProvider theme={muiTheme}>
-                    <AuthProvider childComponentType={AppRouter}>
-                      <TourProvider>
-                        <WebAnalyticsProvider>
-                          <PermissionProvider>
-                            <WebSocketProvider>
-                              <ApplicationsProvider>
-                                <AsyncDeleteProvider>
-                                  <EntityExportModalProvider>
-                                    <AirflowStatusProvider>
-                                      <DndProvider backend={HTML5Backend}>
-                                        <AppRouter />
-                                      </DndProvider>
-                                    </AirflowStatusProvider>
-                                  </EntityExportModalProvider>
-                                </AsyncDeleteProvider>
-                              </ApplicationsProvider>
-                            </WebSocketProvider>
-                          </PermissionProvider>
-                        </WebAnalyticsProvider>
-                      </TourProvider>
-                    </AuthProvider>
+                    <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
+                    <SnackbarProvider
+                      Components={{
+                        default: SnackbarContent,
+                        error: SnackbarContent,
+                        success: SnackbarContent,
+                        warning: SnackbarContent,
+                        info: SnackbarContent,
+                      }}
+                      anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                      autoHideDuration={6000}
+                      maxSnack={3}>
+                      <AuthProvider childComponentType={AppRouter}>
+                        <TourProvider>
+                          <WebAnalyticsProvider>
+                            <PermissionProvider>
+                              <WebSocketProvider>
+                                <ApplicationsProvider>
+                                  <AsyncDeleteProvider>
+                                    <EntityExportModalProvider>
+                                      <AirflowStatusProvider>
+                                        <DndProvider backend={HTML5Backend}>
+                                          <AppRouter />
+                                        </DndProvider>
+                                      </AirflowStatusProvider>
+                                    </EntityExportModalProvider>
+                                  </AsyncDeleteProvider>
+                                </ApplicationsProvider>
+                              </WebSocketProvider>
+                            </PermissionProvider>
+                          </WebAnalyticsProvider>
+                        </TourProvider>
+                      </AuthProvider>
+                    </SnackbarProvider>
                   </ThemeProvider>
                 </AntDConfigProvider>
               </ErrorBoundary>

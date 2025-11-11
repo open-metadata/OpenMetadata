@@ -157,6 +157,7 @@ const ConnectionConfigForm = ({
     <Fragment>
       <AirflowMessageBanner />
       <FormBuilder
+        useSelectWidget
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={validConfig}

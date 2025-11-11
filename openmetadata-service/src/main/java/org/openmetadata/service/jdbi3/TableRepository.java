@@ -198,15 +198,6 @@ public class TableRepository extends EntityRepository<Table> {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
-    if (fields.contains("queries")) {
-      List<Query> queriesEntity =
-          getEntities(
-              listOrEmpty(findTo(table.getId(), TABLE, Relationship.MENTIONED_IN, QUERY)),
-              "id",
-              ALL);
-      List<String> queries = listOrEmpty(queriesEntity).stream().map(Query::getQuery).toList();
-      table.setQueries(queries);
-    }
   }
 
   @Override
@@ -1541,6 +1532,14 @@ public class TableRepository extends EntityRepository<Table> {
           COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange(
+          "compressionEnabled", original.getCompressionEnabled(), updated.getCompressionEnabled());
+      recordChange(
+          "compressionCodec", original.getCompressionCodec(), updated.getCompressionCodec());
+      recordChange(
+          "compressionStrategy",
+          original.getCompressionStrategy(),
+          updated.getCompressionStrategy());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
       recordChange(

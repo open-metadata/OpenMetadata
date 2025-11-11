@@ -25,8 +25,16 @@ export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
   onNext: () => void;
   onChange: (formData: Partial<DataContract>) => void;
-  nextLabel?: string;
-}> = ({ initialValues, onNext, nextLabel, onChange }) => {
+  buttonProps: {
+    nextLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({
+  initialValues,
+  onNext,
+  onChange,
+  buttonProps: { nextLabel, isNextVisible = true },
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -37,6 +45,9 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      placeholder: t('label.please-enter-entity-name', {
+        entity: t('label.contract'),
+      }),
       props: {
         'data-testid': 'contract-name',
       },
@@ -51,6 +62,9 @@ export const ContractDetailFormTab: React.FC<{
         owner: initialValues?.owners,
         hasPermission: true,
         multiple: { user: true, team: false },
+        placeholder: t('label.please-select-entity', {
+          entity: t('label.owner-plural'),
+        }),
       },
       formItemProps: {
         valuePropName: 'owners',
@@ -102,16 +116,18 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-end  m-t-md">
-        <Button
-          className="contract-next-button"
-          htmlType="submit"
-          type="primary"
-          onClick={onNext}>
-          {nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
-      </div>
+      {isNextVisible && (
+        <div className="d-flex justify-end m-t-md">
+          <Button
+            className="contract-next-button"
+            htmlType="submit"
+            type="primary"
+            onClick={onNext}>
+            {nextLabel ?? t('label.next')}
+            <Icon component={RightIcon} />
+          </Button>
+        </div>
+      )}
     </>
   );
 };

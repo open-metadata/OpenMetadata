@@ -1,7 +1,7 @@
 {
     "name": "Postgres",
     "displayName": "Postgres Test Connection",
-    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables, including autoclassification support.",
     "steps": [
       {
         "name": "CheckAccess",
@@ -43,6 +43,24 @@
         "name": "GetQueries",
         "description":"Check if we can access the pg_stat_statements table to get query logs, These queries are analyzed in the usage & lineage workflow.",
         "errorMessage": "Failed to fetch queries, please validate if postgres instance has pg_stat_statements extension installed and the user has at least select privileges for pg_stat_statements table.",
+        "mandatory": false
+      },
+      {
+        "name": "GetColumnMetadata",
+        "description": "Validate access to column metadata from pg_catalog.pg_attribute for PII pattern detection in column names and types.",
+        "errorMessage": "Failed to access column metadata. Please ensure the user has SELECT privileges on pg_catalog.pg_attribute and pg_catalog.pg_description. This is required for autoclassification to analyze column names and types for PII detection.",
+        "mandatory": false
+      },
+      {
+        "name": "GetTableComments",
+        "description": "Validate access to table and column comments that may contain data classification hints.",
+        "errorMessage": "Failed to access table comments. Please ensure the user has SELECT privileges on pg_catalog.pg_class, pg_catalog.pg_namespace, and pg_catalog.pg_description. Comments often contain classification hints like 'PII' or 'sensitive'.",
+        "mandatory": false
+      },
+      {
+        "name": "GetInformationSchemaColumns",
+        "description": "Validate access to information_schema.columns for standardized column information used in data type pattern matching.",
+        "errorMessage": "Failed to access information_schema.columns. Please ensure the user has SELECT privileges on information_schema.columns. This is required for analyzing data type patterns in autoclassification.",
         "mandatory": false
       }
     ]

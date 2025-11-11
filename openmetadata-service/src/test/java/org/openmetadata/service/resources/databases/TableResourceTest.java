@@ -21,6 +21,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -41,10 +42,12 @@ import static org.openmetadata.schema.type.ColumnDataType.BINARY;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.DATE;
 import static org.openmetadata.schema.type.ColumnDataType.DECIMAL;
+import static org.openmetadata.schema.type.ColumnDataType.DOUBLE;
 import static org.openmetadata.schema.type.ColumnDataType.FLOAT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -62,10 +65,20 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
-import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
@@ -136,6 +149,8 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.CompressionStrategy;
+import org.openmetadata.schema.type.CompressionStrategy.CompressionType;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.Edge;
@@ -159,6 +174,7 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -341,6 +357,55 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertTablePartition(partition, created.getTablePartition());
+  }
+
+  @Test
+  void patch_tableCompressionAttributes(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withTableConstraints(null);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("time", TIMESTAMP, null));
+    columns.add(getColumn("device_id", INT, null));
+    columns.add(getColumn("temperature", DOUBLE, null));
+    create.setColumns(columns);
+
+    Table table = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    CompressionStrategy compressionStrategy =
+        new CompressionStrategy()
+            .withCompressionType(CompressionType.POLICY_BASED)
+            .withSegmentColumns(List.of("device_id"))
+            .withOrderColumns(List.of("time"));
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    table
+        .withCompressionEnabled(true)
+        .withCompressionCodec("TimescaleDB Native")
+        .withCompressionStrategy(compressionStrategy);
+    fieldAdded(change, "compressionEnabled", true);
+    fieldAdded(change, "compressionCodec", "TimescaleDB Native");
+    fieldAdded(change, "compressionStrategy", compressionStrategy);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(true, table.getCompressionEnabled());
+    assertEquals("TimescaleDB Native", table.getCompressionCodec());
+    assertCompressionStrategy(compressionStrategy, table.getCompressionStrategy());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionCodec("LZ4");
+    fieldUpdated(change, "compressionCodec", "TimescaleDB Native", "LZ4");
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionEnabled(null).withCompressionCodec(null).withCompressionStrategy(null);
+    fieldDeleted(change, "compressionEnabled", true);
+    fieldDeleted(change, "compressionCodec", "LZ4");
+    fieldDeleted(change, "compressionStrategy", compressionStrategy);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -3793,6 +3858,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
+  private void assertCompressionStrategy(CompressionStrategy expected, CompressionStrategy actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+
+    assertNotNull(expected);
+    assertNotNull(actual);
+    assertEquals(expected.getCompressionType(), actual.getCompressionType());
+    assertEquals(expected.getSegmentColumns(), actual.getSegmentColumns());
+    assertEquals(expected.getOrderColumns(), actual.getOrderColumns());
+    assertEquals(expected.getCompressionLevel(), actual.getCompressionLevel());
+  }
+
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException {
@@ -3823,6 +3901,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
       assertEquals(expectedTableType, actualTableType);
+    } else if (fieldName.endsWith("compressionStrategy")) {
+      CompressionStrategy expectedStrategy =
+          JsonUtils.convertValue(expected, CompressionStrategy.class);
+      CompressionStrategy actualStrategy =
+          JsonUtils.convertValue(actual, CompressionStrategy.class);
+      assertEquals(expectedStrategy, actualStrategy);
+    } else if (fieldName.endsWith("compressionEnabled")) {
+      assertEquals(expected, actual);
+    } else if (fieldName.endsWith("compressionCodec")) {
+      assertEquals(expected, actual);
     } else if (fieldName.endsWith("owners")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedOwners =
@@ -5459,14 +5547,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, tableWithDomain.getDomains().size());
     assertEquals(domain.getId(), tableWithDomain.getDomains().getFirst().getId());
 
-    // Step 6: Add the table to the dataProduct
-    String originalJson = JsonUtils.pojoToJson(dataProduct);
-    dataProduct.setAssets(List.of(table.getEntityReference()));
-    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
-    fieldAdded(change, "assets", List.of(table.getEntityReference()));
-    dataProduct =
-        dataProductTest.patchEntityAndCheck(
-            dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Step 6: Add the table to the dataProduct using the bulk add API
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    jakarta.ws.rs.client.WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add");
+    TestUtils.put(bulkAddTarget, bulkAssets, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Verify table has the dataProduct
     Table tableWithDataProduct =
@@ -5508,12 +5593,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(dataProduct.getId(), fullyRestoredTable.getDataProducts().getFirst().getId());
 
     // Additional verification: Check that the dataProduct still lists the table as an asset
-    DataProduct verifyDataProduct =
-        dataProductTest.getEntity(dataProduct.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertNotNull(verifyDataProduct.getAssets());
+    // Note: Assets field is deprecated, use the paginated assets API instead
+    ResultList<EntityReference> assets =
+        dataProductTest.getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets);
     assertTrue(
-        verifyDataProduct.getAssets().stream()
-            .anyMatch(asset -> asset.getId().equals(table.getId())),
+        assets.getData().stream().anyMatch(asset -> asset.getId().equals(table.getId())),
         "Table should still be an asset of the data product after restore");
 
     // Cleanup: Hard delete all test entities
@@ -5522,6 +5607,54 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
     dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
     domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities(TestInfo test) throws IOException, InterruptedException {
+    CreateTable createTable1 = createRequest(test, 1).withName("reindex_test_table_1");
+    Table table1 = createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 = createRequest(test, 2).withName("reindex_test_table_2");
+    Table table2 = createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 = createRequest(test, 3).withName("reindex_test_table_3");
+    Table table3 = createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> entityRefs =
+        Arrays.asList(
+            table1.getEntityReference(), table2.getEntityReference(), table3.getEntityReference());
+
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(entityRefs));
+
+    Thread.sleep(2000);
+
+    Table verifyTable1 = getEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable1);
+    assertEquals(table1.getName(), verifyTable1.getName());
+
+    Table verifyTable2 = getEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable2);
+    assertEquals(table2.getName(), verifyTable2.getName());
+
+    Table verifyTable3 = getEntity(table3.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable3);
+    assertEquals(table3.getName(), verifyTable3.getName());
+
+    deleteEntity(table1.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table2.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table3.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities_EmptyList() {
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(listOf()));
+  }
+
+  @Test
+  void testReindexEntities_NullList() {
+    assertDoesNotThrow(() -> Entity.getSearchRepository().getSearchClient().reindexEntities(null));
   }
 
   @Test

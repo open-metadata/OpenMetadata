@@ -84,6 +84,7 @@ class PipelineClassBase {
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.EXECUTIONS,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
