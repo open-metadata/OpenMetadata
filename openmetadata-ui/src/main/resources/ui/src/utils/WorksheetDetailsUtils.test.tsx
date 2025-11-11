@@ -85,16 +85,21 @@ const mockProps: WorksheetDetailPageTabProps = {
     [EntityTabs.SCHEMA]: 'Schema',
     [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
     [EntityTabs.LINEAGE]: 'Lineage',
+    [EntityTabs.CONTRACT]: 'Contract',
     [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
   } as Record<EntityTabs, string>,
 };
+
+jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {
+  return jest.fn().mockImplementation(() => <p>DataContractComponent</p>);
+});
 
 describe('WorksheetDetailsUtils', () => {
   describe('getWorksheetDetailsPageTabs', () => {
     it('should return correct number of tabs', () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
 
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
     });
 
     it('should return tabs with correct keys', () => {
@@ -105,6 +110,7 @@ describe('WorksheetDetailsUtils', () => {
         EntityTabs.SCHEMA,
         EntityTabs.ACTIVITY_FEED,
         EntityTabs.LINEAGE,
+        EntityTabs.CONTRACT,
         EntityTabs.CUSTOM_PROPERTIES,
       ]);
     });
@@ -143,9 +149,21 @@ describe('WorksheetDetailsUtils', () => {
       expect(screen.getByText('label.lineage')).toBeInTheDocument();
     });
 
+    it('should render contract tab without count', () => {
+      const tabs = getWorksheetDetailsPageTabs(mockProps);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByTestId('tab-label-label.contract')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.contract')).toBeInTheDocument();
+    });
+
     it('should render custom properties tab without count', () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.label}</MemoryRouter>);
 
@@ -187,7 +205,7 @@ describe('WorksheetDetailsUtils', () => {
 
     it('should render custom properties tab content correctly', () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.children}</MemoryRouter>);
 
@@ -532,7 +550,7 @@ describe('WorksheetDetailsUtils', () => {
 
       const tabs = getWorksheetDetailsPageTabs(propsWithoutLabelMap);
 
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
 
       tabs.forEach((tab) => {
         expect(tab.key).toBeDefined();

@@ -210,6 +210,8 @@ export interface ServiceConnectionClass {
  *
  * Alation Sink Connection Config
  *
+ * Collibra Connection Config
+ *
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
@@ -490,6 +492,8 @@ export interface ConfigObject {
      *
      * Host and port of the Alation service.
      *
+     * Host and port of the Collibra service.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -562,7 +566,7 @@ export interface ConfigObject {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -593,6 +597,8 @@ export interface ConfigObject {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      *
      * Password to connect to Airbyte.
      */
@@ -650,8 +656,8 @@ export interface ConfigObject {
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -706,6 +712,9 @@ export interface ConfigObject {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      *
      * Username to connect to Airbyte.
      */
@@ -1240,6 +1249,18 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
@@ -1254,7 +1275,7 @@ export interface ConfigObject {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -1659,6 +1680,20 @@ export interface ConfigObject {
     ingestUsersAndGroups?: boolean;
     datasourceLinks?:      { [key: string]: string };
     /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
+    /**
      * Pipeline Service Number Of Status
      */
     numberOfStatus?: number;
@@ -1903,6 +1938,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to include/exclude FHIR resource types
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
  *
  * Regex exclude pipelines.
  *
@@ -4048,6 +4087,8 @@ export enum TokenType {
  *
  * OpenMetadata service type
  *
+ * Collibra service type
+ *
  * Custom pipeline service type
  *
  * Custom Ml model service type
@@ -4093,6 +4134,7 @@ export enum ConfigType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
+    Collibra = "Collibra",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",

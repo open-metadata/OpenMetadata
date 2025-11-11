@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 dag",
     "1-hr": "1 uur",
     "a-to-z": "A tot Z",
@@ -17,6 +18,7 @@
     "account": "Account",
     "account-email": "Account e-mail",
     "account-name": "Accountnaam",
+    "ack": "Ack",
     "acknowledged": "Bevestigd",
     "action": "Actie",
     "action-plural": "Acties",
@@ -1395,6 +1397,7 @@
     "resolved": "Resolved",
     "resolved-by": "Resolved By",
     "resolved-incident-plural": "Resolved Incidents",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",
