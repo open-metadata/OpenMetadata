@@ -64,20 +64,26 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <div className="overview-section">
-      {entityInfo.filter(isItemVisible).map((info) => (
-        <div className="overview-row" key={info.name}>
-          <span
-            className={classNames('overview-label')}
-            data-testid={`${info.name}-label`}>
-            {info.name}
-          </span>
-          <span
-            className={classNames('overview-value text-grey-body')}
-            data-testid={`${info.name}-value`}>
-            {renderInfoValue(info)}
-          </span>
-        </div>
-      ))}
+      {entityInfo.length > 0 ? (
+        entityInfo.filter(isItemVisible).map((info) => (
+          <div className="overview-row" key={info.name}>
+            <span
+              className={classNames('overview-label')}
+              data-testid={`${info.name}-label`}>
+              {info.name}
+            </span>
+            <span
+              className={classNames('overview-value text-grey-body')}
+              data-testid={`${info.name}-value`}>
+              {renderInfoValue(info)}
+            </span>
+          </div>
+        ))
+      ) : (
+        <span className="no-data-placeholder">
+          {t('label.no-overview-available')}
+        </span>
+      )}
     </div>
   );
 };

@@ -15,10 +15,13 @@ import { Link } from '@mui/material';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
+import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
@@ -44,30 +47,6 @@ const CustomPropertiesSection = ({
 
   const customProperties = entityTypeDetail?.customProperties || [];
   const extensionData = entityData?.extension || {};
-
-  if (customProperties.length === 0) {
-    return (
-      <div className="entity-summary-panel-tab-content">
-        <div className="p-x-md p-t-md text-justify text-grey-muted">
-          <Transi18next
-            i18nKey="message.no-custom-properties-entity"
-            renderElement={
-              <a
-                href={CUSTOM_PROPERTIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-                title="Custom properties documentation"
-              />
-            }
-            values={{
-              docs: t('label.doc-plural-lowercase'),
-              entity: startCase(entityType),
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   const formatValue = (val: unknown) => {
     if (!val) {
@@ -160,20 +139,47 @@ const CustomPropertiesSection = ({
       )}
       <div className="p-x-md">
         <div className="custom-properties-list">
-          {customProperties.slice(0, 5).map((property: CustomProperty) => {
-            const value = extensionData[property.name];
+          {customProperties.length < 0 ? (
+            customProperties.slice(0, 5).map((property: CustomProperty) => {
+              const value = extensionData[property.name];
 
-            return (
-              <div className="custom-property-item" key={property.name}>
-                <Typography.Text className="property-name">
-                  {property.displayName || property.name}
-                </Typography.Text>
-                <Typography.Text className="property-value">
-                  {formatValue(value)}
-                </Typography.Text>
-              </div>
-            );
-          })}
+              return (
+                <div className="custom-property-item" key={property.name}>
+                  <Typography.Text className="property-name">
+                    {property.displayName || property.name}
+                  </Typography.Text>
+                  <Typography.Text className="property-value">
+                    {formatValue(value)}
+                  </Typography.Text>
+                </div>
+              );
+            })
+          ) : (
+            <div className="lineage-items-list empty-state">
+              <ErrorPlaceHolderNew
+                className="text-grey-14"
+                icon={<AddPlaceHolderIcon height={100} width={100} />}
+                type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                <div className="p-t-md text-justify no-data-placeholder">
+                  <Transi18next
+                    i18nKey="message.no-custom-properties-entity"
+                    renderElement={
+                      <a
+                        href={CUSTOM_PROPERTIES_DOCS}
+                        rel="noreferrer"
+                        target="_blank"
+                        title="Custom properties documentation"
+                      />
+                    }
+                    values={{
+                      docs: t('label.doc-plural-lowercase'),
+                      entity: startCase(entityType),
+                    }}
+                  />
+                </div>
+              </ErrorPlaceHolderNew>
+            </div>
+          )}
         </div>
       </div>
     </div>

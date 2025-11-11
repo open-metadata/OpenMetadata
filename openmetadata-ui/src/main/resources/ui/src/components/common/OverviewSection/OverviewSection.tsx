@@ -39,7 +39,13 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
   const hasContent = entityInfoV1 && visibleEntityInfo.length > 0;
 
   if (!hasContent) {
-    return null;
+    return (
+      <div className="overview-section">
+        <span className="no-data-placeholder">
+          {t('label.no-overview-available')}
+        </span>
+      </div>
+    );
   }
 
   return (

@@ -10,19 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
+import ErrorPlaceHolderNew from '../ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../Loader/Loader';
 import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
-
 const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   entityType,
   dataAsset,
   highlights,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const entityDetails = useMemo(() => {
     return getEntityChildDetailsV1(
       entityType,
@@ -40,11 +45,22 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     return null;
   }
 
-  return (
+  return dataAsset && !isEmpty(entityDetails) ? (
     <div
       className="entity-details-section"
       data-testid="entity-details-section">
       {entityDetails}
+    </div>
+  ) : (
+    <div className="lineage-items-list empty-state">
+      <ErrorPlaceHolderNew
+        className="text-grey-14"
+        icon={<AddPlaceHolderIcon height={100} width={100} />}
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph className="text-center p-x-md m-t-sm no-data-placeholder">
+          {t('message.no-schema-message')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolderNew>
     </div>
   );
 };

@@ -247,13 +247,13 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </Link>
           ))
         ) : (
-          <div className="lineage-items-list empty-state">
+          <div>
             <ErrorPlaceHolderNew
               className="text-grey-14"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center text-grey-muted m-t-sm">
-                {t('label.no-data-found')}
+              <Typography.Paragraph className="text-center m-t-sm no-data-placeholder">
+                {t('label.lineage-not-found')}
               </Typography.Paragraph>
             </ErrorPlaceHolderNew>
           </div>
