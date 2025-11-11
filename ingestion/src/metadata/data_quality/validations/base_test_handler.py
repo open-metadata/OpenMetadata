@@ -34,12 +34,12 @@ from pydantic import BaseModel
 
 from metadata.data_quality.validations import utils
 from metadata.generated.schema.tests.basic import (
-    DimensionValue,
     TestCaseDimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.dimensionResult import DimensionResult, DimensionValue
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp

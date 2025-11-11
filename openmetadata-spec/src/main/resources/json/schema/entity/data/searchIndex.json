@@ -38,7 +38,10 @@
     "indexType": {
       "description": "Whether the entity is index or index template.",
       "type": "string",
-      "enum": ["Index", "IndexTemplate"],
+      "enum": [
+        "Index",
+        "IndexTemplate"
+      ],
       "default": "Index"
     },
     "dataType": {
@@ -220,7 +223,6 @@
       "$ref": "#/definitions/searchIndexSampleData",
       "default": null
     },
-
     "owners": {
       "description": "Owners of this searchIndex.",
       "$ref": "../../type/entityReferenceList.json"
@@ -285,8 +287,7 @@
     },
     "entityStatus": {
       "description": "Status of the SearchIndex.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

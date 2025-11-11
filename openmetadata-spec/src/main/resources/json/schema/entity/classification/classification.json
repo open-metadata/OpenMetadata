@@ -5,7 +5,9 @@
   "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Classification",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier of this entity instance.",
@@ -30,9 +32,9 @@
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "termCount" : {
+    "termCount": {
       "description": "Total number of children tag terms under this classification. This includes all the children in the hierarchy.",
-      "type" : "integer",
+      "type": "integer",
       "minimum": 0
     },
     "updatedAt": {
@@ -68,20 +70,20 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System classifications can't be deleted. Use this flag to disable them.",
       "type": "boolean",
       "default": false
     },
-    "mutuallyExclusive" : {
-      "description" : "Tags under this classification are mutually exclusive. When mutually exclusive is `true` the tags from this classification are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this classification are used to **categorize** an entity. An entity have multiple tags simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
-      "type" : "boolean",
-      "default" : "false"
+    "mutuallyExclusive": {
+      "description": "Tags under this classification are mutually exclusive. When mutually exclusive is `true` the tags from this classification are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this classification are used to **categorize** an entity. An entity have multiple tags simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
+      "type": "boolean",
+      "default": "false"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -95,8 +97,7 @@
     },
     "entityStatus": {
       "description": "Status of the tag.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     },
     "autoClassificationConfig": {
       "description": "Configuration for automatic classification behavior",
@@ -110,7 +111,11 @@
         "conflictResolution": {
           "description": "Strategy for resolving conflicts when multiple tags match",
           "type": "string",
-          "enum": ["highest_confidence", "highest_priority", "most_specific"],
+          "enum": [
+            "highest_confidence",
+            "highest_priority",
+            "most_specific"
+          ],
           "default": "highest_confidence"
         },
         "minimumConfidence": {
@@ -129,6 +134,10 @@
       "additionalProperties": false
     }
   },
-  "required": ["id", "name", "description"],
+  "required": [
+    "id",
+    "name",
+    "description"
+  ],
   "additionalProperties": false
 }

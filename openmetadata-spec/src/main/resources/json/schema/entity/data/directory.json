@@ -12,7 +12,9 @@
   "definitions": {
     "directoryType": {
       "description": "Type of directory",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "type": "string",
       "enum": [
         "Root",
@@ -24,13 +26,27 @@
         "SharePointLibrary"
       ],
       "javaEnums": [
-        {"name": "Root"},
-        {"name": "MyDrive"},
-        {"name": "SharedDrive"},
-        {"name": "TeamDrive"},
-        {"name": "Folder"},
-        {"name": "SharePointSite"},
-        {"name": "SharePointLibrary"}
+        {
+          "name": "Root"
+        },
+        {
+          "name": "MyDrive"
+        },
+        {
+          "name": "SharedDrive"
+        },
+        {
+          "name": "TeamDrive"
+        },
+        {
+          "name": "Folder"
+        },
+        {
+          "name": "SharePointSite"
+        },
+        {
+          "name": "SharePointLibrary"
+        }
       ]
     }
   },
@@ -148,7 +164,7 @@
       "type": "boolean",
       "default": false
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Directory belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -184,10 +200,13 @@
     },
     "entityStatus": {
       "description": "Status of the Directory.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
-  "required": ["id", "name", "service"],
+  "required": [
+    "id",
+    "name",
+    "service"
+  ],
   "additionalProperties": false
 }

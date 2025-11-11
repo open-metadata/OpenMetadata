@@ -6,7 +6,9 @@
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Glossary",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier of a glossary instance.",
@@ -71,9 +73,9 @@
       },
       "default": []
     },
-    "termCount" : {
+    "termCount": {
       "description": "Total number of terms in the glossary. This includes all the children in the hierarchy.",
-      "type" : "integer",
+      "type": "integer",
       "minimum": 0
     },
     "changeDescription": {
@@ -89,17 +91,17 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System glossary can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     },
-    "mutuallyExclusive" : {
-      "description" : "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
-      "type" : "boolean",
-      "default" : "false"
+    "mutuallyExclusive": {
+      "description": "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type": "boolean",
+      "default": "false"
     },
     "domains": {
       "description": "Domains the Glossary belongs to.",
@@ -107,7 +109,7 @@
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -119,10 +121,13 @@
     },
     "entityStatus": {
       "description": "Status of the Glossary.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
-  "required": ["id", "name", "description"],
+  "required": [
+    "id",
+    "name",
+    "description"
+  ],
   "additionalProperties": false
 }

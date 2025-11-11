@@ -5,7 +5,9 @@
   "description": "This schema defines the type to capture any data asset's queries.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Query",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier of the query.",
@@ -76,7 +78,7 @@
       "description": "Followers of this Query.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -100,7 +102,7 @@
       "description": "Date on which the query ran.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "usedBy" : {
+    "usedBy": {
       "description": "List of users who ran the query but does not exist in OpenMetadata.",
       "type": "array",
       "items": {
@@ -133,16 +135,20 @@
       "description": "Link to the service this query belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "entityStatus": {
       "description": "Status of the Query.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
-  "required": ["id", "name", "query", "service"],
+  "required": [
+    "id",
+    "name",
+    "query",
+    "service"
+  ],
   "additionalProperties": false
 }

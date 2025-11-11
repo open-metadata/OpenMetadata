@@ -100,13 +100,13 @@
       "type": "boolean",
       "default": "false"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "owners": {
       "description": "Owners of this glossary term.",
@@ -118,8 +118,7 @@
     },
     "entityStatus": {
       "description": "Status of the tag.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     },
     "recognizers": {
       "description": "List of recognizers configured for automatic detection of this tag",

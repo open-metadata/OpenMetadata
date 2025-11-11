@@ -6,7 +6,9 @@
   "description": "This schema defines the APICollection entity. API Collection allows user to group multiple APIs together. In OpenAPI specification its marked as a Tag.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.APICollection",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies a API Collection instance.",
@@ -124,10 +126,14 @@
     },
     "entityStatus": {
       "description": "Status of the API Collection.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
-  "required": ["id", "name", "service", "endpointURL"],
+  "required": [
+    "id",
+    "name",
+    "service",
+    "endpointURL"
+  ],
   "additionalProperties": false
 }

@@ -5,7 +5,9 @@
   "description": "This schema defines the Report entity. `Reports` are static information computed from data periodically that includes data in text, table, and visual form.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Report",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this report.",
@@ -73,20 +75,23 @@
       "type": "boolean",
       "default": false
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "entityStatus": {
       "description": "Status of the Report.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
-  "required": ["id", "name", "service"],
+  "required": [
+    "id",
+    "name",
+    "service"
+  ],
   "additionalProperties": false
 }
