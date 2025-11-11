@@ -76,7 +76,6 @@ class TestGetConnectionClass:
         "AzureSQL",
         "BigQuery",
         "BigTable",
-        "CustomDatabase",
         "DeltaLake",
         "DomoDatabase",
         "DynamoDB",
@@ -251,12 +250,16 @@ class TestGetConnectionClass:
         Test that database service types with connection classes
         can successfully import them.
 
-        Note: QueryLog and Dbt are in DatabaseServiceType but don't
-        have connection modules (they're metadata-only services).
+        Note: CustomDatabase, QueryLog, and Dbt are in DatabaseServiceType
+        but don't have connection modules (they're metadata-only services).
         """
         failed_services = []
         success_count = 0
-        skipped_services = ["QueryLog", "Dbt"]  # No connection modules
+        skipped_services = [
+            "CustomDatabase",
+            "QueryLog",
+            "Dbt",
+        ]  # No connection modules
 
         for service in DatabaseServiceType:
             service_name = service.value
