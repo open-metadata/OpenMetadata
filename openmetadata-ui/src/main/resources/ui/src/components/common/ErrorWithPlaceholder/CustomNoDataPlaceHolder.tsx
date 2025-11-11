@@ -12,7 +12,6 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
 import { NoDataPlaceholderProps } from './placeholder.interface';
 
 import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-data-placeholder.svg';
@@ -25,11 +24,12 @@ const CustomNoDataPlaceHolder = ({
 }: NoDataPlaceholderProps) => {
   return (
     <div
-      className={classNames(className, 'flex-center flex-col w-full h-full')}
+      className={classNames(
+        className,
+        'flex-center flex-col w-full h-full border-default border-radius-sm'
+      )}
       data-testid="no-data-placeholder">
-      {icon ? (
-        icon
-      ) : (
+      {icon ?? (
         <NoDataFoundPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -38,7 +38,7 @@ const CustomNoDataPlaceHolder = ({
       )}
 
       <div className="m-t-xs text-center text-sm font-normal">
-        {children ? children : ''}
+        {children ?? ''}
       </div>
     </div>
   );

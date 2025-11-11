@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { getTagValue } from '../../../../../utils/CommonUtils';
@@ -46,7 +45,11 @@ function SummaryListItem({
                 iconClassName: 'm-r-xss',
                 iconWidth: '14px',
               })}
-            {entityDetails.title}
+            <Typography.Text
+              className="m-r-xs"
+              ellipsis={{ tooltip: entityDetails.title }}>
+              {entityDetails.title}
+            </Typography.Text>
 
             {entityDetails.type && (
               <AppBadge

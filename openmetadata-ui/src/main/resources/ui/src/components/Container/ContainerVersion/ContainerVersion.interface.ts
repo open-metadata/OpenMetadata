@@ -17,11 +17,11 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface ContainerVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: Container;
   isVersionLoading: boolean;
   owners: Container['owners'];
-  domain: Container['domain'];
+  domains: Container['domains'];
   dataProducts: Container['dataProducts'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];

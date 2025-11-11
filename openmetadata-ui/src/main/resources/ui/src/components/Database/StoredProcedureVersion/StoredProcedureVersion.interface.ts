@@ -18,11 +18,11 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface StoredProcedureVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: StoredProcedure;
   isVersionLoading: boolean;
   owners: StoredProcedure['owners'];
-  domain: StoredProcedure['domain'];
+  domains: StoredProcedure['domains'];
   dataProducts: StoredProcedure['dataProducts'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];

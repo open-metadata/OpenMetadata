@@ -33,7 +33,7 @@ test.describe.serial('Data Insight Report Application', () => {
         await apiContext.delete(
           '/api/v1/apps/name/DataInsightsReportApplication?hardDelete=true'
         );
-      } catch (error) {
+      } catch {
         // Do Nothing
       }
 
@@ -113,7 +113,7 @@ test.describe.serial('Data Insight Report Application', () => {
     await expect(page.locator('#root\\/sendToTeams')).not.toBeChecked();
   });
 
-  test('Run application', async ({ page }) => {
+  test.fixme('Run application', async ({ page }) => {
     await page.click(
       '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
     );

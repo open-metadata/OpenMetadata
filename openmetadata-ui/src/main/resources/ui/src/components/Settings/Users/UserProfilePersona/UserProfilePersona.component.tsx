@@ -12,9 +12,8 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
@@ -53,13 +52,9 @@ const UserProfilePersonas = ({
     () => (isAdminUser || isLoggedInUser) && !userData.deleted,
     [isAdminUser, isLoggedInUser, userData.deleted]
   );
-  const defaultPersona = useMemo(
-    () =>
-      userData.personas?.find(
-        (persona) => persona.id === userData.defaultPersona?.id
-      ),
-    [userData]
-  );
+
+  const defaultPersona = useMemo(() => userData.defaultPersona, [userData]);
+
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
       await updateUserDetails({ defaultPersona }, 'defaultPersona');
@@ -77,7 +72,7 @@ const UserProfilePersonas = ({
           </div>
           <div className="d-flex justify-between w-full">
             <Typography.Text
-              className="user-profile-card-title"
+              className="text-sm font-medium"
               data-testid="persona-list">
               {t('label.default-persona')}
             </Typography.Text>
@@ -91,25 +86,19 @@ const UserProfilePersonas = ({
             />
           </div>
         </div>
-        <div className="user-profile-card-body d-flex justify-start gap-2">
-          {defaultPersona?.displayName ? (
-            <Typography.Text className="default-persona-text  cursor-pointer">
-              {defaultPersona?.displayName}
-            </Typography.Text>
-          ) : (
-            <Typography.Paragraph className="m-b-0 text-sm  no-default-persona-text">
-              {t('message.no-default-persona')}
-            </Typography.Paragraph>
-          )}
+        <div
+          className="user-profile-card-body default-persona-text ml-8"
+          data-testid="default-persona-chip">
+          <Chip
+            showNoDataPlaceholder
+            data={defaultPersona ? [defaultPersona] : []}
+            entityType={EntityType.PERSONA}
+            noDataPlaceholder={t('message.no-default-persona')}
+          />
         </div>
       </>
     ),
-    [
-      defaultPersona,
-      userData.personas,
-      hasEditPermission,
-      handleDefaultPersonaUpdate,
-    ]
+    [defaultPersona, userData, hasEditPermission, handleDefaultPersonaUpdate]
   );
 
   return (
@@ -122,7 +111,7 @@ const UserProfilePersonas = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
-            className="user-profile-card-title"
+            className="text-sm font-medium"
             data-testid="persona-list">
             {t('label.persona')}
           </Typography.Text>

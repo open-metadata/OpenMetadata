@@ -16,10 +16,10 @@ import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -32,7 +32,6 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -62,9 +61,9 @@ const TestSuitePipelineTab = ({
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
 
   const { permissions } = usePermissionProvider();
-  const pipelinePaging = usePaging(PAGE_SIZE_BASE);
+  const pipelinePaging = usePaging();
   const { pageSize, handlePagingChange } = pipelinePaging;
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
@@ -135,7 +134,7 @@ const TestSuitePipelineTab = ({
   );
 
   const handleAddPipelineRedirection = () => {
-    history.push({
+    navigate({
       pathname: getTestSuiteIngestionPath(testSuiteFQN),
       search: isLogicalTestSuite
         ? QueryString.stringify({ testSuiteId: testSuite?.id })
@@ -168,7 +167,7 @@ const TestSuitePipelineTab = ({
         showSuccessToast('Pipeline triggered successfully');
 
         setPipelineIdToFetchStatus(id);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.ingestion-workflow-operation-error', {
             operation: 'triggering',
@@ -241,6 +240,9 @@ const TestSuitePipelineTab = ({
           }
           heading={t('label.pipeline')}
           permission={createPermission}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.test-suite-ingestion'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
           {t('message.no-table-pipeline')}
         </ErrorPlaceHolder>

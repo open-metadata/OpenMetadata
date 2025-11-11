@@ -10,58 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Button, Popover } from 'antd';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityUtils';
-import Fqn from '../../../utils/Fqn';
+import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
-export const DomainListItemRenderer = (props: EntityReference) => {
-  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
-  const fqn = `(${props.fullyQualifiedName ?? ''})`;
-
-  return (
-    <div className="d-flex items-center gap-2">
-      <DomainIcon
-        color={DE_ACTIVE_COLOR}
-        height={20}
-        name="folder"
-        width={20}
-      />
-      <div className="d-flex items-center w-max-400">
-        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
-        {isSubDomain && (
-          <Typography.Text
-            ellipsis
-            className="m-l-xss text-xs"
-            type="secondary">
-            {fqn}
-          </Typography.Text>
-        )}
-      </div>
-    </div>
-  );
-};
-
 const DomainSelectableList = ({
-  onUpdate,
   children,
+  disabled,
   hasPermission,
-  popoverProps,
-  selectedDomain,
   multiple = false,
   onCancel,
+  onUpdate,
+  popoverProps,
+  selectedDomain,
+  showAllDomains = false,
+  wrapInButton = true,
+  overlayClassName,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
+  const { isVersionView } = useGenericContext<Domain>();
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -85,8 +64,19 @@ const DomainSelectableList = ({
     async (domains: EntityReference[]) => {
       if (multiple) {
         await onUpdate(domains);
-      } else {
+        setPopupVisible(false);
+
+        return;
+      }
+
+      // Handle single domain mode
+      if (domains.length > 0) {
         await onUpdate(domains[0]);
+      } else {
+        // Pass undefined for empty selection in single domain mode
+        await onUpdate(
+          undefined as unknown as EntityReference | EntityReference[]
+        );
       }
 
       setPopupVisible(false);
@@ -99,54 +89,79 @@ const DomainSelectableList = ({
     onCancel?.();
   }, [onCancel]);
 
-  return (
-    // Used Button to stop click propagation event anywhere in the component to parent
-    // TeamDetailV1 collapsible panel
-    <Button
-      className="remove-button-default-styling"
-      onClick={(e) => e.stopPropagation()}>
+  const popoverContent = useMemo(() => {
+    return (
       <Popover
         destroyTooltipOnHide
         content={
-          <DomainSelectablTree
-            initialDomains={initialDomains}
-            isMultiple={multiple}
-            value={selectedDomainsList as string[]}
-            visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={handleCancel}
-            onSubmit={handleUpdate}
-          />
+          !disabled && (
+            <FocusTrapWithContainer active={popoverProps?.open || false}>
+              <DomainSelectablTree
+                initialDomains={initialDomains}
+                isMultiple={multiple}
+                showAllDomains={showAllDomains}
+                value={selectedDomainsList as string[]}
+                visible={popupVisible || Boolean(popoverProps?.open)}
+                onCancel={handleCancel}
+                onSubmit={handleUpdate}
+              />
+            </FocusTrapWithContainer>
+          )
         }
+        getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
-        overlayClassName="domain-select-popover w-400"
+        overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
         placement="bottomRight"
         showArrow={false}
         trigger="click"
-        onOpenChange={setPopupVisible}
+        onOpenChange={(visible) => {
+          if (!disabled) {
+            setPopupVisible(visible);
+          }
+        }}
         {...popoverProps}>
-        {children ?? (
-          <Tooltip
-            placement="topRight"
-            title={
-              hasPermission
-                ? t('label.edit-entity', {
-                    entity: t('label.domain'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="p-0 flex-center"
+        {children ??
+          (!isVersionView && (
+            <EditIconButton
+              newLook
               data-testid="add-domain"
-              disabled={!hasPermission}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              disabled={!hasPermission || disabled}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
-              type="text"
+              title={t('label.edit-entity', {
+                entity: t('label.domain-plural'),
+              })}
+              onClick={(e) => e.stopPropagation()}
             />
-          </Tooltip>
-        )}
+          ))}
       </Popover>
-    </Button>
-  );
+    );
+  }, [
+    children,
+    hasPermission,
+    handleCancel,
+    handleUpdate,
+    initialDomains,
+    multiple,
+    popoverProps,
+    popupVisible,
+    selectedDomainsList,
+    selectedDomain,
+    isVersionView,
+  ]);
+
+  if (wrapInButton) {
+    return (
+      <Button
+        className="remove-button-default-styling flex-center"
+        disabled={disabled}
+        onClick={(e) => e.stopPropagation()}>
+        {popoverContent}
+      </Button>
+    );
+  }
+
+  return popoverContent;
 };
 
 export default DomainSelectableList;

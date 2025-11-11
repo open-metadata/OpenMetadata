@@ -61,6 +61,11 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only fetch stored procedures that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
     "overrideViewLineage":{
       "title": "Override View Lineage",
       "description": "Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.",

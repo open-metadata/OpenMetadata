@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+// IMPORTANT: While adding new fields, make sure to keep the order of the enum values
+// same as the order of the fields you in the UI form
 export enum ServiceConnectionFilterPatternFields {
   DATABASE_FILTER_PATTERN = 'databaseFilterPattern',
   SCHEMA_FILTER_PATTERN = 'schemaFilterPattern',
   TABLE_FILTER_PATTERN = 'tableFilterPattern',
+  STORED_PROCEDURE_FILTER_PATTERN = 'storedProcedureFilterPattern',
   API_COLLECTION_FILTER_PATTERN = 'apiCollectionFilterPattern',
   DASHBOARD_FILTER_PATTERN = 'dashboardFilterPattern',
   CONTAINER_FILTER_PATTERN = 'containerFilterPattern',
@@ -25,4 +29,8 @@ export enum ServiceConnectionFilterPatternFields {
   DATA_MODEL_FILTER_PATTERN = 'dataModelFilterPattern',
   PROJECT_FILTER_PATTERN = 'projectFilterPattern',
   CLASSIFICATION_FILTER_PATTERN = 'classificationFilterPattern',
+  DIRECTORY_FILTER_PATTERN = 'directoryFilterPattern',
+  FILE_FILTER_PATTERN = 'fileFilterPattern',
+  SPREADSHEET_FILTER_PATTERN = 'spreadsheetFilterPattern',
+  WORKSHEET_FILTER_PATTERN = 'worksheetFilterPattern',
 }

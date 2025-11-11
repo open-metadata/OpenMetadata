@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import pprint
 import re
 import shutil
 import sys
@@ -94,6 +95,7 @@ om_chart_type_dict = {
     "levelTable": ChartType.Table,
     "dist_bar": ChartType.Bar,
     "bar": ChartType.Bar,
+    "vertical_bar": ChartType.Bar,
     "box_plot": ChartType.BoxPlot,
     "box": ChartType.BoxPlot,
     "boxplot": ChartType.BoxPlot,
@@ -103,6 +105,11 @@ om_chart_type_dict = {
     "pie": ChartType.Pie,
     "text": ChartType.Text,
     "scatter": ChartType.Scatter,
+    "gauge": ChartType.Gauge,
+    "map": ChartType.Map,
+    "graph": ChartType.Graph,
+    "heatmap": ChartType.Heatmap,
+    "timeline": ChartType.Timeline,
 }
 
 
@@ -181,7 +188,7 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
@@ -200,6 +207,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     :param container: container with element
     :return: element or None
     """
+    logger.debug(f"[find_in_iter] Searching for element '{element}'")
     return next((elem for elem in container if elem == element), None)
 
 
@@ -527,3 +535,61 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
 def get_query_hash(query: str) -> str:
     result = hashlib.md5(query.encode())
     return str(result.hexdigest())
+
+
+def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
+    """Evaluate the threshold against the result.
+
+    Args:
+        threshold: A string representing a comparison threshold (e.g., "< 5", ">= 10").
+        result: The integer value to compare against the threshold.
+
+    Returns:
+        True if the result satisfies the threshold condition, False otherwise.
+        If no comparison operator is provided, it defaults to less than or equal to comparison.
+        Returns False for invalid threshold formats.
+    """
+    import operator as op  # pylint: disable=import-outside-toplevel
+
+    operators = {
+        "<": op.lt,
+        "<=": op.le,
+        ">": op.gt,
+        ">=": op.ge,
+        "==": op.eq,
+        "!=": op.ne,
+    }
+    op_func = operators.get(operator, op.le)
+    try:
+        if op_func:
+            return op_func(result, threshold)
+    except ValueError:
+        return False
+
+    # Fallback:
+    logger.error(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
+    raise ValueError(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
+
+
+def pprint_format_object(data: Any) -> str:
+    """
+    Pretty print an object in a format that is easy to read
+    """
+    return pprint.pformat(data, width=150)
+
+
+def can_spawn_child_process() -> bool:
+    """
+    Check if the current process can spawn a child process
+    """
+    # pylint: disable=import-outside-toplevel
+    from multiprocessing import Process
+
+    process = Process(target=lambda: None)
+    return not process.daemon

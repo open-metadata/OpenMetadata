@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { tableSortingFields } from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
 
@@ -28,52 +27,48 @@ const mockPorps = {
 
 describe('Test Sorting DropDown Component', () => {
   it('Should render dropdown component', async () => {
-    await act(async () => {
-      const { findByTestId, findByRole, findAllByTestId } = render(
-        <SortingDropDown {...mockPorps} />
-      );
+    const { findByTestId, findByRole, findAllByTestId } = render(
+      <SortingDropDown {...mockPorps} />
+    );
 
-      const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    const dropdownLabel = await findByTestId('sorting-dropdown-label');
 
-      expect(dropdownLabel).toBeInTheDocument();
+    expect(dropdownLabel).toBeInTheDocument();
 
-      fireEvent.click(dropdownLabel);
+    fireEvent.click(dropdownLabel);
 
-      const dropdownMenu = await findByRole('menu');
+    const dropdownMenu = await findByRole('menu');
 
-      expect(dropdownMenu).toBeInTheDocument();
+    expect(dropdownMenu).toBeInTheDocument();
 
-      const menuItems = await findAllByTestId('dropdown-menu-item');
+    const menuItems = await findAllByTestId('dropdown-menu-item');
 
-      expect(menuItems).toHaveLength(fieldList.length);
-    });
+    expect(menuItems).toHaveLength(fieldList.length);
   });
 
   it('Should call onSelect method on onClick option', async () => {
-    await act(async () => {
-      const { findByTestId, findByRole, findAllByTestId } = render(
-        <SortingDropDown {...mockPorps} />
-      );
+    const { findByTestId, findByRole, findAllByTestId } = render(
+      <SortingDropDown {...mockPorps} />
+    );
 
-      const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    const dropdownLabel = await findByTestId('sorting-dropdown-label');
 
-      expect(dropdownLabel).toBeInTheDocument();
+    expect(dropdownLabel).toBeInTheDocument();
 
-      fireEvent.click(dropdownLabel);
+    fireEvent.click(dropdownLabel);
 
-      const dropdownMenu = await findByRole('menu');
+    const dropdownMenu = await findByRole('menu');
 
-      expect(dropdownMenu).toBeInTheDocument();
+    expect(dropdownMenu).toBeInTheDocument();
 
-      const menuItems = await findAllByTestId('dropdown-menu-item');
+    const menuItems = await findAllByTestId('dropdown-menu-item');
 
-      expect(menuItems).toHaveLength(fieldList.length);
+    expect(menuItems).toHaveLength(fieldList.length);
 
-      act(() => {
-        fireEvent.click(menuItems[0]);
-      });
-
-      expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
+    act(() => {
+      fireEvent.click(menuItems[0]);
     });
+
+    expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
   });
 });

@@ -17,18 +17,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -135,6 +138,8 @@ public class JsonPatchUtils {
     String tagFQN = tag.getTagFQN();
     if (isTierClassification(tagFQN)) {
       return MetadataOperation.EDIT_TIER;
+    } else if (isCertificationClassification(tagFQN)) {
+      return MetadataOperation.EDIT_CERTIFICATION;
     } else if ("Classification".equalsIgnoreCase(source)) {
       return MetadataOperation.EDIT_TAGS;
     } else if ("Glossary".equalsIgnoreCase(source)) {
@@ -148,9 +153,28 @@ public class JsonPatchUtils {
     return tagFQN != null && tagFQN.startsWith("Tier.");
   }
 
+  private static boolean isCertificationClassification(String tagFQN) {
+    return tagFQN != null && tagFQN.startsWith("Certification.");
+  }
+
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
-    Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
-    String path = jsonPatchMap.get("path").toString(); // Get "path" node - "/defaultRoles/0"
+    String path;
+
+    // Handle jakarta JSON patch objects efficiently
+    if (jsonPatchObject instanceof JsonObject) {
+      JsonObject jsonPatchObj = (JsonObject) jsonPatchObject;
+      JsonValue pathValue = jsonPatchObj.get("path");
+      if (pathValue instanceof JsonString) {
+        path = ((JsonString) pathValue).getString();
+      } else {
+        path = pathValue.toString();
+      }
+    } else {
+      // Fallback for other object types
+      Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
+      path = jsonPatchMap.get("path").toString();
+    }
+
     return getMetadataOperation(path);
   }
 

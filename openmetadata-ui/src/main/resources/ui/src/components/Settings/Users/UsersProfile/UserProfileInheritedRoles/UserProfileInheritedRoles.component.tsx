@@ -12,7 +12,6 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -33,7 +32,7 @@ const UserProfileInheritedRoles = ({
           <InheritedRolesIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium">
             {t('label.inherited-role-plural')}
           </Typography.Text>
         </div>

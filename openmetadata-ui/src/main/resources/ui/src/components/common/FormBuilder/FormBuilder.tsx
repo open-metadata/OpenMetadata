@@ -13,10 +13,11 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
+import { WidgetProps } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import React, { forwardRef, FunctionComponent, useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
@@ -42,9 +43,10 @@ export interface Props extends FormProps {
   status?: LoadingState;
   onCancel?: () => void;
   useSelectWidget?: boolean;
+  capitalizeOptionLabel?: boolean;
 }
 
-const FormBuilder: FunctionComponent<Props> = forwardRef(
+const FormBuilder = forwardRef<Form, Props>(
   (
     {
       formData,
@@ -60,6 +62,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       uiSchema,
       onFocus,
       useSelectWidget = false,
+      capitalizeOptionLabel = false,
       children,
       ...props
     },
@@ -78,7 +81,14 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       autoComplete: AsyncSelectWidget,
       queryBuilder: QueryBuilderWidget,
       code: CodeWidget,
-      ...(useSelectWidget && { SelectWidget: SelectWidget }),
+      ...(useSelectWidget && {
+        SelectWidget: (props: WidgetProps) => (
+          <SelectWidget
+            {...props}
+            capitalizeOptionLabel={capitalizeOptionLabel}
+          />
+        ),
+      }),
     };
 
     const handleCancel = () => {

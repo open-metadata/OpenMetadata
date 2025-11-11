@@ -16,17 +16,20 @@ import {
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
+import { SidebarItem } from '../constant/sidebar';
 import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
+import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   uuid,
 } from './common';
+import { sidebarClick } from './sidebar';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -67,18 +70,22 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page
-    .locator(`div[data-state-props-id="${columnName}"]`)
-    .last()
-    .dblclick();
+  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
 
+  const isInputVisible = await page
+    .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
+    .isVisible();
+
+  if (!isInputVisible) {
+    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+  }
   await page
     .getByTestId('edit-table-type-property-modal')
     .getByRole('textbox')
     .fill(text);
 
   await page
-    .locator(`div[data-state-props-id="${columnName}"]`)
+    .locator(`div.rdg-cell-${columnName}`)
     .last()
     .press('Enter', { delay: 100 });
 };
@@ -228,6 +235,9 @@ export const setValueForProperty = async (data: {
       const values = value.split(',');
       await page.locator('[data-testid="add-new-row"]').click();
 
+      // Editor grid to be visible
+      await page.waitForSelector('.om-rdg', { state: 'visible' });
+
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
       await fillTableColumnInputDetails(page, values[1], 'pw-column2');
@@ -281,6 +291,7 @@ export const validateValueForProperty = async (data: {
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
+    // For markdown, remove * and _ as they are formatting characters
     await expect(
       container.locator(descriptionBoxReadOnly).last()
     ).toContainText(value.replace(/\*|_/gi, ''));
@@ -292,7 +303,8 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
+    // For other types (string, integer, number, duration), match exact value without transformation
+    await expect(container.getByTestId('value')).toContainText(value);
   }
 };
 
@@ -560,7 +572,7 @@ export const addCustomPropertiesForEntity = async ({
 }: {
   page: Page;
   propertyName: string;
-  customPropertyData: { description: string };
+  customPropertyData: { description: string; entityApiType?: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
   formatConfig?: string;
@@ -569,6 +581,20 @@ export const addCustomPropertiesForEntity = async ({
 }) => {
   // Add Custom property for selected entity
   await page.click('[data-testid="add-field-button"]');
+
+  // Assert that breadcrumb has correct link for the entity type
+  // The second breadcrumb item should be "Custom Attributes" with the correct entity type in URL
+  const customAttributesBreadcrumb = page.locator(
+    '[data-testid="breadcrumb-link"]:nth-child(2) a'
+  );
+
+  if (customPropertyData.entityApiType) {
+    // Verify that the Custom Attributes breadcrumb link contains the correct entity type
+    await expect(customAttributesBreadcrumb).toHaveAttribute(
+      'href',
+      `/settings/customProperties/${customPropertyData.entityApiType}`
+    );
+  }
 
   // Trigger validation
   await page.click('[data-testid="create-button"]');
@@ -690,11 +716,13 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   await page.click('[data-testid="create-button"]');
-
+  await page.waitForSelector('[data-testid="custom-property-form"]', {
+    state: 'detached',
+  });
+  await page.waitForLoadState('networkidle');
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
-
   await expect(
     page.getByRole('row', { name: new RegExp(propertyName, 'i') })
   ).toBeVisible();
@@ -730,7 +758,7 @@ export const editCreatedProperty = async (
 
   // displayName
   await page.fill('[data-testid="display-name"]', '');
-  await page.fill('[data-testid="display-name"]', propertyName);
+  await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
 
   await page.locator(descriptionBox).fill('');
   await page.locator(descriptionBox).fill('This is new description');
@@ -779,7 +807,7 @@ export const editCreatedProperty = async (
       page.locator(
         `[data-row-key="${propertyName}"] [data-testid="${propertyName}-config"]`
       )
-    ).toContainText('["user","team","table"]');
+    ).toContainText('["user","team","metric","table"]');
   }
 };
 
@@ -804,4 +832,42 @@ export const deleteCreatedProperty = async (
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
   await page.locator('[data-testid="save-button"]').click();
+};
+
+export const verifyCustomPropertyInAdvancedSearch = async (
+  page: Page,
+  propertyName: string,
+  entityType: string
+) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+
+  // Open advanced search dialog
+  await showAdvancedSearchDialog(page);
+
+  const ruleLocator = page.locator('.rule').nth(0);
+
+  // Select "Custom Properties" from the field dropdown
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    'Custom Properties',
+    true
+  );
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    entityType,
+    true
+  );
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    propertyName,
+    true
+  );
+
+  await page.getByTestId('cancel-btn').click();
 };

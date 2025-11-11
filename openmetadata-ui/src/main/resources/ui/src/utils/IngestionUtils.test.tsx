@@ -13,9 +13,10 @@
 
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { ServicesType } from '../interface/service.interface';
-import { getSupportedPipelineTypes } from './IngestionUtils';
+import { getIngestionTypes, getSupportedPipelineTypes } from './IngestionUtils';
 
 describe('getSupportedPipelineTypes', () => {
   it('should return only return metadata pipeline types if config is undefined', () => {
@@ -97,5 +98,75 @@ describe('getSupportedPipelineTypes', () => {
     const result = getSupportedPipelineTypes(serviceDetails);
 
     expect(result).toContain(PipelineType.ElasticSearchReindex);
+  });
+});
+
+describe('getIngestionTypes', () => {
+  it('should return all supported pipeline types when no pipeline type is specified', () => {
+    const supportedPipelineTypes = [
+      PipelineType.Metadata,
+      PipelineType.Usage,
+      PipelineType.Lineage,
+    ];
+    const ingestionList: IngestionPipeline[] = [];
+    const result = getIngestionTypes(supportedPipelineTypes, ingestionList);
+
+    expect(result).toEqual(supportedPipelineTypes);
+  });
+
+  it('should return only specified pipeline type when pipeline type is provided', () => {
+    const supportedPipelineTypes = [
+      PipelineType.Metadata,
+      PipelineType.Usage,
+      PipelineType.Lineage,
+    ];
+    const ingestionList: IngestionPipeline[] = [];
+    const result = getIngestionTypes(
+      supportedPipelineTypes,
+      ingestionList,
+      PipelineType.Metadata
+    );
+
+    expect(result).toEqual([PipelineType.Metadata]);
+  });
+
+  it('should exclude Usage pipeline type if it already exists in ingestion list', () => {
+    const supportedPipelineTypes = [
+      PipelineType.Metadata,
+      PipelineType.Usage,
+      PipelineType.Lineage,
+    ];
+    const ingestionList: IngestionPipeline[] = [
+      {
+        pipelineType: PipelineType.Usage,
+      } as IngestionPipeline,
+    ];
+    const result = getIngestionTypes(supportedPipelineTypes, ingestionList);
+
+    expect(result).toEqual([PipelineType.Metadata, PipelineType.Lineage]);
+  });
+
+  it('should include Usage pipeline type if it does not exist in ingestion list', () => {
+    const supportedPipelineTypes = [
+      PipelineType.Metadata,
+      PipelineType.Usage,
+      PipelineType.Lineage,
+    ];
+    const ingestionList: IngestionPipeline[] = [
+      {
+        pipelineType: PipelineType.Metadata,
+      } as IngestionPipeline,
+    ];
+    const result = getIngestionTypes(supportedPipelineTypes, ingestionList);
+
+    expect(result).toEqual(supportedPipelineTypes);
+  });
+
+  it('should return empty array when supported pipeline types is empty', () => {
+    const supportedPipelineTypes: PipelineType[] = [];
+    const ingestionList: IngestionPipeline[] = [];
+    const result = getIngestionTypes(supportedPipelineTypes, ingestionList);
+
+    expect(result).toEqual([]);
   });
 });

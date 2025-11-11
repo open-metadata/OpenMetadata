@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.security;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import lombok.Getter;
 
 public class AuthenticationException extends RuntimeException {
@@ -56,6 +56,17 @@ public class AuthenticationException extends RuntimeException {
   public static AuthenticationException getExpiredTokenException() {
     String msg = "Expired token!";
     return new AuthenticationException(msg);
+  }
+
+  public static AuthenticationException invalidTokenMessage() {
+    String msg = "Invalid token, used after logout!";
+    return new AuthenticationException(msg);
+  }
+
+  public static AuthenticationException invalidEmailMessage(String principalDomain) {
+    return new AuthenticationException(
+        String.format(
+            "Not Authorized! Email does not match the principal domain %s", principalDomain));
   }
 
   private static ErrorResponse convertToErrorResponseMessage(String msg) {

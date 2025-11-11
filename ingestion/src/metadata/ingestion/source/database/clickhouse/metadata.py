@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Clickhouse source module"""
 
-import traceback
 from typing import Iterable, Optional
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
@@ -145,35 +144,3 @@ class ClickhouseSource(CommonDbSourceService):
         ]
 
         return regular_tables + material_tables + view_tables
-
-    def get_schema_definition(
-        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
-        """
-        Get the DDL statement or View Definition for a table
-        """
-        try:
-            if table_type in {TableType.View, TableType.MaterializedView}:
-                definition_fn = inspector.get_view_definition
-                schema_definition = definition_fn(table_name, schema_name)
-                return (
-                    str(schema_definition).strip()
-                    if schema_definition is not None
-                    else None
-                )
-            schema_definition = inspector.get_table_ddl(
-                self.connection, table_name, schema_name
-            )
-            return (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-
-        except NotImplementedError:
-            logger.warning("Schema definition not implemented")
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
-        return None

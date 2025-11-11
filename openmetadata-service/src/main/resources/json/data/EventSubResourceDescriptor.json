@@ -8,7 +8,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -19,7 +20,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -30,7 +32,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -41,7 +44,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -52,7 +56,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -63,7 +68,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -74,7 +80,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -85,7 +92,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -96,7 +104,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -107,7 +116,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -118,7 +128,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -129,7 +140,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -140,7 +152,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -151,7 +164,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -162,7 +176,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -173,7 +188,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -184,7 +200,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -195,7 +212,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -206,7 +224,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -217,7 +236,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -228,7 +248,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -239,7 +260,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -250,7 +272,8 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
-      "filterByGeneralMetadataEvents"
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
     ]
   },
   {
@@ -261,6 +284,7 @@
   {
     "name" : "task",
     "supportedFilters" : [
+      "filterByMentionedName"
     ]
   },
   {
@@ -275,7 +299,8 @@
       "filterByFqn",
       "filterByEventType",
       "filterByUpdaterName",
-      "filterByDomain"
+      "filterByDomain",
+      "filterByUpdaterIsBot"
     ]
   }
 ]

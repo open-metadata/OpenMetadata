@@ -16,7 +16,7 @@ import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
@@ -85,7 +85,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     name: 'domains',
     id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef
@@ -242,7 +242,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           {selectedDomain && (
             <DomainLabel
               multiple
-              domain={selectedDomain}
+              domains={selectedDomain}
               entityFqn=""
               entityId=""
               entityType={EntityType.GLOSSARY}

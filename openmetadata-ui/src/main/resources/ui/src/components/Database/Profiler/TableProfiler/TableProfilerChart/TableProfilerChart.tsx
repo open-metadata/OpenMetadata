@@ -11,58 +11,40 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Box, Grid, Stack } from '@mui/material';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEqual, pick } from 'lodash';
+import { pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import QueryString from 'qs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
-import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   DEFAULT_RANGE_DATA,
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
-import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
-import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
-import {
-  getAddCustomMetricPath,
-  getAddDataQualityTableTestPath,
-} from '../../../../../utils/RouterUtils';
+import { Transi18next } from '../../../../../utils/CommonUtils';
+import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
-import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
-import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
-import PageHeader from '../../../../PageHeader/PageHeader.component';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
-import OperationDateBarChart from '../../../../Visualisations/Chart/OperationDateBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from '../../ProfilerDetailsCard/ProfilerDetailsCard';
-import ProfilerLatestValue from '../../ProfilerLatestValue/ProfilerLatestValue';
+import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.component';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
@@ -73,262 +55,203 @@ const TableProfilerChart = ({
   showHeader = true,
   tableDetails,
 }: TableProfilerChartProps) => {
+  const location = useCustomLocation();
   const {
     isProfilerDataLoading: isSummaryLoading,
     permissions,
-    isTableDeleted = false,
     overallSummary,
-    onSettingButtonClick,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
-    dateRangeObject = DEFAULT_RANGE_DATA,
-    onDateRangeChange,
   } = useTableProfiler();
 
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+
+  const dateRangeObject = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    const startTs = searchData.startTs
+      ? Number(searchData.startTs)
+      : DEFAULT_RANGE_DATA.startTs;
+    const endTs = searchData.endTs
+      ? Number(searchData.endTs)
+      : DEFAULT_RANGE_DATA.endTs;
+
+    return {
+      startTs,
+      endTs,
+      key: searchData.key as string,
+      title: searchData.title as string,
+    } as DateRangeObject;
+  }, [location.search]);
+
   const { t } = useTranslation();
   const customMetrics = useMemo(
     () => tableDetails?.customMetrics ?? tableCustomMetric?.customMetrics ?? [],
     [tableCustomMetric, tableDetails]
   );
 
-  const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );
   const [operationMetrics, setOperationMetrics] = useState<MetricChartType>(
     INITIAL_OPERATION_METRIC_VALUE
   );
-  const [operationDateMetrics, setOperationDateMetrics] =
-    useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isTableProfilerLoading, setIsTableProfilerLoading] = useState(true);
+  const [isSystemProfilerLoading, setIsSystemProfilerLoading] = useState(true);
+  const [showSystemMetrics, setShowSystemMetrics] = useState(false);
   const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
+  const profilerDocsLink =
+    documentationLinksClassBase.getDocsURLS()
+      .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
-  const addButtonContent = [
-    {
-      label: <TabsLabel id="test-case" name={t('label.test-case')} />,
-      key: 'test-case',
-      onClick: () => {
-        history.push(
-          getAddDataQualityTableTestPath(
-            ProfilerDashboardType.TABLE,
-            datasetFQN
-          )
-        );
-      },
-    },
-    {
-      label: <TabsLabel id="custom-metric" name={t('label.custom-metric')} />,
-      key: 'custom-metric',
-      onClick: () => {
-        history.push(
-          getAddCustomMetricPath(ProfilerDashboardType.TABLE, datasetFQN)
-        );
-      },
-    },
-  ];
+  const noProfilerMessage = useMemo(() => {
+    return isProfilingEnabled ? (
+      t('message.profiler-is-enabled-but-no-data-available')
+    ) : (
+      <Transi18next
+        i18nKey="message.no-profiler-card-message-with-link"
+        renderElement={
+          <a
+            href={profilerDocsLink}
+            rel="noreferrer"
+            target="_blank"
+            title="Profiler Documentation"
+          />
+        }
+      />
+    );
+  }, [isProfilingEnabled]);
 
   const tableCustomMetricsProfiling = useMemo(
     () => calculateCustomMetrics(profileMetrics, customMetrics),
     [profileMetrics, customMetrics]
   );
 
-  const handleDateRangeChange = (value: DateRangeObject) => {
-    if (!isEqual(value, dateRangeObject)) {
-      onDateRangeChange(value);
-    }
-  };
+  const fetchTableProfiler = useCallback(
+    async (fqn: string, dateRangeObj: DateRangeObject) => {
+      setIsTableProfilerLoading(true);
+      try {
+        const { data } = await getTableProfilesList(fqn, dateRangeObj);
+        const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
+        setRowCountMetrics(rowMetricsData);
+        setProfileMetrics(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsTableProfilerLoading(false);
+      }
+    },
+    [rowCountMetrics, profileMetrics]
+  );
+  const fetchSystemProfiler = useCallback(
+    async (fqn: string, dateRangeObj: DateRangeObject) => {
+      setIsSystemProfilerLoading(true);
+      try {
+        const { data } = await getSystemProfileList(fqn, dateRangeObj);
+        if (data.length > 0) {
+          setShowSystemMetrics(true);
+          const metricsData = calculateSystemMetrics(data, operationMetrics);
 
-  const fetchTableProfiler = async (
-    fqn: string,
-    dateRangeObj: DateRangeObject
-  ) => {
-    try {
-      const { data } = await getTableProfilesList(fqn, dateRangeObj);
-      const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
-      setRowCountMetrics(rowMetricsData);
-      setProfileMetrics(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-  const fetchSystemProfiler = async (
-    fqn: string,
-    dateRangeObj: DateRangeObject
-  ) => {
-    try {
-      const { data } = await getSystemProfileList(fqn, dateRangeObj);
-      const { operationMetrics: metricsData, operationDateMetrics } =
-        calculateSystemMetrics(data, operationMetrics);
+          setOperationMetrics(metricsData);
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsSystemProfilerLoading(false);
+      }
+    },
+    [operationMetrics]
+  );
 
-      setOperationDateMetrics(operationDateMetrics);
-      setOperationMetrics(metricsData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const fetchProfilerData = async (
-    fqn: string,
-    dateRangeObj: DateRangeObject
-  ) => {
-    const dateRange = pick(dateRangeObj, ['startTs', 'endTs']);
-    setIsLoading(true);
-    await fetchTableProfiler(fqn, dateRange);
-    await fetchSystemProfiler(fqn, dateRange);
-    setIsLoading(false);
-  };
+  const fetchProfilerData = useCallback(
+    (fqn: string, dateRangeObj: DateRangeObject) => {
+      const dateRange = pick(dateRangeObj, ['startTs', 'endTs']);
+      fetchTableProfiler(fqn, dateRange);
+      fetchSystemProfiler(fqn, dateRange);
+    },
+    [fetchSystemProfiler, fetchTableProfiler]
+  );
 
   useEffect(() => {
     if (datasetFQN || entityFqn) {
       fetchProfilerData(datasetFQN || entityFqn, dateRangeObject);
     } else {
-      setIsLoading(false);
+      setIsTableProfilerLoading(false);
+      setIsSystemProfilerLoading(false);
     }
-  }, [datasetFQN, dateRangeObject]);
+  }, [datasetFQN, dateRangeObject, entityFqn]);
+
+  if (permissions && !permissions?.ViewDataProfile) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-observability'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   return (
-    <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
+    <Stack
+      data-testid="table-profiler-chart-container"
+      spacing={!isProfilingEnabled ? '30px' : 0}>
       {showHeader && (
         <>
-          <Col span={24}>
-            <Row>
-              <Col span={10}>
-                <PageHeader data={PAGE_HEADERS.TABLE_PROFILE} />
-              </Col>
-              <Col span={14}>
-                <Space align="center" className="w-full justify-end">
-                  <DatePickerMenu
-                    showSelectedCustomRange
-                    defaultDateRange={dateRangeObject}
-                    handleDateRangeChange={handleDateRangeChange}
-                  />
+          {!isSummaryLoading && !isProfilingEnabled && <NoProfilerBanner />}
 
-                  {editDataProfile && !isTableDeleted && (
-                    <>
-                      <LimitWrapper resource="dataQuality">
-                        <Dropdown
-                          menu={{
-                            items: addButtonContent,
-                          }}
-                          placement="bottomRight"
-                          trigger={['click']}>
-                          <Button
-                            data-testid="profiler-add-table-test-btn"
-                            type="primary">
-                            <Space>
-                              {t('label.add')}
-                              <DownOutlined />
-                            </Space>
-                          </Button>
-                        </Dropdown>
-                      </LimitWrapper>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.setting-plural')}>
-                        <Button
-                          className="flex-center"
-                          data-testid="profiler-setting-btn"
-                          onClick={onSettingButtonClick}>
-                          <SettingIcon />
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
-                </Space>
-              </Col>
-            </Row>
-          </Col>
-          {!isSummaryLoading && !isProfilingEnabled && (
-            <Col span={24}>
-              <NoProfilerBanner />
-            </Col>
-          )}
-          <Col span={24}>
-            <Row wrap className="justify-between" gutter={[16, 16]}>
-              {overallSummary?.map((summary) => (
-                <Col key={summary.title}>
-                  <SummaryCard
-                    className={classNames(summary.className, 'h-full')}
-                    isLoading={isSummaryLoading}
-                    showProgressBar={false}
-                    title={summary.title}
-                    total={0}
-                    value={summary.value}
-                  />
-                </Col>
-              ))}
-            </Row>
-          </Col>
+          <Grid container spacing={5}>
+            {overallSummary?.map((summary) => (
+              <Grid key={summary.title} size="grow">
+                <SummaryCardV1
+                  extra={summary.extra}
+                  icon={summary.icon}
+                  isLoading={isSummaryLoading}
+                  title={summary.title}
+                  value={summary.value}
+                />
+              </Grid>
+            ))}
+          </Grid>
         </>
       )}
-      <Col data-testid="row-metrics" span={24}>
-        <ProfilerDetailsCard
-          chartCollection={rowCountMetrics}
-          curveType="stepAfter"
-          isLoading={isLoading}
-          name="rowCount"
-          title={t('label.data-volume')}
-        />
-      </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-date-metrics"
-          loading={isLoading}>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Typography.Title level={5}>
-                {t('label.table-update-plural')}
-              </Typography.Title>
-            </Col>
-            <Col span={4}>
-              <ProfilerLatestValue
-                stringValue
-                information={operationDateMetrics.information}
-              />
-            </Col>
-            <Col span={20}>
-              <OperationDateBarChart
-                chartCollection={operationDateMetrics}
-                name="operationDateMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-metrics"
-          loading={isLoading}>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Typography.Title level={5}>
-                {t('label.volume-change')}
-              </Typography.Title>
-            </Col>
-            <Col span={4}>
-              <ProfilerLatestValue information={operationMetrics.information} />
-            </Col>
-            <Col span={20}>
-              <CustomBarChart
-                chartCollection={operationMetrics}
-                name="operationMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
-      <Col span={24}>
+      <Stack data-testid="table-profiler-chart-container" spacing="30px">
+        <Box data-testid="row-metrics">
+          <ProfilerDetailsCard
+            chartCollection={rowCountMetrics}
+            chartType="area"
+            isLoading={isTableProfilerLoading}
+            name="rowCount"
+            noDataPlaceholderText={noProfilerMessage}
+            title={t('label.data-volume')}
+          />
+        </Box>
+        {showSystemMetrics && (
+          <ProfilerStateWrapper
+            dataTestId="operation-metrics"
+            isLoading={isSystemProfilerLoading}
+            profilerLatestValueProps={{
+              information: operationMetrics.information,
+            }}
+            title={t('label.volume-change')}>
+            <CustomBarChart
+              chartCollection={operationMetrics}
+              name="operationMetrics"
+              noDataPlaceholderText={noProfilerMessage}
+            />
+          </ProfilerStateWrapper>
+        )}
+
         <CustomMetricGraphs
           customMetrics={customMetrics}
           customMetricsGraphData={tableCustomMetricsProfiling}
-          isLoading={isLoading || isSummaryLoading}
+          isLoading={isTableProfilerLoading || isSummaryLoading}
         />
-      </Col>
-    </Row>
+      </Stack>
+    </Stack>
   );
 };
 

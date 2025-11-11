@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.processors.CreateReportDataProcessor;
@@ -35,7 +36,6 @@ import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
@@ -138,6 +138,7 @@ public class CostAnalysisWorkflow {
     if (!costAnalysisConfig.getEnabled()) {
       return;
     }
+    LOG.info("[Data Insights] Processing Cost Analysis.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

@@ -43,6 +43,12 @@
       "type": "boolean",
       "default": false
     },
+    "propagateDomains": {
+      "title": "Propagate Domains",
+      "description": "Propagate domains from the parent through lineage",
+      "type": "boolean",
+      "default": false
+    },
     "propagateOwner": {
       "title": "Propagate Owner",
       "description": "Propagate owner from the parent",
@@ -66,6 +72,21 @@
       "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
       "type": "boolean",
       "default": false
+    },
+    "propagationDepth": {
+      "title": "Propagation Depth",
+      "description": "Number of levels to propagate lineage. If not set, it will propagate to all levels.",
+      "type": "integer",
+      "default": null
+    },
+    "propagationStopConfigs": {
+      "title": "Propagation Stop Configurations",
+      "description": "List of configurations to stop propagation based on conditions",
+      "type": "array",
+      "default": null,
+      "items": {
+        "$ref": "propagationStopConfig.json"
+      }
     }
   },
   "required": ["type"],

@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isNil } from 'lodash';
+import { cloneDeep, isNil, reduce } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import { APIServiceType } from '../generated/entity/data/apiCollection';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -22,7 +25,9 @@ import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ConfigData, ServicesType } from '../interface/service.interface';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
@@ -41,7 +46,7 @@ export const getConnectionSchemas = ({
 
   let connSch = {
     schema: {} as Record<string, any>,
-    uiSchema: {},
+    uiSchema: {} as Record<string, any>,
   };
 
   const validConfig = cloneDeep(config || {});
@@ -117,6 +122,22 @@ export const getConnectionSchemas = ({
 
       break;
     }
+
+    case ServiceCategory.SECURITY_SERVICES: {
+      connSch = serviceUtilClassBase.getSecurityServiceConfig(
+        serviceType as SecurityServiceType
+      );
+
+      break;
+    }
+
+    case ServiceCategory.DRIVE_SERVICES: {
+      connSch = serviceUtilClassBase.getDriveServiceConfig(
+        serviceType as DriveServiceType
+      );
+
+      break;
+    }
   }
 
   return { connSch, validConfig };
@@ -125,7 +146,7 @@ export const getConnectionSchemas = ({
 /**
  * Filters the schema to remove default filters
  * @param schema - The schema to filter
- * @param removeDefaultFilters - Whether to remove default filters,
+ * @param removeDefaultFilters - Whether to remove default filter fields,
  * if true, it will remove the fields that are in the SERVICE_FILTER_PATTERN_FIELDS
  * if false, it will keep only fields that are in the SERVICE_FILTER_PATTERN_FIELDS
  * @returns The filtered schema
@@ -143,3 +164,45 @@ export const getFilteredSchema = (
       return removeDefaultFilters ? !isFiltersField : isFiltersField;
     })
   );
+
+/**
+ * Hides all the default filter fields in the UI Schema nested under all the ServiceNestedConnectionFields
+ * @param uiSchema - The UI Schema to hide the default filter fields
+ * @returns The UI Schema with all the default filter fields hidden
+ */
+export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
+  uiSchema: Record<string, any>
+) => {
+  // object with all the default filter fields hidden
+  const uiSchemaWithAllDefaultFilterFieldsHidden = reduce(
+    SERVICE_FILTER_PATTERN_FIELDS,
+    (acc, field) => {
+      acc[field] = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
+
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+
+  // object with all the default filter fields hidden nested under all the ServiceNestedConnectionFields
+  const uiSchemaWithNestedDefaultFilterFieldsHidden = reduce(
+    Object.values(ServiceNestedConnectionFields),
+    (acc, field) => {
+      acc[field] = {
+        ...uiSchema[field],
+        ...uiSchemaWithAllDefaultFilterFieldsHidden,
+      };
+
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+
+  return {
+    ...uiSchema,
+    ...uiSchemaWithNestedDefaultFilterFieldsHidden,
+  };
+};

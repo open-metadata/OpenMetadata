@@ -1,0 +1,28 @@
+{
+    "name": "ThoughtSpot",
+    "displayName": "ThoughtSpot Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+      {
+        "name": "GetAuthentication",
+        "description": "Validate authentication credentials",
+        "errorMessage": "Failed to authenticate with ThoughtSpot. Please check your credentials.",
+        "mandatory": true,
+        "shortCircuit": true
+      },
+      {
+        "name": "GetLiveboards",
+        "description": "Validate access to Liveboards",
+        "errorMessage": "Failed to retrieve Liveboards. Please check permissions.",
+        "mandatory": false,
+        "shortCircuit": false
+      },
+      {
+        "name": "GetWorksheets",
+        "description": "Validate access to Worksheets",
+        "errorMessage": "Failed to retrieve Worksheets. Please check permissions.",
+        "mandatory": false,
+        "shortCircuit": false
+      }
+    ]
+  }

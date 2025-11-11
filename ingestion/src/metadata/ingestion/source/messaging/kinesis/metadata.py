@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,7 @@ from base64 import b64decode
 from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
@@ -32,7 +32,6 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
-from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
@@ -186,6 +185,9 @@ class KinesisSource(MessagingServiceSource):
         try:
             while has_more_partitions:
                 partitions = self.kinesis.list_shards(**args.dict())
+                # Handle the case when NextToken is not present
+                if "NextToken" not in partitions:
+                    partitions["NextToken"] = None
                 kinesis_partitions_model = KinesisPartitions(**partitions)
                 all_partitions.extend(
                     [

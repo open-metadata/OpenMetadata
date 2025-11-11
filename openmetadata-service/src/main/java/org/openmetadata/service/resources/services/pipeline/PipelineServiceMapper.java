@@ -9,6 +9,7 @@ public class PipelineServiceMapper implements EntityMapper<PipelineService, Crea
   public PipelineService createToEntity(CreatePipelineService create, String user) {
     return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

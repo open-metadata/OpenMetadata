@@ -10,105 +10,132 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+
+import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import {
-  Domain,
-  EntityReference,
-} from '../../../generated/entity/domains/domain';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { useDelete } from '../../common/atoms/actions/useDelete';
+import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
+import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
+import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
+import { useSearch } from '../../common/atoms/navigation/useSearch';
+import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
+import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
+import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
+import { useCardView } from '../../common/atoms/table/useCardView';
+import { useDataTable } from '../../common/atoms/table/useDataTable';
+import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
-const SubDomainsTable = ({
-  subDomains = [],
-  isLoading = false,
-  permissions,
-  onAddSubDomain,
-}: SubDomainsTableProps) => {
+const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const subdomainListing = useSubdomainListingData({
+    parentDomainFqn: domainFqn,
+  });
 
-  const columns: ColumnsType<Domain> = useMemo(() => {
-    const data = [
-      {
-        title: t('label.sub-domain-plural'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (name: string, record: Domain) => {
-          return (
-            <Link
-              className="cursor-pointer vertical-baseline"
-              data-testid={name}
-              style={{ color: record.style?.color }}
-              to={getDomainDetailsPath(
-                record.fullyQualifiedName ?? record.name
-              )}>
-              {getEntityName(record)}
-            </Link>
-          );
-        },
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: string) =>
-          description.trim() ? (
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant
-              markdown={description}
-              maxLength={120}
-            />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
-    ];
+  // Use the same domain filters configuration
+  const { quickFilters, defaultFilters } = useDomainFilters({
+    isSubDomain: true,
+    aggregations: subdomainListing.aggregations || undefined,
+    parsedFilters: subdomainListing.parsedFilters,
+    onFilterChange: subdomainListing.handleFilterChange,
+  });
 
-    return data;
-  }, [subDomains]);
+  // Use the filter selection hook for displaying selected filters
+  const { filterSelectionDisplay } = useFilterSelection({
+    urlState: subdomainListing.urlState,
+    filterConfigs: defaultFilters,
+    parsedFilters: subdomainListing.parsedFilters,
+    onFilterChange: subdomainListing.handleFilterChange,
+  });
 
-  if (isLoading) {
-    return <Loader />;
-  }
+  const { titleAndCount } = useTitleAndCount({
+    titleKey: 'label.sub-domain-plural',
+    count: subdomainListing.totalEntities,
+    loading: subdomainListing.loading,
+  });
 
-  if (isEmpty(subDomains) && !isLoading) {
-    return (
-      <ErrorPlaceHolder
-        className="m-t-xlg"
-        heading={t('label.sub-domain')}
-        permission={permissions.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={onAddSubDomain}
-      />
-    );
-  }
+  const { search } = useSearch({
+    searchPlaceholder: t('label.search-entity', {
+      entity: t('label.sub-domain'),
+    }),
+    onSearchChange: subdomainListing.handleSearchChange,
+    initialSearchQuery: subdomainListing.urlState.searchQuery,
+  });
+
+  const { view, viewToggle } = useViewToggle();
+  const { domainCardTemplate } = useDomainCardTemplates();
+
+  const { dataTable } = useDataTable({
+    listing: subdomainListing,
+    enableSelection: true,
+    entityLabelKey: 'label.sub-domain',
+  });
+
+  const { cardView } = useCardView({
+    listing: subdomainListing,
+    cardTemplate: domainCardTemplate,
+  });
+
+  const { paginationControls } = usePaginationControls({
+    currentPage: subdomainListing.currentPage,
+    totalPages: subdomainListing.totalPages,
+    totalEntities: subdomainListing.totalEntities,
+    pageSize: subdomainListing.pageSize,
+    onPageChange: subdomainListing.handlePageChange,
+    loading: subdomainListing.loading,
+  });
+
+  // Map selected IDs to actual entities for the delete hook
+  const selectedSubdomainEntities = useMemo(
+    () =>
+      subdomainListing.entities.filter((entity) =>
+        subdomainListing.selectedEntities.includes(entity.id)
+      ),
+    [subdomainListing.entities, subdomainListing.selectedEntities]
+  );
+
+  const { deleteIconButton, deleteModal } = useDelete({
+    entityType: 'domains',
+    entityLabel: 'Sub-domain',
+    selectedEntities: selectedSubdomainEntities,
+    onDeleteComplete: () => {
+      subdomainListing.clearSelection();
+      subdomainListing.refetch();
+    },
+  });
 
   return (
-    <Table
-      bordered
-      className="p-md"
-      columns={columns}
-      dataSource={subDomains}
-      pagination={false}
-      rowKey="fullyQualifiedName"
-      size="small"
-    />
+    <>
+      <TableContainer component={Paper} sx={{ mb: 5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            px: 6,
+            py: 4,
+            borderBottom: `1px solid`,
+            borderColor: theme.palette.allShades?.gray?.[200],
+          }}>
+          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {titleAndCount}
+            {search}
+            {quickFilters}
+            <Box ml="auto" />
+            {viewToggle}
+            {deleteIconButton}
+          </Box>
+          {filterSelectionDisplay}
+        </Box>
+
+        {view === 'table' ? dataTable : cardView}
+
+        {paginationControls}
+      </TableContainer>
+      {deleteModal}
+    </>
   );
 };
 

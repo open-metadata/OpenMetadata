@@ -23,7 +23,7 @@
     "hostPort": {
       "expose": true,
       "title": "Host and Port",
-      "description": "Tableau Server.",
+      "description": "Tableau Server url.",
       "type": "string",
       "format": "uri"
     },
@@ -40,32 +40,31 @@
         }
       ]
     },
-    "apiVersion": {
-      "title": "API Version",
-      "description": "Tableau API version.",
-      "type": "string"
-    },
     "siteName": {
       "title": "Site Name",
       "description": "Tableau Site Name.",
-      "type": "string"
-    },
-    "siteUrl": {
-      "title": "Site Url",
-      "description": "Tableau Site Url.",
-      "type": "string"
-    },
-    "env": {
-      "title": "Tableau Environment",
-      "description": "Tableau Environment Name.",
       "type": "string",
-      "default": "tableau_prod"
+      "default": null
     },
     "paginationLimit": {
       "title": "Pagination Limit",
       "description": "Pagination limit used while querying the tableau metadata API for getting data sources",
       "type": "integer",
       "default": 10
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "Tableau API version. If not provided, the version will be used from the tableau server.",
+      "type": "string",
+      "default": null
+    },
+    "proxyURL": {
+      "expose": true,
+      "title": "Proxy URL",
+      "description": "Proxy URL for the tableau server. If not provided, the hostPort will be used. This is used to generate the dashboard & Chart URL.",
+      "type": "string",
+      "format": "uri",
+      "default": null
     },
     "verifySSL": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
@@ -100,5 +99,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["apiVersion", "env", "hostPort"]
+  "required": ["hostPort"]
 }

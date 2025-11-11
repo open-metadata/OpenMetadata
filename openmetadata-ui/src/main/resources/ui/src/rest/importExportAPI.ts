@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { CSVImportAsyncResponse } from '../components/BulkImport/BulkEntityImport.interface';
 import { EntityType } from '../enums/entity.enum';
+import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -21,6 +21,7 @@ export interface importEntityInCSVFormatRequestParams {
   name: string;
   data: string;
   dryRun?: boolean;
+  recursive?: boolean;
 }
 
 export const importEntityInCSVFormat = async ({
@@ -28,6 +29,7 @@ export const importEntityInCSVFormat = async ({
   name,
   data,
   dryRun = true,
+  recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
@@ -36,7 +38,9 @@ export const importEntityInCSVFormat = async ({
     string,
     AxiosResponse<CSVImportAsyncResponse>
   >(
-    `/${entityType}s/name/${getEncodedFqn(name)}/importAsync?dryRun=${dryRun}`,
+    `/${entityType}s/name/${getEncodedFqn(
+      name
+    )}/importAsync?dryRun=${dryRun}&recursive=${recursive}`,
     data,
     configOptions
   );
@@ -49,6 +53,7 @@ export const importServiceInCSVFormat = async ({
   name,
   data,
   dryRun = true,
+  recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
@@ -59,10 +64,30 @@ export const importServiceInCSVFormat = async ({
   >(
     `services/${entityType}s/name/${getEncodedFqn(
       name
-    )}/importAsync?dryRun=${dryRun}`,
+    )}/importAsync?dryRun=${dryRun}&recursive=${recursive}`,
     data,
     configOptions
   );
 
   return res.data;
+};
+
+export const importGlossaryInCSVFormat = async ({
+  name,
+  data,
+  dryRun = true,
+}: importEntityInCSVFormatRequestParams) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(
+    `/glossaries/name/${getEncodedFqn(name)}/importAsync?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

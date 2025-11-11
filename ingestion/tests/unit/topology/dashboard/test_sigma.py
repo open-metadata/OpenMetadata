@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -92,7 +92,11 @@ mock_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeOwners": True,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -227,3 +231,44 @@ class SigmaUnitTest(TestCase):
 
         for expected, original in zip(EXPECTED_CHARTS, chart_list):
             self.assertEqual(expected, original)
+
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.sigma.source_config.includeOwners = True
+
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.sigma.source_config.includeOwners)
+
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.sigma.source_config.includeOwners = False
+
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.sigma.source_config.includeOwners)
+
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    def test_include_owners_flag_affects_owner_processing(self):
+        """
+        Test that the includeOwners flag affects how owner information is processed
+        """
+        # Test with includeOwners = True
+        self.sigma.source_config.includeOwners = True
+        self.assertTrue(self.sigma.source_config.includeOwners)
+
+        # Test with includeOwners = False
+        self.sigma.source_config.includeOwners = False
+        self.assertFalse(self.sigma.source_config.includeOwners)

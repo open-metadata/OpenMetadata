@@ -36,9 +36,13 @@ export interface SearchService {
      */
     displayName?: string;
     /**
-     * Domain the search service belongs to.
+     * Domains the search service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -52,13 +56,17 @@ export interface SearchService {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this search service.
      */
@@ -167,18 +175,18 @@ export interface FieldChange {
  * search Connection.
  */
 export interface SearchConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
  * ElasticSearch Connection.
  *
- * OpenSearch Connection.
+ * OpenSearch Connection Config
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Choose Auth Config Type.
      */
@@ -203,44 +211,18 @@ export interface ConfigClass {
     /**
      * ElasticSearch Type
      *
-     * Service Type
+     * OpenSearch Type
      *
      * Custom search service type
      */
     type?:              SearchServiceType;
+    verifySSL?:         VerifySSL;
     connectionOptions?: { [key: string]: string };
-    /**
-     * Keep Alive Timeout in Seconds
-     */
-    keepAliveTimeoutSecs?: number;
-    /**
-     * OpenSearch Password for Login
-     */
-    password?: string;
-    /**
-     * Http/Https connection scheme
-     */
-    scheme?: string;
-    /**
-     * Socket Timeout in Seconds
-     */
-    socketTimeoutSecs?: number;
-    /**
-     * Truststore Password
-     */
-    truststorePassword?: string;
-    /**
-     * Truststore Path
-     */
-    truststorePath?: string;
-    /**
-     * OpenSearch Username for Login
-     */
-    username?: string;
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    [property: string]: any;
 }
 
 /**
@@ -249,6 +231,8 @@ export interface ConfigClass {
  * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
+ *
+ * AWS credentials configs.
  */
 export interface AuthConfigurationType {
     /**
@@ -267,6 +251,46 @@ export interface AuthConfigurationType {
      * Elastic Search API Key ID for API Authentication
      */
     apiKeyId?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**
@@ -339,7 +363,7 @@ export interface SSLCertificates {
  *
  * ElasticSearch service type
  *
- * Service Type
+ * OpenSearch Type
  *
  * OpenSearch service type
  *
@@ -356,6 +380,15 @@ export enum SearchServiceType {
 }
 
 /**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
+}
+
+/**
  * List of data products this entity is part of.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
@@ -367,8 +400,6 @@ export enum SearchServiceType {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the search service belongs to.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */
@@ -444,6 +475,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -466,6 +501,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -497,9 +533,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

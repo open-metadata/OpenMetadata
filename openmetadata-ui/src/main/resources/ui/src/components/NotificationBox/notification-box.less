@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 .notification-box {
   background: @background-color;
   border: @global-border;
-  border-radius: 4px;
+  border-radius: @card-radius;
   box-shadow: @box-shadow-base;
 
   .ant-list {
     .ant-list-footer {
       border-top: 1px solid rgb(220, 227, 236);
-      box-shadow: rgb(0 0 0 / 4%) 0px -4px 4px;
+      box-shadow: rgba(0, 0, 0, 0.04) 0px -4px 4px;
     }
   }
 }

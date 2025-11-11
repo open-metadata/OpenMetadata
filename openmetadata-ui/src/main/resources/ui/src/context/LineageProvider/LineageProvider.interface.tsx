@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LoadingState } from 'Models';
-import { DragEvent, ReactNode } from 'react';
+import { Dispatch, DragEvent, ReactNode, SetStateAction } from 'react';
 import {
   Connection,
   Edge,
@@ -21,32 +21,25 @@ import {
   NodeProps,
   ReactFlowInstance,
 } from 'reactflow';
+import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
-import {
-  EdgeDetails,
-  EntityLineageResponse,
-} from '../../components/Lineage/Lineage.interface';
+import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
+import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { EntityReference } from '../../generated/entity/type';
 import { LineageLayer } from '../../generated/settings/settings';
 
 export interface LineageProviderProps {
   children: ReactNode;
 }
 
-export type UpstreamDownstreamData = {
-  downstreamEdges: EdgeDetails[];
-  upstreamEdges: EdgeDetails[];
-  downstreamNodes: EntityReference[];
-  upstreamNodes: EntityReference[];
-};
-
 export enum LineagePlatformView {
   None = 'None',
   Service = 'Service',
   Domain = 'Domain',
+  DataProduct = 'DataProduct',
 }
 
 export interface LineageContextType {
@@ -66,11 +59,14 @@ export interface LineageContextType {
   isEditMode: boolean;
   entityLineage: EntityLineageResponse;
   selectedNode: SourceType;
-  upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
   activeLayer: LineageLayer[];
   platformView: LineagePlatformView;
   expandAllColumns: boolean;
+  isPlatformLineage: boolean;
+  entityFqn: string;
+  exportLineageData: (_: string) => Promise<CSVExportResponse>;
+  onCloseDrawer: () => void;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
@@ -79,8 +75,9 @@ export interface LineageContextType {
   onColumnClick: (node: string) => void;
   onLineageEditClick: () => void;
   onZoomUpdate: (value: number) => void;
-  onLineageConfigUpdate: (config: any) => void;
-  onQueryFilterUpdate: (query: string) => void;
+  onLineageConfigUpdate: (config: LineageConfig) => void;
+  selectedQuickFilters: ExploreQuickFilterField[];
+  setSelectedQuickFilters: Dispatch<SetStateAction<ExploreQuickFilterField[]>>;
   onDrawerClose: () => void;
   onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
@@ -95,13 +92,22 @@ export interface LineageContextType {
     entityType: string,
     lineageConfig: LineageConfig
   ) => void;
-  onExportClick: () => void;
+  onExportClick: (
+    entityTypes?: ExportTypes[],
+    callback?: (_: string) => Promise<CSVExportResponse>
+  ) => void;
   onPlatformViewChange: (view: LineagePlatformView) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
-  updateEntityData: (entityType: EntityType, entity?: SourceType) => void;
+  updateEntityData: (
+    entityType: EntityType,
+    entity?: SourceType,
+    isPlatformLineage?: boolean
+  ) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
   redraw: () => Promise<void>;
+  updateEntityFqn: (entityFqn: string) => void;
+  dqHighlightedEdges?: Set<string>;
 }

@@ -35,6 +35,12 @@
         },
         {
           "$ref": "../services/searchService.json#/definitions/searchConnection"
+        },
+        {
+          "$ref": "../services/securityService.json#/definitions/securityConnection"
+        },
+        {
+          "$ref": "../services/driveService.json#/definitions/driveConnection"
         }
       ]
     },
@@ -55,6 +61,10 @@
       "description": "Secrets Manager Provider to use for fetching secrets.",
       "$ref": "../../security/secrets/secretsManagerProvider.json",
       "default": "db"
+    },
+    "ingestionRunner": {
+      "description": "Optional value of the ingestion runner name responsible for running the test",
+      "type": "string"
     }
   },
   "additionalProperties": false

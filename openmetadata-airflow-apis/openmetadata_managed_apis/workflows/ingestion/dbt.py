@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,7 +42,7 @@ def build_dbt_workflow_config(
     """
 
     source = build_source(ingestion_pipeline)
-    source.type = f"dbt"  # Mark the source as dbt
+    source.type = "dbt"  # Mark the source as dbt
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=source,
@@ -52,6 +52,7 @@ def build_dbt_workflow_config(
         ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
+        enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
     return workflow_config

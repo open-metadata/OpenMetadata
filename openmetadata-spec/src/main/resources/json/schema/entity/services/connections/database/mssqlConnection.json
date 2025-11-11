@@ -65,25 +65,13 @@
       "type": "boolean",
       "default": false
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
-      "type": "object",
-      "properties": {
-        "includes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
-        },
-        "excludes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
-        }
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
       }
     },
     "tableFilterPattern": {
@@ -94,22 +82,10 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
-      "type": "object",
-      "properties": {
-        "includes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
-        },
-        "excludes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": ["^msdb$", "^model$", "^tempdb$"]
-        }
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^msdb$", "^model$", "^tempdb$"]
       }
     },
     "connectionOptions": {
@@ -150,8 +126,8 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     }
   },
   "additionalProperties": false,

@@ -43,3 +43,6 @@ export const customFormatDateTime = (
     format
   );
 };
+
+export const getDayAgoStartGMTinMillis = (days: number) =>
+  DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { DatePicker, Form, Input, Modal, Space } from 'antd';
+import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { Moment } from 'moment';
-import React, { FC, useMemo, useState } from 'react';
+import { DateTime } from 'luxon';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
@@ -26,9 +26,15 @@ import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+import { useSnackbar } from 'notistack';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
+import {
+  showNotistackError,
+  showNotistackSuccess,
+} from '../../../utils/NotistackUtils';
+import DatePicker from '../../common/DatePicker/DatePicker';
 import './announcement-modal.less';
 
 interface Props {
@@ -37,13 +43,14 @@ interface Props {
   entityFQN: string;
   onCancel: () => void;
   onSave: () => void;
+  showToastInSnackbar?: boolean;
 }
 
 export interface CreateAnnouncement {
   title: string;
   description: string;
-  startTime: Moment;
-  endTime: Moment;
+  startTime: DateTime;
+  endTime: DateTime;
 }
 
 const AddAnnouncementModal: FC<Props> = ({
@@ -52,11 +59,12 @@ const AddAnnouncementModal: FC<Props> = ({
   onSave,
   entityType,
   entityFQN,
+  showToastInSnackbar = false,
 }) => {
   const { currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
 
   const handleCreateAnnouncement = async ({
@@ -65,11 +73,16 @@ const AddAnnouncementModal: FC<Props> = ({
     endTime,
     description,
   }: CreateAnnouncement) => {
-    const startTimeMs = startTime.valueOf();
-    const endTimeMs = endTime.valueOf();
+    const startTimeMs = startTime.toMillis();
+    const endTimeMs = endTime.toMillis();
 
     if (startTimeMs >= endTimeMs) {
-      showErrorToast(t('message.announcement-invalid-start-time'));
+      showToastInSnackbar
+        ? showNotistackError(
+            enqueueSnackbar,
+            t('message.announcement-invalid-start-time')
+          )
+        : showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const announcementData: CreateThread = {
         from: currentUser?.name as string,
@@ -86,11 +99,18 @@ const AddAnnouncementModal: FC<Props> = ({
         setIsLoading(true);
         const data = await postThread(announcementData);
         if (data) {
-          showSuccessToast(t('message.announcement-created-successfully'));
+          showToastInSnackbar
+            ? showNotistackSuccess(
+                enqueueSnackbar,
+                t('message.announcement-created-successfully')
+              )
+            : showSuccessToast(t('message.announcement-created-successfully'));
         }
         onSave();
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        showToastInSnackbar
+          ? showNotistackError(enqueueSnackbar, error as AxiosError)
+          : showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }

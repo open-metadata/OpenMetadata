@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -104,6 +104,21 @@ def get_table_or_column_fqn(entity_link: str) -> str:
         "Invalid entity link."
         " {split_entity_link} does not look like a table or a column entity link"
     )
+
+
+def get_column_name_or_none(entity_link: str) -> Optional[str]:
+    """It attempts to get a column from an entity link
+
+    Args:
+        entity_link: entity link
+
+    Returns:
+        The column name or None
+    """
+    split_entity_link = split(entity_link)
+    if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
+        return split_entity_link[3]
+    return None
 
 
 get_entity_link_registry = class_register()

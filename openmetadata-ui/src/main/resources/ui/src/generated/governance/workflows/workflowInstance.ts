@@ -17,11 +17,8 @@ export interface WorkflowInstance {
     /**
      * Timestamp on which the workflow instance ended.
      */
-    endedAt?: number;
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
+    endedAt?:   number;
+    exception?: string;
     /**
      * Unique identifier of this workflow instance state.
      */

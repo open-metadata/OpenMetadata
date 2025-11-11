@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,8 +54,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -65,6 +67,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -72,7 +75,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -104,6 +106,53 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void clearFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? glossary.getTermCount() : null);
     glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Glossary> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    // Call parent method to handle common fields like owners, tags, etc.
+    super.setFieldsInBulk(fields, entities);
+
+    // Bulk fetch term counts if needed
+    if (fields.contains("termCount")) {
+      Map<String, Integer> termCountMap = batchGetTermCounts(entities);
+      for (Glossary glossary : entities) {
+        glossary.setTermCount(termCountMap.getOrDefault(glossary.getName(), 0));
+      }
+    }
+
+    // Bulk fetch usage counts if needed
+    if (fields.contains("usageCount")) {
+      Map<String, Integer> usageCountMap = batchGetUsageCounts(entities);
+      for (Glossary glossary : entities) {
+        glossary.withUsageCount(usageCountMap.getOrDefault(glossary.getName(), 0));
+      }
+    }
+  }
+
+  private Map<String, Integer> batchGetTermCounts(List<Glossary> glossaries) {
+    Map<String, Integer> termCountMap = new HashMap<>();
+    for (Glossary glossary : glossaries) {
+      ListFilter filter =
+          new ListFilter(Include.NON_DELETED)
+              .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
+      int count = daoCollection.glossaryTermDAO().listCount(filter);
+      termCountMap.put(glossary.getName(), count);
+    }
+    return termCountMap;
+  }
+
+  private Map<String, Integer> batchGetUsageCounts(List<Glossary> glossaries) {
+    Map<String, Integer> usageCountMap = new HashMap<>();
+    for (Glossary glossary : glossaries) {
+      int count =
+          daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+      usageCountMap.put(glossary.getName(), count);
+    }
+    return usageCountMap;
   }
 
   @Override
@@ -153,7 +202,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   /** Export glossary as CSV */
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
@@ -167,15 +216,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   /** Load CSV provided for bulk upload */
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryCsv glossaryCsv = new GlossaryCsv(glossary, user);
     return glossaryCsv.importCsv(csv, dryRun);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.GLOSSARY);
+    public static final CsvDocumentation DOCUMENTATION =
+        getCsvDocumentation(Entity.GLOSSARY, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
 
@@ -187,12 +237,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) return;
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
+      String glossaryTermFqn =
+          nullOrEmpty(csvRecord.get(0))
+              ? FullyQualifiedName.build(glossary.getFullyQualifiedName(), csvRecord.get(1))
+              : FullyQualifiedName.add(csvRecord.get(0), csvRecord.get(1));
 
       // TODO add header
       glossaryTerm
           .withParent(getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM))
           .withName(csvRecord.get(1))
+          .withFullyQualifiedName(glossaryTermFqn)
           .withDisplayName(csvRecord.get(2))
           .withDescription(csvRecord.get(3))
           .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
@@ -203,10 +259,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
           .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
-          .withStatus(getTermStatus(printer, csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withEntityStatus(getTermStatus(printer, csvRecord))
+          .withStyle(getStyle(csvRecord))
+          .withExtension(getExtension(printer, csvRecord, 13));
       if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm);
+        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }
 
@@ -240,13 +297,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return list;
     }
 
-    private Status getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    private EntityStatus getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
       if (!processRecord) {
         return null;
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus) ? Status.DRAFT : Status.fromValue(termStatus);
+        return nullOrEmpty(termStatus) ? EntityStatus.DRAFT : EntityStatus.fromValue(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(
@@ -256,6 +313,29 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         processRecord = false;
         return null;
       }
+    }
+
+    private Style getStyle(CSVRecord csvRecord) {
+      if (!processRecord) {
+        return null;
+      }
+      String color = csvRecord.get(11);
+      String iconURL = csvRecord.get(12);
+
+      // If both fields are empty, explicitly return null to remove any existing style
+      if (nullOrEmpty(color) && nullOrEmpty(iconURL)) {
+        return null;
+      }
+
+      Style style = new Style();
+      if (!nullOrEmpty(color)) {
+        style.setColor(color);
+      }
+      if (!nullOrEmpty(iconURL)) {
+        style.setIconURL(iconURL);
+      }
+
+      return style;
     }
 
     @Override
@@ -271,7 +351,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addTagLabels(recordList, entity.getTags());
       addReviewers(recordList, entity.getReviewers());
       addOwners(recordList, entity.getOwners());
-      addField(recordList, entity.getStatus().value());
+      addField(recordList, entity.getEntityStatus().value());
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
@@ -326,7 +408,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
         repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -335,12 +417,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
           repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
 
-    searchRepository.updateEntity(original); // update es index of child term
+    searchRepository.updateEntityIndex(original); // update es index of child term
     searchRepository
         .getSearchClient()
         .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());
@@ -441,7 +523,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.IN_REVIEW)) {
+          if (term.getEntityStatus().equals(EntityStatus.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

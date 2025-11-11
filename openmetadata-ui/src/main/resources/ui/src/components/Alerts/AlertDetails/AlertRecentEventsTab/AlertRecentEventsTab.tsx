@@ -24,10 +24,9 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -44,6 +43,7 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtil';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -75,7 +75,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     handlePageSizeChange,
     showPagination,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const { id, alertName } = useMemo(
     () => ({
@@ -150,11 +150,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           className="p-y-lg"
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph className="w-max-500">
-            {filter === AlertRecentEventFilters.ALL
-              ? t('message.no-data-available-entity', {
+            {filter === AlertRecentEventFilters.ALL ? (
+              <Transi18next
+                i18nKey="message.no-data-available-entity"
+                renderElement={<b />}
+                values={{
                   entity: t('label.recent-event-plural'),
-                })
-              : t('message.no-data-available-for-selected-filter')}
+                }}
+              />
+            ) : (
+              t('message.no-data-available-for-selected-filter')
+            )}
           </Typography.Paragraph>
         </ErrorPlaceHolder>
       );

@@ -18,6 +18,7 @@ import {
   TestCaseParameterValue,
   TestCaseResult,
 } from '../../generated/tests/testCase';
+import { getRandomHexColor } from '../DataInsightUtils';
 
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
@@ -96,7 +97,7 @@ export const prepareChartData = ({
     information:
       testCaseResultParams?.testResultValue?.map((info, i) => ({
         label: info.name ?? '',
-        color: COLORS[i],
+        color: COLORS[i] ?? getRandomHexColor(),
       })) ?? [],
     data: dataPoints,
     showAILearningBanner,

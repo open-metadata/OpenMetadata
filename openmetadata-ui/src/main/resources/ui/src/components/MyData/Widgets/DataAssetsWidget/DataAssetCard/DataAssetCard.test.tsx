@@ -12,15 +12,14 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Bucket } from 'Models';
-import React from 'react';
-import { getExplorePath } from '../../../../../constants/constants';
+import { getExplorePath } from '../../../../../utils/RouterUtils';
 import DataAssetCard from './DataAssetCard.component';
 
 const mockLinkButton = jest.fn();
 const filterQuery =
   '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}';
 
-jest.mock('../../../../../constants/constants', () => ({
+jest.mock('../../../../../utils/RouterUtils', () => ({
   getExplorePath: jest.fn(),
 }));
 
@@ -58,7 +57,7 @@ describe('DataAssetCard', () => {
     render(<DataAssetCard service={mockServiceData} />);
 
     expect(screen.getByText('getServiceLogo')).toBeInTheDocument();
-    expect(screen.getByText('Mysql')).toBeInTheDocument();
+    expect(screen.getByText('MySQL')).toBeInTheDocument();
     expect(screen.getByText('AppBadge')).toBeInTheDocument();
 
     expect(getExplorePath).toHaveBeenCalledWith({

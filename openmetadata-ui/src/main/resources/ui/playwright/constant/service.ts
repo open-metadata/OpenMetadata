@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { uuid } from '../utils/common';
 import { GlobalSettingOptions, ServiceTypes } from './settings';
 
@@ -24,7 +25,18 @@ export const SERVICE_TYPE = {
   Metadata: GlobalSettingOptions.METADATA,
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
   ApiService: GlobalSettingOptions.APIS,
+  DriveService: GlobalSettingOptions.DRIVES,
 };
+export const FollowSupportedServices = [
+  EntityTypeEndpoint.DatabaseService,
+  EntityTypeEndpoint.DatabaseSchema,
+  EntityTypeEndpoint.Database,
+];
+
+export const CertificationSupportedServices = [
+  EntityTypeEndpoint.DatabaseSchema,
+  EntityTypeEndpoint.Database,
+];
 
 export const VISIT_SERVICE_PAGE_DETAILS = {
   [SERVICE_TYPE.Database]: {
@@ -91,3 +103,5 @@ export const DBT = {
   dataQualityTest1: 'unique_customers_customer_id',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
+
+export const MAX_CONSECUTIVE_ERRORS = 3;

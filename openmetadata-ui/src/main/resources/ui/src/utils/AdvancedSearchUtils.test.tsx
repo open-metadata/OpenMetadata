@@ -12,10 +12,12 @@
  */
 
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   getChartsOptions,
   getColumnsOptions,
+  getEmptyJsonTree,
   getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
   getSearchDropdownLabels,
@@ -44,6 +46,14 @@ import {
   mockOptionsArray,
   mockShortOptionsArray,
 } from './mocks/AdvancedSearchUtils.mock';
+
+// Mock QbUtils
+jest.mock('@react-awesome-query-builder/antd', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/antd'),
+  Utils: {
+    uuid: jest.fn().mockReturnValue('test-uuid'),
+  },
+}));
 
 describe('AdvancedSearchUtils tests', () => {
   it('Function getSearchDropdownLabels should return menuItems for passed options', () => {
@@ -214,5 +224,56 @@ describe('AdvancedSearchUtils tests', () => {
       { count: 1, key: 'pipeline', label: 'pipeline' },
       { count: 3, key: 'chart', label: 'chart' },
     ]);
+  });
+
+  describe('getEmptyJsonTree', () => {
+    it('should return a default JsonTree structure with OWNERS as the default field', () => {
+      const result = getEmptyJsonTree();
+
+      const expected = {
+        id: 'test-uuid',
+        type: 'group',
+        properties: {
+          conjunction: 'AND',
+          not: false,
+        },
+        children1: {
+          'test-uuid': {
+            type: 'group',
+            properties: {
+              conjunction: 'AND',
+              not: false,
+            },
+            children1: {
+              'test-uuid': {
+                type: 'rule',
+                properties: {
+                  field: EntityFields.OWNERS,
+                  operator: null,
+                  value: [],
+                  valueSrc: ['value'],
+                },
+              },
+            },
+          },
+        },
+      };
+
+      expect(result).toEqual(expected);
+    });
+
+    it('should use the provided field when passed as parameter', () => {
+      const customField = EntityFields.TAG;
+      const result = getEmptyJsonTree(customField);
+
+      const children1 = result.children1 as Record<
+        string,
+        { children1: Record<string, { properties: { field: string } }> }
+      >;
+
+      expect(
+        children1['test-uuid'].children1['test-uuid'].properties.field
+      ).toEqual(customField);
+    });
   });
 });

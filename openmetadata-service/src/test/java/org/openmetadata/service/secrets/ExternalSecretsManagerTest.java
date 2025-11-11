@@ -20,8 +20,8 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
-import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ExternalSecretsManagerTest {
   protected ExternalSecretsManager secretsManager;
@@ -104,7 +104,8 @@ public abstract class ExternalSecretsManagerTest {
     // Encrypt the workflow and ensure password and secrete key are encrypted
     actualWorkflow = secretsManager.encryptWorkflow(actualWorkflow);
     assertNotEquals(password, getPassword(actualWorkflow));
-    assertNotEquals(
+    // JWT token is not encrypted since it's not stored in the db. It's handled at runtime.
+    assertEquals(
         secretKey,
         actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
 

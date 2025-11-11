@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import i18n from '../utils/i18next/LocalUtil';
+
 export const GLOSSARY_TERM_TABLE_COLUMNS_KEYS = {
   NAME: 'name',
   DESCRIPTION: 'description',
@@ -30,3 +34,17 @@ export const STATIC_VISIBLE_COLUMNS = [
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
 ];
+
+export const GLOSSARY_TERM_STATUS_OPTIONS = [
+  {
+    value: 'all',
+    text: i18n.t('label.all'),
+  },
+  ...Object.values(EntityStatus).map((status) => ({
+    value: status,
+    text: status,
+  })),
+];
+
+export const GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME =
+  'GlossaryTermApprovalWorkflow';

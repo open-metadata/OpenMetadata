@@ -1,6 +1,9 @@
 from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
     UnityCatalogTestSuiteInterface,
 )
+from metadata.ingestion.source.database.unitycatalog.data_diff.data_diff import (
+    UnityCatalogTableParameter,
+)
 from metadata.ingestion.source.database.unitycatalog.lineage import (
     UnitycatalogLineageSource,
 )
@@ -11,7 +14,7 @@ from metadata.ingestion.source.database.unitycatalog.usage import (
 from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface import (
     UnityCatalogProfilerInterface,
 )
-from metadata.profiler.interface.sqlalchemy.unity_catalog.sampler_interface import (
+from metadata.sampler.sqlalchemy.unitycatalog.sampler import (
     UnityCatalogSamplerInterface,
 )
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
@@ -23,4 +26,5 @@ ServiceSpec = DefaultDatabaseSpec(
     profiler_class=UnityCatalogProfilerInterface,
     test_suite_class=UnityCatalogTestSuiteInterface,
     sampler_class=UnityCatalogSamplerInterface,
+    data_diff=UnityCatalogTableParameter,
 )

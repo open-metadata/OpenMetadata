@@ -18,17 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatchBuilder;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonException;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonPatchBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -93,7 +94,7 @@ class JsonUtilsTest {
         assertThrows(
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
-    assertTrue(jsonException.getMessage().contains("contains no element for index 4"));
+    assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
 
     // Delete the two users from the team
     patchBuilder = Json.createPatchBuilder();
@@ -110,7 +111,7 @@ class JsonUtilsTest {
         assertThrows(
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
-    assertTrue(jsonException.getMessage().contains("contains no element for index 3"));
+    assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
   }
 
   @Test

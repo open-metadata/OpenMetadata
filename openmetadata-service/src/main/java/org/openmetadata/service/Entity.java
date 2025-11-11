@@ -23,6 +23,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -38,8 +40,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -49,6 +49,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.FieldInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -62,13 +63,16 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
@@ -100,6 +104,7 @@ public final class Entity {
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
   @Getter @Setter private static SearchRepository searchRepository;
   @Getter @Setter private static SuggestionRepository suggestionRepository;
+  @Getter @Setter private static TypeRepository typeRepository;
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
@@ -123,7 +128,6 @@ public final class Entity {
   public static final String FIELD_PARENT = "parent";
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_EXPERTS = "experts";
-  public static final String FIELD_DOMAIN = "domain";
   public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
@@ -132,6 +136,7 @@ public final class Entity {
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
   public static final String FIELD_CERTIFICATION = "certification";
+  public static final String FIELD_ENTITY_STATUS = "entityStatus";
 
   public static final String FIELD_DISABLED = "disabled";
 
@@ -150,8 +155,9 @@ public final class Entity {
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
   public static final String SEARCH_SERVICE = "searchService";
-
+  public static final String SECURITY_SERVICE = "securityService";
   public static final String API_SERVICE = "apiService";
+  public static final String DRIVE_SERVICE = "driveService";
   //
   // Data asset entities
   //
@@ -171,7 +177,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
 
-  public static final String API_COLLCECTION = "apiCollection";
+  public static final String API_COLLECTION = "apiCollection";
   public static final String API_ENDPOINT = "apiEndpoint";
 
   public static final String API = "api";
@@ -179,6 +185,10 @@ public final class Entity {
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
   public static final String QUERY_COST_RECORD = "queryCostRecord";
+  public static final String DIRECTORY = "directory";
+  public static final String FILE = "file";
+  public static final String SPREADSHEET = "spreadsheet";
+  public static final String WORKSHEET = "worksheet";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -220,10 +230,13 @@ public final class Entity {
   //
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
+  public static final String DATA_CONTRACT = "dataContract";
+  public static final String DATA_CONTRACT_RESULT = "dataContractResult";
 
   //
   // Other entities
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
+  public static final String NOTIFICATION_TEMPLATE = "notificationTemplate";
   public static final String THREAD = "THREAD";
   public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
@@ -234,6 +247,8 @@ public final class Entity {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String TEST_CASE_RESULT = "testCaseResult";
+  public static final String TEST_CASE_DIMENSION_RESULT = "testCaseDimensionResult";
+  public static final String ENTITY_PROFILE = "entityProfile";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
@@ -270,7 +285,9 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SECURITY, SECURITY_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
 
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
@@ -284,10 +301,14 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(MLMODEL, MLMODEL_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(TOPIC, MESSAGING_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API, API_SERVICE);
-    ENTITY_SERVICE_TYPE_MAP.put(API_COLLCECTION, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API_COLLECTION, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(DIRECTORY, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(FILE, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(SPREADSHEET, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(WORKSHEET, DRIVE_SERVICE);
 
     PARENT_ENTITY_TYPES.addAll(
         listOf(
@@ -297,17 +318,21 @@ public final class Entity {
             MLMODEL_SERVICE,
             PIPELINE_SERVICE,
             API_SERVICE,
-            API_COLLCECTION,
+            API_COLLECTION,
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
+            SECURITY_SERVICE,
+            DRIVE_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
             GLOSSARY,
             DOMAIN,
             TEST_SUITE,
-            TEAM));
+            TEAM,
+            DIRECTORY,
+            SPREADSHEET));
   }
 
   private Entity() {}
@@ -376,6 +401,11 @@ public final class Entity {
     ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
   }
 
+  public static void registerResourceFieldViewMapping(
+      String entityType, Map<String, MetadataOperation> fieldToViewOperations) {
+    ResourceRegistry.entityFieldToViewOperation(entityType, fieldToViewOperations);
+  }
+
   public static void registerTimeSeriesResourcePermissions(String entity) {
     // Set up entity operations for permissions
     Class<?> clazz = getEntityTimeSeriesClassFromType(entity);
@@ -397,6 +427,17 @@ public final class Entity {
 
   public static EntityReference getEntityReferenceById(
       @NonNull String entityType, @NonNull UUID id, Include include) {
+    // Check if this is a time-series entity
+    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
+      // For time-series entities, create a minimal EntityReference
+      // since they don't have full entity repositories
+      return new EntityReference()
+          .withId(id)
+          .withType(entityType)
+          .withFullyQualifiedName(entityType + "." + id);
+    }
+
+    // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReference(id, include);
@@ -404,6 +445,20 @@ public final class Entity {
 
   public static List<EntityReference> getEntityReferencesByIds(
       @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
+    // Check if this is a time-series entity
+    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
+      // For time-series entities, create minimal EntityReferences
+      return ids.stream()
+          .map(
+              id ->
+                  new EntityReference()
+                      .withId(id)
+                      .withType(entityType)
+                      .withFullyQualifiedName(entityType + "." + id))
+          .collect(Collectors.toList());
+    }
+
+    // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReferences(ids, include);
@@ -444,6 +499,9 @@ public final class Entity {
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
+    if (ref == null) {
+      return null;
+    }
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
@@ -502,9 +560,39 @@ public final class Entity {
     return entity;
   }
 
+  public static <T> T findEntityByNameOrNull(String entityType, String fqn, Include include) {
+    return findByNameOrNull(entityType, fqn, include);
+  }
+
+  /** Retrieve the entity using id from given entity reference and fields */
+  public static <T> T findByNameOrNull(String entityType, String fqn, Include include) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    T entity = (T) entityRepository.findByNameOrNull(fqn, include);
+    return entity;
+  }
+
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
+  }
+
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include) {
+    return getEntityByNameWithExcludedFields(entityType, fqn, excludeFields, include, false);
+  }
+
+  // Retrieve the entity by name excluding specific fields. Useful for import using CSV where
+  // certain fields are already sent in the csv
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include, boolean fromCache) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    T entity =
+        (T)
+            entityRepository.getByNameWithExcludedFields(
+                null, fqn, excludeFields, include, fromCache);
+    return entity;
   }
 
   public static <T> List<T> getEntityByNames(
@@ -570,7 +658,7 @@ public final class Entity {
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.restoreEntity(updatedBy, entityType, entityId);
+    dao.restoreEntity(updatedBy, entityId);
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
@@ -659,7 +747,28 @@ public final class Entity {
             .acceptPackages(PACKAGES.toArray(new String[0]))
             .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
-      return classList.loadClasses();
+
+      List<Class<?>> unnamedRepositories = new ArrayList<>();
+      Map<String, Class<?>> namedRepositories = new HashMap<>();
+
+      for (Class<?> clz : classList.loadClasses()) {
+        Repository annotation = clz.getAnnotation(Repository.class);
+        String name = annotation.name();
+
+        if (name.isEmpty()) {
+          unnamedRepositories.add(clz);
+        } else {
+          Class<?> existing = namedRepositories.get(name);
+          if (existing == null
+              || annotation.priority() < existing.getAnnotation(Repository.class).priority()) {
+            namedRepositories.put(name, clz);
+          }
+        }
+      }
+
+      List<Class<?>> result = new ArrayList<>(unnamedRepositories);
+      result.addAll(namedRepositories.values());
+      return result;
     }
   }
 
@@ -718,5 +827,26 @@ public final class Entity {
   public static boolean entityHasField(String entityType, String field) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getAllowedFields().contains(field);
+  }
+
+  public static List<ServiceEntityInterface> getAllServicesForLineage() {
+    List<ServiceEntityInterface> allServices = new ArrayList<>();
+    Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
+    serviceTypes.remove(ServiceType.METADATA);
+
+    for (ServiceType serviceType : serviceTypes) {
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getServiceEntityRepository(serviceType);
+      ListFilter filter = new ListFilter(Include.ALL);
+      List<ServiceEntityInterface> services =
+          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
+      allServices.addAll(services);
+    }
+
+    return allServices;
+  }
+
+  public static UserRepository getUserRepository() {
+    return (UserRepository) Entity.getEntityRepository(Entity.USER);
   }
 }

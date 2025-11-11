@@ -14,9 +14,9 @@
 import { Button, Col, Divider, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -28,6 +28,7 @@ import {
   PagingHandlerParams,
 } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
@@ -49,12 +50,17 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../pages/DataQuality/DataQualityPage.interface';
+import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCaseToLogicalTestSuite,
   getListTestCaseBySearch,
@@ -75,10 +81,10 @@ const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const afterDeleteAction = () => {
-    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 
@@ -101,6 +107,8 @@ const TestSuiteDetailsPage = () => {
     useState<boolean>(false);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -131,7 +139,10 @@ const TestSuiteDetailsPage = () => {
     return [
       {
         name: t('label.test-suite-plural'),
-        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        url: getDataQualityPagePath(
+          DataQualityPageTabs.TEST_SUITES,
+          DataQualitySubTabs.BUNDLE_SUITES
+        ),
       },
       {
         name: getEntityName(testSuite),
@@ -176,7 +187,13 @@ const TestSuiteDetailsPage = () => {
         ...param,
         limit: pageSize,
       });
-
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
       setTestCaseResult(response.data);
       handlePagingChange(response.paging);
     } catch {
@@ -215,13 +232,16 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
         include: Include.All,
       });
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES,
+            DataQualitySubTabs.BUNDLE_SUITES
+          ),
         },
         {
           name: getEntityName(response),
@@ -265,7 +285,7 @@ const TestSuiteDetailsPage = () => {
     async (updateDomain?: EntityReference | EntityReference[]) => {
       const updatedTestSuite: TestSuite = {
         ...testSuite,
-        domain: updateDomain,
+        domains: updateDomain,
       } as TestSuite;
 
       await updateTestSuiteData(updatedTestSuite);
@@ -360,10 +380,24 @@ const TestSuiteDetailsPage = () => {
     [currentPage, paging, pageSize, handlePageSizeChange, handleTestCasePaging]
   );
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const removeFromTestSuite = testSuite
+      ? {
+          testSuite,
+          isAllowed:
+            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+        }
+      : undefined;
+
+    return [
       {
-        label: t('label.test-case-plural'),
+        label: (
+          <TabsLabel
+            count={pagingData.paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
         key: EntityTabs.TEST_CASES,
         children: (
           <DataQualityTab
@@ -372,7 +406,7 @@ const TestSuiteDetailsPage = () => {
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
-            removeFromTestSuite={testSuite ? { testSuite } : undefined}
+            removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
@@ -381,33 +415,52 @@ const TestSuiteDetailsPage = () => {
         ),
       },
       {
-        label: t('label.pipeline-plural'),
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
         key: EntityTabs.PIPELINE,
         children: (
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
         ),
       },
-    ],
-    [
-      testSuite,
-      incidentUrlState,
-      isLoading,
-      isTestCaseLoading,
-      pagingData,
-      showPagination,
-      testCaseResult,
-      handleTestSuiteUpdate,
-      handleSortTestCase,
-      fetchTestCases,
-    ]
-  );
+    ];
+  }, [
+    testSuite,
+    incidentUrlState,
+    isLoading,
+    isTestCaseLoading,
+    pagingData,
+    showPagination,
+    testCaseResult,
+    handleTestSuiteUpdate,
+    handleSortTestCase,
+    fetchTestCases,
+    ingestionPipelineCount,
+    testSuitePermissions,
+  ]);
+
+  const selectedTestCases = useMemo(() => {
+    return testCaseResult.map((test) => test.name);
+  }, [testCaseResult]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-suite'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -468,7 +521,8 @@ const TestSuiteDetailsPage = () => {
             <Col span={24}>
               <div className="d-flex flex-wrap gap-2">
                 <DomainLabel
-                  domain={testSuite?.domain}
+                  multiple
+                  domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}
                   entityType={EntityType.TEST_SUITE}
@@ -499,7 +553,7 @@ const TestSuiteDetailsPage = () => {
         </Col>
 
         <Col span={24}>
-          <Tabs items={tabs} />
+          <Tabs className="tabs-new" items={tabs} />
         </Col>
         <Col span={24}>
           <Modal
@@ -514,6 +568,7 @@ const TestSuiteDetailsPage = () => {
             width={750}>
             <AddTestCaseList
               existingTest={testSuite?.tests ?? []}
+              selectedTest={selectedTestCases}
               onCancel={() => setIsTestCaseModalOpen(false)}
               onSubmit={handleAddTestCaseSubmit}
             />

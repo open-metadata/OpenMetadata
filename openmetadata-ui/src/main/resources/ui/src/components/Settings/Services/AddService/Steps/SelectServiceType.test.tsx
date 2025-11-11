@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import SelectServiceType from './SelectServiceType';
 import { SelectServiceTypeProps } from './Steps.interface';
@@ -26,6 +25,10 @@ const mockSelectServiceTypeProps: SelectServiceTypeProps = {
   onCancel: jest.fn(),
   onNext: jest.fn(),
 };
+
+jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>Searchbar</div>)
+);
 
 describe('Test SelectServiceType component', () => {
   it('SelectServiceType component should render', async () => {

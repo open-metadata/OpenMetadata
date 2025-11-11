@@ -13,9 +13,14 @@
 
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
-import ActivityFeedCardV2 from '../ActivityFeedCardV2/ActivityFeedCardV2';
+import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
+import { getEntityType } from '../../../utils/FeedUtils';
+import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
+import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
+import '../ActivityFeedTab/activity-feed-tab.less';
 import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
@@ -23,12 +28,7 @@ import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   className,
-  FeedContainerClassName = '',
   showThread = true,
-  componentsVisibility = {
-    showThreadIcon: true,
-    showRepliesContainer: true,
-  },
   isOpenInDrawer = false,
   onFeedClick,
   isActive,
@@ -51,6 +51,59 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     onFeedClick?.(feed);
   }, [onFeedClick, feed]);
 
+  const isUserEntity = useMemo(
+    () => feed.entityRef?.type === EntityType.USER,
+    [feed.entityRef?.type]
+  );
+
+  const entityTypeTask = useMemo(
+    () =>
+      feed?.about?.split(ENTITY_LINK_SEPARATOR)?.[1] as Exclude<
+        EntityType,
+        EntityType.TABLE
+      >,
+    [feed]
+  );
+
+  const renderFeedContent = () => {
+    if (feed.type === ThreadType.Task) {
+      if (!isForFeedTab) {
+        return (
+          <TaskFeedCard
+            feed={feed}
+            hidePopover={hidePopover}
+            isActive={isActive}
+            isForFeedTab={isForFeedTab}
+            isOpenInDrawer={isOpenInDrawer}
+            key={feed.id}
+            post={mainFeed}
+            showThread={showThread}
+          />
+        );
+      }
+
+      return (
+        <TaskTabNew
+          isOpenInDrawer
+          entityType={isUserEntity ? entityTypeTask : getEntityType(feed.about)}
+          isForFeedTab={isForFeedTab}
+          taskThread={feed}
+        />
+      );
+    }
+
+    return (
+      <ActivityFeedCardNew
+        isForFeedTab
+        isOpenInDrawer
+        feed={feed}
+        isActive={isActive}
+        post={mainFeed}
+        showThread={showThread}
+      />
+    );
+  };
+
   return (
     <Button
       block
@@ -58,28 +111,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       data-testid="message-container"
       type="text"
       onClick={handleFeedClick}>
-      {feed.type === ThreadType.Task ? (
-        <TaskFeedCard
-          feed={feed}
-          hidePopover={hidePopover}
-          isActive={isActive}
-          isForFeedTab={isForFeedTab}
-          isOpenInDrawer={isOpenInDrawer}
-          key={feed.id}
-          post={mainFeed}
-          showThread={showThread}
-        />
-      ) : (
-        <ActivityFeedCardV2
-          className={FeedContainerClassName}
-          componentsVisibility={componentsVisibility}
-          feed={feed}
-          isActive={isActive}
-          isOpenInDrawer={isOpenInDrawer}
-          post={mainFeed}
-          showThread={showThread}
-        />
-      )}
+      {renderFeedContent()}
     </Button>
   );
 };

@@ -20,7 +20,7 @@ import { ReactComponent as IconUnique } from '../../../assets/svg/icon-unique.sv
 import SectionLine from '../../../assets/svg/section-line-medium.svg';
 
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConstraintType } from '../../../generated/entity/data/table';
 

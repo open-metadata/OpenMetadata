@@ -12,14 +12,11 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddPolicyPage from './AddPolicyPage';
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -55,9 +52,16 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
+const mockProps = {
+  pageTitle: 'add-policy',
+};
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
+
 describe('Test Add Policy Page', () => {
   it('Should Render the Add Policy page component', async () => {
-    render(<AddPolicyPage />, { wrapper: MemoryRouter });
+    render(<AddPolicyPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const container = await screen.findByTestId('add-policy-container');
 
@@ -77,7 +81,7 @@ describe('Test Add Policy Page', () => {
   });
 
   it('Form fields should render', async () => {
-    render(<AddPolicyPage />, { wrapper: MemoryRouter });
+    render(<AddPolicyPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const form = await screen.findByTestId('policy-form');
 

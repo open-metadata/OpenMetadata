@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -116,79 +116,37 @@ MOCK_STORED_PACKAGE = OracleStoredObject(
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
         name=EntityName("sample_database"),
-        displayName=None,
-        description=None,
-        tags=None,
-        owners=None,
         service=FullyQualifiedEntityName("oracle_source_test"),
-        dataProducts=None,
         default=False,
-        retentionPeriod=None,
-        extension=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
 EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name=EntityName("sample_schema"),
-        displayName=None,
-        description=None,
-        owners=None,
         database=FullyQualifiedEntityName("oracle_source_test.sample_database"),
-        dataProducts=None,
-        tags=None,
-        retentionPeriod=None,
-        extension=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
 EXPECTED_STORED_PROCEDURE = [
     CreateStoredProcedureRequest(
         name=EntityName("sample_procedure"),
-        displayName=None,
-        description=None,
-        owners=None,
-        tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredProcedure,
         databaseSchema=FullyQualifiedEntityName(
             "oracle_source_test.sample_database.sample_schema"
         ),
-        extension=None,
-        dataProducts=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
 EXPECTED_STORED_PACKAGE = [
     CreateStoredProcedureRequest(
         name=EntityName("sample_package"),
-        displayName=None,
-        description=None,
-        owners=None,
-        tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredPackage,
         databaseSchema=FullyQualifiedEntityName(
             "oracle_source_test.sample_database.sample_schema"
         ),
-        extension=None,
-        dataProducts=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 

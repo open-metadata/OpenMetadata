@@ -1,0 +1,45 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/propagationStopConfig.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PropagationStopConfig",
+    "description": "Configuration to stop lineage propagation based on conditions",
+    "type": "object",
+    "properties": {
+        "metadataAttribute": {
+            "title": "Metadata Attribute",
+            "description": "The metadata attribute to check for stopping propagation",
+            "type": "string",
+            "enum": [
+                "description",
+                "tags",
+                "glossaryTerms",
+                "owner",
+                "tier",
+                "domains"
+            ]
+        },
+        "value": {
+            "title": "Stop Values",
+            "description": "List of attribute values that will stop propagation when any of them is matched",
+            "type": "array",
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "$ref": "../../../../../type/tagLabel.json"
+                    },
+                    {
+                        "$ref": "../../../../../type/entityReference.json"
+                    }
+                ]
+            }
+        }
+    },
+    "required": [
+        "metadataAttribute",
+        "value"
+    ],
+    "additionalProperties": false
+}

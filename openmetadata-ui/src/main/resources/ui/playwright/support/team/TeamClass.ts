@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { searchTeam } from '../../utils/team';
+import { EntityReference } from '../entity/Entity.interface';
 type ResponseDataType = {
   name: string;
   displayName: string;
@@ -24,20 +25,23 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   users?: string[];
   defaultRoles?: string[];
+  policies?: string[];
+  owners?: EntityReference[];
 };
 
 export class TeamClass {
-  id = uuid();
   data: ResponseDataType;
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
+    const id = uuid();
     this.data = data ?? {
-      name: `PW%team-${this.id}`,
-      displayName: `PW Team ${this.id}`,
+      name: `PW%team-${id}`,
+      displayName: `PW Team ${id}`,
       description: 'playwright team description',
       teamType: 'Group',
       users: [],
+      policies: [],
     };
   }
 
@@ -52,7 +56,7 @@ export class TeamClass {
   async visitTeamPage(page: Page) {
     // complete url since we are making basic and advance call to get the details of the team
     const fetchOrganizationResponse = page.waitForResponse(
-      `/api/v1/teams/name/Organization?fields=users%2CdefaultRoles%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
     );
     await settingClick(page, GlobalSettingOptions.TEAMS);
     await fetchOrganizationResponse;

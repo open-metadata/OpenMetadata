@@ -21,6 +21,12 @@ jest.mock('../../constants/profiler.constant', () => {
   };
 });
 
+jest.mock('../../utils/DataInsightUtils', () => {
+  return {
+    getRandomHexColor: jest.fn().mockReturnValue('#7147E8'),
+  };
+});
+
 describe('prepareChartData', () => {
   it('should prepare chart data correctly', () => {
     const testObj = {

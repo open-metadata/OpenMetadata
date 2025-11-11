@@ -1,0 +1,390 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/dataContract.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataContract",
+  "$comment": "@om-entity-type",
+  "description": "A `DataContract` entity defines the schema and quality guarantees for a data asset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.DataContract",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "contractStatus": {
+      "javaType": "org.openmetadata.schema.type.ContractStatus",
+      "description": "Status of the data contract.",
+      "type": "string",
+      "enum": ["Draft", "Active", "Deprecated"],
+      "javaEnums": [
+        {
+          "name": "Draft"
+        },
+        {
+          "name": "Active"
+        },
+        {
+          "name": "Deprecated"
+        }
+      ]
+    },
+    "contractUpdate": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ContractUpdate",
+      "description": "Record of updates to the data contract.",
+      "properties": {
+        "timestamp": {
+          "description": "Timestamp when the contract was updated.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": {
+          "description": "User who updated the contract.",
+          "type": "string"
+        },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+        "changeDescription": {
+          "description": "Description of changes made to the contract.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "version": {
+          "description": "Version number of the contract after the update.",
+          "type": "string"
+        }
+      },
+      "required": ["timestamp", "updatedBy", "version"],
+      "additionalProperties": false
+    },
+    "rowFilter": {
+      "type": "object",
+      "description": "Filter that defines what subset of the data is accessible to certain consumers",
+      "properties": {
+        "columnName": {
+          "type": "string",
+          "title": "Column Name",
+          "description": "Column to apply the filter"
+        },
+        "values": {
+          "type": "array",
+          "title": "Filter Values",
+          "description": "Values applied to the filter",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
+      "properties": {
+        "accessPolicy": {
+          "type": "string",
+          "title": "Access Policy",
+          "description": "Reference to an access policy ID or name that should govern this data"
+        },
+        "identities": {
+          "type": "array",
+          "title": "Consumer AD Groups",
+          "description": "List of groups that are intended consumers of the data",
+          "items": {
+              "type": "string"
+          },
+          "default": null
+        },
+        "rowFilters": {
+          "type": "array",
+          "title": "Row Data Filters",
+          "description": "List of filters that define what subset of the data is accessible to the consumers",
+          "items": {
+              "$ref": "#/definitions/rowFilter"
+          },
+          "default": null
+        }
+      }
+    },
+    "contractSecurity": {
+      "type": "object",
+      "description": "Security and access policy expectations",
+      "properties": {
+        "dataClassification": {
+          "type": "string",
+          "title": "Data Classification",
+          "description": "Expected data classification (e.g. Confidential, PII, etc.)"
+        },
+        "policies": {
+          "type": "array",
+          "title": "Data Consumers",
+          "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
+          "items": {
+              "$ref": "#/definitions/policy"
+          }
+        }
+      }
+    },
+    "contractSLA": {
+      "type": "object",
+      "description": "Service Level Agreement expectations (timeliness, availability, etc.)",
+      "properties": {
+        "refreshFrequency": {
+          "type": "object",
+          "title": "Refresh Frequency",
+          "properties": {
+            "interval": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["hour", "day", "week", "month", "year"] }
+          },
+          "description": "Expected frequency of data updates (e.g. every 1 day)",
+          "required": ["interval", "unit"]
+        },
+        "maxLatency": {
+          "type": "object",
+          "title": "Maximum Latency",
+          "properties": {
+            "value": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["minute", "hour", "day"] }
+          },
+          "description": "Maximum acceptable latency between data generation and availability (e.g. 4 hours)",
+          "required": ["value", "unit"]
+        },
+        "availabilityTime": {
+          "title": "Availability Time",
+          "type": "string",
+          "description": "Time of day by which data is expected to be available (e.g. \"09:00 UTC\")"
+        },
+        "timezone": {
+          "type": "string",
+          "title": "Timezone",
+          "description": "Timezone for the availability time. UTC by default.",
+          "enum": [
+            "GMT-11:00 (Pacific/Niue)",
+            "GMT-10:00 (Pacific/Honolulu)",
+            "GMT-09:30 (Pacific/Marquesas)",
+            "GMT-09:00 (America/Anchorage)",
+            "GMT-08:00 (America/Los Angeles)",
+            "GMT-07:00 (America/Denver)",
+            "GMT-06:00 (America/Chicago)",
+            "GMT-05:00 (America/New York)",
+            "GMT-04:00 (America/Santiago)",
+            "GMT-03:00 (America/Sao Paulo)",
+            "GMT-02:30 (Atlantic/Newfoundland)",
+            "GMT-02:00 (Atlantic/South_Georgia)",
+            "GMT-01:00 (Atlantic/Azores)",
+            "GMT+00:00 (Europe/London)",
+            "GMT+01:00 (Europe/Paris)",
+            "GMT+02:00 (Europe/Athens)",
+            "GMT+03:00 (Europe/Moscow)",
+            "GMT+03:00 (Asia/Iran)",
+            "GMT+04:00 (Asia/Dubai)",
+            "GMT+04:30 (Asia/Afghanistan)",
+            "GMT+05:00 (Asia/Karachi)",
+            "GMT+05:30 (Asia/Kolkata)",
+            "GMT+05:45 (Asia/Nepal)",
+            "GMT+06:00 (Asia/Dhaka)",
+            "GMT+06:00 (Asia/Myanmar)",
+            "GMT+07:00 (Asia/Bangkok)",
+            "GMT+08:00 (Asia/Shanghai)",
+            "GMT+08:45 (Australia/Australian Central Western Standard Time)",
+            "GMT+09:00 (Asia/Tokyo)",
+            "GMT+09:00 (Australia/Adelaide)",
+            "GMT+10:00 (Australia/Sydney)",
+            "GMT+10:30 (Australia/Lord Howe)",
+            "GMT+11:00 (Pacific/Norfolk)",
+            "GMT+12:00 (Pacific/Auckland)",
+            "GMT+13:00 (Pacific/Tongatapu)",
+            "GMT+14:00 (Pacific/Kiritimati)"
+          ],
+          "default": "GMT+00:00 (Europe/London)"
+        },
+        "retention": {
+          "type": "object",
+          "title": "Data Retention Period",
+          "properties": {
+            "period": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["day", "week", "month", "year"] }
+          },
+          "description": "How long the data is retained (if relevant)",
+          "required": ["period", "unit"]
+        },
+        "columnName": {
+          "type": "string",
+          "title": "Column Name",
+          "description": "Column that represents the refresh time of the data (if applicable)"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this data contract instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name of the data contract.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when the data contract was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created the data contract.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this data contract resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "entityStatus": {
+      "description": "Approval status of the data contract.",
+      "$ref": "../../type/status.json",
+      "default": "Draft"
+    },
+    "entity": {
+      "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "testSuite": {
+      "description": "Reference to the test suite that contains tests related to this data contract.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "schema": {
+      "description": "Schema definition for the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "./table.json#/definitions/column"
+      },
+      "default": null
+
+    },
+    "semantics": {
+      "description": "Semantics rules defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
+      },
+      "default": null
+    },
+    "termsOfUse": {
+      "description": "Terms of use for the data contract for both human and AI agents consumption.",
+      "$ref": "../../type/basic.json#/definitions/markdown",
+      "default": null
+    },
+    "security": {
+      "title": "Contract Security",
+      "description": "Security and access policy expectations defined in the data contract.",
+      "$ref": "#/definitions/contractSecurity",
+      "default": null
+    },
+    "sla": {
+      "title": "Contract SLA",
+      "description": "Service Level Agreement expectations defined in the data contract.",
+      "$ref": "#/definitions/contractSLA",
+      "default": null
+    },
+    "qualityExpectations": {
+      "description": "Quality expectations defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "contractUpdates": {
+      "description": "History of updates to the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/contractUpdate"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "effectiveFrom": {
+      "description": "Date from which this data contract is effective.",
+      "$ref": "../../type/basic.json#/definitions/dateTime",
+      "default": null
+    },
+    "effectiveUntil": {
+      "description": "Date until which this data contract is effective.",
+      "$ref": "../../type/basic.json#/definitions/dateTime",
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change description of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "sourceUrl": {
+      "description": "Source URL of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "latestResult": {
+      "description": "Latest validation result for this data contract.",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "status": {
+          "$ref": "../../type/contractExecutionStatus.json"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resultId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "additionalProperties": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["id", "name", "entity"],
+  "additionalProperties": false
+}

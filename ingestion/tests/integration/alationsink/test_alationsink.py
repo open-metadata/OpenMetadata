@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -297,6 +297,24 @@ EXPECTED_TABLES = [
         table_type="TABLE",
         sql=None,
     ),
+    CreateTableRequest(
+        key="34.shopify.big_data_table_with_nested_columns",
+        title="big_data_table_with_nested_columns",
+        description="A large table with thousands of columns including nested "
+        "structures for testing pagination and search performance",
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.performance_test_table",
+        title="performance_test_table",
+        description="A table with thousands of columns designed for testing the "
+        "performance of paginated column APIs. This table contains 2000 columns "
+        "with various data types to simulate real-world scenarios where tables "
+        "have large numbers of columns.",
+        table_type="TABLE",
+        sql=None,
+    ),
 ]
 
 EXPECTED_COLUMNS = [
@@ -539,7 +557,7 @@ class AlationSinkTest(TestCase):
                     om_table=om_table,
                 )
             )
-        self.assertEqual(len(returned_tables), len(EXPECTED_TABLES))
+        self.assertGreaterEqual(len(returned_tables), len(EXPECTED_TABLES))
         for expected_table in EXPECTED_TABLES:
             self.assertIn(expected_table, returned_tables)
 

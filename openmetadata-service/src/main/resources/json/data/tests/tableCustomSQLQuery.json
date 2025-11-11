@@ -22,13 +22,29 @@
         "required": false
       },
       {
+        "name": "operator",
+        "displayName": "Operator",
+        "description": "Operator to use to compare the result of the custom SQL query to the threshold.",
+        "dataType": "STRING",
+        "required": false,
+        "optionValues": ["==", ">", ">=", "<", "<=", "!="]
+      },
+      {
         "name": "threshold",
         "displayName": "Threshold",
         "description": "Threshold to use to determine if the test passes or fails (defaults to 0).",
         "dataType": "NUMBER",
         "required": false
+      },
+      {
+        "name": "partitionExpression",
+        "displayName": "Partition Expression",
+        "description": "Partition expression that will be used to compute the passed/failed row count, if compute row count is enabled.",
+        "dataType": "STRING",
+        "required": false
       }
     ],
+    "supportsRowLevelPassedFailed": true,
     "provider": "system",
     "dataQualityDimension": "SQL"
   }

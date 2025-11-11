@@ -15,6 +15,10 @@
  */
 export interface DatabricksConnection {
     /**
+     * Choose between different authentication types for Databricks.
+     */
+    authType: AuthenticationType;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -31,7 +35,7 @@ export interface DatabricksConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DefaultDatabaseFilterPattern;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Database Schema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
@@ -45,7 +49,7 @@ export interface DatabricksConnection {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?: string;
+    httpPath: string;
     /**
      * Table name to fetch the query history.
      */
@@ -54,7 +58,7 @@ export interface DatabricksConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -71,22 +75,70 @@ export interface DatabricksConnection {
      */
     tableFilterPattern?: FilterPattern;
     /**
-     * Generated Token to connect to Databricks.
-     */
-    token: string;
-    /**
      * Service Type
      */
     type?: DatabricksType;
 }
 
 /**
- * Regex to only include/exclude databases that matches the pattern.
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
  */
-export interface DefaultDatabaseFilterPattern {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
     excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
     includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -168,35 +220,10 @@ export interface AwsCredentials {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum DatabricksScheme {
     DatabricksConnector = "databricks+connector",
-}
-
-/**
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- */
-export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
 }
 
 /**

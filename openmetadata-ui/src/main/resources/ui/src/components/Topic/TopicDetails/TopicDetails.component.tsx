@@ -14,26 +14,27 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -41,26 +42,37 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
+import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
-import Lineage from '../../Lineage/Lineage.component';
-
-import { useCustomPages } from '../../../hooks/useCustomPages';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
+import { EntityLineageTab } from '../../Lineage/EntityLineageTab/EntityLineageTab';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
+
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
   topicDetails,
@@ -76,10 +88,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
-  const history = useHistory();
-  const { customizedPage } = useCustomPages(PageType.Topic);
+  const navigate = useNavigate();
+  const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -150,8 +163,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -166,8 +178,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
-        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey)
+      navigate(
+        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey),
+        { replace: true }
       );
     }
   };
@@ -237,8 +250,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
@@ -254,21 +266,31 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   } = useMemo(
     () => ({
       editTagsPermission:
-        (topicPermissions.EditTags || topicPermissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(topicPermissions, Operation.EditTags) &&
+        !deleted,
       editGlossaryTermsPermission:
-        (topicPermissions.EditGlossaryTerms || topicPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          topicPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (topicPermissions.EditDescription || topicPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          topicPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (topicPermissions.EditAll || topicPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          topicPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: topicPermissions.EditAll && !deleted,
       editLineagePermission:
-        (topicPermissions.EditAll || topicPermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        topicPermissions.ViewAll || topicPermissions.ViewSampleData,
+        getPrioritizedEditPermission(topicPermissions, Operation.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        topicPermissions,
+        Operation.ViewSampleData
+      ),
       viewAllPermission: topicPermissions.ViewAll,
     }),
     [topicPermissions, deleted]
@@ -288,6 +310,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
@@ -295,8 +318,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       sampleDataTab: !viewSampleDataPermission ? (
-        <div className="m-t-xlg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <div className="border-default border-radius-sm p-y-lg">
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </div>
       ) : (
         <SampleDataWithMessages
@@ -306,28 +335,27 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       queryViewerTab: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.CONFIG}
           sqlQuery={JSON.stringify(topicDetails.topicConfig)}
           title={t('label.config')}
         />
       ),
       lineageTab: (
-        <LineageProvider>
-          <Lineage
-            deleted={topicDetails.deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={topicDetails as SourceType}
             entityType={EntityType.TOPIC}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
       customPropertiesTab: topicDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TOPIC>
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TOPIC>
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
       viewSampleDataPermission,
       activeTab,
@@ -364,15 +392,41 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (topicDetails) {
+        const certificationTag: Topic['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTopicDetails = {
+          ...topicDetails,
+          certification: certificationTag,
+        };
+
+        await onTopicUpdate(updatedTopicDetails, 'certification');
+      }
+    },
+    [topicDetails, onTopicUpdate]
+  );
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Topic),
+    [tabs[0], activeTab]
+  );
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.topic'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -382,6 +436,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityType={EntityType.TOPIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={topicPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}
@@ -392,16 +447,29 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Topic>
+          customizedPage={customizedPage}
           data={topicDetails}
+          isTabExpanded={isTabExpanded}
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

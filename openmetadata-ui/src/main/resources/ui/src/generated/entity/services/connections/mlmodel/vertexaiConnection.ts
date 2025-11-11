@@ -25,7 +25,8 @@ export interface VertexaiConnection {
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
-    mlModelFilterPattern?: FilterPattern;
+    mlModelFilterPattern?:       FilterPattern;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */
@@ -56,6 +57,8 @@ export interface GCPCredentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -98,6 +101,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**

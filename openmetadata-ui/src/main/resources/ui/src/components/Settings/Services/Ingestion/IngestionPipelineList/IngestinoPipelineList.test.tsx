@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
-import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
 import { mockESIngestionData } from '../../../../../mocks/IngestionListTable.mock';
 import { deployIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
@@ -27,12 +26,15 @@ jest.mock(
   }
 );
 
-jest.mock('../../../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isAirflowAvailable: true,
-    isFetchingStatus: false,
-  })),
-}));
+jest.mock(
+  '../../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+    })),
+  })
+);
 
 jest.mock('../../../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
@@ -72,15 +74,10 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
 const mockLocationPathname = '/mock-path';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    history: {
-      push: jest.fn(),
-    },
-    replace: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 describe('IngestionPipelineList', () => {
@@ -139,15 +136,11 @@ describe('IngestionPipelineList', () => {
 
     const rowSelection = screen.getByText('rowSelection');
 
-    await act(async () => {
-      userEvent.click(rowSelection);
-    });
+    fireEvent.click(rowSelection);
 
     const bulkDeployButton = screen.getByTestId('bulk-re-deploy-button');
 
-    await act(async () => {
-      userEvent.click(bulkDeployButton);
-    });
+    fireEvent.click(bulkDeployButton);
 
     expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
   });

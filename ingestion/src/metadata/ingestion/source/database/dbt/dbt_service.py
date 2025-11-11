@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -81,6 +81,7 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_data_model",
             "process_dbt_entities",
             "process_dbt_tests",
+            "process_dbt_exposures",
         ],
     )
     process_dbt_data_model: Annotated[
@@ -151,6 +152,20 @@ class DbtServiceTopology(ServiceTopology):
         ],
     )
 
+    process_dbt_exposures: Annotated[
+        TopologyNode, Field(description="Process dbt exposures")
+    ] = TopologyNode(
+        producer="get_dbt_exposures",
+        stages=[
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="create_dbt_exposures_lineage",
+                consumer=["yield_data_models"],
+                nullable=True,
+            ),
+        ],
+    )
+
 
 class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -175,7 +190,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # This step is necessary as the manifest file may not always adhere to the schema definition
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
-        required_manifest_keys = {"nodes", "sources", "metadata"}
+        required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
         manifest_dict.update(
             {
                 key: {}
@@ -285,6 +300,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
+    def create_dbt_exposures_lineage(self, exposure_spec: dict) -> AddLineageRequest:
+        """
+        Method to process DBT lineage from exposures
+        """
+
+    @abstractmethod
     def create_dbt_query_lineage(
         self, data_model_link: DataModelLink
     ) -> AddLineageRequest:
@@ -310,6 +331,14 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         for _, dbt_test in self.context.get().dbt_tests.items():
             yield dbt_test
+
+    def get_dbt_exposures(self) -> dict:
+        """
+        Prepare the DBT exposures
+        """
+
+        for _, exposure in self.context.get().exposures.items():
+            yield exposure
 
     @abstractmethod
     def create_dbt_tests_definition(

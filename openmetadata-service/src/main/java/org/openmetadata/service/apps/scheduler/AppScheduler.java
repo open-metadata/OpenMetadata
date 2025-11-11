@@ -11,6 +11,7 @@ import com.cronutils.parser.CronParser;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,14 +21,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -206,7 +210,11 @@ public class AppScheduler {
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(APP_NAME, app.getName());
-    dataMap.put("triggerType", app.getAppSchedule().getScheduleTimeline().value());
+    dataMap.put(
+        "triggerType",
+        Optional.ofNullable(app.getAppSchedule())
+            .map(v -> v.getScheduleTimeline().value())
+            .orElse(null));
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());
     JobBuilder jobBuilder =
@@ -282,7 +290,8 @@ public class AppScheduler {
       JobDetail newJobDetail =
           jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
       newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
-      newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
+      // Use the application name for lookup consistency in OmAppJobListener
+      newJobDetail.getJobDataMap().put(APP_NAME, application.getName());
       newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
       Trigger trigger =
           TriggerBuilder.newTrigger()
@@ -307,44 +316,126 @@ public class AppScheduler {
               new JobKey(
                   String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
       boolean isJobRunning = false;
+      JobExecutionContext runningJobContext = null;
       // Check if the job is already running
       List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+      LOG.info("Currently executing jobs count: {}", currentJobs.size());
       for (JobExecutionContext context : currentJobs) {
+        LOG.info("Running job: {}", context.getJobDetail().getKey());
         if ((jobDetailScheduled != null
                 && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
             || (jobDetailOnDemand != null
                 && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
           isJobRunning = true;
+          runningJobContext = context;
+          LOG.info("Found matching job for application: {}", application.getName());
         }
       }
       if (!isJobRunning) {
+        LOG.error(
+            "No running job found for application: {}. Scheduled key: {}, OnDemand key: {}",
+            application.getName(),
+            jobDetailScheduled != null ? jobDetailScheduled.getKey() : "null",
+            jobDetailOnDemand != null ? jobDetailOnDemand.getKey() : "null");
         throw new UnhandledServerException("There is no job running for the application.");
       }
+
+      // Update status to STOPPED and broadcast before interrupting
+      if (runningJobContext != null) {
+        updateAndBroadcastStoppedStatus(runningJobContext);
+      }
+
+      // Try to interrupt the running job
+      boolean interruptSuccessful = false;
+
+      // Check which job is actually running and interrupt it
+      for (JobExecutionContext context : currentJobs) {
+        JobKey runningJobKey = context.getJobDetail().getKey();
+        if ((jobDetailScheduled != null && runningJobKey.equals(jobDetailScheduled.getKey()))
+            || (jobDetailOnDemand != null && runningJobKey.equals(jobDetailOnDemand.getKey()))) {
+          LOG.info("Attempting to interrupt running job: {}", runningJobKey);
+          try {
+            interruptSuccessful = scheduler.interrupt(runningJobKey);
+            LOG.info("Interrupt result for {}: {}", runningJobKey, interruptSuccessful);
+
+            if (!interruptSuccessful) {
+              LOG.warn(
+                  "Interrupt returned false for job: {}. Job might not support interruption or already stopped.",
+                  runningJobKey);
+            }
+          } catch (Exception e) {
+            LOG.error("Failed to interrupt job: {}", runningJobKey, e);
+          }
+        }
+      }
+
+      // Delete the job after interrupting
       JobKey scheduledJobKey = new JobKey(application.getName(), APPS_JOB_GROUP);
       if (jobDetailScheduled != null) {
-        LOG.debug("Stopping Scheduled Execution for App: {}", application.getName());
-        scheduler.interrupt(scheduledJobKey);
+        LOG.info("Deleting Scheduled Job for App: {}", application.getName());
         try {
           scheduler.deleteJob(scheduledJobKey);
         } catch (SchedulerException ex) {
           LOG.error("Failed to delete scheduled job: {}", scheduledJobKey, ex);
         }
-      } else {
-        JobKey onDemandJobKey =
-            new JobKey(
-                String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
-        if (jobDetailOnDemand != null) {
-          LOG.debug("Stopping On Demand Execution for App: {}", application.getName());
-          scheduler.interrupt(onDemandJobKey);
-          try {
-            scheduler.deleteJob(onDemandJobKey);
-          } catch (SchedulerException ex) {
-            LOG.error("Failed to delete on-demand job: {}", onDemandJobKey, ex);
-          }
+      }
+
+      JobKey onDemandJobKey =
+          new JobKey(String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+      if (jobDetailOnDemand != null) {
+        LOG.info("Deleting On Demand Job for App: {}", application.getName());
+        try {
+          scheduler.deleteJob(onDemandJobKey);
+        } catch (SchedulerException ex) {
+          LOG.error("Failed to delete on-demand job: {}", onDemandJobKey, ex);
         }
       }
     } catch (SchedulerException ex) {
       LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
     }
+  }
+
+  private void updateAndBroadcastStoppedStatus(JobExecutionContext context) {
+    try {
+      JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+      OmAppJobListener listener = getJobListener(context);
+
+      // Get the current run record
+      AppRunRecord runRecord = listener.getAppRunRecordForJob(context);
+
+      if (runRecord != null) {
+        // Update status to STOPPED
+        runRecord.withStatus(AppRunRecord.Status.STOPPED);
+        runRecord.withEndTime(System.currentTimeMillis());
+
+        // Get WebSocket channel name
+        String webSocketChannelName =
+            (String) dataMap.get(OmAppJobListener.WEBSOCKET_STATUS_CHANNEL);
+
+        // Broadcast via WebSocket
+        if (!CommonUtil.nullOrEmpty(webSocketChannelName)
+            && WebSocketManager.getInstance() != null) {
+          LOG.info(
+              "Broadcasting STOPPED status for job via WebSocket channel: {}",
+              webSocketChannelName);
+          WebSocketManager.getInstance()
+              .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
+        }
+
+        // Update database
+        listener.pushApplicationStatusUpdates(context, runRecord, true);
+        LOG.info("Updated job status to STOPPED and broadcasted via WebSocket");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to update and broadcast stopped status", e);
+    }
+  }
+
+  private OmAppJobListener getJobListener(JobExecutionContext context) throws SchedulerException {
+    return (OmAppJobListener)
+        context
+            .getScheduler()
+            .getListenerManager()
+            .getJobListener(OmAppJobListener.JOB_LISTENER_NAME);
   }
 }

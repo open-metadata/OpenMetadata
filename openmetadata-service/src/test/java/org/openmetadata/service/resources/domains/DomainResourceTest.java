@@ -1,8 +1,10 @@
 package org.openmetadata.service.resources.domains;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -18,30 +20,37 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.EntityHierarchyList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
@@ -128,7 +137,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     EntityReference entityReference = new EntityReference().withId(rdnUUID);
     TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
 
-    assertThatThrownBy(() -> entityRepository.validateDomain(entityReference))
+    assertThatThrownBy(() -> entityRepository.validateDomainsByRef(List.of(entityReference)))
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format("domain instance for %s not found", rdnUUID));
   }
@@ -406,7 +415,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         getDomain.getChildren(),
         getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owners,parent,experts,tags";
+    String fields = "children,owners,parent,experts,tags,followers";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -419,6 +428,234 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
     // Checks for other owner, tags, and followers is done in the base class
     return getDomain;
+  }
+
+  @Test
+  void test_domainAssetsAndAssetsCountWithSubdomainInheritance(TestInfo test) throws IOException {
+    // Tests assets API includes direct assets and inherited assets from subdomains
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Domain subDomain =
+        createEntity(
+            createRequest(getEntityName(test, 1)).withParent(domain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets.getData());
+    assertEquals(0, assets.getData().size());
+    assertNotNull(assets.getPaging().getTotal());
+    assertEquals(0, assets.getPaging().getTotal());
+
+    bulkAddAssets(
+        domain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getData().size());
+    assertEquals(1, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+
+    bulkAddAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2, assets.getData().size(), "Domain should have 1 direct asset + 1 from subdomain");
+    assertEquals(2, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    ResultList<EntityReference> subDomainAssets =
+        getAssets(subDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, subDomainAssets.getData().size());
+    assertEquals(1, subDomainAssets.getPaging().getTotal());
+    assertTrue(subDomainAssets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    // Test bulk remove assets
+    bulkRemoveAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify table2 is removed from subdomain
+    subDomainAssets = getAssets(subDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, subDomainAssets.getData().size());
+    assertEquals(0, subDomainAssets.getPaging().getTotal());
+
+    // Verify parent domain now only has table1
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getData().size());
+    assertEquals(1, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    // Remove table1 from parent domain
+    bulkRemoveAssets(
+        domain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Verify domain has no assets
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getData().size());
+    assertEquals(0, assets.getPaging().getTotal());
+  }
+
+  @Test
+  void test_domainAssetsAndAssetsCountWithAssetInheritance(TestInfo test) throws IOException {
+    // Tests assets API includes parent entity and all child entities when domain is assigned
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    TableResourceTest tableTest = new TableResourceTest();
+
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 2))
+                .withDatabaseSchema(schema.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withDatabaseSchema(schema.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(schema);
+    schema.withDomains(List.of(domain.getEntityReference()));
+    schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3, assets.getData().size(), "Domain should have 1 schema + 2 inherited tables from schema");
+    assertEquals(3, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+  }
+
+  private void bulkAddAssets(String domainName, BulkAssets request) throws HttpResponseException {
+    WebTarget target = getResource("domains/" + domainName + "/assets/add");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private void bulkRemoveAssets(String domainName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getResource("domains/" + domainName + "/assets/remove");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_getDomainAssetsAPI(TestInfo test) throws IOException {
+    Domain rootDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Domain subDomain =
+        createEntity(
+            createRequest(getEntityName(test, 1)).withParent(rootDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    DataProduct dataProduct =
+        dataProductTest.createEntity(
+            dataProductTest
+                .createRequest(getEntityName(test, 2))
+                .withDomains(List.of(subDomain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+
+    bulkAddAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    ResultList<EntityReference> assets = getAssets(rootDomain.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, assets.getPaging().getTotal());
+    assertEquals(2, assets.getData().size());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(dataProduct.getId())));
+
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(rootDomain.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, assetsByName.getPaging().getTotal());
+    assertEquals(2, assetsByName.getData().size());
+
+    ResultList<EntityReference> subDomainAssets =
+        getAssets(subDomain.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, subDomainAssets.getPaging().getTotal());
+    assertEquals(1, subDomainAssets.getData().size());
+    assertTrue(subDomainAssets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    ResultList<EntityReference> page1 = getAssets(rootDomain.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getPaging().getTotal());
+    assertEquals(1, page1.getData().size());
+
+    ResultList<EntityReference> page2 = getAssets(rootDomain.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page2.getPaging().getTotal());
+    assertEquals(1, page2.getData().size());
+    assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+    bulkAddAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+    ResultList<EntityReference> allAssets =
+        getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(3, allAssets.getPaging().getTotal());
+    assertEquals(3, allAssets.getData().size());
+
+    // Test bulk remove assets
+    bulkRemoveAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Verify table1 is removed
+    assets = getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, assets.getPaging().getTotal());
+    assertEquals(2, assets.getData().size());
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    // Test pagination after removal
+    page1 = getAssets(rootDomain.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getPaging().getTotal());
+    assertEquals(1, page1.getData().size());
+
+    page2 = getAssets(rootDomain.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page2.getPaging().getTotal());
+    assertEquals(1, page2.getData().size());
+    assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+    // Remove remaining assets
+    bulkRemoveAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+    bulkRemoveAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify all assets are removed
+    assets = getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getPaging().getTotal());
+    assertEquals(0, assets.getData().size());
   }
 
   @Override

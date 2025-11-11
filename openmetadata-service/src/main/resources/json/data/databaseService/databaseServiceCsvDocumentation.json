@@ -62,11 +62,21 @@
       ]
     },
     {
-      "name": "domain",
+      "name": "certification",
       "required": false,
-      "description": "Domain to which the database schema belongs to",
+      "description": "Certification tag from the Certification classification. Only one certification level can be applied.",
       "examples": [
-        "Marketing", "Sales"
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Domains to which the database service belongs to, separated by ';'",
+      "examples": [
+        "Marketing", "Sales;Operations"
       ]
     },
     {

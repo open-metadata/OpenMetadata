@@ -13,22 +13,20 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -60,25 +58,29 @@ import {
 } from '../../rest/storedProceduresAPI';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   getStoredProcedureDetailsPageTabs,
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
-  const history = useHistory();
-  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
+  const navigate = useNavigate();
+  const { tab: activeTab = EntityTabs.CODE } =
+    useRequiredParams<{ tab: EntityTabs }>();
 
   const { fqn: decodedStoredProcedureFQN } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -86,7 +88,10 @@ const StoredProcedurePage = () => {
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const { customizedPage } = useCustomPages(PageType.StoredProcedure);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.StoredProcedure
+  );
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -128,7 +133,7 @@ const StoredProcedurePage = () => {
       );
 
       setStoredProcedurePermissions(permission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -174,7 +179,7 @@ const StoredProcedurePage = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -183,7 +188,7 @@ const StoredProcedurePage = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.STORED_PROCEDURE,
           decodedStoredProcedureFQN,
@@ -326,8 +331,7 @@ const StoredProcedurePage = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.stored-procedure-plural'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -356,23 +360,22 @@ const StoredProcedurePage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as StoredProcedure;
 
     setStoredProcedure((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.STORED_PROCEDURE,
           decodedStoredProcedureFQN,
@@ -443,7 +446,7 @@ const StoredProcedurePage = () => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = getStoredProcedureDetailsPageTabs({
-      activeTab: activeTab as EntityTabs,
+      activeTab,
       feedCount,
       decodedStoredProcedureFQN,
       entityName,
@@ -486,6 +489,16 @@ const StoredProcedurePage = () => {
     handleFeedCount,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabs[0], activeTab, PageType.StoredProcedure),
+    [tabs[0], activeTab]
+  );
+
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateStoredProcedureVotes(id, data);
@@ -501,6 +514,24 @@ const StoredProcedurePage = () => {
     }
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (storedProcedure) {
+        const certificationTag: StoredProcedure['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedStoredProcedureDetails = {
+          ...storedProcedure,
+          certification: certificationTag,
+        };
+
+        await handleStoreProcedureUpdate(
+          updatedStoredProcedureDetails,
+          'certification'
+        );
+      }
+    },
+    [storedProcedure, handleStoreProcedureUpdate]
+  );
   useEffect(() => {
     if (decodedStoredProcedureFQN) {
       fetchResourcePermission();
@@ -514,12 +545,20 @@ const StoredProcedurePage = () => {
     }
   }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
 
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
   if (!viewBasicPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.stored-procedure'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!storedProcedure) {
@@ -528,12 +567,11 @@ const StoredProcedurePage = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.stored-procedure'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
@@ -542,6 +580,7 @@ const StoredProcedurePage = () => {
             entityType={EntityType.STORED_PROCEDURE}
             openTaskCount={feedCount.openTaskCount}
             permissions={storedProcedurePermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollow}
             onOwnerUpdate={handleUpdateOwner}
@@ -553,17 +592,30 @@ const StoredProcedurePage = () => {
         </Col>
 
         <GenericProvider<StoredProcedure>
+          customizedPage={customizedPage}
           data={storedProcedure}
+          isTabExpanded={isTabExpanded}
           permissions={storedProcedurePermissions}
           type={EntityType.STORED_PROCEDURE}
           onUpdate={handleStoreProcedureUpdate}>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.CODE}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={(activeKey: string) =>
                 handleTabChange(activeKey as EntityTabs)
               }

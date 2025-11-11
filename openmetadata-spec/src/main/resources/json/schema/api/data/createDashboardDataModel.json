@@ -50,6 +50,10 @@
     "dataModelType": {
       "$ref": "../../entity/data/dashboardDataModel.json#/definitions/dataModelType"
     },
+    "sourceUrl": {
+      "description": "Dashboard URL suffix from its service.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "sql": {
       "description": "In case the Data Model is based on a SQL query.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery",
@@ -67,9 +71,12 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Dashboard Data Model belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Dashboard Data Model belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "lifeCycle": {
       "description": "Life Cycle of the entity",

@@ -13,10 +13,9 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -31,14 +30,22 @@ import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -60,13 +67,14 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { customizedPage } = useCustomPages(PageType.APIEndpoint);
+  const { customizedPage, isLoading } = useCustomPages(PageType.APIEndpoint);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
@@ -109,8 +117,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.api-endpoint'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {
@@ -125,7 +132,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.API_ENDPOINT,
           decodedApiEndpointFqn,
@@ -168,9 +175,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {
@@ -226,16 +232,43 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     viewAllPermission,
     editLineagePermission,
+    customizedPage,
   ]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (apiEndpointDetails) {
+        const certificationTag = updateCertificationTag(newCertification);
+        const updatedApiEndpointDetails: APIEndpoint = {
+          ...apiEndpointDetails,
+          certification: certificationTag,
+        };
+
+        await onApiEndpointUpdate(updatedApiEndpointDetails, 'certification');
+      }
+    },
+    [apiEndpointDetails, onApiEndpointUpdate]
+  );
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.APIEndpoint),
+    [tabs[0], activeTab]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.api-endpoint'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -245,6 +278,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             entityType={EntityType.API_ENDPOINT}
             openTaskCount={feedCount.openTaskCount}
             permissions={apiEndpointPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followApiEndpoint}
             onOwnerUpdate={onOwnerUpdate}
@@ -255,16 +289,29 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           />
         </Col>
         <GenericProvider<APIEndpoint>
+          customizedPage={customizedPage}
           data={apiEndpointDetails}
+          isTabExpanded={isTabExpanded}
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

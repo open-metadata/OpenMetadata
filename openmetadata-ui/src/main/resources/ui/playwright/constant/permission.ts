@@ -52,10 +52,13 @@ export const DATA_STEWARD_RULES: PolicyRulesType[] = [
     name: 'DataStewardRole',
     resources: ['All'],
     operations: [
+      'EditCertification',
       'EditDescription',
       'EditDisplayName',
+      'EditGlossaryTerms',
       'EditLineage',
       'EditOwners',
+      'EditTier',
       'EditTags',
       'ViewAll',
     ],
@@ -117,6 +120,16 @@ export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
   },
 ];
 
+export const OWNER_TEAM_RULES: PolicyRulesType[] = [
+  {
+    name: 'Owner-EditRule',
+    resources: ['team'],
+    operations: ['Create', 'EditAll'],
+    effect: 'allow',
+    condition: 'isOwner()',
+  },
+];
+
 export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
   {
     name: 'OrganizationPolicy-NoOwner-Rule',
@@ -134,6 +147,36 @@ export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
     operations: ['All'],
     resources: ['All'],
     condition: 'isOwner()',
+  },
+];
+
+export const EDIT_TAGS_RULE: PolicyRulesType[] = [
+  {
+    name: 'EditTags-EditRule',
+    description: 'Allow EditTags for all entities.',
+    resources: ['All'],
+    operations: ['EditTags'],
+    effect: 'allow',
+  },
+];
+
+export const EDIT_DESCRIPTION_RULE: PolicyRulesType[] = [
+  {
+    name: 'EditDescription-EditRule',
+    description: 'Allow EditDescription for all entities.',
+    resources: ['All'],
+    operations: ['EditDescription'],
+    effect: 'allow',
+  },
+];
+
+export const EDIT_GLOSSARY_TERM_RULE: PolicyRulesType[] = [
+  {
+    name: 'EditGlossaryTerm-EditRule',
+    description: 'Allow EditGlossaryTerm for all entities.',
+    resources: ['All'],
+    operations: ['EditGlossaryTerms'],
+    effect: 'allow',
   },
 ];
 

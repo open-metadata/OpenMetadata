@@ -14,10 +14,7 @@
  * Defines a workflow instance.
  */
 export interface WorkflowInstanceState {
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
+    exception?: string;
     /**
      * Unique identifier of this workflow instance state.
      */
@@ -44,6 +41,10 @@ export interface WorkflowInstanceState {
 }
 
 export interface Stage {
+    /**
+     * Display name of the workflow stage node.
+     */
+    displayName?: string;
     /**
      * Timestamp on which the workflow instance stage ended.
      */

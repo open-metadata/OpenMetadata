@@ -126,6 +126,12 @@ export const postFeedById = async (id: string, data: Post) => {
   return response.data;
 };
 
+export const getPostsFeedById = async (id: string) => {
+  const response = await APIClient.get<{ data: Post[] }>(`/feed/${id}/posts`);
+
+  return response.data;
+};
+
 export const deletePostById = (threadId: string, postId: string) => {
   return APIClient.delete<Post>(`/feed/${threadId}/posts/${postId}`);
 };

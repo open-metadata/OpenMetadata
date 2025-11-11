@@ -1,0 +1,63 @@
+name: Trivy Scan For OpenMetadata Server Docker Image
+
+on:
+  schedule:
+    - cron: '15 4 * * *'
+  workflow_dispatch:
+
+concurrency: 
+  group: trivy-server-scan-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Prepare for Docker Build
+        id: prepare
+        uses: ./.github/actions/prepare-for-docker-build
+        with:
+          image: openmetadata-server
+          tag: trivy
+          is_ingestion: false
+
+      - name: Build Docker Image
+        run: |
+          docker build -t openmetadata-server:trivy -f docker/development/Dockerfile .
+      - name: Run Trivy Image Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "image"
+          image-ref: openmetadata-server:trivy
+          hide-progress: true
+          ignore-unfixed: true
+          severity: "HIGH,CRITICAL,MEDIUM"
+          format: "table"
+          output: trivy.txt
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: "true"
+
+      - name: Publish Trivy Output to Summary
+        run: |
+          if [[ -s trivy.txt ]]; then
+            {
+              echo "###  Trivy Security Scan Results"
+              echo "<details><summary>Click to expand</summary>"
+              echo ""
+              echo '```text'
+              cat trivy.txt
+              echo '```'
+              echo "</details>"
+            } >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+          fi

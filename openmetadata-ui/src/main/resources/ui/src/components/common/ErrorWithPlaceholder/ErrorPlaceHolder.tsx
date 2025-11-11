@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
@@ -34,6 +33,7 @@ const ErrorPlaceHolder = ({
   buttonId,
   icon,
   placeholderText,
+  permissionValue,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
@@ -45,6 +45,7 @@ const ErrorPlaceHolder = ({
             doc={doc}
             heading={heading}
             permission={permission}
+            permissionValue={permissionValue}
             placeholderText={placeholderText}
             size={size}
             onClick={onClick}
@@ -58,6 +59,7 @@ const ErrorPlaceHolder = ({
             className={className}
             heading={heading}
             permission={permission}
+            permissionValue={permissionValue}
             size={size}>
             {children}
           </AssignErrorPlaceHolder>
@@ -74,7 +76,13 @@ const ErrorPlaceHolder = ({
         );
 
       case ERROR_PLACEHOLDER_TYPE.PERMISSION:
-        return <PermissionErrorPlaceholder className={className} size={size} />;
+        return (
+          <PermissionErrorPlaceholder
+            className={className}
+            permissionValue={permissionValue}
+            size={size}
+          />
+        );
 
       case ERROR_PLACEHOLDER_TYPE.CUSTOM:
         return (

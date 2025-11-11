@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
 import './code-widget.less';
 

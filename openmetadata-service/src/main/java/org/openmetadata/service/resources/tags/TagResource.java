@@ -24,30 +24,30 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateTag;
@@ -59,19 +59,21 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/tags")
@@ -92,8 +94,10 @@ import org.openmetadata.service.util.ResultList;
 public class TagResource extends EntityResource<Tag, TagRepository> {
   private final ClassificationMapper classificationMapper = new ClassificationMapper();
   private final TagMapper mapper = new TagMapper();
+  private final RecognizerFeedbackRepository feedbackRepository;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  static final String FIELDS = "children,usageCount";
+  static final String FIELDS =
+      "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */
@@ -101,11 +105,12 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   public TagResource(Authorizer authorizer, Limits limits) {
     super(Entity.TAG, authorizer, limits);
+    this.feedbackRepository = new RecognizerFeedbackRepository(Entity.getCollectionDAO());
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("children,usageCount", MetadataOperation.VIEW_BASIC);
+    addViewOperation("owners,domains,children,usageCount", MetadataOperation.VIEW_BASIC);
     return null;
   }
 
@@ -182,8 +187,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -583,11 +588,182 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return bulkRemoveFromAssetsAsync(securityContext, id, request);
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listTagAssets",
+      summary = "List assets tagged with this tag",
+      description =
+          "Get a paginated list of assets that have this tag applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation = org.openmetadata.schema.type.EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {id} is not found")
+      })
+  public Response listTagAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getTagAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "listTagAssetsByName",
+      summary = "List assets tagged with this tag by fully qualified name",
+      description =
+          "Get a paginated list of assets that have this tag applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation = org.openmetadata.schema.type.EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {fqn} is not found")
+      })
+  public Response listTagAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getTagAssetsByName(fqn, limit, offset)).build();
+  }
+
   @Override
   public Tag addHref(UriInfo uriInfo, Tag tag) {
     super.addHref(uriInfo, tag);
     Entity.withHref(uriInfo, tag.getClassification());
     Entity.withHref(uriInfo, tag.getParent());
     return tag;
+  }
+
+  @POST
+  @Path("/name/{fqn}/feedback")
+  @Operation(
+      operationId = "submitRecognizerFeedback",
+      summary = "Submit feedback on auto-applied tag",
+      description = "Submit user feedback when a recognizer incorrectly applies this tag",
+      responses = {
+        @ApiResponse(
+            responseCode = "201",
+            description = "Feedback submitted successfully",
+            content = @Content(schema = @Schema(implementation = RecognizerFeedback.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "404", description = "Tag not found")
+      })
+  public Response submitRecognizerFeedback(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid RecognizerFeedback feedback) {
+    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("recognizers"));
+    feedback.setTagFQN(tag.getFullyQualifiedName());
+    String userName = securityContext.getUserPrincipal().getName();
+    feedback.setCreatedBy(Entity.getEntityReferenceByName(Entity.USER, userName, null));
+    RecognizerFeedback result = feedbackRepository.processFeedback(feedback, userName);
+    return Response.status(Response.Status.CREATED).entity(result).build();
+  }
+
+  @GET
+  @Path("/feedback/{id}")
+  @Operation(
+      operationId = "getRecognizerFeedback",
+      summary = "Get feedback by ID",
+      description = "Get a specific feedback entry by its ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Feedback retrieved successfully",
+            content = @Content(schema = @Schema(implementation = RecognizerFeedback.class))),
+        @ApiResponse(responseCode = "404", description = "Feedback not found")
+      })
+  public RecognizerFeedback getRecognizerFeedback(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the feedback", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+
+    return feedbackRepository.get(id);
+  }
+
+  @GET
+  @Path("/name/{fqn}/feedback")
+  @Operation(
+      operationId = "getTagFeedback",
+      summary = "Get all feedback for a tag",
+      description = "Get all feedback entries for a specific tag",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Feedback list retrieved successfully")
+      })
+  public List<RecognizerFeedback> getTagFeedback(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+
+    // Verify the tag exists
+    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+
+    // Get feedback for this tag
+    return feedbackRepository.getFeedbackByTagFQN(tag.getFullyQualifiedName());
+  }
+
+  @GET
+  @Path("/feedback/pending")
+  @Operation(
+      operationId = "getPendingFeedback",
+      summary = "Get all pending feedback",
+      description = "Get all feedback entries pending review across all tags",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pending feedback list retrieved successfully")
+      })
+  public List<RecognizerFeedback> getPendingFeedback(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+
+    return feedbackRepository.getPendingFeedback();
   }
 }

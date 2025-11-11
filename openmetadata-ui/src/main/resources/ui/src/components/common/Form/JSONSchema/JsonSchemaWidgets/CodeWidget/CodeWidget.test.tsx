@@ -17,7 +17,6 @@ import {
   WidgetProps,
 } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import CodeWidget from './CodeWidget';
 
 jest.mock('../../../../../Database/SchemaEditor/SchemaEditor', () =>

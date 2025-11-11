@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import { get } from 'lodash';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -35,6 +36,7 @@ export const getTopicDetailsPageTabs = ({
   viewSampleDataPermission,
   activeTab,
   feedCount,
+  labelMap,
 }: TopicDetailPageTabProps) => {
   return [
     {
@@ -69,12 +71,18 @@ export const getTopicDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.SAMPLE_DATA,
-      children: !viewSampleDataPermission ? (
-        <div className="m-t-xlg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        </div>
-      ) : (
+      children: viewSampleDataPermission ? (
         sampleDataTab
+      ) : (
+        <div className="border-default border-radius-sm p-y-lg">
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={i18n.t('label.view-entity', {
+              entity: i18n.t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        </div>
       ),
     },
     {
@@ -88,6 +96,17 @@ export const getTopicDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: lineageTab,
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

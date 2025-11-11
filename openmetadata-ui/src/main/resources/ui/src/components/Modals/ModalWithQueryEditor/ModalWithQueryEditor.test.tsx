@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ModalWithQueryEditor } from './ModalWithQueryEditor';
 
 describe('ModalWithQueryEditor', () => {

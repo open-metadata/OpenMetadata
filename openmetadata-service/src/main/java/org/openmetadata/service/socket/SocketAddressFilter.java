@@ -15,14 +15,13 @@ package org.openmetadata.service.socket;
 
 import com.auth0.jwt.interfaces.Claim;
 import io.socket.engineio.server.utils.ParseQS;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.Map;
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -46,9 +45,6 @@ public class SocketAddressFilter implements Filter {
   public SocketAddressFilter() {
     enableSecureSocketConnection = false;
   }
-
-  @Override
-  public void destroy() {}
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -76,15 +72,16 @@ public class SocketAddressFilter implements Filter {
     }
   }
 
-  @Override
-  public void init(FilterConfig filterConfig) {}
-
   public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
     Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
     String userName =
         SecurityUtil.findUserNameFromClaims(
             jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
-    jwtFilter.checkValidationsForToken(claims, token, userName);
+    String impersonatedBy =
+        claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
+            ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
+            : null;
+    jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
   }
 }

@@ -13,6 +13,7 @@
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 
+// Ordered list of filter pattern fields
 export const SERVICE_FILTER_PATTERN_FIELDS = Object.values(
   ServiceConnectionFilterPatternFields
 );
@@ -31,6 +32,7 @@ export const FILTER_PATTERN_BY_SERVICE_TYPE = {
     ServiceConnectionFilterPatternFields.DATABASE_FILTER_PATTERN,
     ServiceConnectionFilterPatternFields.SCHEMA_FILTER_PATTERN,
     ServiceConnectionFilterPatternFields.TABLE_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.STORED_PROCEDURE_FILTER_PATTERN,
     ServiceConnectionFilterPatternFields.CLASSIFICATION_FILTER_PATTERN,
   ],
   [EntityType.MESSAGING_SERVICE]: [
@@ -53,4 +55,14 @@ export const FILTER_PATTERN_BY_SERVICE_TYPE = {
   [EntityType.STORAGE_SERVICE]: [
     ServiceConnectionFilterPatternFields.CONTAINER_FILTER_PATTERN,
   ],
+  [EntityType.DRIVE_SERVICE]: [
+    ServiceConnectionFilterPatternFields.DIRECTORY_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.FILE_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.SPREADSHEET_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.WORKSHEET_FILTER_PATTERN,
+  ],
+};
+
+export const SERVICE_CONNECTION_UI_SCHEMA = {
+  'ui:order': [...SERVICE_FILTER_PATTERN_FIELDS],
 };

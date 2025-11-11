@@ -50,7 +50,10 @@ export const getCombinedFields = (
 
   filtersArray.forEach((filtersObj) => {
     if (!isUndefined(filtersObj)) {
-      const data = getQueryFiltersArray(field, filtersObj);
+      const data = getQueryFiltersArray(
+        field,
+        filtersObj
+      ) as QueryFieldInterface;
       combinedFiltersArray.push(...(isArray(data) ? data : [data]));
     }
   });
@@ -80,6 +83,10 @@ export const getCombinedQueryFilterObject = (
     advancesSearchQueryFilter,
     advancesSearchFilter,
   ]);
+
+  if (isEmpty(mustField) && isEmpty(mustNotField) && isEmpty(shouldField)) {
+    return undefined;
+  }
 
   return {
     query: {

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
+import {
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+} from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 jest.mock('../constants/constants', () => ({
@@ -38,10 +38,80 @@ jest.mock('./RouterUtils', () => ({
   getDomainDetailsPath: jest.fn(),
   getSettingPath: jest.fn(),
   getTeamsWithFqnPath: jest.fn(),
+  getEditWebhookPath: jest.fn(),
+  getServiceDetailsPath: jest.fn(),
+  getTagsDetailsPath: jest.fn(),
+  getGlossaryTermDetailsPath: jest.fn(),
+  getUserPath: jest.fn(),
 }));
 
 jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
+}));
+
+jest.mock('./TableUtils', () => ({
+  ExtraTableDropdownOptions: jest.fn(),
+}));
+
+jest.mock('./TestSuiteUtils', () => ({
+  getTestSuiteDetailsPath: jest.fn(),
+}));
+
+jest.mock('./Database/Database.util', () => ({
+  ExtraDatabaseDropdownOptions: jest.fn(),
+}));
+
+jest.mock('./DatabaseSchemaDetailsUtils', () => ({
+  ExtraDatabaseSchemaDropdownOptions: jest.fn(),
+}));
+
+jest.mock('./DatabaseServiceUtils', () => ({
+  ExtraDatabaseServiceDropdownOptions: jest.fn(),
+}));
+jest.mock('../pages/APICollectionPage/APICollectionPage', () => jest.fn());
+jest.mock('../pages/APIEndpointPage/APIEndpointPage', () => jest.fn());
+jest.mock('../pages/ContainerPage/ContainerPage', () => jest.fn());
+jest.mock('../pages/DashboardDetailsPage/DashboardDetailsPage.component', () =>
+  jest.fn()
+);
+jest.mock('../pages/DatabaseDetailsPage/DatabaseDetailsPage', () => jest.fn());
+jest.mock('../pages/DatabaseSchemaPage/DatabaseSchemaPage.component', () =>
+  jest.fn()
+);
+jest.mock('../pages/ChartDetailsPage/ChartDetailsPage.component', () =>
+  jest.fn()
+);
+jest.mock('../pages/DataModelPage/DataModelPage.component', () => jest.fn());
+jest.mock('../pages/EntityVersionPage/EntityVersionPage.component', () => ({
+  VersionData: jest.fn(),
+}));
+jest.mock('../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage', () =>
+  jest.fn()
+);
+jest.mock('../pages/MlModelPage/MlModelPage.component', () => jest.fn());
+jest.mock('../pages/PipelineDetails/PipelineDetailsPage.component', () =>
+  jest.fn()
+);
+jest.mock('../pages/SearchIndexDetailsPage/SearchIndexDetailsPage', () =>
+  jest.fn()
+);
+jest.mock('../pages/StoredProcedure/StoredProcedurePage', () => jest.fn());
+jest.mock('../pages/TableDetailsPageV1/TableDetailsPageV1', () => jest.fn());
+jest.mock('../pages/TopicDetails/TopicDetailsPage.component', () => jest.fn());
+jest.mock('../pages/DirectoryDetailsPage/DirectoryDetailsPage', () =>
+  jest.fn()
+);
+jest.mock('../pages/FileDetailsPage/FileDetailsPage', () => jest.fn());
+jest.mock('../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage', () =>
+  jest.fn()
+);
+jest.mock('../pages/WorksheetDetailsPage/WorksheetDetailsPage', () =>
+  jest.fn()
+);
+
+jest.mock('../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
 }));
 
 describe('EntityUtilClassBase', () => {

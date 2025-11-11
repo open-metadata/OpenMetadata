@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineServiceType } from '../../../../generated/entity/data/pipeline';
 import { MetadataServiceType } from '../../../../generated/entity/services/metadataService';
@@ -76,6 +75,7 @@ const databaseSchema = {
   password: 'testPassword',
   username: 'testUsername',
   database: 'test_db',
+  scope: ['test_scope1', 'test_scope2'],
   connectionArguments: {
     arg1: 'connectionArguments1',
     arg2: 'connectionArguments2',
@@ -175,6 +175,17 @@ describe('ServiceConnectionDetails', () => {
     expect(await screen.queryAllByTestId('input-field')[3]).toHaveValue(
       'test_db'
     );
+    expect(await screen.findByText('scope:')).toBeInTheDocument();
+    expect(
+      await screen
+        .queryAllByTestId('input-field')[4]
+        .querySelector('span[title=test_scope1]')
+    ).toHaveTextContent('test_scope1');
+    expect(
+      await screen
+        .queryAllByTestId('input-field')[4]
+        .querySelector('span[title=test_scope2]')
+    ).toHaveTextContent('test_scope2');
   });
 
   services.map((service) => {

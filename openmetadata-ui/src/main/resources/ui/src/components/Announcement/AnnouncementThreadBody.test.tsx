@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import { getAllFeeds } from '../../rest/feedsAPI';

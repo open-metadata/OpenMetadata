@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,21 +53,21 @@ class GCSContainerDetails(BaseModel):
     description: Optional[basic.Markdown] = Field(
         None, description="Description of the container instance."
     )
-    number_of_objects: float = Field(
-        ...,
+    number_of_objects: Optional[float] = Field(
+        None,
         description="Total nr. of objects",
     )
-    size: float = Field(
-        ...,
+    size: Optional[float] = Field(
+        None,
         description="Total size in bytes of all objects",
         title="Total size(bytes) of objects",
     )
     file_formats: Optional[List[FileFormat]] = Field(
-        ...,
+        None,
         description="File formats",
     )
     data_model: Optional[ContainerDataModel] = Field(
-        ...,
+        None,
         description="Data Model of the container",
     )
     creation_date: Optional[str] = Field(
@@ -83,4 +83,10 @@ class GCSContainerDetails(BaseModel):
     )
     fullPath: Optional[str] = Field(
         None, description="Full path of the container/file."
+    )
+    container_fqn: Optional[str] = Field(
+        None, description="Fully qualified name of the container."
+    )
+    leaf_container: Optional[bool] = Field(
+        None, description="Whether this is a leaf container."
     )

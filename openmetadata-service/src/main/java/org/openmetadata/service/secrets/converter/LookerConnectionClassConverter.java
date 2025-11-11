@@ -5,12 +5,16 @@ import org.openmetadata.schema.security.credentials.BitBucketCredentials;
 import org.openmetadata.schema.security.credentials.GitHubCredentials;
 import org.openmetadata.schema.security.credentials.GitlabCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class LookerConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CREDENTIALS_CLASSES =
-      List.of(GitHubCredentials.class, BitBucketCredentials.class, GitlabCredentials.class);
+      List.of(
+          GitHubCredentials.class,
+          BitBucketCredentials.class,
+          GitlabCredentials.class,
+          String.class);
 
   public LookerConnectionClassConverter() {
     super(LookerConnection.class);

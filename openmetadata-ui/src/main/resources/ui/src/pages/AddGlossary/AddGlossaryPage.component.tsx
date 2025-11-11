@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
 import { ERROR_MESSAGE } from '../../constants/constants';
@@ -28,6 +28,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { addGlossaries } from '../../rest/glossaryAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
@@ -36,8 +37,9 @@ import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -45,7 +47,6 @@ const AddGlossaryPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const { t } = useTranslation();
   const createPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
@@ -53,7 +54,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 
   const goToGlossary = (name = '') => {
-    history.push(getGlossaryPath(name));
+    navigate(getGlossaryPath(name));
   };
 
   const handleCancel = useCallback(() => {
@@ -153,4 +154,4 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 };
 
-export default AddGlossaryPage;
+export default withPageLayout(AddGlossaryPage);

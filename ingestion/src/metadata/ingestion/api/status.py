@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,6 +53,7 @@ class Status(BaseModel):
     )
 
     records: Annotated[List[Any], Field(default_factory=list)]
+    record_count: int = Field(default=0)
     updated_records: Annotated[List[Any], Field(default_factory=list)]
     warnings: Annotated[List[Any], Field(default_factory=list)]
     filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]
@@ -74,6 +75,9 @@ class Status(BaseModel):
     def updated(self, record: Any) -> None:
         if log_name := get_log_name(record):
             self.updated_records.append(log_name)
+
+    def increment_record_count(self, increment: int = 1) -> None:
+        self.record_count += increment
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
@@ -108,8 +112,9 @@ class Status(BaseModel):
         self.failures.extend(failures)
 
     def calculate_success(self) -> float:
+        record_count = self.record_count if self.record_count > 0 else len(self.records)
         source_success = max(
-            len(self.records) + len(self.updated_records), 1
+            record_count + len(self.updated_records), 1
         )  # To avoid ZeroDivisionError using minimum value as 1
         source_failed = len(self.failures)
         return round(source_success * 100 / (source_success + source_failed), 2)

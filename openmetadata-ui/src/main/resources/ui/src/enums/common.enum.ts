@@ -16,6 +16,7 @@ export enum SIZE {
   SMALL = '60',
   MEDIUM = '86',
   LARGE = '126',
+  X_LARGE = '166',
 }
 
 export enum ACTION_TYPE {
@@ -57,4 +58,19 @@ export enum ERROR_PLACEHOLDER_TYPE {
 export enum ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE {
   NO_DATA = 'NO_DATA',
   ERROR = 'ERROR',
+}
+
+export enum DATE_TIME_SHORT_UNITS {
+  YEAR = 'yr',
+  YEARS = 'yrs',
+  MONTH = 'mo',
+  MONTHS = 'mos',
+  DAY = 'day',
+  DAYS = 'days',
+  HOUR = 'hr',
+  HOURS = 'hrs',
+  MINUTE = 'min',
+  MINUTES = 'mins',
+  SECOND = 'sec',
+  SECONDS = 'secs',
 }

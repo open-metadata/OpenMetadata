@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,6 @@ OpenMetadata high-level API Workflow test
 import sys
 
 import pytest
-from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
@@ -40,7 +39,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_test_connection_fn
 
 if sys.version_info < (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
@@ -71,10 +70,9 @@ def test_connection_workflow(metadata, mysql_container):
     )
 
     automation_workflow: Workflow = metadata.create_or_update(data=new_workflow_request)
-    engine: Engine = get_connection(service_connection)
 
     test_connection_fn = get_test_connection_fn(service_connection)
-    test_connection_fn(metadata, engine, service_connection, automation_workflow)
+    test_connection_fn(metadata, automation_workflow=automation_workflow)
 
     final_workflow: Workflow = metadata.get_by_name(
         entity=Workflow, fqn="test-connection-mysql"
@@ -121,10 +119,9 @@ def test_connection_workflow_ko(metadata):
     automation_workflow: Workflow = metadata.create_or_update(
         data=wrong_workflow_request
     )
-    engine: Engine = get_connection(wrong_service_connection)
 
     test_connection_fn = get_test_connection_fn(wrong_service_connection)
-    test_connection_fn(metadata, engine, wrong_service_connection, automation_workflow)
+    test_connection_fn(metadata, automation_workflow=automation_workflow)
 
     final_workflow: Workflow = metadata.get_by_name(
         entity=Workflow, fqn="test-connection-mysql-bad"

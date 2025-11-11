@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { LinkProps } from 'react-router-dom';
+import { LinkProps, NavigateOptions } from 'react-router-dom';
 
 export type TitleLink = {
   name: string;
   url: LinkProps['to'];
+  options?: NavigateOptions;
   imgSrc?: string;
   activeTitle?: boolean;
 };
@@ -25,4 +26,5 @@ export type TitleBreadcrumbProps = {
   noLink?: boolean;
   loading?: boolean;
   widthDeductions?: number;
+  useCustomArrow?: boolean;
 };

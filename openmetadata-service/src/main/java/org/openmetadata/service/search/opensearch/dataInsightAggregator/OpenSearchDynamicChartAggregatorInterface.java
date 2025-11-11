@@ -1,12 +1,16 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.jena.atlas.logging.Log;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -14,42 +18,31 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.springframework.expression.Expression;
-import os.org.opensearch.action.search.SearchRequest;
-import os.org.opensearch.action.search.SearchResponse;
-import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import os.org.opensearch.common.xcontent.XContentParser;
-import os.org.opensearch.common.xcontent.XContentType;
-import os.org.opensearch.index.query.QueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
-import os.org.opensearch.search.aggregations.AbstractAggregationBuilder;
-import os.org.opensearch.search.aggregations.Aggregation;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.aggregations.bucket.filter.ParsedFilter;
-import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
-import os.org.opensearch.search.aggregations.bucket.histogram.ParsedDateHistogram;
-import os.org.opensearch.search.aggregations.bucket.terms.ParsedTerms;
-import os.org.opensearch.search.aggregations.bucket.terms.Terms;
-import os.org.opensearch.search.aggregations.metrics.ParsedCardinality;
-import os.org.opensearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
-import os.org.opensearch.search.aggregations.metrics.ParsedValueCount;
-import os.org.opensearch.search.aggregations.support.ValuesSourceAggregationBuilder;
-import os.org.opensearch.search.builder.SearchSourceBuilder;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.DateHistogramBucket;
+import os.org.opensearch.client.opensearch._types.aggregations.FilterAggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch.core.SearchRequest;
+import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 public interface OpenSearchDynamicChartAggregatorInterface {
-  long MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
+  long MILLISECONDS_IN_DAY = 24L * 60 * 60 * 1000;
+  ObjectMapper mapper = new ObjectMapper();
 
-  private static ValuesSourceAggregationBuilder getSubAggregationsByFunction(
+  private static Aggregation getSubAggregationsByFunction(
       Function function, String field, int index) {
     return switch (function) {
-      case COUNT -> AggregationBuilders.count(field + index).field(field);
-      case SUM -> AggregationBuilders.sum(field + index).field(field);
-      case AVG -> AggregationBuilders.avg(field + index).field(field);
-      case MIN -> AggregationBuilders.min(field + index).field(field);
-      case MAX -> AggregationBuilders.max(field + index).field(field);
-      case UNIQUE -> AggregationBuilders.cardinality(field + index).field(field);
+      case COUNT -> Aggregation.of(a -> a.valueCount(v -> v.field(field)));
+      case SUM -> Aggregation.of(a -> a.sum(s -> s.field(field)));
+      case AVG -> Aggregation.of(a -> a.avg(avg -> avg.field(field)));
+      case MIN -> Aggregation.of(a -> a.min(m -> m.field(field)));
+      case MAX -> Aggregation.of(a -> a.max(m -> m.field(field)));
+      case UNIQUE -> Aggregation.of(a -> a.cardinality(c -> c.field(field)));
     };
   }
 
@@ -74,8 +67,9 @@ public interface OpenSearchDynamicChartAggregatorInterface {
 
   static void getDateHistogramByFormula(
       String formula,
-      QueryBuilder filter,
-      AbstractAggregationBuilder aggregationBuilder,
+      Query filter,
+      Map<String, Aggregation> aggregations,
+      String aggregationName,
       List<FormulaHolder> formulas) {
     Pattern pattern = Pattern.compile(DataInsightSystemChartRepository.FORMULA_FUNC_REGEX);
     Matcher matcher = pattern.matcher(formula);
@@ -90,28 +84,40 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       } else {
         field = "id.keyword";
       }
-      ValuesSourceAggregationBuilder subAgg =
+      Aggregation subAgg =
           getSubAggregationsByFunction(
               Function.valueOf(matcher.group(1).toUpperCase()), field, index);
       if (matcher.group(5) != null) {
-        QueryBuilder queryBuilder;
+        String queryString = matcher.group(5);
+        Query queryBuilder;
         if (filter != null) {
           queryBuilder =
-              QueryBuilders.boolQuery()
-                  .must(QueryBuilders.queryStringQuery(matcher.group(5)))
-                  .must(filter);
+              Query.of(
+                  q ->
+                      q.bool(
+                          b ->
+                              b.must(
+                                      Query.of(
+                                          mq ->
+                                              mq.queryString(
+                                                  qs -> qs.query(queryString).lenient(true))))
+                                  .must(filter)));
         } else {
-          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(5));
+          queryBuilder = Query.of(q -> q.queryString(qs -> qs.query(queryString).lenient(true)));
         }
-        aggregationBuilder.subAggregation(
-            AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
-        holder.setQuery(matcher.group(5));
+        Map<String, Aggregation> subAggMap = new HashMap<>();
+        subAggMap.put(field + index, subAgg);
+        aggregations.put(
+            "filter" + index, Aggregation.of(a -> a.filter(queryBuilder).aggregations(subAggMap)));
+        holder.setQuery(queryString);
       } else {
         if (filter != null) {
-          aggregationBuilder.subAggregation(
-              AggregationBuilders.filter("filer" + index, filter).subAggregation(subAgg));
+          Map<String, Aggregation> subAggMap = new HashMap<>();
+          subAggMap.put(field + index, subAgg);
+          aggregations.put(
+              "filter" + index, Aggregation.of(a -> a.filter(filter).aggregations(subAggMap)));
         } else {
-          aggregationBuilder.subAggregation(subAgg);
+          aggregations.put(field + index, subAgg);
         }
       }
       formulas.add(holder);
@@ -120,7 +126,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private List<DataInsightCustomChartResult> processMultiAggregations(
-      List<Aggregation> aggregations,
+      Map<String, Aggregate> aggregations,
       String formula,
       String group,
       List<FormulaHolder> holder,
@@ -152,22 +158,24 @@ public interface OpenSearchDynamicChartAggregatorInterface {
           && (day != null || term != null)) {
         Expression expression = CompiledRule.parseExpression(formulaCopy);
         Double value = (Double) expression.getValue();
-        if (!value.isNaN() && !value.isInfinite()) {
-          if (day != null) {
-            finalList.add(
-                new DataInsightCustomChartResult()
-                    .withCount(value)
-                    .withGroup(group)
-                    .withDay(day)
-                    .withMetric(metric));
-          } else {
-            finalList.add(
-                new DataInsightCustomChartResult()
-                    .withCount(value)
-                    .withGroup(group)
-                    .withTerm(term)
-                    .withMetric(metric));
-          }
+        // Convert NaN and Infinite values to 0.0
+        if (value == null || value.isNaN() || value.isInfinite()) {
+          value = 0.0;
+        }
+        if (day != null) {
+          finalList.add(
+              new DataInsightCustomChartResult()
+                  .withCount(value)
+                  .withGroup(group)
+                  .withDay(day)
+                  .withMetric(metric));
+        } else {
+          finalList.add(
+              new DataInsightCustomChartResult()
+                  .withCount(value)
+                  .withGroup(group)
+                  .withTerm(term)
+                  .withMetric(metric));
         }
       }
     }
@@ -179,37 +187,47 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       String formula,
       String field,
       String filter,
-      AbstractAggregationBuilder aggregationBuilder,
-      List<FormulaHolder> formulas)
-      throws IOException {
+      Map<String, Aggregation> aggregations,
+      String aggregationName,
+      List<FormulaHolder> formulas) {
     if (formula != null) {
-
       if (filter != null && !filter.equals("{}")) {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
-        QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
-        getDateHistogramByFormula(formula, queryFilter, aggregationBuilder, formulas);
+        try {
+          JsonNode rootNode = mapper.readTree(filter);
+          JsonNode queryNode = rootNode.get("query");
+          String base64Query = Base64.getEncoder().encodeToString(queryNode.toString().getBytes());
+          Query queryFilter = Query.of(q -> q.wrapper(w -> w.query(base64Query)));
+
+          getDateHistogramByFormula(formula, queryFilter, aggregations, aggregationName, formulas);
+        } catch (Exception e) {
+          Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
+          getDateHistogramByFormula(formula, null, aggregations, aggregationName, formulas);
+        }
       } else {
-        getDateHistogramByFormula(formula, null, aggregationBuilder, formulas);
+        getDateHistogramByFormula(formula, null, aggregations, aggregationName, formulas);
       }
       return;
     }
 
     // process non formula date histogram
-    ValuesSourceAggregationBuilder subAgg = getSubAggregationsByFunction(function, field, 0);
+    Aggregation subAgg = getSubAggregationsByFunction(function, field, 0);
     if (filter != null && !filter.equals("{}")) {
-      XContentParser filterParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
-      QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
-      aggregationBuilder.subAggregation(
-          AggregationBuilders.filter("filer", queryFilter).subAggregation(subAgg));
+      try {
+        JsonNode rootNode = mapper.readTree(filter);
+        JsonNode queryNode = rootNode.get("query");
+        String base64Query = Base64.getEncoder().encodeToString(queryNode.toString().getBytes());
+        Query queryFilter = Query.of(q -> q.wrapper(w -> w.query(base64Query)));
+
+        Map<String, Aggregation> subAggMap = new HashMap<>();
+        subAggMap.put(field + "0", subAgg);
+        aggregations.put(
+            "filter", Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
+      } catch (Exception e) {
+        Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
+        aggregations.put(field + "0", subAgg);
+      }
     } else {
-      aggregationBuilder.subAggregation(subAgg);
+      aggregations.put(field + "0", subAgg);
     }
   }
 
@@ -218,17 +236,18 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       long start,
       long end,
       List<FormulaHolder> formulas,
-      Map metricFormulaHolder)
+      Map metricFormulaHolder,
+      boolean live)
       throws IOException;
 
   DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
-      SearchResponse searchResponse,
+      SearchResponse<JsonData> searchResponse,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder);
 
   default List<DataInsightCustomChartResult> processAggregations(
-      List<Aggregation> aggregations,
+      Map<String, Aggregate> aggregations,
       String formula,
       String group,
       List<FormulaHolder> holder,
@@ -240,7 +259,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private List<DataInsightCustomChartResult> processSingleAggregations(
-      List<Aggregation> aggregations, String group, String metric) {
+      Map<String, Aggregate> aggregations, String group, String metric) {
     List<List<DataInsightCustomChartResult>> rawResultList =
         processAggregationsInternal(aggregations, group, metric);
     List<DataInsightCustomChartResult> finalResult = new ArrayList<>();
@@ -251,31 +270,25 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private List<List<DataInsightCustomChartResult>> processAggregationsInternal(
-      List<Aggregation> aggregations, String group, String metric) {
+      Map<String, Aggregate> aggregations, String group, String metric) {
     List<List<DataInsightCustomChartResult>> results = new ArrayList<>();
-    for (Aggregation arg : aggregations) {
-      if (arg instanceof ParsedTerms) {
-        ParsedTerms parsedTerms = (ParsedTerms) arg;
-        for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
+    for (Map.Entry<String, Aggregate> entry : aggregations.entrySet()) {
+      Aggregate agg = entry.getValue();
+      if (agg.isSterms()) {
+        for (StringTermsBucket bucket : agg.sterms().buckets().array()) {
           List<DataInsightCustomChartResult> subResults = new ArrayList<>();
-          for (Aggregation subAggr : bucket.getAggregations().asList()) {
+          for (Map.Entry<String, Aggregate> subEntry : bucket.aggregations().entrySet()) {
             addByAggregationType(
-                subAggr, subResults, String.valueOf(bucket.getKey()), group, false, metric);
+                subEntry.getValue(), subResults, bucket.key(), group, false, metric);
           }
           results.add(subResults);
         }
-      } else {
-        ParsedDateHistogram parsedDateHistogram = (ParsedDateHistogram) arg;
-        for (Histogram.Bucket bucket : parsedDateHistogram.getBuckets()) {
+      } else if (agg.isDateHistogram()) {
+        for (DateHistogramBucket bucket : agg.dateHistogram().buckets().array()) {
           List<DataInsightCustomChartResult> subResults = new ArrayList<>();
-          for (Aggregation subAggr : bucket.getAggregations().asList()) {
+          for (Map.Entry<String, Aggregate> subEntry : bucket.aggregations().entrySet()) {
             addByAggregationType(
-                subAggr,
-                subResults,
-                String.valueOf(((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli()),
-                group,
-                true,
-                metric);
+                subEntry.getValue(), subResults, bucket.key(), group, true, metric);
           }
           results.add(subResults);
         }
@@ -285,29 +298,29 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private void addByAggregationType(
-      Aggregation subAggr,
+      Aggregate subAggr,
       List<DataInsightCustomChartResult> diChartResults,
       String key,
       String group,
       boolean isTimeStamp,
       String metric) {
-    if (subAggr instanceof ParsedValueCount)
+    if (subAggr.isValueCount()) {
       addProcessedSubResult(
-          (ParsedValueCount) subAggr, diChartResults, key, group, isTimeStamp, metric);
-    else if (subAggr instanceof ParsedCardinality)
+          subAggr.valueCount().value(), diChartResults, key, group, isTimeStamp, metric);
+    } else if (subAggr.isCardinality()) {
       addProcessedSubResult(
-          (ParsedCardinality) subAggr, diChartResults, key, group, isTimeStamp, metric);
-    else if (subAggr instanceof ParsedSingleValueNumericMetricsAggregation)
-      addProcessedSubResult(
-          (ParsedSingleValueNumericMetricsAggregation) subAggr,
-          diChartResults,
-          key,
-          group,
-          isTimeStamp,
-          metric);
-    else if (subAggr instanceof ParsedFilter)
-      addProcessedSubResult(
-          (ParsedFilter) subAggr, diChartResults, key, group, isTimeStamp, metric);
+          (double) subAggr.cardinality().value(), diChartResults, key, group, isTimeStamp, metric);
+    } else if (subAggr.isSum()) {
+      addProcessedSubResult(subAggr.sum().value(), diChartResults, key, group, isTimeStamp, metric);
+    } else if (subAggr.isAvg()) {
+      addProcessedSubResult(subAggr.avg().value(), diChartResults, key, group, isTimeStamp, metric);
+    } else if (subAggr.isMin()) {
+      addProcessedSubResult(subAggr.min().value(), diChartResults, key, group, isTimeStamp, metric);
+    } else if (subAggr.isMax()) {
+      addProcessedSubResult(subAggr.max().value(), diChartResults, key, group, isTimeStamp, metric);
+    } else if (subAggr.isFilter()) {
+      addProcessedSubResult(subAggr.filter(), diChartResults, key, group, isTimeStamp, metric);
+    }
   }
 
   private DataInsightCustomChartResult getDIChartResult(
@@ -326,13 +339,12 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private void addProcessedSubResult(
-      ParsedValueCount aggregation,
+      double value,
       List<DataInsightCustomChartResult> diChartResults,
       String key,
       String group,
       boolean isTimeStamp,
       String metric) {
-    Double value = Double.valueOf((double) aggregation.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           getDIChartResult(value, key, group, isTimeStamp, metric);
@@ -341,44 +353,14 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private void addProcessedSubResult(
-      ParsedCardinality aggregation,
+      FilterAggregate aggregation,
       List<DataInsightCustomChartResult> diChartResults,
       String key,
       String group,
       boolean isTimeStamp,
       String metric) {
-    Double value = Double.valueOf((double) aggregation.getValue());
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
-      DataInsightCustomChartResult diChartResult =
-          getDIChartResult(value, key, group, isTimeStamp, metric);
-      diChartResults.add(diChartResult);
-    }
-  }
-
-  private void addProcessedSubResult(
-      ParsedSingleValueNumericMetricsAggregation aggregation,
-      List<DataInsightCustomChartResult> diChartResults,
-      String key,
-      String group,
-      boolean isTimeStamp,
-      String metric) {
-    Double value = aggregation.value();
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
-      DataInsightCustomChartResult diChartResult =
-          getDIChartResult(value, key, group, isTimeStamp, metric);
-      diChartResults.add(diChartResult);
-    }
-  }
-
-  private void addProcessedSubResult(
-      ParsedFilter aggregation,
-      List<DataInsightCustomChartResult> diChartResults,
-      String key,
-      String group,
-      boolean isTimeStamp,
-      String metric) {
-    for (Aggregation agg : aggregation.getAggregations().asList()) {
-      addByAggregationType(agg, diChartResults, key, group, isTimeStamp, metric);
+    for (Map.Entry<String, Aggregate> entry : aggregation.aggregations().entrySet()) {
+      addByAggregationType(entry.getValue(), diChartResults, key, group, isTimeStamp, metric);
     }
   }
 }

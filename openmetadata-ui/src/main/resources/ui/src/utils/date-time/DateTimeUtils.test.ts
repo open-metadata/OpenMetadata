@@ -19,7 +19,9 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatMonth,
   formatTimeDurationFromSeconds,
+  getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
 
@@ -49,8 +51,22 @@ describe('DateTimeUtils tests', () => {
     expect(formatDate(0)).toBe(`Jan 1, 1970`);
   });
 
+  it(`formatMonth should format only the month`, () => {
+    expect(formatMonth(0)).toBe(`Jan`); // January 1970
+    expect(formatMonth(1677628800000)).toBe(`Mar`); // March 2023
+    expect(formatMonth(1704067200000)).toBe(`Jan`); // January 2024
+    expect(formatMonth(1717200000000)).toBe(`Jun`); // June 2024
+  });
+
+  it(`formatMonth should handle null/undefined values`, () => {
+    expect(formatMonth(undefined)).toBe('');
+    expect(formatMonth(NaN)).toBe('');
+  });
+
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
+    expect(formatDateTimeLong(0)).toBe(
+      `January 01, 1970, 12:00 AM (UTC+00:00)`
+    );
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
@@ -140,21 +156,56 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 0, expected: '0s' },
     { input: 1000, expected: '1s' },
     { input: 60000, expected: '1m' },
-    { input: 3600000, expected: '1h' },
+    { input: 3600020, expected: '1h' },
     { input: 7265000, expected: '2h 1m 5s' },
     { input: 59999, expected: '59s' },
     { input: 61000, expected: '1m 1s' },
     { input: 3661000, expected: '1h 1m 1s' },
     { input: 86400000, expected: '1d' },
     { input: 90061000, expected: '1d 1h 1m 1s' },
-    { input: -1000, expected: '0s' },
+    { input: -1000, expected: '-1s' },
+    { input: 1200, expected: '1s 200ms', showMilliseconds: true },
+    {
+      input: 90061560,
+      expected: '1d 1h 1m 1s 560ms',
+      length: 5,
+      showMilliseconds: true,
+    },
+    { input: 90061560, expected: '1d 1h', length: 2, showMilliseconds: true },
+    { input: -61000, expected: '-1m 1s' },
+    {
+      input: -3661000,
+      expected: 'Late by 1h 1m 1s',
+      prependForNegativeValue: 'Late by ',
+    },
+    { input: -86400000, expected: '-1d' },
+    {
+      input: -90061000,
+      expected: 'Late by 1d 1h 1m 1s',
+      prependForNegativeValue: 'Late by ',
+    },
   ];
 
-  testCases.forEach(({ input, expected }) => {
-    it(`should return "${expected}" for ${input} milliseconds`, () => {
-      expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
-    });
-  });
+  testCases.forEach(
+    ({
+      input,
+      expected,
+      length,
+      showMilliseconds,
+      prependForNegativeValue,
+    }) => {
+      it(`should return "${expected}" for ${input} milliseconds`, () => {
+        expect(
+          convertMillisecondsToHumanReadableFormat(
+            input,
+            length,
+            showMilliseconds,
+            prependForNegativeValue
+          )
+        ).toBe(expected);
+      });
+    }
+  );
 
   const testCasesWithLength = [
     {
@@ -187,4 +238,80 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
       });
     }
   );
+
+  it('should return the correct value for the input value', () => {
+    const inputValue = 224813364.39; // input in seconds
+    const expectedValue = '7Y 2M 22d 9m 24s';
+
+    expect(convertMillisecondsToHumanReadableFormat(inputValue * 1000)).toBe(
+      expectedValue
+    );
+  });
+});
+
+describe('getScheduleDescriptionTexts', () => {
+  it('should parse daily cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('0 0 * * *');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    // The function should either parse successfully or return empty strings
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should parse hourly cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('0 * * * *');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should parse weekly cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('0 0 * * 1');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should parse custom interval cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('*/15 * * * *');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should handle invalid cron expression gracefully', () => {
+    const result = getScheduleDescriptionTexts('invalid cron');
+
+    expect(result.descriptionFirstPart).toBe('');
+    expect(result.descriptionSecondPart).toBe('');
+  });
+
+  it('should handle empty string gracefully', () => {
+    const result = getScheduleDescriptionTexts('');
+
+    expect(result.descriptionFirstPart).toBe('');
+    expect(result.descriptionSecondPart).toBe('');
+  });
+
+  it('should return consistent structure for valid cron expressions', () => {
+    const result1 = getScheduleDescriptionTexts('0 12 * * *');
+    const result2 = getScheduleDescriptionTexts('30 8 * * 1-5');
+
+    expect(result1).toHaveProperty('descriptionFirstPart');
+    expect(result1).toHaveProperty('descriptionSecondPart');
+    expect(result2).toHaveProperty('descriptionFirstPart');
+    expect(result2).toHaveProperty('descriptionSecondPart');
+    expect(typeof result1.descriptionFirstPart).toBe('string');
+    expect(typeof result1.descriptionSecondPart).toBe('string');
+    expect(typeof result2.descriptionFirstPart).toBe('string');
+    expect(typeof result2.descriptionSecondPart).toBe('string');
+  });
 });

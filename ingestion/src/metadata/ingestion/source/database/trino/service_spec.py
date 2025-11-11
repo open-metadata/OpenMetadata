@@ -1,3 +1,4 @@
+from metadata.ingestion.source.database.trino.connection import TrinoConnection
 from metadata.ingestion.source.database.trino.lineage import TrinoLineageSource
 from metadata.ingestion.source.database.trino.metadata import TrinoSource
 from metadata.ingestion.source.database.trino.usage import TrinoUsageSource
@@ -13,4 +14,5 @@ ServiceSpec = DefaultDatabaseSpec(
     usage_source_class=TrinoUsageSource,
     profiler_class=TrinoProfilerInterface,
     sampler_class=TrinoSampler,
+    connection_class=TrinoConnection,
 )

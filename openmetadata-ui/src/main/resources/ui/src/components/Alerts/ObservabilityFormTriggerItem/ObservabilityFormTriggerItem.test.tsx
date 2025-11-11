@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
-import React from 'react';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem';
@@ -49,7 +48,11 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
     );
 
     expect(screen.getByText('label.trigger')).toBeInTheDocument();
@@ -76,7 +79,11 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => []);
 
     render(
-      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
     );
 
     const addButton = screen.getByTestId('add-trigger');
@@ -99,11 +106,70 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
     );
 
     const addButton = screen.getByTestId('add-trigger');
 
     expect(addButton).not.toBeDisabled();
+  });
+
+  it('should render form item with proper label alignment', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn().mockImplementation((path) => {
+      if (Array.isArray(path) && path[0] === 'input' && path[1] === 'actions') {
+        return [{ name: 'trigger1', effect: 'include' }];
+      }
+      if (Array.isArray(path) && path[0] === 'resources') {
+        return ['container'];
+      }
+
+      return undefined;
+    });
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation((path) => {
+      if (Array.isArray(path) && path[0] === 'input' && path[1] === 'actions') {
+        return [{ name: 'trigger1', effect: 'include' }];
+      }
+      if (Array.isArray(path) && path[0] === 'resources') {
+        return ['container'];
+      }
+
+      return undefined;
+    });
+
+    const { container } = render(
+      <Form
+        initialValues={{
+          input: { actions: [{ name: 'trigger1', effect: 'include' }] },
+          resources: ['container'],
+        }}>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
+    );
+
+    // Check that the effect field (Include switch) is rendered with correct label
+    const includeLabel = screen.getByText('label.include');
+
+    expect(includeLabel).toBeInTheDocument();
+
+    // Check that the form items are properly structured with the updated labelAlign and labelCol
+    const formItems = container.querySelectorAll('.ant-form-item');
+
+    expect(formItems.length).toBeGreaterThan(0);
   });
 });

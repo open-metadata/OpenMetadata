@@ -34,7 +34,10 @@
         "searchSettings",
         "assetCertificationSettings",
         "lineageSettings",
-        "workflowSettings"
+        "workflowSettings",
+        "scimConfiguration",
+        "securityConfiguration",
+        "entityRulesSettings"
       ]
     }
   },
@@ -92,6 +95,12 @@
         },
         {
           "$ref": "../configuration/workflowSettings.json"
+        },
+        {
+          "$ref": "../configuration/entityRulesSettings.json"
+        },
+        {
+          "$ref": "../configuration/securityConfiguration.json"
         }
       ]
     }

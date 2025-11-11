@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -106,7 +106,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_database_service_mssql(self):
         """
@@ -146,7 +151,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_database_service_bigquery(self):
         """
@@ -191,6 +201,14 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
 
+        # Clean
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
+
     def test_create_dashboard_service_looker(self):
         """
         Create a db service from WorkflowSource
@@ -225,7 +243,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_tableau(self):
         """
@@ -240,8 +263,6 @@ class OMetaServiceTest(TestCase):
                     "authType": {"username": "tb_user", "password": "tb_pwd"},
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
-                    "apiVersion": "3.15",
-                    "env": "tableau_prod",
                 }
             },
             "sourceConfig": {"config": {"topicFilterPattern": {}}},
@@ -265,7 +286,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_messaging_service_kafka(self):
         """
@@ -295,7 +321,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=MessagingService, entity_id=service.id)
+        self.metadata.delete(
+            entity=MessagingService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_db_service_without_connection(self):
         """We can create a service via API without storing the creds"""
@@ -334,7 +365,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        metadata_no_password.delete(entity=DatabaseService, entity_id=service.id)
+        metadata_no_password.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_without_connection(self):
         """We can create a service via API without storing the creds"""
@@ -353,8 +389,6 @@ class OMetaServiceTest(TestCase):
                     "authType": {"username": "tb_user", "password": "tb_pwd"},
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
-                    "apiVersion": "3.15",
-                    "env": "tableau_prod",
                 }
             },
             "sourceConfig": {"config": {"topicFilterPattern": {}}},
@@ -376,4 +410,9 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        metadata_no_password.delete(entity=DashboardService, entity_id=service.id)
+        metadata_no_password.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )

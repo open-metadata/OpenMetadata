@@ -16,8 +16,7 @@ import {
   InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
-import { AxiosError } from 'axios';
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
@@ -32,34 +31,21 @@ import { getPopupSettingLink } from '../../../utils/BrowserUtils';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
 } from '../AuthProviders/AuthProvider.interface';
-
 interface Props {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
-  onLoginFailure: (error: AxiosError) => void;
-  onLogoutSuccess: () => void;
 }
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  (
-    { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
-    ref
-  ) => {
+  ({ children }: Props, ref) => {
     const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
-
-    const handleOnLogoutSuccess = async () => {
-      for (const key in localStorage) {
-        if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
-          localStorage.removeItem(key);
-        }
-      }
-      onLogoutSuccess();
-    };
+    const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
+      useAuthProvider();
 
     const login = async () => {
       try {
@@ -68,19 +54,29 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         if (isInIframe) {
           // Use popup login when in iframe to avoid redirect issues
           const response = await instance.loginPopup(msalLoginRequest);
+          const msalResponse = await parseMSALResponse(response);
 
-          onLoginSuccess(parseMSALResponse(response));
+          handleSuccessfulLogin(msalResponse);
         } else {
           // Use login with redirect for normal window context
           await instance.loginRedirect(msalLoginRequest);
         }
-      } catch (error) {
-        onLoginFailure(error as AxiosError);
+      } catch {
+        handleFailedLogin();
       }
     };
 
-    const logout = () => {
-      handleOnLogoutSuccess();
+    const logout = async () => {
+      try {
+        for (const key in localStorage) {
+          if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } finally {
+        // Cleanup application state
+        handleSuccessfulLogout();
+      }
     };
 
     const fetchIdToken = async (
@@ -92,8 +88,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       };
       try {
         const response = await instance.ssoSilent(tokenRequest);
+        const msalResponse = await parseMSALResponse(response);
 
-        return parseMSALResponse(response);
+        return msalResponse;
       } catch (error) {
         if (
           error instanceof InteractionRequiredAuthError &&
@@ -122,7 +119,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               throw e;
             });
 
-          return parseMSALResponse(response);
+          const msalResponse = await parseMSALResponse(response);
+
+          return msalResponse;
         } else {
           // eslint-disable-next-line no-console
           console.error(error);
@@ -151,12 +150,12 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         const response = await instance.handleRedirectPromise();
 
         if (response) {
-          const user = parseMSALResponse(response);
+          const user = await parseMSALResponse(response);
 
-          onLoginSuccess(user);
+          handleSuccessfulLogin(user);
         }
-      } catch (error) {
-        onLoginFailure(error as AxiosError);
+      } catch {
+        handleFailedLogin();
       }
     };
 

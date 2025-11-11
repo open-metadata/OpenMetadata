@@ -19,9 +19,10 @@ import {
 import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, FunctionComponent } from 'react';
+import { createElement, Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
 
 const { Panel } = Collapse;
@@ -62,9 +63,15 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
       } as PropertyMap
     );
 
+    const {
+      properties: updatedNormalProperties,
+      additionalField: AdditionalField,
+      additionalFieldContent,
+    } = serviceUtilClassBase.getProperties(normalProperties);
+
     const fieldElement = (
       <Fragment>
-        <Space className="w-full justify-between header-title-wrapper">
+        <Space className="w-full justify-between header-title-wrapper m-t-sm">
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
@@ -73,8 +80,16 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
             id={`${idSchema.$id}__title`}>
             {title}
           </label>
+        </Space>
 
-          {schema.additionalProperties && (
+        {schema.additionalProperties && (
+          <Space className="w-full justify-between m-t-sm">
+            <label
+              className="font-medium text-base-color text-md"
+              id={`${idSchema.$id}__AdditionalProperties-label`}>
+              {t('label.additional-property-plural')}
+            </label>
+
             <Button
               data-testid={`add-item-${title}`}
               icon={
@@ -92,9 +107,15 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
                 }
               }}
             />
-          )}
-        </Space>
-        {normalProperties.map((element, index) => (
+          </Space>
+        )}
+
+        {AdditionalField &&
+          createElement(AdditionalField, {
+            data: additionalFieldContent,
+          })}
+
+        {updatedNormalProperties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
               'additional-fields': schema.additionalProperties,
@@ -105,7 +126,8 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
         ))}
         {!isEmpty(advancedProperties) && (
           <Collapse
-            className="advanced-properties-collapse"
+            destroyInactivePanel
+            className="advanced-properties-collapse m-t-sm"
             expandIconPosition="end">
             <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
               {advancedProperties.map((element, index) => (

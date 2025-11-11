@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
@@ -85,17 +86,18 @@ class SnowflakeStoredProcedure(BaseModel):
 
 
 class SnowflakeTable(BaseModel):
-    """Models the items returned from the Table and View Queries used to get the entities to process.
-    :name: Holds the table/view name.
+    """Models the items returned from the Table, View and Stream Queries used to get the entities to process.
+    :name: Holds the table/view/stream name.
     :deleted: Holds either a datetime if the table was deleted or None.
     """
 
     name: str
     deleted: Optional[datetime] = None
+    type_: Optional[TableType] = None
 
 
 class SnowflakeTableList(BaseModel):
-    """Understands how to return the deleted and not deleted tables/views from a given list."""
+    """Understands how to return the deleted and not deleted tables/views/streams from a given list."""
 
     tables: List[SnowflakeTable]
 

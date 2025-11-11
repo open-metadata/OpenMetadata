@@ -14,21 +14,26 @@ import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { isEmpty } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../../enums/service.enum';
-import { App } from '../../../../generated/entity/applications/app';
+import {
+  App,
+  EntityReference,
+} from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
-interface ApplicationConfigurationProps {
+export interface ApplicationConfigurationProps {
   appData: App | AppMarketPlaceDefinition;
   isLoading: boolean;
   jsonSchema: RJSFSchema;
-  onConfigSave: (data: IChangeEvent) => void;
+  onConfigSave: (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => void;
   onCancel?: () => void;
 }
 
@@ -54,23 +59,22 @@ const ApplicationConfiguration = ({
   };
 
   const formPanel = (
-    <div className="m-auto max-width-md w-full p-lg">
-      <FormBuilder
-        useSelectWidget
-        cancelText={t('label.back')}
-        formData={appData?.appConfiguration ?? {}}
-        hideCancelButton={!onCancel}
-        isLoading={isLoading}
-        okText={t('label.submit')}
-        schema={jsonSchema}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        uiSchema={UiSchema}
-        validator={validator}
-        onCancel={onCancel}
-        onFocus={handleFieldFocus}
-        onSubmit={onConfigSave}
-      />
-    </div>
+    <FormBuilder
+      capitalizeOptionLabel
+      useSelectWidget
+      cancelText={t('label.back')}
+      formData={appData?.appConfiguration ?? {}}
+      hideCancelButton={!onCancel}
+      isLoading={isLoading}
+      okText={t('label.save')}
+      schema={jsonSchema}
+      serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+      uiSchema={UiSchema}
+      validator={validator}
+      onCancel={onCancel}
+      onFocus={handleFieldFocus}
+      onSubmit={onConfigSave}
+    />
   );
 
   const docPanel = (
@@ -83,7 +87,7 @@ const ApplicationConfiguration = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="h-full content-height-with-resizable-panel"
       firstPanel={{
         children: formPanel,
         minWidth: 700,

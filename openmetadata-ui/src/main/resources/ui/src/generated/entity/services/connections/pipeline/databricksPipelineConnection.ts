@@ -16,6 +16,10 @@
 export interface DatabricksPipelineConnection {
     connectionArguments?: { [key: string]: any };
     /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
+    /**
      * Host and port of the Databricks service.
      */
     hostPort: string;
@@ -23,6 +27,11 @@ export interface DatabricksPipelineConnection {
      * Databricks compute resources URL.
      */
     httpPath?: string;
+    /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
     /**
      * Regex exclude pipelines.
      */

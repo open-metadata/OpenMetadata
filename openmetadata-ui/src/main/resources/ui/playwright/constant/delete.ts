@@ -49,7 +49,7 @@ export const LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED = [
     elementSelector: '[data-testid="down-vote-btn"]',
   },
   {
-    containerSelector: '[data-testid="asset-header-btn-group"]',
+    containerSelector: '[data-testid="entity-header-title"]',
     elementSelector: '[data-testid="entity-follow-button"]',
   },
 ];
@@ -67,3 +67,9 @@ export const ENTITIES_WITHOUT_FOLLOWING_BUTTON = [
   'services/searchServices',
   'apiCollections',
 ];
+
+/**
+ * Timeout for deleting big entities
+ * 5 minutes
+ */
+export const BIG_ENTITY_DELETE_TIMEOUT = 5 * 60 * 1000;

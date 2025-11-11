@@ -92,12 +92,17 @@ export default class EntityLink {
   /**
    *
    * @param string columnFqn
+   * @param boolean withQuotes for the column name if nested column name is present
    * @returns column name for table entity
    */
-  static getTableColumnNameFromColumnFqn(columnFqn: string) {
+  static getTableColumnNameFromColumnFqn(columnFqn: string, withQuotes = true) {
     const columnName = getPartialNameFromTableFQN(columnFqn, [
       FqnPart.NestedColumn,
     ]);
+
+    if (!withQuotes) {
+      return columnName;
+    }
 
     return columnName.includes(FQN_SEPARATOR_CHAR)
       ? `"${columnName}"`

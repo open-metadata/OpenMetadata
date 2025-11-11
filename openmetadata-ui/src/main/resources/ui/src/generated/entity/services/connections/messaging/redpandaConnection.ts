@@ -44,6 +44,11 @@ export interface RedpandaConnection {
      */
     schemaRegistryConfig?: { [key: string]: any };
     /**
+     * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
+     * topic schema from registry.
+     */
+    schemaRegistryTopicSuffixName?: string;
+    /**
      * Confluent Redpanda Schema Registry URL.
      */
     schemaRegistryURL?: string;

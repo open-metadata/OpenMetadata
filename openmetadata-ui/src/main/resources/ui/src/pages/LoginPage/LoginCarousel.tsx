@@ -12,39 +12,46 @@
  */
 
 import { Carousel, Typography } from 'antd';
-import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import React from 'react';
-import { LOGIN_SLIDE } from '../../constants/Login.constants';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const carouselContent = loginClassBase.getLoginCarouselContent();
+  const { t } = useTranslation();
+
   return (
-    <div className="carousal-container" data-testid="carousel-container">
-      <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">
-        {LOGIN_SLIDE.map((data) => (
-          <div
-            className="text-center"
-            data-testid="slider-container"
-            key={uniqueId()}>
-            <Typography.Title className="text-primary" level={1}>
+    <Carousel
+      autoplay
+      dots
+      autoplaySpeed={5000}
+      beforeChange={(_, next) => setCurrentIndex(next)}
+      className="login-carousel"
+      data-testid="carousel-container"
+      easing="ease-in-out"
+      effect="fade">
+      {carouselContent.map((data, idx) => (
+        <div
+          className="slider-container"
+          data-testid="slider-container"
+          key={uniqueId() + '-' + currentIndex + '-' + idx}>
+          <div className="text-container d-flex flex-col gap-4">
+            <Typography.Title className="carousel-header display-md" level={1}>
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="m-b-lg carousal-description text-grey-muted"
+              className="carousal-description text-md p-x-lg"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>
-            <img
-              alt="slider"
-              loading="lazy"
-              src={data.image}
-              style={{ display: 'initial' }}
-              width="750px"
-            />
           </div>
-        ))}
-      </Carousel>
-    </div>
+
+          <img alt="slider" className="main-image" src={data.image} />
+        </div>
+      ))}
+    </Carousel>
   );
 };
 

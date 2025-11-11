@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Modal, Typography } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { clone } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import CloseIcon from '../CloseIcon.component';
 import './schema-modal.less';
@@ -24,11 +26,16 @@ import { SchemaModalProp } from './SchemaModal.interface';
 const SchemaModal: FC<SchemaModalProp> = ({
   className,
   onClose,
+  onChange,
+  editorClass,
   data,
+  mode,
   visible,
+  onSave,
+  isFooterVisible = false,
 }) => {
   const [schemaText, setSchemaText] = useState(data);
-
+  const { t } = useTranslation();
   useEffect(() => {
     setSchemaText(clone(data));
   }, [data, visible]);
@@ -45,7 +52,26 @@ const SchemaModal: FC<SchemaModalProp> = ({
         />
       }
       data-testid="schema-modal"
-      footer={null}
+      footer={
+        isFooterVisible ? (
+          <KeyDownStopPropagationWrapper>
+            <Button
+              data-testid="cancel"
+              key="cancelButton"
+              type="link"
+              onClick={onClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save"
+              key="saveButton"
+              type="primary"
+              onClick={onSave}>
+              {t('label.save')}
+            </Button>
+          </KeyDownStopPropagationWrapper>
+        ) : null
+      }
       maskClosable={false}
       open={visible}
       title={
@@ -55,13 +81,17 @@ const SchemaModal: FC<SchemaModalProp> = ({
       }
       width={800}
       onCancel={onClose}>
-      <div data-testid="schema-modal-body">
-        <SchemaEditor
-          className="schema-editor"
-          editorClass="custom-entity-schema"
-          value={schemaText as string}
-        />
-      </div>
+      <KeyDownStopPropagationWrapper>
+        <div data-testid="schema-modal-body">
+          <SchemaEditor
+            className="schema-editor"
+            editorClass={classNames('custom-entity-schema', editorClass)}
+            mode={mode}
+            value={schemaText as string}
+            onChange={onChange}
+          />
+        </div>
+      </KeyDownStopPropagationWrapper>
     </Modal>
   );
 };

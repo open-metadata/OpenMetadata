@@ -17,6 +17,12 @@
           "description": "Define which ingestion pipeline type should be created",
           "$ref": "../../../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
         },
+        "shouldRun": {
+          "title": "Run the Ingestion Pipeline",
+          "description": "If True, it will be created and run. Otherwise it will just be created.",
+          "type": "boolean",
+          "default": true
+        },
         "waitForCompletion": {
           "title": "Wait for Completion",
           "description": "Set if this step should wait until the Ingestion Pipeline finishes running",

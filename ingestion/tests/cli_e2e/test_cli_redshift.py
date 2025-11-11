@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -85,7 +85,9 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         SQACommonMethods.create_table_and_view(self)
 
     def delete_table_and_view(self) -> None:
-        SQACommonMethods.delete_table_and_view(self)
+        with self.engine.connect() as connection:
+            connection.execute(self.drop_view_query)
+            connection.execute(self.drop_table_query)
 
     def delete_table_rows(self) -> None:
         SQACommonMethods.run_delete_queries(self)

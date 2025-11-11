@@ -10,52 +10,75 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { camelCase, map, startCase } from 'lodash';
-import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets.svg';
-import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored.svg';
-import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-colored.svg';
+import { map, startCase } from 'lodash';
+import { ReactComponent as APICollectionIcon } from '../../assets/svg/api-collection-colored.svg';
+import { ReactComponent as APIEndpointIcon } from '../../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as ChartIcon } from '../../assets/svg/chart-colored.svg';
+import { ReactComponent as ClassificationIcon } from '../../assets/svg/classification-colored-new.svg';
+import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored-new.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/dashboard-data-models-colored.svg';
+import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets-colored-new.svg';
+import { ReactComponent as DataProductIcon } from '../../assets/svg/data-product-colored.svg';
+import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored-new.svg';
+import { ReactComponent as SchemaIcon } from '../../assets/svg/database-schema-colored.svg';
+import { ReactComponent as DirectoryIcon } from '../../assets/svg/directory-colored-new.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/domain-colored.svg';
+import { ReactComponent as FileIcon } from '../../assets/svg/file-colored-new.svg';
+import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as GovernIcon } from '../../assets/svg/governance.svg';
 import { ReactComponent as HomepageIcon } from '../../assets/svg/homepage.svg';
-import { ReactComponent as APICollectionIcon } from '../../assets/svg/ic-api-collection.svg';
-import { ReactComponent as APIEndpointIcon } from '../../assets/svg/ic-api-endpoint.svg';
-import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/ic-dashboard-data-model-colored.svg';
-import { ReactComponent as SchemaIcon } from '../../assets/svg/ic-database-schema-colored.svg';
-import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored.svg';
-import { ReactComponent as MetricColoredIcon } from '../../assets/svg/metric-colored.svg';
-import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-model-colored.svg';
+import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored-new.svg';
+import { ReactComponent as MetricIcon } from '../../assets/svg/metric-colored-new.svg';
+import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-models-colored-new.svg';
 import { ReactComponent as NavigationIcon } from '../../assets/svg/navigation.svg';
-import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-colored.svg';
-import { ReactComponent as SearchIcon } from '../../assets/svg/search-colored.svg';
-import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored.svg';
-import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedure-colored.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/table-colored.svg';
+import { ReactComponent as PipelineIcon } from '../../assets/svg/pipelines-colored-new.svg';
+import { ReactComponent as SearchIndexIcon } from '../../assets/svg/search-index-colored-new.svg';
+import { ReactComponent as SpreadsheetIcon } from '../../assets/svg/spreadsheet-colored-new.svg';
+import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored-new.svg';
+import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedures-colored-new.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/table-colored-new.svg';
+import { ReactComponent as TagIcon } from '../../assets/svg/tags-colored.svg';
+import { ReactComponent as WorksheetIcon } from '../../assets/svg/worksheet-colored-new.svg';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { SettingMenuItem } from '../GlobalSettingsUtils';
 import i18n from '../i18next/LocalUtil';
 
-const ENTITY_ICONS: Record<string, SvgComponent> = {
+export type CustomizeIconKeys =
+  | PageType
+  | 'govern'
+  | 'dataAssets'
+  | 'navigation';
+
+const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Table]: TableIcon,
+  [PageType.Chart]: ChartIcon,
   [PageType.Container]: StorageIcon,
   [PageType.Dashboard]: DashboardIcon,
   [PageType.DashboardDataModel]: DashboardDataModelIcon,
   [PageType.Database]: DatabaseIcon,
   [PageType.DatabaseSchema]: SchemaIcon,
-  [PageType.Domain]: SchemaIcon,
+  [PageType.Domain]: DomainIcon,
   [PageType.Glossary]: GlossaryIcon,
   [PageType.GlossaryTerm]: GlossaryIcon,
   [PageType.Pipeline]: PipelineIcon,
-  [PageType.SearchIndex]: SearchIcon,
+  [PageType.SearchIndex]: SearchIndexIcon,
   [PageType.StoredProcedure]: StoredProcedureIcon,
   [PageType.Topic]: MessagingIcon,
   ['govern']: GovernIcon,
   ['dataAssets']: DataAssetsIcon,
-  ['homepage']: HomepageIcon,
+  [PageType.LandingPage]: HomepageIcon,
   ['navigation']: NavigationIcon,
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
-  [PageType.Metric]: MetricColoredIcon,
+  [PageType.Metric]: MetricIcon,
+  [PageType.Directory]: DirectoryIcon,
+  [PageType.File]: FileIcon,
+  [PageType.Spreadsheet]: SpreadsheetIcon,
+  [PageType.Worksheet]: WorksheetIcon,
+  [PageType.Classification]: ClassificationIcon,
+  [PageType.Tag]: TagIcon,
+  [PageType.DataProduct]: DataProductIcon,
 };
 
 export const getCustomizePageCategories = (): SettingMenuItem[] => {
@@ -63,26 +86,30 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
-      description: 'Navigation',
-      icon: ENTITY_ICONS[camelCase('Navigation')],
+      isBeta: true,
+      description: 'Customize left sidebar ',
+      icon: ENTITY_ICONS['navigation'],
     },
     {
       key: PageType.LandingPage,
-      label: i18n.t('label.homepage'),
-      description: 'Homepage',
-      icon: ENTITY_ICONS[camelCase('Homepage')],
+      label: i18n.t('label.home-page'),
+      description: 'Customize the My data page with widget of your preference',
+      icon: ENTITY_ICONS[PageType.LandingPage],
     },
     {
       key: 'governance',
       label: i18n.t('label.governance'),
-      description: 'Governance',
-      icon: ENTITY_ICONS[camelCase('GOVERN')],
+      isBeta: true,
+      description: 'Customize the Govern pages with widget of your preference',
+      icon: ENTITY_ICONS['govern'],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
-      description: 'Data assets',
-      icon: ENTITY_ICONS[camelCase('data-assets')],
+      isBeta: true,
+      description:
+        'Customize the entity detail page with widget of your preference',
+      icon: ENTITY_ICONS['dataAssets'],
     },
   ];
 };
@@ -90,7 +117,9 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
 const generateSettingItems = (pageType: PageType): SettingMenuItem => ({
   key: pageType,
   label: startCase(pageType),
-  description: pageType,
+  description: i18n.t('message.entity-customize-description', {
+    entity: startCase(pageType),
+  }),
   icon: ENTITY_ICONS[pageType],
 });
 

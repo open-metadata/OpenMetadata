@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
@@ -68,7 +69,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId or ''}"
+                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root or ''}"
             if (
                 not connection.credentials.gcpConfig.privateKey
                 and connection.credentials.gcpConfig.projectId.root
@@ -89,9 +90,28 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
         and connection.credentials.gcpConfig.projectId
     ):
-        return (
-            f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
-        )
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                return f"{connection.scheme.value}://{project_id}"
+
+    # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
+    elif (
+        isinstance(connection.credentials.gcpConfig, GcpADC)
+        and connection.credentials.gcpConfig.projectId
+    ):
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                return f"{connection.scheme.value}://{project_id}"
 
     return f"{connection.scheme.value}://"
 
@@ -101,10 +121,15 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     Prepare the engine and the GCP credentials
     """
     set_google_credentials(gcp_credentials=connection.credentials)
+    kwargs = {}
+    if connection.billingProjectId:
+        kwargs["billing_project_id"] = connection.billingProjectId
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
+        **kwargs,
     )
 
 
@@ -128,6 +153,10 @@ def test_connection(
             return policy_tags
 
     def test_tags():
+        if not service_connection.includePolicyTags:
+            logger.info("'includePolicyTags' is set to false, so skipping this test.")
+            return None
+
         taxonomy_project_ids = []
         if engine.url.host:
             taxonomy_project_ids.append(engine.url.host)

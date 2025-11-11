@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -94,24 +94,11 @@ EXPECTED_PIPELINE_NAME = "alphabet"
 EXPECTED_PIPELINE = [
     CreatePipelineRequest(
         name=EntityName(root="alphabet"),
-        displayName=None,
-        description=None,
-        dataProducts=None,
         sourceUrl=SourceUrl(
             root="<MagicMock name='get_connection().config.hostPort' id='4883082864'>/#/job/running/None/overview"
         ),
-        concurrency=None,
-        pipelineLocation=None,
-        startDate=None,
         tasks=[],
-        tags=None,
-        owners=None,
         service=FullyQualifiedEntityName(root="flink_test"),
-        extension=None,
-        scheduleInterval=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 

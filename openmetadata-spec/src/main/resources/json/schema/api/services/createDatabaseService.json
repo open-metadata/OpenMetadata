@@ -46,9 +46,16 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Database Service belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Database Service belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "serviceType"],

@@ -20,10 +20,10 @@ jobs:
     environment: release
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
       - name: Install Ubuntu related dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv

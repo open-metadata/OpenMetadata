@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import React, { useCallback } from 'react';
+import { Col, Row } from 'antd';
+import { compare } from 'fast-json-patch';
+import { kebabCase } from 'lodash';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -31,7 +33,7 @@ function CustomizeGlossaryTermDetailPage({
   isGlossary,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentPage, currentPageType } = useCustomizeStore();
+  const { currentPage, currentPageType, getPage } = useCustomizeStore();
 
   const handleReset = useCallback(async () => {
     await onSaveLayout();
@@ -46,22 +48,47 @@ function CustomizeGlossaryTermDetailPage({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  const disableSave = useMemo(() => {
+    if (!currentPageType) {
+      return true;
+    }
+
+    const originalPage =
+      getPage(currentPageType) ?? ({ pageType: currentPageType } as Page);
+
+    const editedPage = (currentPage ??
+      ({ pageType: currentPageType } as Page)) as Page;
+
+    const jsonPatch = compare(originalPage, editedPage);
+
+    return jsonPatch.length === 0;
+  }, [currentPage, currentPageType, getPage]);
+
+  if (!currentPageType) {
+    return null;
+  }
+
   return (
     <PageLayoutV1
       mainContainerClassName="p-t-0"
-      pageContainerStyle={{
-        backgroundImage: `url(${gridBgImg})`,
-      }}
       pageTitle={t('label.customize-entity', {
-        entity: t('label.landing-page'),
+        entity: t('label.' + kebabCase(currentPageType)),
       })}>
-      <CustomizablePageHeader
-        personaName={getEntityName(personaDetails)}
-        onReset={handleReset}
-        onSave={handleSave}
-      />
-      <GlossaryHeaderWidget isGlossary={isGlossary} />
-      <CustomizeTabWidget />
+      <Row className="customize-details-page" gutter={[0, 20]}>
+        <Col span={24}>
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={getEntityName(personaDetails)}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+        </Col>
+        <Col span={24}>
+          <GlossaryHeaderWidget isGlossary={isGlossary} />
+        </Col>
+        {/* It will render cols inside the row */}
+        <CustomizeTabWidget />
+      </Row>
     </PageLayoutV1>
   );
 }

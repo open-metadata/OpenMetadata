@@ -35,7 +35,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
@@ -49,6 +49,7 @@ import {
   ScheduleTimeline,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
+import { EntityReference } from '../../../../generated/entity/type';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -70,7 +71,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import ApplicationConfiguration from '../ApplicationConfiguration/ApplicationConfiguration';
+import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
 import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
@@ -81,7 +82,7 @@ import applicationsClassBase from './ApplicationsClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<App>();
   const [showActions, setShowActions] = useState(false);
@@ -95,6 +96,7 @@ const AppDetails = () => {
     isSaveLoading: false,
   });
   const { getResourceLimit } = useLimitStore();
+  const { plugins } = useApplicationsProvider();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -107,7 +109,7 @@ const AppDetails = () => {
 
       const schema = await applicationsClassBase.importSchema(fqn);
 
-      setJsonSchema(schema.default);
+      setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -116,7 +118,7 @@ const AppDetails = () => {
   }, [fqn, setLoadingState]);
 
   const onBrowseAppsClick = () => {
-    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
+    navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const handleRestore = useCallback(async () => {
@@ -233,13 +235,19 @@ const AppDetails = () => {
         ]),
   ];
 
-  const onConfigSave = async (data: IChangeEvent) => {
+  const onConfigSave = async (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => {
     if (appData) {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
-      const updatedFormData = formatFormDataForSubmit(data.formData);
+
+      const { formData, ingestionRunner } = data;
+
+      const updatedFormData = formatFormDataForSubmit(formData);
       const updatedData = {
         ...appData,
         appConfiguration: updatedFormData,
+        ...(ingestionRunner && { ingestionRunner }),
       };
 
       const jsonPatch = compare(appData, updatedData);
@@ -323,7 +331,21 @@ const AppDetails = () => {
     }
   };
 
+  // Check if there's a plugin app details component for this app
+  const pluginAppDetailsComponent = useMemo(() => {
+    if (!appData?.name || !plugins.length) {
+      return null;
+    }
+
+    const plugin = plugins.find((p) => p.name === appData.name);
+
+    return plugin?.getAppDetails?.(appData) || null;
+  }, [appData?.name, plugins]);
+
   const tabs = useMemo(() => {
+    const ApplicationConfigurationComponent =
+      applicationsClassBase.getApplicationConfigurationComponent();
+
     const tabConfiguration =
       appData?.appConfiguration && appData.allowConfiguration && jsonSchema
         ? [
@@ -336,7 +358,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <ApplicationConfiguration
+                <ApplicationConfigurationComponent
                   appData={appData}
                   isLoading={loadingState.isSaveLoading}
                   jsonSchema={jsonSchema}
@@ -361,7 +383,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="p-lg">
+                <div className="bg-white p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}
@@ -392,12 +414,10 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.RECENT_RUNS,
               children: (
-                <div className="p-lg">
-                  <AppRunsHistory
-                    appData={appData}
-                    jsonSchema={jsonSchema as RJSFSchema}
-                  />
-                </div>
+                <AppRunsHistory
+                  appData={appData}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
               ),
             },
           ]
@@ -430,7 +450,7 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={t('label.application-plural')}>
-      <Row className="page-container">
+      <Row>
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
@@ -476,8 +496,8 @@ const AppDetails = () => {
         </Col>
       </Row>
       <Row>
-        <Col className="page-container" span={24}>
-          <Space className="app-details-header w-full m-t-md" size={24}>
+        <Col span={24}>
+          <Space className="app-details-header w-full" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -519,13 +539,19 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col className="p-0" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            className="app-details-page-tabs entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-          />
+        <Col className="app-details-page-tabs" span={24}>
+          {pluginAppDetailsComponent ? (
+            // Render plugin's custom app details component
+            React.createElement(pluginAppDetailsComponent)
+          ) : (
+            // Render default tabs interface
+            <Tabs
+              destroyInactiveTabPane
+              className="tabs-new"
+              data-testid="tabs"
+              items={tabs}
+            />
+          )}
         </Col>
       </Row>
 

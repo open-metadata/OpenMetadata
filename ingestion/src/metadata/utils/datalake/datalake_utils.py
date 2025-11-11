@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -66,6 +66,7 @@ def fetch_dataframe(
                     return df_wrapper.dataframes, df_wrapper.raw_data
                 return df_wrapper.dataframes
             except Exception as err:
+                logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
@@ -131,7 +132,13 @@ class DataFrameColumnParser:
             shuffle: whether to shuffle the dataframe list or not if sample is True. (default: False)
         """
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
-        if file_type == SupportedTypes.PARQUET:
+        if file_type in {
+            SupportedTypes.PARQUET,
+            SupportedTypes.PARQUET_PQ,
+            SupportedTypes.PARQUET_PQT,
+            SupportedTypes.PARQUET_PARQ,
+            SupportedTypes.PARQUET_SNAPPY,
+        }:
             parser = ParquetDataFrameColumnParser(data_frame)
         elif file_type in {
             SupportedTypes.JSON,
@@ -248,7 +255,7 @@ class GenericDataFrameColumnParser:
             data_frame (DataFrame)
             column_name (string)
         """
-        data_type = None
+        data_type = None  # default to string
         try:
             if data_frame[column_name].dtypes.name == "object" and any(
                 data_frame[column_name].dropna().values
@@ -310,7 +317,7 @@ class GenericDataFrameColumnParser:
                 f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
             )
             logger.debug(traceback.format_exc())
-        return data_type
+        return data_type or DataType.STRING
 
     @classmethod
     def unique_json_structure(cls, dicts: List[Dict]) -> Dict:
@@ -535,8 +542,129 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
         """
         if self.raw_data:
             try:
+                # First, check if this is an Iceberg/Delta Lake metadata file
+                data = json.loads(self.raw_data)
+                if self._is_iceberg_delta_metadata(data):
+                    return self._parse_iceberg_delta_schema(data)
+                # Otherwise, try to parse as standard JSON Schema
                 return parse_json_schema(schema_text=self.raw_data, cls=Column)
             except Exception as exc:
                 logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())
         return self._get_columns(self.data_frame)
+
+    def _is_iceberg_delta_metadata(self, data: dict) -> bool:
+        """
+        Check if the JSON data is an Iceberg or Delta Lake metadata file.
+        These files have a specific structure with 'schema' containing 'fields'.
+        """
+        return (
+            isinstance(data, dict)
+            and "schema" in data
+            and isinstance(data["schema"], dict)
+            and "fields" in data["schema"]
+            and isinstance(data["schema"]["fields"], list)
+        )
+
+    def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:
+        """
+        Parse Iceberg/Delta Lake metadata file schema to extract columns.
+        These files have structure: {"schema": {"fields": [{"id": ..., "name": ..., "type": ..., "required": ...}, ...]}}
+        """
+        columns = []
+        schema = data.get("schema", {})
+        fields = schema.get("fields", [])
+
+        for field in fields:
+            try:
+                column_name = field.get("name", "")
+                column_type = field.get("type", "string")
+
+                # Get the type string from dict if needed
+                type_str = column_type
+                if isinstance(column_type, dict):
+                    type_str = column_type.get("type", "string")
+
+                # Use DataType enum directly - it will handle the conversion
+                try:
+                    data_type = (
+                        DataType(type_str.upper())
+                        if isinstance(type_str, str)
+                        else DataType.STRING
+                    )
+                except (ValueError, AttributeError):
+                    # If the type is not recognized, default to STRING
+                    data_type = DataType.STRING
+
+                column = Column(
+                    name=truncate_column_name(column_name),
+                    displayName=column_name,
+                    dataType=data_type,
+                    dataTypeDisplay=column_type
+                    if isinstance(column_type, str)
+                    else str(column_type),
+                )
+
+                # Handle nested struct types
+                if (
+                    isinstance(column_type, dict)
+                    and column_type.get("type") == "struct"
+                ):
+                    column.children = self._parse_struct_fields(
+                        column_type.get("fields", [])
+                    )
+                    column.dataType = DataType.STRUCT
+
+                columns.append(column)
+            except Exception as exc:
+                logger.warning(f"Unable to parse field {field}: {exc}")
+                logger.debug(traceback.format_exc())
+
+        return columns
+
+    def _parse_struct_fields(self, fields: list) -> List[dict]:
+        """
+        Parse nested struct fields in Iceberg/Delta Lake metadata.
+        """
+        children = []
+        for field in fields:
+            try:
+                child_name = field.get("name", "")
+                child_type = field.get("type", "string")
+
+                # Get the type string from dict if needed
+                type_str = child_type
+                if isinstance(child_type, dict):
+                    type_str = child_type.get("type", "string")
+
+                # Use DataType enum directly
+                try:
+                    data_type = (
+                        DataType(type_str.upper())
+                        if isinstance(type_str, str)
+                        else DataType.STRING
+                    )
+                except (ValueError, AttributeError):
+                    data_type = DataType.STRING
+
+                child = {
+                    "name": truncate_column_name(child_name),
+                    "displayName": child_name,
+                    "dataType": data_type.value,
+                    "dataTypeDisplay": child_type
+                    if isinstance(child_type, str)
+                    else str(child_type),
+                }
+
+                # Recursively handle nested structs
+                if isinstance(child_type, dict) and child_type.get("type") == "struct":
+                    child["children"] = self._parse_struct_fields(
+                        child_type.get("fields", [])
+                    )
+
+                children.append(child)
+            except Exception as exc:
+                logger.warning(f"Unable to parse nested field {field}: {exc}")
+                logger.debug(traceback.format_exc())
+
+        return children

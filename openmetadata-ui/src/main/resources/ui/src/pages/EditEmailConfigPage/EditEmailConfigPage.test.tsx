@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import EditEmailConfigPage from './EditEmailConfigPage.component';
 
 const ERROR = 'ERROR';
@@ -29,6 +28,10 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
     </>
   ))
 );
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -59,12 +62,10 @@ jest.mock(
     ))
 );
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 const mockGetSettingsConfigFromConfigType = jest.fn().mockResolvedValue({
@@ -101,10 +102,14 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation((...args) => mockShowSuccessToast(...args)),
 }));
 
+const mockProps = {
+  pageTitle: 'edit-email-config',
+};
+
 describe('EditEmailConfigPage', () => {
   it('should contain all necessary elements', async () => {
     await act(async () => {
-      render(<EditEmailConfigPage />);
+      render(<EditEmailConfigPage {...mockProps} />);
     });
 
     expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalled();
@@ -116,7 +121,7 @@ describe('EditEmailConfigPage', () => {
 
   it('actions check', async () => {
     await act(async () => {
-      render(<EditEmailConfigPage />);
+      render(<EditEmailConfigPage {...mockProps} />);
     });
 
     // Focus EmailConfigForm
@@ -128,7 +133,7 @@ describe('EditEmailConfigPage', () => {
       );
     });
 
-    expect(screen.getByText(ACTIVE_FIELD)).toBeInTheDocument();
+    expect(await screen.findByText(ACTIVE_FIELD)).toBeInTheDocument();
 
     // Cancel EmailConfigForm
     userEvent.click(
@@ -146,35 +151,41 @@ describe('EditEmailConfigPage', () => {
       );
     });
 
-    expect(mockUpdateSettingsConfig).toHaveBeenCalled();
-    expect(mockShowSuccessToast).toHaveBeenCalledWith(UPDATE_ENTITY_SUCCESS);
+    await waitFor(() => {
+      expect(mockUpdateSettingsConfig).toHaveBeenCalled();
+      expect(mockShowSuccessToast).toHaveBeenCalledWith(UPDATE_ENTITY_SUCCESS);
+    });
 
     // called in cancel and submit both actions
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    expect(mockNavigate).toHaveBeenCalledTimes(2);
   });
 
   it('errors check', async () => {
     mockGetSettingsConfigFromConfigType.mockRejectedValueOnce(ERROR);
     mockUpdateSettingsConfig.mockRejectedValueOnce(ERROR);
 
-    await act(async () => {
-      render(<EditEmailConfigPage />);
-    });
+    render(<EditEmailConfigPage {...mockProps} />);
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR, ENTITY_FETCH_ERROR);
-
-    // Submit EmailConfigForm
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: 'Submit EmailConfigForm',
-        })
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        ERROR,
+        ENTITY_FETCH_ERROR
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(
-      ERROR,
-      ENTITY_UPDATING_ERROR
+    // Submit EmailConfigForm
+
+    userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Submit EmailConfigForm',
+      })
     );
+
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        ERROR,
+        ENTITY_UPDATING_ERROR
+      );
+    });
   });
 });

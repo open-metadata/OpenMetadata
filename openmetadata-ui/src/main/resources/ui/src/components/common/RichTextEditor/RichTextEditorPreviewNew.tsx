@@ -12,7 +12,7 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   formatContent,
@@ -22,46 +22,69 @@ import BlockEditor from '../../BlockEditor/BlockEditor';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
-const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
+const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   markdown = '',
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
-  showReadMoreBtn = true,
   isDescriptionExpanded = false,
+  maxLineLength = '2',
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
-  const [readMore, setReadMore] = useState<boolean>(false);
+  const [readMore, setReadMore] = useState<boolean>(isDescriptionExpanded);
   const [isOverflowing, setIsOverflowing] = useState<boolean>(false);
+  const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
   useEffect(() => {
     setContent(formatContent(markdown, 'client'));
+    setIsContentLoaded(false);
+    setIsOverflowing(false);
   }, [markdown]);
 
   useEffect(() => {
-    setReadMore(Boolean(isDescriptionExpanded));
+    setReadMore(isDescriptionExpanded);
   }, [isDescriptionExpanded]);
 
   useEffect(() => {
+    if (!content) {
+      return;
+    }
+
     const checkOverflow = () => {
       if (contentRef.current) {
         const el = contentRef.current;
+        el.style.setProperty('-webkit-line-clamp', maxLineLength);
         const { scrollHeight, clientHeight } = el;
-        setIsOverflowing(scrollHeight > clientHeight + 1);
+        const isOverflow = scrollHeight > clientHeight + 1;
+        setIsOverflowing(isOverflow);
+        setIsContentLoaded(true);
+        el.style.setProperty(
+          '-webkit-line-clamp',
+          readMore ? 'unset' : maxLineLength
+        );
       }
     };
 
     checkOverflow();
-    setTimeout(checkOverflow, 100);
 
-    window.addEventListener('resize', checkOverflow);
+    const resizeObserver = new ResizeObserver(checkOverflow);
 
-    return () => window.removeEventListener('resize', checkOverflow);
-  }, [content]);
+    if (contentRef.current) {
+      resizeObserver.observe(contentRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [content, readMore]);
+
+  const maxHeight = useMemo(() => {
+    return isContentLoaded && readMore ? 'none' : '5em';
+  }, [isContentLoaded, readMore]);
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
@@ -75,21 +98,20 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
       data-testid="viewer-container"
       dir={i18n.dir()}>
       <div
-        className={classNames('markdown-parser', textVariant, {
-          'text-clamp-2': !readMore,
-        })}
+        className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser"
         ref={contentRef}
         style={{
           display: '-webkit-box',
           WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: readMore ? 'unset' : 2,
+          WebkitLineClamp: readMore ? 'unset' : Number(maxLineLength),
           overflow: 'hidden',
+          maxHeight: maxHeight,
           transition: 'max-height 0.3s ease',
         }}>
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
-      {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
+      {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
         <Button
           className="text-right view-more-less-button"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
@@ -102,4 +124,4 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   );
 };
 
-export default RichTextEditorPreviewerV1;
+export default RichTextEditorPreviewerNew;

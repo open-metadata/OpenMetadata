@@ -16,21 +16,19 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -41,6 +39,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -57,24 +56,31 @@ import {
 } from '../../rest/SearchIndexAPI';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
@@ -82,13 +88,14 @@ function SearchIndexDetailsPage() {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { customizedPage } = useCustomPages(PageType.SearchIndex);
-
+  const { customizedPage, isLoading } = useCustomPages(PageType.SearchIndex);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const [searchIndexPermissions, setSearchIndexPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const viewPermission = useMemo(
-    () => searchIndexPermissions.ViewAll || searchIndexPermissions.ViewBasic,
+    () =>
+      getPrioritizedViewPermission(searchIndexPermissions, Operation.ViewBasic),
     [searchIndexPermissions]
   );
 
@@ -109,7 +116,7 @@ function SearchIndexDetailsPage() {
         timestamp: 0,
         id: details.id,
       });
-    } catch (error) {
+    } catch {
       // Error here
     } finally {
       setLoading(false);
@@ -155,33 +162,46 @@ function SearchIndexDetailsPage() {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (searchIndexPermissions.EditTags || searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (searchIndexPermissions.EditGlossaryTerms ||
-          searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (searchIndexPermissions.EditDescription ||
-          searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (searchIndexPermissions.EditAll ||
-          searchIndexPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (searchIndexPermissions.EditAll ||
-          searchIndexPermissions.EditLineage) &&
-        !deleted,
-      viewSampleDataPermission:
-        searchIndexPermissions.ViewAll || searchIndexPermissions.ViewSampleData,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditLineage
+        ) && !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        searchIndexPermissions,
+        Operation.ViewSampleData
+      ),
       viewAllPermission: searchIndexPermissions.ViewAll,
     }),
-    [searchIndexPermissions, deleted]
+    [
+      searchIndexPermissions,
+      deleted,
+      getPrioritizedEditPermission,
+      getPrioritizedViewPermission,
+    ]
   );
 
   const fetchResourcePermission = useCallback(
-    async (entityFQN) => {
+    async (entityFQN: string) => {
       try {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.SEARCH_INDEX,
@@ -209,12 +229,13 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
           activeKey
-        )
+        ),
+        { replace: true }
       );
     }
   };
@@ -387,8 +408,7 @@ function SearchIndexDetailsPage() {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.search-index'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -473,7 +493,7 @@ function SearchIndexDetailsPage() {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -483,16 +503,15 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as SearchIndex;
 
     setSearchIndexDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -510,12 +529,44 @@ function SearchIndexDetailsPage() {
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
-  if (loading) {
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (searchIndexDetails) {
+        const certificationTag: SearchIndex['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...searchIndexDetails,
+          certification: certificationTag,
+        };
+
+        await onSearchIndexUpdate(updatedTableDetails, 'certification');
+      }
+    },
+    [onSearchIndexUpdate, searchIndexDetails]
+  );
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
+    [tabs[0], activeTab]
+  );
+  if (isLoading || loading) {
     return <Loader />;
   }
 
   if (!viewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.search-index'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!searchIndexDetails) {
@@ -524,7 +575,6 @@ function SearchIndexDetailsPage() {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
       })}
@@ -532,7 +582,7 @@ function SearchIndexDetailsPage() {
         entity: t('label.search-index'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -542,6 +592,7 @@ function SearchIndexDetailsPage() {
             entityType={EntityType.SEARCH_INDEX}
             openTaskCount={feedCount.openTaskCount}
             permissions={searchIndexPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowSearchIndex}
             onOwnerUpdate={handleUpdateOwner}
@@ -553,16 +604,29 @@ function SearchIndexDetailsPage() {
         </Col>
 
         <GenericProvider<SearchIndex>
+          customizedPage={customizedPage}
           data={searchIndexDetails}
+          isTabExpanded={isTabExpanded}
           permissions={searchIndexPermissions}
           type={EntityType.SEARCH_INDEX}
           onUpdate={onSearchIndexUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.FIELDS}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

@@ -14,7 +14,6 @@
 import Icon from '@ant-design/icons';
 import { Header } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';

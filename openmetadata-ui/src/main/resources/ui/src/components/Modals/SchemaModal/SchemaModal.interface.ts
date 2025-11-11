@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes } from 'react';
 import { SampleDataType } from '../../Database/SampleDataTable/SampleData.interface';
+import { Mode } from '../../Database/SchemaEditor/SchemaEditor.interface';
 
-export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
-  onClose: () => void;
+export interface SchemaModalProp {
   data: SampleDataType;
   visible: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  onChange?: (value: string) => void;
+  mode?: Mode;
+  isFooterVisible?: boolean;
+  className?: string;
+  editorClass?: string;
 }

@@ -26,6 +26,10 @@ import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -38,10 +42,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -179,7 +179,8 @@ class JwtFilterTest {
 
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid token"));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("unable to decode the token"));
   }
 
   @Test
@@ -230,7 +231,8 @@ class JwtFilterTest {
 
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid token"));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
   }
 
   /**

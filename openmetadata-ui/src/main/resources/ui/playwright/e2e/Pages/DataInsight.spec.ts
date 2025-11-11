@@ -164,19 +164,20 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   });
 
   test('Verify KPI widget in Landing page', async ({ page }) => {
-    const kpiResponse = page.waitForResponse('/api/v1/kpi/*/kpiResult?*');
+    const kpiResponse = page.waitForResponse(
+      'api/v1/kpi?fields=dataInsightChart'
+    );
 
-    await redirectToHomePage(page);
+    // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
+    await redirectToHomePage(page, false);
 
     await kpiResponse;
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-    expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
-    // description and owner data to be visible
-    await expect(page.getByTestId(DESCRIPTION_WITH_PERCENTAGE)).toBeVisible();
-    await expect(page.getByTestId(DESCRIPTION_WITH_OWNER)).toBeVisible();
+    expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {

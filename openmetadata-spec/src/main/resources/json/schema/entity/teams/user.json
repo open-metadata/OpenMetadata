@@ -49,6 +49,14 @@
       "description": "Used for user biography.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "externalId": {
+      "description": "External identifier from identity provider (used for SCIM).",
+      "type": "string"
+    },
+    "scimUserName": {
+      "description": "Raw user name from SCIM.",
+      "type": "string"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",
       "type": "string"
@@ -64,6 +72,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "email": {
       "description": "Email address of the user.",
@@ -85,6 +97,11 @@
     },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges.",
+      "type": "boolean",
+      "default": false
+    },
+    "allowImpersonation": {
+      "description": "When true, this bot is allowed to impersonate users (subject to policy checks). Only applicable for bot users.",
       "type": "boolean",
       "default": false
     },
@@ -143,6 +160,22 @@
     "domains" : {
       "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "lastLoginTime": {
+      "description": "Last time the user logged in.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastActivityTime": {
+      "description": "Last time the user was active in the system.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+     "personaPreferences": {
+      "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/personaPreferences.json"
+      },
+      "default": []
     }
   },
   "additionalProperties": false,

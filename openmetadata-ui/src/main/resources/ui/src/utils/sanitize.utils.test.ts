@@ -40,4 +40,50 @@ describe('getSanitizeContent', () => {
 
     expect(result).toBe(`<p>abc</p>`);
   });
+
+  describe('HTML Encoding Prevention', () => {
+    it('should NOT encode entity links with HTML entities', () => {
+      const input = '<#E::team::Accounting|@Accounting>';
+      const result = getSanitizeContent(input);
+
+      // Should NOT contain HTML encoded entities
+      expect(result).not.toContain('&lt;');
+      expect(result).not.toContain('&gt;');
+      expect(result).not.toContain('&amp;');
+
+      // Should contain the original entity link format
+      expect(result).toBe('<#E::team::Accounting|@Accounting>');
+    });
+
+    it('should NOT encode multiple entity links with HTML entities', () => {
+      const input =
+        'Hello <#E::team::Accounting|@Accounting> and <#E::user::john.doe|@john.doe>';
+      const result = getSanitizeContent(input);
+
+      // Should NOT contain HTML encoded entities
+      expect(result).not.toContain('&lt;');
+      expect(result).not.toContain('&gt;');
+      expect(result).not.toContain('&amp;');
+
+      // Should contain the original entity link format
+      expect(result).toBe(
+        'Hello <#E::team::Accounting|@Accounting> and <#E::user::john.doe|@john.doe>'
+      );
+    });
+
+    it('should NOT encode entity links even when mixed with HTML content', () => {
+      const input =
+        '<div>Hello</div><#E::team::Accounting|@Accounting><span>World</span>';
+      const result = getSanitizeContent(input);
+
+      // Should NOT contain HTML encoded entities for the entity link
+      expect(result).not.toContain('&lt;#E::team::Accounting|@Accounting&gt;');
+      expect(result).not.toContain(
+        '&amp;lt;#E::team::Accounting|@Accounting&amp;gt;'
+      );
+
+      // Should contain the original entity link format
+      expect(result).toContain('<#E::team::Accounting|@Accounting>');
+    });
+  });
 });

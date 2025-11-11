@@ -25,6 +25,7 @@ class DocumentationLinksClassBase {
   public getDocsURLS() {
     return {
       WORKFLOWS_PROFILER_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/profiler/workflow`,
+      TEST_SUITE_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/quality/adding-test-suites`,
       GLOSSARIES_DOCS: `${this.docsBaseURL}main-concepts/metadata-standard/schemas/entity/data/glossary`,
       CONNECTORS_DOCS: `${this.docsBaseURL}connectors`,
       WORKFLOWS_METADATA_DOCS: `${this.docsBaseURL}connectors/ingestion/workflows/metadata`,
@@ -45,6 +46,7 @@ class DocumentationLinksClassBase {
       FOLLOW_DATA_ASSET: `${this.docsBaseURL}how-to-guides/guide-for-data-users/follow-data-asset`,
       RECENTLY_VIEWED: `${this.docsBaseURL}how-to-guides/data-discovery/discover`,
       DATA_QUALITY_PROFILER_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability`,
+      DATA_QUALITY_PROFILER_WORKFLOW_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/profiler/workflow`,
       CUSTOM_PROPERTIES_DOCS: `${this.docsBaseURL}how-to-guides/guide-for-data-users/custom`,
       DATA_DISCOVERY_DOCS: `${this.docsBaseURL}how-to-guides/data-discovery`,
       HOW_TO_GUIDE_DOCS: `${this.docsBaseURL}how-to-guides`,
@@ -52,6 +54,17 @@ class DocumentationLinksClassBase {
       OMD_SLACK_LINK:
         'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow',
       OMD_REPOSITORY_LINK: 'https://star-us.open-metadata.org/',
+      TOTAL_DATA_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#total-data-assets`,
+      DESCRIPTION_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#description-coverage`,
+      OWNERSHIP_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#ownership-coverage`,
+      PII_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#pii-coverage`,
+      PII_DISTRIBUTION_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#pii-distribution`,
+      TIER_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#tier-coverage`,
+      TIER_DISTRIBUTION_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#tier-distribution`,
+      COLLATE_AI_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#generated-data-with-collate-ai-collate-only`,
+      MOST_USED_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-used-assets`,
+      MOST_EXPENSIVE_QUERIES_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-expensive-queries`,
+      METRICS_DOCS: `${this.docsBaseURL}latest/how-to-guides/data-governance/metrics`,
     };
   }
 }

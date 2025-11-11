@@ -8,7 +8,7 @@ import org.openmetadata.schema.analytics.RawCostAnalysisReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.UnusedAssets;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T>

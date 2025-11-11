@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { noop } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -23,43 +24,37 @@ import {
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
-import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-
-import { EntityType } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
-import {
-  filterAndArrangeTreeByKeys,
-  getNestedKeysFromNavigationItems,
-} from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import { useCustomPages } from '../../../hooks/useCustomPages';
+import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
+import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './left-sidebar.less';
-import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
+const { Sider } = Layout;
 
 const LeftSidebar = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useApplicationStore();
-  const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
-  const { selectedPersona } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
+  const [isConfirmLogoutModalOpen, setIsConfirmLogoutModalOpen] =
+    useState(false);
+  const {
+    preferences: { isSidebarCollapsed },
+  } = useCurrentUserPreferences();
 
-  const { currentPersonaDocStore, setCurrentPersonaDocStore } =
-    useCustomizeStore();
+  const { i18n } = useTranslation();
+  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
 
-  const navigationItems = useMemo(() => {
-    return currentPersonaDocStore?.data?.navigation;
-  }, [currentPersonaDocStore]);
+  const { navigation } = useCustomPages('Navigation');
 
-  const sideBarItems = isEmpty(navigationItems)
-    ? leftSidebarClassBase.getSidebarItems()
-    : filterAndArrangeTreeByKeys(
-        leftSidebarClassBase.getSidebarItems(),
-        getNestedKeysFromNavigationItems(navigationItems)
-      );
+  const sideBarItems = useMemo(
+    () => filterHiddenNavigationItems(navigation),
+    [navigation]
+  );
 
   const selectedKeys = useMemo(() => {
     const pathArray = location.pathname.split('/');
@@ -71,128 +66,147 @@ const LeftSidebar = () => {
   }, [location.pathname]);
 
   const handleLogoutClick = useCallback(() => {
-    setShowConfirmLogoutModal(true);
+    setIsConfirmLogoutModalOpen(true);
   }, []);
 
-  const hideConfirmationModal = () => {
-    setShowConfirmLogoutModal(false);
+  const hideConfirmLogoutModal = () => {
+    setIsConfirmLogoutModalOpen(false);
   };
 
   const LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS: MenuProps['items'] = useMemo(
     () =>
       [SETTING_ITEM, LOGOUT_ITEM].map((item) => ({
         key: item.key,
-        label: (
-          <LeftSidebarItem
-            data={{
-              ...item,
-              onClick:
-                item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
-            }}
-          />
-        ),
+        icon: <Icon component={item.icon} />,
+        onClick: item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
+        label: <LeftSidebarItem data={item} />,
       })),
     [handleLogoutClick]
   );
 
-  const handleMouseOver = useCallback(() => {
-    if (!isSidebarCollapsed) {
-      return;
-    }
-    setIsSidebarCollapsed(false);
-  }, [isSidebarCollapsed]);
+  const { plugins = [] } = useApplicationsProvider();
 
-  const handleMouseOut = useCallback(() => {
-    setIsSidebarCollapsed(true);
+  const pluginSidebarActions = useMemo(() => {
+    return (
+      plugins
+        ?.flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
+        .sort((a, b) => (a.index ?? 999) - (b.index ?? 999)) ?? []
+    );
+  }, [plugins]);
+
+  const menuItems = useMemo(() => {
+    const mergedItems = (() => {
+      const baseItems = [...sideBarItems];
+
+      pluginSidebarActions.forEach((pluginItem) => {
+        if (typeof pluginItem.index === 'number' && pluginItem.index >= 0) {
+          baseItems.splice(
+            Math.min(pluginItem.index, baseItems.length),
+            0,
+            pluginItem
+          );
+        } else {
+          baseItems.push(pluginItem);
+        }
+      });
+
+      return baseItems;
+    })();
+
+    // Map to menu structure
+    return mergedItems.map((item) => ({
+      key: item.key,
+      icon: <Icon component={item.icon} />,
+      label: <LeftSidebarItem data={item} />,
+      children: item.children?.map((child) => ({
+        key: child.key,
+        icon: <Icon component={child.icon} />,
+        label: <LeftSidebarItem data={child} />,
+      })),
+    }));
+  }, [sideBarItems, pluginSidebarActions]);
+
+  const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
+    setOpenKeys([]);
   }, []);
-
-  const fetchCustomizedDocStore = useCallback(async (personaFqn: string) => {
-    try {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${personaFqn}`;
-
-      const document = await getDocumentByFQN(pageLayoutFQN);
-      setCurrentPersonaDocStore(document);
-    } catch (error) {
-      // silent error
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedPersona.fullyQualifiedName) {
-      fetchCustomizedDocStore(selectedPersona.fullyQualifiedName);
-    }
-  }, [selectedPersona]);
 
   return (
-    <div
-      className={classNames(
-        'd-flex flex-col justify-between h-full left-sidebar-container',
-        { 'sidebar-open': !isSidebarCollapsed }
-      )}
+    <Sider
+      collapsible
+      className={classNames({
+        'left-sidebar-col-rtl': isDirectionRTL,
+        'sidebar-open': !isSidebarCollapsed,
+      })}
+      collapsed={isSidebarCollapsed}
+      collapsedWidth={72}
       data-testid="left-sidebar"
-      onMouseLeave={handleMouseOut}
-      onMouseOver={handleMouseOver}>
-      <Row className="p-b-sm">
-        <Col className="brand-logo-container" span={24}>
-          <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-            <BrandImage
-              alt="OpenMetadata Logo"
-              className="vertical-middle"
-              dataTestId="image"
-              height={30}
-              isMonoGram={isSidebarCollapsed}
-              width="auto"
-            />
-          </Link>
-        </Col>
-
-        <Col className="w-full">
-          <Menu
-            items={sideBarItems.map((item) => {
-              return {
-                key: item.key,
-                label: <LeftSidebarItem data={item} />,
-                children: item.children?.map((item: LeftSidebarItemType) => {
-                  return {
-                    key: item.key,
-                    label: <LeftSidebarItem data={item} />,
-                  };
-                }),
-              };
-            })}
-            mode="inline"
-            rootClassName="left-sidebar-menu"
-            selectedKeys={selectedKeys}
-            subMenuCloseDelay={1}
+      trigger={null}
+      width={228}>
+      <div className="logo-container">
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={40}
+            isMonoGram={isSidebarCollapsed}
+            width="auto"
           />
-        </Col>
-      </Row>
+        </Link>
+      </div>
 
-      <Row className="p-y-sm">
-        <Menu
-          items={LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS}
-          mode="inline"
-          rootClassName="left-sidebar-menu"
-          selectedKeys={selectedKeys}
-        />
-      </Row>
-      {showConfirmLogoutModal && (
+      <div className="left-sidebar-layout">
+        <div className="menu-container">
+          <div className="top-menu">
+            <Menu
+              inlineIndent={16}
+              items={menuItems}
+              mode="inline"
+              openKeys={openKeys}
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+              onClick={handleMenuClick}
+              onOpenChange={setOpenKeys}
+            />
+          </div>
+
+          <div className="bottom-menu">
+            <Menu
+              inlineIndent={16}
+              items={[
+                {
+                  type: 'divider',
+                  style: {
+                    margin: '8px 0',
+                  },
+                },
+                ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
+              ]}
+              mode="inline"
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+            />
+          </div>
+        </div>
+      </div>
+
+      {isConfirmLogoutModalOpen && (
         <Modal
           centered
           bodyStyle={{ textAlign: 'center' }}
           closable={false}
           closeIcon={null}
           footer={null}
-          open={showConfirmLogoutModal}
+          open={isConfirmLogoutModalOpen}
           width={360}
-          onCancel={hideConfirmationModal}>
+          onCancel={hideConfirmLogoutModal}>
           <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
           <Typography.Text className="text-grey-muted">
             {t('message.logout-confirmation')}
           </Typography.Text>
 
           <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmationModal}>
+            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
               {t('label.cancel')}
             </Button>
             <Button
@@ -205,7 +219,7 @@ const LeftSidebar = () => {
           </div>
         </Modal>
       )}
-    </div>
+    </Sider>
   );
 };
 

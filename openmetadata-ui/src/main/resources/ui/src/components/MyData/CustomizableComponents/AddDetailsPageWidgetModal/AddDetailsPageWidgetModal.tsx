@@ -13,7 +13,7 @@
 
 import { Modal, Tabs, TabsProps } from 'antd';
 import { isEmpty, sortBy, toString } from 'lodash';
-import { default as React, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CommonWidgetType,
@@ -75,9 +75,7 @@ function AddDetailsPageWidgetModal({
 
         return {
           label: (
-            <span data-testid={`${widget.name}-widget-tab-label`}>
-              {widget.name}
-            </span>
+            <span data-testid={`${widget.name}-widget`}>{widget.name}</span>
           ),
           key: widget.fullyQualifiedName,
           children: (
@@ -107,6 +105,7 @@ function AddDetailsPageWidgetModal({
 
     return (
       <Tabs
+        destroyInactiveTabPane
         data-testid="widget-info-tabs"
         items={tabItems}
         tabPosition="left"

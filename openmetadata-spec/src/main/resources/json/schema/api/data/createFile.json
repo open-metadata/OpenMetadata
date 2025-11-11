@@ -1,0 +1,122 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createFile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateFileRequest",
+  "description": "Create File entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateFile",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this file.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this file.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the file.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "service": {
+      "description": "Link to the drive service fully qualified name where this file is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "directory": {
+      "description": "Link to the parent directory fully qualified name",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "fileType": {
+      "description": "Type of file based on content",
+      "$ref": "../../entity/data/file.json#/definitions/fileType"
+    },
+    "mimeType": {
+      "description": "MIME type of the file",
+      "type": "string"
+    },
+    "fileExtension": {
+      "description": "File extension",
+      "type": "string"
+    },
+    "path": {
+      "description": "Full path to the file",
+      "type": "string"
+    },
+    "size": {
+      "description": "File size in bytes",
+      "type": "integer"
+    },
+    "checksum": {
+      "description": "File checksum/hash",
+      "type": "string"
+    },
+    "webViewLink": {
+      "description": "Web link to view the file",
+      "type": "string",
+      "format": "uri"
+    },
+    "downloadLink": {
+      "description": "Direct download link",
+      "type": "string",
+      "format": "uri"
+    },
+    "isShared": {
+      "description": "Whether this file is shared",
+      "type": "boolean",
+      "default": false
+    },
+    "fileVersion": {
+      "description": "File version information",
+      "type": "string"
+    },
+    "sourceUrl": {
+      "description": "Source URL of file.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "tags": {
+      "description": "Tags for this File.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this file",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataProducts": {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "domains": {
+      "description": "Fully qualified names of the domains the File belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "default": null
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name", "service"],
+  "additionalProperties": false
+}

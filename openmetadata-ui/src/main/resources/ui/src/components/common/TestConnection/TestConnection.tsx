@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
@@ -24,7 +24,6 @@ import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
   TEST_CONNECTION_FAILURE_MESSAGE,
-  TEST_CONNECTION_INFO_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
   TEST_CONNECTION_SUCCESS_MESSAGE,
@@ -32,8 +31,9 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
+import { ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
@@ -43,7 +43,6 @@ import {
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -58,7 +57,7 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getErrorText } from '../../../utils/StringsUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -73,6 +72,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
+  hostIp,
+  extraInfo,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -85,6 +86,11 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [message, setMessage] = useState<string>(
     TEST_CONNECTION_INITIAL_MESSAGE
   );
+
+  const [errorMessage, setErrorMessage] = useState<{
+    description?: string;
+    subDescription?: string;
+  }>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -136,7 +142,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       setTestConnectionStep(response.steps);
       setDialogOpen(true);
-    } catch (error) {
+    } catch {
       throw t('message.test-connection-cannot-be-triggered');
     }
   };
@@ -176,7 +182,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     try {
       await deleteWorkflowById(workflowId, true);
       setCurrentWorkflow(undefined);
-    } catch (error) {
+    } catch {
       // do not throw error for this API
     }
   };
@@ -274,15 +280,24 @@ const TestConnection: FC<TestConnectionProps> = ({
       timeoutId?: number;
     } = {};
 
+    const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
+      ingestionRunner?: string;
+    };
+
     try {
+      const ingestionRunnerValue = extraInfo ?? ingestionRunner;
+
       const createWorkflowData: CreateWorkflow = {
         name: getTestConnectionName(connectionType),
         workflowType: WorkflowType.TestConnection,
         request: {
-          connection: { config: updatedFormData as ConfigClass },
+          connection: { config: rest },
           serviceType,
           connectionType,
           serviceName,
+          ...(ingestionRunnerValue && {
+            ingestionRunner: ingestionRunnerValue,
+          }),
         },
       };
 
@@ -328,7 +343,15 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(TEST_CONNECTION_INFO_MESSAGE);
+          let message = t('message.test-connection-taking-too-long.default', {
+            service_type: serviceType,
+          });
+          if (hostIp) {
+            message += t('message.test-connection-taking-too-long.withIp', {
+              ip: hostIp,
+            });
+          }
+          setMessage(message);
           setIsConnectionTimeout(true);
         }
 
@@ -346,7 +369,18 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError)?.status === 500) {
+        setErrorMessage({
+          description: t('server.unexpected-response'),
+        });
+      } else {
+        setErrorMessage({
+          description: getErrorText(
+            error as AxiosError,
+            t('server.unexpected-error')
+          ),
+        });
+      }
 
       // delete the workflow if there is an exception
       const workflowId = currentWorkflowRef.current?.id;
@@ -356,10 +390,15 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
+  };
+
   const handleTestConnection = () => {
     if (shouldValidateForm) {
       const isFormValid =
         onValidateFormRequiredFields && onValidateFormRequiredFields();
+      handleCloseErrorMessage();
       if (isFormValid) {
         testConnection();
       }
@@ -372,6 +411,16 @@ const TestConnection: FC<TestConnectionProps> = ({
     controller.abort();
     setDialogOpen(false);
   };
+
+  const buttonTooltipTitle = useMemo(() => {
+    let title = t('label.test-entity', { entity: t('label.connection') });
+
+    if (!isAirflowAvailable) {
+      title = t('label.platform-service-client-unavailable');
+    }
+
+    return title;
+  }, [isAirflowAvailable]);
 
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
@@ -452,36 +501,44 @@ const TestConnection: FC<TestConnectionProps> = ({
               )}
             </div>
           </Space>
-          <Button
-            className={classNames({
-              'text-primary': !isTestConnectionDisabled,
-            })}
-            data-testid="test-connection-btn"
-            disabled={isTestConnectionDisabled}
-            loading={isTestingConnection}
-            size="middle"
-            type="default"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', { entity: t('label.connection') })}
-          </Button>
+          <Tooltip title={buttonTooltipTitle}>
+            <Button
+              className={classNames({
+                'text-primary': !isTestConnectionDisabled,
+              })}
+              data-testid="test-connection-btn"
+              disabled={isTestConnectionDisabled}
+              loading={isTestingConnection}
+              size="middle"
+              type="default"
+              onClick={handleTestConnection}>
+              {t('label.test-entity', { entity: t('label.connection') })}
+            </Button>
+          </Tooltip>
         </Space>
       ) : (
-        <Button
-          data-testid="test-connection-button"
-          disabled={isTestConnectionDisabled}
-          loading={isTestingConnection}
-          type="primary"
-          onClick={handleTestConnection}>
-          {t('label.test-entity', {
-            entity: t('label.connection'),
-          })}
-        </Button>
+        <Tooltip title={buttonTooltipTitle}>
+          <Button
+            data-testid="test-connection-button"
+            disabled={isTestConnectionDisabled}
+            loading={isTestingConnection}
+            type="primary"
+            onClick={handleTestConnection}>
+            {t('label.test-entity', {
+              entity: t('label.connection'),
+            })}
+          </Button>
+        </Tooltip>
       )}
       <TestConnectionModal
+        errorMessage={errorMessage}
+        handleCloseErrorMessage={handleCloseErrorMessage}
+        hostIp={hostIp}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={handleCancelTestConnectionModal}

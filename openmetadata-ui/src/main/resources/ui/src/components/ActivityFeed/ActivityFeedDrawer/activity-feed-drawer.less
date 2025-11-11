@@ -11,11 +11,24 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .feed-drawer {
   .activity-feed-card-container.ant-btn:hover {
     color: inherit;
     background-color: @white;
+  }
+  .entity-link {
+    font-weight: 600;
+    line-height: 20px;
+    color: @primary-heading-color;
+  }
+}
+.activity-feed-drawer {
+  .ant-drawer-body {
+    padding: 0px;
+  }
+  .ant-drawer-header {
+    padding: 0px;
   }
 }

@@ -12,8 +12,10 @@
  */
 
 import { LoadingState } from 'Models';
-import { HTMLAttributes } from 'react';
+import { ReactNode } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { LineageSettings } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface Edge {
@@ -58,11 +60,7 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export type ControlProps = HTMLAttributes<HTMLDivElement>;
-
-export interface LineageConfig {
-  upstreamDepth: number;
-  downstreamDepth: number;
+export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
   nodesPerLayer: number;
 }
 
@@ -71,4 +69,25 @@ export interface LineageConfigModalProps {
   config: LineageConfig;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
+}
+
+export interface NodeHandlesProps {
+  nodeType: string;
+  id: string;
+  isConnectable: boolean;
+  expandCollapseHandles: ReactNode;
+}
+
+export interface ExpandCollapseHandlesProps {
+  isEditMode: boolean;
+  hasOutgoers: boolean;
+  hasIncomers: boolean;
+  isDownstreamNode: boolean;
+  isUpstreamNode: boolean;
+  isRootNode: boolean;
+  upstreamExpandPerformed: boolean;
+  downstreamExpandPerformed: boolean;
+  upstreamLineageLength: number;
+  onCollapse: (direction?: LineageDirection) => void;
+  onExpand: (direction: LineageDirection) => void;
 }

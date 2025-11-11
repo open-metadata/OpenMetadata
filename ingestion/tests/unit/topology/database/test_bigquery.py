@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -63,6 +63,7 @@ mock_bq_config = {
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
+                "billingProjectId": "my-gcp-billing-project",
                 "credentials": {
                     "gcpConfig": {
                         "type": "service_account",
@@ -124,120 +125,55 @@ MOCK_TABLE = Table(
     columns=[
         Column(
             name="customer_id",
-            displayName=None,
             dataType="INT",
-            arrayDataType=None,
             dataLength=1,
-            precision=None,
-            scale=None,
             dataTypeDisplay="INTEGER",
-            description=None,
-            fullyQualifiedName=None,
-            tags=None,
             constraint="PRIMARY_KEY",
-            ordinalPosition=None,
-            jsonSchema=None,
-            children=None,
-            profile=None,
-            customMetrics=None,
         ),
         Column(
             name="first_name",
-            displayName=None,
             dataType="STRING",
-            arrayDataType=None,
             dataLength=1,
-            precision=None,
-            scale=None,
             dataTypeDisplay="VARCHAR",
-            description=None,
-            fullyQualifiedName=None,
-            tags=None,
             constraint="NULL",
-            ordinalPosition=None,
-            jsonSchema=None,
-            children=None,
-            profile=None,
-            customMetrics=None,
         ),
         Column(
             name="last_name",
-            displayName=None,
             dataType="STRING",
-            arrayDataType=None,
             dataLength=1,
-            precision=None,
-            scale=None,
             dataTypeDisplay="VARCHAR",
-            description=None,
-            fullyQualifiedName=None,
-            tags=None,
             constraint="NULL",
-            ordinalPosition=None,
-            jsonSchema=None,
-            children=None,
-            profile=None,
-            customMetrics=None,
         ),
     ],
     tableConstraints=[],
-    tablePartition=None,
-    tableProfilerConfig=None,
-    owners=None,
     databaseSchema=EntityReference(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
     tags=[],
-    schemaDefinition=None,
-    retentionPeriod=None,
-    extension=None,
     sourceUrl=SourceUrl(
         "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
     ),
-    domain=None,
-    dataProducts=None,
-    fileFormat=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
         name=EntityName("random-project-id"),
-        displayName=None,
-        description=None,
         tags=[],
-        owners=None,
         service=FullyQualifiedEntityName("bigquery_source_test"),
-        dataProducts=None,
         default=False,
-        retentionPeriod=None,
-        extension=None,
         sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name=EntityName("sample_schema"),
-        displayName=None,
         description="Some description with it's own\nnew line",
-        owners=None,
         database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
-        dataProducts=None,
-        tags=None,
-        retentionPeriod=None,
-        extension=None,
         sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
@@ -353,151 +289,72 @@ EXPECTED_TABLE = [
     [
         CreateTableRequest(
             name=EntityName("customers"),
-            displayName=None,
             tableType="Regular",
             columns=[
                 Column(
                     name="customer_id",
-                    displayName=None,
                     dataType="INT",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INTEGER",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="PRIMARY_KEY",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="first_name",
-                    displayName=None,
                     dataType="STRING",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="VARCHAR",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="last_name",
-                    displayName=None,
                     dataType="STRING",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="VARCHAR",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
             ],
             tableConstraints=[],
-            tablePartition=None,
-            tableProfilerConfig=None,
-            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            schemaDefinition=None,
-            retentionPeriod=None,
-            extension=None,
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
-            domain=None,
-            dataProducts=None,
-            fileFormat=None,
-            lifeCycle=None,
-            sourceHash=None,
         )
     ],
     [
         CreateTableRequest(
             name=EntityName("orders"),
-            displayName=None,
             description="description\nwith new line",
             tableType="Regular",
             columns=[
                 Column(
                     name="order_id",
-                    displayName=None,
                     dataType="INT",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INTEGER",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="customer_id",
-                    displayName=None,
                     dataType="INT",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INTEGER",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="status",
-                    displayName=None,
                     dataType="STRING",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="VARCHAR",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
             ],
             tableConstraints=[
@@ -511,24 +368,13 @@ EXPECTED_TABLE = [
                     ],
                 )
             ],
-            tablePartition=None,
-            tableProfilerConfig=None,
-            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            schemaDefinition=None,
-            retentionPeriod=None,
-            extension=None,
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
-            domain=None,
-            dataProducts=None,
-            fileFormat=None,
-            lifeCycle=None,
-            sourceHash=None,
         )
     ],
 ]
@@ -676,7 +522,7 @@ class BigqueryUnitTest(TestCase):
                 ]  # pylint: disable=cell-var-from-loop
             )
             self.bq_source.inspector.get_columns = (
-                lambda table_name, schema, db_name: MOCK_COLUMN_DATA[
+                lambda table_name, schema, table_type, db_name: MOCK_COLUMN_DATA[
                     i
                 ]  # pylint: disable=cell-var-from-loop
             )
@@ -686,10 +532,89 @@ class BigqueryUnitTest(TestCase):
             self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
                 "text": table[2]
             }  # pylint: disable=cell-var-from-loop
+
+            # Mock the BigQuery client get_table method for clustering fields
+            mock_table = Mock()
+            mock_table.clustering_fields = []  # Empty list to avoid constraint creation
+            self.bq_source.client.get_table = lambda fqn: mock_table
             assert EXPECTED_TABLE[i] == [
                 either.right
                 for either in self.bq_source.yield_table((table[0], table[1]))
             ]
+
+    def test_query_view_names_and_types_with_incremental(self):
+        """
+        Test query_view_names_and_types with incremental extraction enabled
+        """
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
+        mock_view_results = [("view1",), ("view2",), ("view3",)]
+        mock_materialized_view_results = [("mat_view1",), ("mat_view2",)]
+
+        def mock_execute(query):
+            if "INFORMATION_SCHEMA.VIEWS" in query:
+                return mock_view_results
+            elif "INFORMATION_SCHEMA.MATERIALIZED_VIEWS" in query:
+                return mock_materialized_view_results
+            return []
+
+        self.bq_source.engine.execute = mock_execute
+
+        mock_processor = Mock()
+        mock_processor.get_not_deleted.return_value = ["view1", "mat_view1", "view3"]
+        self.bq_source.incremental_table_processor = mock_processor
+        self.bq_source.incremental.enabled = True
+
+        result = list(
+            self.bq_source.query_view_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+        )
+
+        assert len(result) == 3
+        assert result[0].name == "view1"
+        assert result[0].type_ == TableType.View
+        assert result[1].name == "view3"
+        assert result[1].type_ == TableType.View
+        assert result[2].name == "mat_view1"
+        assert result[2].type_ == TableType.MaterializedView
+
+        mock_processor.get_not_deleted.assert_called()
+
+    def test_query_view_names_and_types_without_incremental(self):
+        """
+        Test query_view_names_and_types without incremental extraction
+        """
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
+        mock_view_results = [("view1",), ("view2",)]
+        mock_materialized_view_results = [("mat_view1",)]
+
+        def mock_execute(query):
+            if "INFORMATION_SCHEMA.VIEWS" in query:
+                return mock_view_results
+            elif "INFORMATION_SCHEMA.MATERIALIZED_VIEWS" in query:
+                return mock_materialized_view_results
+            return []
+
+        self.bq_source.engine.execute = mock_execute
+        self.bq_source.incremental.enabled = False
+
+        result = list(
+            self.bq_source.query_view_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+        )
+
+        assert len(result) == 3
+        assert result[0].name == "view1"
+        assert result[0].type_ == TableType.View
+        assert result[1].name == "view2"
+        assert result[1].type_ == TableType.View
+        assert result[2].name == "mat_view1"
+        assert result[2].type_ == TableType.MaterializedView
 
 
 class BigqueryLineageSourceTest(TestCase):

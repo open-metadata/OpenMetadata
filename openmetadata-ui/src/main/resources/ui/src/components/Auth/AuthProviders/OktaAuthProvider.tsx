@@ -13,26 +13,21 @@
 
 import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useCallback,
-  useMemo,
-} from 'react';
+import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
-import { OidcUser } from './AuthProvider.interface';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
+import { useAuthProvider } from './AuthProvider';
 
 interface Props {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
 }
 
 export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
-  onLoginSuccess,
 }: Props) => {
   const { authConfig } = useApplicationStore();
+  const { handleSuccessfulLogin } = useAuthProvider();
+
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as unknown as OktaAuthOptions;
 
@@ -45,7 +40,20 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         scopes,
         pkce,
         tokenManager: {
-          autoRenew: false,
+          autoRenew: true,
+          storage: 'memory',
+          syncStorage: true,
+          expireEarlySeconds: 60,
+          secure: true,
+        },
+        cookies: {
+          secure: true,
+          sameSite: 'lax',
+        },
+        services: {
+          autoRenew: true,
+          renewOnTabActivation: true,
+          tabInactivityDuration: 3600,
         },
       }),
     [clientId, issuer, redirectUri, scopes, pkce]
@@ -55,43 +63,51 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     await oktaAuth.signInWithRedirect();
   };
 
-  const restoreOriginalUri = useCallback(async (_oktaAuth: OktaAuth) => {
-    const idToken = _oktaAuth.getIdToken() ?? '';
-    const scopes =
-      _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-    setOidcToken(idToken);
-    _oktaAuth
-      .getUser()
-      .then((info) => {
-        const user = {
-          id_token: idToken,
-          scope: scopes,
-          profile: {
-            email: info.email ?? '',
-            name: info.name ?? '',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            picture: (info as any).imageUrl ?? '',
-            locale: info.locale ?? '',
-            sub: info.sub,
-          },
-        };
-        onLoginSuccess(user);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-      });
-  }, []);
-
   const customAuthHandler = async () => {
     const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
-    if (!previousAuthState || !previousAuthState.isAuthenticated) {
+    if (!previousAuthState?.isAuthenticated) {
+      // Clear storage before triggering login
+      oktaAuth.tokenManager.clear();
+      await oktaAuth.signOut();
       // App initialization stage
       await triggerLogin();
     } else {
       // Ask the user to trigger the login process during token autoRenew process
     }
   };
+
+  const restoreOriginalUri = useCallback(
+    async (_oktaAuth: OktaAuth) => {
+      const idToken = _oktaAuth.getIdToken() ?? '';
+      const scopes =
+        _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
+      await setOidcToken(idToken);
+      _oktaAuth
+        .getUser()
+        .then((info) => {
+          const user = {
+            id_token: idToken,
+            scope: scopes,
+            profile: {
+              email: info.email ?? '',
+              name: info.name ?? '',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              picture: (info as any).imageUrl ?? '',
+              locale: info.locale ?? '',
+              sub: info.sub,
+            },
+          };
+          handleSuccessfulLogin(user);
+        })
+        .catch(async (err) => {
+          // eslint-disable-next-line no-console
+          console.error(err);
+          // Redirect to login on error.
+          await customAuthHandler();
+        });
+    },
+    [handleSuccessfulLogin]
+  );
 
   return (
     <Security

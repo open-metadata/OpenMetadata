@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -117,16 +117,26 @@ class Tester:
             raise SourceConnectionException("No buckets found in provided projects")
         for bucket_test in self.bucket_tests:
             client = self.client.storage_client.clients[bucket_test.project_id]
-            blob = next(client.list_blobs(bucket_test.bucket_name))
-            bucket_test.blob_name = blob.name
+            try:
+                blob = next(client.list_blobs(bucket_test.bucket_name))
+                bucket_test.blob_name = blob.name
+            except StopIteration:
+                # Empty bucket - this is valid, we can list blobs
+                # even if there are none
+                logger.debug(
+                    f"Bucket {bucket_test.bucket_name} is empty, but list "
+                    "permission is working correctly"
+                )
 
     def get_blob(self):
         if not self.bucket_tests:
             raise SourceConnectionException("No buckets found in provided projects")
         for bucket_test in self.bucket_tests:
-            client = self.client.storage_client.clients[bucket_test.project_id]
-            bucket = client.get_bucket(bucket_test.bucket_name)
-            bucket.get_blob(bucket_test.blob_name)
+            # Only test get_blob if we found a blob in the list_blobs test
+            if bucket_test.blob_name:
+                client = self.client.storage_client.clients[bucket_test.project_id]
+                bucket = client.get_bucket(bucket_test.bucket_name)
+                bucket.get_blob(bucket_test.blob_name)
 
     def get_metrics(self):
         for project_id in self.client.storage_client.clients.keys():

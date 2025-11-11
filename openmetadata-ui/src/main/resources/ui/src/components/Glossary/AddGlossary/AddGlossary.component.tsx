@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CreateGlossary,
@@ -26,7 +25,11 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getField,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -62,8 +65,8 @@ const AddGlossary = ({
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
-  const selectedDomain = Form.useWatch<EntityReference | undefined>(
-    'domain',
+  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
+    'domains',
     form
   );
 
@@ -98,7 +101,10 @@ const AddGlossary = ({
       owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
-      domain: selectedDomain?.fullyQualifiedName,
+      domains:
+        (selectedDomain
+          ?.map((d) => d.fullyQualifiedName)
+          .filter(Boolean) as string[]) ?? [],
     };
     onSave(data);
   };
@@ -200,6 +206,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-owner"
@@ -225,7 +235,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-reviewers"
@@ -246,13 +259,19 @@ const AddGlossary = ({
   };
 
   const domainsField: FieldProp = {
-    name: 'domain',
-    id: 'root/domain',
+    name: 'domains',
+    id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
-      selectedDomain: activeDomainEntityRef,
+      selectedDomain: activeDomainEntityRef
+        ? [activeDomainEntityRef]
+        : undefined,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-domain"
@@ -261,12 +280,13 @@ const AddGlossary = ({
           type="primary"
         />
       ),
+      multiple: true,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'selectedDomain',
       trigger: 'onUpdate',
-      initialValue: activeDomainEntityRef,
+      initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
     },
   };
 
@@ -275,8 +295,10 @@ const AddGlossary = ({
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'm-x-auto max-w-md',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
@@ -307,7 +329,7 @@ const AddGlossary = ({
                   {getField(domainsField)}
                   {selectedDomain && (
                     <DomainLabel
-                      domain={selectedDomain}
+                      domains={selectedDomain}
                       entityFqn=""
                       entityId=""
                       entityType={EntityType.GLOSSARY}
@@ -337,7 +359,7 @@ const AddGlossary = ({
                 </Space>
               </Form>
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.7,
@@ -347,7 +369,7 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

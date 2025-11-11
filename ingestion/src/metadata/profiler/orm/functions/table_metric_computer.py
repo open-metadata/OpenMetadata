@@ -1,9 +1,9 @@
 #  pylint: disable=protected-access,attribute-defined-outside-init
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@ Run profiler metrics on the table
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Type
 
 from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
@@ -27,13 +27,20 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.registry import MetricRegistry
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
+
 COLUMN_COUNT = "columnCount"
 COLUMN_NAMES = "columnNames"
-ROW_COUNT = Metrics.ROW_COUNT().name()
+ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
@@ -297,8 +304,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         ]
 
         where_clause = [
-            Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.root,
+            Column("project_id") == self._entity.database.name,
             Column("table_schema") == self.schema_name,
             Column("table_name") == self.table_name,
         ]
@@ -331,17 +337,18 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             *self._get_col_names_and_count(),
         ]
         where_clause = [
-            Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.root,
+            Column("project_id") == self._entity.database.name,
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
+        schema = (
+            self.schema_name.startswith(f"{self._entity.database.name}.")
+            and self.schema_name
+            or f"{self._entity.database.name}.{self.schema_name}"
+        )
         query = self._build_query(
             columns,
-            self._build_table(
-                "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
-            ),
+            self._build_table("__TABLES__", schema),
             where_clause,
         )
         res = self.runner._session.execute(query).first()
@@ -358,8 +365,14 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
 class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
-    def compute(self):
+    @inject
+    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):
         """compute table metrics for mysql"""
+
+        if metrics is None:
+            raise DependencyNotFoundError(
+                "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
+            )
 
         columns = [
             Column("TABLE_ROWS").label(ROW_COUNT),
@@ -386,7 +399,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         res = res._asdict()
         # innodb row count is an estimate we need to patch the row count with COUNT(*)
         # https://dev.mysql.com/doc/refman/8.3/en/information-schema-innodb-tablestats-table.html
-        row_count = self.runner.select_first_from_table(Metrics.ROW_COUNT().fn())
+        row_count = self.runner.select_first_from_table(metrics.ROW_COUNT().fn())
         res.update({ROW_COUNT: row_count.rowCount})
         return res
 

@@ -17,38 +17,45 @@ import {
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
-import { EntityReference } from '../entity/Entity.interface';
+import {
+  EntityReference,
+  EntityTypeEndpoint,
+} from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 import { GlossaryData, GlossaryResponseDataType } from './Glossary.interface';
 
-export class Glossary {
-  randomName = getRandomFirstName();
-  randomId = uuid();
-  data: GlossaryData = {
-    name: `PW%${this.randomId}.${this.randomName}`,
-    displayName: `PW % ${this.randomId} ${this.randomName}`,
-    description:
-      'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
-    reviewers: [],
-    tags: [],
-    mutuallyExclusive: false,
-    terms: [],
-    owners: [],
-    // eslint-disable-next-line no-useless-escape
-    fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
-  };
-
+export class Glossary extends EntityClass {
+  data: GlossaryData;
   responseData: GlossaryResponseDataType = {} as GlossaryResponseDataType;
 
   constructor(name?: string, reviewers?: EntityReference[]) {
-    this.data.name = name ?? this.data.name;
-    this.data.reviewers = reviewers ?? this.data.reviewers;
+    super(EntityTypeEndpoint.Glossary);
+    const randomName = getRandomFirstName();
+    const randomId = uuid();
+    this.data = {
+      name: name ?? `PW%${randomId}.${randomName}`,
+      displayName: `PW % ${randomId} ${randomName}`,
+      description:
+        'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
+      reviewers: reviewers ?? [],
+      tags: [],
+      mutuallyExclusive: false,
+      terms: [],
+      owners: [],
+      // eslint-disable-next-line no-useless-escape
+      fullyQualifiedName: `\"PW%${randomId}.${randomName}\"`,
+    };
+  }
+
+  async visitEntityPage(page: Page) {
+    await this.visitPage(page);
   }
 
   async visitPage(page: Page) {
-    await visitGlossaryPage(page, this.data.displayName);
+    await visitGlossaryPage(page, this.responseData.displayName);
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-      this.data.displayName
+      this.responseData.displayName
     );
   }
 

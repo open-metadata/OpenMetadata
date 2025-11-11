@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { EntityReference } from '../../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 
 export interface TestCaseStatusIncidentManagerProps {
   data: TestCaseResolutionStatus;
   onSubmit: (data: TestCaseResolutionStatus) => void;
-  usersList?: EntityReference[];
   hasPermission?: boolean;
+  newLook?: boolean;
+  headerName?: string;
+  isInline?: boolean;
+}
+
+export interface InlineTestCaseIncidentStatusProps {
+  data: TestCaseStatusIncidentManagerProps['data'];
+  hasEditPermission: boolean;
+  onSubmit: TestCaseStatusIncidentManagerProps['onSubmit'];
 }

@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 
-import { Pagination } from 'antd';
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
-import { PAGE_SIZE } from '../../constants/constants';
+import { useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { pluralize } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import PaginationComponent from '../PaginationComponent/PaginationComponent';
 import { SearchedDataProps } from './SearchedData.interface';
 
-const ASSETS_NAME = [
+const ASSETS_NAME = new Set([
   'table_name',
   'topic_name',
   'dashboard_name',
   'pipeline_name',
-];
+]);
 
 const SearchedData: React.FC<SearchedDataProps> = ({
   children,
@@ -46,13 +46,17 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   handleSummaryPanelDisplay,
   filter,
 }) => {
+  const {
+    preferences: { globalPageSize },
+  } = useCurrentUserPreferences();
+
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
       const matches = highlight
         ? Object.entries(highlight)
             .filter(([key]) => !key.includes('.ngram'))
             .map(([key, value]) => ({ key, value: value?.length || 1 }))
-            .filter((d) => !ASSETS_NAME.includes(d.key))
+            .filter((d) => !ASSETS_NAME.has(d.key))
         : [];
 
       const source = highlightEntityNameAndDescription(table, highlight);
@@ -68,6 +72,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
+            searchValue={filter?.search as string}
             showTags={false}
             source={source}
           />
@@ -93,11 +98,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     }
   };
 
-  const { page = 1, size = PAGE_SIZE } = useMemo(
+  const { page = 1, size = globalPageSize } = useMemo(
     () =>
       Qs.parse(
         location.search.startsWith('?')
-          ? location.search.substr(1)
+          ? location.search.substring(1)
           : location.search
       ),
     [location.search]
@@ -108,34 +113,34 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <div data-testid="search-container">
+        <div className="h-full" data-testid="search-container">
           {totalValue > 0 ? (
             <>
               {children}
               <ResultCount />
               <div data-testid="search-results">
                 {searchResultCards}
-                <Pagination
-                  hideOnSinglePage
-                  className="text-center m-b-sm"
+                <PaginationComponent
+                  className="text-center p-b-box"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
-                    size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                    size && isNumber(Number(size))
+                      ? Number(size)
+                      : globalPageSize
                   }
-                  pageSizeOptions={[10, 25, 50]}
                   total={totalValue}
                   onChange={onPaginationChange}
                 />
               </div>
             </>
           ) : (
-            <>
+            <div className="flex-center h-full">
               {children}
               <ErrorPlaceHolderES
                 query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
-            </>
+            </div>
           )}
         </div>
       )}

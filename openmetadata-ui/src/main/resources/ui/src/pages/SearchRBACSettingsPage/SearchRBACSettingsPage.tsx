@@ -14,7 +14,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Row, Switch, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -95,8 +95,8 @@ const SearchRBACSettingsPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.login')}>
-      <Row className="page-container" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.search-rbac')}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -122,7 +122,7 @@ const SearchRBACSettingsPage = () => {
             </Tooltip>
           </Typography.Text>
           <Switch
-            checked={searchConfig?.enableAccessControl}
+            checked={searchConfig?.globalSettings?.enableAccessControl}
             className="m-l-xlg"
             disabled={isUpdating}
             onChange={handleUpdateClick}

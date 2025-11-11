@@ -22,13 +22,13 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
-const botName = `pw%bot-test-${uuid()}`;
+const botName = `a-bot-pw%test-${uuid()}`;
 
 const BOT_DETAILS = {
   botName: botName,
   botEmail: `${botName}@mail.com`,
-  description: 'This is bot description',
-  updatedDescription: 'This is updated bot description',
+  description: `This is bot description for ${botName}`,
+  updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
   unlimitedExpiryTime: 'This token has no expiration date.',
   JWTToken: 'OpenMetadata JWT',
@@ -65,7 +65,7 @@ export const createBot = async (page: Page) => {
 
   // Select expiry time
   await page.click('[data-testid="token-expiry"]');
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await page.locator(descriptionBox).fill(BOT_DETAILS.description);
 
@@ -74,10 +74,13 @@ export const createBot = async (page: Page) => {
   await saveResponse;
 
   // Verify bot is getting added in the bots listing page
-  const table = page.locator('table');
+  await expect(
+    page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
+  ).toBeVisible();
 
-  await expect(table).toContainText(BOT_DETAILS.botName);
-  await expect(table).toContainText(BOT_DETAILS.description);
+  await expect(
+    page.getByRole('cell', { name: BOT_DETAILS.description })
+  ).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });
@@ -111,7 +114,7 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(page.getByTestId('page-layout-v1')).not.toContainText(botName);
+  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
 };
 
 export const updateBotDetails = async (page: Page) => {
@@ -124,8 +127,8 @@ export const updateBotDetails = async (page: Page) => {
 
   // Verify the display name is updated on bot details page
   await expect(
-    page.locator('[data-testid="left-panel"] .display-name')
-  ).toContainText(BOT_DETAILS.updatedBotName);
+    page.getByTestId('left-panel').getByText(BOT_DETAILS.updatedBotName)
+  ).toBeVisible();
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();
@@ -162,7 +165,9 @@ export const tokenExpirationForDays = async (page: Page) => {
     await page.click('[data-testid="token-expiry"]');
 
     // Select the expiration period
-    await page.locator(`text=${expiryTime} days`).click();
+    await page
+      .locator(`text=${expiryTime} day${expiryTime > 1 ? 's' : ''}`)
+      .click();
 
     // Save the updated date
     const expiryDate = customFormatDateTime(
@@ -191,7 +196,7 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   // Click on expiry token dropdown
   await page.click('[data-testid="token-expiry"]');
   // Select unlimited days
-  await page.getByText('Unlimited days').click();
+  await page.getByText('Unlimited').click();
   // Save the selected changes
   await page.click('[data-testid="save-edit"]');
 
@@ -219,34 +224,35 @@ export const redirectToBotPage = async (page: Page) => {
   await fetchResponse;
 };
 
-export const resetTokenFromBotPage = async (
-  page: Page,
-  bot: {
-    name: string;
-    testId: string;
+export const resetTokenFromBotPage = async (page: Page, botName: string) => {
+  await page.goto(`/bots/${botName}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const isRevokeButtonVisible = await page
+    .getByTestId('revoke-button')
+    .isVisible();
+  const isAuthMechanismVisible = await page
+    .getByTestId('auth-mechanism')
+    .isVisible();
+
+  if (isRevokeButtonVisible) {
+    await page.getByTestId('revoke-button').click();
+
+    await expect(page.getByTestId('save-button')).toBeVisible();
+
+    await page.getByTestId('save-button').click();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  } else if (isAuthMechanismVisible) {
+    await page.getByTestId('auth-mechanism').click();
   }
-) => {
-  const settingClickResponse = page.waitForResponse('api/v1/bots?*');
-  await settingClick(page, GlobalSettingOptions.BOTS);
-  await settingClickResponse;
-
-  await page.getByTestId('searchbar').click();
-  await page.getByTestId('searchbar').fill(bot.name);
-
-  await page.getByTestId(bot.testId).click();
-
-  await expect(page.getByTestId('revoke-button')).toBeVisible();
-
-  await page.getByTestId('revoke-button').click();
-
-  await expect(page.getByTestId('save-button')).toBeVisible();
-
-  await page.getByTestId('save-button').click();
 
   await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
 
-  await page.getByText('hr').click();
-  await page.getByText('Unlimited days').click();
+  await page.getByTestId('token-expiry').click();
+  await page.getByText('Unlimited').click();
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
 

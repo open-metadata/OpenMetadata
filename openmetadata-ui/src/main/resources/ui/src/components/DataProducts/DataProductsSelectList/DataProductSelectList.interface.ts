@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SelectProps } from 'antd';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
 
@@ -18,12 +19,13 @@ export type DataProductSelectOption = {
   value: DataProduct;
 };
 
-export interface DataProductsSelectListProps {
+export interface DataProductsSelectListProps extends SelectProps {
   mode?: 'multiple';
   placeholder?: string;
   debounceTimeout?: number;
   defaultValue?: string[];
-  onChange?: (newValue: DataProduct[]) => void;
+  onSubmit?: (newValue: DataProduct[]) => Promise<void>;
+  onCancel?: () => void;
   fetchOptions: (
     search: string,
     page: number

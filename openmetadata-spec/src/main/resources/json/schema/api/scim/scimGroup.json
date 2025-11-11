@@ -1,0 +1,78 @@
+{
+  "$id": "https://open-metadata.org/schema/api/scimGroup.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ScimGroup",
+  "description": "SCIM-compliant Group object",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.scim.ScimGroup",
+  "properties": {
+    "schemas": {
+      "type": "array",
+      "description": "SCIM schemas used for this resource",
+      "items": {
+        "type": "string"
+      },
+      "default": ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the group"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable name of the group"
+    },
+    "externalId": {
+      "type": "string",
+      "description": "External system identifier"
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the group is active"
+    },
+    "members": {
+      "type": "array",
+      "description": "Members of the group",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "ID of the member (user)"
+          },
+          "display": {
+            "type": "string",
+            "description": "Display name of the member"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of member - typically 'User'"
+          }
+        },
+        "required": ["value"]
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the group",
+      "properties": {
+        "resourceType": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "location": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["schemas", "displayName"],
+  "additionalProperties": true
+}

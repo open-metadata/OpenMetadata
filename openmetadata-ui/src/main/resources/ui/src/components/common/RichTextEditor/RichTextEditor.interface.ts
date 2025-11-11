@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes, ReactNode } from 'react';
+import { HTMLAttributes } from 'react';
 
-export type editorRef = ReactNode | HTMLElement | string;
 export type TextVariant = 'white' | 'black';
 
 export interface PreviewerProp {
@@ -25,6 +24,7 @@ export interface PreviewerProp {
   isDescriptionExpanded?: boolean;
   textVariant?: TextVariant;
   reducePreviewLineClass?: string;
+  maxLineLength?: string;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
@@ -41,4 +41,6 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
 
 export interface EditorContentRef {
   getEditorContent: () => string;
+  clearEditorContent: () => void;
+  setEditorContent: (content: string) => void;
 }

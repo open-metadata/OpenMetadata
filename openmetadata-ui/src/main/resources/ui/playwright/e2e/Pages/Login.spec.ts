@@ -52,7 +52,7 @@ test.describe('Login flow should work properly', () => {
       // update expiry for 3 mins
       await updateJWTTokenExpiryTime(
         apiContext,
-        JWT_EXPIRY_TIME_MAP['3 minutes']
+        JWT_EXPIRY_TIME_MAP['2 minutes']
       );
 
       await afterAction();
@@ -61,6 +61,7 @@ test.describe('Login flow should work properly', () => {
 
   test('Signup and Login with signed up credentials', async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(`/signin`);
 
@@ -85,45 +86,56 @@ test.describe('Login flow should work properly', () => {
     await expect(page.locator('#password')).toHaveAttribute('type', 'password');
 
     await page.locator('#confirmPassword').fill(CREDENTIALS.password);
+
+    const createUserResponse = page.waitForResponse(`/api/v1/users/signup`);
     // Click on create account button
     await page.getByRole('button', { name: 'Create Account' }).click();
+    await createUserResponse;
 
     await expect(page).toHaveURL(`/signin`);
 
     // Login with the created user
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', CREDENTIALS.password);
+    const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
+    await loginResponse;
+    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(`/my-data`);
 
     // Verify user profile
     await page.locator('[data-testid="dropdown-profile"]').click();
 
-    await expect(page.getByTestId('user-name')).toContainText(
+    await expect(page.getByTestId('nav-user-name')).toContainText(
       `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
     );
   });
 
   test('Signin using invalid credentials', async ({ page }) => {
     await page.goto(`/signin`);
+    await page.waitForLoadState('networkidle');
     // Login with invalid email
     await page.fill('#email', invalidEmail);
     await page.fill('#password', CREDENTIALS.password);
+    const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
+    await loginResponse;
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toHaveText(LOGIN_ERROR_MESSAGE);
+    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
+      LOGIN_ERROR_MESSAGE
+    );
 
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', invalidPassword);
+    const loginResponse2 = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
+    await loginResponse2;
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toHaveText(LOGIN_ERROR_MESSAGE);
+    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
+      LOGIN_ERROR_MESSAGE
+    );
   });
 
   test('Forgot password and login with new password', async ({ page }) => {
@@ -136,11 +148,11 @@ test.describe('Login flow should work properly', () => {
     // Enter email
     await page.locator('#email').fill(CREDENTIALS.email);
     // Click on Forgot button
-    await page.getByRole('button', { name: 'Submit' }).click();
+    await page.getByRole('button', { name: 'Send Login Link' }).click();
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test.skip('Refresh should work', async ({ browser }) => {
+  test('Refresh should work', async ({ browser }) => {
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
@@ -186,10 +198,10 @@ test.describe('Login flow should work properly', () => {
     await page1.waitForLoadState('networkidle');
     await clickOutside(page1);
 
-    await expect(page1.getByTestId('user-name')).toContainText(/admin/i);
+    await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
 
-    // Wait for token expiry
-    await page2.waitForTimeout(3 * 60 * 1000);
+    // Wait for token expiry, kept 61 instead 60 so that ensure refresh API done withing timeframe
+    await page2.waitForTimeout(2 * 61 * 1000);
 
     await redirectToHomePage(page2);
 
@@ -197,6 +209,6 @@ test.describe('Login flow should work properly', () => {
     await page2.waitForLoadState('networkidle');
     await clickOutside(page2);
 
-    await expect(page2.getByTestId('user-name')).toContainText(/admin/i);
+    await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);
   });
 });

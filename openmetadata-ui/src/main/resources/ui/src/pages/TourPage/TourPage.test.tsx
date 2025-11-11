@@ -11,18 +11,24 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPage from './TourPage.component';
 
 const mockUseTourProvider = {
   updateIsTourOpen: jest.fn(),
-  currentTourPage: '',
+  currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
   updateActiveTab: jest.fn(),
   updateTourPage: jest.fn(),
   updateTourSearch: jest.fn(),
 };
+
+const mockQuerySelector = jest.fn();
+Object.defineProperty(document, 'querySelector', {
+  value: mockQuerySelector,
+  writable: true,
+});
+
 jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider),
 }));
@@ -54,6 +60,22 @@ jest.mock('../../utils/TourUtils', () => ({
 }));
 
 describe('TourPage component', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockQuerySelector.mockImplementation((selector) => {
+      if (selector === '#feedWidgetData') {
+        return document.createElement('div');
+      }
+
+      return null;
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.useRealTimers();
+  });
+
   it('should render correctly', async () => {
     render(<TourPage />);
 
@@ -70,7 +92,8 @@ describe('TourPage component', () => {
   });
 
   it('MyDataPage Component should be visible, if currentTourPage is myDataPage', async () => {
-    (useTourProvider as jest.Mock).mockImplementationOnce(() => ({
+    (useTourProvider as jest.Mock).mockReset();
+    (useTourProvider as jest.Mock).mockImplementation(() => ({
       ...mockUseTourProvider,
       currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
     }));
@@ -80,7 +103,8 @@ describe('TourPage component', () => {
   });
 
   it('ExplorePage Component should be visible, if currentTourPage is explorePage', async () => {
-    (useTourProvider as jest.Mock).mockImplementationOnce(() => ({
+    (useTourProvider as jest.Mock).mockReset();
+    (useTourProvider as jest.Mock).mockImplementation(() => ({
       ...mockUseTourProvider,
       currentTourPage: CurrentTourPageType.EXPLORE_PAGE,
     }));
@@ -92,7 +116,8 @@ describe('TourPage component', () => {
   });
 
   it('TableDetailsPage Component should be visible, if currentTourPage is datasetPage', async () => {
-    (useTourProvider as jest.Mock).mockImplementationOnce(() => ({
+    (useTourProvider as jest.Mock).mockReset();
+    (useTourProvider as jest.Mock).mockImplementation(() => ({
       ...mockUseTourProvider,
       currentTourPage: CurrentTourPageType.DATASET_PAGE,
     }));

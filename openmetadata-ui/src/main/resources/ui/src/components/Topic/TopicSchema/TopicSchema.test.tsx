@@ -16,12 +16,12 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   render,
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
@@ -41,6 +41,25 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
     </div>
   ))
 );
+
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
+    ),
+  })),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  handleUpdateTableColumnSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+}));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
@@ -101,6 +120,10 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
     ))
 );
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([{}]),
+}));
+
 const mockOnUpdate = jest.fn();
 const mockTopicDetails = {
   columns: [],
@@ -128,6 +151,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       EditAll: true,
     },
     onUpdate: mockOnUpdate,
+    type: 'topic',
   })),
 }));
 
@@ -180,9 +204,7 @@ describe('Topic Schema', () => {
     // order_id is child of nested row, so should be null initially
     expect(await screen.findByText('order_id')).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(expandIcon);
-    });
+    fireEvent.click(expandIcon);
 
     expect(screen.queryByText('order_id')).toBeNull();
   });

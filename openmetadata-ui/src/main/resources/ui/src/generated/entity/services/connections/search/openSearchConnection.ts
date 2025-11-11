@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 /**
- * OpenSearch Connection.
+ * OpenSearch Connection Config
  */
 export interface OpenSearchConnection {
+    /**
+     * Choose Auth Config Type.
+     */
+    authType?:            AuthConfigurationType;
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
     /**
      * Connection Timeout in Seconds
      */
@@ -23,44 +26,76 @@ export interface OpenSearchConnection {
     /**
      * Host and port of the OpenSearch service.
      */
-    hostPort: string;
-    /**
-     * Keep Alive Timeout in Seconds
-     */
-    keepAliveTimeoutSecs?: number;
-    /**
-     * OpenSearch Password for Login
-     */
-    password?: string;
-    /**
-     * Http/Https connection scheme
-     */
-    scheme?: string;
+    hostPort?: string;
     /**
      * Regex to only fetch search indexes that matches the pattern.
      */
-    searchIndexFilterPattern?: FilterPattern;
-    /**
-     * Socket Timeout in Seconds
-     */
-    socketTimeoutSecs?:          number;
+    searchIndexFilterPattern?:   FilterPattern;
+    sslConfig?:                  SSLConfig;
     supportsMetadataExtraction?: boolean;
     /**
-     * Truststore Password
+     * OpenSearch Type
      */
-    truststorePassword?: string;
+    type?:      OpenSearchType;
+    verifySSL?: VerifySSL;
+}
+
+/**
+ * Choose Auth Config Type.
+ *
+ * Basic Auth Configuration for ElasticSearch
+ *
+ * AWS credentials configs.
+ */
+export interface AuthConfigurationType {
     /**
-     * Truststore Path
+     * Elastic Search Password for Login
      */
-    truststorePath?: string;
+    password?: string;
     /**
-     * Service Type
-     */
-    type?: OpenSearchType;
-    /**
-     * OpenSearch Username for Login
+     * Elastic Search Username for Login
      */
     username?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**
@@ -80,10 +115,68 @@ export interface FilterPattern {
 }
 
 /**
- * Service Type
+ * SSL Config
+ */
+export interface SSLConfig {
+    /**
+     * SSL Certificates
+     */
+    certificates?: SSLCertificates;
+    [property: string]: any;
+}
+
+/**
+ * SSL Certificates
+ *
+ * SSL Certificates By Path
+ *
+ * SSL Certificates By Values
+ */
+export interface SSLCertificates {
+    /**
+     * CA Certificate Path
+     */
+    caCertPath?: string;
+    /**
+     * Client Certificate Path
+     */
+    clientCertPath?: string;
+    /**
+     * Private Key Path
+     */
+    privateKeyPath?: string;
+    /**
+     * CA Certificate Value
+     */
+    caCertValue?: string;
+    /**
+     * Client Certificate Value
+     */
+    clientCertValue?: string;
+    /**
+     * Private Key Value
+     */
+    privateKeyValue?: string;
+    /**
+     * Staging Directory Path
+     */
+    stagingDir?: string;
+}
+
+/**
+ * OpenSearch Type
  *
  * OpenSearch service type
  */
 export enum OpenSearchType {
     OpenSearch = "OpenSearch",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

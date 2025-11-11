@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { ExportTypes } from '../../../constants/Export.constants';
 import {
   EntityExportModalProvider,
   useEntityExportModalProvider,
@@ -26,6 +26,7 @@ const mockExportJob = {
 
 const mockShowModal: ExportData = {
   name: 'test',
+  exportTypes: [ExportTypes.CSV],
   onExport: jest.fn().mockImplementation(() => Promise.resolve(mockExportJob)),
 };
 
@@ -143,7 +144,9 @@ describe('EntityExportModalProvider component', () => {
       fireEvent.click(exportBtn);
     });
 
-    expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name);
+    expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name, {
+      recursive: true,
+    });
 
     expect(await screen.findByText(mockExportJob.message)).toBeInTheDocument();
   });

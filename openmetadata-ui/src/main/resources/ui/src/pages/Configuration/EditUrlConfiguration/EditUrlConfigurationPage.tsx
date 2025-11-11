@@ -12,9 +12,9 @@
  */
 import { Button, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -31,6 +31,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -40,8 +41,8 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const { Item } = Form;
 const EditUrlConfigurationPage = () => {
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const history = useHistory();
   const [form] = Form.useForm<OpenMetadataBaseURLConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -90,7 +91,7 @@ const EditUrlConfigurationPage = () => {
     []
   );
 
-  const handleGoBack = () => history.goBack();
+  const handleGoBack = () => navigate(-1);
 
   const handleSubmit = async (
     configValues: OpenMetadataBaseURLConfiguration
@@ -122,7 +123,7 @@ const EditUrlConfigurationPage = () => {
   }, []);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Form
         className="m-t-md"
@@ -165,7 +166,7 @@ const EditUrlConfigurationPage = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -188,8 +189,14 @@ const EditUrlConfigurationPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.service') })}
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.entity-configuration', {
+          entity: t('label.open-metadata-url'),
+        }),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -200,4 +207,4 @@ const EditUrlConfigurationPage = () => {
   );
 };
 
-export default EditUrlConfigurationPage;
+export default withPageLayout(EditUrlConfigurationPage);

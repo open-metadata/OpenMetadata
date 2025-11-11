@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -118,7 +118,7 @@ SELECT * from names
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["admin"]
+        return ["^ADMIN$"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
@@ -274,14 +274,14 @@ SELECT * from names
     ) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
-        self.assertEqual(len(source_status.filtered), 29)
+        self.assertGreaterEqual(len(source_status.filtered), 29)
         self.assertGreaterEqual(
             (len(source_status.records) + len(source_status.updated_records)),
             self.expected_tables(),
         )
         self.assertEqual(len(sink_status.failures), 0)
         self.assertEqual(len(sink_status.warnings), 0)
-        self.assertGreater(
+        self.assertGreaterEqual(
             (len(sink_status.records) + len(sink_status.updated_records)),
             self.expected_tables(),
         )

@@ -10,22 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
-import { useTranslation } from 'react-i18next';
+import { ComponentType, FC } from 'react';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
-export const withPageLayout =
-  <P,>(pageTitleKey: string) =>
-  (Component: FC<P>) => {
-    const WrappedComponent: FC<P> = (props) => {
-      const { t } = useTranslation();
-
-      return (
-        <PageLayoutV1 pageTitle={t(`label.${pageTitleKey}`)}>
-          <Component {...props} />
-        </PageLayoutV1>
-      );
-    };
-
-    return WrappedComponent;
+export const withPageLayout = <P extends { pageTitle: string }>(
+  Component: ComponentType<P>
+) => {
+  const WrappedComponent: FC<Exclude<P, 'pageTitle'>> = (props) => {
+    return (
+      <PageLayoutV1 pageTitle={props.pageTitle}>
+        <Component {...props} />
+      </PageLayoutV1>
+    );
   };
+
+  return WrappedComponent;
+};

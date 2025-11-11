@@ -40,6 +40,10 @@ public class CompiledRule extends Rule {
     if (condition == null) {
       return null;
     }
+
+    // Apply safety validation before parsing expressions
+    ExpressionValidator.validateExpressionSafety(condition);
+
     try {
       return EXPRESSION_PARSER.parseExpression(condition);
     } catch (Exception exception) {
@@ -53,6 +57,8 @@ public class CompiledRule extends Rule {
     if (condition == null) {
       return;
     }
+
+    // parseExpression already includes safety validation
     Expression expression = parseExpression(condition);
     RuleEvaluator ruleEvaluator = new RuleEvaluator();
     SimpleEvaluationContext context =
@@ -191,9 +197,15 @@ public class CompiledRule extends Rule {
     }
   }
 
+  /** Returns true if this rule applies to the given resource name. */
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES)
-        || getResources().contains(resource));
+    if (getResources().stream().anyMatch(r -> r.equalsIgnoreCase(resource))) {
+      return true;
+    }
+    if (getResources().stream().anyMatch(r -> r.equalsIgnoreCase(ALL_RESOURCES))) {
+      return !resource.equalsIgnoreCase("scim");
+    }
+    return false;
   }
 
   private boolean matchOperation(MetadataOperation operation) {

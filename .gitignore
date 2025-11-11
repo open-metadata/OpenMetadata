@@ -29,6 +29,7 @@ catalog-services/catalog-services.iml
 docker/development/docker-volume
 docker-volume
 docker/docker-compose-quickstart/docker-volume
+docker/docker-compose-quickstart/docker-volumes
 # Java template
 *.class
 venv
@@ -85,11 +86,10 @@ openmetadata-ui/src/main/resources/ui/playwright/output/
 openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
 openmetadata-ui/src/main/resources/ui/.env
 openmetadata-ui/src/main/resources/ui/playwright/.auth
+openmetadata-ui/src/main/resources/ui/blob-report
 
 #UI - Dereferenced Schemas
-openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/governanceSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/*
 
 
 #vscode
@@ -103,6 +103,7 @@ ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
 .python-version
+ingestion/tests/load/summaries/*.csv
 
 # MLFlow
 mlruns/
@@ -123,8 +124,61 @@ scan-requirements.txt
 # CLI e2e tests
 ingestion/tests/cli_e2e/**/*test.yaml
 
-# GX artifacts
-/ingestion/tests/integration/great_expectations/gx/*
-
 # Tests
 **/metastore_db/
+
+# Docker volumes for local development
+docker-volumes/
+**/docker-volumes/
+docker/docker-compose-quickstart/docker-volumes/
+docker/development/docker-volumes/
+fuseki-volume/
+search-volume/
+
+# Cursor rules
+.cursorrules
+.cursor/
+
+# Nox
+ingestion/.nox/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp 
+
+# BMAD Method
+.bmad-core/
+
+# Claude Flow generated files
+.claude/settings.local.json
+.mcp.json
+claude-flow.config.json
+.swarm/
+.hive-mind/
+memory/claude-flow-data.json
+memory/sessions/*
+!memory/sessions/README.md
+memory/agents/*
+!memory/agents/README.md
+coordination/memory_bank/*
+coordination/subtasks/*
+coordination/orchestration/*
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+claude-flow
+claude-flow.bat
+claude-flow.ps1
+hive-mind-prompt-*.txt
+.claude/
+.claude-flow/
+docs
+memory

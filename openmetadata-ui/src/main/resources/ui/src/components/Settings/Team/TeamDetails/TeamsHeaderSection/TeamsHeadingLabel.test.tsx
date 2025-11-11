@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
@@ -82,18 +87,17 @@ describe('TeamsHeadingLabel', () => {
   });
 
   it('should handle save team name', async () => {
-    const { getByTestId } = render(<TeamsHeadingLabel {...teamProps} />);
-    const editButton = getByTestId('edit-team-name');
-    await act(async () => {
-      userEvent.click(editButton);
-    });
+    render(<TeamsHeadingLabel {...teamProps} />);
 
-    const saveButton = getByTestId('saveAssociatedTag');
-    await act(async () => {
-      userEvent.click(saveButton);
-    });
+    const editButton = screen.getByTestId('edit-team-name');
+    fireEvent.click(editButton);
 
-    expect(mockUpdateTeamHandler).toHaveBeenCalled();
+    const saveButton = screen.getByTestId('saveAssociatedTag');
+    await waitFor(async () => {
+      await userEvent.click(saveButton);
+
+      expect(mockUpdateTeamHandler).toHaveBeenCalled();
+    });
   });
 
   it('should handle cancel team name edit', async () => {
@@ -101,16 +105,14 @@ describe('TeamsHeadingLabel', () => {
       <TeamsHeadingLabel {...teamProps} />
     );
     const editButton = getByTestId('edit-team-name');
-    await act(async () => {
-      userEvent.click(editButton);
-    });
+    fireEvent.click(editButton);
 
     const cancelButton = getByTestId('cancelAssociatedTag');
-    await act(async () => {
-      userEvent.click(cancelButton);
-    });
+    await waitFor(async () => {
+      await userEvent.click(cancelButton);
 
-    expect(queryByTestId('team-name-input')).not.toBeInTheDocument();
+      expect(queryByTestId('team-name-input')).not.toBeInTheDocument();
+    });
   });
 
   it('should not allow editing team name if user does not have permission', () => {

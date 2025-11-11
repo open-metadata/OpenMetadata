@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
+import {
+  assignTagToChildren,
+  removeTagsFromChildren,
+} from '../../utils/entity';
+import { test } from '../fixtures/pages';
 
 const container = new ContainerClass();
 
@@ -24,33 +27,51 @@ test.slow(true);
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    test.slow(true);
 
+    const { afterAction, apiContext } = await performAdminLogin(browser);
     await container.create(apiContext, CONTAINER_CHILDREN);
 
     await afterAction();
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    test.slow(true);
+
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await container.delete(apiContext);
 
     await afterAction();
   });
 
-  test.beforeEach('Visit home page', async ({ page }) => {
+  test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
     await redirectToHomePage(page);
   });
 
-  test('Container page children pagination', async ({ page }) => {
+  test('Container page should show Schema and Children count', async ({
+    dataConsumerPage: page,
+  }) => {
+    await container.visitEntityPage(page);
+
+    await expect(page.getByTestId('schema').getByTestId('count')).toBeVisible();
+    await expect(
+      page.getByTestId('children').getByTestId('count')
+    ).toBeVisible();
+  });
+
+  test('Container page children pagination', async ({
+    dataConsumerPage: page,
+  }) => {
     await container.visitEntityPage(page);
 
     await page.getByText('Children').click();
 
     await expect(page.getByTestId('pagination')).toBeVisible();
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 2 '
+    );
 
     // Check the second page pagination
     const childrenResponse = page.waitForResponse(
@@ -60,13 +81,15 @@ test.describe('Container entity specific tests ', () => {
     await childrenResponse;
 
     await expect(page.getByTestId('next')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('2/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 2 of 2 '
+    );
 
     // Check around the page sizing change
     const childrenResponseSizeChange = page.waitForResponse(
       '/api/v1/containers/name/*/children?limit=25&offset=0'
     );
-    await page.getByRole('button', { name: '/ Page down' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
     await childrenResponseSizeChange;
 
@@ -76,13 +99,15 @@ test.describe('Container entity specific tests ', () => {
 
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/1 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 1'
+    );
 
     // Back to the original page size
     const childrenResponseSizeChange2 = page.waitForResponse(
       '/api/v1/containers/name/*/children?limit=15&offset=0'
     );
-    await page.getByRole('button', { name: '/ Page down' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
     await childrenResponseSizeChange2;
 
@@ -91,6 +116,40 @@ test.describe('Container entity specific tests ', () => {
     });
 
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 2'
+    );
+  });
+
+  test('expand / collapse should not appear after updating nested fields for container', async ({
+    page,
+  }) => {
+    await page.goto('/container/s3_storage_sample.departments.finance');
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId: 'budget_executor',
+      entityEndpoint: 'containers',
+    });
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator('[data-row-key="budget_executor"]')
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId: 'budget_executor',
+      entityEndpoint: 'containers',
+    });
   });
 });

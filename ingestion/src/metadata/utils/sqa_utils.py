@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -191,6 +191,21 @@ def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
     return filter_
 
 
+def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
+    """Get query group by from kwargs. IMPORTANT, this will update the original dictionary
+    passed in the function argument.
+
+    Args:
+        kwargs (Dict): kwargs
+    """
+    if "query_group_by_" in kwargs:
+        group_by_ = kwargs.pop("query_group_by_")
+    else:
+        group_by_ = None
+
+    return group_by_
+
+
 def handle_array(
     query: Query, column: Column, table: Union[DeclarativeMeta, AliasedClass]
 ) -> Query:
@@ -259,5 +274,8 @@ def update_mssql_ischema_names(ischema_names):
             "sql_variant": create_sqlalchemy_type("SQL_VARIANT"),
             "uniqueidentifier": create_sqlalchemy_type("UUID"),
             "xml": create_sqlalchemy_type("XML"),
+            "hierarchyid": create_sqlalchemy_type("HIERARCHYID"),
+            "geography": create_sqlalchemy_type("GEOGRAPHY"),
+            "geometry": create_sqlalchemy_type("GEOMETRY"),
         }
     )

@@ -12,10 +12,11 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TableDataCardV2 from '../../../common/TableDataCardV2/TableDataCardV2';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
@@ -28,19 +29,26 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   const fetchTagAssetsDetails = useCallback(async () => {
     try {
-      const query = `tags.tagFQN:"${entityDetails.fullyQualifiedName}"`;
-      const res = await searchData('', 1, 100, query, '', '', [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.CONTAINER,
-        SearchIndex.GLOSSARY_TERM,
-        SearchIndex.MLMODEL,
-        SearchIndex.PIPELINE,
-        SearchIndex.STORED_PROCEDURE,
-        SearchIndex.DASHBOARD_DATA_MODEL,
-      ]);
-      const sources = res.data.hits.hits.map((hit) => hit._source);
+      const res = await searchQuery({
+        query: '',
+        pageNumber: 1,
+        pageSize: 100,
+        queryFilter: getTermQuery({
+          'tags.tagFQN': entityDetails.fullyQualifiedName ?? '',
+        }),
+        searchIndex: [
+          SearchIndex.TABLE,
+          SearchIndex.TOPIC,
+          SearchIndex.DASHBOARD,
+          SearchIndex.CONTAINER,
+          SearchIndex.GLOSSARY_TERM,
+          SearchIndex.MLMODEL,
+          SearchIndex.PIPELINE,
+          SearchIndex.STORED_PROCEDURE,
+          SearchIndex.DASHBOARD_DATA_MODEL,
+        ],
+      });
+      const sources = res.hits.hits.map((hit) => hit._source);
       setSelectedData(sources);
     } catch (error) {
       // Error

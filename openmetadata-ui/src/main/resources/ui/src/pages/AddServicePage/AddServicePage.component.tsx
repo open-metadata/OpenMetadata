@@ -15,9 +15,9 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -26,14 +26,15 @@ import SelectServiceType from '../../components/Settings/Services/AddService/Ste
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
-import { DAY_ONE_EXPERIENCE_APP_NAME } from '../../constants/Applications.constant';
-import { getServiceDetailsPath } from '../../constants/constants';
+import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -41,7 +42,12 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
-import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
@@ -49,12 +55,14 @@ import {
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 
 const AddServicePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
@@ -93,12 +101,12 @@ const AddServicePage = () => {
       ...prev,
       serviceType: '',
     }));
-    history.push(getAddServicePath(category));
+    navigate(getAddServicePath(category));
   };
 
   // Select service
   const handleSelectServiceCancel = () => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
         getServiceRouteFromServiceType(serviceCategory)
@@ -129,18 +137,13 @@ const AddServicePage = () => {
   // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = (newConfigData: ConfigData) => {
-    const data = {
+    const data = serviceUtilClassBase.getServiceConfigData({
+      serviceName: serviceConfig.name,
       serviceType: serviceConfig.serviceType,
-      owners: [
-        {
-          id: currentUser?.id ?? '',
-          type: 'user',
-        },
-      ],
-      connection: {
-        config: newConfigData,
-      },
-    };
+      description: serviceConfig.description,
+      userId: currentUser?.id ?? '',
+      configData: newConfigData,
+    });
 
     setServiceConfig((prev) => ({
       ...prev,
@@ -149,7 +152,9 @@ const AddServicePage = () => {
     setActiveServiceStep(4);
   };
 
-  const triggerTheDayOneApplication = async (serviceDetails: ServicesType) => {
+  const triggerTheAutoPilotApplication = async (
+    serviceDetails: ServicesType
+  ) => {
     try {
       const entityType = getEntityTypeFromServiceCategory(serviceCategory);
       const entityLink = getEntityFeedLink(
@@ -157,7 +162,7 @@ const AddServicePage = () => {
         serviceDetails.fullyQualifiedName
       );
 
-      await triggerOnDemandApp(DAY_ONE_EXPERIENCE_APP_NAME, {
+      await triggerOnDemandApp(AUTO_PILOT_APP_NAME, {
         entityLink,
       });
     } catch (err) {
@@ -181,7 +186,13 @@ const AddServicePage = () => {
     try {
       const serviceDetails = await postService(serviceCategory, configData);
 
-      await triggerTheDayOneApplication(serviceDetails);
+      if (
+        !EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(
+          getEntityTypeFromServiceCategory(serviceCategory)
+        )
+      ) {
+        await triggerTheAutoPilotApplication(serviceDetails);
+      }
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,
@@ -194,7 +205,7 @@ const AddServicePage = () => {
       });
     } finally {
       setSaveServiceState('initial');
-      history.push(getServiceDetailsPath(configData.name, serviceCategory));
+      navigate(getServiceDetailsPath(configData.name, serviceCategory));
     }
   };
 
@@ -222,7 +233,7 @@ const AddServicePage = () => {
   );
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <div data-testid="add-new-service-container">
@@ -267,6 +278,7 @@ const AddServicePage = () => {
             {activeServiceStep === 3 && (
               <ConnectionConfigForm
                 cancelText={t('label.back')}
+                data={serviceConfig as ServicesType}
                 okText={t('label.next')}
                 serviceCategory={serviceCategory}
                 serviceType={serviceConfig.serviceType}
@@ -295,8 +307,12 @@ const AddServicePage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
+
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
 
   return (
     <ResizablePanels
@@ -306,6 +322,8 @@ const AddServicePage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
       }}
       hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
@@ -325,4 +343,4 @@ const AddServicePage = () => {
   );
 };
 
-export default AddServicePage;
+export default withPageLayout(AddServicePage);

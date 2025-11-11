@@ -11,13 +11,22 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import {
+  BULK_IMPORT_EXPORT_SQL_QUERY,
+  RDG_ACTIVE_CELL_SELECTOR,
+} from '../constant/bulkImportExport';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
-import { descriptionBox, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -38,50 +47,78 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
+  await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.locator('.ant-layout-content').getByRole('textbox').fill(text);
-  await page
+  const isVisible = await page
     .locator('.ant-layout-content')
     .getByRole('textbox')
-    .press('Enter', { delay: 100 });
+    .isVisible();
+
+  if (!isVisible) {
+    await page.keyboard.press('Enter', { delay: 100 });
+  }
+
+  const textboxLocator = page
+    .locator('.ant-layout-content')
+    .getByRole('textbox');
+
+  await textboxLocator.fill(text);
+  await textboxLocator.press('Enter', { delay: 100 });
 };
 
 export const fillDescriptionDetails = async (
   page: Page,
   description: string
 ) => {
-  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter');
   await page.click(descriptionBox);
 
   await page.fill(descriptionBox, description);
 
   await page.click('[data-testid="save"]');
 
-  await expect(
-    page.locator('.InovuaReactDataGrid__cell--cell-active')
-  ).not.toContainText('<p>');
+  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR)).not.toContainText('<p>');
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
+
+  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+
+  await expect(
+    page.locator('.ant-tabs-tab-active').getByText('Teams')
+  ).toBeVisible();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    '/api/v1/search/query?q=&index=user_search_index&*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
+
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page.waitForSelector('[data-testid="owner-select-users-search-bar"]', {
+    state: 'visible',
+  });
 
   await page.click('[data-testid="owner-select-users-search-bar"]');
 
   for (const owner of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.keyboard.type(owner);
-    await page.waitForResponse(
-      `/api/v1/search/query?q=*${owner}*%20AND%20isBot:false*index=user_search_index*`
+    await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
+    await searchOwner;
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
     );
 
     await page.getByRole('listitem', { name: owner }).click();
@@ -89,43 +126,57 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await page.getByTestId('selectable-list-update-btn').click();
 
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
+};
+
+export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
+
+  await page.getByTestId('entity-type-select').click();
+  await page.getByTitle(entityType, { exact: true }).nth(0).click();
+  await page.getByTestId('inline-save-btn').click();
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
 
   await page.click('[data-testid="tag-selector"]');
+  const waitForQueryResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  );
   await page.locator('[data-testid="tag-selector"] input').fill(tag);
+  await waitForQueryResponse;
   await page.click(`[data-testid="tag-${tag}"]`);
   await page.click('[data-testid="inline-save-btn"]');
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
 
 export const fillGlossaryTermDetails = async (
   page: Page,
   glossary: { parent: string; name: string }
 ) => {
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.click('[data-testid="tag-selector"]');
+  const searchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=**&index=glossary_term_search_index&**`
+  );
   await page.locator('[data-testid="tag-selector"] input').fill(glossary.name);
+  await searchResponse;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
   await page.click('[data-testid="saveAssociatedTag"]');
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
 
 export const fillDomainDetails = async (
   page: Page,
   domains: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter');
 
   await page.click(
     '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
@@ -143,8 +194,24 @@ export const fillDomainDetails = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
+
   await page.getByTestId('saveAssociatedTag').click();
+
   await page.waitForTimeout(100);
+};
+
+export const fillStoredProcedureCode = async (page: Page) => {
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
+
+  // Wait for the loader to disappear
+  await page.waitForSelector('.ant-skeleton-content', { state: 'hidden' });
+
+  await page
+    .getByTestId('code-mirror-container')
+    .getByRole('textbox')
+    .fill(BULK_IMPORT_EXPORT_SQL_QUERY);
+
+  await page.getByTestId('save').click();
 };
 
 const editGlossaryCustomProperty = async (
@@ -163,6 +230,10 @@ const editGlossaryCustomProperty = async (
       .getByTestId('value-input')
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
     await page.getByTestId('inline-save-btn').click();
+
+    await expect(
+      page.getByTestId(propertyName).getByTestId('value')
+    ).toHaveText(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
@@ -172,11 +243,17 @@ const editGlossaryCustomProperty = async (
       .locator(descriptionBox)
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
 
+    await clickOutside(page);
+
     await page.getByTestId('markdown-editor').getByTestId('save').click();
 
     await page.waitForSelector(descriptionBox, {
       state: 'detached',
     });
+
+    await expect(
+      page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
+    ).toContainText('### Overview');
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
@@ -186,6 +263,10 @@ const editGlossaryCustomProperty = async (
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
 
     await page.getByTestId('inline-save-btn').click();
+
+    await expect(
+      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+    ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
@@ -199,6 +280,14 @@ const editGlossaryCustomProperty = async (
     await fillTableColumnInputDetails(page, values[1], columns[1]);
 
     await page.locator('[data-testid="update-table-type-property"]').click();
+
+    await expect(
+      page.getByTestId(propertyName).getByRole('cell', { name: columns[0] })
+    ).toBeVisible();
+
+    await expect(
+      page.getByTestId(propertyName).getByRole('cell', { name: values[0] })
+    ).toBeVisible();
   }
 };
 
@@ -206,9 +295,7 @@ export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
 
   // Wait for the loader to disappear
   await page.waitForSelector('.ant-skeleton-content', { state: 'hidden' });
@@ -225,7 +312,7 @@ export const fillCustomPropertyDetails = async (
 
   await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
 
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
 
 export const fillGlossaryRowDetails = async (
@@ -244,68 +331,83 @@ export const fillGlossaryRowDetails = async (
     owners: string[];
   },
   page: Page,
-  propertyListName: Record<string, string>
+  propertyListName?: Record<string, string>
 ) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.name);
 
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
 
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.synonyms);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillGlossaryTermDetails(page, row.relatedTerm);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.references);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.reviewers);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
-  await fillCustomPropertyDetails(page, propertyListName);
+  await fillTextInputDetails(page, '#ccc');
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  const base64Src =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  await fillTextInputDetails(page, base64Src);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  if (propertyListName) {
+    await fillCustomPropertyDetails(page, propertyListName);
+  }
 };
 
 export const validateImportStatus = async (
@@ -334,7 +436,7 @@ export const validateImportStatus = async (
 
   expect(failedRow).toBe(status.failed);
 
-  await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+  await page.waitForSelector('.rdg-header-row', {
     state: 'visible',
   });
 };
@@ -348,6 +450,10 @@ export const createDatabaseRowDetails = () => {
     There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..`,
     tag: 'PII.Sensitive',
     tier: 'Tier1',
+    entityType: 'Database',
+    retentionPeriod: '1 year',
+    sourceUrl: 'www.xyz.com',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -362,6 +468,8 @@ export const createDatabaseSchemaRowDetails = () => {
     tier: 'Tier1',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
+    entityType: 'Database Schema',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -376,6 +484,8 @@ export const createTableRowDetails = () => {
     tier: 'Tier1',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
+    entityType: 'Table',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -391,6 +501,30 @@ export const createColumnRowDetails = () => {
     tag: 'PII.Sensitive',
     arrayDataType: 'INT',
     dataLength: '10',
+    entityType: 'Column',
+  };
+};
+
+export const createColumnRowDetailsWithEncloseDot = () => {
+  return {
+    ...createColumnRowDetails(),
+    name: `"playwright.column ${uuid()}"`,
+  };
+};
+
+export const createStoredProcedureRowDetails = () => {
+  return {
+    name: `playwright,storedprocedure,${uuid()}`,
+    displayName: 'Playwright,StoredProcedure',
+    description: `Playwright StoredProcedure description.
+      Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit...
+      There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..`,
+    tag: 'PII.Sensitive',
+    tier: 'Tier1',
+    entityType: 'Stored Procedure',
+    retentionPeriod: '1 year',
+    sourceUrl: 'www.xyz.com',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -461,6 +595,7 @@ export const fillRowDetails = async (
       parent: string;
     };
     tier: string;
+    certification: string;
     retentionPeriod?: string;
     sourceUrl?: string;
     domains: {
@@ -470,76 +605,94 @@ export const fillRowDetails = async (
     };
   },
   page: Page,
-  customPropertyRecord: Record<string, string>
+  customPropertyRecord?: Record<string, string>,
+  isFirstCellClick?: boolean
 ) => {
-  await page.locator('[data-props-id="name*"]').last().click();
-  await fillTextInputDetails(page, row.name);
+  if (!isFirstCellClick) {
+    await page.locator('.rdg-cell-name').last().click();
+  }
 
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+  const isActive = await activeCell.isVisible();
+
+  if (isActive) {
+    await fillTextInputDetails(page, row.name);
+  } else {
+    // Click the name cell again
+    await page.locator('.rdg-cell-name').last().click();
+    await fillTextInputDetails(page, row.name);
+  }
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
 
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillGlossaryTermDetails(page, row.glossary);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
+  await page.click(`[data-testid="update-tier-card"]`);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
+
+  await page.click(`[data-testid="radio-btn-${row.certification}"]`);
+  await page.getByTestId('update-certification').click();
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
 
   if (row.retentionPeriod) {
     await fillTextInputDetails(page, row.retentionPeriod);
 
     await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
+      .locator(RDG_ACTIVE_CELL_SELECTOR)
       .press('ArrowRight', { delay: 100 });
   }
   if (row.sourceUrl) {
     await fillTextInputDetails(page, row.sourceUrl);
     await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
+      .locator(RDG_ACTIVE_CELL_SELECTOR)
       .press('ArrowRight', { delay: 100 });
   }
 
   await fillDomainDetails(page, row.domains);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
-  await fillCustomPropertyDetails(page, customPropertyRecord);
+  if (customPropertyRecord) {
+    await fillCustomPropertyDetails(page, customPropertyRecord);
+  }
 };
 
 export const fillColumnDetails = async (
@@ -562,49 +715,49 @@ export const fillColumnDetails = async (
   await fillTextInputDetails(page, row.name);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.displayName);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.arrayDataType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataLength);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
   await fillGlossaryTermDetails(page, row.glossary);
 };
@@ -614,10 +767,44 @@ export const pressKeyXTimes = async (
   length: number,
   key: string
 ) => {
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second delay between retries
+
   for (let i = 0; i < length; i++) {
-    await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
-      .press(key, { delay: 100 });
+    let retryCount = 0;
+    let success = false;
+
+    while (!success && retryCount < maxRetries) {
+      try {
+        // Wait for the active cell to be visible
+        const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+        await activeCell.waitFor({ state: 'visible', timeout: 5000 });
+
+        // Ensure the cell is focused
+        if (!(await activeCell.isVisible())) {
+          await activeCell.click({ timeout: 5000 });
+        }
+
+        // Perform the key press with a longer delay
+        await activeCell.press(key, { delay: 200 });
+
+        // Verify the key press was successful by checking if the cell is still active
+        await page.waitForTimeout(100); // Small delay to allow for state updates
+        const isStillActive = await activeCell.isVisible();
+
+        if (isStillActive) {
+          success = true;
+        } else {
+          // If cell lost focus, try to regain it
+          await activeCell.click({ timeout: 5000 });
+          retryCount++;
+          await page.waitForTimeout(retryDelay);
+        }
+      } catch {
+        retryCount++;
+        await page.waitForTimeout(retryDelay);
+      }
+    }
   }
 };
 
@@ -669,4 +856,241 @@ export const createCustomPropertiesForEntity = async (
   }
 
   return propertyListName;
+};
+
+export const fillRecursiveEntityTypeFQNDetails = async (
+  fullyQualifiedName: string,
+  entityType: string,
+  page: Page
+) => {
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillEntityTypeDetails(page, entityType);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, fullyQualifiedName);
+};
+
+export const fillRecursiveColumnDetails = async (
+  row: {
+    name: string;
+    displayName: string;
+    description: string;
+    tag: string;
+    glossary: {
+      name: string;
+      parent: string;
+    };
+    fullyQualifiedName: string;
+    entityType: string;
+    dataTypeDisplay: string;
+    dataType: string;
+    arrayDataType: string;
+    dataLength: string;
+  },
+  page: Page
+) => {
+  await page.locator('.rdg-cell-name').last().click();
+
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+  const isActive = await activeCell.isVisible();
+
+  if (isActive) {
+    await fillTextInputDetails(page, row.name);
+  } else {
+    // Click the name cell again
+    await page.locator('.rdg-cell-name').last().click();
+    await fillTextInputDetails(page, row.name);
+  }
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
+
+  await fillTextInputDetails(page, row.displayName);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillDescriptionDetails(page, row.description);
+
+  await pressKeyXTimes(page, 2, 'ArrowRight');
+
+  await fillTagDetails(page, row.tag);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await fillGlossaryTermDetails(page, row.glossary);
+
+  await pressKeyXTimes(page, 7, 'ArrowRight');
+
+  await fillEntityTypeDetails(page, row.entityType);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.fullyQualifiedName);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.dataTypeDisplay);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.dataType);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.arrayDataType);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.dataLength);
+};
+
+export const firstTimeGridAddRowAction = async (page: Page) => {
+  const firstRow = page.locator('.rdg-row').first();
+  if ((await firstRow.count()) > 0) {
+    const firstCell = page
+      .locator('.rdg-row')
+      .first()
+      .locator('.rdg-cell')
+      .first();
+
+    await expect(firstCell).toBeFocused();
+
+    await page.click('[data-testid="add-row-btn"]');
+
+    await expect(firstCell).not.toBeFocused(); // focus should get removed from first cell
+  } else {
+    await page.click('[data-testid="add-row-btn"]');
+  }
+
+  const lastRowFirstCell = page
+    .locator('.rdg-row')
+    .last()
+    .locator('.rdg-cell')
+    .first();
+
+  await expect(lastRowFirstCell).toBeFocused();
+};
+
+export const performDeleteOperationOnEntity = async (page: Page) => {
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
+
+  // Description Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Owner Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Tag Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Glossary Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Tier Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Certification Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Retention Period Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Source URL Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Domains Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+};
+
+export const performColumnSelectAndDeleteOperation = async (page: Page) => {
+  const displayNameHeader = page.getByRole('columnheader', {
+    name: 'Display Name',
+  });
+
+  const firstRow = page.locator('.rdg-row').first();
+  const firstCell = firstRow.locator('.rdg-cell').nth(1);
+
+  await displayNameHeader.click();
+
+  await expect(firstCell).not.toBeFocused();
+
+  await expect(displayNameHeader).toBeFocused();
+
+  await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(9);
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  await expect(
+    page.getByRole('gridcell', { name: 'Playwright,Database', exact: true })
+  ).not.toBeVisible(); // Display Name cell should be deleted
+};
+
+export const performBulkDownload = async (page: Page, fileName: string) => {
+  const downloadPromise = page.waitForEvent('download');
+
+  await page.click('[data-testid="manage-button"]');
+  await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
+    state: 'visible',
+  });
+  await page.click('[data-testid="export-button-title"]');
+
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
+  await page.fill('#fileName', fileName);
+  await page.click('#submit-button');
+
+  await page.waitForSelector('.message-banner-wrapper', {
+    state: 'detached',
+  });
+  const download = await downloadPromise;
+
+  // Wait for the download process to complete and save the downloaded file somewhere.
+  await download.saveAs('downloads/' + download.suggestedFilename());
 };

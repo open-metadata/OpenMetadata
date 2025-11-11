@@ -13,21 +13,22 @@
 
 package org.openmetadata.service.exception;
 
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.Family;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.Family;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
-import javax.ws.rs.Path;
-import javax.ws.rs.ProcessingException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.sdk.exception.WebServiceException;
@@ -44,8 +45,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     LOG.debug(ex.getMessage());
     if (ex instanceof ProcessingException
         || ex instanceof IllegalArgumentException
-        || ex instanceof javax.ws.rs.BadRequestException) {
-      return getResponse(BadRequestException.of().getResponse(), ex);
+        || ex instanceof BadRequestException) {
+      return getResponse(Response.status(Response.Status.BAD_REQUEST).build(), ex);
     } else if (ex instanceof UnableToExecuteStatementException) {
       if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
           || ex.getCause() instanceof PSQLException
@@ -54,6 +55,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       }
     } else if (ex instanceof EntityNotFoundException) {
       return getResponse(NOT_FOUND, ex.getLocalizedMessage());
+    } else if (ex instanceof PreconditionFailedException) {
+      return getResponse(Response.Status.PRECONDITION_FAILED, ex.getLocalizedMessage());
     } else if (ex instanceof IngestionPipelineDeploymentException) {
       return getResponse(BAD_REQUEST, ex.getLocalizedMessage());
     } else if (ex instanceof AuthenticationException) {

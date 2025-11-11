@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -132,4 +132,30 @@ class OMetaIngestionPipelineMixin:
         if hasattr(resp, "sourceConfig"):
             return parse_ingestion_pipeline_config_gracefully(resp)
 
+        return None
+
+    def extract_pipeline_id_from_fqn(
+        self, ingestion_pipeline_fqn: str
+    ) -> Optional[str]:
+        """
+        Extract pipeline ID from FQN by fetching the pipeline entity
+
+        Args:
+            ingestion_pipeline_fqn (str): Fully qualified name of the ingestion pipeline
+
+        Returns:
+            Optional[str]: Pipeline ID if found, None otherwise
+        """
+        try:
+            pipeline = self.get_by_name(
+                entity=IngestionPipeline, fqn=ingestion_pipeline_fqn
+            )
+            if pipeline and hasattr(pipeline, "id"):
+                return str(
+                    pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}"
+            )
         return None

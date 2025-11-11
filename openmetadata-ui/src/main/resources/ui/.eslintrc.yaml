@@ -18,7 +18,7 @@ env:
 
 extends:
   - eslint:recommended
-  - plugin:react/recommended
+  - plugin:react/jsx-runtime
   - plugin:jest/recommended
   - plugin:jest/style
   - plugin:jest-formatting/recommended
@@ -272,4 +272,6 @@ settings:
         - '.png'
         - '.svg'
   react:
+    version: detect
+  jest:
     version: detect

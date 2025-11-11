@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,20 @@ import traceback
 
 from requests import HTTPError
 
+from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
+    AzureAdSetup,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
+from metadata.ingestion.source.database.databricks.auth import (
+    get_azure_ad_auth,
+    get_databricks_oauth_auth,
+    get_personal_access_token_auth,
+)
 from metadata.ingestion.source.database.databricks.client import (
     API_TIMEOUT,
     DatabricksClient,
@@ -27,7 +41,7 @@ from metadata.ingestion.source.database.unitycatalog.models import (
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-TABLE_LINEAGE_PATH = "/lineage-tracking/table-lineage/get"
+TABLE_LINEAGE_PATH = "/lineage-tracking/table-lineage"
 COLUMN_LINEAGE_PATH = "/lineage-tracking/column-lineage/get"
 TABLES_PATH = "/unity-catalog/tables"
 
@@ -36,6 +50,26 @@ class UnityCatalogClient(DatabricksClient):
     """
     UnityCatalogClient creates a Databricks connection based on DatabricksCredentials.
     """
+
+    def _get_auth_header(self) -> dict[str, str]:
+        """
+        Method to get auth header
+        """
+        auth_method = {
+            PersonalAccessToken: get_personal_access_token_auth,
+            DatabricksOauth: get_databricks_oauth_auth,
+            AzureAdSetup: get_azure_ad_auth,
+        }.get(type(self.config.authType))
+        if not auth_method:
+            raise ValueError(
+                f"Unsupported authentication type: {type(self.config.authType)}"
+            )
+
+        auth_args = auth_method(self.config)
+        if auth_args.get("access_token"):
+            return {"Authorization": f"Bearer {auth_args['access_token']}"}
+
+        return auth_args["credentials_provider"]()()
 
     def get_table_lineage(self, table_name: str) -> LineageTableStreams:
         """

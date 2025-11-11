@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
-.domain-selectable-tree {
+.ant-tree.domain-selectable-tree {
   overflow: auto;
   height: 270px;
 
+  padding-top: 4px;
   .ant-tree-treenode {
     .ant-tree-node-content-wrapper {
       &.ant-tree-node-selected {
@@ -35,4 +36,11 @@
       }
     }
   }
+}
+.all-domain-container.selected-node {
+  background-color: @primary-1;
+}
+.custom-domain-edit-select .ant-select-selection-placeholder,
+.custom-domain-edit-select .ant-select-selection-search-input::placeholder {
+  padding-left: @size-xs;
 }

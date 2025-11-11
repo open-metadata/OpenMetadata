@@ -13,7 +13,6 @@
 
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
@@ -26,16 +25,26 @@ const AssignErrorPlaceHolder = ({
   heading,
   button,
   children,
+  permissionValue,
 }: AssignPlaceholderProps) => {
   const { t } = useTranslation();
 
   if (!permission) {
-    return <PermissionErrorPlaceholder className={className} size={size} />;
+    return (
+      <PermissionErrorPlaceholder
+        className={className}
+        permissionValue={permissionValue}
+        size={size}
+      />
+    );
   }
 
   return (
     <div
-      className={classNames(className, 'h-full flex-center')}
+      className={classNames(
+        className,
+        'h-full flex-center border-default border-radius-sm bg-white'
+      )}
       data-testid={`assign-error-placeholder-${heading}`}>
       <Space align="center" className="w-full" direction="vertical" size={10}>
         <AddPlaceHolderIcon
@@ -45,11 +54,10 @@ const AssignErrorPlaceHolder = ({
         />
         <div className="text-center text-sm font-normal">
           <Typography.Paragraph className="w-max-600">
-            {children
-              ? children
-              : t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: heading,
-                })}
+            {children ??
+              t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: heading,
+              })}
           </Typography.Paragraph>
 
           {button}

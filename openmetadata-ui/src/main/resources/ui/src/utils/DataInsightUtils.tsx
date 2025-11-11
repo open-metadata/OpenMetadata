@@ -12,8 +12,6 @@
  */
 
 import { Card, Typography } from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
-import { t } from 'i18next';
 import {
   first,
   get,
@@ -29,8 +27,7 @@ import {
   toNumber,
   uniqBy,
 } from 'lodash';
-import moment from 'moment';
-import React from 'react';
+import { DateTime } from 'luxon';
 import {
   CartesianGrid,
   LegendProps,
@@ -41,6 +38,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { RangePickerProps } from '../components/common/DatePicker/DatePicker';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -70,6 +68,7 @@ import { entityChartColor } from '../utils/CommonUtils';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
+import { t } from './i18next/LocalUtil';
 
 export const renderLegend = (
   legendData: LegendProps,
@@ -142,13 +141,18 @@ export const getEntryFormattedValue = (
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   const {
     active,
-    payload = [],
-    valueFormatter,
+    cardStyles,
+    customValueKey,
     dateTimeFormatter = formatDate,
     isPercentage,
+    labelStyles,
+    listContainerStyles,
+    payload = [],
     timeStampKey = 'timestampValue',
+    titleStyles,
     transformLabel = true,
-    customValueKey,
+    valueFormatter,
+    valueStyles,
   } = props;
 
   if (active && payload && payload.length) {
@@ -162,8 +166,15 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     return (
       <Card
         className="custom-data-insight-tooltip"
-        title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
-        <ul className="custom-data-insight-tooltip-container">
+        style={cardStyles}
+        title={
+          <Typography.Title level={5} style={titleStyles}>
+            {timestamp}
+          </Typography.Title>
+        }>
+        <ul
+          className="custom-data-insight-tooltip-container"
+          style={listContainerStyles}>
           {payloadValue.map((entry, index) => {
             const value = customValueKey
               ? entry.payload[customValueKey]
@@ -181,11 +192,13 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
                     width={12}>
                     <rect fill={entry.color} height="14" rx="2" width="14" />
                   </Surface>
-                  {transformLabel
-                    ? startCase(entry.name ?? (entry.dataKey as string))
-                    : entry.name ?? (entry.dataKey as string)}
+                  <span style={labelStyles}>
+                    {transformLabel
+                      ? startCase(entry.name ?? (entry.dataKey as string))
+                      : entry.name ?? (entry.dataKey as string)}
+                  </span>
                 </span>
-                <span className="font-medium">
+                <span className="font-medium" style={valueStyles}>
                   {valueFormatter
                     ? valueFormatter(value, entry.name ?? entry.dataKey)
                     : getEntryFormattedValue(value, isPercentage)}
@@ -408,8 +421,9 @@ export const getWebChartSummary = (
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   // Can not select days before today
+  const today = DateTime.now().startOf('day');
 
-  return current && current.isBefore(moment().subtract(1, 'day'));
+  return current ? current.startOf('day') < today : false;
 };
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
@@ -524,8 +538,8 @@ export const renderDataInsightLineChart = (
 };
 
 export const getQueryFilterForDataInsightChart = (
-  teamFilter?: string,
-  tierFilter?: string
+  teamFilter?: string[],
+  tierFilter?: string[]
 ) => {
   if (!tierFilter && !teamFilter) {
     return undefined;
@@ -535,18 +549,28 @@ export const getQueryFilterForDataInsightChart = (
     query: {
       bool: {
         must: [
-          {
-            bool: {
-              must: [
-                ...(tierFilter
-                  ? [{ term: { 'tier.keyword': tierFilter } }]
-                  : []),
-                ...(teamFilter
-                  ? [{ term: { 'owners.displayName.keyword': teamFilter } }]
-                  : []),
-              ],
-            },
-          },
+          ...(tierFilter
+            ? [
+                {
+                  bool: {
+                    should: tierFilter.map((tier) => ({
+                      term: { 'tier.keyword': tier },
+                    })),
+                  },
+                },
+              ]
+            : []),
+          ...(teamFilter
+            ? [
+                {
+                  bool: {
+                    should: teamFilter.map((team) => ({
+                      term: { 'owners.name.keyword': team },
+                    })),
+                  },
+                },
+              ]
+            : []),
         ],
       },
     },

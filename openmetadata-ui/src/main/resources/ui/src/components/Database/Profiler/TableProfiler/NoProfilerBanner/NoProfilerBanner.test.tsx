@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import '../../../../../test/unit/mocks/mui.mock';
 import NoProfilerBanner from './NoProfilerBanner.component';
 
 jest.mock('react-router-dom', () => ({
@@ -31,7 +31,10 @@ describe('NoProfilerBanner', () => {
     expect(
       await screen.findByTestId('no-profiler-placeholder')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('error-msg')).toBeInTheDocument();
+    expect(await screen.findByTestId('profiler-title')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('profiler-description')
+    ).toBeInTheDocument();
     expect(await screen.findByTestId('documentation-link')).toBeInTheDocument();
   });
 });

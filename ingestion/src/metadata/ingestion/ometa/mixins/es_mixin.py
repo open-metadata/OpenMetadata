@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,7 +39,9 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
 from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -97,7 +99,7 @@ class ESMixin(Generic[T]):
 
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
-        "&size={size}&index={index}"
+        "&size={size}&index={index}&deleted=false"
     )
 
     # sort_field needs to be unique for the pagination to work, so we can use the FQN
@@ -125,14 +127,20 @@ class ESMixin(Generic[T]):
         if response:
             if fields:
                 fields = fields.split(",")
-            return [
-                self.get_by_name(
+
+            entities = []
+            for hit in response["hits"]["hits"]:
+                entity = self.get_by_name(
                     entity=entity_type,
                     fqn=hit["_source"]["fullyQualifiedName"],
                     fields=fields,
                 )
-                for hit in response["hits"]["hits"]
-            ] or None
+                if entity is None:
+                    continue
+
+                entities.append(entity)
+
+            return entities or None
 
         return None
 
@@ -398,6 +406,7 @@ class ESMixin(Generic[T]):
                     f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
                 )
 
+    @calculate_execution_time_generator(context="ES.FetchViewDefinition")
     def yield_es_view_def(
         self,
         service_name: str,
@@ -444,6 +453,11 @@ class ESMixin(Generic[T]):
                                                 {
                                                     "term": {
                                                         "tableType": TableType.Dynamic.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.Stream.value
                                                     }
                                                 },
                                             ]
@@ -508,10 +522,13 @@ class ESMixin(Generic[T]):
         fetch table from es when with/without `db_service_name`
         """
         try:
+            prepended_fqn = fqn.prefix_entity_for_wildcard_search(
+                entity_type=entity_type, fqn=fqn_search_string
+            )
             entity_result = get_entity_from_es_result(
                 entity_list=self.es_search_from_fqn(
                     entity_type=entity_type,
-                    fqn_search_string=fqn_search_string,
+                    fqn_search_string=prepended_fqn,
                 ),
                 fetch_multiple_entities=fetch_multiple_entities,
             )

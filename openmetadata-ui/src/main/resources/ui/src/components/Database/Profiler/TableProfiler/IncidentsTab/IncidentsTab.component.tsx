@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import IncidentManager from '../../../../IncidentManager/IncidentManager.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 
@@ -18,8 +17,12 @@ const IncidentsTab = () => {
   const { table } = useTableProfiler();
 
   return (
-    <div className="p-b-lg p-t-md">
-      <IncidentManager isIncidentPage={false} tableDetails={table} />
+    <div className="p-b-lg">
+      <IncidentManager
+        isDateRangePickerVisible={false}
+        isIncidentPage={false}
+        tableDetails={table}
+      />
     </div>
   );
 };

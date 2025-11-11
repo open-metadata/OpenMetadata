@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@ Query masking utilities
 """
 
 import traceback
+from typing import Optional
 
 from cachetools import LRUCache
 from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
@@ -20,11 +21,13 @@ from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
+from metadata.utils.execution_time_tracker import calculate_execution_time
 
 MASK_TOKEN = "?"
 
 # Cache size is 128 to avoid memory issues
 masked_query_cache = LRUCache(maxsize=128)
+
 
 # pylint: disable=protected-access
 def get_logger():
@@ -52,7 +55,6 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner):
                 Literal.Number.Integer,
                 Literal.Number.Float,
                 Literal.String.Single,
-                Literal.String.Symbol,
             ):
                 token.value = MASK_TOKEN
             elif token.is_group:
@@ -112,8 +114,12 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     return query
 
 
+@calculate_execution_time(context="MaskQuery")
 def mask_query(
-    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
+    query: str,
+    dialect: str = Dialect.ANSI.value,
+    parser: Optional[LineageRunner] = None,
+    parser_required: bool = False,
 ) -> str:
     """
     Mask a query using sqlparse or sqlfluff.
@@ -122,6 +128,8 @@ def mask_query(
     try:
         if masked_query_cache.get((query, dialect)):
             return masked_query_cache.get((query, dialect))
+        if parser_required and not parser:
+            return None
         if not parser:
             try:
                 parser = LineageRunner(query, dialect=dialect)

@@ -13,9 +13,7 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
-import { DateRangeObject } from 'Models';
-import Qs from 'qs';
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -24,20 +22,23 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { useParams } from 'react-router-dom';
+import { ReactComponent as ColumnCountIcon } from '../../../../assets/svg/data-observability/column-count.svg';
+import { ReactComponent as CreatedDateIcon } from '../../../../assets/svg/data-observability/created-date.svg';
+import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data-observability/profile-sample.svg';
+import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
+import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
-import {
-  DEFAULT_RANGE_DATA,
-  DEFAULT_SORT_ORDER,
-} from '../../../../constants/profiler.constant';
+import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { fetchTestCaseResultByTestSuiteId } from '../../../../rest/dataQualityDashboardAPI';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
@@ -46,10 +47,16 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
+import {
+  aggregateTestResultsByEntity,
+  TestCaseCountByStatus,
+} from '../../../../utils/DataQuality/DataQualityUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
+import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
 import {
   OverallTableSummaryType,
@@ -65,14 +72,13 @@ export const TableProfilerContext =
 export const TableProfilerProvider = ({
   children,
   permissions,
-  table,
-  testCaseSummary,
+  table: tableEntity,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
-  const testCasePaging = usePaging(PAGE_SIZE_BASE);
-  const location = useCustomLocation();
+  const testCasePaging = usePaging();
+  const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
   // customMetric is fetch from table api and has response type of Table
@@ -81,26 +87,22 @@ export const TableProfilerProvider = ({
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
+  const [testLevel, setTestLevel] = useState<TestLevel>();
+  const [table, setTable] = useState<Table | undefined>(tableEntity);
+  const [testCaseSummary, setTestCaseSummary] =
+    useState<Record<string, TestCaseCountByStatus>>();
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
-  const {
-    activeTab = isTourOpen
-      ? TableProfilerTab.COLUMN_PROFILE
-      : TableProfilerTab.TABLE_PROFILE,
-  } = useMemo(() => {
-    const param = location.search;
-    const searchData = Qs.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+  // Get activeTab from URL path (subTab param), fallback to default based on tour state
+  const activeTab = useMemo(() => {
+    const defaultTab = isTourOpen
+      ? ProfilerTabPath.COLUMN_PROFILE
+      : ProfilerTabPath.TABLE_PROFILE;
 
-    return searchData as {
-      activeTab: TableProfilerTab;
-      activeColumnFqn: string;
-    };
-  }, [location.search, isTourOpen]);
+    return subTab ?? defaultTab;
+  }, [subTab, isTourOpen]);
 
   const viewTest = useMemo(() => {
     return (
@@ -134,35 +136,56 @@ export const TableProfilerProvider = ({
         title: t('label.entity-count', {
           entity: t('label.row'),
         }),
+        key: 'row-count',
         value: profile?.rowCount ?? 0,
+        icon: RowCountIcon,
       },
       {
         title: t('label.column-entity', {
           entity: t('label.count'),
         }),
-        value: profile?.columnCount ?? tableProfiler?.columns.length ?? 0,
+        key: 'column-count',
+        value: profile?.columnCount ?? tableProfiler?.columns?.length ?? 0,
+        icon: ColumnCountIcon,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
+        key: 'profile-sample-type',
         value: getProfileSampleValue(),
+        icon: ProfileSampleIcon,
       },
       {
         title: t('label.size'),
+        key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
+        icon: TotalSizeIcon,
       },
       {
         title: t('label.created-date'),
+        key: 'created-date',
         value: profile?.createDateTime
           ? DateTime.fromJSDate(new Date(profile?.createDateTime))
               .toUTC()
               .toLocaleString(DateTime.DATE_MED)
           : '--',
+        extra: profile?.timestamp
+          ? `Last updated: ${DateTime.fromJSDate(
+              new Date(profile?.timestamp)
+            ).toLocaleString(DateTime.DATETIME_MED)}`
+          : undefined,
+        icon: CreatedDateIcon,
       },
     ];
   }, [tableProfiler]);
 
-  const handleDateRangeChange = (data: DateRangeObject) => {
-    setDateRangeObject(data);
+  const handleOpenTestCaseDrawer = (type: TestLevel) => {
+    setIsTestCaseDrawerOpen(true);
+    setTestLevel(type);
+  };
+
+  const handleCloseTestCaseDrawer = () => {
+    setIsTestCaseDrawerOpen(false);
+    setTestLevel(undefined);
   };
 
   const onTestCaseUpdate = useCallback(
@@ -186,6 +209,28 @@ export const TableProfilerProvider = ({
   };
   const handleUpdateCustomMetrics = (customMetric: Table) => {
     setCustomMetric(customMetric);
+  };
+
+  const onTestCaseSubmit = (testCase: TestCase) => {
+    setTable((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, testSuite: testCase.testSuite };
+    });
+
+    const paging = {
+      ...testCasePaging.paging,
+      // Increase total count as we are adding new test case
+      total: (testCasePaging.paging?.total || 0) + 1,
+    };
+
+    testCasePaging.handlePagingChange(paging);
+
+    setAllTestCases((prevTestCases) => {
+      return [testCase, ...prevTestCases];
+    });
   };
 
   const fetchLatestProfilerData = async () => {
@@ -222,6 +267,7 @@ export const TableProfilerProvider = ({
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: testCasePaging.pageSize,
+        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
       });
 
       setAllTestCases(data);
@@ -238,10 +284,9 @@ export const TableProfilerProvider = ({
       !isTableDeleted &&
       datasetFQN &&
       !isTourOpen &&
-      [
-        TableProfilerTab.TABLE_PROFILE,
-        TableProfilerTab.COLUMN_PROFILE,
-      ].includes(activeTab) &&
+      [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
+        activeTab
+      ) &&
       isUndefined(tableProfiler);
 
     if (fetchProfiler) {
@@ -256,7 +301,7 @@ export const TableProfilerProvider = ({
 
   useEffect(() => {
     const fetchTest =
-      !isTourOpen && activeTab === TableProfilerTab.DATA_QUALITY && viewTest;
+      !isTourOpen && activeTab === ProfilerTabPath.DATA_QUALITY && viewTest;
 
     if (fetchTest) {
       fetchAllTests();
@@ -265,6 +310,32 @@ export const TableProfilerProvider = ({
       setIsTestsLoading(false);
     }
   }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
+
+  const fetchTestCaseSummary = useCallback(async () => {
+    if (isUndefined(table?.testSuite?.id)) {
+      return;
+    }
+    try {
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        table.testSuite.id
+      );
+      const testCaseResults = aggregateTestResultsByEntity(
+        data as Array<{
+          document_count: string;
+          entityFQN: string;
+          'testCaseResult.testCaseStatus': string;
+        }>
+      );
+
+      setTestCaseSummary(testCaseResults);
+    } catch (error) {
+      setTestCaseSummary(undefined);
+    }
+  }, [table?.testSuite?.id]);
+
+  useEffect(() => {
+    fetchTestCaseSummary();
+  }, []);
 
   const tableProfilerPropsData: TableProfilerContextInterface = useMemo(() => {
     return {
@@ -281,11 +352,11 @@ export const TableProfilerProvider = ({
       isProfilingEnabled: !isUndefined(tableProfiler?.profile),
       customMetric,
       onCustomMetricUpdate: handleUpdateCustomMetrics,
-      onDateRangeChange: handleDateRangeChange,
-      dateRangeObject,
       testCasePaging,
       table,
       testCaseSummary,
+      onTestCaseDrawerOpen: handleOpenTestCaseDrawer,
+      isTestCaseDrawerOpen,
     };
   }, [
     isTestsLoading,
@@ -297,10 +368,11 @@ export const TableProfilerProvider = ({
     overallSummary,
     onTestCaseUpdate,
     customMetric,
-    dateRangeObject,
     testCasePaging,
     table,
     testCaseSummary,
+    isTestCaseDrawerOpen,
+    handleOpenTestCaseDrawer,
   ]);
 
   return (
@@ -312,6 +384,17 @@ export const TableProfilerProvider = ({
           tableId={table?.id ?? ''}
           visible={settingModalVisible}
           onVisibilityChange={handleSettingModal}
+        />
+      )}
+      {isTestCaseDrawerOpen && (
+        <TestCaseFormV1
+          drawerProps={{
+            open: isTestCaseDrawerOpen,
+          }}
+          table={table}
+          testLevel={testLevel}
+          onCancel={handleCloseTestCaseDrawer}
+          onFormSubmit={onTestCaseSubmit}
         />
       )}
     </TableProfilerContext.Provider>

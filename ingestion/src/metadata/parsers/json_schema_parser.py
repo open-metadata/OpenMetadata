@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,9 +68,49 @@ def parse_json_schema(
 
 def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel):
     """
-    Method to parse the child objects in the json schema
+    Method to parse the child objects in the json schema.
+    Handles oneOf union types (e.g., Debezium CDC nullable fields).
     """
     try:
+        # Handle oneOf union types (e.g., [{"type": "null"}, {"type": "object", "properties": {...}}])
+        # Common in Debezium CDC schemas for nullable fields like "after" and "before"
+        if "oneOf" in value and isinstance(value["oneOf"], list):
+            # Find the non-null object schema in the union
+            object_schema = None
+            for option in value["oneOf"]:
+                if (
+                    isinstance(option, dict)
+                    and option.get("type") == JsonSchemaDataTypes.RECORD.value
+                ):
+                    object_schema = option
+                    break
+
+            if object_schema:
+                # Use the object schema's properties and metadata
+                cls_obj = cls(
+                    name=key,
+                    displayName=value.get("title") or object_schema.get("title"),
+                    dataType=JsonSchemaDataTypes.RECORD.name,
+                    description=value.get("description")
+                    or object_schema.get("description"),
+                )
+                children = get_json_schema_fields(
+                    object_schema.get("properties", {}), cls=cls
+                )
+                cls_obj.children = children
+                field_models.append(cls_obj)
+                return
+            # If no object found in oneOf, treat as UNKNOWN
+            cls_obj = cls(
+                name=key,
+                displayName=value.get("title"),
+                dataType=JsonSchemaDataTypes.UNKNOWN.name,
+                description=value.get("description"),
+            )
+            field_models.append(cls_obj)
+            return
+
+        # Standard type handling
         cls_obj = cls(
             name=key,
             displayName=value.get("title"),

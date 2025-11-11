@@ -14,9 +14,9 @@ import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
+import { useNavigate } from 'react-router-dom';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -24,7 +24,6 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -36,11 +35,12 @@ import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateQuery } from '../../generated/api/data/createQuery';
 import { Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
-import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
@@ -50,12 +50,13 @@ import {
   getEntityName,
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
@@ -65,6 +66,7 @@ const AddQueryPage = () => {
   const [table, setTable] = useState<Table>();
   const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
   const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate();
 
   const fetchEntityDetails = async () => {
     try {
@@ -97,15 +99,12 @@ const AddQueryPage = () => {
     searchValue = ''
   ): Promise<DefaultOptionType[]> => {
     try {
-      const { data } = await searchData(
-        searchValue,
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_MEDIUM,
-        '',
-        '',
-        '',
-        SearchIndex.TABLE
-      );
+      const data = await searchQuery({
+        query: searchValue,
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
+        searchIndex: SearchIndex.TABLE,
+      });
       const options = data.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
@@ -142,7 +141,7 @@ const AddQueryPage = () => {
   }, [table]);
 
   const handleCancelClick = () => {
-    history.back();
+    navigate(-1);
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values): Promise<void> => {
@@ -173,7 +172,9 @@ const AddQueryPage = () => {
     try {
       await postQuery(updatedValues);
       showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.query') })
+        t('server.create-entity-success', {
+          entity: t('label.query'),
+        })
       );
       handleCancelClick();
     } catch (error) {
@@ -222,15 +223,19 @@ const AddQueryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
+        allowScroll: true,
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.query') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.query'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="query-form"
@@ -320,7 +325,7 @@ const AddQueryPage = () => {
             </Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -328,4 +333,4 @@ const AddQueryPage = () => {
   );
 };
 
-export default AddQueryPage;
+export default withPageLayout(AddQueryPage);

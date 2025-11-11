@@ -21,6 +21,7 @@ import {
 import {
   IngestionPipeline,
   PipelineStatus,
+  ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
@@ -55,31 +56,20 @@ export const getIngestionPipelines = async (data: {
   serviceFilter?: string;
   paging?: Omit<Paging, 'total'>;
   pipelineType?: PipelineType[];
+  provider?: ProviderType;
   testSuite?: string;
   serviceType?: string;
   limit?: number;
   applicationType?: PipelineType;
 }) => {
-  const {
-    arrQueryFields,
-    serviceFilter,
-    paging,
-    pipelineType,
-    testSuite,
-    serviceType,
-    limit,
-    applicationType,
-  } = data;
+  const { arrQueryFields, serviceFilter, paging, pipelineType, ...rest } = data;
 
   const params = {
     fields: arrQueryFields.join(','),
     service: serviceFilter,
-    testSuite,
     pipelineType: pipelineType?.length ? pipelineType.join(',') : undefined,
-    serviceType,
-    limit,
-    applicationType,
     ...paging,
+    ...rest,
   };
 
   const response = await APIClient.get<{
@@ -174,4 +164,13 @@ export const getRunHistoryForPipeline = async (
   );
 
   return response.data;
+};
+
+export const downloadIngestionPipelineLogsById = (id: string) => {
+  return APIClient.get(
+    `/services/ingestionPipelines/logs/${id}/last/download`,
+    {
+      responseType: 'blob',
+    }
+  );
 };

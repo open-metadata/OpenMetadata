@@ -12,18 +12,18 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Tag as AntdTag, Tooltip, Typography } from 'antd';
+import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
-import { omit } from 'lodash';
+import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { getExplorePath } from '../constants/constants';
 import {
   ResourceEntity,
   UIPermission,
@@ -35,7 +35,12 @@ import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Column } from '../generated/entity/data/table';
+import {
+  AssetCertification,
+  Column,
+  EntityReference,
+  TagSource,
+} from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
@@ -45,8 +50,15 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
+import { getEntityName } from './EntityUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
+import {
+  getClassificationTagPath,
+  getExplorePath,
+  getGlossaryPath,
+} from './RouterUtils';
+import { getTermQuery } from './SearchUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -186,7 +198,7 @@ export const getDeleteIcon = (arg: {
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={16} />;
+  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
 };
 
 export const getUsageCountLink = (tagFQN: string) => {
@@ -225,7 +237,7 @@ export const getTagPlaceholder = (isGlossaryType: boolean): string =>
 
 export const tagRender = (customTagProps: CustomTagProps) => {
   const { label, onClose } = customTagProps;
-  const tagLabel = getTagDisplay(label as string);
+  const tagLabel = isString(label) ? getTagDisplay(label) : label;
 
   const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
     event.preventDefault();
@@ -306,10 +318,46 @@ export const createTierTag = (tag: Tag) => {
   };
 };
 
+export const createCertificationTag = (tag: Tag) => {
+  return {
+    tagLabel: {
+      displayName: tag.displayName,
+      name: tag.name,
+      href: tag.href,
+      description: tag.description,
+      tagFQN: tag.fullyQualifiedName,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    },
+  };
+};
 export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
   return newTier
     ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
     : getTagsWithoutTier(oldTags);
+};
+
+export const updateCertificationTag = (
+  newCertification?: Tag
+): AssetCertification | undefined => {
+  if (!newCertification) {
+    return undefined;
+  }
+
+  return {
+    tagLabel: {
+      tagFQN: newCertification.fullyQualifiedName || '',
+      name: newCertification.name,
+      displayName: newCertification.displayName,
+      description: newCertification.description || '',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      style: newCertification.style,
+    },
+    appliedDate: Date.now(),
+    expiryDate: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days from now
+  };
 };
 
 export const createTagObject = (tags: EntityTags[]) => {
@@ -547,13 +595,15 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
 };
 
 export const getTagAssetsQueryFilter = (fqn: string) => {
+  let fieldName = 'tags.tagFQN';
+
   if (fqn.includes('Tier.')) {
-    return `(tier.tagFQN:"${fqn}")`;
+    fieldName = 'tier.tagFQN';
   } else if (fqn.includes('Certification.')) {
-    return `(certification.tagLabel.tagFQN:"${fqn}")`;
-  } else {
-    return `(tags.tagFQN:"${fqn}")`;
+    fieldName = 'certification.tagLabel.tagFQN';
   }
+
+  return getTermQuery({ [fieldName]: fqn });
 };
 
 export const getTagImageSrc = (iconURL: string) => {
@@ -566,4 +616,50 @@ export const getTagImageSrc = (iconURL: string) => {
   }
 
   return `${window.location.origin}/${iconURL}`;
+};
+
+/**
+ * Check if a tag is a glossary tag
+ */
+export const isGlossaryTag = (tag: EntityTags): boolean => {
+  return tag.source === TagSource.Glossary;
+};
+
+/**
+ * Get the display name for a tag
+ */
+export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
+  return (
+    getEntityName(tag) ||
+    getTagDisplay(
+      showOnlyName
+        ? tag.tagFQN
+            .split(FQN_SEPARATOR_CHAR)
+            .slice(-2)
+            .join(FQN_SEPARATOR_CHAR)
+        : tag.tagFQN
+    ) ||
+    tag.tagFQN
+  );
+};
+
+/**
+ * Get the redirect link for a tag
+ */
+export const getTagRedirectLink = (
+  tag: EntityTags,
+  tagType?: TagSource
+): string => {
+  return (tagType ?? tag.source) === TagSource.Glossary
+    ? getGlossaryPath(tag.tagFQN)
+    : getClassificationTagPath(tag.tagFQN);
+};
+
+export const TagListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space>
+      <ClassificationIcon className="d-block'" height={22} width={16} />
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
+    </Space>
+  );
 };

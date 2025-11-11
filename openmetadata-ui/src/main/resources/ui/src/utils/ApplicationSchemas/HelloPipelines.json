@@ -1,0 +1,17 @@
+{
+  "$id": "HelloPipelines.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hello Pipelines",
+  "description": "This schema defines configuration for an example eternal application",
+  "properties": {
+    "sleep": {
+      "type": "integer",
+      "description": "Number of seconds to sleep before returning the response"
+    },
+    "echo": {
+      "type": "string",
+      "description": "String to return in the response"
+    }
+  },
+  "additionalProperties": false
+}

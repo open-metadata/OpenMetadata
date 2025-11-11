@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -26,10 +26,7 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import {
-  getDomainFieldFromEntityType,
-  renderDomainLink,
-} from '../../../utils/DomainUtils';
+import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -39,7 +36,7 @@ import { DomainLabelProps } from './DomainLabel.interface';
 export const DomainLabelNew = ({
   afterDomainUpdateAction,
   hasPermission,
-  domain,
+  domains,
   domainDisplayName,
   entityType,
   entityFqn,
@@ -57,11 +54,9 @@ export const DomainLabelNew = ({
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      const fieldData = getDomainFieldFromEntityType(entityType);
-
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        { fields: fieldData }
+        { fields: 'domains' }
       );
 
       try {
@@ -69,13 +64,15 @@ export const DomainLabelNew = ({
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            [fieldData]: selectedDomain,
+            domains: Array.isArray(selectedDomain)
+              ? selectedDomain
+              : [selectedDomain],
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
           const res = await api(entityId, jsonPatch);
 
-          const entityDomains = get(res, fieldData, {});
+          const entityDomains = get(res, 'domains', {});
           if (Array.isArray(entityDomains)) {
             setActiveDomain(entityDomains);
           } else {
@@ -94,14 +91,14 @@ export const DomainLabelNew = ({
   );
 
   useEffect(() => {
-    if (domain) {
-      if (Array.isArray(domain)) {
-        setActiveDomain(domain);
+    if (domains) {
+      if (Array.isArray(domains)) {
+        setActiveDomain(domains);
       } else {
-        setActiveDomain([domain]);
+        setActiveDomain([domains]);
       }
     }
-  }, [domain]);
+  }, [domains]);
 
   const domainLink = useMemo(() => {
     if (
@@ -119,12 +116,11 @@ export const DomainLabelNew = ({
               const inheritedIcon = domain?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
-                    entity: t('label.domain'),
+                    entity: t('label.domain-plural'),
                   })}>
-                  <InheritIcon
-                    className="inherit-icon cursor-pointer"
-                    width={14}
-                  />
+                  <span className="inherit-icon-container d-flex items-center flex-center">
+                    <InheritIcon className="inherit-icon" height={8} />
+                  </span>
                 </Tooltip>
               ) : null;
 
@@ -134,7 +130,8 @@ export const DomainLabelNew = ({
                     domain,
                     domainDisplayName,
                     showDomainHeading,
-                    'chip-tag-link'
+                    'chip-tag-link',
+                    true
                   )}
                   {inheritedIcon && (
                     <div className="d-flex">{inheritedIcon}</div>
@@ -159,11 +156,9 @@ export const DomainLabelNew = ({
     } else {
       return (
         <Typography.Text
-          className={classNames('text-sm no-data-chip-placeholder', {
-            'text-xs': !showDomainHeading,
-          })}
+          className={classNames('text-sm no-data-chip-placeholder')}
           data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain') })}
+          {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography.Text>
       );
     }
@@ -206,7 +201,7 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium p-l-xss">
             {t('label.domain-plural')}
           </Typography.Text>
           {selectableList}

@@ -60,6 +60,18 @@
       "default": true,
       "title": "Mark Deleted Stored Procedures"
     },
+    "markDeletedSchemas": {
+      "description": "Optional configuration to soft delete schemas in OpenMetadata if the source schemas are deleted. Also, if the schema is deleted, all the associated entities like tables, views, stored procedures, lineage, etc., with that schema will be deleted",
+      "type": "boolean",
+      "default": false,
+      "title": "Mark Deleted Schemas"
+    },
+    "markDeletedDatabases": {
+      "description": "Optional configuration to soft delete databases in OpenMetadata if the source databases are deleted. Also, if the database is deleted, all the associated entities like schemas, tables, views, stored procedures, lineage, etc., with that database will be deleted",
+      "type": "boolean",
+      "default": false,
+      "title": "Mark Deleted Databases"
+    },
     "includeTables": {
       "description": "Optional configuration to turn off fetching metadata for tables.",
       "type": "boolean",
@@ -83,6 +95,11 @@
       "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",
       "type": "boolean",
       "default": false
+    },
+    "ownerConfig": {
+      "title": "Hierarchical Owner Configuration",
+      "description": "Advanced configuration for managing owners at multiple hierarchy levels (Service, Database, Schema, Table) with custom mappings and inheritance rules.",
+      "$ref": "../type/ownerConfig.json"
     },
     "includeStoredProcedures": {
       "description": "Optional configuration to toggle the Stored Procedures ingestion.",

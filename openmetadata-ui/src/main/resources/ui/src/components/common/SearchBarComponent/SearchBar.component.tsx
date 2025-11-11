@@ -14,15 +14,19 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
+import './search-bar.less';
 
-type Props = {
+export type SearchBarProps = {
+  inputClassName?: string;
+  containerClassName?: string;
   onSearch: (text: string) => void;
-  searchValue: string;
+  searchValue?: string;
   typingInterval?: number;
   placeholder?: string;
   label?: string;
@@ -31,9 +35,15 @@ type Props = {
   showClearSearch?: boolean;
   inputProps?: InputProps;
   searchBarDataTestId?: string;
+  /**
+   * Key to be used for url search
+   */
+  urlSearchKey?: string;
 };
 
 const Searchbar = ({
+  inputClassName = '',
+  containerClassName = '',
   onSearch,
   searchValue,
   typingInterval = 0,
@@ -44,19 +54,36 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
   inputProps,
-}: Props) => {
-  const [userSearch, setUserSearch] = useState('');
+  urlSearchKey,
+}: SearchBarProps) => {
+  const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
+  const isTypingRef = useRef(false);
+  const { setFilters } = useTableFilters(
+    urlSearchKey
+      ? {
+          [urlSearchKey]: '',
+        }
+      : {}
+  );
 
   useEffect(() => {
-    setUserSearch(searchValue);
+    if (!isTypingRef.current && searchValue !== userSearch) {
+      setUserSearch(searchValue ?? '');
+    }
   }, [searchValue]);
 
   const debouncedOnSearch = useCallback(
     (searchText: string): void => {
       setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
+
+      if (urlSearchKey) {
+        setFilters({ [urlSearchKey]: isEmpty(searchText) ? null : searchText });
+      }
+
       onSearch(searchText);
+      isTypingRef.current = false;
     },
     [onSearch]
   );
@@ -68,6 +95,7 @@ const Searchbar = ({
 
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
+    isTypingRef.current = true;
     setUserSearch(searchText);
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
     debounceOnSearch(searchText);
@@ -75,7 +103,7 @@ const Searchbar = ({
 
   return (
     <div
-      className={classNames('page-search-bar', {
+      className={classNames('page-search-bar', containerClassName, {
         'm-b-md': !removeMargin,
       })}
       data-testid="search-bar-container">
@@ -83,13 +111,13 @@ const Searchbar = ({
       <div className="flex relative">
         <Input
           allowClear={showClearSearch}
-          className="p-y-xs"
+          className={classNames('p-y-xs', inputClassName)}
           data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={
             <Icon
-              className={classNames('align-middle', {
-                'text-grey-3': isSearchBlur,
+              className={classNames('align-middle m-r-xss', {
+                'text-black': isSearchBlur,
                 'text-primary': !isSearchBlur,
               })}
               component={IconSearchV1}

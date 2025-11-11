@@ -1,6 +1,6 @@
 package org.openmetadata.service.migration.context;
 
-import javax.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ public class MigrationOps {
     try {
       this.result = handle.createQuery(query).mapTo(Long.class).one();
     } catch (Exception ex) {
-      LOG.warn(String.format("Migration Op [%s] failed due to [%s]", name, ex));
+      LOG.debug(String.format("Migration Op [%s] failed due to [%s]", name, ex));
     }
   }
 }

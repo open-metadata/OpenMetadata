@@ -18,10 +18,20 @@ export enum StatusType {
   Running = 'running',
   Started = 'started',
   Stopped = 'stopped',
+  Pending = 'pending',
+  Aborted = 'aborted',
+  InReview = 'inReview',
+  Deprecated = 'deprecated',
+  Version = 'version',
+  Acknowledged = 'acknowledged',
+  Unprocessed = 'unprocessed',
 }
 
 export interface StatusBadgeProps {
   label: string;
   status: StatusType;
   dataTestId?: string;
+  className?: string;
+  externalIcon?: SvgComponent;
+  showIcon?: boolean;
 }

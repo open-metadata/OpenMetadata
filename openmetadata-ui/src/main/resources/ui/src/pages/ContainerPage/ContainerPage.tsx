@@ -14,22 +14,21 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -45,6 +44,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -55,6 +55,7 @@ import { FeedCounts } from '../../interface/feed.interface';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
@@ -67,21 +68,30 @@ import {
 } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const ContainerPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab } = useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Container);
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Container
+  );
   const { fqn: decodedContainerName } = useFqn();
 
   // Local states
@@ -90,10 +100,12 @@ const ContainerPage = () => {
   const [containerData, setContainerData] = useState<Container>();
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [childrenCount, setChildrenCount] = useState<number>(0);
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -106,7 +118,7 @@ const ContainerPage = () => {
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.EXTENSION,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
         ],
@@ -125,7 +137,7 @@ const ContainerPage = () => {
       showErrorToast(error as AxiosError);
       setHasError(true);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -148,14 +160,16 @@ const ContainerPage = () => {
       );
       setContainerPermissions(entityPermission);
 
-      const viewBasicPermission =
-        entityPermission.ViewAll || entityPermission.ViewBasic;
+      const viewBasicPermission = getPrioritizedViewPermission(
+        entityPermission,
+        Operation.ViewBasic
+      );
 
       if (viewBasicPermission) {
         await fetchContainerDetail(containerFQN);
         getEntityFeedCount();
       }
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),
@@ -165,6 +179,21 @@ const ContainerPage = () => {
       setIsLoading(false);
     }
   };
+
+  // Fetch children count to show it in Tab label
+  const fetchContainerChildren = useCallback(async () => {
+    try {
+      const { paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          limit: 0,
+        }
+      );
+      setChildrenCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedContainerName]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -184,25 +213,34 @@ const ContainerPage = () => {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (containerPermissions.EditTags || containerPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (containerPermissions.EditGlossaryTerms ||
-          containerPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (containerPermissions.EditDescription ||
-          containerPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (containerPermissions.EditAll ||
-          containerPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (containerPermissions.EditAll || containerPermissions.EditLineage) &&
-        !deleted,
-      viewBasicPermission:
-        containerPermissions.ViewAll || containerPermissions.ViewBasic,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditLineage
+        ) && !deleted,
+      viewBasicPermission: getPrioritizedViewPermission(
+        containerPermissions,
+        Operation.ViewBasic
+      ),
       viewAllPermission: containerPermissions.ViewAll,
     }),
     [containerPermissions, deleted]
@@ -215,13 +253,16 @@ const ContainerPage = () => {
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.CONTAINER,
-          decodedContainerName,
-          tabValue
-        ),
-      });
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.CONTAINER,
+            decodedContainerName,
+            tabValue
+          ),
+        },
+        { replace: true }
+      );
     }
   };
 
@@ -344,16 +385,15 @@ const ContainerPage = () => {
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Container;
 
     setContainerData((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -366,8 +406,7 @@ const ContainerPage = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.container'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -400,7 +439,7 @@ const ContainerPage = () => {
   );
 
   const versionHandler = () =>
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.CONTAINER,
         decodedContainerName,
@@ -423,12 +462,29 @@ const ContainerPage = () => {
     }
   };
 
+  const onContainerUpdateCertification = async (
+    updatedContainer: Container,
+    key?: keyof Container
+  ) => {
+    try {
+      const response = await handleUpdateContainerData(updatedContainer);
+      setContainerData((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
-
-    if (!containerData) {
-      return [];
-    }
 
     const tabs = containerDetailsClassBase.getContainerDetailPageTabs({
       isDataModelEmpty,
@@ -444,12 +500,13 @@ const ContainerPage = () => {
       containerData,
       fetchContainerDetail,
       labelMap: tabLabelMap,
+      childrenCount,
     });
 
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA
     );
   }, [
     isDataModelEmpty,
@@ -490,10 +547,38 @@ const ContainerPage = () => {
   // Effects
   useEffect(() => {
     fetchResourcePermission(decodedContainerName);
+    fetchContainerChildren();
   }, [decodedContainerName]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], tab, PageType.Container),
+    [tabs[0], tab]
+  );
+
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (containerData) {
+        const certificationTag: Container['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...containerData,
+          certification: certificationTag,
+        };
+
+        await onContainerUpdateCertification(
+          updatedTableDetails,
+          'certification'
+        );
+      }
+    },
+    [containerData, handleContainerUpdate]
+  );
   // Rendering
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -506,7 +591,15 @@ const ContainerPage = () => {
   }
 
   if (!viewBasicPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.container'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!containerData) {
@@ -515,12 +608,11 @@ const ContainerPage = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.container'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -530,6 +622,7 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             openTaskCount={feedCount.openTaskCount}
             permissions={containerPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
             onOwnerUpdate={handleUpdateOwner}
@@ -540,19 +633,29 @@ const ContainerPage = () => {
           />
         </Col>
         <GenericProvider<Container>
+          customizedPage={customizedPage}
           data={containerData}
+          isTabExpanded={isTabExpanded}
           permissions={containerPermissions}
-          type={EntityType.CONTAINER}
+          type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={
-                tab ??
-                (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
-              }
-              className="entity-details-page-tabs"
+              activeKey={tab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

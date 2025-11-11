@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +22,8 @@ class DatabricksTable(BaseModel):
     name: Optional[str] = None
     catalog_name: Optional[str] = None
     schema_name: Optional[str] = None
+    table_type: Optional[str] = None
+    lineage_timestamp: Optional[str] = None
 
 
 class DatabricksColumn(BaseModel):
@@ -31,9 +33,23 @@ class DatabricksColumn(BaseModel):
     table_name: Optional[str] = None
 
 
+class FileInfo(BaseModel):
+    path: Optional[str] = None
+    has_permission: Optional[bool] = None
+    securable_name: Optional[str] = None
+    storage_location: Optional[str] = None
+    securable_type: Optional[str] = None
+    lineage_timestamp: Optional[str] = None
+
+
+class LineageEntity(BaseModel):
+    tableInfo: Optional[DatabricksTable] = None
+    fileInfo: Optional[FileInfo] = None
+
+
 class LineageTableStreams(BaseModel):
-    upstream_tables: Optional[List[DatabricksTable]] = []
-    downstream_tables: Optional[List[DatabricksTable]] = []
+    upstreams: Optional[List[LineageEntity]] = []
+    downstreams: Optional[List[LineageEntity]] = []
 
 
 class LineageColumnStreams(BaseModel):
@@ -68,4 +84,4 @@ class Type(BaseModel):
     fields: Optional[List[ColumnJson]] = None
 
 
-ColumnJson.update_forward_refs()
+ColumnJson.model_rebuild()

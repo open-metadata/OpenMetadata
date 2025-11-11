@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,6 +53,16 @@ def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None
 
 
+def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:
+    """
+    Sanitize task_id to prevent path traversal attacks.
+    Only allows alphanumeric characters, dashes, and underscores.
+    :param raw_task_id: Raw task ID from user input
+    :return: Sanitized task ID safe for file path construction
+    """
+    return re.sub("[^0-9a-zA-Z-_]+", "_", raw_task_id) if raw_task_id else None
+
+
 def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:
     """
     Pick up the `arg` from the flask `req`.
@@ -97,6 +107,16 @@ def get_request_dag_id() -> Optional[str]:
         raise MissingArgException("Missing dag_id from request JSON")
 
     return clean_dag_id(raw_dag_id)
+
+
+def get_request_conf() -> Optional[dict]:
+    """
+    Try to fetch the conf from the JSON request. Return None if no conf is provided.
+    """
+    try:
+        return request.get_json().get("conf")
+    except Exception:
+        return None
 
 
 def get_dagbag():

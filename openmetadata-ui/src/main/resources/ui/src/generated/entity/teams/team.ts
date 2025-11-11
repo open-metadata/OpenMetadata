@@ -57,6 +57,11 @@ export interface Team {
      */
     email?: string;
     /**
+     * External identifier for the team from an external identity provider (e.g., Azure AD group
+     * ID).
+     */
+    externalId?: string;
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -65,6 +70,10 @@ export interface Team {
      */
     href?: string;
     id:    string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -306,6 +315,10 @@ export interface Webhook {
      * HTTP operation to send the webhook request. Supports POST or PUT.
      */
     httpMethod?: HTTPMethod;
+    /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
     /**
      * List of receivers to send mail to
      */

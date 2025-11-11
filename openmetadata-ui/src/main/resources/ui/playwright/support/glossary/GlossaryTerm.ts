@@ -13,38 +13,54 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { EntityTypeEndpoint } from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 import { Glossary } from './Glossary';
 import {
   GlossaryTermData,
   GlossaryTermResponseDataType,
 } from './Glossary.interface';
 
-export class GlossaryTerm {
-  randomName = getRandomLastName();
-  data: GlossaryTermData = {
-    name: `PW.${uuid()}%${this.randomName}`,
-    displayName: `PW ${uuid()}%${this.randomName}`,
-    description: 'A bank account number.',
-    mutuallyExclusive: false,
-    glossary: '',
-    synonyms: '',
-    fullyQualifiedName: '',
-    reviewers: [],
-  };
+export class GlossaryTerm extends EntityClass {
+  randomName: string;
+  data: GlossaryTermData;
+  glossary: Glossary;
+  createGlossary = true;
 
   responseData: GlossaryTermResponseDataType =
     {} as GlossaryTermResponseDataType;
 
-  constructor(glossary: Glossary, parent?: string, name?: string) {
-    this.data.glossary = glossary.data.name;
+  constructor(glossary?: Glossary, parent?: string, name?: string) {
+    super(EntityTypeEndpoint.GlossaryTerm);
+
+    this.randomName = getRandomLastName();
+    const id1 = uuid();
+    const id2 = uuid();
+
+    this.glossary = glossary ?? new Glossary();
+    this.createGlossary = !glossary;
+
+    this.data = {
+      name: name ?? `PW.${id1}%${this.randomName}`,
+      displayName: name ?? `PW ${id2}%${this.randomName}`,
+      description: 'A bank account number.',
+      mutuallyExclusive: false,
+      glossary: this.glossary.data.name,
+      synonyms: '',
+      fullyQualifiedName: '',
+      reviewers: this.glossary.data.reviewers,
+    };
+
     if (parent) {
       this.data.parent = parent;
     }
 
-    this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
-    this.data.reviewers = glossary.data.reviewers;
+  }
+
+  async visitEntityPage(page: Page) {
+    await this.visitPage(page);
   }
 
   async visitPage(page: Page) {
@@ -74,6 +90,10 @@ export class GlossaryTerm {
   }
 
   async create(apiContext: APIRequestContext) {
+    if (this.createGlossary) {
+      await this.glossary.create(apiContext);
+    }
+
     const apiData = omit(this.data, [
       'fullyQualifiedName',
       'synonyms',

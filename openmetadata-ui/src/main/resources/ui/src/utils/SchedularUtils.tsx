@@ -16,7 +16,6 @@ import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
 import { RuleObject } from 'rc-field-form/es/interface';
-import React from 'react';
 import {
   Combination,
   CronOption,
@@ -25,12 +24,18 @@ import {
 } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import {
   CRON_COMBINATIONS,
+  DAY_OF_MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
   DEFAULT_SCHEDULE_CRON_DAILY,
   DEFAULT_SCHEDULE_CRON_HOURLY,
   DEFAULT_SCHEDULE_CRON_MONTHLY,
   DEFAULT_SCHEDULE_CRON_WEEKLY,
+  HOUR_PATTERN,
+  MINUTE_PATTERN,
+  MONTH_PATTERN,
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
+import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]
@@ -285,48 +290,81 @@ export const getUpdatedStateFromFormState = <T,>(
   }
 };
 
-export const checkDOWValidity = async (dow: string) => {
-  // Check if dow is valid if it is not a number between 0-6
-  const isDayValid = toNumber(dow) < 0 || toNumber(dow) > 6;
+export const cronValidator = async (_: RuleObject, value: string) => {
+  const trimmedValue = value.trim();
 
-  // Check if dow is a range and any of the values are not between 0-6
-  const isDayRangeValid =
-    dow.includes('-') &&
-    dow.split('-').some((d) => toNumber(d) < 0 || toNumber(d) > 6);
-
-  // If dow is not valid or dow range is not valid, throw an error
-  if (isDayValid || isDayRangeValid) {
-    return Promise.reject(t('message.cron-dow-validation-failure'));
+  // to avoid multiple validation errors
+  if (!trimmedValue) {
+    return;
   }
 
-  return Promise.resolve();
+  const cronParts = trimmedValue.split(' ');
+
+  // Check if the cron expression has exactly 5 fields (standard Unix cron)
+
+  if (cronParts.length !== 5) {
+    return Promise.reject(new Error(t('message.cron-invalid-field-count')));
+  }
+
+  // Validate that each field follows standard Unix cron format
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
+
+  if (!MINUTE_PATTERN.test(minute)) {
+    return Promise.reject(new Error(t('message.cron-invalid-minute-field')));
+  }
+  if (!HOUR_PATTERN.test(hour)) {
+    return Promise.reject(new Error(t('message.cron-invalid-hour-field')));
+  }
+  if (!DAY_OF_MONTH_PATTERN.test(dayOfMonth)) {
+    return Promise.reject(
+      new Error(t('message.cron-invalid-day-of-month-field'))
+    );
+  }
+  if (!MONTH_PATTERN.test(month)) {
+    return Promise.reject(new Error(t('message.cron-invalid-month-field')));
+  }
+  if (!DAY_OF_WEEK_PATTERN.test(dayOfWeek)) {
+    return Promise.reject(
+      new Error(t('message.cron-invalid-day-of-week-field'))
+    );
+  }
+
+  try {
+    // Check if cron is valid and get the description
+    const description = cronstrue.toString(trimmedValue);
+
+    // Check if cron has a frequency of less than an hour
+    const isFrequencyInMinutes = /Every \d* *minute/.test(description);
+    const isFrequencyInSeconds = /Every \d* *second/.test(description);
+
+    if (isFrequencyInMinutes || isFrequencyInSeconds) {
+      return Promise.reject(
+        new Error(t('message.cron-less-than-hour-message'))
+      );
+    }
+
+    return Promise.resolve();
+  } catch {
+    // If cronstrue fails to parse, it's an invalid cron expression
+    return Promise.reject(new Error(t('message.cron-invalid-expression')));
+  }
 };
 
-export const cronValidator = async (_: RuleObject, value: string) => {
-  // Check if cron is valid and get the description
-  const description = cronstrue.toString(value.trim());
-
-  // Check if cron has a frequency of less than an hour
-  const isFrequencyInMinutes = /Every \d* *minute/.test(description);
-  const isFrequencyInSeconds = /Every \d* *second/.test(description);
-
-  if (isFrequencyInMinutes || isFrequencyInSeconds) {
-    return Promise.reject(t('message.cron-less-than-hour-message'));
-  }
-
-  // Check if dow is other than 0-6
-  // Adding this manual check since cronstrue accepts 7 as a valid value for dow
-  // which is not a valid value for argo
-  const cronParts = value.trim().split(' ');
-
-  // dow is at index 4 if there is no year field or seconds field
-  let dow = cronParts[4];
-  if (cronParts.length !== 5) {
-    dow = cronParts[5];
-  }
-
-  // Check if dow is valid
-  await checkDOWValidity(dow);
-
-  return Promise.resolve();
+export const getRaiseOnErrorFormField = (
+  onFocus?: (fieldName: string) => void
+) => {
+  return {
+    name: 'raiseOnError',
+    label: t('label.raise-on-error'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    formItemProps: {
+      valuePropName: 'checked',
+    },
+    props: {
+      onFocus: () => onFocus?.('raiseOnError'),
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    id: 'root/raiseOnError',
+  };
 };

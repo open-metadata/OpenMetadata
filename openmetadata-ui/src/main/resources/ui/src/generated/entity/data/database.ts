@@ -51,14 +51,22 @@ export interface Database {
      */
     displayName?: string;
     /**
-     * Domain the Database belongs to. When not set, the Database inherits the domain from the
+     * Domains the Database belongs to. When not set, the Database inherits the domain from the
      * database service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the Database.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.
      */
@@ -71,6 +79,10 @@ export interface Database {
      * Unique identifier that identifies this database instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -183,6 +195,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -205,6 +221,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -236,9 +253,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -319,9 +358,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Database belongs to. When not set, the Database inherits the domain from the
- * database service it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this database.
@@ -380,6 +416,10 @@ export interface DatabaseProfilerConfig {
      */
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
+    /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
     /**
      * Number of row of sample data to be generated
      */
@@ -484,6 +524,21 @@ export enum SamplingMethodType {
 }
 
 /**
+ * Status of the Database.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -551,6 +606,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -572,10 +628,13 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",

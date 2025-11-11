@@ -57,16 +57,13 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
 
 export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
-    page.locator(
-      '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
-    )
+    page
+      .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
+      .first()
   ).toBeVisible();
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
-  ).toBeVisible();
 };
 
 export const deletedUserChecks = async (page: Page) => {
@@ -86,9 +83,6 @@ export const deletedUserChecks = async (page: Page) => {
     page.locator('[data-testid="edit-teams-button"]')
   ).not.toBeVisible();
   await expect(
-    page.locator('[data-testid="edit-roles-button"]')
-  ).not.toBeVisible();
-  await expect(
     page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
   ).not.toBeVisible();
 };
@@ -102,7 +96,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
@@ -122,7 +116,7 @@ export const softDeleteUserProfilePage = async (
   displayName: string
 ) => {
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
@@ -132,12 +126,18 @@ export const softDeleteUserProfilePage = async (
 
   await page.getByTestId(userName).click();
 
-  await page.getByTestId('user-profile-details').click();
-
   await nonDeletedUserChecks(page);
 
-  await page.click('[data-testid="manage-button"]');
-  await page.click('[data-testid="delete-button"]');
+  await page.waitForSelector('[data-testid="user-profile-manage-btn"]', {
+    state: 'visible',
+  });
+  await page.click('[data-testid="user-profile-manage-btn"]');
+
+  await page.waitForSelector('.ant-popover:not(.ant-popover-hidden)', {
+    state: 'visible',
+  });
+
+  await page.getByText('Delete Profile').click();
 
   await page.waitForSelector('[role="dialog"].ant-modal');
 
@@ -159,8 +159,8 @@ export const softDeleteUserProfilePage = async (
 };
 
 export const restoreUserProfilePage = async (page: Page, fqn: string) => {
-  await page.click('[data-testid="manage-button"]');
-  await page.click('[data-testid="restore-button"]');
+  await page.click('[data-testid="user-profile-manage-btn"]');
+  await page.getByText('Restore').click();
 
   await page.waitForSelector('[role="dialog"].ant-modal');
 
@@ -185,9 +185,8 @@ export const hardDeleteUserProfilePage = async (
   page: Page,
   displayName: string
 ) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('delete-button').click();
-
+  await page.getByTestId('user-profile-manage-btn').click();
+  await page.getByText('Delete Profile').click();
   await page.waitForSelector('[role="dialog"].ant-modal');
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
@@ -204,18 +203,25 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await expect(page.getByTestId('alert-bar')).toHaveText(
+    /deleted successfully!/
+  );
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
-  await page.fill('[data-testid="displayName"]', '');
-  await page.type('[data-testid="displayName"]', editedUserName);
 
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
+  await page.getByTestId('displayName-input').click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(editedUserName);
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save-display-name"]');
+  await page.getByText('Save').click();
   await saveResponse;
+
+  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
 
   // Verify the updated display name
   const userName = await page.textContent('[data-testid="user-display-name"]');
@@ -228,7 +234,7 @@ export const editTeams = async (page: Page, teamName: string) => {
   await page.click('.ant-select-selection-item-remove > .anticon');
 
   await page.click('[data-testid="team-select"]');
-  await page.type('[data-testid="team-select"]', teamName);
+  await page.getByTestId('team-select').fill(teamName);
 
   // Click the team from the dropdown
   await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
@@ -278,8 +284,7 @@ export const handleAdminUpdateDetails = async (
 
 export const handleUserUpdateDetails = async (
   page: Page,
-  editedUserName: string,
-  updatedDescription: string
+  editedUserName: string
 ) => {
   const feedResponse = page.waitForResponse(
     '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
@@ -289,30 +294,17 @@ export const handleUserUpdateDetails = async (
 
   // edit displayName
   await editDisplayName(page, editedUserName);
-
-  // edit description
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-  await editDescription(page, updatedDescription);
 };
 
 export const updateUserDetails = async (
   page: Page,
-  {
-    updatedDisplayName,
-    updatedDescription,
-    isAdmin,
-  }: {
-    updatedDisplayName: string;
-    updatedDescription: string;
-    teamName: string;
-    isAdmin?: boolean;
-    role?: string;
-  }
+  updatedDisplayName: string,
+  isAdmin?: boolean
 ) => {
   if (isAdmin) {
     await handleAdminUpdateDetails(page, updatedDisplayName);
   } else {
-    await handleUserUpdateDetails(page, updatedDisplayName, updatedDescription);
+    await handleUserUpdateDetails(page, updatedDisplayName);
   }
 };
 
@@ -325,7 +317,7 @@ export const softDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.fill('[data-testid="searchbar"]', username);
   await searchResponse;
@@ -472,7 +464,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -495,15 +487,25 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
-export const updateExpiration = async (page: Page, expiry: number | string) => {
+export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} days`);
+  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
+  // Wait for dropdown to close and ensure no overlays are present
+  await page.waitForTimeout(100);
+
+  // Click outside to close any open dropdowns
+  await page.mouse.click(1, 1);
+
+  // Wait for any dropdown animations to complete
+  await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+
+  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
@@ -536,14 +538,14 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
@@ -577,10 +579,26 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   }
 
   // Click on the sidebar item for Explore again
+  const queryResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await sidebarClick(page, SidebarItem.EXPLORE);
-
+  await queryResponse;
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
+
+  await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
+
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('table');
+  await dataAssetDropdownRequest;
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
@@ -594,8 +612,10 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
 
+  await page.waitForLoadState('networkidle');
+
   // Check if the edit tier button is visible
-  await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
+  await expect(page.locator('[data-testid="edit-icon-tier"]')).toBeVisible();
 };
 
 export const checkStewardPermissions = async (page: Page) => {
@@ -620,14 +640,14 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
@@ -668,10 +688,7 @@ export const addUser = async (
   await page.fill('#confirmPassword', password);
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.type(
-    '[data-testid="roles-dropdown"] > .ant-select-selector',
-    role
-  );
+  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
   await page.click('.ant-select-item-option-content');
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 
@@ -680,6 +697,45 @@ export const addUser = async (
   await saveResponse;
 
   expect((await saveResponse).status()).toBe(201);
+};
+
+export const checkForUserExistError = async (
+  page: Page,
+  {
+    name,
+    email,
+    password,
+  }: {
+    name: string;
+    email: string;
+    password: string;
+  }
+) => {
+  await page.click('[data-testid="add-user"]');
+
+  await page.fill('[data-testid="email"]', email);
+
+  await page.fill('[data-testid="displayName"]', name);
+
+  await page.locator(descriptionBox).fill('Adding new user');
+
+  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
+  await page.fill('#password', password);
+  await page.fill('#confirmPassword', password);
+
+  const saveResponse = page.waitForResponse('/api/v1/users');
+  await page.click('[data-testid="save-user"]');
+  await saveResponse;
+
+  expect((await saveResponse).status()).toBe(409);
+
+  await expect(page.getByRole('alert')).toBeVisible();
+
+  await expect(page.getByTestId('inline-alert-description')).toContainText(
+    `A user with the name "${name}" already exists. Please choose another email.`
+  );
+
+  await page.click('[data-testid="cancel-user"]');
 };
 
 const resetPasswordModal = async (

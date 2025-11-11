@@ -12,7 +12,7 @@
  */
 import { Col, Row, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -51,7 +51,9 @@ const Chip = ({
           item.fullyQualifiedName ?? ''
         )}>
         {icon}
-        <Typography.Text className="text-left chip-tag-link">
+        <Typography.Text
+          className="text-left chip-tag-link chip-name"
+          ellipsis={{ tooltip: getEntityName(item) }}>
           {getEntityName(item)}
         </Typography.Text>
       </Link>
@@ -73,7 +75,7 @@ const Chip = ({
   return (
     <Row
       wrap
-      className="align-middle d-flex flex-col flex-start justify-center"
+      className="align-middle d-flex flex-col flex-start justify-center chip-container"
       data-testid="chip-container"
       gutter={[20, 0]}>
       {(isExpanded ? data : data.slice(0, USER_DATA_SIZE)).map(getChipElement)}

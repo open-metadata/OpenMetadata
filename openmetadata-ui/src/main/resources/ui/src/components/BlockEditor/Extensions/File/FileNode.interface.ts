@@ -20,6 +20,11 @@ export interface FileNodeAttrs {
   fileSize: number | null;
   mimeType: string;
   type: FileType;
+  isUploading?: boolean;
+  uploadProgress?: number;
+  tempFile?: File;
+  isImage?: boolean;
+  alt?: string;
 }
 
 export interface FileNodeOptions {

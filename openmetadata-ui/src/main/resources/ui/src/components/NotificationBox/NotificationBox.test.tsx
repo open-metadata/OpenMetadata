@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
@@ -62,6 +61,7 @@ const mockShowErrorToast = jest.fn();
 const mockOnMarkTaskNotificationRead = jest.fn();
 
 const mockProps = {
+  activeTab: ThreadType.Task,
   hasMentionNotification: true,
   hasTaskNotification: true,
   onMarkMentionsNotificationRead: jest.fn(),

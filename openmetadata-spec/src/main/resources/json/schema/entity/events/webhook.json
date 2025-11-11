@@ -40,6 +40,11 @@
       "type": "object",
       "existingJavaType": "java.util.Map<String, String>"
     },
+    "queryParams": {
+      "description": "Query parameters to be added to the webhook request URL.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, String>"
+    },
     "httpMethod": {
       "description": "HTTP operation to send the webhook request. Supports POST or PUT.",
       "type": "string",

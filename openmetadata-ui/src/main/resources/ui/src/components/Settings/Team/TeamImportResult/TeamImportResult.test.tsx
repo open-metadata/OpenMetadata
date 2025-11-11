@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { findAllByRole, render, screen } from '@testing-library/react';
-import React from 'react';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 import { TeamImportResult } from './TeamImportResult.component';
 const mockCsvImportResult = {
@@ -33,7 +32,6 @@ describe('TeamImportResult component', () => {
     expect(
       await screen.findByTestId('import-result-table')
     ).toBeInTheDocument();
-    // header(1) + data(3)
     expect(row).toHaveLength(4);
   });
 

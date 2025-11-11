@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 
-type Mode = {
+export type Mode = {
   name: CSMode;
   json?: boolean;
 };
 
 export interface SchemaEditorProps {
   value?: string;
+  refreshEditor?: boolean;
   className?: string;
   mode?: Mode;
   readOnly?: boolean;
@@ -30,4 +32,5 @@ export interface SchemaEditorProps {
   showCopyButton?: boolean;
   onChange?: (value: string) => void;
   onFocus?: () => void;
+  title?: ReactNode;
 }

@@ -11,28 +11,18 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { LogoutPage } from './LogoutPage';
 
+const mockOnLogoutHandler = jest.fn();
+
 // Mock the useApplicationStore hook
-jest.mock('../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn(),
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    onLogoutHandler: mockOnLogoutHandler,
+  })),
 }));
 
 describe('LogoutPage', () => {
-  const mockOnLogoutHandler = jest.fn();
-
-  beforeEach(() => {
-    // Reset mock before each test
-    jest.clearAllMocks();
-
-    // Setup mock implementation
-    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      onLogoutHandler: mockOnLogoutHandler,
-    });
-  });
-
   it('should call onLogoutHandler on mount', () => {
     render(<LogoutPage />);
 

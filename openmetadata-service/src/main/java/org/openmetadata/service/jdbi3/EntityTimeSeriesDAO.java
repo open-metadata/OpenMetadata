@@ -17,9 +17,9 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
 public interface EntityTimeSeriesDAO {
@@ -541,6 +541,27 @@ public interface EntityTimeSeriesDAO {
     } else {
       insert(fqn, extension, jsonSchema, entityJson);
     }
+  }
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE json->>'id' IN ( "
+              + "  SELECT json->>'id' FROM <table> "
+              + "  WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit "
+              + ")",
+      connectionType = POSTGRES)
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+            DELETE FROM <table> WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit
+            """,
+      connectionType = MYSQL)
+  int deleteRecordsBeforeCutOff(
+      @Define("table") String table, @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+
+  default int deleteRecordsBeforeCutOff(long cutoffTs, int limit) {
+    return deleteRecordsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
   }
 
   /** @deprecated */

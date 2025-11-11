@@ -11,108 +11,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tree, TreeDataNode, TreeProps } from 'antd';
-import { DataNode } from 'antd/lib/tree';
-import { AxiosError } from 'axios';
-import { cloneDeep, isEmpty, isNil } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { HolderOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Switch, Tree, TreeDataNode, TreeProps } from 'antd';
+import { cloneDeep, isEqual } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/delete-white.svg';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
-import Loader from '../../components/common/Loader/Loader';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
-import PageHeader from '../../components/PageHeader/PageHeader.component';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
+import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
-import { useFqn } from '../../hooks/useFqn';
-import { getPersonaByName } from '../../rest/PersonaAPI';
 import {
-  filterAndArrangeTreeByKeys,
-  getNavigationItems,
-  getNestedKeys,
-  getNestedKeysFromNavigationItems,
+  getHiddenKeysFromNavigationItems,
+  getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
-import { getEntityName } from '../../utils/EntityUtils';
-import leftSidebarClassBase from '../../utils/LeftSidebarClassBase';
-import { getPersonaDetailsPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
-const sidebarOptions = leftSidebarClassBase.getSidebarItems();
+import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
+import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
+import './settings-navigation-page.less';
 
 interface Props {
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
-  currentNavigation?: NavigationItem[];
 }
 
-export const SettingsNavigationPage = ({
-  onSave,
-  currentNavigation,
-}: Props) => {
-  const { fqn } = useFqn();
-  const [isPersonaLoading, setIsPersonaLoading] = useState(true);
-  const [personaDetails, setPersonaDetails] = useState<Persona | null>(null);
+export const SettingsNavigationPage = ({ onSave }: Props) => {
   const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
-  const [targetKeys, setTargetKeys] = useState<string[]>(
-    isEmpty(currentNavigation)
-      ? getNestedKeys(sidebarOptions)
-      : getNestedKeysFromNavigationItems(currentNavigation ?? [])
+  const { getNavigation } = useCustomizeStore();
+  const currentNavigation = getNavigation();
+
+  const [hiddenKeys, setHiddenKeys] = useState<string[]>(
+    getHiddenKeysFromNavigationItems(currentNavigation)
+  );
+  const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
+    currentNavigation ? getTreeDataForNavigationItems(currentNavigation) : []
   );
 
-  const treeData = filterAndArrangeTreeByKeys<DataNode>(
-    cloneDeep(sidebarOptions),
-    targetKeys
-  );
+  const disableSave = useMemo(() => {
+    // Get the current navigation items from the modified tree data
+    const currentNavigationItems = getNavigationItems(treeData, hiddenKeys);
 
-  const handleChange = (newTargetKeys: string[]) => {
-    setTargetKeys(newTargetKeys);
-  };
-
-  const titleLinks = useMemo(
-    () => [
-      {
-        name: 'Settings',
-        url: '/settings',
-      },
-      ...(personaDetails
-        ? [
-            {
-              name: getEntityName(personaDetails),
-              url: getPersonaDetailsPath(fqn),
-            },
-          ]
-        : []),
-    ],
-    [personaDetails?.name]
-  );
-
-  const fetchPersonaDetails = async () => {
-    try {
-      setIsPersonaLoading(true);
-      const persona = await getPersonaByName(fqn);
-
-      setPersonaDetails(persona);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPersonaLoading(false);
-    }
-  };
+    // Compare the entire structure including order, names, hidden status, and all properties
+    return isEqual(currentNavigation, currentNavigationItems);
+  }, [currentNavigation, treeData, hiddenKeys]);
 
   const handleSave = async () => {
-    setSaving(true);
-    const navigationItems = getNavigationItems(
-      filterAndArrangeTreeByKeys<LeftSidebarItem>(
-        cloneDeep(sidebarOptions),
-        targetKeys
-      ).filter((t) => !isNil(t))
-    );
-
+    const navigationItems = getNavigationItems(treeData, hiddenKeys);
     await onSave(navigationItems);
-    setSaving(false);
   };
 
   const onDrop: TreeProps['onDrop'] = (info) => {
@@ -168,84 +112,68 @@ export const SettingsNavigationPage = ({
       }
     }
 
-    handleChange(getNestedKeys(tempData));
+    setTreeData(tempData);
   };
 
-  const handleRemove = (key: string) => {
-    setTargetKeys(targetKeys.filter((k) => k !== key));
-  };
-
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
   const handleReset = () => {
-    handleChange(getNestedKeys(sidebarOptions));
+    setTreeData(getTreeDataForNavigationItems());
+    setHiddenKeys(getHiddenKeysFromNavigationItems());
+  };
+
+  const handleRemoveToggle = (checked: boolean, key: string) => {
+    setHiddenKeys((prev) =>
+      checked ? prev.filter((i) => i !== key) : [...prev, key]
+    );
   };
 
   const titleRenderer = (node: TreeDataNode) => (
     <div className="space-between">
-      {node.title}{' '}
-      <Icon
-        component={DeleteIcon}
-        style={{ cursor: 'pointer', fontSize: '18px' }}
-        onClick={() => handleRemove(node.key as string)}
+      {t(node.title as string)}
+      <Switch
+        checked={!hiddenKeys.includes(node.key as string)}
+        onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
       />
     </div>
   );
 
-  useEffect(() => {
-    fetchPersonaDetails();
-  }, [fqn]);
-
-  if (isPersonaLoading) {
-    return <Loader />;
-  }
-
   return (
-    <PageLayoutV1 pageTitle="Settings Navigation Page">
-      <Row className="p-x-lg" gutter={[16, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={titleLinks} />
-        </Col>
-        <Col flex="auto">
-          <PageHeader
-            data={{
-              header: 'Settings Navigation Page',
-              subHeader: 'Settings Navigation Page',
-            }}
-          />
-        </Col>
-        <Col className="m-auto" flex="180px">
-          <Button
-            className="float-right"
-            loading={saving}
-            size="small"
-            type="primary"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-          <Button
-            className="float-right m-r-sm"
-            size="small"
-            onClick={handleReset}>
-            {t('label.reset')}
-          </Button>
-        </Col>
-        <Col span={24}>
-          <Tree
-            autoExpandParent
-            // blockNode
-            defaultExpandAll
-            draggable
-            showIcon
-            switcherIcon={switcherIcon}
-            titleRender={titleRenderer}
-            treeData={treeData}
-            onDrop={onDrop}
-          />
-        </Col>
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
+        <Row gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={t('label.customize-your-navigation')}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Col>
+
+          <Col span={24}>
+            <Card
+              bordered={false}
+              className="custom-navigation-tree-container"
+              title="Navigation Menus">
+              <Tree
+                autoExpandParent
+                blockNode
+                defaultExpandAll
+                showIcon
+                draggable={{ icon: <HolderOutlined /> }}
+                itemHeight={48}
+                switcherIcon={switcherIcon}
+                titleRender={titleRenderer}
+                treeData={treeData}
+                onDrop={onDrop}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };

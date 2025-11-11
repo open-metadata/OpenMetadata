@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Divider,
+  List,
+  Popover,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
@@ -27,11 +35,10 @@ import {
   Metric,
   MetricGranularity,
   MetricType,
-  UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
-import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import './metric-header-info.less';
+import UnitOfMeasurementInfoItem from './UnitOfMeasurementInfoItem';
 
 interface MetricInfoItemOption {
   label: string;
@@ -44,7 +51,7 @@ interface MetricHeaderInfoProps {
   metricDetails: Metric;
   onUpdateMetricDetails: (
     updatedData: Metric,
-    key: keyof Metric
+    key?: keyof Metric
   ) => Promise<void>;
 }
 
@@ -73,22 +80,20 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
 
   const modiFiedLabel = label.toLowerCase().replace(/\s+/g, '-');
 
-  const sortedOptions = useMemo(
-    () => getSortedOptions(options, value, valueKey),
-    [options, value, valueKey]
-  );
+  const allOptions = useMemo(() => {
+    return getSortedOptions(options, value, valueKey);
+  }, [options, value, valueKey]);
 
   const handleUpdate = async (value: string | undefined) => {
     try {
       setIsUpdating(true);
-      const updatedMetricDetails = {
+      const updatedMetricDetails: Metric = {
         ...metricDetails,
         [valueKey]: value,
       };
 
       await onUpdateMetricDetails(updatedMetricDetails, valueKey);
-    } catch (error) {
-      //
+      setPopupVisible(false);
     } finally {
       setIsUpdating(false);
     }
@@ -96,43 +101,45 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
 
   const list = (
     <List
-      dataSource={sortedOptions}
+      dataSource={allOptions}
       itemLayout="vertical"
-      renderItem={(item) => (
-        <List.Item
-          className={classNames('selectable-list-item', 'cursor-pointer', {
-            active: value === item.value,
-          })}
-          extra={
-            value === item.value && (
-              <Tooltip
-                title={t('label.remove-entity', {
-                  entity: label,
-                })}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemoveColored}
-                  data-testid={`remove-${modiFiedLabel}-button`}
-                  style={{ fontSize: '16px' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleUpdate(undefined);
-                    setPopupVisible(false);
-                  }}
-                />
-              </Tooltip>
-            )
-          }
-          key={item.key}
-          title={item.label}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleUpdate(item.value);
-            setPopupVisible(false);
-          }}>
-          <Typography.Text>{item.label}</Typography.Text>
-        </List.Item>
-      )}
+      renderItem={(item) => {
+        const isActive = value === item.value;
+
+        return (
+          <List.Item
+            className={classNames('selectable-list-item', 'cursor-pointer', {
+              active: isActive,
+            })}
+            extra={
+              isActive && (
+                <Tooltip
+                  title={t('label.remove-entity', {
+                    entity: label,
+                  })}>
+                  <Icon
+                    className="align-middle"
+                    component={IconRemoveColored}
+                    data-testid={`remove-${modiFiedLabel}-button`}
+                    style={{ fontSize: '16px' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUpdate(undefined);
+                    }}
+                  />
+                </Tooltip>
+              )
+            }
+            key={item.key}
+            title={item.label}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleUpdate(item.value);
+            }}>
+            <Typography.Text>{item.label}</Typography.Text>
+          </List.Item>
+        );
+      }}
       size="small"
       style={{
         maxHeight: '250px',
@@ -142,37 +149,46 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   );
 
   return (
-    <Space data-testid={modiFiedLabel}>
-      <ExtraInfoLabel
-        dataTestId={modiFiedLabel}
-        label={label}
-        value={value ?? NO_DATA_PLACEHOLDER}
-      />
-      {hasPermission && !metricDetails.deleted && (
-        <Popover
-          destroyTooltipOnHide
-          content={list}
-          open={popupVisible}
-          overlayClassName="metric-header-info-popover"
-          placement="bottomRight"
-          showArrow={false}
-          trigger="click"
-          onOpenChange={setPopupVisible}>
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: label,
-            })}>
-            <Button
-              className="flex-center p-0"
-              data-testid={`edit-${modiFiedLabel}-button`}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              loading={isUpdating}
-              size="small"
-              type="text"
-            />
-          </Tooltip>
-        </Popover>
-      )}
+    <Space
+      className="d-flex metric-header-info-container align-start"
+      data-testid={modiFiedLabel}>
+      <div className="d-flex extra-info-container align-start ">
+        <Typography.Text
+          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+          data-testid={modiFiedLabel}>
+          <div className="d-flex items-center gap-1">
+            <span className="extra-info-label-heading">{label}</span>
+            {hasPermission && !metricDetails.deleted && (
+              <Popover
+                destroyTooltipOnHide
+                content={list}
+                open={popupVisible}
+                overlayClassName="metric-header-info-popover"
+                placement="bottomRight"
+                showArrow={false}
+                trigger="click"
+                onOpenChange={setPopupVisible}>
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: label,
+                  })}>
+                  <Button
+                    className="flex-center edit-metrics p-0"
+                    data-testid={`edit-${modiFiedLabel}-button`}
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                    loading={isUpdating}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
+              </Popover>
+            )}
+          </div>
+          <div className={classNames('font-medium extra-info-value')}>
+            {value ?? NO_DATA_PLACEHOLDER}
+          </div>
+        </Typography.Text>
+      </div>
     </Space>
   );
 };
@@ -187,6 +203,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
 
   return (
     <>
+      <Divider className="self-center vertical-divider" type="vertical" />
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.metric-type')}
@@ -200,19 +217,16 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="metricType"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
-      <MetricInfoItem
+      <Divider className="self-center vertical-divider" type="vertical" />
+
+      <UnitOfMeasurementInfoItem
         hasPermission={hasPermission}
         label={t('label.unit-of-measurement')}
         metricDetails={metricDetails}
-        options={Object.values(UnitOfMeasurement).map((unitOfMeasurement) => ({
-          key: unitOfMeasurement,
-          label: startCase(unitOfMeasurement.toLowerCase()),
-          value: unitOfMeasurement,
-        }))}
-        value={metricDetails.unitOfMeasurement}
-        valueKey="unitOfMeasurement"
-        onUpdateMetricDetails={onUpdateMetricDetails}
+        onMetricUpdate={onUpdateMetricDetails}
       />
+      <Divider className="self-center vertical-divider" type="vertical" />
+
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.granularity')}

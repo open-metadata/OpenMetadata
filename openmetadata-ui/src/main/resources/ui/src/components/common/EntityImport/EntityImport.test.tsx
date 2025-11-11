@@ -15,9 +15,8 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import {
   CSVImportResult,
@@ -119,11 +118,10 @@ describe('EntityImport component', () => {
     const file = new File([mockCsvContent], 'glossary-terms.csv', {
       type: 'text/plain',
     });
-    const flushPromises = () => new Promise(setImmediate);
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -131,9 +129,6 @@ describe('EntityImport component', () => {
 
     await act(async () => {
       fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
     });
 
     expect(
@@ -190,11 +185,10 @@ describe('EntityImport component', () => {
     const file = new File([mockCsvContent], 'glossary-terms.csv', {
       type: 'text/plain',
     });
-    const flushPromises = () => new Promise(setImmediate);
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -202,9 +196,6 @@ describe('EntityImport component', () => {
 
     await act(async () => {
       fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
     });
 
     expect(
@@ -259,11 +250,10 @@ describe('EntityImport component', () => {
     const file = new File([mockIncorrectCsvContent], 'glossary-terms.csv', {
       type: 'text/plain',
     });
-    const flushPromises = () => new Promise(setImmediate);
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -271,9 +261,6 @@ describe('EntityImport component', () => {
 
     await act(async () => {
       fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
     });
 
     expect(
@@ -315,11 +302,10 @@ describe('EntityImport component', () => {
     const file = new File([mockCsvContent], 'glossary-terms.csv', {
       type: 'text/plain',
     });
-    const flushPromises = () => new Promise(setImmediate);
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -327,9 +313,6 @@ describe('EntityImport component', () => {
 
     await act(async () => {
       fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
     });
 
     expect(

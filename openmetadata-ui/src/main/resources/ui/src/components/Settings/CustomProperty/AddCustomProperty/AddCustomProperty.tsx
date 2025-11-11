@@ -13,16 +13,11 @@
 
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
@@ -56,15 +51,16 @@ import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
   const [form] = Form.useForm();
-  const { entityType } = useParams<{ entityType: EntityType }>();
-  const history = useHistory();
-
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [typeDetail, setTypeDetail] = useState<Type>();
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
@@ -169,7 +165,7 @@ const AddCustomProperty = () => {
     }
   };
 
-  const handleCancel = useCallback(() => history.goBack(), [history]);
+  const handleCancel = useCallback(() => navigate(-1), [navigate]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     const isDescription = event.target.classList.contains('ProseMirror');
@@ -247,7 +243,7 @@ const AddCustomProperty = () => {
       ) as unknown as CustomProperty;
 
       await addPropertyToEntity(typeDetail?.id ?? '', payload);
-      history.goBack();
+      navigate(-1);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -453,7 +449,7 @@ const AddCustomProperty = () => {
   ];
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Form
         className="m-t-md"
@@ -502,7 +498,7 @@ const AddCustomProperty = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -518,6 +514,8 @@ const AddCustomProperty = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,

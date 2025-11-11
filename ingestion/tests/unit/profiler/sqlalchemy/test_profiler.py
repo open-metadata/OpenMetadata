@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -139,7 +139,7 @@ class ProfilerTest(TestCase):
         Check our pre-cooked profiler
         """
         simple = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
         )
         simple.compute_metrics()
 
@@ -173,7 +173,7 @@ class ProfilerTest(TestCase):
             maxLength=None,
             mean=30.5,
             sum=61.0,
-            stddev=0.25,
+            stddev=0.5,
             variance=None,
             distinctCount=2.0,
             distinctProportion=1.0,
@@ -182,7 +182,7 @@ class ProfilerTest(TestCase):
             firstQuartile=30.0,
             thirdQuartile=31.0,
             interQuartileRange=1.0,
-            nonParametricSkew=2.0,
+            nonParametricSkew=1.0,
             histogram=Histogram(boundaries=["30.000 and up"], frequencies=[2]),
         )
 
@@ -297,7 +297,7 @@ class ProfilerTest(TestCase):
         )
 
         simple = DefaultProfiler(
-            profiler_interface=sqa_profiler_interface,
+            profiler_interface=sqa_profiler_interface, metrics_registry=Metrics
         )
 
         with pytest.raises(TimeoutError):
@@ -316,7 +316,7 @@ class ProfilerTest(TestCase):
         )  # type: ignore
 
         default_profiler = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
         )
 
         column_metrics = default_profiler._prepare_column_metrics()

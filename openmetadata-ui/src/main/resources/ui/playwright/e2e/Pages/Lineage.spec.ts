@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -25,6 +26,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
   activateColumnLayer,
@@ -35,7 +37,6 @@ import {
   deleteEdge,
   deleteNode,
   editLineage,
-  LineageEdge,
   performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
@@ -43,9 +44,12 @@ import {
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
+  verifyExportLineagePNG,
+  verifyLineageConfig,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({
@@ -96,8 +100,12 @@ for (const EntityClass of entities) {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
+
         await visitLineageTab(page);
+
         await verifyColumnLayerInactive(page);
+        // enable fullscreen
+        await page.getByTestId('full-screen').click();
         await editLineage(page);
         await performZoomOut(page);
         for (const entity of entities) {
@@ -105,9 +113,8 @@ for (const EntityClass of entities) {
           await rearrangeNodes(page);
         }
 
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
-        await visitLineageTab(page);
+        await page.reload();
+        await page.waitForLoadState('networkidle');
         await page.click('[data-testid="edit-lineage"]');
         await page.getByTestId('fit-screen').click();
 
@@ -115,12 +122,35 @@ for (const EntityClass of entities) {
           await verifyNodePresent(page, entity);
         }
         await page.click('[data-testid="edit-lineage"]');
+
+        // Check the Entity Drawer
+        await performZoomOut(page);
+
+        for (const entity of entities) {
+          const toNodeFqn = get(
+            entity,
+            'entityResponseData.fullyQualifiedName'
+          );
+          await page
+            .locator(
+              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
+            )
+            .click();
+
+          await expect(
+            page.locator('.ant-drawer [data-testid="entity-header-title"]')
+          ).toHaveText(get(entity, 'entityResponseData.displayName'));
+
+          await page.getByTestId('entity-panel-close-icon').click();
+
+          // Drawer should not open after closing it
+          await expect(
+            page.locator('.ant-drawer-content-wrapper')
+          ).not.toBeVisible();
+        }
       });
 
       await test.step('Should create pipeline between entities', async () => {
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
-        await visitLineageTab(page);
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
 
@@ -130,18 +160,17 @@ for (const EntityClass of entities) {
       });
 
       await test.step('Verify Lineage Export CSV', async () => {
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
-        await visitLineageTab(page);
+        await page.click('[data-testid="edit-lineage"]');
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
+      });
+
+      await test.step('Verify Lineage Export PNG', async () => {
+        await verifyExportLineagePNG(page);
       });
 
       await test.step(
         'Remove lineage between nodes for the entity',
         async () => {
-          await redirectToHomePage(page);
-          await currentEntity.visitEntityPage(page);
-          await visitLineageTab(page);
           await editLineage(page);
           await performZoomOut(page);
 
@@ -150,6 +179,11 @@ for (const EntityClass of entities) {
           }
         }
       );
+
+      await test.step('Verify Lineage Config', async () => {
+        await page.click('[data-testid="edit-lineage"]');
+        await verifyLineageConfig(page);
+      });
     } finally {
       await cleanup();
     }
@@ -194,11 +228,23 @@ test('Verify column lineage between tables', async ({ browser }) => {
 });
 
 test('Verify column lineage between table and topic', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
   await Promise.all([table.create(apiContext), topic.create(apiContext)]);
+
+  const tableServiceFqn = get(
+    table,
+    'entityResponseData.service.fullyQualifiedName'
+  );
+
+  const topicServiceFqn = get(
+    topic,
+    'entityResponseData.service.fullyQualifiedName'
+  );
 
   const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
   const sourceCol = `${sourceTableFqn}.${get(
@@ -220,8 +266,26 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="lineage-export"]');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
+  // Verify relation in platform lineage
+  await sidebarClick(page, SidebarItem.LINEAGE);
+
+  const tableServiceNode = page.locator(
+    `[data-testid="lineage-node-${tableServiceFqn}"]`
+  );
+  const topicServiceNode = page.locator(
+    `[data-testid="lineage-node-${topicServiceFqn}"]`
+  );
+
+  await expect(tableServiceNode).toBeVisible();
+  await expect(topicServiceNode).toBeVisible();
+
+  await table.visitEntityPage(page);
+  await visitLineageTab(page);
+  await activateColumnLayer(page);
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
@@ -307,6 +371,8 @@ test('Verify column lineage between table and api endpoint', async ({
 });
 
 test('Verify function data in edge drawer', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -332,39 +398,35 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
-    const lineageRes = await lineageReq;
-    const jsonRes = await lineageRes.json();
-    const edge: LineageEdge = [...Object.values(jsonRes.downstreamEdges)][0];
-    const columnData = edge.columns[0];
+    await lineageReq;
 
-    const newEdge = {
-      edge: {
-        fromEntity: {
-          id: edge.fromEntity.id,
-          type: edge.fromEntity.type,
-        },
-        toEntity: {
-          id: edge.toEntity.id,
-          type: edge.toEntity.type,
-        },
-        lineageDetails: {
-          columnsLineage: [
-            {
-              fromColumns: [columnData.fromColumns[0]],
-              function: 'count',
-              toColumn: columnData.toColumn,
-            },
-          ],
-          description: 'test',
-        },
-      },
-    };
-    await apiContext.put(`/api/v1/lineage`, {
-      data: newEdge,
-    });
+    await activateColumnLayer(page);
+
+    await page
+      .locator(
+        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
+          targetColName
+        )}"]`
+      )
+      .dispatchEvent('click');
+
+    await page.getByTestId('edit-function').click();
+
+    // wait for the modal to be visible
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await page.getByTestId('sql-function-input').fill('count');
+    const saveRes = page.waitForResponse('/api/v1/lineage');
+    await page.getByTestId('save').click();
+    await saveRes;
+
+    await expect(page.getByTestId('sql-function')).toContainText('count');
+
     const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq1;
+
+    await page.waitForLoadState('networkidle');
 
     await activateColumnLayer(page);
     await page
@@ -377,7 +439,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     await page.locator('.edge-info-drawer').isVisible();
 
-    await expect(page.locator('[data-testid="Function"]')).toContainText(
+    await expect(page.locator('[data-testid="sql-function"]')).toContainText(
       'count'
     );
   } finally {
@@ -385,3 +447,234 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     await afterAction();
   }
 });
+
+test('Verify table search with special characters as handled', async ({
+  browser,
+}) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  // Create a table with '/' in the name to test encoding functionality
+  const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
+  const table = new TableClass(tableNameWithSlash);
+
+  await table.create(apiContext);
+
+  const db = table.databaseResponseData.name;
+  try {
+    await sidebarClick(page, SidebarItem.LINEAGE);
+
+    await page.waitForSelector('[data-testid="search-entity-select"]');
+    await page.click('[data-testid="search-entity-select"]');
+
+    await page.fill(
+      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+      table.entity.name
+    );
+
+    await page.waitForRequest(
+      (req) =>
+        req.url().includes('/api/v1/search/query') &&
+        req.url().includes('deleted=false')
+    );
+
+    await page.waitForSelector('.ant-select-dropdown');
+
+    const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const dbFqn = get(table, 'entityResponseData.database.fullyQualifiedName');
+    await page
+      .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
+      .dispatchEvent('click');
+
+    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+
+    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
+
+    await expect(
+      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    ).toBeVisible();
+
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await page.waitForSelector('[data-testid="search-entity-select"]');
+    await page.click('[data-testid="search-entity-select"]');
+
+    await page.fill(
+      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+      db
+    );
+    await page.waitForSelector(`[data-testid="node-suggestion-${dbFqn}"]`);
+    await page
+      .locator(`[data-testid="node-suggestion-${dbFqn}"]`)
+      .dispatchEvent('click');
+    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+
+    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
+
+    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+
+    await expect(page.locator('.ant-drawer-wrapper-body')).toBeVisible();
+  } finally {
+    // Cleanup
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test.fixme(
+  'Verify cycle lineage should be handled properly',
+  async ({ browser }) => {
+    test.slow();
+
+    const { page } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass();
+    const topic = new TopicClass();
+    const dashboard = new DashboardClass();
+
+    try {
+      await Promise.all([
+        table.create(apiContext),
+        topic.create(apiContext),
+        dashboard.create(apiContext),
+      ]);
+
+      const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+      const dashboardFqn = get(
+        dashboard,
+        'entityResponseData.fullyQualifiedName'
+      );
+
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await visitLineageTab(page);
+      await page.getByTestId('full-screen').click();
+      await editLineage(page);
+      await performZoomOut(page);
+
+      // connect table to topic
+      await connectEdgeBetweenNodes(page, table, topic);
+      await rearrangeNodes(page);
+
+      // connect topic to dashboard
+      await connectEdgeBetweenNodes(page, topic, dashboard);
+      await rearrangeNodes(page);
+
+      // connect dashboard to table
+      await connectEdgeBetweenNodes(page, dashboard, table);
+      await rearrangeNodes(page);
+
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await performZoomOut(page);
+
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
+
+      // Collapse the cycle dashboard lineage downstreamNodeHandler
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('downstream-collapse-handle')
+        .click();
+
+      await expect(
+        page.getByTestId(`edge-${dashboardFqn}-${tableFqn}`)
+      ).not.toBeVisible();
+
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
+
+      await expect(
+        page
+          .getByTestId(`lineage-node-${tableFqn}`)
+          .getByTestId('upstream-collapse-handle')
+      ).not.toBeVisible();
+
+      await expect(
+        page
+          .getByTestId(`lineage-node-${dashboardFqn}`)
+          .getByTestId('plus-icon')
+      ).toBeVisible();
+
+      // Reclick the plus icon to expand the cycle dashboard lineage downstreamNodeHandler
+      const downstreamResponse = page.waitForResponse(
+        `/api/v1/lineage/getLineage/Downstream?fqn=${dashboardFqn}&type=dashboard**`
+      );
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('plus-icon')
+        .click();
+
+      await downstreamResponse;
+
+      await expect(
+        page
+          .getByTestId(`lineage-node-${tableFqn}`)
+          .getByTestId('upstream-collapse-handle')
+          .getByTestId('minus-icon')
+      ).toBeVisible();
+
+      // Click the Upstream Node to expand the cycle dashboard lineage
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('upstream-collapse-handle')
+        .click();
+
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${topicFqn}`)
+      ).not.toBeVisible();
+
+      await expect(
+        page
+          .getByTestId(`lineage-node-${dashboardFqn}`)
+          .getByTestId('plus-icon')
+      ).toBeVisible();
+
+      // Reclick the plus icon to expand the cycle dashboard lineage upstreamNodeHandler
+      const upStreamResponse2 = page.waitForResponse(
+        `/api/v1/lineage/getLineage/Upstream?fqn=${dashboardFqn}&type=dashboard**`
+      );
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('plus-icon')
+        .click();
+      await upStreamResponse2;
+
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+
+      // Collapse the Node from the Parent Cycle Node
+      await page
+        .getByTestId(`lineage-node-${topicFqn}`)
+        .getByTestId('downstream-collapse-handle')
+        .click();
+
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).not.toBeVisible();
+    } finally {
+      await Promise.all([
+        table.delete(apiContext),
+        topic.delete(apiContext),
+        dashboard.delete(apiContext),
+      ]);
+      await afterAction();
+    }
+  }
+);

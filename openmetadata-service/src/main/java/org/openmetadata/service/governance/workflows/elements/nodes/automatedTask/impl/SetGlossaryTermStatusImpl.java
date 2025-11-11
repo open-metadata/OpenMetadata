@@ -6,23 +6,25 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import jakarta.json.JsonPatch;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 
+@Deprecated
 @Slf4j
 public class SetGlossaryTermStatusImpl implements JavaDelegate {
   private Expression statusExpr;
@@ -55,16 +57,17 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
           String.format(
               "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
           exc);
-      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
-    if (!Objects.equals(status, glossaryTerm.getStatus().value())) {
+    EntityStatus newStatus = EntityStatus.fromValue(status);
+    if (newStatus != glossaryTerm.getEntityStatus()) {
       String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
-      glossaryTerm.setStatus(GlossaryTerm.Status.fromValue(status));
+      glossaryTerm.setEntityStatus(newStatus);
       String updatedJson = JsonUtils.pojoToJson(glossaryTerm);
 
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);

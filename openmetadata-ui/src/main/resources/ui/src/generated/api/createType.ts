@@ -24,9 +24,9 @@ export interface CreateType {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Type belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Unique name that identifies a Type.
      */

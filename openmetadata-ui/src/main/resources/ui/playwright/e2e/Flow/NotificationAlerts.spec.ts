@@ -101,6 +101,8 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  test.slow();
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -115,6 +117,8 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll('Cleanup', async ({ browser }) => {
+  test.slow();
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonCleanup({
     apiContext,

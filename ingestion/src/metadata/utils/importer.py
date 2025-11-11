@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -122,7 +122,7 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_from_module(key: str) -> Type[Any]:
+def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
@@ -132,7 +132,8 @@ def import_from_module(key: str) -> Type[Any]:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
     except (ModuleNotFoundError, ImportError) as err:
-        logger.debug(traceback.format_exc())
+        if log_traceback:
+            logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 

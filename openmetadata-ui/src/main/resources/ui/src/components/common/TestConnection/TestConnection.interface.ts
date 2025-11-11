@@ -23,6 +23,8 @@ export interface TestConnectionProps {
   serviceName?: string;
   shouldValidateForm?: boolean;
   onValidateFormRequiredFields?: () => boolean;
+  hostIp?: string;
+  extraInfo?: string;
 }
 
 export type TestStatus = Exclude<StatusType, 'Running'> | 'Warning' | undefined;

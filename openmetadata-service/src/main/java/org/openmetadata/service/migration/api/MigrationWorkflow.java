@@ -23,6 +23,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
+import org.openmetadata.service.migration.utils.FlywayMigrationFile;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.AsciiTable;
 
@@ -30,10 +31,12 @@ import org.openmetadata.service.util.AsciiTable;
 public class MigrationWorkflow {
   public static final String SUCCESS_MSG = "Success";
   public static final String FAILED_MSG = "Failed due to : ";
+  public static final String CURRENT = "Current";
   private List<MigrationProcess> migrations;
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
   private final String extensionSQLScriptRootPath;
+  private final String flywayPath;
   @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
@@ -46,6 +49,7 @@ public class MigrationWorkflow {
       String nativeSQLScriptRootPath,
       ConnectionType connectionType,
       String extensionSQLScriptRootPath,
+      String flywayPath,
       OpenMetadataApplicationConfig config,
       boolean forceMigrations) {
     this.jdbi = jdbi;
@@ -54,6 +58,7 @@ public class MigrationWorkflow {
     this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
     this.connectionType = connectionType;
     this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
+    this.flywayPath = flywayPath;
     this.openMetadataApplicationConfig = config;
   }
 
@@ -64,7 +69,8 @@ public class MigrationWorkflow {
             nativeSQLScriptRootPath,
             connectionType,
             openMetadataApplicationConfig,
-            extensionSQLScriptRootPath);
+            extensionSQLScriptRootPath,
+            flywayPath);
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(availableMigrations);
   }
@@ -83,27 +89,35 @@ public class MigrationWorkflow {
       String nativeSQLScriptRootPath,
       ConnectionType connectionType,
       OpenMetadataApplicationConfig config,
-      String extensionSQLScriptRootPath) {
+      String extensionSQLScriptRootPath,
+      String flywayPath) {
     List<MigrationFile> availableOMNativeMigrations =
         getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType, config, false);
 
-    // If we only have OM migrations, return them
-    if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
-      return availableOMNativeMigrations;
+    // Get Flyway migrations first (they should run before native migrations)
+    List<FlywayMigrationFile> availableFlywayMigrations =
+        FlywayMigrationFile.getFlywayMigrationFiles(
+            flywayPath, connectionType, config, migrationDAO);
+
+    // Get extension migrations if available
+    List<MigrationFile> availableExtensionMigrations = new ArrayList<>();
+    if (extensionSQLScriptRootPath != null && !extensionSQLScriptRootPath.isEmpty()) {
+      availableExtensionMigrations =
+          getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, config, true);
     }
 
-    // Otherwise, fetch the extension migrations and sort the executions
-    List<MigrationFile> availableExtensionMigrations =
-        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, config, true);
-
     /*
-     If we create migrations version as:
-       - OpenMetadata: 1.1.0, 1.1.1, 1.2.0
-       - Extension: 1.1.0-extension, 1.2.0-extension
-     The end result will be 1.1.0, 1.1.0-extension, 1.1.1, 1.2.0, 1.2.0-extension
+     Combined execution order:
+       1. Flyway migrations (legacy SQL files from Flyway)
+       2. OpenMetadata native migrations
+       3. Extension migrations
+     All sorted by version within their respective groups
     */
-    return Stream.concat(
-            availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
+    return Stream.of(
+            availableFlywayMigrations.stream().map(f -> (MigrationFile) f),
+            availableOMNativeMigrations.stream(),
+            availableExtensionMigrations.stream())
+        .flatMap(stream -> stream)
         .sorted()
         .toList();
   }
@@ -122,7 +136,14 @@ public class MigrationWorkflow {
   private List<MigrationProcess> filterAndGetMigrationsToRun(
       List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
-    executedMigrations = migrationDAO.getMigrationVersions();
+    try {
+      executedMigrations = migrationDAO.getMigrationVersions();
+    } catch (Exception e) {
+      // SERVER_CHANGE_LOG table doesn't exist yet, run all migrations including Flyway
+      LOG.info(
+          "SERVER_CHANGE_LOG table doesn't exist yet, will run all migrations including Flyway");
+      executedMigrations = new ArrayList<>();
+    }
     currentMaxMigrationVersion =
         executedMigrations.stream().max(MigrationWorkflow::compareVersions);
     List<MigrationFile> applyMigrations;
@@ -175,7 +196,6 @@ public class MigrationWorkflow {
 
   /*
    * Parse a version string into an array of integers
-   * @param version The version string to parse
    * Follows the format major.minor.patch, patch can contain -extension
    */
   private static int[] parseVersion(String version) {
@@ -250,7 +270,12 @@ public class MigrationWorkflow {
     printToAsciiTable(columns.stream().toList(), allRows, "No Server Migration To be Run");
   }
 
-  public void runMigrationWorkflows() {
+  /**
+   * Run the Migration Workflow
+   * @param computeAllContext If true, compute the context for each executed migration. Otherwise, we'll only compute
+   *                          the context for the initial and last state of the database.
+   */
+  public void runMigrationWorkflows(boolean computeAllContext) {
     List<String> columns =
         Arrays.asList(
             "Version",
@@ -262,12 +287,18 @@ public class MigrationWorkflow {
     List<List<String>> allRows = new ArrayList<>();
     try (Handle transactionHandler = jdbi.open()) {
       MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
-      if (currentMaxMigrationVersion.isPresent()) {
-        LOG.debug("Current Max version {}", currentMaxMigrationVersion.get());
-        context.computeInitialContext(currentMaxMigrationVersion.get());
-      } else {
-        context.computeInitialContext("1.1.0");
-      }
+      String currentVersion = currentMaxMigrationVersion.orElse(CURRENT);
+      LOG.debug("Current Max version {}", currentVersion);
+      // Add the current version context
+      context.computeInitialContext(currentVersion);
+      allRows.add(
+          List.of(
+              currentVersion,
+              CURRENT,
+              CURRENT,
+              CURRENT,
+              CURRENT,
+              context.getMigrationContext().get(currentVersion).getResults().toString()));
       LOG.info("[MigrationWorkflow] WorkFlow Started");
       try {
         for (MigrationProcess process : migrations) {
@@ -292,8 +323,9 @@ public class MigrationWorkflow {
             // Post DDL Scripts
             runPostDDLChanges(row, process);
 
-            // Build Context
-            context.computeMigrationContext(process);
+            // Build Context only if required (during ops), or if it's the last migration
+            context.computeMigrationContext(
+                process, computeAllContext || migrations.indexOf(process) == migrations.size() - 1);
             row.add(
                 context.getMigrationContext().get(process.getVersion()).getResults().toString());
 

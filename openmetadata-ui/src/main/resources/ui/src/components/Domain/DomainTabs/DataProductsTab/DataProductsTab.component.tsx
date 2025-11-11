@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -28,12 +29,10 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -59,26 +58,26 @@ const DataProductsTab = forwardRef(
     const fetchDataProducts = async () => {
       try {
         setLoading(true);
-        const encodedFqn = getEncodedFqn(escapeESReservedCharacters(domainFqn));
-        const res = await searchData(
-          '',
-          1,
-          PAGE_SIZE_LARGE,
-          `(domain.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DATA_PRODUCT
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domainFqn ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
 
-        const data = formatDataProductResponse(res.data.hits.hits);
+        const data = formatDataProductResponse(res.hits.hits);
         setDataProducts({
           data: data,
-          paging: { total: res.data.hits.total.value ?? 0 },
+          paging: { total: res.hits.total.value ?? 0 },
         });
         if (data.length > 0) {
           setSelectedCard(data[0]);
         }
-      } catch (error) {
+      } catch (err) {
+        showErrorToast(err as AxiosError);
         setDataProducts({
           data: [],
           paging: { total: 0 },
@@ -109,9 +108,11 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
-          className="m-t-xlg"
           heading={t('label.data-product')}
           permission={permissions.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.data-product'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={onAddDataProduct}
         />
@@ -120,11 +121,11 @@ const DataProductsTab = forwardRef(
 
     return (
       <ResizablePanels
-        className="domain-height-with-resizable-panel"
+        className="h-full domain-height-with-resizable-panel"
         firstPanel={{
           className: 'domain-resizable-panel-container',
           children: (
-            <div className="p-x-md p-y-md">
+            <>
               {dataProducts.data.map((dataProduct) => (
                 <ExploreSearchCard
                   className={classNames(
@@ -141,12 +142,13 @@ const DataProductsTab = forwardRef(
                   }}
                 />
               ))}
-            </div>
+            </>
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
         }}
         pageTitle={t('label.domain')}
         secondPanel={{
+          wrapInCard: false,
           children: selectedCard && (
             <EntitySummaryPanel
               entityDetails={{

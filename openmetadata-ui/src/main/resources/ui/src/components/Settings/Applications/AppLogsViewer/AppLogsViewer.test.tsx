@@ -12,13 +12,25 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
+  ErrorSource,
   ScheduleTimeline,
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
 import AppLogsViewer from './AppLogsViewer.component';
+
+// Add TextEncoder polyfill
+class MockTextEncoder {
+  encoding = 'utf-8';
+  encode() {
+    return new Uint8Array();
+  }
+  encodeInto() {
+    return { read: 0, written: 0 };
+  }
+}
+global.TextEncoder = MockTextEncoder as unknown as typeof TextEncoder;
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeWithTimezone: jest
@@ -157,10 +169,10 @@ const mockProps5 = {
   data: {
     ...mockProps1.data,
     successContext: {
-      stats: null,
+      stats: undefined,
     },
     failureContext: {
-      stats: null,
+      stats: undefined,
     },
   },
 };
@@ -174,7 +186,7 @@ const mockProps6 = {
     failureContext: {
       failure: {
         message: 'Reindexing Job Has Encountered an Exception.',
-        errorSource: 'Job',
+        errorSource: ErrorSource.Job,
         failedEntities: [],
       },
     },

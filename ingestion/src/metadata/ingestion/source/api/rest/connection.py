@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,11 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.api.rest.parser import (
+    OpenAPIParseError,
+    parse_openapi_schema,
+    validate_openapi_schema,
+)
 from metadata.utils.constants import THREE_MIN
 
 
@@ -66,21 +71,26 @@ def test_connection(
     """
 
     def custom_url_exec():
-        if (
-            "application/json" in client.headers.get("content-type")
-            and client.status_code == 200
-        ):
+        if client.status_code == 200:
             return []
         raise SchemaURLError(
-            "Failed to parse JSON schema url. Please check if provided url is valid JSON schema."
+            "Failed to connect to the JSON schema url. Please check the url and credentials. Status Code was: "
+            + str(client.status_code)
         )
 
     def custom_schema_exec():
-        if client.json().get("openapi") is not None:
-            return []
-        raise InvalidOpenAPISchemaError(
-            "Provided schema is not valid OpenAPI JSON schema"
-        )
+        try:
+            schema = parse_openapi_schema(client)
+            if validate_openapi_schema(schema):
+                return []
+
+            raise InvalidOpenAPISchemaError(
+                "Provided schema is not valid OpenAPI specification"
+            )
+        except OpenAPIParseError as e:
+            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
+        except Exception as e:
+            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 

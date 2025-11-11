@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import React, { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
@@ -35,7 +35,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const menuRef = useRef<Menu>(null);
 
   const createGlossaryPermission = useMemo(
@@ -65,10 +65,10 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   }, [glossaries]);
 
   const handleAddGlossaryClick = () => {
-    history.push(ROUTES.ADD_GLOSSARY);
+    navigate(ROUTES.ADD_GLOSSARY);
   };
   const handleMenuClick: MenuProps['onClick'] = (event) => {
-    history.push(getGlossaryPath(event.key));
+    navigate(getGlossaryPath(event.key));
   };
 
   useEffect(() => {
@@ -111,13 +111,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   return (
     <LeftPanelCard id="glossary">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
-        <Row className="p-y-xs" gutter={[0, 16]}>
-          <Col className="p-x-sm" span={24}>
-            <Typography.Text strong className="m-b-0">
-              {t('label.glossary')}
-            </Typography.Text>
-          </Col>
-
+        <Row gutter={[0, 16]}>
           {createGlossaryPermission && (
             <Col className="p-x-sm" span={24}>
               <Button

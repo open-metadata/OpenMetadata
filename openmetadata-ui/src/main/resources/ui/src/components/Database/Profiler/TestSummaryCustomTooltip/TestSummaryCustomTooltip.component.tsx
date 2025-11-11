@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { entries, isNumber, isString, omit, startCase } from 'lodash';
-import React, { Fragment } from 'react';
+import { entries, isNumber, omit, startCase } from 'lodash';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
   convertMillisecondsToHumanReadableFormat,
-  formatDateTime,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import './test-summary-custom-tooltip.less';
 
 const TestSummaryCustomTooltip = (
   props: TooltipProps<string | number, string>
@@ -38,11 +40,15 @@ const TestSummaryCustomTooltip = (
     return null;
   }
 
+  const isThread = (value: unknown): value is Thread => {
+    return typeof value === 'object' && value !== null && 'task' in value;
+  };
+
   const tooltipRender = ([key, value]: [
     key: string,
     value: string | number | Thread
   ]) => {
-    if (key === 'task' && !isString(value) && !isNumber(value)) {
+    if (isThread(value)) {
       return value?.task ? (
         <Fragment key={`item-${key}`}>
           <li
@@ -74,6 +80,8 @@ const TestSummaryCustomTooltip = (
       ) : null;
     }
 
+    const tooltipValue = isNumber(value) ? formatNumberWithComma(value) : value;
+
     return (
       <li
         className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
@@ -82,10 +90,16 @@ const TestSummaryCustomTooltip = (
           {startCase(key)}
         </span>
         <span className="font-medium" data-testid={key}>
-          {/* freshness will always be in seconds  */}
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
-            ? convertMillisecondsToHumanReadableFormat(value)
-            : value}
+            ? // freshness will always be in seconds, so we need to convert it to milliseconds
+              convertMillisecondsToHumanReadableFormat(
+                value * 1000,
+                undefined,
+                false,
+                // negative value will be shown as late by
+                `${t('label.late-by')} `
+              )
+            : tooltipValue}
         </span>
       </li>
     );
@@ -95,10 +109,12 @@ const TestSummaryCustomTooltip = (
     <Card
       title={
         <Typography.Title level={5}>
-          {formatDateTime(payload[0].payload.name)}
+          {formatDateTimeLong(payload[0].payload.name)}
         </Typography.Title>
       }>
-      <ul data-testid="test-summary-tooltip-container">
+      <ul
+        className="test-summary-tooltip-container"
+        data-testid="test-summary-tooltip-container">
         {data.map(tooltipRender)}
       </ul>
     </Card>

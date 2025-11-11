@@ -3,6 +3,9 @@
 # Review from UI owners for changes around UI code
 /openmetadata-ui/src/main/resources/ui/ @open-metadata/ui
 
+# Review from @chireg / @karan for changes around component library
+/openmetadata-ui-core-components/src/main/resources/ui/ @chirag-madlani @karanh37
+
 # Review from Backend owners for changes around Backend code
 /openmetadata-service/ @open-metadata/backend
 

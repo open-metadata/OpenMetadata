@@ -10,6 +10,7 @@ public class MessagingServiceMapper
   public MessagingService createToEntity(CreateMessagingService create, String user) {
     return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
-        .withServiceType(create.getServiceType());
+        .withServiceType(create.getServiceType())
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

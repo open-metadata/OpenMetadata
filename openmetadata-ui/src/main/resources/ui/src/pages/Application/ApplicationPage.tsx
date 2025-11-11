@@ -13,9 +13,9 @@
 import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -50,7 +50,7 @@ const ApplicationPage = () => {
     handlePageSizeChange,
     showPagination,
   } = usePaging();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
   const [showDisabled, setShowDisabled] = useState(false);
@@ -96,11 +96,11 @@ const ApplicationPage = () => {
   };
 
   const viewAppDetails = (item: App) => {
-    history.push(getApplicationDetailsPath(item.fullyQualifiedName ?? ''));
+    navigate(getApplicationDetailsPath(item.fullyQualifiedName ?? ''));
   };
 
   const handleAddApplication = () => {
-    history.push(ROUTES.MARKETPLACE);
+    navigate(ROUTES.MARKETPLACE);
   };
 
   const errorPlaceHolder = useMemo(() => {
@@ -134,7 +134,7 @@ const ApplicationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -164,11 +164,11 @@ const ApplicationPage = () => {
           </Space>
         </Col>
       </Row>
-      <Row className="page-container m-t-lg">
+      <Row className="m-t-lg" gutter={[20, 20]}>
         {isLoading &&
-          [1, 2, 3].map((key) => (
-            <Col key={key} span={8}>
-              <Card className="w-400">
+          [1, 2, 3, 4].map((key) => (
+            <Col key={key} lg={8} md={12} sm={24} xl={6}>
+              <Card>
                 <Skeleton active paragraph title />
               </Card>
             </Col>
@@ -179,21 +179,27 @@ const ApplicationPage = () => {
         {!isLoading && (
           <>
             <Col span={24}>
-              <div className="d-flex flex-wrap gap-3">
+              <Row className="applications-card-container" gutter={[20, 20]}>
                 {applicationData?.map((item) => (
-                  <ApplicationCard
-                    appName={item.fullyQualifiedName ?? ''}
-                    className="w-400"
-                    deleted={item.deleted}
-                    description={item.description ?? ''}
-                    key={uniqueId()}
-                    linkTitle={t('label.configure')}
-                    showDescription={false}
-                    title={getEntityName(item)}
-                    onClick={() => viewAppDetails(item)}
-                  />
+                  <Col
+                    key={item.fullyQualifiedName}
+                    lg={8}
+                    md={12}
+                    sm={24}
+                    xl={6}>
+                    <ApplicationCard
+                      appName={item.fullyQualifiedName ?? ''}
+                      deleted={item.deleted}
+                      description={item.description ?? ''}
+                      key={uniqueId()}
+                      linkTitle={t('label.configure')}
+                      showDescription={false}
+                      title={getEntityName(item)}
+                      onClick={() => viewAppDetails(item)}
+                    />
+                  </Col>
                 ))}
-              </div>
+              </Row>
             </Col>
             <Col span={24}>
               {showPagination && (

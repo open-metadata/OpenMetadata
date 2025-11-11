@@ -29,11 +29,23 @@ export interface ElasticSearchConfiguration {
     /**
      * Elastic Search Host
      */
-    host: string;
+    host?: string;
     /**
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
+    /**
+     * Configuration for natural language search capabilities
+     */
+    naturalLanguageSearch?: NaturalLanguageSearch;
     /**
      * Elastic Search Password for Login
      */
@@ -45,7 +57,7 @@ export interface ElasticSearchConfiguration {
     /**
      * Elastic Search port
      */
-    port: number;
+    port?: number;
     /**
      * Http/Https connection scheme
      */
@@ -78,11 +90,82 @@ export interface ElasticSearchConfiguration {
 }
 
 /**
+ * Configuration for natural language search capabilities
+ */
+export interface NaturalLanguageSearch {
+    /**
+     * AWS Bedrock configuration for natural language processing
+     */
+    bedrock?: Bedrock;
+    /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     */
+    embeddingProvider?: string;
+    /**
+     * Enable or disable natural language search
+     */
+    enabled?: boolean;
+    /**
+     * Fully qualified class name of the NLQService implementation to use
+     */
+    providerClass?: string;
+}
+
+/**
+ * AWS Bedrock configuration for natural language processing
+ */
+export interface Bedrock {
+    /**
+     * AWS access key for Bedrock service authentication
+     */
+    accessKey?: string;
+    /**
+     * Dimension of the embedding vector
+     */
+    embeddingDimension?: number;
+    /**
+     * Bedrock embedding model identifier to use for vector search
+     */
+    embeddingModelId?: string;
+    /**
+     * Bedrock model identifier to use for query transformation
+     */
+    modelId?: string;
+    /**
+     * AWS Region for Bedrock service
+     */
+    region?: string;
+    /**
+     * AWS secret key for Bedrock service authentication
+     */
+    secretKey?: string;
+    /**
+     * Set to true to use IAM role based authentication instead of access/secret keys.
+     */
+    useIamRole?: boolean;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
+}
+
+/**
  * This schema defines the language options available for search index mappings.
  */
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 

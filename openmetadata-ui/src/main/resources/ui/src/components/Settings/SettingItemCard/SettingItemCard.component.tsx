@@ -12,7 +12,8 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Card, Typography } from 'antd';
-import React, { useCallback } from 'react';
+import classNames from 'classnames';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import './setting-item-card.style.less';
@@ -20,30 +21,37 @@ import './setting-item-card.style.less';
 interface SettingMenuItemProps {
   data: SettingMenuItem;
   onClick: (key: string) => void;
+  className?: string;
 }
 
-const SettingItemCard = ({ data, onClick }: SettingMenuItemProps) => {
+const SettingItemCard = ({
+  data,
+  onClick,
+  className,
+}: SettingMenuItemProps) => {
   const { t } = useTranslation();
-  const handleOnClick = useCallback(() => onClick(data.key), []);
+  const handleOnClick = useCallback(
+    () => onClick(data.key),
+    [onClick, data.key]
+  );
 
   return (
     <Card
-      className="setting-card-item"
+      className={classNames('setting-card-item', className)}
       data-testid={data.key}
       onClick={handleOnClick}>
-      <div className="setting-card-icon-container">
-        <Icon className="setting-card-icon" component={data.icon} />
+      <div className="setting-card-icon">
+        <Icon component={data.icon} />
+        {Boolean(data?.isBeta) && (
+          <Badge className="service-beta-tag" count={t('label.beta')} />
+        )}
       </div>
-
-      <div className="setting-card-item-content">
-        <Typography.Text className="setting-card-title">
-          {data.category ?? data.label}{' '}
-          {Boolean(data?.isBeta) && (
-            <Badge className="service-beta-tag" count={t('label.beta')} />
-          )}
+      <div className="setting-card-content">
+        <Typography.Text className="font-semibold">
+          {data.category ?? data.label}
         </Typography.Text>
         <Typography.Paragraph
-          className="setting-card-description"
+          className="font-normal text-sm"
           ellipsis={{ rows: 2 }}>
           {data.description}
         </Typography.Paragraph>

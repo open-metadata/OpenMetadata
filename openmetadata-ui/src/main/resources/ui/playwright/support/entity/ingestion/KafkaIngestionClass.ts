@@ -21,12 +21,25 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class KafkaIngestionClass extends ServiceBaseClass {
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Messaging,
       `pw-kafka-with-%-${uuid()}`,
       'Kafka',
-      '__transaction_state'
+      '__transaction_state',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 

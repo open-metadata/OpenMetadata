@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .entity-reference-list-item:last-child {
   border-bottom: none;
@@ -58,8 +58,18 @@
   }
 }
 .custom-property-card {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
   .ant-card-body {
     overflow-x: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .property-name {

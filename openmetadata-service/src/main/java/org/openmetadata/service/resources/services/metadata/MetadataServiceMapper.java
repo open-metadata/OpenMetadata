@@ -9,6 +9,7 @@ public class MetadataServiceMapper implements EntityMapper<MetadataService, Crea
   public MetadataService createToEntity(CreateMetadataService create, String user) {
     return copy(new MetadataService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

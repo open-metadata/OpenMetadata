@@ -12,52 +12,32 @@
  */
 
 import { FC } from 'react';
-import ActivityFeedImg from '../assets/img/activity-feed.png';
-import AnnouncementImg from '../assets/img/announcement.png';
-import DataAssetsImg from '../assets/img/data-assets.png';
-import FollowingImg from '../assets/img/following.png';
-import KPISmallImg from '../assets/img/kpi-small.png';
+import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
+import CuratedAssetsImg from '../assets/img/curated-assets.png';
+import DataAssetsImg from '../assets/img/data-assets-widget.png';
+import DataProductsImg from '../assets/img/data-products-widget.png';
+import DomainsImg from '../assets/img/domains-widget.png';
+import FollowingImg from '../assets/img/following-widget.png';
+import KPISmallImg from '../assets/img/kpi-widget.png';
 import KPIImg from '../assets/img/kpi.png';
-import MyDataImg from '../assets/img/my-data.png';
-import RecentViewsImg from '../assets/img/recent-views.png';
+import MyDataImg from '../assets/img/my-data-widget.png';
+import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
-import TotalAssetsImg from '../assets/img/total-assets.png';
-import CustomPropertyImg from '../assets/img/widgets/custom_properties.png';
-import DataProductImg from '../assets/img/widgets/data-products.png';
-import DescriptionLargeImg from '../assets/img/widgets/description-large.png';
-import DescriptionImg from '../assets/img/widgets/description.png';
-import DomainImg from '../assets/img/widgets/Domain.png';
-import FrequentlyJoinedTablesImg from '../assets/img/widgets/frequently-joined-tables.png';
-import GlossaryTermImg from '../assets/img/widgets/glossary-term.png';
-import OwnersImg from '../assets/img/widgets/owners.png';
-import ReferencesImg from '../assets/img/widgets/References.png';
-import RelatedTermsImg from '../assets/img/widgets/RelatedTerms.png';
-import ReviewersImg from '../assets/img/widgets/Reviewers.png';
-import SynonymsImg from '../assets/img/widgets/Synonyms.png';
-import TableConstraints from '../assets/img/widgets/table-constraints.png';
-import SchemaImg from '../assets/img/widgets/table-schema.png';
-import TagsImg from '../assets/img/widgets/tags.png';
-import TermsImg from '../assets/img/widgets/Terms.png';
+import TotalAssetsImg from '../assets/img/total-assets-widget.png';
+import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
-import AnnouncementsWidget, {
-  AnnouncementsWidgetProps,
-} from '../components/MyData/RightSidebar/AnnouncementsWidget';
-import FollowingWidget, {
-  FollowingWidgetProps,
-} from '../components/MyData/RightSidebar/FollowingWidget';
+import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
+import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
-import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
+import DataProductsWidget from '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component';
+import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
-import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
+import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
 import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
-import {
-  DetailPageWidgetKeys,
-  GlossaryTermDetailPageWidgetKeys,
-} from '../enums/CustomizeDetailPage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -66,34 +46,58 @@ import {
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
-  landingPageRowHeight = 100;
-  landingPageMaxGridSize = 4;
+  landingPageRowHeight = 133.33;
+  landingPageMaxGridSize = 3;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
-    activityFeed: 6,
+    activityFeed: 3,
     announcements: 3,
     following: 3,
-    recentlyViewed: 3,
     myData: 3,
     kpi: 3,
     totalAssets: 3,
     DataAssets: 3,
+    DataProducts: 3,
+    curatedAssets: 3,
+    myTask: 3,
+    domains: 3,
   };
 
-  announcementWidget: WidgetConfig = {
-    h: this.landingPageWidgetDefaultHeights.announcements,
-    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+  curatedAssetsWidgetDefaultValues: WidgetConfig = {
+    config: {
+      sortBy: 'latest',
+    },
+    h: this.landingPageWidgetDefaultHeights.curatedAssets,
+    i: LandingPageWidgetKeys.CURATED_ASSETS,
+    static: false,
     w: 1,
-    x: 3,
+    x: 2,
     y: 0,
-    static: true, // Making announcement widget fixed on top right position
+  };
+
+  myTaskWidgetDefaultValues: WidgetConfig = {
+    h: this.landingPageWidgetDefaultHeights.myTask,
+    i: LandingPageWidgetKeys.MY_TASK,
+    static: false,
+    w: 1,
+    x: 2,
+    y: 1,
+  };
+
+  domainsWidgetDefaultValues: WidgetConfig = {
+    h: this.landingPageWidgetDefaultHeights.domains,
+    i: LandingPageWidgetKeys.DOMAINS,
+    static: false,
+    w: 1,
+    x: 2,
+    y: 2,
   };
 
   defaultLayout: Array<WidgetConfig> = [
     {
       h: this.landingPageWidgetDefaultHeights.activityFeed,
       i: LandingPageWidgetKeys.ACTIVITY_FEED,
-      w: 3,
+      w: 1,
       x: 0,
       y: 0,
       static: false,
@@ -101,8 +105,8 @@ class CustomizeMyDataPageClassBase {
     {
       h: this.landingPageWidgetDefaultHeights.DataAssets,
       i: LandingPageWidgetKeys.DATA_ASSETS,
-      w: 3,
-      x: 0,
+      w: 1,
+      x: 1,
       y: 0,
       static: false,
     },
@@ -110,40 +114,32 @@ class CustomizeMyDataPageClassBase {
       h: this.landingPageWidgetDefaultHeights.myData,
       i: LandingPageWidgetKeys.MY_DATA,
       w: 1,
-      x: 3,
-      y: 6,
+      x: 2,
+      y: 0,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.kpi,
       i: LandingPageWidgetKeys.KPI,
-      w: 2,
+      w: 1,
       x: 0,
-      y: 9,
+      y: 1,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.totalAssets,
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-      w: 3,
-      x: 0,
-      y: 6,
+      w: 1,
+      x: 1,
+      y: 1,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.following,
       i: LandingPageWidgetKeys.FOLLOWING,
       w: 1,
-      x: 3,
-      y: 1.5,
-      static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.recentlyViewed,
-      i: LandingPageWidgetKeys.RECENTLY_VIEWED,
-      w: 1,
-      x: 3,
-      y: 3,
+      x: 2,
+      y: 1,
       static: false,
     },
   ];
@@ -166,22 +162,22 @@ class CustomizeMyDataPageClassBase {
       handleRemoveWidget?: (widgetKey: string) => void;
       announcements: Thread[];
       followedData: EntityReference[];
-      followedDataCount: number;
       isLoadingOwnedData: boolean;
     }
   >
    */
-  public getWidgetsFromKey(
-    widgetKey: string
-  ): FC<WidgetCommonProps & AnnouncementsWidgetProps & FollowingWidgetProps> {
-    if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
-      return FeedsWidget;
-    }
+  public getWidgetsFromKey(widgetKey: string): FC<WidgetCommonProps> {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_PRODUCTS)) {
+      return DataProductsWidget;
+    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
+      return MyFeedWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.KPI)) {
       return KPIWidget;
@@ -189,14 +185,17 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
       return TotalDataAssetsWidget;
     }
-    if (widgetKey.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
-      return AnnouncementsWidget;
-    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
       return FollowingWidget;
     }
-    if (widgetKey.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
-      return RecentlyViewed;
+    if (widgetKey.startsWith(LandingPageWidgetKeys.CURATED_ASSETS)) {
+      return CuratedAssetsWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.MY_TASK)) {
+      return MyTaskWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.DOMAINS)) {
+      return DomainsWidget;
     }
 
     return (() => null) as React.FC;
@@ -209,6 +208,9 @@ class CustomizeMyDataPageClassBase {
       }
       case LandingPageWidgetKeys.DATA_ASSETS: {
         return DataAssetsImg;
+      }
+      case LandingPageWidgetKeys.DATA_PRODUCTS: {
+        return DataProductsImg;
       }
       case LandingPageWidgetKeys.MY_DATA: {
         return MyDataImg;
@@ -227,51 +229,18 @@ class CustomizeMyDataPageClassBase {
 
         return TotalAssetsImg;
       }
-      case LandingPageWidgetKeys.ANNOUNCEMENTS: {
-        return AnnouncementImg;
-      }
       case LandingPageWidgetKeys.FOLLOWING: {
         return FollowingImg;
       }
-      case LandingPageWidgetKeys.RECENTLY_VIEWED: {
-        return RecentViewsImg;
+      case LandingPageWidgetKeys.CURATED_ASSETS: {
+        return CuratedAssetsImg;
       }
-      case DetailPageWidgetKeys.DESCRIPTION:
-      case GlossaryTermDetailPageWidgetKeys.DESCRIPTION:
-        if (size === WidgetWidths.large) {
-          return DescriptionLargeImg;
-        }
-
-        return DescriptionImg;
-      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-      case GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return CustomPropertyImg;
-      case GlossaryTermDetailPageWidgetKeys.DOMAIN:
-        return DomainImg;
-      case GlossaryTermDetailPageWidgetKeys.OWNER:
-        return OwnersImg;
-      case GlossaryTermDetailPageWidgetKeys.REFERENCES:
-        return ReferencesImg;
-      case GlossaryTermDetailPageWidgetKeys.RELATED_TERMS:
-        return RelatedTermsImg;
-      case GlossaryTermDetailPageWidgetKeys.REVIEWER:
-        return ReviewersImg;
-      case GlossaryTermDetailPageWidgetKeys.SYNONYMS:
-        return SynonymsImg;
-      case GlossaryTermDetailPageWidgetKeys.TERMS_TABLE:
-        return TermsImg;
-      case GlossaryTermDetailPageWidgetKeys.TAGS:
-        return TagsImg;
-      case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return DataProductImg;
-      case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
-        return FrequentlyJoinedTablesImg;
-      case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return GlossaryTermImg;
-      case DetailPageWidgetKeys.TABLE_SCHEMA:
-        return SchemaImg;
-      case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
-        return TableConstraints;
+      case LandingPageWidgetKeys.MY_TASK: {
+        return MyTaskImg;
+      }
+      case LandingPageWidgetKeys.DOMAINS: {
+        return DomainsImg;
+      }
       default: {
         return '';
       }
@@ -282,20 +251,37 @@ class CustomizeMyDataPageClassBase {
     switch (widgetName) {
       case 'ActivityFeed':
         return this.landingPageWidgetDefaultHeights.activityFeed;
+
       case 'DataAssets':
         return this.landingPageWidgetDefaultHeights.DataAssets;
+
+      case 'DataProducts':
+        return this.landingPageWidgetDefaultHeights.DataProducts;
+
       case 'Announcements':
         return this.landingPageWidgetDefaultHeights.announcements;
+
       case 'Following':
         return this.landingPageWidgetDefaultHeights.following;
-      case 'RecentlyViewed':
-        return this.landingPageWidgetDefaultHeights.recentlyViewed;
+
       case 'MyData':
         return this.landingPageWidgetDefaultHeights.myData;
+
       case 'KPI':
         return this.landingPageWidgetDefaultHeights.kpi;
+
       case 'TotalAssets':
         return this.landingPageWidgetDefaultHeights.totalAssets;
+
+      case 'CuratedAssets':
+        return this.landingPageWidgetDefaultHeights.curatedAssets;
+
+      case 'MyTask':
+        return this.landingPageWidgetDefaultHeights.myTask;
+
+      case 'Domains':
+        return this.landingPageWidgetDefaultHeights.domains;
+
       default:
         return this.defaultWidgetHeight;
     }

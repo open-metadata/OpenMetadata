@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +31,7 @@ workflowConfig:
 """
 
 import traceback
-from typing import Dict, Iterator, List
+from typing import Iterator
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -43,7 +43,6 @@ from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
     StoredProcedureLineageMixin,
 )
 from metadata.utils.helpers import get_start_and_end
@@ -97,16 +96,11 @@ class RedshiftLineageSource(
                             f"Error processing query_dict {query_dict}: {exc}"
                         )
 
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+    def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
+        Return the SQL statement to get the stored procedure queries
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(start_date=start)
 
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
+        return query

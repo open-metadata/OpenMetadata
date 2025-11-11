@@ -10,34 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { isObject, isString, startCase, uniqueId } from 'lodash';
+import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import { highlightSearchText } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
+import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
-import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -62,11 +65,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       checked = false,
       onCheckboxChange,
       searchValue,
+      score,
+      classNameForBreadcrumb,
     },
     ref
   ) => {
     const { t } = useTranslation();
-    const { tab } = useParams<{ tab: string }>();
+    const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
@@ -79,14 +84,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
-        ...(source?.domain
+        ...(source?.domains && source.domains.length > 0
           ? [
               {
-                key: 'Domain',
-                value: getDomainPath(source.domain.fullyQualifiedName),
-                placeholderText: getEntityName(source.domain),
-                isLink: true,
-                openInNewTab: false,
+                key: 'Domains',
+                value: <DomainDisplay domains={source.domains} />,
               },
             ]
           : !searchClassBase
@@ -103,7 +105,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source?.owners as EntityReference[]) ?? []} />
+            <OwnerLabel
+              avatarSize={18}
+              isCompactView={false}
+              owners={(source?.owners as EntityReference[]) ?? []}
+              showLabel={false}
+            />
           ),
         },
 
@@ -183,7 +190,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
         source.entityType === EntityType.GLOSSARY_TERM &&
-        (source as GlossaryTerm).status !== Status.Approved;
+        (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
         <Row gutter={[8, 8]}>
@@ -201,16 +208,28 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             </Col>
           )}
           {!hideBreadcrumbs && (
-            <Col className="d-flex" flex="auto">
+            <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
-                {serviceIcon}
+                {breadcrumbs.length > 0 && serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
                   <TitleBreadcrumb
+                    className={classNameForBreadcrumb}
                     titleLinks={breadcrumbs}
                     widthDeductions={780}
                   />
                 </div>
               </div>
+              {score && (
+                <div className="flex items-center gap-1 score-container">
+                  <Icon className="text-xs" component={ScoreIcon} />
+                  <Typography.Text className="text-xs score">
+                    <span className="font-normal">
+                      {t('label.score-label').toUpperCase()}
+                    </span>
+                    <span className="font-semibold">{score.toFixed(4)}</span>
+                  </Typography.Text>
+                </div>
+              )}
             </Col>
           )}
           <Col
@@ -241,18 +260,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"
+                  state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
                   target={searchClassBase.getSearchEntityLinkTarget(
                     source,
                     openEntityInNewPage
                   )}
-                  to={{
-                    pathname: isObject(entityLink)
-                      ? entityLink.pathname
-                      : entityLink,
-                    state: {
-                      breadcrumbData: breadcrumbs.slice(0, -1),
-                    },
-                  }}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
@@ -265,7 +278,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   </Typography.Text>
                 </Link>
 
-                {(source as Table)?.certification && (
+                {!isEmpty(
+                  (source as Table)?.certification?.tagLabel?.tagFQN
+                ) && (
                   <div className="p-l-sm">
                     <CertificationTag
                       certification={
@@ -276,8 +291,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 )}
 
                 {hasGlossaryTermStatus && (
-                  <GlossaryStatusBadge
-                    status={(source as GlossaryTerm).status ?? Status.Approved}
+                  <EntityStatusBadge
+                    status={
+                      (source as GlossaryTerm).entityStatus ??
+                      EntityStatus.Approved
+                    }
                   />
                 )}
               </div>

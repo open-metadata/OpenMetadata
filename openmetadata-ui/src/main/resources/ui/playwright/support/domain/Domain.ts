@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
+import { selectDomain } from '../../utils/domain';
+import { sidebarClick } from '../../utils/sidebar';
+import { EntityTypeEndpoint } from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 
 type UserTeamRef = {
   name: string;
@@ -32,22 +37,27 @@ type ResponseDataType = {
   experts?: string[];
 };
 
-export class Domain {
-  id: string;
+export class Domain extends EntityClass {
   data: ResponseDataType;
-
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
-    this.id = uuid();
+    super(EntityTypeEndpoint.Domain);
+    const id = uuid();
     this.data = data ?? {
-      name: `PW%domain.${this.id}`,
-      displayName: `PW Domain ${this.id}`,
+      name: `PW%domain.${id}`,
+      displayName: `PW Domain ${id}`,
       description: 'playwright domain description',
       domainType: 'Aggregate',
       // eslint-disable-next-line no-useless-escape
-      fullyQualifiedName: `\"PW%domain.${this.id}\"`,
+      fullyQualifiedName: `\"PW%domain.${id}\"`,
     };
+  }
+
+  async visitEntityPage(page: Page) {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await selectDomain(page, this.responseData);
   }
 
   async create(apiContext: APIRequestContext) {

@@ -13,6 +13,7 @@
 
 import { reduce } from 'lodash';
 import { TagFilterOptions, TagsData } from 'Models';
+import React from 'react';
 import { TableTagsProps } from '../../components/Database/TableTags/TableTags.interface';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 
@@ -56,7 +57,7 @@ export const getAllTags = (data: TagsData[]) => {
 };
 
 export const searchTagInData = (
-  tagToSearch: string | number | boolean,
+  tagToSearch: React.Key | boolean,
   data: TagsData
 ) => {
   if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {

@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WORKFLOWS_METADATA_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -60,7 +60,9 @@ const SampleDataWithMessages: FC<{
 
   if (isUndefined(data)) {
     return (
-      <div className="m-t-xlg" data-testid="no-data">
+      <div
+        className="border-default border-radius-sm p-y-lg"
+        data-testid="no-data">
         <ErrorPlaceHolder>
           <Typography.Paragraph>
             <Transi18next

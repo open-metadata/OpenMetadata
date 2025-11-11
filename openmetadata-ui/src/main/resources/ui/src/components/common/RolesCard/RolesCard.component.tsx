@@ -12,14 +12,14 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space, Tooltip } from 'antd';
+import { Button, Card, Select, Space } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
@@ -49,7 +49,7 @@ const RolesCard = ({
       roles: updatedRoles.map((roleId) => {
         const role = roles.find((r) => r.id === roleId);
 
-        return { id: roleId, type: 'role', name: role?.name || '' };
+        return { id: roleId, type: 'role', name: role?.name ?? '' };
       }),
       isAdmin: Boolean(isAdmin),
     });
@@ -82,22 +82,18 @@ const RolesCard = ({
   if (isAdminUser) {
     return (
       <Card
-        className="ant-card-feed relative page-layout-v1-left-panel"
+        className="bot-page-roles-card-header"
         extra={
           !isRolesEdit && (
-            <Tooltip
+            <EditIconButton
+              newLook
+              data-testid="edit-roles"
+              size="small"
               title={t('label.edit-entity', {
                 entity: t('label.role-plural'),
-              })}>
-              {' '}
-              <Button
-                className="m-l-xs"
-                data-testid="edit-roles"
-                icon={<EditIcon width={16} />}
-                type="text"
-                onClick={() => setIsRolesEdit(true)}
-              />
-            </Tooltip>
+              })}
+              onClick={() => setIsRolesEdit(true)}
+            />
           )
         }
         key="roles-card"
@@ -143,7 +139,7 @@ const RolesCard = ({
   } else {
     return (
       <Card
-        className="relative page-layout-v1-left-panel mt-2.5"
+        className="new-header-border-card"
         key="roles-card"
         title={t('label.role-plural')}>
         <div className="flex items-center justify-between mb-4">

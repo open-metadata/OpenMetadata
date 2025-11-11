@@ -18,12 +18,11 @@ import {
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
-export interface APIEndpointVersionProp {
-  version: string;
+export interface APIEndpointVersionProp
+  extends Pick<APIEndpoint, 'owners' | 'domains'> {
+  version?: string;
   currentVersionData: APIEndpoint;
   isVersionLoading: boolean;
-  owners: APIEndpoint['owners'];
-  domain: APIEndpoint['domain'];
   tier: TagLabel;
   slashedApiEndpointName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

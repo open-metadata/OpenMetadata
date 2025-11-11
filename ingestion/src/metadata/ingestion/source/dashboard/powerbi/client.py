@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@ REST Auth & Client for PowerBi
 import json
 import math
 import traceback
+from copy import deepcopy
 from time import sleep
 from typing import List, Optional, Tuple
 
@@ -45,6 +46,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     WorkSpaceScanResponse,
 )
 from metadata.utils.filters import validate_regex
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -73,7 +75,7 @@ class PowerBiApiClient:
             authority=self.config.authorityURI + self.config.tenantId,
         )
         client_config = ClientConfig(
-            base_url="https://api.powerbi.com",
+            base_url=clean_uri(self.config.apiURL),
             api_version="v1.0",
             auth_token=self.get_auth_token,
             auth_header="Authorization",
@@ -163,6 +165,10 @@ class PowerBiApiClient:
             List[PowerBIDashboard]
         """
         if self.config.useAdminApis:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/dashboards)"  # pylint: disable=protected-access
+                " to get dashboards"
+            )
             response_data = self.client.get("/myorg/admin/dashboards")
             response = DashboardsResponse(**response_data)
             return response.value
@@ -177,6 +183,10 @@ class PowerBiApiClient:
             List[PowerBIDashboard]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/dashboards)"  # pylint: disable=protected-access
+                " to get group dashboards"
+            )
             response_data = self.client.get(f"/myorg/groups/{group_id}/dashboards")
             response = DashboardsResponse(**response_data)
             return response.value
@@ -192,6 +202,10 @@ class PowerBiApiClient:
             List[PowerBIReport]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports)"  # pylint: disable=protected-access
+                " to get group reports"
+            )
             response_data = self.client.get(f"/myorg/groups/{group_id}/reports")
             response = ReportsResponse(**response_data)
             return response.value
@@ -207,6 +221,10 @@ class PowerBiApiClient:
             List[Dataset]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/datasets)"  # pylint: disable=protected-access
+                " to get group datasets"
+            )
             response_data = self.client.get(f"/myorg/groups/{group_id}/datasets")
             response = DatasetResponse(**response_data)
             return response.value
@@ -224,6 +242,10 @@ class PowerBiApiClient:
             List[Tile]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles)"  # pylint: disable=protected-access
+                " to get dashboard tiles"
+            )
             response_data = self.client.get(
                 f"/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles"
             )
@@ -243,6 +265,10 @@ class PowerBiApiClient:
             List[PowerBiTable]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/datasets/{dataset_id}/tables)"  # pylint: disable=protected-access
+                " to get dataset tables"
+            )
             response_data = self.client.get(
                 f"/myorg/groups/{group_id}/datasets/{dataset_id}/tables"
             )
@@ -349,7 +375,18 @@ class PowerBiApiClient:
             api_url = f"/myorg/{admin}groups"
             entities_per_page = self.pagination_entity_per_page
             failed_indexes = []
-            params_data = GETGROUPS_DEFAULT_PARAMS
+            parsed_filter_query = None
+            if filter_pattern:
+                parsed_filter_query = self.create_filter_query(filter_pattern)
+                logger.debug(f"Filter query applied = {parsed_filter_query}")
+            params_data = deepcopy(GETGROUPS_DEFAULT_PARAMS)
+            if parsed_filter_query:
+                params_data["$filter"] = parsed_filter_query
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/{admin}groups)"  # pylint: disable=protected-access
+                " to get workspaces(initial call to get count of workspaces and then"
+                " further paginate all workspace calls)"
+            )
             response = self.client.get(api_url, data=params_data)
             if (
                 not response
@@ -372,25 +409,32 @@ class PowerBiApiClient:
                     logger.warning(f"Error processing GetGroups response: {exc}")
                     count = 0
             indexes = math.ceil(count / entities_per_page)
+            logger.debug(
+                f"Total {count} workspaces found, Will run {indexes} iterations fetching"
+                f" maximum {entities_per_page} workspaces in a single iteration"
+            )
             workspaces = []
             for index in range(indexes):
                 params_data = {
                     "$top": str(entities_per_page),
                     "$skip": str(index * entities_per_page),
                 }
-                if filter_pattern:
-                    params_data["$filter"] = self.create_filter_query(filter_pattern)
-
+                if parsed_filter_query:
+                    params_data["$filter"] = parsed_filter_query
+                index_range = (
+                    int(params_data.get("$skip")),
+                    int(params_data.get("$skip")) + int(params_data.get("$top")),
+                )
+                logger.debug(
+                    f"Calling the API({str(self.client._base_url)}/myorg/{admin}groups)"  # pylint: disable=protected-access
+                    f" to get workspaces between results: {str(index_range)}"
+                )
                 response = self.client.get(api_url, data=params_data)
                 if (
                     not response
                     or API_RESPONSE_MESSAGE_KEY in response
                     or len(response) != len(GroupsResponse.__annotations__)
                 ):
-                    index_range = (
-                        int(params_data.get("$skip")),
-                        int(params_data.get("$skip")) + int(params_data.get("$top")),
-                    )
                     logger.warning(
                         f"Error fetching workspaces between results: {str(index_range)}"
                     )
@@ -412,17 +456,20 @@ class PowerBiApiClient:
                     "Retrying one more time on failed indexes to get workspaces"
                 )
                 for params_data in failed_indexes:
+                    index_range = (
+                        int(params_data.get("$skip")),
+                        int(params_data.get("$skip")) + int(params_data.get("$top")),
+                    )
+                    logger.debug(
+                        f"Calling the API({str(self.client._base_url)}/myorg/{admin}groups)"  # pylint: disable=protected-access
+                        f" to get workspaces between results: {str(index_range)}"
+                    )
                     response = self.client.get(api_url, data=params_data)
                     if (
                         not response
                         or API_RESPONSE_MESSAGE_KEY in response
                         or len(response) != len(GroupsResponse.__annotations__)
                     ):
-                        index_range = (
-                            int(params_data.get("$skip")),
-                            int(params_data.get("$skip"))
-                            + int(params_data.get("$top")),
-                        )
                         logger.warning(
                             f"Workspaces between results {str(index_range)} "
                             "could not be fetched on multiple attempts"
@@ -460,6 +507,10 @@ class PowerBiApiClient:
                 "datasetExpressions=True&datasetSchema=True"
                 "&datasourceDetails=True&getArtifactUsers=True&lineage=True"
             )
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}{path})"  # pylint: disable=protected-access
+                " to initiate workspace scan"
+            )
             response_data = self.client.post(path=path, data=data)
             return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
@@ -478,6 +529,10 @@ class PowerBiApiClient:
             WorkSpaceScanResponse
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/workspaces/scanStatus/{scan_id})"  # pylint: disable=protected-access
+                " to get workspace scan status"
+            )
             response_data = self.client.get(
                 f"/myorg/admin/workspaces/scanStatus/{scan_id}"
             )
@@ -496,6 +551,10 @@ class PowerBiApiClient:
             Workspaces
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/workspaces/scanResult/{scan_id})"  # pylint: disable=protected-access
+                " to get workspace scan result"
+            )
             response_data = self.client.get(
                 f"/myorg/admin/workspaces/scanResult/{scan_id}"
             )

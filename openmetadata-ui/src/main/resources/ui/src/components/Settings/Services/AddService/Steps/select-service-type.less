@@ -10,18 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../../styles/variables.less');
+@import (reference) '../../../../../styles/variables.less';
 
 .service-list-container {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   margin-top: @margin-md;
   gap: @margin-md;
   flex-wrap: wrap;
 
+  .ant-btn.ant-btn-default.selected-service {
+    border-color: @primary-color;
+  }
+
   .service-box {
     position: relative;
     height: auto;
-    flex: 0 0 114px;
+    padding: 20px 8px;
 
     p {
       white-space: pre-wrap;

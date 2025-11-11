@@ -60,6 +60,8 @@ def test_sample_data(db_service, db_fqn, metadata):
             "sourceConfig": {
                 "config": {
                     "type": AutoClassificationConfigType.AutoClassification.value,
+                    "storeSampleData": True,
+                    "enableAutoClassification": False,
                 },
             },
         },

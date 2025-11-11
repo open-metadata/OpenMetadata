@@ -6,13 +6,13 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import io.dropwizard.configuration.ConfigurationException;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -21,6 +21,8 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
@@ -32,7 +34,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -62,6 +63,7 @@ public class ApplicationHandler {
       return;
     }
     instance = new ApplicationHandler(config);
+    instance.cleanupStaleJobs();
   }
 
   /**
@@ -73,7 +75,11 @@ public class ApplicationHandler {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
       app.setPreview(appPrivateConfig.getPreview());
-      app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+
+      if (appPrivateConfig.getParameters() != null
+          && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
+        app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+      }
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
@@ -91,6 +97,16 @@ public class ApplicationHandler {
     } catch (ConfigurationException e) {
       LOG.error("Error reading config file for app {}", appName, e);
       return false;
+    }
+  }
+
+  public void cleanupStaleJobs() {
+    try {
+      LOG.info("Cleaning up stale application jobs from previous server runs");
+      Entity.getCollectionDAO().appExtensionTimeSeriesDao().markAllStaleEntriesFailed();
+      LOG.info("Stale application jobs cleanup completed successfully");
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup stale application jobs", e);
     }
   }
 
@@ -115,7 +131,7 @@ public class ApplicationHandler {
   public void installApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).install();
+      runAppInit(app, daoCollection, searchRepository).install(installedBy);
       installEventSubscriptions(app, installedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException
@@ -131,7 +147,7 @@ public class ApplicationHandler {
   public void uninstallApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
-      runAppInit(app, daoCollection, searchRepository).uninstall();
+      runAppInit(app, daoCollection, searchRepository, true).uninstall();
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -196,7 +212,7 @@ public class ApplicationHandler {
   public void performCleanup(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String deletedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).cleanup();
+      runAppInit(app, daoCollection, searchRepository, true).cleanup();
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -233,6 +249,16 @@ public class ApplicationHandler {
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
+    return runAppInit(app, daoCollection, searchRepository, false);
+  }
+
+  public AbstractNativeApplication runAppInit(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository, boolean forDelete)
+      throws ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
     // add private runtime properties
     setAppRuntimeProperties(app);
     Class<? extends AbstractNativeApplication> clz =
@@ -241,7 +267,7 @@ public class ApplicationHandler {
         clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
             .newInstance(daoCollection, searchRepository);
     // Raise preview message if the app is in Preview mode
-    if (Boolean.TRUE.equals(app.getPreview())) {
+    if (!forDelete && Boolean.TRUE.equals(app.getPreview())) {
       resource.raisePreviewMessage(app);
     }
 

@@ -13,16 +13,18 @@
 
 import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
   cloneDeep,
   groupBy,
   isEmpty,
   isUndefined,
+  sortBy,
   toLower,
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -56,6 +58,8 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getTableExpandableConfig,
+  searchInFields,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
@@ -66,26 +70,31 @@ import {
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,
-  searchedFields,
-  expandableConfig,
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   isReadOnly = false,
   entityFqn,
-  searchText,
   fieldAllRowKeys,
-  expandedRowKeys,
-  toggleExpandAll,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<{
     field: SearchIndexField;
     index: number;
   }>();
+  const [searchText, setSearchText] = useState('');
+  const [searchedFields, setSearchedFields] = useState<Array<SearchIndexField>>(
+    []
+  );
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const data = React.useMemo(() => makeData(searchedFields), [searchedFields]);
+  const sortByOrdinalPosition = useMemo(
+    () => sortBy(searchIndexFields, 'ordinalPosition'),
+    [searchIndexFields]
+  );
+
+  const data = useMemo(() => makeData(searchedFields), [searchedFields]);
 
   const tagFilter = useMemo(() => {
     const tags = getAllTags(data ?? []);
@@ -95,6 +104,14 @@ const SearchIndexFieldsTable = ({
       TagFilterOptions[]
     >;
   }, [data]);
+
+  const toggleExpandAll = useCallback(() => {
+    if (expandedRowKeys.length < fieldAllRowKeys.length) {
+      setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setExpandedRowKeys([]);
+    }
+  }, [expandedRowKeys, fieldAllRowKeys]);
 
   const handleEditField = useCallback(
     (field: SearchIndexField, index: number) => {
@@ -201,7 +218,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
@@ -219,7 +235,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
-        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         ellipsis: true,
         width: 180,
         render: renderDataTypeDisplay,
@@ -228,7 +243,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 320,
         render: renderDescription,
       },
@@ -236,7 +250,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
@@ -259,7 +272,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
@@ -292,11 +304,44 @@ const SearchIndexFieldsTable = ({
     ]
   );
 
+  const handleSearchAction = useCallback((searchValue: string) => {
+    setSearchText(searchValue);
+  }, []);
+
+  const expandableConfig: ExpandableConfig<SearchIndexField> = useMemo(
+    () => ({
+      ...getTableExpandableConfig<SearchIndexField>(),
+      rowExpandable: (record) => !isEmpty(record.children),
+      expandedRowKeys,
+      onExpand: (expanded, record) => {
+        setExpandedRowKeys(
+          expanded
+            ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
+            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+        );
+      },
+    }),
+    [expandedRowKeys]
+  );
+
+  useEffect(() => {
+    if (searchText) {
+      const searchFields = searchInFields<SearchIndexField>(
+        sortByOrdinalPosition,
+        searchText
+      );
+      setSearchedFields(searchFields);
+      setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setSearchedFields(sortByOrdinalPosition);
+      setExpandedRowKeys([]);
+    }
+  }, [searchText, searchIndexFields]);
+
   return (
     <>
       <Table
-        bordered
-        className="m-b-sm align-table-filter-left"
+        className="align-table-filter-left"
         columns={fields}
         data-testid="search-index-fields-table"
         dataSource={data}
@@ -315,6 +360,12 @@ const SearchIndexFieldsTable = ({
         pagination={false}
         rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
+        searchProps={{
+          placeholder: `${t('message.find-in-table')}`,
+          searchValue: searchText,
+          typingInterval: 500,
+          onSearch: handleSearchAction,
+        }}
         size="middle"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />

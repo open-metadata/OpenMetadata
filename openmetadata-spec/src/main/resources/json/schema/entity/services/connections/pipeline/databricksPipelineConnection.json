@@ -33,6 +33,12 @@
       "type": "string",
       "format": "password"
     },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "description": "Connection timeout in seconds.",
+      "type": "number",
+      "default": 120
+    },
     "httpPath": {
       "title": "Http Path",
       "description": "Databricks compute resources URL.",
@@ -50,6 +56,14 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "lineageLookBackDays": {
+      "title": "Lineage Look Back Days",
+      "description": "Number of days to look back when fetching lineage data from Databricks system tables (system.access.table_lineage and system.access.column_lineage). Default is 90 days.",
+      "type": "integer",
+      "default": 90,
+      "minimum": 1,
+      "maximum": 365
     }
   },
   "additionalProperties": false,

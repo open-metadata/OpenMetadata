@@ -12,7 +12,6 @@
  */
 
 import { render } from '@testing-library/react';
-import React from 'react';
 import { TAG_CONSTANT } from '../../../constants/Tag.constants';
 import TableDataCardBody from './TableDataCardBody';
 

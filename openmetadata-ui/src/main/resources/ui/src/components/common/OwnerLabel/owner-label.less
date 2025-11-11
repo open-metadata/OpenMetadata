@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .owner-pills-content {
   gap: 6px;
@@ -33,10 +33,14 @@
   }
 }
 
-.more-owners-button {
-  span {
-    text-decoration: underline;
-  }
+.ant-btn.more-owners-button {
+  background-color: @primary-button-background !important;
+  border-radius: 200px;
+  text-align: center;
+  text-decoration: none;
+  margin-left: -4px;
+  border: 1px solid @blue-24 !important;
+  color: @blue-24;
 }
 .extra-avatar {
   background-color: #f9f5ff;
@@ -45,6 +49,43 @@
   font-style: normal;
   font-weight: 500;
   line-height: 18px;
+}
+
+.owner-avatar-container {
+  box-sizing: border-box;
+  .owner-avatar-icon {
+    border-radius: 50%;
+    transition: transform 0.2s;
+    &:hover {
+      transform: translateY(-2px);
+      z-index: 1;
+    }
+  }
+
+  &.stacked-view {
+    position: relative;
+  }
+
+  &.is-compact-view {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.owner-dropdown-container {
+  background-color: @background-color;
+  position: absolute;
+  width: 200px;
+  border-radius: 8px;
+  border: 1px solid @border-color;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.ant-typography.no-owner-heading {
+  color: @primary-heading-color;
 }
 
 .owner-count-avatar {

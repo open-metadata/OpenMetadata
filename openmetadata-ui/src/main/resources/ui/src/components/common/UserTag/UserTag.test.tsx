@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { UserTag } from './UserTag.component';
 import { UserTagSize } from './UserTag.interface';
 
@@ -64,9 +63,7 @@ describe('UserTag Component', () => {
 
   it('calls onRemove when close icon is clicked', () => {
     render(<UserTag {...userTagProps} />);
-    const closeIcon = screen
-      .getByTestId('user-tag')
-      .querySelector('.anticon-close');
+    const closeIcon = screen.getByTestId('close-icon');
 
     // Simulate click on the close icon
     closeIcon && fireEvent.click(closeIcon);

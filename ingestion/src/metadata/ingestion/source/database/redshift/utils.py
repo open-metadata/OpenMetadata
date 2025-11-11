@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -413,7 +413,8 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     view = self._get_redshift_relation(connection, view_name, schema, **kw)
     pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
     view_definition = str(sa.text(pattern.sub("", view.view_definition)))
-    if not view_definition.startswith("create"):
+    create_view_pattern = re.compile(r"CREATE\s+VIEW", re.IGNORECASE)
+    if not create_view_pattern.search(view_definition):
         view_definition = (
             f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
         )

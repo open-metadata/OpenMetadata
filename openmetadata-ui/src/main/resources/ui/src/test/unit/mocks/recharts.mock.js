@@ -12,10 +12,20 @@
  */
 
 import React from 'react';
+window.React = React;
+
 jest.mock('recharts', () => ({
-  Bar: jest.fn().mockImplementation(() => <div>Bar</div>),
+  Bar: jest.fn().mockImplementation(({ children }) => (
+    <div>
+      <p>Bar</p>
+      {children}
+    </div>
+  )),
+  Line: jest.fn().mockImplementation(() => <div>Line</div>),
+  Brush: jest.fn().mockImplementation(() => <div>Brush</div>),
   Area: jest.fn().mockImplementation(() => <div>Area</div>),
   Scatter: jest.fn().mockImplementation(() => <div>Scatter</div>),
+  Cell: jest.fn().mockImplementation(() => <div>Cell</div>),
   CartesianGrid: jest.fn().mockImplementation(() => <div>CartesianGrid</div>),
   Legend: jest.fn().mockImplementation(() => <div>Legend</div>),
   Tooltip: jest.fn().mockImplementation(() => <div>Tooltip</div>),
@@ -27,6 +37,9 @@ jest.mock('recharts', () => ({
   AreaChart: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+  LineChart: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
   ComposedChart: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
@@ -35,9 +48,9 @@ jest.mock('recharts', () => ({
     .mockImplementation(({ children, ...rest }) => (
       <div {...rest}>{children}</div>
     )),
-  ResponsiveContainer: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="responsive-container">{children}</div>
-    )),
+  ResponsiveContainer: jest.fn().mockImplementation(({ children, ...rest }) => (
+    <div data-testid="responsive-container" {...rest}>
+      {children}
+    </div>
+  )),
 }));

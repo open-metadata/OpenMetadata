@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TeamType } from '../../../../../generated/entity/teams/team';
-import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsInfo from './TeamsInfo.component';
 
@@ -45,10 +43,6 @@ const mockTeam = {
   users: [{ id: 'test-user', type: 'user' }],
   version: 1,
 };
-
-jest.mock('../../../../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
-}));
 
 jest.mock('../../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
@@ -162,8 +156,6 @@ describe('TeamsInfo', () => {
   });
 
   it('should not show edit button if user does not have permission', () => {
-    (useAuth as jest.Mock).mockReturnValue({ isAdminUser: false });
-
     mockEntityPermissions.EditAll = false;
     const { queryByTestId } = render(<TeamsInfo {...teamProps} />);
     const ownerLabel = queryByTestId('edit-email');

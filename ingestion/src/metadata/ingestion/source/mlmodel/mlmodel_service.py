@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,12 +12,13 @@
 Base class for ingesting mlmodel services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
     MlHyperParameter,
@@ -38,10 +39,8 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -49,7 +48,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.utils import fqn
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -94,6 +93,12 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
                 use_cache=True,
+            ),
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="yield_mlmodel_lineage",
+                consumer=["mlmodel_service"],
+                nullable=True,
             ),
         ],
     )
@@ -180,11 +185,9 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """By default, nothing to close"""
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)
 
     def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the mlmodels as deleted"""
@@ -213,3 +216,69 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         """By default, nothing to prepare"""
+
+    def get_db_service_prefixes(self) -> List[str]:
+        """
+        Get the list of db service prefixes
+        """
+        return (
+            self.source_config.lineageInformation.dbServicePrefixes or []
+            if hasattr(self.source_config, "lineageInformation")
+            and self.source_config.lineageInformation
+            else []
+        )
+
+    def parse_db_service_prefix(
+        self, db_service_prefix: Optional[str]
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """
+        Parse the db service prefix
+        Returns:
+            Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]: service, database, schema, table
+        """
+        prefix_parts = (db_service_prefix or "").split(".")
+        return tuple(prefix_parts + ([None] * (4 - len(prefix_parts))))
+
+    def yield_mlmodel_lineage_details(
+        self, mlmodel_details: Any, db_service_prefix: Optional[str] = None
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Get lineage between MLModel and source tables.
+        To be implemented by sources that support lineage.
+        """
+
+    def yield_mlmodel_lineage(
+        self, mlmodel_details: Any
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Yields lineage if config is enabled.
+        We will look for the data in all the services we have informed.
+        """
+        db_service_prefixes = self.get_db_service_prefixes()
+        for db_service_prefix in db_service_prefixes or [None]:
+            for lineage in (
+                self.yield_mlmodel_lineage_details(mlmodel_details, db_service_prefix)
+                or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+
+    def yield_lineage_request(
+        self, lineage: Optional[Either[AddLineageRequest]] = None
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Method to yield lineage request
+        """
+        if lineage:
+            if lineage.right is not None:
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=lineage.right,
+                        override_lineage=(
+                            self.source_config.overrideLineage
+                            if hasattr(self.source_config, "overrideLineage")
+                            else False
+                        ),
+                    )
+                )
+            else:
+                yield lineage

@@ -12,15 +12,14 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ColumnsType } from 'antd/lib/table';
-import React from 'react';
+import React, { ReactNode } from 'react';
+import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
-import { CursorType } from '../../../enums/pagination.enum';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { getServices } from '../../../rest/serviceAPI';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Services from './Services';
 
 let isDescription = true;
@@ -119,14 +118,17 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isFetchingStatus: false,
-    isAirflowAvailable: true,
-    fetchAirflowStatus: jest.fn(),
-    platform: PIPELINE_SERVICE_PLATFORM,
-  })),
-}));
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isFetchingStatus: false,
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      platform: PIPELINE_SERVICE_PLATFORM,
+    })),
+  })
+);
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('Pipeline Service'),
@@ -137,7 +139,7 @@ jest.mock('../../../rest/serviceAPI', () => ({
   getServices: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetServicesData)),
-  searchService: mockSearchService,
+  searchService: jest.fn().mockImplementation(() => mockSearchService()),
 }));
 
 jest.mock('../../../utils/StringsUtils', () => ({
@@ -161,6 +163,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
+  getSearchIndexFromService: jest.fn(),
   getResourceEntityFromServiceCategory: jest.fn(),
   getServiceTypesFromServiceCategory: jest.fn(),
 }));
@@ -169,30 +172,20 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
 });
 
-jest.mock('../../common/NextPrevious/NextPrevious', () => {
-  return ({
-    pagingHandler,
-  }: {
-    pagingHandler: ({ cursorType, currentPage }: PagingHandlerParams) => void;
-  }) => (
-    <div data-testid="next-previous-container">
-      NextPrevious
-      <button
-        data-testid="next-previous-button"
-        onClick={() =>
-          pagingHandler({
-            currentPage: 0,
-            cursorType: CursorType.AFTER,
-          })
-        }>
-        NextPrevious
-      </button>
-    </div>
-  );
-});
-
 jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+}));
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div>OwnerLabel</div>,
+    },
+  ]),
 }));
 
 jest.mock('../../common/ListView/ListView.component', () => ({
@@ -209,8 +202,10 @@ jest.mock('../../common/ListView/ListView.component', () => ({
           (column: ColumnsType[0], key: string) =>
             column.render && (
               <>
-                <div key={key}>{column.title}</div>
-                <div key={key}>{column.render(column.title, column, 1)}</div>
+                <div key={key}>{column.title as string}</div>
+                <div key={key}>
+                  {column.render(column.title, column, 1) as ReactNode}
+                </div>
               </>
             )
         )}
@@ -262,12 +257,10 @@ jest.mock('antd', () => ({
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -328,25 +321,7 @@ describe('Services', () => {
       fireEvent.click(await screen.findByTestId('add-service-button'));
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/pipelineServices/add-service');
-  });
-
-  it('should call handleServicePageChange', async () => {
-    await act(async () => {
-      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
-    });
-
-    await act(async () => {
-      fireEvent.click(await screen.findByTestId('next-previous-button'));
-    });
-
-    expect(getServices as jest.Mock).toHaveBeenCalledWith({
-      after: undefined,
-      before: undefined,
-      include: 'non-deleted',
-      limit: 10,
-      serviceName: 'pipelineServices',
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/pipelineServices/add-service');
   });
 
   it('should render columns', async () => {
@@ -393,5 +368,18 @@ describe('Services', () => {
     expect(await screen.findByTestId('service-description')).toHaveTextContent(
       'label.no-description'
     );
+  });
+
+  it('should show add service button even if platform is disabled', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      platform: DISABLED,
+    }));
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    const addServiceButton = screen.getByTestId('add-service-button');
+
+    expect(addServiceButton).toBeInTheDocument();
   });
 });

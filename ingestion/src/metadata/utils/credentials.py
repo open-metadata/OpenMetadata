@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,12 @@ from cryptography.hazmat.primitives import serialization
 from google import auth
 from google.auth import impersonated_credentials
 
+from metadata.clients.azure_client import AzureClient
+from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
+    AzureConfigurationSource,
+)
 from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
     GCPCredentials,
     GcpCredentialsPath,
 )
@@ -68,6 +73,43 @@ def validate_private_key(private_key: str) -> None:
         raise InvalidPrivateKeyException(msg) from err
 
 
+def normalize_pem_string(value: str) -> str:
+    """
+    Normalize a PEM-encoded private key, public key, or certificate string.
+
+    This covers edge cases where getting private keys from the server end up with
+    escaped newlines for whatever reason. e.g: private key came from a JSON response like
+
+    `{"private_key": "-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----"}`
+
+    - If the string looks like a PEM (contains BEGIN/END headers)
+      and has literal '\\n' sequences instead of real newlines,
+      convert them to real newlines.
+    - Otherwise, return the string unchanged.
+
+    Example:
+        >>> normalize_pem_string("-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----")
+        '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----'
+    """
+    if not isinstance(value, str):
+        return value
+
+    pem_headers = (
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+        "-----BEGIN PRIVATE KEY-----",
+        "-----BEGIN OPENSSH PRIVATE KEY-----",
+        "-----BEGIN CERTIFICATE-----",
+    )
+
+    # Only normalize if it looks like PEM and is all on one line (escaped newlines)
+    if any(h in value for h in pem_headers):
+        if "\\n" in value and "\n" not in value:
+            return value.replace("\\n", "\n")
+
+    return value
+
+
 def create_credential_tmp_file(credentials: dict) -> str:
     """
     Given a credentials' dict, store it in a tmp file
@@ -89,7 +131,8 @@ def create_credential_tmp_file(credentials: dict) -> str:
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount]
+    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount],
+    single_project: bool = False,
 ) -> Dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
@@ -103,9 +146,18 @@ def build_google_credentials_dict(
         private_key_str = private_key_str.replace("\\n", "\n")
         validate_private_key(private_key_str)
 
+        if single_project:
+            project_id = (
+                gcp_values.projectId.root
+                if isinstance(gcp_values.projectId.root, str)
+                else gcp_values.projectId.root[0]
+            )
+        else:
+            project_id = gcp_values.projectId.root
+
         return {
             "type": gcp_values.type,
-            "project_id": gcp_values.projectId.root,
+            "project_id": project_id,
             "private_key_id": gcp_values.privateKeyId,
             "private_key": private_key_str,
             "client_email": gcp_values.clientEmail,
@@ -128,7 +180,9 @@ def build_google_credentials_dict(
     )
 
 
-def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
+def set_google_credentials(
+    gcp_credentials: GCPCredentials, single_project: bool = False
+) -> None:
     """
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials
@@ -162,9 +216,17 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
             )
             return
 
-        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig)
+        credentials_dict = build_google_credentials_dict(
+            gcp_credentials.gcpConfig, single_project
+        )
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
+        return
+
+    if isinstance(gcp_credentials.gcpConfig, GcpADC):
+        logger.info(
+            "Using Application Default Credentials to authenticate with GCP services."
+        )
         return
 
     raise InvalidGcpConfigException(
@@ -216,3 +278,34 @@ def get_gcp_impersonate_credentials(
         target_scopes=scopes,
         lifetime=lifetime,
     )
+
+
+def get_azure_access_token(azure_config: AzureConfigurationSource) -> str:
+    """
+    Get Azure access token using the provided Azure configuration.
+
+    Args:
+        azure_config: Azure configuration containing the necessary credentials and scopes
+
+    Returns:
+        str: The access token
+
+    Raises:
+        ValueError: If Azure config is missing or scopes are not provided
+    """
+    if not azure_config.azureConfig:
+        raise ValueError("Azure Config is missing")
+
+    if not azure_config.azureConfig.scopes:
+        raise ValueError(
+            "Azure Scopes are missing, please refer https://learn.microsoft.com/"
+            "en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token "
+            "and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+        )
+
+    azure_client = AzureClient(azure_config.azureConfig).create_client()
+    access_token_obj = azure_client.get_token(
+        *azure_config.azureConfig.scopes.split(",")
+    )
+
+    return access_token_obj.token

@@ -15,14 +15,14 @@ import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 
 const table = {
-  term: 'dim_address',
+  term: 'dim___reserved__colon____reserved__arrow__address',
   serviceName: 'sample_data',
 };
 const query =
   'CREATE TABLE dim_address(address_id NUMERIC PRIMARY KEY, shop_id NUMERIC)';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json', trace: 'off' });
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Schema definition (views)', () => {
   test.beforeEach('pre-requisite', async ({ page }) => {

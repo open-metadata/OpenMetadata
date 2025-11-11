@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,24 +51,33 @@ class IcebergTable(BaseModel):
         """Responsible for parsing the needed information from a PyIceberg Table."""
         iceberg_columns = table.schema().fields
 
+        partition_columns = []
+        for partition in table.spec().fields:
+            partition_column_name = get_column_from_partition(
+                iceberg_columns, partition
+            )
+            column_partition_type = get_column_partition_type(
+                iceberg_columns, partition
+            )
+
+            if not (partition_column_name and column_partition_type):
+                continue
+
+            partition_columns.append(
+                PartitionColumnDetails(
+                    columnName=partition_column_name,
+                    intervalType=column_partition_type,
+                    interval=None,
+                )
+            )
+
         return IcebergTable(
             name=name,
             tableType=table_type,
             description=table.properties.get("comment"),
             owners=owners,
             columns=[IcebergColumnParser.parse(column) for column in iceberg_columns],
-            tablePartition=TablePartition(
-                columns=[
-                    PartitionColumnDetails(
-                        columnName=get_column_from_partition(
-                            iceberg_columns, partition
-                        ),
-                        intervalType=get_column_partition_type(
-                            iceberg_columns, partition
-                        ),
-                        interval=None,
-                    )
-                    for partition in table.spec().fields
-                ]
+            tablePartition=(
+                TablePartition(columns=partition_columns) if partition_columns else None
             ),
         )

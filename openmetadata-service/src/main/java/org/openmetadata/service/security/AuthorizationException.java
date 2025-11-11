@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.security;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import lombok.Getter;
 
 public class AuthorizationException extends RuntimeException {

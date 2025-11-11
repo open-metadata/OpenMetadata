@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.apis;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -18,17 +18,17 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class APICollectionResourceTest
     extends EntityResourceTest<APICollection, CreateAPICollection> {
   public APICollectionResourceTest() {
     super(
-        Entity.API_COLLCECTION,
+        Entity.API_COLLECTION,
         APICollection.class,
         APICollectionResource.APICollectionList.class,
         "apiCollections",
@@ -77,7 +77,9 @@ public class APICollectionResourceTest
   void post_APICollectionWithoutRequiredService_4xx(TestInfo test) {
     CreateAPICollection create = createRequest(test).withService(null);
     assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "query param service must not be null");
   }
 
   @Test

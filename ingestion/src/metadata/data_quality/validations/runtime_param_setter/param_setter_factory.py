@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,8 +19,14 @@ from typing import Dict, Set, Type
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
+from metadata.data_quality.validations.runtime_param_setter.table_custom_sql_query_params_setter import (
+    TableCustomSQLQueryParamsSetter,
+)
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
+    TableCustomSQLQueryValidator,
 )
 from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
     TableDiffValidator,
@@ -60,6 +66,9 @@ class RuntimeParameterSetterFactory:
         """Set"""
         self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
+            validator_name(TableCustomSQLQueryValidator): {
+                TableCustomSQLQueryParamsSetter
+            },
         }
 
     def get_runtime_param_setters(

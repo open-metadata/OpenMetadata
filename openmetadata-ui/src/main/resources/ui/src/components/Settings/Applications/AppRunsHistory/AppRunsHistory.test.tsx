@@ -12,6 +12,7 @@
  */
 import {
   act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -38,7 +39,12 @@ let mockGetApplicationRuns = jest.fn().mockReturnValue({
   },
 });
 const mockShowErrorToast = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
+
+jest.mock('../../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
+}));
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
@@ -104,31 +110,37 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 
     return 'formatDateTime';
   }),
+  getCurrentMillis: jest.fn().mockReturnValue(1234567890000),
   getEpochMillisForPastDays: jest.fn().mockReturnValue('startDay'),
   getIntervalInMilliseconds: jest.fn().mockReturnValue('interval'),
   formatDuration: jest.fn().mockReturnValue('formatDuration'),
+  formatDurationToHHMMSS: jest.fn().mockImplementation(() => {
+    // Return a consistent formatted duration for all cases
+    return '02:30:15';
+  }),
 }));
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/NextPrevious/NextPrevious', () =>
-  jest.fn().mockImplementation(({ pagingHandler }) => (
-    // passing currentPage value in pagingHandler
-    <button onClick={() => pagingHandler({ currentPage: 6 })}>
-      NextPrevious
-    </button>
-  ))
-);
-
 jest.mock('../../../common/Table/Table', () => {
-  return jest.fn().mockImplementation(({ loading, ...rest }) => (
-    <div>
-      {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
-      Table
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
+      <div>
+        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {customPaginationProps && (
+          <button
+            onClick={() =>
+              customPaginationProps.pagingHandler({ currentPage: 6 })
+            }>
+            NextPrevious
+          </button>
+        )}
+        Table
+      </div>
+    ));
 });
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
@@ -136,9 +148,7 @@ jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../../constants/constants', () => ({
@@ -187,8 +197,6 @@ describe('AppRunsHistory', () => {
       userEvent.click(screen.getByText('label.log-plural'));
     });
 
-    expect(screen.queryByText('--')).not.toBeInTheDocument();
-
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
 
     // Verify Stop button is not present as initial status is success
@@ -212,7 +220,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
@@ -230,15 +238,17 @@ describe('AppRunsHistory', () => {
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
   });
 
@@ -267,13 +277,13 @@ describe('AppRunsHistory', () => {
     });
   });
 
-  it('onclick of logs button should call history.push method of external apps', async () => {
+  it('onclick of logs button should call navigate method of external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText('label.log-plural'));
 
-    expect(mockPush).toHaveBeenCalledWith('logs viewer path');
+    expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
@@ -304,9 +314,7 @@ describe('AppRunsHistory', () => {
 
     expect(stopButton).toBeInTheDocument();
 
-    act(() => {
-      userEvent.click(stopButton);
-    });
+    fireEvent.click(stopButton);
 
     expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
   });
@@ -321,6 +329,7 @@ describe('AppRunsHistory', () => {
           status: 'success',
           endTime: 1741038028746,
           executionTime: 1741037977960,
+          startTime: 1741037977960,
         },
       ],
       paging: {

@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SendButton } from './SendButton';
 

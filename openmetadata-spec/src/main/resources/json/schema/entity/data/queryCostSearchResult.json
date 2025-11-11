@@ -1,0 +1,103 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/data/queryCostSearchResult.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryCostSearchResult",
+    "description": "Query Cost Search Result",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.entity.data.QueryCostSearchResult",
+    "definitions": {
+        "queryDetails": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.entity.data.QueryDetails",
+            "properties": {
+                "query": {
+                    "type": "object",
+                    "javaType": "org.openmetadata.schema.entity.data.QueryHolder",
+                    "additionalProperties": true,
+                    "description": "Query information"
+                }
+            },
+            "additionalProperties": true,
+            "description": "Details about the query"
+        },
+        "queryGroup": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.entity.data.QueryGroup",
+            "properties": {
+                "queryText": {
+                    "type": "string",
+                    "description": "The text of the query"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of users who executed the query"
+                },
+                "totalCost": {
+                    "type": "number",
+                    "description": "Total cost of all query executions"
+                },
+                "totalCount": {
+                    "type": "integer",
+                    "description": "Total number of query executions"
+                },
+                "totalDuration": {
+                    "type": "number",
+                    "description": "Total duration of all query executions"
+                },
+                "avgDuration": {
+                    "type": "number",
+                    "description": "Average duration per query execution"
+                },
+                "queryDetails": {
+                    "$ref": "#/definitions/queryDetails",
+                    "description": "Additional query details"
+                }
+            },
+            "required": ["queryText", "users", "totalCost", "totalCount", "totalDuration", "avgDuration", "queryDetails"]
+        },
+        "overallStats": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.entity.data.OverallStats",
+            "properties": {
+                "totalCost": {
+                    "type": "number",
+                    "description": "Total cost across all queries"
+                },
+                "minCost": {
+                    "type": "number",
+                    "description": "Minimum cost among all queries"
+                },
+                "maxCost": {
+                    "type": "number",
+                    "description": "Maximum cost among all queries"
+                },
+                "avgCost": {
+                    "type": "number",
+                    "description": "Average cost across all queries"
+                },
+                "totalExecutionCount": {
+                    "type": "integer",
+                    "description": "Total number of query executions"
+                }
+            },
+            "required": ["totalCost", "minCost", "maxCost", "avgCost", "totalExecutionCount"]
+        }
+    },
+    "properties": {
+        "queryGroups": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/queryGroup"
+            },
+            "description": "List of query groups with their metrics"
+        },
+        "overallStats": {
+            "$ref": "#/definitions/overallStats",
+            "description": "Overall statistics across all queries"
+        }
+    },
+    "required": ["queryGroups", "overallStats"]
+}

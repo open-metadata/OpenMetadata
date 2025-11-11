@@ -15,6 +15,7 @@ import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
@@ -102,7 +103,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 8 })) {
+    for (const _ of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
@@ -122,7 +123,7 @@ export const deleteEdge = async (
 
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   await page
     .locator(
@@ -130,7 +131,7 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
@@ -196,6 +197,8 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
+  await page.waitForLoadState('networkidle');
+
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
   );
@@ -236,6 +239,30 @@ export const performExpand = async (
   }
 };
 
+export const performCollapse = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  hiddenEntity: EntityClass[]
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const collapseBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('minus-icon');
+
+  await collapseBtn.click();
+
+  for (const entity of hiddenEntity) {
+    const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
+    const hiddenNode = page.locator(
+      `[data-testid="lineage-node-${hiddenNodeFqn}"]`
+    );
+
+    await expect(hiddenNode).not.toBeVisible();
+  }
+};
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
@@ -261,6 +288,7 @@ export const setupEntitiesForLineage = async (
     | SearchIndexClass
     | ApiEndpointClass
     | MetricClass
+    | DashboardDataModelClass
 ) => {
   const entities = [
     new TableClass(),
@@ -271,6 +299,7 @@ export const setupEntitiesForLineage = async (
     new SearchIndexClass(),
     new ApiEndpointClass(),
     new MetricClass(),
+    new DashboardDataModelClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
@@ -372,7 +401,7 @@ export const applyPipelineFromModal = async (
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*&from=0&size=10&*`
+    `/api/v1/search/query?q=*`
   );
 
   await page
@@ -503,6 +532,7 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+  await page.waitForLoadState('networkidle');
 };
 
 export const fillLineageConfigForm = async (
@@ -592,7 +622,8 @@ export const verifyExportLineageCSV = async (
     ContainerClass,
     SearchIndexClass,
     ApiEndpointClass,
-    MetricClass
+    MetricClass,
+    DashboardDataModelClass
   ],
   pipeline: PipelineClass
 ) => {
@@ -634,6 +665,46 @@ export const verifyExportLineageCSV = async (
   });
 };
 
+export const verifyExportLineagePNG = async (
+  page: Page,
+  isPNGSelected?: boolean
+) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
+  await page.getByTestId('lineage-export').click();
+
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
+
+  if (!isPNGSelected) {
+    await page.getByTestId('export-type-select').click();
+    await page.locator('.ant-select-item[title="PNG"]').click();
+  }
+
+  await expect(
+    page.getByTestId('export-type-select').getByText('PNGBeta')
+  ).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
+};
+
 export const verifyColumnLineageInCSV = async (
   page: Page,
   sourceEntity: EntityClass,
@@ -661,4 +732,35 @@ export const verifyColumnLineageInCSV = async (
   );
 
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
+};
+
+export const verifyLineageConfig = async (page: Page) => {
+  await page.click('[data-testid="lineage-config"]');
+  await page.waitForSelector('.ant-modal-content', {
+    state: 'visible',
+  });
+
+  await page.getByTestId('field-upstream').fill('-1');
+  await page.getByTestId('field-downstream').fill('-1');
+  await page.getByTestId('field-nodes-per-layer').fill('3');
+
+  await page.getByText('OK').click();
+
+  await expect(
+    page.getByText('Upstream Depth size cannot be less than 0')
+  ).toBeVisible();
+  await expect(
+    page.getByText('Downstream Depth size cannot be less than 0')
+  ).toBeVisible();
+  await expect(
+    page.getByText('Nodes Per Layer size cannot be less than 5')
+  ).toBeVisible();
+
+  await page.getByTestId('field-upstream').fill('0');
+  await page.getByTestId('field-downstream').fill('0');
+  await page.getByTestId('field-nodes-per-layer').fill('5');
+
+  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  await page.getByText('OK').click();
+  await saveRes;
 };

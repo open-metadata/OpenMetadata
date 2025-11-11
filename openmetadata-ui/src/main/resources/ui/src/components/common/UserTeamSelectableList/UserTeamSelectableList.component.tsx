@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Popover, Space, Tabs, Typography } from 'antd';
+import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -25,7 +26,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   formatTeamsResponse,
   formatUsersResponse,
@@ -35,6 +36,9 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
@@ -53,6 +57,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
 export const UserTeamSelectableList = ({
   hasPermission,
   owner,
+  onClose,
   onUpdate = noop,
   children,
   popoverProps,
@@ -61,6 +66,7 @@ export const UserTeamSelectableList = ({
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   tooltipText,
+  overlayClassName,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -92,26 +98,26 @@ export const UserTeamSelectableList = ({
   const fetchUserOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     try {
-      const res = await searchData(
-        searchText,
-        afterPage,
-        PAGE_SIZE_MEDIUM,
-        'isBot:false',
-        'displayName.keyword',
-        'asc',
-        SearchIndex.USER
-      );
+      const res = await searchQuery({
+        query: searchText,
+        pageNumber: afterPage,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: getTermQuery({ isBot: 'false' }),
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+        searchIndex: SearchIndex.USER,
+      });
 
       const data = getEntityReferenceListFromEntities(
-        formatUsersResponse(res.data.hits.hits),
+        formatUsersResponse(res.hits.hits),
         EntityType.USER
       );
-      setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, user: res.hits.total.value }));
 
       return {
         data,
         paging: {
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
@@ -124,27 +130,29 @@ export const UserTeamSelectableList = ({
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
 
     try {
-      const res = await searchData(
-        searchText || '',
-        afterPage,
-        PAGE_SIZE_MEDIUM,
-        'teamType:Group',
-        'displayName.keyword',
-        'asc',
-        SearchIndex.TEAM
-      );
+      const res = await searchQuery({
+        query: searchText || '',
+        pageNumber: afterPage,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        }),
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+        searchIndex: SearchIndex.TEAM,
+      });
 
       const data = getEntityReferenceListFromEntities(
-        formatTeamsResponse(res.data.hits.hits),
+        formatTeamsResponse(res.hits.hits),
         EntityType.TEAM
       );
 
-      setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, team: res.hits.total.value }));
 
       return {
         data,
         paging: {
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
@@ -159,36 +167,37 @@ export const UserTeamSelectableList = ({
       updateData = updateItems;
     }
 
-    await onUpdate(updateData);
-    setPopupVisible(false);
+    try {
+      await onUpdate(updateData);
+    } finally {
+      setPopupVisible(false);
+    }
   };
 
   // Fetch and store count for Users tab
   const getUserCount = async () => {
-    const res = await searchData(
-      '',
-      1,
-      0,
-      'isBot:false',
-      '',
-      '',
-      SearchIndex.USER
-    );
+    const res = await searchQuery({
+      query: '',
+      pageNumber: 1,
+      pageSize: 0,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: SearchIndex.USER,
+    });
 
-    setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+    setCount((pre) => ({ ...pre, user: res.hits.total.value }));
   };
   const getTeamCount = async () => {
-    const res = await searchData(
-      '',
-      1,
-      0,
-      'teamType:Group',
-      '',
-      '',
-      SearchIndex.TEAM
-    );
+    const res = await searchQuery({
+      query: '',
+      pageNumber: 1,
+      pageSize: 0,
+      queryFilter: getTermQuery({}, 'must', undefined, {
+        matchTerms: { teamType: 'Group' },
+      }),
+      searchIndex: SearchIndex.TEAM,
+    });
 
-    setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
+    setCount((pre) => ({ ...pre, team: res.hits.total.value }));
   };
 
   const init = async () => {
@@ -210,6 +219,11 @@ export const UserTeamSelectableList = ({
     },
     []
   );
+
+  const handleCancelSelectableList = () => {
+    setPopupVisible(false);
+    onClose?.();
+  };
 
   const onRemove = (id: string) => {
     setSelectedUsers((prevUsers) => {
@@ -245,7 +259,7 @@ export const UserTeamSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
           {previewSelected && (
             <Space
               className="user-team-popover-header w-full p-x-sm p-y-md"
@@ -275,7 +289,6 @@ export const UserTeamSelectableList = ({
               </div>
             </Space>
           )}
-
           <Tabs
             centered
             activeKey={activeTab}
@@ -302,7 +315,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.team'),
                     })}
                     selectedItems={defaultTeams}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
@@ -326,8 +339,8 @@ export const UserTeamSelectableList = ({
                       type: t('label.user'),
                     })}
                     selectedItems={defaultUsers}
-                    onCancel={() => setPopupVisible(false)}
-                    onChange={handleChange}
+                    onCancel={handleCancelSelectableList}
+                    onChange={isMultiUser ? noop : handleChange}
                     onUpdate={handleUpdate}
                   />
                 ),
@@ -339,10 +352,13 @@ export const UserTeamSelectableList = ({
             // Users.component collapsible panel
             onClick={(e) => e.stopPropagation()}
           />
-        </>
+        </FocusTrapWithContainer>
       }
       open={popupVisible}
-      overlayClassName="user-team-select-popover card-shadow"
+      overlayClassName={classNames(
+        'user-team-select-popover card-shadow',
+        overlayClassName
+      )}
       placement="bottomRight"
       showArrow={false}
       trigger="click"
@@ -350,23 +366,21 @@ export const UserTeamSelectableList = ({
       {...popoverProps}>
       {children ??
         (hasPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            data-testid="edit-owner"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
             title={
-              !popupVisible &&
-              (tooltipText ??
-                t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                }))
-            }>
-            <Button
-              className="flex-center p-0"
-              data-testid="edit-owner"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={openPopover}
-            />
-          </Tooltip>
+              !popupVisible
+                ? tooltipText ??
+                  t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })
+                : undefined
+            }
+            onClick={openPopover}
+          />
         ))}
     </Popover>
   );

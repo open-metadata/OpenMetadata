@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { isEmpty } from 'lodash';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { isEmpty, isUndefined } from 'lodash';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
 interface ActivityFeedListV1Props {
@@ -38,6 +40,8 @@ interface ActivityFeedListV1Props {
   onUpdateEntityDetails?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
   isFullWidth?: boolean;
+  isFeedWidget?: boolean;
+  isFullSizeWidget?: boolean;
 }
 
 const ActivityFeedListV1New = ({
@@ -58,6 +62,8 @@ const ActivityFeedListV1New = ({
   onAfterClose,
   onUpdateEntityDetails,
   handlePanelResize,
+  isFeedWidget = false,
+  isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -67,11 +73,10 @@ const ActivityFeedListV1New = ({
   }, [feedList]);
 
   useEffect(() => {
-    if (onFeedClick) {
-      onFeedClick(
-        entityThread.find((feed) => feed.id === selectedThread?.id) ??
-          entityThread[0]
-      );
+    const thread = entityThread.find((feed) => feed.id === selectedThread?.id);
+
+    if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
+      onFeedClick(entityThread[0]);
     }
   }, [entityThread, selectedThread, onFeedClick]);
 
@@ -91,7 +96,9 @@ const ActivityFeedListV1New = ({
           handlePanelResize={handlePanelResize}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
+          isFeedWidget={isFeedWidget}
           isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
           isFullWidth={isFullWidth}
           key={feed.id}
           showThread={showThread}
@@ -108,13 +115,17 @@ const ActivityFeedListV1New = ({
       isForFeedTab,
       showThread,
       isFullWidth,
+      isFullSizeWidget,
     ]
   );
+  if (isLoading) {
+    return <Loader />;
+  }
 
-  if (isEmpty(entityThread) && !isLoading) {
+  if (isEmpty(entityThread) && isEmpty(feedList) && !isLoading) {
     return (
       <div
-        className="p-x-md no-data-placeholder-container"
+        className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="feedData">
         <ErrorPlaceHolderNew
@@ -131,7 +142,12 @@ const ActivityFeedListV1New = ({
   }
 
   return (
-    <div className="p-b-md" id="feedData">
+    <div
+      className={classNames({
+        'feed-widget-padding': isForFeedTab,
+        'activity-feed-tab-padding': !isForFeedTab,
+      })}
+      id="feedData">
       {feeds}
     </div>
   );

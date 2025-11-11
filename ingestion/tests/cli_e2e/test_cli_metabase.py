@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,8 +14,6 @@ Test Metabase connector with CLI
 """
 from pathlib import Path
 from typing import List
-
-import pytest
 
 from .base.test_cli import PATH_TO_RESOURCES
 from .common.test_cli_dashboard import CliCommonDashboard
@@ -75,11 +73,7 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 4
 
     def expected_filtered_sink_mix(self) -> int:
-        return 8
+        return 5
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 0
-
-    @pytest.mark.order(11)
-    def test_lineage(self) -> None:
-        pytest.skip("Lineage not configured. Skipping Test")

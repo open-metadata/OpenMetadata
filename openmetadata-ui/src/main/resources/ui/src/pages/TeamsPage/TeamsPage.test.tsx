@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 
 import { act, render, screen } from '@testing-library/react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -19,10 +18,14 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TeamType } from '../../generated/entity/teams/team';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import { MOCK_CURRENT_TEAM } from '../../mocks/Teams.mock';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TeamsPage from './TeamsPage';
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
 
 jest.mock('./AddTeamForm', () => {
   return jest.fn().mockImplementation(() => <p>AddTeamForm</p>);
@@ -89,8 +92,8 @@ jest.mock('../../rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({ hits: { total: { value: 0 } } }),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -164,6 +167,7 @@ describe('Test Teams Page', () => {
       {
         fields: [
           'users',
+          'userCount',
           'defaultRoles',
           'policies',
           'childrenCount',
@@ -221,15 +225,25 @@ describe('Test Teams Page', () => {
       render(<TeamsPage />);
     });
 
-    expect(searchData).toHaveBeenCalledWith(
-      '',
-      0,
-      0,
-      'owners.id:f9578f16-363a-4788-80fb-d05816c9e169',
-      '',
-      '',
-      'all'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: '',
+      pageNumber: 0,
+      pageSize: 0,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'owners.id': 'f9578f16-363a-4788-80fb-d05816c9e169',
+                },
+              },
+            ],
+          },
+        },
+      },
+      searchIndex: 'all',
+    });
   });
 
   it('should not fetchAssetCount on page load if TeamType is not Group', async () => {
@@ -247,7 +261,7 @@ describe('Test Teams Page', () => {
       render(<TeamsPage />);
     });
 
-    expect(searchData).not.toHaveBeenCalled();
+    expect(searchQuery).not.toHaveBeenCalled();
 
     (getTeamByName as jest.Mock).mockReset();
   });

@@ -11,12 +11,12 @@
       "properties": {
         "corePoolSize": {
           "type": "integer",
-          "default": 50,
+          "default": 10,
           "description": "Default worker Pool Size. The Workflow Executor by default has this amount of workers."
         },
         "maxPoolSize": {
           "type": "integer",
-          "default": 100,
+          "default": 20,
           "description": "Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers."
         },
         "queueSize": {
@@ -31,8 +31,18 @@
         },
         "jobLockTimeInMillis": {
           "type": "integer",
-          "default": 300000,
-          "description": "The amount of time a Job gets locked before being retried."
+          "default": 1296000000,
+          "description": "The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids jobs that takes too long to run being retried while running."
+        },
+        "asyncJobAcquisitionInterval": {
+          "type": "integer",
+          "default": 60000,
+          "description": "The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls how often Flowable polls for new jobs."
+        },
+        "timerJobAcquisitionInterval": {
+          "type": "integer",
+          "default": 60000,
+          "description": "The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls how often Flowable polls for scheduled jobs."
         }
       },
       "additionalProperties": false

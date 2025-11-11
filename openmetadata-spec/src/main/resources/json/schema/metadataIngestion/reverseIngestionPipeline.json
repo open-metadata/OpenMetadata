@@ -80,6 +80,10 @@
             "items": {
                 "$ref": "#/definitions/operation"
             }
+        },
+        "ingestionRunner": {
+            "description": "Optional value of the ingestion runner name responsible for running the workflow",
+            "type": "string"
         }
     },
     "additionalProperties": false,

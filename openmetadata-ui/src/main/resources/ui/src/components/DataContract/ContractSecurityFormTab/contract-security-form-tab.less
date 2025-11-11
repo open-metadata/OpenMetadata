@@ -1,0 +1,271 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.contract-security-form {
+  .contract-consumer-security-card {
+    .ant-card-body {
+      padding: 20px 0;
+
+      .contract-consumer-security-card-row {
+        padding: 20px 20px 0 20px;
+      }
+
+      .contract-consumer-security-card-rule-container {
+        padding: 0 20px;
+
+        .contract-consumer-security-card-rule-delete-button {
+          margin-top: 10px;
+          border: 1px solid @grey-34;
+          border-radius: 8px;
+          color: @grey-34;
+          width: 40px;
+          height: 40px;
+
+          .anticon {
+            font-size: 12px;
+          }
+        }
+      }
+
+      .add-row-filter-button {
+        span {
+          font-weight: 600;
+        }
+        .anticon {
+          font-size: 14px;
+          rotate: 45deg;
+        }
+      }
+
+      .contract-consumer-security-card-form-actions-items {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        padding: 24px 16px;
+        border-top: 1px solid @grey-200;
+
+        .delete-consumer-filter-button {
+          color: @red-1;
+          span {
+            font-weight: 600;
+          }
+          .anticon {
+            font-size: 14px;
+          }
+
+          &:hover {
+            color: @red-3;
+          }
+        }
+      }
+    }
+  }
+
+  .add-policy-button {
+    span {
+      font-weight: 600;
+    }
+    .anticon {
+      font-size: 14px;
+      rotate: 45deg;
+    }
+  }
+}
+
+.expanded-active-card {
+  .ant-card-head {
+    display: none;
+  }
+
+  .ant-card-body {
+    padding: 0;
+  }
+}
+
+.contract-security-form-container {
+  .ant-card.expanded {
+    .ant-card-head {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  .ant-card.new-header-border-card.expandable-card {
+    border: 1px solid @border-color-7;
+    box-shadow: 0 1px 2px 0 @grey-27;
+
+    .ant-card-head {
+      background: @white;
+      border-bottom: 1px solid @grey-200;
+
+      .security-form-item-title-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 12px;
+
+        .enable-form-item {
+          margin-bottom: 0;
+
+          .ant-switch {
+            margin-left: 2px;
+            width: 44px;
+            height: 24px;
+
+            .ant-switch-handle {
+              width: 16px;
+              height: 16px;
+              top: 4px;
+              left: 4px;
+
+              &::before {
+                border-radius: 20px;
+              }
+            }
+          }
+
+          .ant-switch-checked {
+            .ant-switch-handle {
+              left: calc(100% - 16px - 4px);
+            }
+          }
+        }
+
+        > div:first-child {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .consumer-form-item-title {
+          font-size: 16px;
+          font-weight: 600;
+          line-height: 32px;
+        }
+
+        .ant-btn.edit-expand-button {
+          border-radius: 6px;
+          border: 1px solid @border-light;
+
+          svg {
+            font-size: 20px;
+            color: @grey-600;
+          }
+        }
+
+        .ant-btn.delete-expand-button {
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border-radius: 6px;
+          background: transparent;
+          border-color: @error-color;
+
+          svg {
+            width: 16px;
+            color: @error-color;
+          }
+        }
+      }
+
+      .ant-card-extra {
+        .ant-btn.expand-collapse-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 6px;
+          border: 1px solid @border-light;
+
+          svg {
+            font-size: 20px;
+            color: @grey-600;
+          }
+        }
+      }
+    }
+  }
+
+  .expanded-active-card {
+    .ant-card-head {
+      display: none;
+    }
+
+    .ant-card-body {
+      padding: 0;
+
+      .semantic-form-item-content {
+        padding: 20px;
+
+        .ant-switch {
+          margin-left: 2px;
+          width: 36px;
+          height: 20px;
+
+          .ant-switch-handle {
+            width: 14px;
+            height: 14px;
+            top: 3px;
+            left: 3px;
+
+            &::before {
+              border-radius: 20px;
+            }
+          }
+        }
+
+        .ant-switch-checked {
+          .ant-switch-handle {
+            left: calc(100% - 14px - 4px);
+          }
+        }
+      }
+    }
+  }
+
+  .semantic-form-item-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-top: 1px solid @grey-200;
+  }
+}
+
+.row-filter-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 20px 12px 20px;
+}
+
+.contract-form-content-container {
+  .consumer-title-container {
+    .consumer-title {
+      font-size: 16px;
+      font-weight: 500;
+      font-weight: 500;
+      color: @grey-900;
+    }
+
+    .consumer-description {
+      margin-bottom: 0;
+      font-size: 14px;
+      color: @grey-600;
+      font-weight: 400;
+    }
+  }
+}

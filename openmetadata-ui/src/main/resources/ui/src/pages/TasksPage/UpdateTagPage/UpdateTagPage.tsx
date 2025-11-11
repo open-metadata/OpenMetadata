@@ -15,9 +15,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -36,6 +36,7 @@ import { Chart } from '../../../generated/entity/data/chart';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
@@ -45,6 +46,7 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -56,19 +58,20 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
-  const { t } = useTranslation();
   const location = useCustomLocation();
-  const history = useHistory();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
@@ -107,7 +110,7 @@ const UpdateTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
     const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
@@ -168,7 +171,7 @@ const UpdateTag = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
@@ -217,11 +220,13 @@ const UpdateTag = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 700,
         flex: 0.6,
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+          <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
@@ -314,7 +319,7 @@ const UpdateTag = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {t('label.submit')}
+                      {t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -323,9 +328,11 @@ const UpdateTag = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.update-entity', {
+        entity: i18n.t('label.tag'),
+      })}
       secondPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 60,
         flex: 0.4,
         children: (
@@ -346,4 +353,4 @@ const UpdateTag = () => {
   );
 };
 
-export default UpdateTag;
+export default withPageLayout(UpdateTag);

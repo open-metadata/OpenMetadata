@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import EntityDeleteModal from './EntityDeleteModal';
 
@@ -30,6 +29,9 @@ const mockProp = {
 
 jest.mock('react-i18next', () => ({
   Trans: jest.fn().mockImplementation(() => <div>Trans</div>),
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
 }));
 
 describe('Test EntityDelete Modal Component', () => {
@@ -120,9 +122,7 @@ describe('Test EntityDelete Modal Component', () => {
       });
     });
 
-    await act(async () => {
-      jest.runAllTimers();
-    });
+    jest.runOnlyPendingTimers();
 
     const inputBox = await screen.findByTestId('confirmation-text-input');
 

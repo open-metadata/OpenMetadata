@@ -10,27 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row, Select, Typography } from 'antd';
+import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
   LineageLayer,
   LineageSettings,
+  PipelineViewMode,
 } from '../../generated/configuration/lineageSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -49,8 +45,8 @@ const LineageConfigPage = () => {
   const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
-  const history = useHistory();
-  const { setAppPreferences } = useApplicationStore();
+  const navigate = useNavigate();
+  const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -87,6 +83,7 @@ const LineageConfigPage = () => {
           upstreamDepth: Number(values.upstreamDepth),
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer,
+          pipelineViewMode: values.pipelineViewMode,
         },
       };
 
@@ -101,7 +98,10 @@ const LineageConfigPage = () => {
       setLineageConfig(lineageConfig);
 
       // Update lineage config in store
-      setAppPreferences({ lineageConfig });
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -118,15 +118,15 @@ const LineageConfigPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizablePanels
         className="content-height-with-resizable-panel"
         firstPanel={{
           className: 'content-resizable-panel-container',
+          cardClassName: 'max-width-md m-x-auto',
+          allowScroll: true,
           children: (
-            <div
-              className="max-width-md w-9/10 service-form-container"
-              data-testid="add-metric-container">
+            <div data-testid="add-metric-container">
               <Row gutter={[16, 16]}>
                 <Col span={24}>
                   <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -146,6 +146,7 @@ const LineageConfigPage = () => {
                     id="lineage-config"
                     initialValues={lineageConfig}
                     layout="vertical"
+                    validateMessages={VALIDATION_MESSAGES}
                     onFinish={handleSave}
                     onFocus={handleFieldFocus}>
                     <Form.Item
@@ -155,14 +156,15 @@ const LineageConfigPage = () => {
                       rules={[
                         {
                           required: true,
-                          message: t('message.upstream-depth-message'),
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
                         },
                       ]}>
-                      <Input
+                      <InputNumber
+                        className="w-full"
                         data-testid="field-upstream"
-                        max={5}
-                        min={1}
-                        type="number"
                       />
                     </Form.Item>
 
@@ -174,14 +176,15 @@ const LineageConfigPage = () => {
                       rules={[
                         {
                           required: true,
-                          message: t('message.downstream-depth-message'),
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
                         },
                       ]}>
-                      <Input
+                      <InputNumber
+                        className="w-full"
                         data-testid="field-downstream"
-                        max={5}
-                        min={1}
-                        type="number"
                       />
                     </Form.Item>
 
@@ -202,12 +205,27 @@ const LineageConfigPage = () => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
+
+                    <Form.Item
+                      className="m-t-sm"
+                      id="root/pipelineViewMode"
+                      label={t('label.pipeline-view-mode')}
+                      name="pipelineViewMode">
+                      <Select data-testid="field-pipeline-view-mode">
+                        <Select.Option value={PipelineViewMode.Edge}>
+                          {t('label.edge')}
+                        </Select.Option>
+                        <Select.Option value={PipelineViewMode.Node}>
+                          {t('label.node')}
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
                   </Form>
                   <Row className="m-b-xl" justify="end">
                     <Col className="d-flex justify-end gap-2" span={24}>
                       <Button
                         data-testid="cancel-button"
-                        onClick={() => history.goBack()}>
+                        onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
@@ -245,4 +263,4 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout('lineage-config')(LineageConfigPage);
+export default withPageLayout(LineageConfigPage);

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,15 +61,12 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import (
-    get_connection,
-    kill_active_connections,
-)
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
 from metadata.utils.execution_time_tracker import (
@@ -143,7 +140,6 @@ class CommonDbSourceService(
         self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
-        self.context.get_global().table_views = []
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
         self.context.set_threads(self.source_config.threads)
@@ -221,15 +217,34 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=FullyQualifiedEntityName(self.context.get().database_service),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_database_tag_labels(database_name=database_name),
+        # Store database owner in context BEFORE yielding (for multi-threading)
+        # This ensures worker threads get the correct parent_owner when they copy context
+        database_owner_ref = self.get_database_owner_ref(database_name)
+        if database_owner_ref and database_owner_ref.root:
+            # Store ALL owner names (support multiple owners for inheritance)
+            database_owner_names = [owner.name for owner in database_owner_ref.root]
+            # If only one owner, store as string; otherwise store as list
+            database_owner = (
+                database_owner_names[0]
+                if len(database_owner_names) == 1
+                else database_owner_names
             )
+            self.context.get().upsert("database_owner", database_owner)
+        else:
+            # Clear context to avoid residual owner from previous database
+            self.context.get().upsert("database_owner", None)
+
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=FullyQualifiedEntityName(self.context.get().database_service),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_database_tag_labels(database_name=database_name),
+            owners=database_owner_ref,
         )
+
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -268,22 +283,41 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_schema_tag_labels(schema_name=schema_name),
+        # Store schema owner in context BEFORE yielding (for multi-threading)
+        # This ensures worker threads get the correct parent_owner when they copy context
+        schema_owner_ref = self.get_schema_owner_ref(schema_name)
+        if schema_owner_ref and schema_owner_ref.root:
+            # Store ALL owner names (support multiple owners for inheritance)
+            schema_owner_names = [owner.name for owner in schema_owner_ref.root]
+            # If only one owner, store as string; otherwise store as list
+            schema_owner = (
+                schema_owner_names[0]
+                if len(schema_owner_names) == 1
+                else schema_owner_names
             )
+            self.context.get().upsert("schema_owner", schema_owner)
+        else:
+            # Clear schema_owner if not present, tables will inherit from database_owner
+            self.context.get().upsert("schema_owner", None)
+
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_schema_tag_labels(schema_name=schema_name),
+            owners=schema_owner_ref,
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
     @calculate_execution_time()
@@ -424,7 +458,14 @@ class CommonDbSourceService(
         """
         try:
             schema_definition = None
-            if table_type in (TableType.View, TableType.MaterializedView):
+            # Lineage qualified table types to be considered for view definition
+            if table_type in (
+                TableType.View,
+                TableType.MaterializedView,
+                TableType.SecureView,
+                TableType.Dynamic,
+                TableType.Stream,
+            ):
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )
@@ -509,20 +550,17 @@ class CommonDbSourceService(
                 foreign_columns,
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
+                table_type=table_type,
                 table_name=table_name,
                 db_name=self.context.get().database,
                 inspector=self.inspector,
             )
 
-            schema_definition = (
-                self.get_schema_definition(
-                    table_type=table_type,
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                )
-                if self.source_config.includeDDL
-                else None
+            schema_definition = self.get_schema_definition(
+                table_type=table_type,
+                table_name=table_name,
+                schema_name=schema_name,
+                inspector=self.inspector,
             )
 
             table_constraints = self.update_table_constraints(
@@ -588,20 +626,6 @@ class CommonDbSourceService(
 
             # Register the request that we'll handle during the deletion checks
             self.register_record(table_request=table_request)
-
-            # Flag view as visited
-            if (
-                table_type
-                in (TableType.View, TableType.MaterializedView, TableType.SecureView)
-                and schema_definition
-            ):
-                table_view = TableView(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    db_name=self.context.get().database,
-                    view_definition=schema_definition,
-                )
-                self.context.get_global().table_views.append(table_view)
 
         except Exception as exc:
             error = (

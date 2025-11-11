@@ -13,16 +13,16 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -32,14 +32,25 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -59,15 +70,15 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Dashboard);
+    useRequiredParams<{ tab: EntityTabs }>();
+  const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
   const { fqn: decodedDashboardFQN } = useFqn();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -99,7 +110,7 @@ const DashboardDetails = ({
         dashboardDetails.id
       );
       setDashboardPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.dashboard'),
@@ -127,12 +138,15 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
           decodedDashboardFQN,
           activeKey
-        )
+        ),
+        {
+          replace: true,
+        }
       );
     }
   };
@@ -179,8 +193,7 @@ const DashboardDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.dashboard'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -200,9 +213,8 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {
@@ -213,13 +225,16 @@ const DashboardDetails = ({
   } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (dashboardPermissions.EditAll ||
-          dashboardPermissions.EditCustomFields) &&
-        !deleted,
-      editAllPermission: dashboardPermissions.EditAll && !deleted,
+        getPrioritizedEditPermission(
+          dashboardPermissions,
+          PermissionOperation.EditCustomFields
+        ) && !deleted,
+      editAllPermission: PermissionOperation.EditAll && !deleted,
       editLineagePermission:
-        (dashboardPermissions.EditAll || dashboardPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          dashboardPermissions,
+          PermissionOperation.EditLineage
+        ) && !deleted,
       viewAllPermission: dashboardPermissions.ViewAll,
     }),
     [dashboardPermissions, deleted]
@@ -259,16 +274,43 @@ const DashboardDetails = ({
     viewAllPermission,
     onExtensionUpdate,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (dashboardDetails) {
+        const certificationTag: Dashboard['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedDashboardDetails = {
+          ...dashboardDetails,
+          certification: certificationTag,
+        };
+
+        await onDashboardUpdate(updatedDashboardDetails, 'certification');
+      }
+    },
+    [dashboardDetails, onDashboardUpdate]
+  );
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Dashboard),
+    [tabs[0], activeTab]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.dashboard'),
       })}
       title="Table details">
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -278,6 +320,7 @@ const DashboardDetails = ({
             entityType={EntityType.DASHBOARD}
             openTaskCount={feedCount.openTaskCount}
             permissions={dashboardPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={onUpdateDisplayName}
             onFollowClick={followDashboard}
             onOwnerUpdate={onOwnerUpdate}
@@ -288,16 +331,29 @@ const DashboardDetails = ({
           />
         </Col>
         <GenericProvider<Dashboard>
+          customizedPage={customizedPage}
           data={dashboardDetails}
+          isTabExpanded={isTabExpanded}
           permissions={dashboardPermissions}
           type={EntityType.DASHBOARD}
           onUpdate={onDashboardUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

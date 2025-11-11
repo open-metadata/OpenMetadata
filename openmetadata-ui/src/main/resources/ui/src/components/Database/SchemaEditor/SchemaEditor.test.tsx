@@ -95,4 +95,44 @@ describe('SchemaEditor component test', () => {
 
     expect(mockOnChange).toHaveBeenCalled();
   });
+
+  it('Should call refreshEditor', async () => {
+    jest.useFakeTimers();
+    const mockEditor = {
+      refresh: jest.fn(),
+    };
+
+    jest.spyOn(React, 'useRef').mockReturnValue({
+      current: mockEditor,
+    });
+
+    render(<SchemaEditor {...mockProps} refreshEditor />);
+
+    // Fast-forward timers to trigger the refresh
+    jest.advanceTimersByTime(50);
+
+    expect(mockEditor.refresh).toHaveBeenCalled();
+
+    jest.useRealTimers();
+  });
+
+  it('Should not call refresh if refreshEditor is false', async () => {
+    jest.useFakeTimers();
+    const mockEditor = {
+      refresh: jest.fn(),
+    };
+
+    jest.spyOn(React, 'useRef').mockReturnValue({
+      current: mockEditor,
+    });
+
+    render(<SchemaEditor {...mockProps} refreshEditor={false} />);
+
+    // Fast-forward timers to trigger the refresh
+    jest.advanceTimersByTime(50);
+
+    expect(mockEditor.refresh).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+  });
 });

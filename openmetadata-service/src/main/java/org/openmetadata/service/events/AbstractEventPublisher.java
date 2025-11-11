@@ -25,8 +25,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
 
   @Override
   public void onEvent(
-      EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
-      throws Exception {
+      EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch) {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.getEvent();
 

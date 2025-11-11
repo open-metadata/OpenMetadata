@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.glossary;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,34 +26,38 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
+import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -62,6 +67,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -72,11 +78,18 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/glossaryTerms")
 @Tag(
@@ -92,7 +105,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domain,extension,childrenCount";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -193,8 +206,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               description =
                   "Limit the number glossary terms returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -223,6 +236,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
+    ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
+    OperationContext glossaryOperationContext =
+        new OperationContext(GLOSSARY, getViewOperations(fields));
+    OperationContext glossaryTermOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(glossaryOperationContext, glossaryResourceContext),
+            new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
     // Filter by glossary
     String fqn = null;
     EntityReference glossary = null;
@@ -233,7 +259,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = repository.find(parentTermParam, Include.NON_DELETED);
+      GlossaryTerm parentTerm =
+          repository.get(null, parentTermParam, repository.getFields("parent"));
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -257,6 +284,133 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, terms);
+  }
+
+  @GET
+  @Path("/search")
+  @Operation(
+      operationId = "searchGlossaryTerms",
+      summary = "Search glossary terms with pagination",
+      description =
+          "Search glossary terms by name, display name, or description with server-side pagination. "
+              + "This endpoint provides efficient search functionality for glossaries with large numbers of terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching glossary terms",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTermList.class)))
+      })
+  public ResultList<GlossaryTerm> searchGlossaryTerms(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query for term names, display names, or descriptions")
+          @QueryParam("q")
+          String query,
+      @Parameter(description = "Filter by glossary ID") @QueryParam("glossary") UUID glossaryId,
+      @Parameter(description = "Filter by glossary FQN") @QueryParam("glossaryFqn")
+          String glossaryFqn,
+      @Parameter(description = "Filter by parent term ID") @QueryParam("parent") UUID parentId,
+      @Parameter(description = "Filter by parent term FQN") @QueryParam("parentFqn")
+          String parentFqn,
+      @Parameter(description = "Limit the number of terms returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Fields requested in the returned terms",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+
+    Fields fields = getFields(fieldsParam);
+    ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
+    OperationContext glossaryOperationContext =
+        new OperationContext(GLOSSARY, getViewOperations(fields));
+    OperationContext glossaryTermOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(glossaryOperationContext, glossaryResourceContext),
+            new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    ResultList<GlossaryTerm> result;
+    if (glossaryId != null) {
+      result =
+          repository.searchGlossaryTermsById(
+              glossaryId, query, limitParam, offsetParam, fieldsParam, include);
+    } else if (glossaryFqn != null) {
+      result =
+          repository.searchGlossaryTermsByFQN(
+              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include);
+    } else if (parentId != null) {
+      result =
+          repository.searchGlossaryTermsByParentId(
+              parentId, query, limitParam, offsetParam, fieldsParam, include);
+    } else if (parentFqn != null) {
+      result =
+          repository.searchGlossaryTermsByParentFQN(
+              parentFqn, query, limitParam, offsetParam, fieldsParam, include);
+    } else {
+      // Search across all glossary terms without parent filter
+      ListFilter filter = new ListFilter(include);
+      ResultList<GlossaryTerm> allTerms =
+          repository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE, null);
+      List<GlossaryTerm> matchingTerms;
+      if (query == null || query.trim().isEmpty()) {
+        matchingTerms = allTerms.getData();
+      } else {
+        String searchTerm = query.toLowerCase().trim();
+        matchingTerms =
+            allTerms.getData().stream()
+                .filter(
+                    term -> {
+                      if (term.getName() != null
+                          && term.getName().toLowerCase().contains(searchTerm)) {
+                        return true;
+                      }
+                      if (term.getDisplayName() != null
+                          && term.getDisplayName().toLowerCase().contains(searchTerm)) {
+                        return true;
+                      }
+                      if (term.getDescription() != null
+                          && term.getDescription().toLowerCase().contains(searchTerm)) {
+                        return true;
+                      }
+                      return false;
+                    })
+                .collect(Collectors.toList());
+      }
+      int total = matchingTerms.size();
+      int startIndex = Math.min(offsetParam, total);
+      int endIndex = Math.min(offsetParam + limitParam, total);
+      List<GlossaryTerm> paginatedResults =
+          startIndex < total ? matchingTerms.subList(startIndex, endIndex) : List.of();
+      String before =
+          offsetParam > 0 ? String.valueOf(Math.max(0, offsetParam - limitParam)) : null;
+      String after = endIndex < total ? String.valueOf(endIndex) : null;
+      result = new ResultList<>(paginatedResults, before, after, total);
+    }
+
+    return addHref(uriInfo, result);
   }
 
   @GET
@@ -601,7 +755,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Valid AddGlossaryToAssetsRequest request) {
+      @Valid ValidateGlossaryTagsRequest request) {
     return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
   }
 
@@ -628,6 +782,157 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listGlossaryTermAssets",
+      summary = "List assets tagged with this glossary term",
+      description =
+          "Get a paginated list of assets that have this glossary term applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
+      })
+  public Response listGlossaryTermAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "listGlossaryTermAssetsByName",
+      summary = "List assets tagged with this glossary term by fully qualified name",
+      description =
+          "Get a paginated list of assets that have this glossary term applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {fqn} is not found")
+      })
+  public Response listGlossaryTermAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
+  }
+
+  @PUT
+  @Path("/{id}/moveAsync")
+  @Operation(
+      operationId = "moveGlossaryTerm",
+      summary = "Move a glossary term to a new parent or glossary",
+      description =
+          "Move a glossary term to a new parent term or glossary. Only parent or glossary can be changed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The moved glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class)))
+      })
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response moveGlossaryTerm(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @RequestBody(
+              description = "MoveGlossaryTermRequest with new parent or glossary",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema = @Schema(implementation = MoveGlossaryTermRequest.class)))
+          MoveGlossaryTermRequest moveRequest) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+
+    // Validate the move operation synchronously before submitting to async executor
+    // This will throw IllegalArgumentException if circular reference detected
+    repository.validateMoveOperation(id, moveRequest);
+
+    String jobId = UUID.randomUUID().toString();
+    GlossaryTerm glossaryTerm =
+        repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            GlossaryTerm movedGlossaryTerm = repository.moveGlossaryTerm(id, moveRequest, userName);
+            WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
+                jobId, securityContext, movedGlossaryTerm);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendMoveOperationFailedNotification(
+                jobId, securityContext, glossaryTerm, e.getMessage());
+          }
+        });
+
+    return Response.accepted()
+        .entity(
+            new MoveGlossaryTermResponse(
+                jobId,
+                "Move operation initiated for " + glossaryTerm.getName(),
+                glossaryTerm.getName()))
+        .build();
   }
 
   @DELETE

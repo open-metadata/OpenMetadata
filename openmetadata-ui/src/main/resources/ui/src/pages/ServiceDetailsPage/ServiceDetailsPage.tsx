@@ -14,13 +14,13 @@
 import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, startCase, toString } from 'lodash';
 import {
   PagingWithoutTotal,
   ServicesUpdateRequest,
   ServiceTypes,
 } from 'Models';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -37,23 +37,27 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
 import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable';
+import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
+import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
 } from '../../constants/Services.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -64,56 +68,73 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
+import { AgentType, App } from '../../generated/entity/applications/app';
 import { Tag } from '../../generated/entity/classification/tag';
-import { APICollection } from '../../generated/entity/data/apiCollection';
-import { Container } from '../../generated/entity/data/container';
-import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Database } from '../../generated/entity/data/database';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
-import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
-import { Topic } from '../../generated/entity/data/topic';
+import { Directory } from '../../generated/entity/data/directory';
+import { File } from '../../generated/entity/data/file';
+import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
+import { getApplicationList } from '../../rest/applicationAPI';
 import {
   getDashboards,
   getDataModels,
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
+import { getDriveAssets } from '../../rest/driveAPI';
+import {
+  getIngestionPipelines,
+  getPipelineServiceHostIp,
+} from '../../rest/ingestionPipelineAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
+  addServiceFollower,
   getServiceByFQN,
   patchService,
+  removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import {
+  getWorkflowInstancesForApplication,
+  getWorkflowInstanceStateById,
+} from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
+import {
+  getCurrentMillis,
+  getDayAgoStartGMTinMillis,
+} from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
+  getServiceDetailsPath,
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -128,20 +149,10 @@ import {
 } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
+import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
-
-export type ServicePageData =
-  | Database
-  | Topic
-  | Dashboard
-  | Mlmodel
-  | Pipeline
-  | Container
-  | DashboardDataModel
-  | SearchIndexEntity
-  | StoredProcedure
-  | APICollection;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -151,13 +162,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => airflowInformation,
     [airflowInformation]
   );
-  const { serviceCategory, tab } = useParams<{
+  const { serviceCategory, tab } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
   const { fqn: decodedServiceFQN } = useFqn();
-  const isMetadataService = useMemo(
-    () => serviceCategory === ServiceCategory.METADATA_SERVICES,
+  const { isMetadataService, isSecurityService } = useMemo(
+    () => ({
+      isMetadataService: serviceCategory === ServiceCategory.METADATA_SERVICES,
+      isSecurityService: serviceCategory === ServiceCategory.SECURITY_SERVICES,
+    }),
     [serviceCategory]
   );
   const isOpenMetadataService = useMemo(
@@ -165,10 +179,43 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN]
   );
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isAdminUser } = useAuth();
-  const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
-  const pagingInfo = usePaging(PAGE_SIZE_BASE);
+  const ingestionPagingInfo = usePaging();
+  const collateAgentPagingInfo = usePaging();
+  const filesPagingInfo = usePaging();
+  const spreadsheetsPagingInfo = usePaging();
+  const pagingInfo = usePaging();
+  const [workflowStatesData, setWorkflowStatesData] =
+    useState<WorkflowStatesData>();
+  const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
+  const [hostIp, setHostIp] = useState<string>();
+
+  const fetchHostIp = async () => {
+    try {
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip);
+      }
+    } catch {
+      setHostIp(undefined);
+    }
+  };
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
+
+  const USERId = currentUser?.id ?? '';
+  const {
+    paging: collateAgentPaging,
+    pageSize: collateAgentPageSize,
+    pagingCursor: collateAgentPagingCursor,
+    handlePageChange: handleCollateAgentPageChange,
+    handlePagingChange: handleCollateAgentPagingChange,
+  } = collateAgentPagingInfo;
 
   const {
     paging: ingestionPaging,
@@ -187,14 +234,32 @@ const ServiceDetailsPage: FunctionComponent = () => {
     handlePagingChange,
   } = pagingInfo;
 
+  const {
+    paging: filesPaging,
+    pageSize: filesPageSize,
+    handlePageChange: handleFilesPageChange,
+    handlePagingChange: handleFilesPagingChange,
+  } = filesPagingInfo;
+
+  const {
+    paging: spreadsheetsPaging,
+    pageSize: spreadsheetsPageSize,
+    handlePageChange: handleSpreadsheetsPageChange,
+    handlePagingChange: handleSpreadsheetsPagingChange,
+  } = spreadsheetsPagingInfo;
+
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
   const [data, setData] = useState<Array<ServicePageData>>([]);
+  const [files, setFiles] = useState<Array<File>>([]);
+  const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
     useState(false);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
+  const [isFilesLoading, setIsFilesLoading] = useState(true);
+  const [isSpreadsheetsLoading, setIsSpreadsheetsLoading] = useState(true);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
@@ -204,17 +269,64 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [searchText, setSearchText] = useState('');
+  const [typeFilter, setTypeFilter] = useState<
+    Array<{ key: string; label: string }>
+  >([]);
+  const [statusFilter, setStatusFilter] = useState<
+    Array<{ key: string; label: string }>
+  >([]);
+  const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
+  const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
+
+  const { isFollowing, followers = [] } = useMemo(
+    () => ({
+      isFollowing: serviceDetails?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: serviceDetails?.followers ?? [],
+    }),
+    [serviceDetails, currentUser]
+  );
+  const { CollateAIAgentsWidget } = useMemo(
+    () => serviceUtilClassBase.getAgentsTabWidgets(),
+    []
+  );
+  const isDBService = useMemo(
+    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
+    [serviceCategory]
+  );
+  const isCollateAIWidgetSupported = useMemo(
+    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
+    [CollateAIAgentsWidget, isDBService]
+  );
+  const handleTypeFilterChange = useCallback(
+    (type: Array<{ key: string; label: string }>) => {
+      setTypeFilter(type);
+    },
+    []
+  );
+
+  const handleStatusFilterChange = useCallback(
+    (status: Array<{ key: string; label: string }>) => {
+      setStatusFilter(status);
+    },
+    []
+  );
 
   const activeTab = useMemo(() => {
     if (tab) {
       return tab;
     }
     if (isMetadataService) {
-      return EntityTabs.INGESTIONS;
+      return EntityTabs.AGENTS;
     }
 
-    return getCountLabel(serviceCategory).toLowerCase();
-  }, [tab, serviceCategory, isMetadataService]);
+    if (isSecurityService) {
+      return EntityTabs.CONNECTION;
+    }
+
+    return EntityTabs.INSIGHTS;
+  }, [tab, serviceCategory, isMetadataService, isSecurityService]);
 
   const handleSearchChange = useCallback(
     (searchValue: string) => {
@@ -231,23 +343,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
     []
   );
 
-  const handleIngestionPagingUpdate = useCallback(
-    (ingestionPaging: React.SetStateAction<Paging>) => {
-      handleIngestionPagingChange(ingestionPaging);
-    },
-    [handleIngestionPagingChange]
-  );
-
   const extraDropdownContent = useMemo(
     () =>
       entityUtilClassBase.getManageExtraOptions(
-        serviceCategory === 'databaseServices'
-          ? EntityType.DATABASE_SERVICE
-          : EntityType.ALL,
+        getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
-        servicePermission
+        servicePermission,
+        serviceDetails,
+        navigate
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 
   const handleShowDeleted = useCallback(
@@ -262,10 +368,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
-  const { version: currentVersion, deleted } = useMemo(
-    () => serviceDetails,
-    [serviceDetails]
-  );
+  const {
+    version: currentVersion,
+    deleted,
+    id: serviceId,
+  } = useMemo(() => serviceDetails, [serviceDetails]);
 
   const fetchServicePermission = useCallback(async () => {
     setIsLoading(true);
@@ -281,7 +388,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceCategory, decodedServiceFQN]);
 
   const goToEditConnection = useCallback(() => {
-    history.push(
+    navigate(
       getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
     );
   }, [serviceCategory, decodedServiceFQN]);
@@ -289,16 +396,83 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (key: string) => {
       if (key !== activeTab) {
-        history.push({
+        let subTab = undefined;
+        const isAgentTab = key === EntityTabs.AGENTS;
+
+        if (isAgentTab) {
+          subTab = ServiceAgentSubTabs.METADATA;
+        }
+
+        navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
             serviceCategory,
-            key
+            key,
+            subTab
           ),
         });
       }
     },
     [activeTab, decodedServiceFQN, serviceCategory]
+  );
+
+  const fetchWorkflowInstanceStates = useCallback(async () => {
+    try {
+      setIsWorkflowStatusLoading(true);
+      const startTs = getDayAgoStartGMTinMillis(6);
+      const endTs = getCurrentMillis();
+      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const workflowInstances = await getWorkflowInstancesForApplication({
+        startTs,
+        endTs,
+        workflowDefinitionName: SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+        entityLink: getEntityFeedLink(
+          entityType,
+          serviceDetails.fullyQualifiedName
+        ),
+      });
+
+      const workflowInstanceId = workflowInstances.data[0]?.id;
+
+      if (workflowInstanceId) {
+        const workflowInstanceStates = await getWorkflowInstanceStateById(
+          SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+          workflowInstanceId,
+          {
+            startTs,
+            endTs,
+          }
+        );
+        setWorkflowStatesData({
+          mainInstanceState: workflowInstances.data[0],
+          subInstanceStates: workflowInstanceStates.data,
+        });
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsWorkflowStatusLoading(false);
+    }
+  }, [serviceDetails.fullyQualifiedName, serviceCategory]);
+
+  const fetchCollateAgentsList = useCallback(
+    async (paging?: Omit<Paging, 'total'>) => {
+      try {
+        setIsCollateAgentLoading(true);
+        const { data, paging: pagingRes } = await getApplicationList({
+          agentType: AgentType.CollateAI,
+          ...paging,
+        });
+
+        setCollateAgentsList(data);
+        handleCollateAgentPagingChange(pagingRes);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsCollateAgentLoading(false);
+      }
+    },
+    [handleCollateAgentPagingChange]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -327,13 +501,72 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [decodedServiceFQN, serviceCategory, ingestionPaging]
+    [
+      decodedServiceFQN,
+      serviceCategory,
+      ingestionPaging,
+      handleIngestionPagingChange,
+    ]
   );
 
   const searchPipelines = useCallback(
     async (searchText: string, page?: number) => {
       try {
         setIsIngestionPipelineLoading(true);
+        const typeFilterArray = isEmpty(typeFilter)
+          ? SERVICE_INGESTION_PIPELINE_TYPES.map((type) => ({
+              key: type,
+              label: startCase(type),
+            }))
+          : typeFilter;
+
+        // Build queryFilter with proper structure instead of using filters with AND/OR
+        const baseQueryFilter = getServiceDisplayNameQueryFilter(
+          getEntityName(serviceDetails)
+        );
+
+        // Build filters array for the must clause
+        const filterClauses = [];
+
+        // Add pipeline type filter (OR condition)
+        if (typeFilterArray.length > 0) {
+          filterClauses.push({
+            bool: {
+              should: typeFilterArray.map((type) => ({
+                term: { pipelineType: type.key },
+              })),
+              minimum_should_match: 1,
+            },
+          });
+        }
+
+        // Add status filter (OR condition)
+        if (!isEmpty(statusFilter)) {
+          filterClauses.push({
+            bool: {
+              should: statusFilter.map((status) => ({
+                term: { 'pipelineStatuses.pipelineState': status.key },
+              })),
+              minimum_should_match: 1,
+            },
+          });
+        }
+
+        // Combine all filters with the base query filter
+        const combinedQueryFilter =
+          filterClauses.length > 0
+            ? {
+                query: {
+                  bool: {
+                    must: [
+                      ...(baseQueryFilter.query.bool.must || []),
+                      ...filterClauses,
+                    ],
+                  },
+                },
+              }
+            : baseQueryFilter;
+
         const res = await searchQuery({
           pageNumber: page,
           pageSize: ingestionPageSize,
@@ -341,15 +574,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           query: `*${getEncodedFqn(
             escapeESReservedCharacters(searchText ?? '')
           )}*`,
-          filters: `(${SERVICE_INGESTION_PIPELINE_TYPES.map(
-            (type, index) =>
-              `pipelineType:${type} ${
-                index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
-              }`
-          ).join(' ')})`,
-          queryFilter: getServiceDisplayNameQueryFilter(
-            getEntityName(serviceDetails)
-          ),
+          queryFilter: combinedQueryFilter,
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
         const total = res?.hits?.total.value ?? 0;
@@ -360,7 +585,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [ingestionPageSize, handleIngestionPagingChange, serviceDetails]
+    [
+      ingestionPageSize,
+      handleIngestionPagingChange,
+      serviceDetails,
+      typeFilter,
+      statusFilter,
+    ]
   );
 
   const include = useMemo(
@@ -372,7 +603,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
+        `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`,
         paging,
         include
       );
@@ -387,7 +618,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        commonTableFields,
         paging,
         include
       );
@@ -401,7 +632,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
+        `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -418,11 +649,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.FOLLOWERS,
-          ].join(','),
+          fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
           include,
           ...params,
         });
@@ -439,7 +666,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
+        `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -453,7 +680,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        commonTableFields,
         paging,
         include
       );
@@ -467,7 +694,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: commonTableFields,
         paging,
         root: true,
         include,
@@ -483,7 +710,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: commonTableFields,
         paging,
         root: true,
         include,
@@ -498,13 +725,75 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        fields: commonTableFields,
         paging,
         include,
       });
 
       setData(response.data);
       handlePagingChange(response.paging);
+    },
+    [decodedServiceFQN, include]
+  );
+  const fetchDirectories = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getDriveAssets<Directory>(EntityType.DIRECTORY, {
+        service: decodedServiceFQN,
+        fields: commonTableFields,
+        root: true,
+        paging,
+        include,
+      });
+
+      setData(response.data);
+      handlePagingChange(response.paging);
+    },
+    [decodedServiceFQN, include]
+  );
+  const fetchFiles = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      try {
+        setIsFilesLoading(true);
+        const response = await getDriveAssets<File>(EntityType.FILE, {
+          service: decodedServiceFQN,
+          fields: commonTableFields,
+          root: true,
+          paging,
+          include,
+        });
+
+        setFiles(response.data);
+        handleFilesPagingChange(response.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsFilesLoading(false);
+      }
+    },
+    [decodedServiceFQN, include]
+  );
+  const fetchSpreadsheets = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      try {
+        setIsSpreadsheetsLoading(true);
+        const response = await getDriveAssets<Spreadsheet>(
+          EntityType.SPREADSHEET,
+          {
+            service: decodedServiceFQN,
+            fields: commonTableFields,
+            root: true,
+            paging,
+            include,
+          }
+        );
+
+        setSpreadsheets(response.data);
+        handleSpreadsheetsPagingChange(response.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsSpreadsheetsLoading(false);
+      }
     },
     [decodedServiceFQN, include]
   );
@@ -555,10 +844,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
             break;
           }
+          case ServiceCategory.DRIVE_SERVICES: {
+            await fetchDirectories(pagingParams);
+
+            break;
+          }
           default:
             break;
         }
-      } catch (error) {
+      } catch {
         setData([]);
         handlePagingChange(pagingObject);
       } finally {
@@ -575,6 +869,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchContainers,
       fetchSearchIndexes,
       fetchCollections,
+      fetchDirectories,
       pageSize,
     ]
   );
@@ -587,8 +882,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         decodedServiceFQN,
         {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
-            isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS
-          },${isMetadataService ? '' : TabSpecificField.DOMAIN}`,
+            TabSpecificField.FOLLOWERS
+          },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
+            isMetadataService ? '' : TabSpecificField.DOMAINS
+          }`,
           include: Include.All,
         }
       );
@@ -599,13 +896,62 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
     }
   }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
+  const followService = useCallback(async () => {
+    try {
+      const res = await addServiceFollower(serviceId, USERId ?? '');
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setServiceDetails((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(serviceDetails),
+        })
+      );
+    }
+  }, [USERId, serviceId]);
+  const unFollowService = useCallback(async () => {
+    try {
+      const res = await removeServiceFollower(serviceId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setServiceDetails((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(serviceDetails),
+        })
+      );
+    }
+  }, [USERId, serviceId]);
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unFollowService() : await followService();
+  }, [isFollowing, unFollowService, followService]);
   const handleUpdateDisplayName = useCallback(
     async (data: EntityName) => {
       if (isEmpty(serviceDetails)) {
@@ -658,6 +1004,35 @@ const ServiceDetailsPage: FunctionComponent = () => {
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
+  const handleDataProductUpdate = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData = {
+        ...serviceDetails,
+        dataProducts: dataProducts.map((dataProduct) =>
+          getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+        ),
+      };
+
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
     },
     [serviceDetails, serviceCategory]
@@ -725,11 +1100,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as ServicesType;
 
     setServiceDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -746,7 +1121,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: paging[cursorType]!,
+            cursorValue: ingestionPaging[cursorType]!,
           },
           ingestionPageSize
         );
@@ -761,12 +1136,39 @@ const ServiceDetailsPage: FunctionComponent = () => {
       ingestionPageSize,
       handleIngestionPageChange,
       searchPipelines,
+      getAllIngestionWorkflows,
+    ]
+  );
+
+  const onCollateAgentPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchCollateAgentsList({
+          [cursorType]: collateAgentPaging[cursorType],
+          limit: collateAgentPageSize,
+        });
+
+        handleCollateAgentPageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: collateAgentPaging[cursorType]!,
+          },
+          collateAgentPageSize
+        );
+      }
+    },
+    [
+      collateAgentPaging,
+      collateAgentPageSize,
+      handleCollateAgentPageChange,
+      fetchCollateAgentsList,
     ]
   );
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -792,6 +1194,30 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [paging, getOtherDetails, handlePageChange]
   );
 
+  const onFilesPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchFiles({
+          [cursorType]: filesPaging[cursorType],
+        });
+      }
+      handleFilesPageChange(currentPage);
+    },
+    [filesPaging, fetchFiles, handleFilesPageChange]
+  );
+
+  const onSpreadsheetsPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchSpreadsheets({
+          [cursorType]: spreadsheetsPaging[cursorType],
+        });
+      }
+      handleSpreadsheetsPageChange(currentPage);
+    },
+    [spreadsheetsPaging, fetchSpreadsheets, handleSpreadsheetsPageChange]
+  );
+
   const handleToggleDelete = useCallback((version?: number) => {
     setServiceDetails((prev) => {
       if (!prev) {
@@ -810,16 +1236,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete
-        ? handleToggleDelete(version)
-        : history.push(
-            getSettingPath(
-              GlobalSettingsMenuCategory.SERVICES,
-              getServiceRouteFromServiceType(serviceCategory)
-            )
-          ),
-    [handleToggleDelete, serviceCategory]
+    (isSoftDelete?: boolean) => {
+      if (!isSoftDelete) {
+        navigate(
+          getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory)
+          )
+        );
+      }
+    },
+    [serviceCategory, serviceDetails.fullyQualifiedName]
   );
 
   const handleRestoreService = useCallback(async () => {
@@ -831,8 +1258,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.service'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -859,17 +1285,43 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
+    useMemo(() => {
+      let disableRunAgentsButton = false;
+      let disableRunAgentsButtonMessage: string | undefined;
+
+      if (isWorkflowStatusLoading) {
+        disableRunAgentsButton = true;
+      }
+
+      if (
+        workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+      ) {
+        disableRunAgentsButton = true;
+        disableRunAgentsButtonMessage = t('message.auto-pilot-already-running');
+      }
+
+      return {
+        disableRunAgentsButton,
+        disableRunAgentsButtonMessage,
+      };
+    }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
+
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
     getOtherDetails({ limit: pageSize });
-  }, [activeTab, showDeleted, deleted, pageSize]);
+  }, [showDeleted, deleted, pageSize]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
-  }, []);
+    if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
+      fetchFiles({ limit: filesPageSize });
+      fetchSpreadsheets({ limit: spreadsheetsPageSize });
+    }
+  }, [showDeleted]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -885,35 +1337,88 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
-      isEmpty(searchText)
+      isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
         ? getAllIngestionWorkflows(
             {},
             ingestionPagingCursor?.pageSize ?? ingestionPageSize
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [isAirflowAvailable, searchText, ingestionPageSize]);
+  }, [
+    isAirflowAvailable,
+    searchText,
+    ingestionPageSize,
+    statusFilter,
+    typeFilter,
+  ]);
+
+  useEffect(() => {
+    if (isCollateAIWidgetSupported) {
+      fetchCollateAgentsList({
+        limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
+      });
+    }
+  }, [collateAgentPageSize]);
+
+  useEffect(() => {
+    fetchWorkflowInstanceStates();
+  }, [serviceDetails.fullyQualifiedName]);
+
+  const agentCounts = useMemo(() => {
+    return {
+      [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
+      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total,
+    };
+  }, [collateAgentPaging, ingestionPaging]);
+
+  const refreshAgentsList = useCallback(
+    async (agentListType: ServiceAgentSubTabs) => {
+      if (agentListType === ServiceAgentSubTabs.COLLATE_AI) {
+        await fetchCollateAgentsList({
+          limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
+        });
+      } else {
+        setSearchText('');
+        await getAllIngestionWorkflows(
+          {},
+          ingestionPagingCursor?.pageSize ?? ingestionPageSize
+        );
+      }
+    },
+    [
+      collateAgentPagingCursor,
+      collateAgentPageSize,
+      getAllIngestionWorkflows,
+      ingestionPagingCursor,
+      ingestionPageSize,
+    ]
+  );
 
   const ingestionTab = useMemo(
     () => (
-      <Row>
-        <Col className="p-x-lg" span={24}>
-          <Ingestion
-            airflowInformation={airflowInformation}
-            handleIngestionListUpdate={handleIngestionListUpdate}
-            handleSearchChange={handleSearchChange}
-            ingestionPagingInfo={ingestionPagingInfo}
-            ingestionPipelineList={ingestionPipelines}
-            isLoading={isIngestionPipelineLoading}
-            searchText={searchText}
-            serviceCategory={serviceCategory as ServiceCategory}
-            serviceDetails={serviceDetails}
-            serviceName={decodedServiceFQN}
-            onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
-            onPageChange={onPageChange}
-          />
-        </Col>
-      </Row>
+      <Ingestion
+        agentCounts={agentCounts}
+        airflowInformation={airflowInformation}
+        collateAgentPagingInfo={collateAgentPagingInfo}
+        collateAgentsList={collateAgentsList}
+        handleIngestionListUpdate={handleIngestionListUpdate}
+        handleSearchChange={handleSearchChange}
+        handleStatusFilterChange={handleStatusFilterChange}
+        handleTypeFilterChange={handleTypeFilterChange}
+        ingestionPagingInfo={ingestionPagingInfo}
+        ingestionPipelineList={ingestionPipelines}
+        isCollateAgentLoading={isCollateAgentLoading}
+        isLoading={isIngestionPipelineLoading}
+        refreshAgentsList={refreshAgentsList}
+        searchText={searchText}
+        serviceDetails={serviceDetails}
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        workflowStartAt={workflowStatesData?.mainInstanceState.startedAt}
+        onCollateAgentPageChange={onCollateAgentPageChange}
+        onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
+        onPageChange={onPageChange}
+      />
     ),
     [
       airflowInformation,
@@ -921,91 +1426,93 @@ const ServiceDetailsPage: FunctionComponent = () => {
       serviceDetails,
       ingestionPipelines,
       ingestionPaging,
-      servicePermission,
-      serviceCategory,
-      decodedServiceFQN,
       getAllIngestionWorkflows,
       handleIngestionListUpdate,
-      handleIngestionPagingUpdate,
       searchText,
       handleSearchChange,
       onPageChange,
       ingestionPagingInfo,
+      collateAgentsList,
+      isCollateAgentLoading,
+      collateAgentPagingInfo,
+      onCollateAgentPageChange,
+      agentCounts,
+      refreshAgentsList,
+      handleStatusFilterChange,
+      handleTypeFilterChange,
+      statusFilter,
+      typeFilter,
+      workflowStatesData?.mainInstanceState.startedAt,
     ]
   );
 
+  const extraInfoData = useMemo(() => {
+    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
+  }, [serviceDetails]);
+
   const testConnectionTab = useMemo(() => {
     return (
-      <Row>
-        <Col className="p-x-lg" span={24}>
-          <Row className="my-4">
-            <Col span={12}>
-              <AirflowMessageBanner />
-            </Col>
-            <Col span={12}>
-              <Space className="w-full justify-end">
-                <Tooltip
-                  title={
-                    servicePermission.EditAll
-                      ? t('label.edit-entity', {
-                          entity: t('label.connection'),
-                        })
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    ghost
-                    data-testid="edit-connection-button"
-                    disabled={!servicePermission.EditAll}
-                    type="primary"
-                    onClick={goToEditConnection}>
-                    {t('label.edit-entity', {
+      <div className="connection-tab-content">
+        <div className="flex items-center justify-between">
+          <AirflowMessageBanner />
+
+          <Space className="w-full justify-end">
+            <Tooltip
+              title={
+                servicePermission.EditAll
+                  ? t('label.edit-entity', {
                       entity: t('label.connection'),
-                    })}
-                  </Button>
-                </Tooltip>
-                {allowTestConn && isAirflowAvailable && (
-                  <Tooltip
-                    title={
-                      servicePermission.EditAll
-                        ? t('label.test-entity', {
-                            entity: t('label.connection'),
-                          })
-                        : t('message.no-permission-for-action')
-                    }>
-                    <TestConnection
-                      connectionType={serviceDetails?.serviceType ?? ''}
-                      getData={() => connectionDetails}
-                      isTestingDisabled={isTestingDisabled}
-                      serviceCategory={serviceCategory as ServiceCategory}
-                      serviceName={serviceDetails?.name}
-                      // validation is not required as we have all the data available and not in edit mode
-                      shouldValidateForm={false}
-                      showDetails={false}
-                    />
-                  </Tooltip>
-                )}
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-        <Col className="p-x-lg" span={24}>
-          <ServiceConnectionDetails
-            connectionDetails={connectionDetails ?? {}}
-            serviceCategory={serviceCategory}
-            serviceFQN={serviceDetails?.serviceType || ''}
-          />
-        </Col>
-      </Row>
+                    })
+                  : t('message.no-permission-for-action')
+              }>
+              <Button
+                ghost
+                data-testid="edit-connection-button"
+                disabled={!servicePermission.EditAll}
+                type="primary"
+                onClick={goToEditConnection}>
+                {t('label.edit-entity', {
+                  entity: t('label.connection'),
+                })}
+              </Button>
+            </Tooltip>
+            {allowTestConn && (
+              <TestConnection
+                connectionType={serviceDetails?.serviceType ?? ''}
+                extraInfo={extraInfoData?.name}
+                getData={() => connectionDetails}
+                hostIp={hostIp}
+                isTestingDisabled={isTestingDisabled}
+                serviceCategory={serviceCategory as ServiceCategory}
+                serviceName={serviceDetails?.name}
+                // validation is not required as we have all the data available and not in edit mode
+                shouldValidateForm={false}
+                showDetails={false}
+              />
+            )}
+          </Space>
+        </div>
+
+        <ServiceConnectionDetails
+          connectionDetails={connectionDetails ?? {}}
+          extraInfo={extraInfoData}
+          serviceCategory={serviceCategory}
+          serviceFQN={serviceDetails?.serviceType || ''}
+        />
+      </div>
     );
   }, [
     servicePermission.EditAll,
     allowTestConn,
-    isAirflowAvailable,
     goToEditConnection,
     serviceDetails,
     connectionDetails,
     isTestingDisabled,
     serviceCategory,
+    statusFilter,
+    typeFilter,
+    extraInfoData,
+    hostIp,
   ]);
 
   const tabs: TabsProps['items'] = useMemo(() => {
@@ -1018,12 +1525,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
-    if (!isMetadataService) {
+    if (!isMetadataService && !isSecurityService) {
       tabs.push(
         {
           name: t('label.insight-plural'),
           key: EntityTabs.INSIGHTS,
-          children: <ServiceInsightsTab serviceDetails={serviceDetails} />,
+          children: (
+            <ServiceInsightsTab
+              collateAIagentsList={collateAgentsList}
+              ingestionPipelines={ingestionPipelines}
+              isCollateAIagentsLoading={isCollateAgentLoading}
+              isIngestionPipelineLoading={isIngestionPipelineLoading}
+              serviceDetails={serviceDetails}
+              workflowStatesData={workflowStatesData}
+            />
+          ),
         },
         {
           name: getCountLabel(serviceCategory),
@@ -1042,6 +1558,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               serviceName={serviceCategory}
               servicePermission={servicePermission}
               showDeleted={showDeleted}
+              onDataProductUpdate={handleDataProductUpdate}
               onDescriptionUpdate={handleDescriptionUpdate}
               onShowDeletedChange={handleShowDeleted}
             />
@@ -1055,25 +1572,68 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.data-model'),
         key: EntityTabs.DATA_Model,
         count: dataModelPaging.total,
-        children: <DataModelTable />,
+        children: (
+          <DataModelTable
+            handleShowDeleted={handleShowDeleted}
+            showDeleted={showDeleted}
+          />
+        ),
       });
     }
 
-    tabs.push(
-      {
-        name: t('label.ingestion-plural'),
-        key: EntityTabs.INGESTIONS,
+    if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
+      tabs.push(
+        ...[
+          {
+            name: t('label.file-plural'),
+            key: EntityTabs.FILES,
+            count: filesPaging.total,
+            children: (
+              <FilesTable
+                files={files}
+                handlePageChange={onFilesPageChange}
+                handleShowDeleted={handleShowDeleted}
+                isLoading={isFilesLoading}
+                paging={filesPagingInfo}
+                showDeleted={showDeleted}
+              />
+            ),
+          },
+          {
+            name: t('label.spreadsheet-plural'),
+            key: EntityTabs.SPREADSHEETS,
+            count: spreadsheetsPaging.total,
+            children: (
+              <SpreadsheetsTable
+                handlePageChange={onSpreadsheetsPageChange}
+                handleShowDeleted={handleShowDeleted}
+                isLoading={isSpreadsheetsLoading}
+                paging={spreadsheetsPagingInfo}
+                showDeleted={showDeleted}
+                spreadsheets={spreadsheets}
+              />
+            ),
+          },
+        ]
+      );
+    }
+
+    if (!isSecurityService) {
+      tabs.push({
+        name: t('label.agent-plural'),
+        key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
-        count: ingestionPaging.total,
+        count: ingestionPaging.total + collateAgentPaging.total,
         children: ingestionTab,
-      },
-      {
-        name: t('label.connection'),
-        isHidden: !servicePermission.EditAll,
-        key: EntityTabs.CONNECTION,
-        children: testConnectionTab,
-      }
-    );
+      });
+    }
+
+    tabs.push({
+      name: t('label.connection'),
+      isHidden: !servicePermission.EditAll,
+      key: EntityTabs.CONNECTION,
+      children: testConnectionTab,
+    });
 
     return tabs
       .filter((tab) => !tab.isHidden)
@@ -1107,18 +1667,52 @@ const ServiceDetailsPage: FunctionComponent = () => {
     saveUpdatedServiceData,
     dataModelPaging,
     ingestionPaging,
+    collateAgentPaging,
     ingestionTab,
     testConnectionTab,
     activeTab,
     isMetadataService,
+    workflowStatesData,
+    collateAgentsList,
+    isSecurityService,
+    ingestionPipelines,
+    isIngestionPipelineLoading,
+    isCollateAgentLoading,
+    handleDataProductUpdate,
+    filesPaging,
+    spreadsheetsPaging,
+    filesPagingInfo,
+    spreadsheetsPagingInfo,
+    files,
+    spreadsheets,
+    onFilesPageChange,
+    onSpreadsheetsPageChange,
+    isFilesLoading,
+    isSpreadsheetsLoading,
   ]);
+
+  const afterAutoPilotAppTrigger = useCallback(() => {
+    fetchWorkflowInstanceStates();
+  }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
+
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
 
   if (isLoading) {
     return <Loader />;
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -1128,22 +1722,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
         entity: getEntityName(serviceDetails),
       })}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={afterDomainUpdateAction}
+              afterTriggerAction={afterAutoPilotAppTrigger}
               dataAsset={serviceDetails}
+              disableRunAgentsButton={disableRunAgentsButton}
+              disableRunAgentsButtonMessage={disableRunAgentsButtonMessage}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
+              isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
+              onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreService}
               onTierUpdate={handleUpdateTier}
@@ -1151,10 +1750,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
             />
           </Col>
 
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={activeTabHandler}

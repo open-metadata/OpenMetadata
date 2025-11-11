@@ -12,16 +12,18 @@
  */
 
 import classNames from 'classnames';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as RightArrowIcon } from '../../../assets/svg/right-arrow.svg';
+import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
+import './title-breadcrumb.less';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
@@ -30,8 +32,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   noLink = false,
   loading = false,
   widthDeductions,
+  useCustomArrow = false,
 }: TitleBreadcrumbProps) => {
-  const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
@@ -79,11 +81,15 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           }}>
           {link.name}
         </span>
-        {noLink && index < titleLinks.length - 1 && (
-          <span className="text-xss text-grey-muted">
-            {t('label.slash-symbol')}
-          </span>
-        )}
+        {noLink &&
+          index < titleLinks.length - 1 &&
+          (useCustomArrow ? (
+            <span className="custom-separator">
+              <RightArrowIcon />
+            </span>
+          ) : (
+            <span className="text-xss text-grey-muted">{'>'}</span>
+          ))}
       </>
     );
   };
@@ -98,8 +104,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
   return (
     <TitleBreadcrumbSkeleton loading={loading}>
-      <nav className={className} data-testid="breadcrumb">
-        <ol className="rounded-4 d-flex flex-wrap">
+      <nav
+        className={classNames('breadcrumb-container', className)}
+        data-testid="breadcrumb">
+        <ol className="rounded-4 text-sm font-regular d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
               'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
@@ -114,18 +122,18 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 ) : null}
                 {index < titleLinks.length - 1 && !noLink ? (
                   <>
-                    <Link
-                      className={classes}
-                      style={{
-                        maxWidth,
-                        fontSize: '16px',
-                      }}
-                      to={link.url}>
+                    <Link className={classes} to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="text-xss p-x-xs text-grey-muted">
-                      {t('label.slash-symbol')}
-                    </span>
+                    {useCustomArrow ? (
+                      <span className="custom-separator">
+                        <RightArrowIcon />
+                      </span>
+                    ) : (
+                      <span className="text-sm font-regular p-x-xs text-grey-muted">
+                        {BREADCRUMB_SEPARATOR}
+                      </span>
+                    )}
                   </>
                 ) : (
                   renderBreadcrumb(index, link, classes)

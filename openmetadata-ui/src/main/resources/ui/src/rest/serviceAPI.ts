@@ -14,9 +14,13 @@
 import { AxiosResponse } from 'axios';
 import { RestoreRequestType, ServicesUpdateRequest } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { PAGE_SIZE } from '../constants/constants';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE,
+} from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
@@ -27,7 +31,7 @@ import {
 } from '../interface/service.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
-import { searchData } from './miscAPI';
+import { searchQuery } from './searchAPI';
 
 interface ServiceRequestParams {
   limit?: number;
@@ -97,6 +101,34 @@ export const postService = async (
   return response.data;
 };
 
+export const addServiceFollower = async (id: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(
+    `/services/databaseServices/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeServiceFollower = async (id: string, userId: string) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(
+    `/services/databaseServices/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
 export const patchService = async (
   serviceCat: string,
   id: string,
@@ -151,28 +183,26 @@ export const searchService = async ({
   searchIndex,
   currentPage = 1,
   limit = PAGE_SIZE,
-  filters,
+  queryFilter,
   deleted = false,
 }: {
   search?: string;
   searchIndex: SearchIndex | SearchIndex[];
   limit?: number;
   currentPage?: number;
-  filters?: string;
+  queryFilter?: Record<string, unknown>;
   deleted?: boolean;
 }) => {
-  const response = await searchData(
-    search ?? WILD_CARD_CHAR,
-    currentPage,
-    limit,
-    filters ?? '',
-    '',
-    '',
+  const response = await searchQuery({
+    query: search ?? WILD_CARD_CHAR,
+    pageNumber: currentPage,
+    pageSize: limit,
+    queryFilter,
     searchIndex,
-    deleted
-  );
+    includeDeleted: deleted,
+  });
 
-  return response.data;
+  return response;
 };
 
 export const restoreService = async (serviceCategory: string, id: string) => {
@@ -186,10 +216,17 @@ export const restoreService = async (serviceCategory: string, id: string) => {
   return response.data;
 };
 
-export const exportDatabaseServiceDetailsInCSV = async (fqn: string) => {
+export const exportDatabaseServiceDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
   const res = await APIClient.get(
-    // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-    `services/databaseServices/name/${fqn}/exportAsync`
+    `services/databaseServices/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
   );
 
   return res.data;

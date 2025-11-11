@@ -31,6 +31,10 @@
       "description": "Unit of measurement for the metric.",
       "$ref": "../../entity/data/metric.json#/definitions/unitOfMeasurement"
     },
+    "customUnitOfMeasurement": {
+      "description": "Custom unit of measurement when unitOfMeasurement is OTHER.",
+      "type": "string"
+    },
     "granularity": {
       "description": "Metric's granularity.",
       "$ref": "../../entity/data/metric.json#/definitions/metricGranularity"
@@ -47,6 +51,11 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "reviewers": {
+      "description": "Reviewers of this metric",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
     "tags": {
       "description": "Tags for this metric",
       "type": "array",
@@ -55,9 +64,12 @@
       },
       "default": null
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Metric belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Metric belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "dataProducts" : {
       "description": "List of fully qualified names of data products this entity is part of.",

@@ -20,8 +20,27 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
-  constructor() {
-    super(Services.API, `pw-api-with-%-${uuid()}`, 'Rest', 'store');
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
+    super(
+      Services.API,
+      `pw-api-with-%-${uuid()}`,
+      'Rest',
+      'store',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
+    );
+    this.entityFQN = `${this.serviceName}.${this.entityName} `;
   }
 
   async createService(page: Page) {

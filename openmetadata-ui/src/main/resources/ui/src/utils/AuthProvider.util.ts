@@ -21,7 +21,6 @@ import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import process from 'process';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -35,14 +34,16 @@ import {
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
-import { setOidcToken } from './LocalStorageUtils';
+import { getBasePath } from './HistoryUtils';
+import { oidcTokenStorage } from './OidcTokenStorage';
+import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+const subPath = getBasePath();
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -61,22 +62,16 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const {
-    authority,
-    clientId,
-    callbackUrl,
-    responseType = 'id_token',
-    scope,
-  } = authClient;
+  const { authority, clientId, callbackUrl, scope } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
-    userStore: new WebStorageStateStore({ store: localStorage }),
+    userStore: oidcTokenStorage,
+    stateStore: oidcTokenStorage,
   };
 };
 
@@ -296,26 +291,6 @@ export const getNameFromUserData = (
   return { name: userName, email: email, picture: user.picture };
 };
 
-export const isProtectedRoute = (pathname: string) => {
-  return (
-    [
-      ROUTES.SIGNUP,
-      ROUTES.SIGNIN,
-      ROUTES.FORGOT_PASSWORD,
-      ROUTES.CALLBACK,
-      ROUTES.SILENT_CALLBACK,
-      ROUTES.SAML_CALLBACK,
-      ROUTES.REGISTER,
-      ROUTES.RESET_PASSWORD,
-      ROUTES.ACCOUNT_ACTIVATION,
-      ROUTES.HOME,
-      ROUTES.AUTH_CALLBACK,
-      ROUTES.NOT_FOUND,
-      ROUTES.LOGOUT,
-    ].indexOf(pathname) === -1
-  );
-};
-
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
 };
@@ -420,7 +395,9 @@ export const prepareUserProfileFromClaims = ({
 };
 
 // Responsible for parsing the response from MSAL AuthenticationResult
-export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
+export const parseMSALResponse = async (
+  response: AuthenticationResult
+): Promise<OidcUser> => {
   // Call your API with the access token and return the data you need to save in state
   const { idToken, scopes, account } = response;
 
@@ -436,7 +413,28 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
     } as UserProfile,
   };
 
-  setOidcToken(idToken);
+  await setOidcToken(idToken);
 
   return user;
+};
+
+export const requiredAuthFields = [
+  'authority',
+  'clientId',
+  'callbackUrl',
+  'provider',
+];
+
+export const validateAuthFields = (
+  configJson: AuthenticationConfigurationWithScope,
+  t: (key: string, options?: any) => string
+) => {
+  requiredAuthFields.forEach((field) => {
+    const value =
+      configJson[field as keyof AuthenticationConfigurationWithScope];
+    if (isEmpty(value)) {
+      // eslint-disable-next-line no-console
+      console.warn(t('message.missing-config-value', { field }));
+    }
+  });
 };

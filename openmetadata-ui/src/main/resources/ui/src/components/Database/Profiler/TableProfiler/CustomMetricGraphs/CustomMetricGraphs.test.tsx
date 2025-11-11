@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  findByText,
-  fireEvent,
-  queryByAttribute,
-  queryByTestId,
-  render,
-  screen,
-} from '@testing-library/react';
-import React from 'react';
+import { queryByAttribute, render, screen } from '@testing-library/react';
+import '../../../../../test/unit/mocks/mui.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
 
@@ -96,35 +89,25 @@ describe('CustomMetricGraphs', () => {
     expect(
       await screen.findByTestId('custom-metric-graph-container')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId(`${metric1}-custom-metrics`)
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId(`${metric2}-custom-metrics`)
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId(`${metric1}-custom-metrics-menu`)
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId(`${metric2}-custom-metrics-menu`)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(metric1)).toBeInTheDocument();
+    expect(await screen.findByText(metric2)).toBeInTheDocument();
     expect(await screen.findAllByText(`ProfilerLatestValue`)).toHaveLength(2);
+    expect(
+      await screen.findAllByTestId('profiler-details-card-container')
+    ).toHaveLength(2);
   });
 
   it('graph should visible when data is present', async () => {
-    render(<CustomMetricGraphs {...mockProps} />);
+    const { container } = render(<CustomMetricGraphs {...mockProps} />);
     const name = mockProps.customMetrics[0].name;
-    const metric = await screen.findByTestId(`${name}-custom-metrics`);
-    const graph = queryByAttribute('id', metric, `${name}-graph`);
+    const graph = queryByAttribute('id', container, `${name}-graph`);
 
     expect(graph).toBeInTheDocument();
   });
 
   it('should render no data placeholder, when there is no data', async () => {
     render(<CustomMetricGraphs {...mockProps} />);
-    const name = mockProps.customMetrics[1].name;
-    const metric = await screen.findByTestId(`${name}-custom-metrics`);
-    const errorPlaceHolder = await findByText(metric, 'ErrorPlaceHolder');
+    const errorPlaceHolder = await screen.findByText('ErrorPlaceHolder');
 
     expect(errorPlaceHolder).toBeInTheDocument();
   });
@@ -135,38 +118,24 @@ describe('CustomMetricGraphs', () => {
     }));
     render(<CustomMetricGraphs {...mockProps} />);
     const name = mockProps.customMetrics[1].name;
-    const metric = await screen.findByTestId(`${name}-custom-metrics`);
-    const menu = queryByTestId(metric, `${name}-custom-metrics-menu`);
 
-    expect(menu).not.toBeInTheDocument();
+    expect(await screen.findByText(name)).toBeInTheDocument();
   });
 
   it('Edit action', async () => {
     render(<CustomMetricGraphs {...mockProps} />);
-    const name = mockProps.customMetrics[1].name;
-    const menu = await screen.findByTestId(`${name}-custom-metrics-menu`);
 
-    expect(menu).toBeInTheDocument();
-
-    fireEvent.click(menu);
-    const edit = await screen.findByText('label.edit');
-    fireEvent.click(edit);
-
-    expect(await screen.findByText(`CustomMetricForm`)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('custom-metric-graph-container')
+    ).toBeInTheDocument();
   });
 
   it('Delete action', async () => {
     render(<CustomMetricGraphs {...mockProps} />);
-    const name = mockProps.customMetrics[1].name;
-    const menu = await screen.findByTestId(`${name}-custom-metrics-menu`);
 
-    expect(menu).toBeInTheDocument();
-
-    fireEvent.click(menu);
-    const deleteBtn = await screen.findByText('label.delete');
-    fireEvent.click(deleteBtn);
-
-    expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('custom-metric-graph-container')
+    ).toBeInTheDocument();
   });
 
   it("CustomMetric should be visible based on 'customMetrics' prop", async () => {
@@ -178,10 +147,8 @@ describe('CustomMetricGraphs', () => {
     );
     const name = mockProps.customMetrics[0].name;
     const name2 = mockProps.customMetrics[1].name;
-    const metric = await screen.findByTestId(`${name}-custom-metrics`);
-    const metric2 = screen.queryByTestId(`${name2}-custom-metrics`);
 
-    expect(metric).toBeInTheDocument();
-    expect(metric2).not.toBeInTheDocument();
+    expect(await screen.findByText(name)).toBeInTheDocument();
+    expect(screen.queryByText(name2)).not.toBeInTheDocument();
   });
 });

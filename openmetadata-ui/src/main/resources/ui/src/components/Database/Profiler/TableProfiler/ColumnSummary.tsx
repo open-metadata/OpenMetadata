@@ -10,11 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import {
+  Card,
+  Divider,
+  Grid,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import { FC, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Column } from '../../../../generated/entity/data/container';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
+import { DataPill } from '../../../common/DataPill/DataPill.styled';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 
@@ -23,26 +32,67 @@ interface ColumnSummaryProps {
 }
 
 const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  const { Classification, Glossary } = useMemo(() => {
+    return getFilterTags(column.tags ?? []);
+  }, [column.tags]);
+
   return (
-    <div className="summary-card h-full">
-      <Space>
-        <Typography className="font-medium">{getEntityName(column)}</Typography>
-
-        <Typography.Text className="text-xs text-grey-muted">{`(${column.dataType})`}</Typography.Text>
-      </Space>
-
-      <RichTextEditorPreviewerV1
-        className="text-grey-muted m-t-xs"
-        markdown={column.description ?? ''}
-        maxLength={184}
-      />
-
-      {!isEmpty(column.tags) ? (
-        <div className="m-t-xs">
-          <TagsViewer sizeCap={3} tags={column.tags ?? []} />
-        </div>
-      ) : null}
-    </div>
+    <Card
+      sx={{
+        borderRadius: '10px',
+        border: `1px solid ${theme.palette.grey[200]}`,
+        boxShadow: 'none',
+        height: '100%',
+      }}>
+      <Stack alignItems="center" direction="row" spacing={3} sx={{ p: 4 }}>
+        <Typography
+          sx={{
+            fontSize: theme.typography.pxToRem(16),
+            fontWeight: theme.typography.fontWeightMedium,
+            color: theme.palette.grey[900],
+          }}>
+          {getEntityName(column)}
+        </Typography>
+        <DataPill
+          sx={{
+            border: `1px solid ${theme.palette.grey[200]}`,
+            backgroundColor: theme.palette.grey[50],
+            fontSize: theme.typography.pxToRem(12),
+            fontWeight: theme.typography.fontWeightMedium,
+            color: theme.palette.grey[700],
+            p: '3px 6px',
+          }}>
+          {column.dataType}
+        </DataPill>
+      </Stack>
+      <Divider />
+      <Stack spacing={3} sx={{ p: 4 }}>
+        <RichTextEditorPreviewerV1
+          className="text-grey-muted m-t-xs"
+          markdown={column.description ?? ''}
+          maxLength={184}
+        />
+        <Divider
+          sx={{
+            borderStyle: 'dashed',
+            borderColor: theme.palette.grey[200],
+          }}
+        />
+        <Grid container spacing={4}>
+          <Grid size={2}>{t('label.glossary-term-plural')}</Grid>
+          <Grid size={10}>
+            <TagsViewer newLook sizeCap={3} tags={Glossary ?? []} />
+          </Grid>
+          <Grid size={2}>{t('label.tag-plural')}</Grid>
+          <Grid size={10}>
+            <TagsViewer newLook sizeCap={3} tags={Classification ?? []} />
+          </Grid>
+        </Grid>
+      </Stack>
+    </Card>
   );
 };
 

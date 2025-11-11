@@ -16,6 +16,7 @@ package org.openmetadata.service.secrets;
 import static java.util.Objects.isNull;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,7 +25,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
@@ -174,7 +174,8 @@ public abstract class SecretsManager {
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
-            String.format("Failed to decrypt user bot instance [%s]", name));
+            String.format(
+                "Failed to decrypt user bot instance [%s] due to [%s]", name, e.getMessage()));
       }
     }
     return null;
@@ -330,7 +331,7 @@ public abstract class SecretsManager {
                   Object obj = ReflectionUtil.getObjectFromMethod(method, toEncryptObject);
                   String fieldName = method.getName().replaceFirst("get", "");
                   // if the object matches the package of openmetadata
-                  if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                  if (CommonUtil.isOpenMetadataObject(obj)) {
                     // encryptPasswordFields
                     encryptPasswordFields(
                         obj,
@@ -356,10 +357,12 @@ public abstract class SecretsManager {
       }
       return toEncryptObject;
     } catch (Exception e) {
-      throw new SecretsManagerException(
+      String msg =
           String.format(
               "Error trying to encrypt object with secret ID [%s] due to [%s]",
-              secretId, e.getMessage()));
+              secretId, e.getMessage());
+      LOG.error(msg);
+      throw new SecretsManagerException(msg);
     }
   }
 
@@ -373,7 +376,7 @@ public abstract class SecretsManager {
                 Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // if the object matches the package of openmetadata
-                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                if (CommonUtil.isOpenMetadataObject(obj)) {
                   // encryptPasswordFields
                   decryptPasswordFields(obj);
                   // check if it has annotation
@@ -390,6 +393,7 @@ public abstract class SecretsManager {
               });
       return toDecryptObject;
     } catch (Exception e) {
+      LOG.error("Error trying to decrypt object due to [{}]", e.getMessage());
       throw new SecretsManagerException(
           String.format(
               "Error trying to decrypt object [%s] due to [%s]",
@@ -410,7 +414,7 @@ public abstract class SecretsManager {
                 Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // if the object matches the package of openmetadata
-                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                if (CommonUtil.isOpenMetadataObject(obj)) {
                   // encryptPasswordFields
                   getSecretFields(obj);
                   // check if it has annotation
@@ -535,7 +539,7 @@ public abstract class SecretsManager {
                 // check if it has annotation:
                 // We are replicating the logic that we use for storing the fields we need to
                 // encrypt at encryptPasswordFields
-                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                if (CommonUtil.isOpenMetadataObject(obj)) {
                   deleteSecrets(
                       obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {

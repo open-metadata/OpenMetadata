@@ -35,6 +35,6 @@ export const HTTP_STATUS_CODE = {
 
 export const UN_AUTHORIZED_EXCLUDED_PATHS = [
   '/users/refresh',
+  'auth/refresh',
   '/users/login',
-  '/users/loggedInUser',
 ];

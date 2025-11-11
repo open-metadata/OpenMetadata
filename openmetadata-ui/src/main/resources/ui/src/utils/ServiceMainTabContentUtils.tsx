@@ -13,30 +13,36 @@
 
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
-import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
+import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
+import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
+import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
@@ -54,8 +60,8 @@ export const getServiceMainTabColumns = (
     width: 280,
     render: (_, record: ServicePageData) => (
       <DisplayName
-        allowRename={editDisplayNamePermission}
         displayName={record.displayName}
+        hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
@@ -68,9 +74,10 @@ export const getServiceMainTabColumns = (
     title: t('label.description'),
     dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
     key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewerV1 markdown={description} />
+        <RichTextEditorPreviewerNew markdown={description} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
@@ -85,6 +92,7 @@ export const getServiceMainTabColumns = (
           title: t('label.schedule-interval'),
           dataIndex: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
           key: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
+          width: 200,
           render: (scheduleInterval: Pipeline['scheduleInterval']) =>
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
@@ -94,32 +102,17 @@ export const getServiceMainTabColumns = (
         },
       ]
     : []),
-  {
-    title: t('label.owner-plural'),
-    dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-    key: TABLE_COLUMNS_KEYS.OWNERS,
-    render: (owners: ServicePageData['owners']) =>
-      !isUndefined(owners) && owners.length > 0 ? (
-        <OwnerLabel owners={owners} />
-      ) : (
-        <Typography.Text data-testid="no-owner-text">--</Typography.Text>
-      ),
-  },
-  {
-    title: t('label.tag-plural'),
-    dataIndex: TABLE_COLUMNS_KEYS.TAGS,
-    width: 200,
-    key: TABLE_COLUMNS_KEYS.TAGS,
-    render: (_, record: ServicePageData) => (
-      <TagsViewer tags={record.tags ?? []} />
-    ),
-  },
+  ...ownerTableObject<ServicePageData>(),
+  ...domainTableObject<ServicePageData>(),
+  ...dataProductTableObject<ServicePageData>(),
+  ...tagTableObject<ServicePageData>(),
   ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {
           title: t('label.usage'),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+          width: 200,
           render: (usageSummary: Database['usageSummary']) => (
             <Typography.Text>
               {getUsagePercentile(
@@ -154,6 +147,12 @@ export const callServicePatchAPI = async (
       return await patchSearchIndexDetails(id, jsonPatch);
     case ServiceCategory.API_SERVICES:
       return await patchApiCollection(id, jsonPatch);
+    case ServiceCategory.DRIVE_SERVICES:
+      return await patchDriveAssetDetails<Directory>(
+        id,
+        jsonPatch,
+        EntityType.DIRECTORY
+      );
     default:
       return;
   }

@@ -15,15 +15,14 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import React, { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
@@ -33,6 +32,7 @@ interface Props {
   entityFQN: string;
   createPermission: boolean;
   onClose: () => void;
+  showToastInSnackbar?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -41,6 +41,7 @@ const AnnouncementDrawer: FC<Props> = ({
   entityFQN,
   entityType,
   createPermission = false,
+  showToastInSnackbar = false,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -112,6 +113,7 @@ const AnnouncementDrawer: FC<Props> = ({
   return (
     <Drawer
       closable={false}
+      data-testid="announcement-drawer"
       open={open}
       placement="right"
       title={title}
@@ -144,6 +146,7 @@ const AnnouncementDrawer: FC<Props> = ({
           entityFQN={entityFQN || ''}
           entityType={entityType || ''}
           open={isAddAnnouncementOpen}
+          showToastInSnackbar={showToastInSnackbar}
           onCancel={handleCloseAnnouncementModal}
           onSave={handleSaveAnnouncement}
         />

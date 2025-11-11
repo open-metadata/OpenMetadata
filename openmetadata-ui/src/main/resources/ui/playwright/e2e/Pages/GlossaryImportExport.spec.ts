@@ -37,7 +37,6 @@ import { addMultiOwner } from '../../utils/entity';
 import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
-  verifyTaskCreated,
 } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
@@ -156,7 +155,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        const fileInput = await page.$('[type="file"]');
+        const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + glossary1.data.displayName + '.csv',
         ]);
@@ -165,9 +164,7 @@ test.describe('Glossary Bulk Import Export', () => {
         await page.waitForTimeout(500);
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(
-          page.locator('.InovuaReactDataGrid__header-layout')
-        ).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
@@ -177,9 +174,12 @@ test.describe('Glossary Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-        );
+        const rows = await page.$$('.rdg-row');
+        const lastRow = rows[rows.length - 1];
+
+        const firstCell = await lastRow.$('.rdg-cell');
+        await firstCell?.click();
+
         // Click on first cell and edit
         await fillGlossaryRowDetails(
           {
@@ -208,15 +208,13 @@ test.describe('Glossary Bulk Import Export', () => {
           failed: '0',
         });
 
-        await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+        await page.waitForSelector('.rdg-header-row', {
           state: 'visible',
         });
 
         const rowStatus = ['Entity updated', 'Entity created'];
 
-        await expect(page.locator('[data-props-id="details"]')).toHaveText(
-          rowStatus
-        );
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         await page.getByRole('button', { name: 'Update' }).click();
         await page
@@ -233,16 +231,11 @@ test.describe('Glossary Bulk Import Export', () => {
     await test.step('should have term in review state', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await verifyTaskCreated(
-        page,
-        glossary1.data.fullyQualifiedName,
-        glossaryTerm1.data.name
-      );
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
       const statusBadge = page.locator('.status-badge');
 
-      await expect(statusBadge).toHaveText('In Review');
+      await expect(statusBadge).toHaveText('Approved');
     });
 
     await test.step('delete custom properties', async () => {

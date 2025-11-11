@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-entity-deleted",
+  "fullyQualifiedName": "system-notification-entity-deleted",
+  "displayName": "Entity Deleted Notification",
+  "description": "System default template for entity permanent deletion notifications",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> deleted <strong>{{camelCaseToTitle event.entityType}}</strong> {{entity.fullyQualifiedName}}"
+}

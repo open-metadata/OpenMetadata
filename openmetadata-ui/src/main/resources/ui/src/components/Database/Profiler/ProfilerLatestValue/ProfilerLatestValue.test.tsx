@@ -12,9 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { INITIAL_ROW_METRIC_VALUE } from '../../../../constants/profiler.constant';
+import '../../../../test/unit/mocks/mui.mock';
 import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
@@ -27,6 +27,10 @@ const mockProps: ProfilerLatestValueProps = {
 
 jest.mock('../../../../constants/constants', () => ({
   JSON_TAB_SIZE: 2,
+}));
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  getStatisticsDisplayValue: jest.fn().mockImplementation(() => '10'),
 }));
 
 describe('ProfilerLatestValue component test', () => {
@@ -66,7 +70,7 @@ describe('ProfilerLatestValue component test', () => {
     const container = screen.queryByTestId('data-summary-container');
     const title = screen.queryByTestId('title');
 
-    expect(container).not.toBeInTheDocument();
+    expect(container).toBeInTheDocument();
     expect(title).not.toBeInTheDocument();
   });
 });

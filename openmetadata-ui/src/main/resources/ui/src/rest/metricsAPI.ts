@@ -74,7 +74,7 @@ export const getMetricVersions = async (id: string) => {
   return response.data;
 };
 
-export const getMetricVersion = async (id: string, versionId: string) => {
+export const getMetricVersion = async (id: string, versionId?: string) => {
   const response = await APIClient.get<Metric>(
     `/metrics/${id}/versions/${versionId}`
   );
@@ -118,6 +118,12 @@ export const createMetric = async (data: CreateMetric) => {
     '/metrics',
     data
   );
+
+  return response.data;
+};
+
+export const getCustomUnitsOfMeasurement = async () => {
+  const response = await APIClient.get<string[]>('/metrics/customUnits');
 
   return response.data;
 };

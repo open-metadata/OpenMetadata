@@ -12,9 +12,12 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { DATA_STEWARD_RULES } from '../../constant/permission';
+import {
+  DATA_CONSUMER_RULES,
+  DATA_STEWARD_RULES,
+} from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
-import { PolicyClass } from '../access-control/PoliciesClass';
+import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
@@ -40,7 +43,7 @@ export class UserClass {
     this.data = data ? data : generateRandomUsername();
   }
 
-  async create(apiContext: APIRequestContext) {
+  async create(apiContext: APIRequestContext, assignRole = true) {
     const dataConsumerRoleResponse = await apiContext.get(
       '/api/v1/roles/name/DataConsumer'
     );
@@ -52,22 +55,26 @@ export class UserClass {
     });
 
     this.responseData = await response.json();
-    const { entity } = await this.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/roles/0',
-          value: {
-            id: dataConsumerRole.id,
-            type: 'role',
-            name: dataConsumerRole.name,
+    if (assignRole) {
+      const { entity } = await this.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: dataConsumerRole.id,
+              type: 'role',
+              name: dataConsumerRole.name,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    return entity;
+      return entity;
+    }
+
+    return this.responseData;
   }
 
   async patch({
@@ -105,6 +112,51 @@ export class UserClass {
         },
       ],
     });
+  }
+
+  async setCustomRulePolicy(
+    apiContext: APIRequestContext,
+    rules: PolicyRulesType[],
+    prefix: string
+  ) {
+    const id = uuid();
+    const policy = new PolicyClass();
+    const role = new RolesClass();
+
+    await policy.create(apiContext, rules);
+    await role.create(apiContext, [policy.responseData.name]);
+    const team = new TeamClass({
+      name: `${prefix}-${id}`,
+      displayName: `${prefix} Team ${id}`,
+      description: `${prefix} team description`,
+      teamType: 'Group',
+      users: [this.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+      policies: policy.responseData.id ? [policy.responseData.id] : [],
+    });
+    await team.create(apiContext);
+  }
+
+  async setDataConsumerRole(apiContext: APIRequestContext) {
+    const id = uuid();
+    const dataConsumerPolicy = new PolicyClass();
+    const dataConsumerRoles = new RolesClass();
+
+    await dataConsumerPolicy.create(apiContext, DATA_CONSUMER_RULES);
+    await dataConsumerRoles.create(apiContext, [
+      dataConsumerPolicy.responseData.name,
+    ]);
+    const dataConsumerTeam = new TeamClass({
+      name: `PW%data_consumer_team-${id}`,
+      displayName: `PW Data Consumer Team ${id}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Group',
+      users: [this.responseData.id],
+      defaultRoles: dataConsumerRoles.responseData.id
+        ? [dataConsumerRoles.responseData.id]
+        : [],
+    });
+    await dataConsumerTeam.create(apiContext);
   }
 
   async setDataStewardRole(apiContext: APIRequestContext) {
@@ -151,10 +203,14 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
-    await page.fill('input[id="email"]', userName);
+    await page.waitForURL('**/signin');
+    await page.waitForLoadState('networkidle');
+    const emailInput = page.locator('input[id="email"]');
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
-    const loginRes = page.waitForResponse('/api/v1/users/login');
+    const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
 
@@ -168,10 +224,26 @@ export class UserClass {
     if (modal) {
       await page.getByRole('dialog').getByRole('img').first().click();
     }
+
+    // Collapse the left side bar after logging in if it's open
+    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+
+    const hasOpenClass = await leftNavBar.evaluate((el) =>
+      el.classList.contains('sidebar-open')
+    );
+
+    if (hasOpenClass) {
+      await page.getByTestId('sidebar-toggle').click();
+    }
   }
 
   async logout(page: Page) {
-    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByRole('menuitem', { name: 'Logout' }).click();
+
+    const waitLogout = page.waitForResponse('/api/v1/users/logout');
+
     await page.getByTestId('confirm-logout').click();
+
+    await waitLogout;
   }
 }

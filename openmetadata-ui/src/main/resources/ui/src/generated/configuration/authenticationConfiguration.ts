@@ -35,6 +35,11 @@ export interface AuthenticationConfiguration {
      */
     enableSelfSignup?: boolean;
     /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];
@@ -290,11 +295,15 @@ export interface OidcClientConfig {
     /**
      * Discovery Uri for the Client.
      */
-    discoveryUri?: string;
+    discoveryUri: string;
     /**
      * Client ID.
      */
-    id?: string;
+    id: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
     /**
      * Max Clock Skew
      */
@@ -303,6 +312,10 @@ export interface OidcClientConfig {
      * Preferred Jws Algorithm.
      */
     preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
     /**
      * Auth0 Client Secret Key.
      */
@@ -314,15 +327,19 @@ export interface OidcClientConfig {
     /**
      * Client Secret.
      */
-    secret?: string;
+    secret: string;
     /**
      * Server Url.
      */
     serverUrl?: string;
     /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
      * Tenant in case of Azure.
      */
-    tenant?: string;
+    tenant: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */

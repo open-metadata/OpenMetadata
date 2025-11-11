@@ -12,8 +12,8 @@
  */
 import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -27,27 +27,32 @@ import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 const categories = getCustomizePageCategories();
 
 export const CustomizeUI = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
-  const activeCat = useMemo(
-    () => (location.hash?.replace('#', '') || '').split('.')[1] ?? '',
-    [location]
+  const { activeCat, fullHash } = useMemo(() => {
+    const activeCat =
+      (location.hash?.replace('#', '') || '').split('.')[1] ?? '';
+
+    return { activeCat, fullHash: location.hash?.replace('#', '') };
+  }, [location.hash]);
+
+  const [items, setItems] = useState(categories);
+
+  const handleCustomizeItemClick = useCallback(
+    (category: string) => {
+      const nestedItems = getCustomizePageOptions(category);
+
+      if (isEmpty(nestedItems)) {
+        navigate(getCustomizePagePath(personaFQN, category));
+      } else {
+        navigate({
+          hash: fullHash + FQN_SEPARATOR_CHAR + category,
+        });
+      }
+    },
+    [history, fullHash, personaFQN]
   );
-
-  const [items, setItems] = React.useState(categories);
-
-  const handleCustomizeItemClick = (category: string) => {
-    const nestedItems = getCustomizePageOptions(category);
-
-    if (isEmpty(nestedItems)) {
-      history.push(getCustomizePagePath(personaFQN, category));
-    } else {
-      history.push({
-        hash: location.hash + FQN_SEPARATOR_CHAR + category,
-      });
-    }
-  };
 
   useEffect(() => {
     if (!activeCat) {
@@ -61,7 +66,7 @@ export const CustomizeUI = () => {
   }, [activeCat]);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="bg-grey" gutter={[16, 16]}>
       {items.map((value) => (
         <Col key={value.key} span={8}>
           <SettingItemCard data={value} onClick={handleCustomizeItemClick} />

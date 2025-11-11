@@ -13,16 +13,19 @@
 
 package org.openmetadata.service.resources.dashboards;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
@@ -33,6 +36,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,23 +45,31 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateDashboard> {
   public static final String SUPERSET_INVALID_SERVICE = "invalid_superset_service";
+  private final ChartResourceTest chartResourceTest = new ChartResourceTest();
 
   public DashboardResourceTest() {
     super(
@@ -159,13 +171,13 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // When domain is not set for a Dashboard service, carry it forward from the dashboard
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a dashboard without domain and ensure it inherits domain from the parent
     CreateDashboard create =
         createRequest("dashboard").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -182,6 +194,223 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     createEntity(
         createRequest("dashboard").withService(service.getFullyQualifiedName()),
         authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void test_deleteDashboard_chartBelongsToSingleDashboard_chartIsDeleted_thenRestored(TestInfo test)
+      throws IOException {
+    // Create charts first using ChartResourceTest
+    List<String> chartFqns = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      CreateChart createChart =
+          chartResourceTest.createRequest(test, i).withService(METABASE_REFERENCE.getName());
+      Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
+      chartFqns.add(chart.getFullyQualifiedName());
+    }
+
+    // Create a dashboard with these charts
+    CreateDashboard create =
+        createRequest(test)
+            .withService(METABASE_REFERENCE.getFullyQualifiedName())
+            .withCharts(chartFqns);
+    Dashboard dashboard = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify the dashboard has charts
+    assertNotNull(dashboard.getCharts());
+    assertFalse(dashboard.getCharts().isEmpty());
+
+    // Store all chart IDs for verification after dashboard deletion
+    List<EntityReference> charts = dashboard.getCharts();
+
+    // For each chart, verify it belongs only to this dashboard
+    for (EntityReference chartRef : charts) {
+      // Get the chart entity with dashboards field included
+      Chart chart = chartResourceTest.getEntity(chartRef.getId(), "dashboards", ADMIN_AUTH_HEADERS);
+
+      // Check chart has exactly one dashboard
+      assertEquals(
+          1,
+          chart.getDashboards().size(),
+          "Chart should belong to exactly one dashboard before deletion test");
+
+      // Verify it's the dashboard we created
+      assertEquals(
+          dashboard.getId(),
+          chart.getDashboards().getFirst().getId(),
+          "Chart should belong to our test dashboard");
+    }
+
+    // Delete the dashboard
+    dashboard = deleteAndCheckEntity(dashboard, ADMIN_AUTH_HEADERS);
+
+    // Now verify that the charts are actually soft deleted and not hard deleted
+    List<Chart> deletedCharts = new ArrayList<>();
+    for (EntityReference chartRef : charts) {
+      // Get the chart with include=deleted
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", Include.DELETED.value());
+
+      Chart deletedChart =
+          chartResourceTest.getEntity(chartRef.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+
+      // Verify the chart is marked as deleted
+      assertTrue(deletedChart.getDeleted(), "Chart should be marked as deleted");
+      assertEquals(
+          chartRef.getId(), deletedChart.getId(), "Found chart should match the original chart ID");
+      deletedCharts.add(deletedChart);
+    }
+
+    // Restore the dashboard
+    ChangeDescription change = getChangeDescription(dashboard, MINOR_UPDATE);
+    fieldUpdated(change, FIELD_DELETED, true, false);
+    restoreAndCheckEntity(dashboard, ADMIN_AUTH_HEADERS, change);
+
+    // Verify charts are also restored when their parent dashboard is restored
+    for (Chart deletedChart : deletedCharts) {
+      // Verify chart is accessible again
+      Chart restoredChart =
+          chartResourceTest.getEntity(deletedChart.getId(), "dashboards", ADMIN_AUTH_HEADERS);
+      assertFalse(
+          restoredChart.getDeleted(),
+          "Chart should not be marked as deleted after dashboard restoration");
+
+      // Verify chart is associated with the restored dashboard
+      assertEquals(
+          1,
+          restoredChart.getDashboards().size(),
+          "Chart should have exactly one dashboard after restoration");
+      assertEquals(
+          dashboard.getId(),
+          restoredChart.getDashboards().getFirst().getId(),
+          "Chart should be associated with the restored dashboard");
+    }
+  }
+
+  @Test
+  void test_chartWithMultipleDashboards_deleteAndRestoreOneDashboard(TestInfo test)
+      throws IOException {
+    // Create charts first using ChartResourceTest
+    List<String> chartFqns = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      CreateChart createChart =
+          chartResourceTest.createRequest(test, i).withService(METABASE_REFERENCE.getName());
+      Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
+      chartFqns.add(chart.getFullyQualifiedName());
+    }
+
+    // Create first dashboard with all charts
+    CreateDashboard create1 =
+        createRequest(getEntityName(test) + "-first")
+            .withService(METABASE_REFERENCE.getFullyQualifiedName())
+            .withCharts(chartFqns);
+    Dashboard dashboard1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+
+    // Create second dashboard with the same charts
+    CreateDashboard create2 =
+        createRequest(getEntityName(test) + "-second")
+            .withService(METABASE_REFERENCE.getFullyQualifiedName())
+            .withCharts(chartFqns);
+    final Dashboard dashboard2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
+
+    // Store all chart IDs for verification after dashboard deletion
+    List<EntityReference> charts = dashboard1.getCharts();
+
+    // Delete the first dashboard
+    final Dashboard deletedDashboard1 = deleteAndCheckEntity(dashboard1, ADMIN_AUTH_HEADERS);
+
+    // Verify charts are still accessible (not deleted)
+    for (EntityReference chartRef : charts) {
+      // Get the chart entity with dashboards field included
+      Chart chart = chartResourceTest.getEntity(chartRef.getId(), "dashboards", ADMIN_AUTH_HEADERS);
+
+      // Check chart still exists
+      assertNotNull(chart);
+
+      // Verify the chart itself isn't deleted
+      assertFalse(chart.getDeleted(), "Chart should not be marked as deleted");
+
+      // Count non-deleted dashboards
+      long nonDeletedDashboards =
+          chart.getDashboards().stream().filter(d -> !Boolean.TRUE.equals(d.getDeleted())).count();
+      assertEquals(
+          1,
+          nonDeletedDashboards,
+          "Chart should belong to exactly one non-deleted dashboard after first dashboard deletion");
+
+      // Verify one of the dashboards is the non-deleted second dashboard
+      boolean hasSecondDashboard =
+          chart.getDashboards().stream()
+              .anyMatch(
+                  d ->
+                      d.getId().equals(dashboard2.getId()) && !Boolean.TRUE.equals(d.getDeleted()));
+      assertTrue(hasSecondDashboard, "Chart should still belong to second test dashboard");
+    }
+
+    // Restore the first dashboard
+    ChangeDescription change = getChangeDescription(deletedDashboard1, MINOR_UPDATE);
+    fieldUpdated(change, FIELD_DELETED, true, false);
+    restoreAndCheckEntity(deletedDashboard1, ADMIN_AUTH_HEADERS, change);
+
+    // Verify charts now have associations with both dashboards
+    for (EntityReference chartRef : charts) {
+      // Get the chart entity with dashboards field included
+      Chart chart = chartResourceTest.getEntity(chartRef.getId(), "dashboards", ADMIN_AUTH_HEADERS);
+
+      // Verify chart is still not deleted
+      assertFalse(chart.getDeleted(), "Chart should not be marked as deleted");
+
+      // Count non-deleted dashboards - should be 2 now
+      long nonDeletedDashboards =
+          chart.getDashboards().stream().filter(d -> !Boolean.TRUE.equals(d.getDeleted())).count();
+      assertEquals(
+          2,
+          nonDeletedDashboards,
+          "Chart should belong to two non-deleted dashboards after first dashboard restoration");
+
+      // Verify both dashboards are associated with the chart
+      boolean hasFirstDashboard =
+          chart.getDashboards().stream()
+              .anyMatch(
+                  d ->
+                      d.getId().equals(deletedDashboard1.getId())
+                          && !Boolean.TRUE.equals(d.getDeleted()));
+      boolean hasSecondDashboard =
+          chart.getDashboards().stream()
+              .anyMatch(
+                  d ->
+                      d.getId().equals(dashboard2.getId()) && !Boolean.TRUE.equals(d.getDeleted()));
+      assertTrue(
+          hasFirstDashboard,
+          "Chart should be associated with the first dashboard after restoration");
+      assertTrue(hasSecondDashboard, "Chart should still be associated with the second dashboard");
+    }
+
+    // Now delete both dashboards
+    deleteEntity(deletedDashboard1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    deleteEntity(dashboard2.getId(), true, false, ADMIN_AUTH_HEADERS);
+
+    // Verify charts are now soft deleted
+    for (EntityReference chartRef : charts) {
+      // Verify chart cannot be retrieved normally
+      assertResponse(
+          () -> chartResourceTest.getEntity(chartRef.getId(), "", ADMIN_AUTH_HEADERS),
+          NOT_FOUND,
+          entityNotFound(Entity.CHART, chartRef.getId()));
+
+      // Verify chart can be retrieved with include=deleted parameter
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", Include.DELETED.value());
+
+      Chart deletedChart =
+          chartResourceTest.getEntity(chartRef.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+
+      // Verify the chart is marked as deleted
+      assertTrue(
+          deletedChart.getDeleted(),
+          "Chart should be marked as deleted after all dashboards are deleted");
+      assertEquals(
+          chartRef.getId(), deletedChart.getId(), "Found chart should match the original chart ID");
+    }
   }
 
   @Override
@@ -255,5 +484,114 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Test
+  void testDashboardRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create charts for the dashboard
+    Chart chart1 =
+        chartResourceTest.createEntity(
+            chartResourceTest
+                .createRequest(test.getDisplayName() + "_chart1")
+                .withService(getContainer().getName()),
+            ADMIN_AUTH_HEADERS);
+    Chart chart2 =
+        chartResourceTest.createEntity(
+            chartResourceTest
+                .createRequest(test.getDisplayName() + "_chart2")
+                .withService(getContainer().getName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create dashboard with owner, tags and charts
+    CreateDashboard createDashboard =
+        createRequest(test)
+            .withService(getContainer().getName())
+            .withOwners(List.of(USER1_REF))
+            .withTags(List.of(TIER1_TAG_LABEL))
+            .withCharts(List.of(chart1.getFullyQualifiedName(), chart2.getFullyQualifiedName()));
+
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists in RDF
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+
+    // Verify hierarchical relationship (service CONTAINS dashboard)
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Verify dashboard tags
+    RdfTestUtils.verifyTagsInRdf(dashboard.getFullyQualifiedName(), dashboard.getTags());
+
+    // Verify HAS relationships with charts
+    for (Chart chart : List.of(chart1, chart2)) {
+      RdfTestUtils.verifyRelationshipInRdf(
+          dashboard.getEntityReference(),
+          chart.getEntityReference(),
+          org.openmetadata.schema.type.Relationship.HAS);
+    }
+  }
+
+  @Test
+  void testDashboardRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create dashboard
+    CreateDashboard createDashboard =
+        createRequest(test).withService(getContainer().getName()).withOwners(List.of(USER1_REF));
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the dashboard
+    deleteEntity(dashboard.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the dashboard
+    Dashboard restored =
+        restoreEntity(new RestoreEntity().withId(dashboard.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testDashboardRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create dashboard
+    CreateDashboard createDashboard = createRequest(test).withService(getContainer().getName());
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+
+    // Hard delete the dashboard
+    deleteEntity(dashboard.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(dashboard.getFullyQualifiedName());
   }
 }

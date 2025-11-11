@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import ExecutionsTab from './Execution.component';
 
 jest.mock('./ListView/ListViewTab.component', () =>
@@ -41,6 +40,10 @@ jest.mock('../../../rest/pipelineAPI', () => ({
     })
   ),
 }));
+
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>Searchbar</div>)
+);
 
 const mockProps = {
   pipelineFQN: 'pipelineFQN',

@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -25,6 +25,7 @@ import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/
 import { TabSpecificField } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
@@ -36,7 +37,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const TestSuiteIngestionPage = () => {
   const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
   const { t } = useTranslation();
-
   const [isLoading, setIsLoading] = useState(true);
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [ingestionPipeline, setIngestionPipeline] =
@@ -123,11 +123,13 @@ const TestSuiteIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
             <div className="m-t-md">
               <TestSuiteIngestion
@@ -145,7 +147,7 @@ const TestSuiteIngestionPage = () => {
       })}
       secondPanel={{
         children: <RightPanel data={TEST_SUITE_INGESTION_PAGE_DATA} />,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -153,4 +155,4 @@ const TestSuiteIngestionPage = () => {
   );
 };
 
-export default TestSuiteIngestionPage;
+export default withPageLayout(TestSuiteIngestionPage);

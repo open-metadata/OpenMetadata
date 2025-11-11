@@ -17,9 +17,10 @@ import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 
 export type DomainLabelProps = {
+  showDashPlaceholder?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
-  hasPermission: boolean;
-  domain: EntityReference | EntityReference[] | undefined;
+  hasPermission?: boolean;
+  domains: EntityReference[] | undefined;
   domainDisplayName?: ReactNode;
   entityType: EntityType;
   entityFqn: string;
@@ -29,4 +30,5 @@ export type DomainLabelProps = {
   multiple?: boolean;
   onUpdate?: (domain: EntityReference | EntityReference[]) => Promise<void>;
   userData?: User;
+  headerLayout?: boolean;
 };

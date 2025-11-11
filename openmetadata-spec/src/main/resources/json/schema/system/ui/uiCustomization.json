@@ -29,6 +29,14 @@
       "type": "array",
       "items": { "$ref": "navigationItem.json" }
     },
+    "personaPreferences": {
+      "description": "Persona default preferences. Admin can customize certain UI elements per persona as base configuration.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/personaPreferences.json"
+      },
+      "default": []
+    },
     "updatedAt": {
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },

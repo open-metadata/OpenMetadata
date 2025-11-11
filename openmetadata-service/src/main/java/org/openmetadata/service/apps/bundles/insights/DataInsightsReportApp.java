@@ -9,6 +9,7 @@ import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,7 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
@@ -31,6 +31,8 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
@@ -45,8 +47,6 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.Utilities;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
@@ -423,7 +423,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String chartName, Long startTime, Long endTime, String team) throws IOException {
     String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter, false, null);
     return systemChartMap.get(chartName).getResults().stream()
         .filter(
             result ->
@@ -449,7 +449,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String chartName, Long startTime, Long endTime, String team) throws IOException {
     String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter, false, null);
     return systemChartMap.get(chartName).getResults().stream()
         .map(
             result -> {

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,9 +54,16 @@ class DSVDataFrameReader(DataFrameReader):
         super().__init__(config_source, client)
 
     def read_from_pandas(
-        self, path: str, storage_options: Optional[Dict[str, Any]] = None
+        self,
+        path: str,
+        storage_options: Optional[Dict[str, Any]] = None,
+        compression: Optional[str] = None,
     ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        # Determine compression based on file extension if not provided
+        if compression is None and path.endswith(".gz"):
+            compression = "gzip"
 
         chunk_list = []
         with pd.read_csv(
@@ -64,6 +71,7 @@ class DSVDataFrameReader(DataFrameReader):
             sep=self.separator,
             chunksize=CHUNKSIZE,
             storage_options=storage_options,
+            compression=compression,
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
@@ -81,16 +89,47 @@ class DSVDataFrameReader(DataFrameReader):
         """
         Read the CSV file from the gcs bucket and return a dataframe
         """
+        # Determine compression based on file extension
+        compression = None
+        if key.endswith(".gz"):
+            compression = "gzip"
+
         path = f"gs://{bucket_name}/{key}"
-        return self.read_from_pandas(path=path)
+        return self.read_from_pandas(path=path, compression=compression)
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        path = self.client.get_object(Bucket=bucket_name, Key=key)["Body"]
-        return self.read_from_pandas(path=path)
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        # Determine compression based on file extension
+        compression = None
+        if key.endswith(".gz"):
+            compression = "gzip"
+
+        # Get the file content from S3
+        response = self.client.get_object(Bucket=bucket_name, Key=key)
+        file_content = response["Body"]
+
+        # Read the CSV data directly from the StreamingBody
+        chunk_list = []
+        with pd.read_csv(
+            file_content,
+            sep=self.separator,
+            chunksize=CHUNKSIZE,
+            compression=compression,
+        ) as reader:
+            for chunks in reader:
+                chunk_list.append(chunks)
+
+        return DatalakeColumnWrapper(dataframes=chunk_list)
 
     @_read_dsv_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+        # Determine compression based on file extension
+        compression = None
+        if key.endswith(".gz"):
+            compression = "gzip"
+
         storage_options = return_azure_storage_options(self.config_source)
         path = AZURE_PATH.format(
             bucket_name=bucket_name,
@@ -100,13 +139,19 @@ class DSVDataFrameReader(DataFrameReader):
         return self.read_from_pandas(
             path=path,
             storage_options=storage_options,
+            compression=compression,
         )
 
     @_read_dsv_dispatch.register
     def _(  # pylint: disable=unused-argument
         self, _: LocalConfig, key: str, bucket_name: str
     ) -> DatalakeColumnWrapper:
-        return self.read_from_pandas(path=key)
+        # Determine compression based on file extension
+        compression = None
+        if key.endswith(".gz"):
+            compression = "gzip"
+
+        return self.read_from_pandas(path=key, compression=compression)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
         return self._read_dsv_dispatch(

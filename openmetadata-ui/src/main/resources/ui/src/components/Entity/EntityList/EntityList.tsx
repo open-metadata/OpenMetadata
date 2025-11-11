@@ -13,7 +13,7 @@
 
 import { Button, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -46,7 +46,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
       <>
         <Row className="m-b-xs" justify="space-between">
           <Col>
-            <Typography.Text className="font-medium">
+            <Typography.Text className="text-lg font-semibold">
               {headerTextLabel}
             </Typography.Text>
           </Col>

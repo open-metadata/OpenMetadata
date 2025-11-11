@@ -13,14 +13,16 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
+import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -30,17 +32,30 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import './metric.less';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
 const MetricDetails: React.FC<MetricDetailsProps> = ({
@@ -58,19 +73,20 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
     deleted,
     followers = [],
   } = useMemo(() => metricDetails, [metricDetails]);
-  const { customizedPage } = useCustomPages(PageType.Metric);
 
   const { isFollowing } = useMemo(
     () => ({
@@ -91,14 +107,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     await onMetricUpdate(updatedData, 'displayName');
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      const certificationTag = updateCertificationTag(newCertification);
+      const updatedData = {
+        ...metricDetails,
+        certification: certificationTag,
+      };
+
+      await onMetricUpdate(updatedData, 'certification');
+    },
+    [metricDetails, onMetricUpdate]
+  );
+
   const handleRestoreMetric = async () => {
     try {
       const { version: newVersion } = await restoreMetric(metricDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.metric'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {
@@ -113,8 +141,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
-        getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey)
+      navigate(
+        getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey),
+        { replace: true }
       );
     }
   };
@@ -148,8 +177,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push(ROUTES.METRICS),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
     []
   );
 
@@ -162,14 +190,21 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (metricPermissions.EditAll || metricPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          metricPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: metricPermissions.EditAll && !deleted,
       editLineagePermission:
-        (metricPermissions.EditAll || metricPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          metricPermissions,
+          Operation.EditLineage
+        ) && !deleted,
       viewSampleDataPermission:
-        metricPermissions.ViewAll || metricPermissions.ViewSampleData,
+        getPrioritizedViewPermission(
+          metricPermissions,
+          Operation.ViewSampleData
+        ) && !deleted,
       viewAllPermission: metricPermissions.ViewAll,
     }),
     [metricPermissions, deleted]
@@ -205,6 +240,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     metricDetails,
     fetchMetricDetails,
     deleted,
+    getEntityFeedCount,
     handleFeedCount,
     editCustomAttributePermission,
     editLineagePermission,
@@ -213,14 +249,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Metric),
+    [tabs[0], activeTab]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.metric'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -230,6 +278,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             entityType={EntityType.METRIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}
@@ -241,16 +290,29 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Metric>
+          customizedPage={customizedPage}
           data={metricDetails}
+          isTabExpanded={isTabExpanded}
           permissions={metricPermissions}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col span={24}>
+          <Col className="metric-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.OVERVIEW}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

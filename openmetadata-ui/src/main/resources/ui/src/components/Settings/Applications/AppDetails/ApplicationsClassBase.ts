@@ -11,13 +11,22 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
-import { App, AppType } from '../../../../generated/entity/applications/app';
+import { ComponentType, FC } from 'react';
+import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import ApplicationConfiguration, {
+  ApplicationConfigurationProps,
+} from '../ApplicationConfiguration/ApplicationConfiguration';
+import { AppPlugin } from '../plugins/AppPlugin';
 
 class ApplicationsClassBase {
-  public importSchema(fqn: string) {
-    return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
+  public async importSchema(fqn: string) {
+    const module = await import(
+      `../../../../jsons/applicationSchemas/${fqn}.json`
+    );
+    const schema = module.default || module;
+
+    return schema;
   }
   public getJSONUISchema() {
     return {
@@ -27,6 +36,12 @@ class ApplicationsClassBase {
             'ui:widget': 'hidden',
           },
         },
+      },
+      entityLink: {
+        'ui:widget': 'hidden',
+      },
+      type: {
+        'ui:widget': 'hidden',
       },
     };
   }
@@ -46,15 +61,16 @@ class ApplicationsClassBase {
     return [];
   }
 
-  public isFloatingButtonPresent(applications: App[]) {
-    return applications.some((app) =>
-      this.getFloatingApplicationEntityList().includes(app.name)
+  public importAppScreenshot(screenshotName: string) {
+    return import(
+      `../../../../assets/img/appScreenshots/${screenshotName}.png`
     );
   }
 
-  public importAppScreenshot(screenshotName: string) {
-    return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
-  }
+  public appPluginRegistry: Record<
+    string,
+    new (name: string, isInstalled: boolean) => AppPlugin
+  > = {};
 
   public getScheduleOptionsForApp(
     app: string,
@@ -70,6 +86,14 @@ class ApplicationsClassBase {
     return pipelineSchedules
       ? getScheduleOptionsFromSchedules(pipelineSchedules)
       : undefined;
+  }
+
+  /**
+   * Returns the ApplicationConfiguration component to use.
+   * Base implementation returns the standard component.
+   */
+  public getApplicationConfigurationComponent(): ComponentType<ApplicationConfigurationProps> {
+    return ApplicationConfiguration;
   }
 }
 

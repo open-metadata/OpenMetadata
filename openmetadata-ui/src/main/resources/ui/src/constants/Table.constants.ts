@@ -17,6 +17,7 @@ import {
   ConstraintType,
   DatabaseServiceType,
   DataType,
+  PartitionIntervalTypes,
   RelationshipType,
   Table,
   TableType,
@@ -315,6 +316,25 @@ export const TABLE_DUMMY_DATA: Table = {
       relationshipType: RelationshipType.ManyToOne,
     },
   ],
+  tablePartition: {
+    columns: [
+      {
+        columnName: 'column1',
+        interval: 'hourly',
+        intervalType: PartitionIntervalTypes.ColumnValue,
+      },
+      {
+        columnName: 'column2',
+        interval: 'daily',
+        intervalType: PartitionIntervalTypes.ColumnValue,
+      },
+      {
+        columnName: 'column3',
+        interval: 'monthly',
+        intervalType: PartitionIntervalTypes.ColumnValue,
+      },
+    ],
+  },
   serviceType: DatabaseServiceType.BigQuery,
   tags: [],
   followers: [],
@@ -383,13 +403,15 @@ export const STORED_PROCEDURE_DUMMY_DATA: StoredProcedure = {
     downVoters: [],
   },
   tags: [],
-  domain: {
-    id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
-    type: 'domain',
-    name: 'Engineering',
-    fullyQualifiedName: 'Engineering',
-    description: 'Domain related engineering development.',
-    displayName: 'Engineering',
-    inherited: true,
-  },
+  domains: [
+    {
+      id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
+      type: 'domain',
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      description: 'Domain related engineering development.',
+      displayName: 'Engineering',
+      inherited: true,
+    },
+  ],
 };

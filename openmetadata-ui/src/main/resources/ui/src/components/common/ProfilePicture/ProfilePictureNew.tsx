@@ -15,15 +15,15 @@ import { Avatar, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
+import { getUserPath } from '../../../utils/RouterUtils';
 import Loader from '../Loader/Loader';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 
@@ -121,13 +121,18 @@ const ProfilePictureNew = ({
 
   return profileURL ? (
     <Tooltip placement="top" title={displayName ?? name}>
-      <Avatar
-        className={className}
-        data-testid="profile-image"
-        shape={type}
-        size={size ?? parseInt(width)}
-        src={profileURL}
-      />
+      <Link
+        className="d-flex no-underline"
+        data-testid="owner-link"
+        to={getUserPath(name ?? '')}>
+        <Avatar
+          className={className}
+          data-testid="profile-image"
+          shape={type}
+          size={size ?? parseInt(width)}
+          src={profileURL}
+        />
+      </Link>
     </Tooltip>
   ) : (
     getAvatarElement()

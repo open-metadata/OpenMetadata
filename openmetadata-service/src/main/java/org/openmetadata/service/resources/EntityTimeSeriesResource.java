@@ -1,11 +1,12 @@
 package org.openmetadata.service.resources;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.List;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
@@ -17,7 +18,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 public abstract class EntityTimeSeriesResource<
     T extends EntityTimeSeriesInterface, K extends EntityTimeSeriesRepository<T>> {

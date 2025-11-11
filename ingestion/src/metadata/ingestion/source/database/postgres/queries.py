@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -196,6 +196,13 @@ POSTGRES_GET_SERVER_VERSION = """
 show server_version_num
 """
 
+# pylint: disable=anomalous-backslash-in-string
+POSTGRES_GET_SCHEMA_NAMES = """
+SELECT nspname FROM pg_namespace
+    WHERE nspname NOT LIKE 'pg\_%'
+    ORDER BY nspname
+"""
+
 POSTGRES_FETCH_FK = """
     SELECT r.conname,
         pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
@@ -218,10 +225,12 @@ POSTGRES_GET_STORED_PROCEDURES = """
         proargtypes AS argument_types,
         prorettype::regtype AS return_type,
         prosrc AS definition,
-        'StoredProcedure' as procedure_type
+        'StoredProcedure' as procedure_type,
+        obj_description(pg_proc.oid, 'pg_proc') AS description
     FROM pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
-    WHERE prokind = 'p';
+    WHERE prokind = 'p'
+    and pg_namespace.nspname = '{schema_name}';
 """
 
 POSTGRES_GET_FUNCTIONS = """
@@ -231,11 +240,34 @@ SELECT
     proargtypes AS argument_types,
     prorettype :: regtype AS return_type,
     prosrc AS definition,
-    'Function' as procedure_type
+    'Function' as procedure_type,
+    obj_description(pg_proc.oid, 'pg_proc') AS description
 FROM
     pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
 WHERE
     prokind = 'f'
-    and pg_namespace.nspname NOT IN ('pg_catalog', 'information_schema');
+    and pg_namespace.nspname = '{schema_name}';
+"""
+
+TEST_COLUMN_METADATA = """
+SELECT COUNT(*) as count
+FROM pg_catalog.pg_attribute a
+LEFT JOIN pg_catalog.pg_description pgd ON (
+    pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+WHERE 1=0
+"""
+
+TEST_TABLE_COMMENTS = """
+SELECT COUNT(*) as count
+FROM pg_catalog.pg_class c
+LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
+WHERE 1=0
+"""
+
+TEST_INFORMATION_SCHEMA_COLUMNS = """
+SELECT COUNT(*) as count
+FROM information_schema.columns
+WHERE 1=0
 """

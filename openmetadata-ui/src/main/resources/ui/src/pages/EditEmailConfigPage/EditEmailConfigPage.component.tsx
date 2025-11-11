@@ -13,15 +13,9 @@
 
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -37,6 +31,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -45,8 +40,8 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EditEmailConfigPage() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const history = useHistory();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
@@ -97,7 +92,7 @@ function EditEmailConfigPage() {
   }, []);
 
   const handleRedirectionToSettingsPage = useCallback(() => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.EMAIL
@@ -144,7 +139,7 @@ function EditEmailConfigPage() {
   }, []);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         {loading ? (
@@ -159,7 +154,7 @@ function EditEmailConfigPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -178,8 +173,14 @@ function EditEmailConfigPage() {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.entity-configuration', {
+          entity: t('label.email'),
+        }),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -190,4 +191,4 @@ function EditEmailConfigPage() {
   );
 }
 
-export default EditEmailConfigPage;
+export default withPageLayout(EditEmailConfigPage);

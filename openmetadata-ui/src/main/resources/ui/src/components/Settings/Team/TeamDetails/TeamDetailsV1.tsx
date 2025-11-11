@@ -15,9 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
-  Card,
   Col,
-  Collapse,
   Modal,
   Row,
   Space,
@@ -32,9 +30,9 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
@@ -47,17 +45,15 @@ import {
   ROLE_DOCS,
   TEAMS_DOCS,
 } from '../../../../constants/docs.constants';
+import { ExportTypes } from '../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
   EntityReference as UserTeams,
@@ -74,11 +70,11 @@ import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -89,7 +85,6 @@ import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageBut
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -134,7 +129,7 @@ const TeamDetailsV1 = ({
   isFetchingAllTeamAdvancedDetails,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
@@ -155,7 +150,6 @@ const TeamDetailsV1 = ({
     state: false,
     leave: false,
   };
-  const { permissions } = usePermissionProvider();
   const currentTab = useMemo(() => {
     if (activeTab) {
       return activeTab;
@@ -200,8 +194,6 @@ const TeamDetailsV1 = ({
     entity: t('label.role'),
   });
 
-  const addTeam = t('label.add-entity', { entity: t('label.team') });
-
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
     [currentTeam]
@@ -212,15 +204,8 @@ const TeamDetailsV1 = ({
     [childTeamList, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
-    history.push({ search: Qs.stringify({ activeTab: key }) });
+    navigate({ search: Qs.stringify({ activeTab: key }) });
   };
-
-  const createTeamPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
-    [permissions]
-  );
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -249,10 +234,19 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important"
+        className="mt-0-important border-none p-lg"
         doc={doc}
         heading={heading}
         permission={permission}
+        permissionValue={
+          type === ERROR_PLACEHOLDER_TYPE.CREATE
+            ? t('label.create-entity', {
+                entity: heading,
+              })
+            : t('label.edit-entity', {
+                entity: heading,
+              })
+        }
         type={type}
         onClick={onClick}>
         {children}
@@ -295,7 +289,7 @@ const TeamDetailsV1 = ({
           };
         })
       );
-    } catch (error) {
+    } catch {
       setChildTeamList([]);
     }
   };
@@ -454,7 +448,7 @@ const TeamDetailsV1 = ({
           ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
-                parent.name ?? parent.fullyQualifiedName ?? ''
+                parent.fullyQualifiedName ?? parent.name ?? ''
               ),
             }))
           : [];
@@ -491,11 +485,12 @@ const TeamDetailsV1 = ({
       showModal({
         name: currentTeam?.name,
         onExport: exportTeam,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [currentTeam]);
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,
@@ -619,18 +614,19 @@ const TeamDetailsV1 = ({
   );
 
   const teamsTableRender = useMemo(() => {
-    let addUserButtonTitle = createTeamPermission
+    let addTeamButtonTitle = entityPermissions.Create
       ? t('label.add-entity', { entity: t('label.team') })
       : t('message.no-permission-for-action');
 
     if (isTeamDeleted) {
-      addUserButtonTitle = t(
+      addTeamButtonTitle = t(
         'message.this-action-is-not-allowed-for-deleted-entities'
       );
     }
 
     return currentTeam.childrenCount === 0 && !searchTerm ? (
       <ErrorPlaceHolder
+        className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
@@ -649,11 +645,11 @@ const TeamDetailsV1 = ({
             }}
           />
         </Typography.Paragraph>
-        <Tooltip placement="top" title={addUserButtonTitle}>
+        <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
             ghost
             data-testid="add-placeholder-button"
-            disabled={!createTeamPermission || isTeamDeleted}
+            disabled={!entityPermissions.Create || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
             onClick={handleAddTeamButtonClick}>
@@ -662,63 +658,27 @@ const TeamDetailsV1 = ({
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
-      <Row
-        className="team-list-container"
-        gutter={[0, 16]}
-        justify="space-between">
-        <Col span={8}>
-          <Searchbar
-            removeMargin
-            placeholder={t('label.search-entity', {
-              entity: t('label.team'),
-            })}
-            searchValue={searchTerm}
-            typingInterval={500}
-            onSearch={handleTeamSearch}
-          />
-        </Col>
-        <Col>
-          <Space align="center">
-            <span>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="show-deleted"
-                onClick={onShowDeletedTeamChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-
-            {createTeamPermission && !isTeamDeleted && (
-              <Button
-                data-testid="add-team"
-                type="primary"
-                onClick={handleAddTeamButtonClick}>
-                {addTeam}
-              </Button>
-            )}
-          </Space>
-        </Col>
-        <Col span={24}>
-          <TeamHierarchy
-            currentTeam={currentTeam}
-            data={childTeamList}
-            isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
-            searchTerm={searchTerm}
-            onTeamExpand={onTeamExpand}
-          />
-        </Col>
-      </Row>
+      <TeamHierarchy
+        createTeamPermission={entityPermissions.Create}
+        currentTeam={currentTeam}
+        data={childTeamList}
+        handleAddTeamButtonClick={handleAddTeamButtonClick}
+        handleTeamSearch={handleTeamSearch}
+        isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isTeamDeleted={isTeamDeleted}
+        searchTerm={searchTerm}
+        showDeletedTeam={showDeletedTeam}
+        onShowDeletedTeamChange={onShowDeletedTeamChange}
+        onTeamExpand={onTeamExpand}
+      />
     );
   }, [
-    addTeam,
     searchTerm,
     isTeamDeleted,
     currentTeam,
     childTeamList,
     showDeletedTeam,
-    createTeamPermission,
+    entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
     onTeamExpand,
     handleAddTeamButtonClick,
@@ -752,8 +712,9 @@ const TeamDetailsV1 = ({
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
+        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
         type={AssetsOfEntity.TEAM}
-        onAddAsset={() => history.push(ROUTES.EXPLORE)}
+        onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
       />
     ),
@@ -838,6 +799,7 @@ const TeamDetailsV1 = ({
       isEmpty(currentTeam.policies) ? (
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
+          heading: t('label.policy'),
           children: t('message.assigning-team-entity-description', {
             entity: t('label.policy-lowercase-plural'),
             name: currentTeam.name,
@@ -944,19 +906,27 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  const editDescriptionPermission = useMemo(
+    () =>
+      (entityPermissions.EditAll || entityPermissions.EditDescription) &&
+      !isTeamDeleted,
+    [entityPermissions, isTeamDeleted]
+  );
   const teamsCollapseHeader = useMemo(
     () => (
       <>
         <Space wrap className="w-full justify-between">
-          <Space className="w-full" size="middle">
-            <Avatar className="teams-profile" size={40}>
-              <IconTeams className="text-primary" width={20} />
-            </Avatar>
-
-            <div className="d-flex flex-column gap-1">
-              {!isOrganization && (
-                <TitleBreadcrumb titleLinks={slashedTeamName} />
-              )}
+          <Space
+            align="start"
+            className="w-full flex-col justify-center p-t-xs"
+            size="middle">
+            {!isOrganization && (
+              <TitleBreadcrumb titleLinks={slashedTeamName} />
+            )}
+            <div className="d-flex  gap-2">
+              <Avatar className="teams-profile" size={40}>
+                <IconTeams className="text-primary" width={20} />
+              </Avatar>
 
               <TeamsHeadingLabel
                 currentTeam={currentTeam}
@@ -1003,7 +973,7 @@ const TeamDetailsV1 = ({
             )}
           </Space>
         </Space>
-        <div className="p-t-md p-l-xss">
+        <div className="p-t-md ">
           <TeamsInfo
             childTeamsCount={childTeams.length}
             currentTeam={currentTeam}
@@ -1012,6 +982,17 @@ const TeamDetailsV1 = ({
             isTeamDeleted={isTeamDeleted}
             parentTeams={parentTeams}
             updateTeamHandler={updateTeamHandler}
+          />
+        </div>
+        <div className="m-t-md">
+          <DescriptionV1
+            wrapInCard
+            description={currentTeam.description ?? ''}
+            entityName={getEntityName(currentTeam)}
+            entityType={EntityType.TEAM}
+            hasEditAccess={editDescriptionPermission}
+            showCommentsIcon={false}
+            onDescriptionUpdate={onDescriptionUpdate}
           />
         </div>
       </>
@@ -1030,6 +1011,8 @@ const TeamDetailsV1 = ({
       updateTeamHandler,
       afterDeleteAction,
       getDeleteMessagePostFix,
+      editDescriptionPermission,
+      onDescriptionUpdate,
     ]
   );
 
@@ -1059,7 +1042,7 @@ const TeamDetailsV1 = ({
 
   const tabsChildrenRender = useCallback(
     (key: TeamsPageTab) => (
-      <Row className="teams-tabs-content-container p-x-lg">
+      <Row className="teams-tabs-content-container">
         <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
           {isFetchingAdvancedDetails ? <Loader /> : getTabChildren(key)}
         </Col>
@@ -1108,13 +1091,6 @@ const TeamDetailsV1 = ({
     ]
   );
 
-  const editDescriptionPermission = useMemo(
-    () =>
-      (entityPermissions.EditDescription || entityPermissions.EditAll) &&
-      !isTeamDeleted,
-    [entityPermissions, isTeamDeleted]
-  );
-
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
@@ -1122,7 +1098,7 @@ const TeamDetailsV1 = ({
   if (isEmpty(currentTeam)) {
     return fetchErrorPlaceHolder({
       onClick: () => handleAddTeam(true),
-      permission: createTeamPermission,
+      permission: entityPermissions.Create,
       heading: t('label.team-plural'),
       doc: TEAMS_DOCS,
     });
@@ -1132,49 +1108,23 @@ const TeamDetailsV1 = ({
     <div className="teams-layout">
       <Row className="h-full" data-testid="team-details-container">
         {isOrganization && (
-          <Col className="p-x-lg p-y-sm" span={24}>
+          <Col className="p-y-sm" span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbs} />
           </Col>
         )}
 
         <Col
-          className="teams-profile-container p-x-lg"
-          data-testid="team-detail-header"
+          className="teams-profile-container"
+          data-testid="team-details-collapse"
           span={24}>
-          <Collapse
-            accordion
-            bordered={false}
-            className="header-collapse-custom-collapse">
-            <Collapse.Panel
-              className="header-collapse-custom-panel"
-              data-testid="team-details-collapse"
-              header={teamsCollapseHeader}
-              key="1">
-              <Row>
-                <Col className="border-top" span={24}>
-                  <Card
-                    className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
-                    data-testid="teams-description">
-                    <DescriptionV1
-                      description={currentTeam.description ?? ''}
-                      entityName={getEntityName(currentTeam)}
-                      entityType={EntityType.TEAM}
-                      hasEditAccess={editDescriptionPermission}
-                      showCommentsIcon={false}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-                  </Card>
-                </Col>
-              </Row>
-            </Collapse.Panel>
-          </Collapse>
+          {teamsCollapseHeader}
         </Col>
 
         <Col className="m-t-sm" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={currentTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             items={tabs}
             onChange={updateActiveTab}
           />

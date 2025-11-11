@@ -13,14 +13,15 @@
 import { Button, Col, Form, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
-import React, { FocusEvent, useCallback, useMemo, useState } from 'react';
+import { FocusEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import CustomUnitSelect from '../../../components/common/CustomUnitSelect/CustomUnitSelect';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import SchemaEditor from '../../../components/Database/SchemaEditor/SchemaEditor';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { OPEN_METADATA } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -32,16 +33,17 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const AddMetricPage = () => {
-  const history = useHistory();
-  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
-
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
 
@@ -159,32 +161,6 @@ const AddMetricPage = () => {
         },
       },
       {
-        name: 'unitOfMeasurement',
-        required: false,
-        label: t('label.unit-of-measurement'),
-        id: 'root/unitOfMeasurement',
-        type: FieldTypes.SELECT,
-        props: {
-          'data-testid': 'unitOfMeasurement',
-          options: Object.values(UnitOfMeasurement).map(
-            (unitOfMeasurement) => ({
-              key: unitOfMeasurement,
-              label: startCase(unitOfMeasurement.toLowerCase()),
-              value: unitOfMeasurement,
-            })
-          ),
-          placeholder: `${t('label.select-field', {
-            field: t('label.unit-of-measurement'),
-          })}`,
-          showSearch: true,
-          filterOption: (input: string, option: { label: string }) => {
-            return (option?.label ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase());
-          },
-        },
-      },
-      {
         name: 'language',
         required: false,
         label: t('label.language'),
@@ -229,10 +205,21 @@ const AddMetricPage = () => {
     setActiveField(activeField);
   }, []);
 
+  const handleUnitOfMeasurementChange = (
+    unitOfMeasurement: string,
+    customUnitOfMeasurement?: string
+  ) => {
+    form.setFieldsValue({
+      unitOfMeasurement,
+      customUnitOfMeasurement,
+    });
+  };
+
   const handleSubmit = async (
     values: Exclude<CreateMetric, 'metricExpression'> & {
       code?: string;
       language?: Language;
+      customUnitOfMeasurement?: string;
     }
   ) => {
     setIsCreating(true);
@@ -245,8 +232,16 @@ const AddMetricPage = () => {
         },
       };
 
+      if (
+        values.unitOfMeasurement === UnitOfMeasurement.Other &&
+        values.customUnitOfMeasurement
+      ) {
+        createMetricPayload.customUnitOfMeasurement =
+          values.customUnitOfMeasurement;
+      }
+
       const response = await createMetric(createMetricPayload);
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.METRIC,
           response.fullyQualifiedName ?? ''
@@ -264,10 +259,10 @@ const AddMetricPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-metric-container">
+          <div data-testid="add-metric-container">
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -289,6 +284,23 @@ const AddMetricPage = () => {
                   onFocus={handleFieldFocus}>
                   {generateFormFields(formFields)}
                   <Form.Item
+                    label={t('label.unit-of-measurement')}
+                    name="unitOfMeasurement">
+                    <CustomUnitSelect
+                      customValue={form.getFieldValue(
+                        'customUnitOfMeasurement'
+                      )}
+                      dataTestId="unitOfMeasurement"
+                      placeholder={t('label.select-field', {
+                        field: t('label.unit-of-measurement'),
+                      })}
+                      onChange={handleUnitOfMeasurementChange}
+                    />
+                  </Form.Item>
+                  <Form.Item hidden name="customUnitOfMeasurement">
+                    <input type="hidden" />
+                  </Form.Item>
+                  <Form.Item
                     data-testid="expression-code-container"
                     label={t('label.code')}
                     name="code"
@@ -304,7 +316,7 @@ const AddMetricPage = () => {
                       <Button
                         data-testid="back-button"
                         type="link"
-                        onClick={() => history.push(ROUTES.METRICS)}>
+                        onClick={() => navigate(ROUTES.METRICS)}>
                         {t('label.back')}
                       </Button>
                     </Col>
@@ -343,4 +355,4 @@ const AddMetricPage = () => {
   );
 };
 
-export default AddMetricPage;
+export default withPageLayout(AddMetricPage);

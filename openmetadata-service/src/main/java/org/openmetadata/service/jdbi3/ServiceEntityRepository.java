@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -25,10 +26,10 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
@@ -83,16 +84,16 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void storeRelationships(T service) {
-    addIngestionAgentRelationship(service);
+    addIngestionRunnerRelationship(service);
   }
 
-  private void addIngestionAgentRelationship(T service) {
-    if (service.getIngestionAgent() != null) {
+  private void addIngestionRunnerRelationship(T service) {
+    if (service.getIngestionRunner() != null) {
       addRelationship(
           service.getId(),
-          service.getIngestionAgent().getId(),
+          service.getIngestionRunner().getId(),
           entityType,
-          service.getIngestionAgent().getType(),
+          service.getIngestionRunner().getType(),
           Relationship.USES);
     }
   }
@@ -106,7 +107,8 @@ public abstract class ServiceEntityRepository<
 
   /** Remove the secrets from the secret manager */
   @Override
-  protected void postDelete(T service) {
+  protected void postDelete(T service, boolean hardDelete) {
+    super.postDelete(service, hardDelete);
     if (service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
           .deleteSecretsFromServiceConnectionConfig(
@@ -133,6 +135,7 @@ public abstract class ServiceEntityRepository<
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
+      updateIngestionRunner();
     }
 
     private void updateConnection() {
@@ -165,6 +168,17 @@ public abstract class ServiceEntityRepository<
 
           recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
         }
+      }
+    }
+
+    private void updateIngestionRunner() {
+      UUID originalAgentId =
+          original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
+      UUID updatedAgentId =
+          updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
+      if (!Objects.equals(originalAgentId, updatedAgentId)) {
+        addIngestionRunnerRelationship(updated);
+        recordChange("ingestionAgent", originalAgentId, updatedAgentId, true);
       }
     }
   }

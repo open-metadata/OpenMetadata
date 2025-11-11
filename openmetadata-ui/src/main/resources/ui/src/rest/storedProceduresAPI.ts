@@ -20,7 +20,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -112,7 +112,7 @@ export const getStoredProceduresVersionsList = async (id: string) => {
 
 export const getStoredProceduresVersion = async (
   id: string,
-  version: string
+  version?: string
 ) => {
   const url = `${URL}/${id}/versions/${version}`;
 

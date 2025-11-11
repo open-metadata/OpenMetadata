@@ -21,6 +21,7 @@ export interface DataTestId {
 }
 
 export type TagsV1Props = {
+  hideIcon?: boolean;
   tag: TagLabel | HighlightedTagLabel;
   startWith: TAG_START_WITH;
   showOnlyName?: boolean;
@@ -32,4 +33,5 @@ export type TagsV1Props = {
   tagType?: TagSource;
   size?: SelectProps['size'];
   isEditTags?: boolean;
+  newLook?: boolean;
 };

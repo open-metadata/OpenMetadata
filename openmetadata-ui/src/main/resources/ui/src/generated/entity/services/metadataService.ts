@@ -32,10 +32,14 @@ export interface MetadataService {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -49,13 +53,17 @@ export interface MetadataService {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this database service.
      */
@@ -181,12 +189,14 @@ export interface MetadataConnection {
  * Alation Connection Config
  *
  * Alation Sink Connection Config
+ *
+ * Collibra Connection Config
  */
 export interface Connection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DatabaseFilterPatternClass;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
@@ -200,6 +210,8 @@ export interface Connection {
      * Host and port of the Atlas service.
      *
      * Host and port of the Alation service.
+     *
+     * Host and port of the Collibra service.
      */
     hostPort?: string;
     /**
@@ -210,17 +222,19 @@ export interface Connection {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      */
     password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?:        DatabaseFilterPatternClass;
+    schemaFilterPattern?:        FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: DatabaseFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -230,6 +244,9 @@ export interface Connection {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      */
     username?: string;
     /**
@@ -428,6 +445,20 @@ export interface Connection {
      */
     projectName?:     string;
     datasourceLinks?: { [key: string]: string };
+    /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
 }
 
 /**
@@ -514,7 +545,7 @@ export interface AlationDatabaseConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -535,7 +566,7 @@ export interface AlationDatabaseConnection {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: DatabaseFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -559,6 +590,10 @@ export interface AlationDatabaseConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -663,6 +698,10 @@ export interface AzureCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -673,7 +712,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -755,15 +793,6 @@ export interface AwsCredentials {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
@@ -809,26 +838,6 @@ export enum SSLMode {
 }
 
 /**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface DatabaseFilterPatternClass {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-}
-
-/**
  * Service Type
  *
  * Service type.
@@ -865,6 +874,7 @@ export enum RunMode {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -893,6 +903,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -921,6 +932,8 @@ export interface OpenMetadataJWTClientConfig {
  *
  * Service type.
  *
+ * Collibra service type
+ *
  * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  *
  * Type of database service such as Amundsen, Atlas...
@@ -930,6 +943,7 @@ export enum MetadataServiceType {
     AlationSink = "AlationSink",
     Amundsen = "Amundsen",
     Atlas = "Atlas",
+    Collibra = "Collibra",
     MetadataES = "MetadataES",
     OpenMetadata = "OpenMetadata",
 }
@@ -946,8 +960,13 @@ export enum VerifySSL {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -955,13 +974,6 @@ export enum VerifySSL {
  * the relationship of a table `belongs to a` database.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
- *
- * Owners of this database service.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -1009,9 +1021,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -1045,6 +1059,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -1067,6 +1085,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -1098,9 +1117,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

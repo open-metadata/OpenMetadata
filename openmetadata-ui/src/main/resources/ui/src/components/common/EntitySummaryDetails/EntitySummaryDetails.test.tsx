@@ -12,7 +12,6 @@
  */
 
 import { act, findByTestId, render } from '@testing-library/react';
-import React from 'react';
 import EntitySummaryDetails from './EntitySummaryDetails';
 
 const mockData = {

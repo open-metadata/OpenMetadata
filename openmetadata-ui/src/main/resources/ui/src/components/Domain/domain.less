@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../styles/variables.less');
-.domain-content-container {
-  height: @domain-page-height;
-  overflow-y: auto;
-}
+@import (reference) '../../styles/variables.less';
 
 .domain-details-page-tabs {
-  .ant-tabs-nav {
-    padding: 0 20px;
-    margin: 0 !important;
+  .ant-tabs-tabpane {
+    min-height: 70vh;
+  }
+
+  .announcement-card {
+    margin-top: 4px;
   }
 }
 
@@ -33,6 +32,7 @@
       min-height: 150px;
     }
   }
+
   .toastui-editor-md-preview {
     min-height: 150px;
   }
@@ -40,9 +40,11 @@
 
 .ant-tooltip.domain-type-tooltip-container {
   max-width: 750px;
+
   .ant-tooltip-arrow-content::before {
     background: @white;
   }
+
   .ant-tooltip-inner {
     background: @white;
     padding: 20px;

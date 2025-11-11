@@ -14,6 +14,7 @@
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
+  triggerButtonSize?: 'large' | 'middle' | 'small';
   label: string;
   isSuggestionsLoading?: boolean;
   options: SearchDropdownOption[];
@@ -29,6 +30,7 @@ export interface SearchDropdownProps {
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   hideCounts?: boolean; // Determines if the count should be displayed or not.
   hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
+  showSelectedCounts?: boolean; // Show counts instead of labels for selected items
 }
 
 export interface SearchDropdownOption {

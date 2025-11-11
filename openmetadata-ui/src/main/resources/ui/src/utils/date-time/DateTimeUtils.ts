@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { capitalize, isNil, toInteger, toNumber } from 'lodash';
+import cronstrue from 'cronstrue';
+import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
+import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
+import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
+import i18next from '../i18next/LocalUtil';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
-
+export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
+export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -24,7 +29,7 @@ export const formatDateTime = (date?: number) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
@@ -38,21 +43,44 @@ export const formatDate = (date?: number, supportUTC = false) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
   return supportUTC
     ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
-    : dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
+    : dateTime.setLocale(i18next.language).toLocaleString(DateTime.DATE_MED);
+};
+
+/**
+ * @param date EPOCH millis
+ * @returns Formatted month for valid input. Format: MMM (e.g. Jan, Feb, Mar)
+ */
+export const formatMonth = (date?: number) => {
+  if (isNil(date) || isNaN(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
+  if (!dateTime.isValid) {
+    return '';
+  }
+
+  return dateTime.toFormat('MMM');
 };
 
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDateTimeLong = (timestamp: number, format?: string) =>
-  DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || "ccc d'th' MMMM, yyyy, hh:mm a"
-  );
+export const formatDateTimeLong = (timestamp?: number, format?: string) => {
+  if (isNil(timestamp)) {
+    return '';
+  }
+
+  return DateTime.fromMillis(toNumber(timestamp), {
+    locale: i18next.language,
+  }).toFormat(format ?? DATE_TIME_WITH_OFFSET_FORMAT);
+};
 
 /**
  *
@@ -61,7 +89,7 @@ export const formatDateTimeLong = (timestamp: number, format?: string) =>
 export const getTimeZone = (): string => {
   // Getting local time zone
   const timeZoneToString = new Date()
-    .toLocaleDateString('en-US', {
+    .toLocaleDateString(i18next.language, {
       day: '2-digit',
       timeZoneName: 'long',
     })
@@ -84,7 +112,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(timeStamp, { locale: 'en-US' });
+  const dateTime = DateTime.fromMillis(timeStamp, { locale: i18next.language });
 
   return dateTime.toLocaleString(DateTime.DATETIME_FULL);
 };
@@ -94,7 +122,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
  * @returns Formatted duration for valid input. Format: 00:09:31
  */
 export const formatTimeDurationFromSeconds = (seconds: number) =>
-  !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
+  isNil(seconds) ? '' : Duration.fromObject({ seconds }).toFormat('hh:mm:ss');
 
 /**
  *
@@ -113,9 +141,9 @@ export const customFormatDateTime = (
     return formatDateTime(milliseconds);
   }
 
-  return DateTime.fromMillis(milliseconds, { locale: 'en-US' }).toFormat(
-    format
-  );
+  return DateTime.fromMillis(milliseconds, {
+    locale: i18next.language,
+  }).toFormat(format);
 };
 
 /**
@@ -124,11 +152,41 @@ export const customFormatDateTime = (
  * @returns
  */
 export const getRelativeTime = (timeStamp?: number): string => {
-  return !isNil(timeStamp)
-    ? DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelative() ?? ''
-    : '';
+  return isNil(timeStamp)
+    ? ''
+    : DateTime.fromMillis(timeStamp, {
+        locale: i18next.language,
+      }).toRelative() ?? '';
 };
 
+/**
+ * Returns a relative time like "10 mins ago" by converting the long form from Luxon.
+ * Falls back to "" if timestamp is undefined or too recent.
+ */
+export const getShortRelativeTime = (timeStamp?: number): string => {
+  if (isNil(timeStamp)) {
+    return '';
+  }
+
+  const longForm = getRelativeTime(timeStamp); // e.g. "10 minutes ago"
+
+  if (!longForm) {
+    return '';
+  }
+
+  // Replace long time units with short ones
+  const shortForm = longForm
+    .split(' ')
+    .map(
+      (word) =>
+        DATE_TIME_SHORT_UNITS[
+          word.toUpperCase() as keyof typeof DATE_TIME_SHORT_UNITS
+        ] || word
+    )
+    .join(' ');
+
+  return shortForm;
+};
 /**
  *
  * @param timeStamp
@@ -140,9 +198,11 @@ export const getRelativeCalendar = (
   baseTimeStamp?: number
 ): string => {
   return capitalize(
-    DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelativeCalendar({
+    DateTime.fromMillis(timeStamp, {
+      locale: i18next.language,
+    }).toRelativeCalendar({
       base: baseTimeStamp
-        ? DateTime.fromMillis(baseTimeStamp, { locale: 'en-US' })
+        ? DateTime.fromMillis(baseTimeStamp, { locale: i18next.language })
         : DateTime.now(),
     }) || ''
   );
@@ -185,7 +245,7 @@ export const isValidDateFormat = (format: string) => {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
 
     return dt.isValid;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -225,19 +285,10 @@ export const calculateInterval = (
     const hours = Math.floor(duration.as('hours')) % 24;
 
     return `${days} Days, ${hours} Hours`;
-  } catch (error) {
+  } catch {
     return 'Invalid interval';
   }
 };
-
-const intervals: [string, number][] = [
-  ['Y', 933120000000], // 1000 * 60 * 60 * 24 * 30 * 360
-  ['M', 2592000000], // 1000 * 60 * 60 * 24 * 30
-  ['d', 86400000], // 1000 * 60 * 60 * 24
-  ['h', 3600000], // 1000 * 60 * 60
-  ['m', 60000], // 1000 * 60
-  ['s', 1000], // 1000
-];
 
 /**
  * Converts a given time in milliseconds to a human-readable format.
@@ -246,30 +297,73 @@ const intervals: [string, number][] = [
  * @returns A human-readable string representation of the time duration.
  */
 export const convertMillisecondsToHumanReadableFormat = (
-  milliseconds: number,
-  length?: number
+  timestamp: number,
+  length?: number,
+  showMilliseconds = false,
+  prependForNegativeValue = '-'
 ): string => {
-  if (milliseconds <= 0) {
+  // Handle zero and very small positive values
+  if (
+    timestamp === 0 ||
+    (!showMilliseconds && timestamp > 0 && timestamp < 1000)
+  ) {
     return '0s';
   }
 
-  const result: string[] = [];
-  let remainingMilliseconds = milliseconds;
+  // Handle negative values
+  const isNegative = timestamp < 0;
+  const absoluteTimestamp = Math.abs(timestamp);
 
-  for (const [name, count] of intervals) {
-    if (remainingMilliseconds < count) {
-      continue; // Skip smaller units
-    }
-    const value = Math.floor(remainingMilliseconds / count);
-    remainingMilliseconds %= count;
-    result.push(`${value}${name}`);
+  const duration = Duration.fromMillis(absoluteTimestamp);
+  const result: string[] = [];
+
+  // Extract each unit from the duration
+  const years = Math.floor(duration.as('years'));
+  const months = Math.floor(duration.as('months')) % 12;
+  const days = Math.floor(duration.as('days')) % 30;
+  const hours = Math.floor(duration.as('hours')) % 24;
+  const minutes = Math.floor(duration.as('minutes')) % 60;
+  const seconds = Math.floor(duration.as('seconds')) % 60;
+  const milliseconds = Math.floor(duration.as('milliseconds')) % 1000;
+
+  // Add non-zero units to the result
+  if (years > 0) {
+    result.push(`${years}Y`);
   }
+  if (months > 0) {
+    result.push(`${months}M`);
+  }
+  if (days > 0) {
+    result.push(`${days}d`);
+  }
+  if (hours > 0) {
+    result.push(`${hours}h`);
+  }
+  if (minutes > 0) {
+    result.push(`${minutes}m`);
+  }
+  if (seconds > 0) {
+    result.push(`${seconds}s`);
+  }
+  if (showMilliseconds && milliseconds > 0) {
+    result.push(`${milliseconds}ms`);
+  }
+
+  // If no units found, return 0s
+  if (result.length === 0) {
+    return '0s';
+  }
+
+  let formattedResult = result.join(' ');
 
   if (length && result.length > length) {
-    return result.slice(0, length).join(' ');
+    formattedResult = result.slice(0, length).join(' ');
   }
 
-  return result.join(' ');
+  // Prepend minus sign for negative values
+  return isNegative
+    ? `${prependForNegativeValue}${formattedResult}`
+    : formattedResult;
 };
 
 export const formatDuration = (ms: number) => {
@@ -278,7 +372,7 @@ export const formatDuration = (ms: number) => {
   const hours = minutes / 60;
 
   const pluralize = (value: number, unit: string) =>
-    `${value.toFixed(2)} ${unit}${value !== 1 ? 's' : ''}`;
+    `${value.toFixed(2)} ${unit}${value === 1 ? '' : 's'}`;
 
   if (seconds < 60) {
     return pluralize(seconds, 'second');
@@ -288,9 +382,54 @@ export const formatDuration = (ms: number) => {
     return pluralize(hours, 'hour');
   }
 };
+export const formatDurationToHHMMSS = (ms: number) => {
+  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
+};
 
 export const getStartOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();
 
 export const getEndOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();
+
+export const getCurrentDayStartGMTinMillis = () =>
+  DateTime.now().setZone('GMT').startOf('day').toMillis();
+
+export const getCurrentDayEndGMTinMillis = () =>
+  DateTime.now().setZone('GMT').endOf('day').toMillis();
+
+export const getDayAgoStartGMTinMillis = (days: number) =>
+  DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();
+
+export const getSevenDaysStartGMTArrayInMillis = () => {
+  const sevenDaysStartGMTArrayInMillis = [];
+  for (let i = 6; i >= 0; i--) {
+    sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
+  }
+
+  return sevenDaysStartGMTArrayInMillis;
+};
+
+export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
+  try {
+    const scheduleDescription = cronstrue.toString(scheduleInterval, {
+      use24HourTimeFormat: false,
+      verbose: true,
+      locale: getCurrentLocaleForConstrue(), // To get localized string
+    });
+
+    const firstSentenceEndIndex = scheduleDescription.indexOf(',');
+
+    const descriptionFirstPart = scheduleDescription
+      .slice(0, firstSentenceEndIndex)
+      .trim();
+
+    const descriptionSecondPart = capitalize(
+      scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
+    );
+
+    return { descriptionFirstPart, descriptionSecondPart };
+  } catch {
+    return { descriptionFirstPart: '', descriptionSecondPart: '' };
+  }
+};

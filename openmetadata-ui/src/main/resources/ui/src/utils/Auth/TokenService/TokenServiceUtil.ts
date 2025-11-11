@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
-import { getOidcToken } from '../../LocalStorageUtils';
+import { getOidcToken } from '../../SwTokenStorageUtils';
 
 const REFRESH_IN_PROGRESS_KEY = 'refreshInProgress'; // Key to track if refresh is in progress
 
@@ -33,18 +32,25 @@ class TokenService {
   constructor() {
     this.clearRefreshInProgress();
     this.refreshToken = this.refreshToken.bind(this);
+    this.setupServiceWorkerListener();
   }
 
-  // This method will update token across tabs on receiving message to the channel
-  handleTokenUpdate(event: {
-    data: { type: string; token: string | AccessTokenResponse };
-  }) {
-    const {
-      data: { type, token },
-    } = event;
-    if (type === 'TOKEN_UPDATE' && token) {
-      // Token is updated in localStorage hence no need to pass it
-      this.refreshSuccessCallback && this.refreshSuccessCallback();
+  // Setup Service Worker listener for token updates (if available)
+  private setupServiceWorkerListener() {
+    if ('serviceWorker' in navigator && 'indexedDB' in window) {
+      try {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data.type === 'TOKEN_UPDATE') {
+            // Token was updated via Service Worker, notify other tabs
+            this.refreshSuccessCallback && this.refreshSuccessCallback();
+          } else if (event.data.type === 'TOKEN_CLEARED') {
+            // Tokens were cleared (logout), don't trigger refresh callbacks
+            // This prevents token restoration after logout
+          }
+        });
+      } catch {
+        // No need to handle this error as it will be handled by the controller
+      }
     }
   }
 
@@ -73,24 +79,43 @@ class TokenService {
 
   // Refresh the token if it is expired
   async refreshToken() {
+    // eslint-disable-next-line no-console
+    console.timeLog('refreshToken', 'Token initiated refresh');
+
     if (this.isTokenUpdateInProgress()) {
       return;
     }
 
-    const token = getOidcToken();
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+    // Set refresh in progress immediately to prevent race conditions
+    this.setRefreshInProgress();
 
-    // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
-    if (isExpired || timeoutExpiry <= 0) {
-      // Logic to refresh the token
-      const newToken = await this.fetchNewToken();
-      // To update all the tabs on updating channel token
-      // Notify all tabs that the token has been refreshed
-      localStorage.setItem(REFRESHED_KEY, 'true');
+    try {
+      const token = await getOidcToken();
+      const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
 
-      return newToken;
-    } else {
-      return null;
+      // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
+      if (isExpired || timeoutExpiry <= 0) {
+        // Logic to refresh the token
+        const newToken = await this.fetchNewToken();
+        if (newToken) {
+          // Wait briefly for token to be persisted in SW+IndexedDB before notifying
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          this.refreshSuccessCallback && this.refreshSuccessCallback();
+          // To update all the tabs on updating channel token
+          // Notify all tabs that the token has been refreshed
+          localStorage.setItem(REFRESHED_KEY, 'true');
+        }
+
+        return newToken;
+      } else {
+        // Token doesn't need refreshing, clear the flag
+        this.clearRefreshInProgress();
+
+        return null;
+      }
+    } catch {
+      // Clear refresh flag on error to prevent deadlock
+      this.clearRefreshInProgress();
     }
   }
 
@@ -99,14 +124,16 @@ class TokenService {
     let response: string | AccessTokenResponse | null | void = null;
     if (typeof this.renewToken === 'function') {
       try {
-        this.setRefreshInProgress();
         response = await this.renewToken();
       } catch (error) {
         // Silent Frame window timeout error since it doesn't affect refresh token process
         if ((error as AxiosError).message !== 'Frame window timed out') {
           // Perform logout for any error
-          useApplicationStore.getState().onLogoutHandler();
           this.clearRefreshInProgress();
+
+          throw new Error(
+            `Failed to refresh token: ${(error as Error).message}`
+          );
         }
         // Do nothing
       } finally {

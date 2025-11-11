@@ -15,13 +15,14 @@ import { AddIngestionButtonProps } from '../components/Settings/Services/Ingesti
 import { IngestionListTableProps } from '../components/Settings/Services/Ingestion/IngestionListTable/IngestionListTable.interface';
 import { PipelineActionsProps } from '../components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions.interface';
 import { PipelineActionsDropdownProps } from '../components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActionsDropdown.interface';
+import { AirflowStatusContextType } from '../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { CursorType } from '../enums/pagination.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { DatabaseServiceType } from '../generated/entity/data/database';
 import { ConfigType } from '../generated/entity/services/databaseService';
 import {
   AuthProvider,
-  ConfigType as AirflowConfigType,
+  FluffyType as AirflowConfigType,
   IngestionPipeline,
   LogLevels,
   OpenmetadataType,
@@ -33,7 +34,6 @@ import {
   SecretsManagerProvider,
   VerifySSL,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { UseAirflowStatusProps } from '../hooks/useAirflowStatus';
 import { ENTITY_PERMISSIONS } from './Permissions.mock';
 
 const mockTriggerIngestion = jest.fn();
@@ -152,7 +152,7 @@ const mockPagingCursor = {
     cursorType: CursorType.AFTER,
     cursorValue: 'mockCursorValue',
   },
-  currentPage: 1,
+  currentPage: '1',
   pageSize: 10,
 };
 const mockPagingInfoObj = {
@@ -180,7 +180,7 @@ export const mockIngestionListTableProps: IngestionListTableProps = {
     isFetchingStatus: false,
     isAirflowAvailable: true,
     platform: '',
-  } as UseAirflowStatusProps,
+  } as AirflowStatusContextType,
   ingestionPagingInfo: mockPagingInfoObj,
   handlePipelineIdToFetchStatus: mockHandlePipelineIdToFetchStatus,
   onPageChange: mockOnPageChange,

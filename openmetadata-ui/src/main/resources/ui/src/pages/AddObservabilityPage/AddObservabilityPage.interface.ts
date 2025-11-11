@@ -22,6 +22,7 @@ import {
 
 export interface ModifiedWebhookConfig extends Webhook {
   headers?: { key: string; value: string }[];
+  queryParams?: { key: string; value: string }[];
 }
 
 export interface ModifiedDestination extends Destination {
@@ -32,10 +33,12 @@ export interface ModifiedDestination extends Destination {
 export interface ModifiedEventSubscription extends EventSubscription {
   destinations: ModifiedDestination[];
   timeout: number;
+  readTimeout: number;
 }
 
 export interface ModifiedCreateEventSubscription
   extends CreateEventSubscription {
   destinations: ModifiedDestination[];
   timeout: number;
+  readTimeout: number;
 }

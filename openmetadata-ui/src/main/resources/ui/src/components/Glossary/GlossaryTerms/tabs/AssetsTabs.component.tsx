@@ -29,20 +29,21 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { isEmpty, isObject } from 'lodash';
+import { isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import React, {
+import {
   forwardRef,
+  ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
@@ -56,7 +57,6 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -85,13 +85,13 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -132,12 +132,14 @@ const AssetsTabs = forwardRef(
   ) => {
     const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
-    const [activeFilter, _] = useState<SearchIndex[]>([]);
-    const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =
       useState<QueryFilterInterface>();
+    const { t } = useTranslation();
+    const [totalAssetCount, setTotalAssetCount] = useState<number>(
+      assetCount ?? 0
+    );
 
     const {
       currentPage,
@@ -198,56 +200,79 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return '';
+          return getTermQuery(
+            { 'domains.fullyQualifiedName': entityFqn ?? '' },
+            'must',
+            undefined,
+            {
+              mustNotTerms: { entityType: 'dataProduct' },
+            }
+          );
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
+          return getTermQuery({
+            'dataProducts.fullyQualifiedName': entityFqn ?? '',
+          });
 
         case AssetsOfEntity.TEAM:
-          return `(owners.fullyQualifiedName:"${getEncodedFqn(
-            escapeESReservedCharacters(fqn)
-          )}")`;
-
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:
-          return queryFilter ?? '';
+          return queryFilter ?? undefined;
+
+        case AssetsOfEntity.GLOSSARY:
+          return getTermQuery({ 'tags.tagFQN': entityFqn ?? '' });
+
+        case AssetsOfEntity.TAG:
+          return getTagAssetsQueryFilter(entityFqn ?? '');
 
         default:
           return getTagAssetsQueryFilter(encodedFqn);
       }
-    }, [type, fqn, entityFqn]);
+    }, [type, entityFqn]);
 
     const fetchAssets = useCallback(
       async ({
-        index = activeFilter,
+        index = [SearchIndex.ALL],
         page = currentPage,
         queryFilter,
       }: {
         index?: SearchIndex[];
         page?: number;
-        queryFilter?: Record<string, unknown>;
+        queryFilter?: QueryFilterInterface;
       }) => {
         try {
           setIsLoading(true);
+
+          // Merge queryParam (entity-specific filter) with queryFilter (quick filters)
+          // If no quickFilter, just use the entity filter (queryParam)
+          const finalQueryFilter = queryFilter
+            ? getCombinedQueryFilterObject(
+                queryParam as unknown as QueryFilterInterface,
+                queryFilter as QueryFilterInterface
+              )
+            : queryParam;
+
           const res = await searchQuery({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
             query: `*${searchValue}*`,
-            filters: queryParam as string,
-            queryFilter: queryFilter,
+            queryFilter: finalQueryFilter as Record<string, unknown>,
           });
           const hits = res.hits.hits as SearchedDataProps['data'];
           handlePagingChange({ total: res.hits.total.value ?? 0 });
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
+          if (assetCount === undefined) {
+            setTotalAssetCount(res.hits.total.value ?? 0);
+          }
           hits[0] && setSelectedCard(hits[0]._source);
-        } catch (_) {
+        } catch {
           // Nothing here
         } finally {
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage, pageSize, searchValue, queryParam]
+      [currentPage, pageSize, searchValue, queryParam, assetCount]
     );
 
     const hideNotification = () => {
@@ -283,7 +308,7 @@ const AssetsTabs = forwardRef(
           break;
         case AssetsOfEntity.DATA_PRODUCT:
           data = await getDataProductByName(fqn, {
-            fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+            fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });
 
           break;
@@ -428,21 +453,17 @@ const AssetsTabs = forwardRef(
     }, [entityFqn]);
 
     const assetErrorPlaceHolder = useMemo(() => {
-      if (!isEmpty(activeFilter)) {
-        return (
-          <ErrorPlaceHolder
-            heading={t('label.asset')}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        );
-      } else if (
-        isObject(noDataPlaceholder) ||
-        searchValue ||
-        !permissions.Create
-      ) {
+      if (isObject(noDataPlaceholder) || searchValue) {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon height={140} width={140} />}>
+            className="p-lg "
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }>
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -455,7 +476,14 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+            className="p-lg"
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
               {noDataPlaceholder ??
@@ -505,7 +533,6 @@ const AssetsTabs = forwardRef(
         );
       }
     }, [
-      activeFilter,
       searchValue,
       noDataPlaceholder,
       permissions,
@@ -513,7 +540,7 @@ const AssetsTabs = forwardRef(
       isEntityDeleted,
     ]);
 
-    const renderDropdownContainer = useCallback((menus) => {
+    const renderDropdownContainer = useCallback((menus: ReactNode) => {
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
@@ -575,7 +602,7 @@ const AssetsTabs = forwardRef(
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
                 className={classNames(
-                  'm-b-sm cursor-pointer',
+                  'cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
@@ -605,7 +632,7 @@ const AssetsTabs = forwardRef(
             )}
           </div>
         ) : (
-          <div className="m-t-xlg">{assetErrorPlaceHolder}</div>
+          <div className="h-full">{assetErrorPlaceHolder}</div>
         ),
       [
         type,
@@ -650,7 +677,7 @@ const AssetsTabs = forwardRef(
         activeEntity &&
         permissions.Create &&
         data.length > 0 && (
-          <div className="w-full d-flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -662,7 +689,6 @@ const AssetsTabs = forwardRef(
         )
       );
     }, [
-      activeFilter,
       activeEntity,
       isLoading,
       data,
@@ -701,24 +727,12 @@ const AssetsTabs = forwardRef(
     ]);
 
     useEffect(() => {
-      const newFilter = getCombinedQueryFilterObject(
-        queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface
-      );
-
       fetchAssets({
-        index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+        index: [SearchIndex.ALL],
         page: currentPage,
-        queryFilter: newFilter,
+        queryFilter: quickFilterQuery,
       });
-    }, [
-      activeFilter,
-      currentPage,
-      pageSize,
-      searchValue,
-      queryFilter,
-      quickFilterQuery,
-    ]);
+    }, [fetchAssets, currentPage, quickFilterQuery]);
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
@@ -761,18 +775,13 @@ const AssetsTabs = forwardRef(
         // Reset page to one and trigger fetchAssets
         handlePageChange(1);
 
-        const newFilter = getCombinedQueryFilterObject(
-          queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface
-        );
-
-        // If current page is already 1 it won't trigger fetchAset from useEffect
+        // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
-            index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+            index: [SearchIndex.ALL],
             page: 1,
-            queryFilter: newFilter,
+            queryFilter: quickFilterQuery,
           });
       },
       closeSummaryPanel() {
@@ -792,16 +801,26 @@ const AssetsTabs = forwardRef(
       }
     }, [isSummaryPanelOpen]);
 
+    useEffect(() => {
+      if (assetCount !== undefined) {
+        setTotalAssetCount(assetCount);
+      }
+    }, [assetCount]);
+
     return (
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-box border-radius-card h-full'
+            'assets-tab-container relative bg-white border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">
-          <Row className="filters-row gap-2 " gutter={[0, 20]}>
-            {assetCount > 0 && (
+          <Row
+            className={classNames('filters-row gap-2 p-md', {
+              'h-full': totalAssetCount === 0,
+            })}
+            gutter={[0, 20]}>
+            {totalAssetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>
                   <Dropdown
@@ -810,7 +829,10 @@ const AssetsTabs = forwardRef(
                       selectedKeys: selectedFilter,
                     }}
                     trigger={['click']}>
-                    <TaskFilterIcon className="cursor-pointer" />
+                    <Button
+                      className={classNames('feed-filter-icon')}
+                      icon={<FilterIcon height={16} />}
+                    />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
@@ -849,8 +871,12 @@ const AssetsTabs = forwardRef(
               </>
             )}
             {isLoading ? (
-              <Col span={24}>
-                <Space direction="vertical" size={16}>
+              <Col className="border-default border-radius-sm p-lg" span={24}>
+                <Space
+                  className="w-full"
+                  data-testid="loader"
+                  direction="vertical"
+                  size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -879,7 +905,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && (
+        {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

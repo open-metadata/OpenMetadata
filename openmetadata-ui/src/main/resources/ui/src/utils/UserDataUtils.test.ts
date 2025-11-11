@@ -12,6 +12,7 @@
  */
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { User } from '../generated/entity/teams/user';
+import * as userAPI from '../rest/userAPI';
 import { checkIfUpdateRequired, getUserWithImage } from './UserDataUtils';
 
 describe('getUserWithImage', () => {
@@ -91,6 +92,16 @@ describe('getUserWithImage', () => {
 });
 
 describe('checkIfUpdateRequired', () => {
+  const mockTimestamp = 1642512000000;
+
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockImplementation(() => mockTimestamp);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should return the updated user details if update is required', async () => {
     const existingUserDetails: User = {
       email: 'a@a.com',
@@ -148,5 +159,34 @@ describe('checkIfUpdateRequired', () => {
     );
 
     expect(updatedUserDetails).toEqual(existingUserDetails);
+  });
+
+  it('should call updateUserDetail with correct payload', async () => {
+    // Import the module containing the function
+
+    const existingUserDetails: User = {
+      email: 'a@a.com',
+      id: '1',
+      name: 'user',
+      isBot: false,
+    };
+    // Spy on the function within the module
+    jest
+      .spyOn(userAPI, 'updateUserDetail')
+      .mockResolvedValue(existingUserDetails);
+
+    const newUser: OidcUser = {
+      id_token: 'idToken',
+      scope: 'scope',
+      profile: {
+        email: 'a@a.com',
+        name: 'user',
+        picture: '',
+        preferred_username: 'preferred_username',
+        sub: 'sub',
+      },
+    };
+
+    await checkIfUpdateRequired(existingUserDetails, newUser);
   });
 });

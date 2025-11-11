@@ -21,23 +21,25 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.SecurityContext;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public final class SecurityUtil {
@@ -48,6 +50,15 @@ public final class SecurityUtil {
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
+  }
+
+  public static String getImpersonatedByUser(SecurityContext securityContext) {
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
+      return catalogSecurityContext.impersonatedUser() != null
+          ? getUserName(securityContext)
+          : null;
+    }
+    return null;
   }
 
   public static LoginConfiguration getLoginConfiguration() {
@@ -99,12 +110,16 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, ?> claims) {
     String userName;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
       // We have a mapping available so we will use that
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
       if (!nullOrEmpty(userNameClaimValue)) {
-        userName = userNameClaimValue;
+        userName =
+            userNameClaimValue.contains("@")
+                ? userNameClaimValue.split("@")[0]
+                : userNameClaimValue;
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
       }
@@ -121,7 +136,8 @@ public final class SecurityUtil {
       Map<String, ?> claims,
       String defaulPrincipalClaim) {
     String email;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
@@ -188,9 +204,11 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, Claim> claims,
       String principalDomain,
+      Set<String> allowedDomains,
       boolean enforcePrincipalDomain) {
     String domain = StringUtils.EMPTY;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
@@ -209,10 +227,21 @@ public final class SecurityUtil {
     }
 
     // Validate
-    if (!isBot(claims) && (enforcePrincipalDomain && !domain.equals(principalDomain))) {
-      throw new AuthenticationException(
-          String.format(
-              "Not Authorized! Email does not match the principal domain %s", principalDomain));
+    if (isBot(claims)) {
+      // Bots don't need to be validated
+      return;
+    }
+    if (enforcePrincipalDomain) {
+      if (allowedDomains == null || allowedDomains.isEmpty()) {
+        // Validate against the principal domain if allowed domains are not supplied
+        if (!domain.equals(principalDomain)) {
+          throw AuthenticationException.invalidEmailMessage(principalDomain);
+        }
+      }
+      // Validate against allowed domains if supplied
+      else if (!allowedDomains.contains(domain)) {
+        throw AuthenticationException.invalidEmailMessage(domain);
+      }
     }
   }
 
@@ -227,5 +256,10 @@ public final class SecurityUtil {
 
   public static boolean isBot(Map<String, Claim> claims) {
     return claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
+  }
+
+  public static boolean isBotW(Map<String, ?> claims) {
+    Claim isBotClaim = (Claim) claims.get("isBot");
+    return isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean());
   }
 }

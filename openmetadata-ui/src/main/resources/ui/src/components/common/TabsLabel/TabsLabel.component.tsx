@@ -12,7 +12,6 @@
  */
 import { Badge } from 'antd';
 import { isNil } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './tabs-label.less';
@@ -30,7 +29,7 @@ const TabsLabel = ({
 
   return (
     <div className="w-full tabs-label-container" data-testid={id}>
-      <div className="d-flex justify-between gap-2">
+      <div className="d-flex justify-between gap-1">
         {name}
         {!isNil(count) && (
           <span data-testid="count">{getCountBadge(count, '', isActive)}</span>

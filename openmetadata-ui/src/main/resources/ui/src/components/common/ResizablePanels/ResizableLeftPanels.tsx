@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { Button, Card, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as CollapseIcon } from '../../../assets/svg/ic-collapse.svg';
+import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
-import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
 import { ResizablePanelsLeftProps } from './ResizablePanels.interface';
 
@@ -40,7 +39,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'bg-white resizable-panels-layout')}
+        className={classNames(className, 'resizable-panels-layout')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-left-panel', {
@@ -54,36 +53,38 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
           {!hideFirstPanel && (
-            <PanelContainer overlay={firstPanel.overlay}>
+            <Card
+              className="reflex-card card-padding-0"
+              title={
+                firstPanel.title && (
+                  <Typography.Text strong className="m-b-0 text-sm">
+                    {firstPanel.title}
+                  </Typography.Text>
+                )
+              }>
               {firstPanel.children}
-            </PanelContainer>
+            </Card>
           )}
         </ReflexElement>
 
         <ReflexSplitter
-          className={classNames(
-            'splitter left-panel-splitter',
-            { hidden: hideFirstPanel },
-            { collapsed: isLeftPanelCollapsed }
-          )}>
-          <Tooltip
-            placement={isLeftPanelCollapsed ? 'left' : 'top'}
-            title={
-              isLeftPanelCollapsed ? t('label.expand') : t('label.collapse')
-            }>
-            <Button
-              className={classNames(
-                'collapse-button left-panel-collapse-button',
-                {
-                  collapsed: isLeftPanelCollapsed,
-                }
-              )}
-              data-testid="collapse-button"
-              type="ghost"
-              onClick={handleCollapse}>
-              <CollapseIcon className="collapse-icon" />
-            </Button>
-          </Tooltip>
+          className={classNames('splitter left-panel-splitter', {
+            hidden: hideFirstPanel,
+          })}>
+          {isLeftPanelCollapsed && (
+            <Card className="reflex-card card-padding-0">
+              <Tooltip placement="right" title={t('label.expand')}>
+                <Button
+                  className="mr-2"
+                  data-testid="sidebar-toggle"
+                  icon={<SidebarCollapsedIcon height={20} width={20} />}
+                  size="middle"
+                  type="text"
+                  onClick={handleCollapse}
+                />
+              </Tooltip>
+            </Card>
+          )}
           {!isLeftPanelCollapsed && (
             <div
               className={classNames({
@@ -114,9 +115,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
-          <PanelContainer overlay={secondPanel.overlay}>
-            {secondPanel.children}
-          </PanelContainer>
+          {secondPanel.children}
         </ReflexElement>
       </ReflexContainer>
     </>

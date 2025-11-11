@@ -63,6 +63,11 @@
       "description": "License to connect to DB2.",
       "type": "string"
     },
+    "clidriverVersion": {
+      "title": "CLI Driver Version",
+      "description": "CLI Driver version to connect to DB2. If not provided, the latest version will be used.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

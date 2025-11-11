@@ -24,12 +24,25 @@ class BigQueryIngestionClass extends ServiceBaseClass {
   name = '';
   filterPattern: string;
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       `pw-bigquery-with-%-${uuid()}`,
       'BigQuery',
-      'testtable'
+      'testtable',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     this.filterPattern = 'testschema';
@@ -52,9 +65,12 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     const projectIdTaxonomy =
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
-    await page.selectOption(
-      '#root\\/credentials\\/gcpConfig__oneof_select',
-      'GCP Credentials Values'
+    await page
+      .getByTestId('select-widget-root/credentials/gcpConfig__oneof_select')
+      .getByRole('combobox')
+      .click({ force: true });
+    await page.click(
+      '.ant-select-dropdown:visible [title="GCP Credentials Values"]'
     );
     await page.fill('#root\\/credentials\\/gcpConfig\\/projectId', projectId);
     await checkServiceFieldSectionHighlighting(page, 'projectId');

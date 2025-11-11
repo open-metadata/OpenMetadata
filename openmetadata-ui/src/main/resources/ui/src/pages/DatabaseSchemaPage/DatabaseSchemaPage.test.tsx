@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -195,9 +195,10 @@ const API_FIELDS = [
   'owners',
   'usageSummary',
   'tags',
-  'domain',
+  'domains',
   'votes',
   'extension',
+  'followers',
   'dataProducts',
 ];
 
@@ -205,16 +206,11 @@ const mockLocationPathname =
   '/databaseSchema/sample_data.ecommerce_db.shopify/table';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    history: {
-      push: jest.fn(),
-    },
-    replace: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
   useParams: jest.fn().mockImplementation(() => mockParams),
+  useNavigate: jest.fn(),
 }));
 
 describe('Tests for DatabaseSchemaPage', () => {
@@ -320,5 +316,65 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();
+  });
+
+  it('should refetch data when decodedDatabaseSchemaFQN changes', async () => {
+    const mockUseParams = jest.requireMock('react-router-dom').useParams;
+    mockUseParams.mockReturnValue({
+      fqn: 'sample_data.ecommerce_db.shopify',
+      tab: 'table',
+    });
+
+    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        ViewBasic: true,
+      }),
+    }));
+
+    const { rerender } = render(<DatabaseSchemaPageComponent />);
+
+    // Wait for initial API calls
+    await waitFor(() => {
+      expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+        'sample_data.ecommerce_db.shopify',
+        expect.any(Object)
+      );
+      expect(getStoredProceduresList).toHaveBeenCalledWith({
+        databaseSchema: 'sample_data.ecommerce_db.shopify',
+        limit: 0,
+      });
+      expect(getFeedCounts).toHaveBeenCalledWith(
+        'databaseSchema',
+        'sample_data.ecommerce_db.shopify',
+        expect.any(Function)
+      );
+    });
+
+    jest.clearAllMocks();
+
+    mockUseParams.mockReturnValue({
+      fqn: 'Glue.default.information_schema',
+      tab: 'table',
+    });
+
+    // Rerender with new FQN
+    rerender(<DatabaseSchemaPageComponent />);
+
+    // API calls should be made again with new FQN
+    await waitFor(() => {
+      expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+        'Glue.default.information_schema',
+        expect.any(Object)
+      );
+      expect(getStoredProceduresList).toHaveBeenCalledWith({
+        databaseSchema: 'Glue.default.information_schema',
+        limit: 0,
+      });
+      expect(getFeedCounts).toHaveBeenCalledWith(
+        'databaseSchema',
+        'Glue.default.information_schema',
+        expect.any(Function)
+      );
+    });
   });
 });

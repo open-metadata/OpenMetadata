@@ -101,7 +101,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
@@ -113,8 +113,8 @@ class OpenSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'DataSteward'");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
-        "domain.id");
+        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "domains.id");
   }
 
   @Test
@@ -130,7 +130,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domain.id')]",
+        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domains.id')]",
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
@@ -151,7 +151,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
@@ -168,8 +168,8 @@ class OpenSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
-        "domain.id");
+        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "domains.id");
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
 

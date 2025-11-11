@@ -37,7 +37,8 @@ export interface DatafactoryConnection {
     /**
      * The azure subscription identifier.
      */
-    subscription_id: string;
+    subscription_id:             string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */

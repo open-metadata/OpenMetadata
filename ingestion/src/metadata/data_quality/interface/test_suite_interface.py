@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,7 +27,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter_factory
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -134,10 +134,16 @@ class TestSuiteInterface(ABC):
         try:
             return validator.run_validation()
         except Exception as err:
-            logger.error(
+            message = (
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             )
-            raise RuntimeError(err)
+            logger.exception(message)
+            return validator.get_test_case_result_object(
+                validator.execution_date,
+                TestCaseStatus.Aborted,
+                message,
+                [],
+            )
 
     def _get_table_config(self):
         """Get the sampling configuration for the data quality tests"""

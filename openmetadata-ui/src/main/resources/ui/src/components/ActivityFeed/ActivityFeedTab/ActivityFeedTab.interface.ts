@@ -39,6 +39,7 @@ export interface ActivityFeedTabBasicProps {
   owners?: EntityReference[];
   subTab?: ActivityFeedTabs;
   layoutType?: ActivityFeedLayoutType;
+  feedCount?: FeedCounts;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

@@ -12,10 +12,9 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   get,
   isEmpty,
@@ -28,7 +27,8 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties, Fragment } from 'react';
+import { CSSProperties, Fragment, lazy, Suspense } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
@@ -39,95 +39,8 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as QueryIcon } from '../assets/svg/customproperties/sql-query.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
-import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
-import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
-import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
-import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
-import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
-import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
-import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
-import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
-import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
-import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
-import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
-import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
-import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
-import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
-import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
-import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
-import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
-import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
-import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
-import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
-import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
-import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import Lineage from '../components/Lineage/Lineage.component';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
-import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
-import {
-  Column,
-  ConstraintType,
-  DataType,
-  JoinedWith,
-  TableConstraint,
-  TableJoins,
-} from '../generated/entity/data/table';
-import { Field } from '../generated/type/schema';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
-import EntityLink from './EntityLink';
-import searchClassBase from './SearchClassBase';
-import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
-import { TableDetailPageTabProps } from './TableClassBase';
-import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
-
-import { useHistory } from 'react-router-dom';
-
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -158,18 +71,101 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
+import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
+import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
+import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
+import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
+import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
+import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
+import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
+import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
+import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
+import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
+import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
+import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
+import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
+import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
+import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
+import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import {
+  Column,
+  ConstraintType,
+  DataType,
+  JoinedWith,
+  TableConstraint,
+  TableJoins,
+} from '../generated/entity/data/table';
 import { PageType } from '../generated/system/ui/uiCustomization';
+import { Field } from '../generated/type/schema';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -179,8 +175,24 @@ import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/Par
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './CommonUtils';
+import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
+import searchClassBase from './SearchClassBase';
+import serviceUtilClassBase from './ServiceUtilClassBase';
+import { ordinalize } from './StringsUtils';
+import { TableDetailPageTabProps } from './TableClassBase';
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -423,6 +435,7 @@ export const getEntityIcon = (
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.DATA_CONTRACT]: DataQualityIcon,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
     [EntityType.APPLICATION]: ApplicationIcon,
@@ -453,6 +466,18 @@ export const getEntityIcon = (
     [EntityType.API_COLLECTION]: APICollectionIcon,
     [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
     ['location']: LocationIcon,
+    [EntityType.QUERY]: QueryIcon,
+    [SearchIndex.QUERY]: QueryIcon,
+    [EntityType.DIRECTORY]: DirectoryIcon,
+    [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectoryIcon,
+    [EntityType.FILE]: FileIcon,
+    [SearchIndex.FILE_SEARCH_INDEX]: FileIcon,
+    [EntityType.SPREADSHEET]: SpreadsheetIcon,
+    [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetIcon,
+    [EntityType.WORKSHEET]: WorksheetIcon,
+    [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetIcon,
+    [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+    [SearchIndex.DRIVE_SERVICE]: DriveServiceIcon,
   };
 
   switch (indexType) {
@@ -558,21 +583,18 @@ export function getTableExpandableConfig<T>(
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && (
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
-          )}
+          {isDraggable && <IconDrag className="drag-icon" />}
           <Icon
-            className="m-r-xs vertical-baseline"
+            className="table-expand-icon vertical-baseline"
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
         </>
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <IconDrag className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
@@ -705,7 +727,7 @@ export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
     ...omit(tag, 'isRemovable'),
     labelType: LabelType.Manual,
     state: State.Confirmed,
-    source: tag.source || 'Classification',
+    source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,
   }));
 
@@ -755,17 +777,15 @@ export const getTableDetailPageBaseTabs = ({
   activeTab,
   deleted,
   tableDetails,
-  totalFeedCount,
+  feedCount,
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
-  viewProfilerPermission,
   editLineagePermission,
   fetchTableDetails,
-  testCaseSummary,
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
@@ -776,7 +796,7 @@ export const getTableDetailPageBaseTabs = ({
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
           isActive={activeTab === EntityTabs.SCHEMA}
-          name={get(labelMap, EntityTabs.SCHEMA, t('label.schema'))}
+          name={get(labelMap, EntityTabs.SCHEMA, t('label.column-plural'))}
         />
       ),
       key: EntityTabs.SCHEMA,
@@ -785,7 +805,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          count={totalFeedCount}
+          count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
@@ -800,8 +820,9 @@ export const getTableDetailPageBaseTabs = ({
         <ActivityFeedTab
           refetchFeed
           columns={tableDetails?.columns}
-          entityFeedTotalCount={totalFeedCount}
+          entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TABLE}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={tableDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
@@ -821,7 +842,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children:
         !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <SampleDataTableComponent
             isTableDeleted={deleted}
@@ -846,7 +873,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.TABLE_QUERIES,
       children: !viewQueriesPermission ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.query-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ) : (
         <TableQueries
           isTableDeleted={deleted}
@@ -866,16 +899,12 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
-      children:
-        !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
-          <TableProfiler
-            permissions={tablePermissions}
-            table={tableDetails}
-            testCaseSummary={testCaseSummary}
-          />
-        ),
+      children: (
+        <DataObservabilityTab
+          permissions={tablePermissions}
+          table={tableDetails}
+        />
+      ),
     },
     {
       label: (
@@ -886,15 +915,45 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={tableDetails as SourceType}
             entityType={EntityType.TABLE}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.KNOWLEDGE_GRAPH}
+          name={get(
+            labelMap,
+            EntityTabs.KNOWLEDGE_GRAPH,
+            t('label.knowledge-graph')
+          )}
+        />
+      ),
+      key: EntityTabs.KNOWLEDGE_GRAPH,
+      children: (
+        <KnowledgeGraph
+          depth={2}
+          entity={
+            tableDetails
+              ? {
+                  id: tableDetails.id,
+                  name: tableDetails.name,
+                  fullyQualifiedName: tableDetails.fullyQualifiedName,
+                  type: EntityType.TABLE,
+                }
+              : undefined
+          }
+          entityType={EntityType.TABLE}
+        />
+      ),
+      isHidden: !useApplicationStore.getState().rdfEnabled,
     },
     {
       label: (
@@ -909,16 +968,36 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.DBT}
           sqlQuery={
-            get(tableDetails, 'dataModel.sql', '') ||
+            get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss">
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.path')}:`}
-              </Typography.Text>
-              <Typography.Text>{tableDetails?.dataModel?.path}</Typography.Text>
+            <Space className="p-y-xss" size="small">
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.dbt-source-project')}: `}
+                </Typography.Text>
+                <Typography.Text data-testid="dbt-source-project-id">
+                  {tableDetails?.dataModel?.dbtSourceProject ??
+                    NO_DATA_PLACEHOLDER}
+                </Typography.Text>
+              </div>
+
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.path')}: `}
+                </Typography.Text>
+                <Typography.Text>
+                  {tableDetails?.dataModel?.path}
+                </Typography.Text>
+              </div>
             </Space>
           }
         />
@@ -943,7 +1022,27 @@ export const getTableDetailPageBaseTabs = ({
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
       key: EntityTabs.VIEW_DEFINITION,
-      children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
+      children: (
+        <QueryViewer
+          isActive={[
+            EntityTabs.VIEW_DEFINITION,
+            EntityTabs.SCHEMA_DEFINITION,
+          ].includes(activeTab)}
+          sqlQuery={tableDetails?.schemaDefinition ?? ''}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -958,13 +1057,11 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TABLE>
-            entityType={EntityType.TABLE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TABLE>
+          entityType={EntityType.TABLE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];
@@ -1056,21 +1153,31 @@ export const tableConstraintRendererBasedOnType = (
  * @param columns Table Columns for creating options in table constraint form
  * @returns column options with label and value
  */
-export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+export const getColumnOptionsFromTableColumn = (
+  columns: Column[],
+  useFullyQualifiedName = false
+) => {
   const options: {
     label: string;
     value: string;
   }[] = [];
 
   columns.forEach((item) => {
-    if (!isEmpty(item.children)) {
-      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
-    }
-
     options.push({
       label: item.name,
-      value: item.name,
+      value: useFullyQualifiedName
+        ? item.fullyQualifiedName ?? item.name
+        : item.name,
     });
+
+    if (!isEmpty(item.children)) {
+      options.push(
+        ...getColumnOptionsFromTableColumn(
+          item.children ?? [],
+          useFullyQualifiedName
+        )
+      );
+    }
   });
 
   return options;
@@ -1078,28 +1185,28 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
 
 export const ExtraTableDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
-
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
               <LimitWrapper resource="table">
                 <ManageButtonItemLabel
-                  description={i18n.t('message.import-entity-help', {
-                    entity: i18n.t('label.table'),
+                  description={t('message.import-entity-help', {
+                    entity: t('label.table'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
-                  name={i18n.t('label.import')}
+                  name={t('label.import')}
                   onClick={() =>
-                    history.push(getEntityImportPath(EntityType.TABLE, fqn))
+                    navigate(getEntityImportPath(EntityType.TABLE, fqn))
                   }
                 />
               </LimitWrapper>
@@ -1108,21 +1215,22 @@ export const ExtraTableDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.table'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.table'),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,
                     onExport: exportTableDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />
@@ -1156,4 +1264,208 @@ export const getTableWidgetFromKey = (
       />
     );
   }
+};
+
+/**
+ * Helper function to find a column by entity link in a nested structure
+ * Recursively searches through the column hierarchy to find a matching column
+ *
+ * @param tableFqn - The fully qualified name of the table
+ * @param columns - Array of columns to search through
+ * @param entityLink - The entity link to match against
+ * @returns The matching column or null if not found
+ */
+export const findColumnByEntityLink = (
+  tableFqn: string,
+  columns: Column[],
+  entityLink: string
+): Column | null => {
+  for (const column of columns) {
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      column.fullyQualifiedName ?? '',
+      false
+    );
+
+    // Generate the entity link for this column and compare with the target entity link
+    const columnEntityLink = EntityLink.getTableEntityLink(
+      tableFqn,
+      columnName
+    );
+    if (columnEntityLink === entityLink) {
+      return column;
+    }
+
+    // If this column has children, recursively search them
+    if (column.children && column.children.length > 0) {
+      const found = findColumnByEntityLink(
+        tableFqn,
+        column.children,
+        entityLink
+      );
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Helper function to update a column in a nested structure
+ * Recursively traverses the column hierarchy to find and update the target column
+ *
+ * @param columns - Array of columns to search through
+ * @param targetFqn - The fully qualified name of the column to update
+ * @param update - The properties to update on the matching column
+ * @returns Updated array of columns with the target column modified
+ */
+export const updateColumnInNestedStructure = (
+  columns: Column[],
+  targetFqn: string,
+  update: Partial<Column>
+): Column[] => {
+  return columns.map((column: Column) => {
+    if (column.fullyQualifiedName === targetFqn) {
+      return {
+        ...column,
+        ...update,
+      };
+    }
+    // If this column has children, recursively search them
+    else if (column.children && column.children.length > 0) {
+      return {
+        ...column,
+        children: updateColumnInNestedStructure(
+          column.children,
+          targetFqn,
+          update
+        ),
+      };
+    } else {
+      return column;
+    }
+  });
+};
+
+export const pruneEmptyChildren = (columns: Column[]): Column[] => {
+  return columns.map((column) => {
+    // If column has no children or empty children array, remove children property
+    if (!column.children || column.children.length === 0) {
+      return omit(column, 'children');
+    }
+
+    // If column has children, recursively prune them
+    const prunedChildren = pruneEmptyChildren(column.children);
+
+    // If after pruning, children array becomes empty, remove children property
+    if (prunedChildren.length === 0) {
+      return omit(column, 'children');
+    }
+
+    return {
+      ...column,
+      children: prunedChildren,
+    };
+  });
+};
+
+export const getSchemaFieldCount = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  let count = 0;
+
+  const countFields = (items: T[]): void => {
+    items.forEach((item) => {
+      count++;
+      if (item.children && item.children.length > 0) {
+        countFields(item.children);
+      }
+    });
+  };
+
+  countFields(fields);
+
+  return count;
+};
+
+export const getSchemaDepth = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  if (!fields || fields.length === 0) {
+    return 0;
+  }
+
+  let maxDepth = 1;
+
+  const calculateDepth = (items: T[], currentDepth: number): void => {
+    items.forEach((item) => {
+      maxDepth = Math.max(maxDepth, currentDepth);
+      if (item.children && item.children.length > 0) {
+        calculateDepth(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  calculateDepth(fields, 1);
+
+  return maxDepth;
+};
+
+export const isLargeSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 500
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const shouldCollapseSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 50
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const getExpandAllKeysToDepth = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  maxDepth = 3
+): string[] => {
+  const keys: string[] = [];
+
+  const collectKeys = (items: T[], currentDepth = 0): void => {
+    if (currentDepth >= maxDepth) {
+      return;
+    }
+
+    items.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        if (item.name) {
+          keys.push(item.name);
+        }
+        // Continue collecting keys from children up to maxDepth
+        collectKeys(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  collectKeys(fields);
+
+  return keys;
+};
+
+export const getSafeExpandAllKeys = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  isLargeSchema: boolean,
+  allKeys: string[]
+): string[] => {
+  if (!isLargeSchema) {
+    return allKeys;
+  }
+
+  // For large schemas, expand to exactly 2 levels deep
+  return getExpandAllKeysToDepth(fields, 2);
 };

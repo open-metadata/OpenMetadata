@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -20,7 +20,6 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { Table } from '../../generated/entity/data/table';
-import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import {
   getEntityChildDetails,
   getSortedTagsWithHighlight,
@@ -30,14 +29,22 @@ import {
   getEntityOverview,
 } from '../../utils/EntityUtils';
 
+import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { EntityReference } from '../../generated/entity/type';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
-import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
+import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryDataProducts from '../common/SummaryDataProducts/SummaryDataProducts';
 import SummaryTagsDescription from '../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import CommonEntitySummaryInfo from '../Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import TableSummary from '../Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
@@ -50,19 +57,24 @@ export const DataAssetSummaryPanel = ({
   tags,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
+  isDomainVisible,
+  isLineageView = false,
 }: DataAssetSummaryPanelProps) => {
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
   >({});
   const [charts, setCharts] = useState<Chart[]>([]);
+  const [chartsDetailsLoading, setChartsDetailsLoading] =
+    useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
 
   const entityInfo = useMemo(
     () => getEntityOverview(entityType, dataAsset, additionalInfo),
-    [dataAsset, additionalInfo]
+    [dataAsset, additionalInfo, entityType]
   );
 
   const entityDetails = useMemo(() => {
@@ -71,9 +83,10 @@ export const DataAssetSummaryPanel = ({
       entityType === EntityType.DASHBOARD
         ? ({ ...dataAsset, charts } as any)
         : dataAsset,
-      highlights
+      highlights,
+      entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
-  }, [dataAsset, entityType, highlights]);
+  }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
   const isEntityDeleted = useMemo(() => dataAsset.deleted, [dataAsset]);
 
@@ -96,7 +109,7 @@ export const DataAssetSummaryPanel = ({
         setAdditionalInfo({
           incidentCount: paging.total,
         });
-      } catch (error) {
+      } catch {
         setAdditionalInfo({
           incidentCount: 0,
         });
@@ -105,12 +118,14 @@ export const DataAssetSummaryPanel = ({
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
 
   const fetchChartsDetails = useCallback(async () => {
+    setChartsDetailsLoading(true);
     try {
       const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
-
       setCharts(chartDetails);
-    } catch (err) {
+    } catch {
       // Error
+    } finally {
+      setChartsDetailsLoading(false);
     }
   }, [dataAsset]);
 
@@ -136,7 +151,6 @@ export const DataAssetSummaryPanel = ({
         dataAsset.id
       );
       setEntityPermissions(permissions);
-      fetchEntityBasedDetails();
     } else {
       setEntityPermissions(null);
     }
@@ -173,20 +187,77 @@ export const DataAssetSummaryPanel = ({
       case EntityType.STORED_PROCEDURE:
       case EntityType.TABLE:
       case EntityType.TOPIC:
+      case EntityType.DIRECTORY:
+      case EntityType.FILE:
+      case EntityType.SPREADSHEET:
+      case EntityType.WORKSHEET:
         return (
           <>
+            {entityInfo.some((info) =>
+              info.visible?.includes(componentType)
+            ) && (
+              <Row
+                className="p-md border-radius-card summary-panel-card"
+                gutter={[0, 4]}>
+                <Col span={24}>
+                  <CommonEntitySummaryInfo
+                    componentType={componentType}
+                    entityInfo={entityInfo}
+                    isDomainVisible={isDomainVisible}
+                  />
+                </Col>
+              </Row>
+            )}
+
+            {isLineageView && (
+              <Row
+                className="p-md border-radius-card summary-panel-card"
+                gutter={[0, 8]}>
+                <Col span={24}>
+                  <Typography.Text
+                    className="summary-panel-section-title"
+                    data-testid="owner-header">
+                    {t('label.owner-plural')}
+                  </Typography.Text>
+                </Col>
+                <Col className="d-flex flex-wrap gap-2" span={24}>
+                  <OwnerLabel
+                    isCompactView={false}
+                    owners={(dataAsset.owners as EntityReference[]) ?? []}
+                    showLabel={false}
+                  />
+                </Col>
+              </Row>
+            )}
+
             <Row
               className="p-md border-radius-card summary-panel-card"
-              gutter={[0, 4]}>
+              gutter={[0, 8]}>
               <Col span={24}>
-                <CommonEntitySummaryInfo
-                  componentType={componentType}
-                  entityInfo={entityInfo}
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="domain-header">
+                  {t('label.domain-plural')}
+                </Typography.Text>
+              </Col>
+              <Col className="d-flex flex-wrap gap-2" span={24}>
+                <DomainLabel
+                  multiple
+                  domains={dataAsset.domains}
+                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                  entityId={dataAsset.id ?? ''}
+                  entityType={entityType}
+                  hasPermission={false}
+                  textClassName="render-domain-lebel-style"
                 />
               </Col>
             </Row>
+
             {entityType === EntityType.TABLE && (
-              <TableSummary entityDetails={dataAsset as Table} />
+              <TableSummary
+                entityDetails={dataAsset as Table}
+                permissions={entityPermissions}
+              />
             )}
 
             <SummaryTagsDescription
@@ -199,6 +270,8 @@ export const DataAssetSummaryPanel = ({
                 )
               }
             />
+
+            <SummaryDataProducts dataAsset={dataAsset} />
           </>
         );
       case EntityType.GLOSSARY_TERM:

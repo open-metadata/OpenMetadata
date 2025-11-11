@@ -15,27 +15,25 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -58,8 +56,9 @@ import {
   Suggestion,
   SuggestionType,
 } from '../../generated/entity/feed/suggestion';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
-import { TestSummary } from '../../generated/tests/testCase';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -67,6 +66,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
+import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -77,31 +77,37 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
   addToRecentViewed,
   getFeedCounts,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
+  findColumnByEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
+  updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import './table-details-page-v1.less';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -109,11 +115,12 @@ const TableDetailsPageV1: React.FC = () => {
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -124,9 +131,9 @@ const TableDetailsPageV1: React.FC = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
-  const { customizedPage } = useCustomPages(PageType.Table);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Table);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const tableFqn = useMemo(
     () =>
@@ -157,22 +164,34 @@ const TableDetailsPageV1: React.FC = () => {
 
   const extraDropdownContent = useMemo(
     () =>
-      entityUtilClassBase.getManageExtraOptions(
-        EntityType.TABLE,
-        tableFqn,
-        tablePermissions
-      ),
-    [tablePermissions, tableFqn]
+      tableDetails
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.TABLE,
+            tableFqn,
+            tablePermissions,
+            tableDetails,
+            navigate
+          )
+        : [],
+    [tablePermissions, tableFqn, tableDetails]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
     () => ({
-      viewUsagePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewUsage,
-      viewTestCasePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewTests,
+      viewUsagePermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewUsage
+      ),
+      viewTestCasePermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewTests
+      ),
     }),
-    [tablePermissions]
+    [
+      tablePermissions,
+      getPrioritizedViewPermission,
+      getPrioritizedEditPermission,
+    ]
   );
 
   const isViewTableType = useMemo(
@@ -192,7 +211,6 @@ const TableDetailsPageV1: React.FC = () => {
       }
 
       const details = await getTableDetailsByFQN(tableFqn, { fields });
-
       setTableDetails(details);
       addToRecentViewed({
         displayName: getEntityName(details),
@@ -204,14 +222,14 @@ const TableDetailsPageV1: React.FC = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setLoading(false);
     }
   }, [tableFqn, viewUsagePermission]);
 
-  const fetchDQFailureCount = async () => {
+  const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
       setDqFailureCount(0);
     }
@@ -226,39 +244,43 @@ const TableDetailsPageV1: React.FC = () => {
         data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
         [];
       setDqFailureCount(updatedNodes.length);
-    } catch (error) {
+    } catch {
       setDqFailureCount(0);
     }
   };
 
-  const fetchTestCaseSummary = async () => {
+  const getTestCaseFailureCount = async () => {
     try {
-      if (isUndefined(tableDetails?.testSuite?.id)) {
-        setTestCaseSummary(undefined);
-        await fetchDQFailureCount();
+      if (!tableClassBase.getAlertEnableStatus()) {
+        setDqFailureCount(0);
 
         return;
       }
 
-      const response = await getTestCaseExecutionSummary(
-        tableDetails?.testSuite?.id
-      );
-      setTestCaseSummary(response);
+      if (isUndefined(tableDetails?.testSuite?.id)) {
+        await fetchDQUpstreamFailureCount();
 
-      const failureCount =
-        response.columnTestSummary?.reduce((acc, curr) => {
-          return acc + (curr.failed ?? 0);
-        }, response.failed ?? 0) ??
-        response.failed ??
-        0;
+        return;
+      }
+
+      const testSuiteId = tableDetails?.testSuite?.id;
+
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        testSuiteId,
+        TestCaseStatus.Failed
+      );
+      const failureCount = data.reduce(
+        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
+        0
+      );
 
       if (failureCount === 0) {
-        await fetchDQFailureCount();
+        await fetchDQUpstreamFailureCount();
       } else {
         setDqFailureCount(failureCount);
       }
-    } catch (error) {
-      setTestCaseSummary(undefined);
+    } catch {
+      setDqFailureCount(0);
     }
   };
 
@@ -272,7 +294,7 @@ const TableDetailsPageV1: React.FC = () => {
         entityId: tableDetails.id,
       });
       setQueryCount(response.paging.total);
-    } catch (error) {
+    } catch {
       setQueryCount(0);
     }
   };
@@ -311,10 +333,8 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-
   const fetchResourcePermission = useCallback(
-    async (tableFqn) => {
+    async (tableFqn: string) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
@@ -322,7 +342,7 @@ const TableDetailsPageV1: React.FC = () => {
         );
 
         setTablePermissions(tablePermission);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.fetch-entity-permissions-error', {
             entity: t('label.resource-permission-lowercase'),
@@ -356,9 +376,9 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(
-          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
-        );
+        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+          replace: true,
+        });
       }
     }
   };
@@ -434,7 +454,10 @@ const TableDetailsPageV1: React.FC = () => {
     if (!tableDetails) {
       return;
     }
-    const updatedTable = { ...tableDetails, displayName: data.displayName };
+    const updatedTable = {
+      ...tableDetails,
+      displayName: isEmpty(data.displayName) ? undefined : data.displayName,
+    };
     await onTableUpdate(updatedTable, 'displayName');
   };
 
@@ -460,30 +483,44 @@ const TableDetailsPageV1: React.FC = () => {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(tablePermissions, Operation.EditTags) &&
+        !deleted,
       editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (tablePermissions.EditAll || tablePermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
+        getPrioritizedEditPermission(tablePermissions, Operation.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewSampleData
+      ),
+      viewQueriesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewQueries
+      ),
+      viewProfilerPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewDataProfile
+      ),
       viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
+      viewBasicPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewBasic
+      ),
     }),
     [tablePermissions, deleted]
   );
@@ -498,7 +535,7 @@ const TableDetailsPageV1: React.FC = () => {
       activeTab,
       deleted,
       tableDetails,
-      totalFeedCount: feedCount.totalCount,
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
@@ -508,7 +545,6 @@ const TableDetailsPageV1: React.FC = () => {
       viewProfilerPermission,
       editLineagePermission,
       fetchTableDetails,
-      testCaseSummary,
       isViewTableType,
       labelMap: tabLabelMap,
     });
@@ -538,9 +574,13 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     editLineagePermission,
     fetchTableDetails,
-    testCaseSummary,
     isViewTableType,
   ]);
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
+    [tabs[0], activeTab]
+  );
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -557,6 +597,21 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (tableDetails) {
+        const certificationTag: Table['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...tableDetails,
+          certification: certificationTag,
+        };
+
+        await onTableUpdate(updatedTableDetails, 'certification');
+      }
+    },
+    [tableDetails, onTableUpdate]
+  );
   const handleToggleDelete = (version?: number) => {
     setTableDetails((prev) => {
       if (!prev) {
@@ -579,8 +634,7 @@ const TableDetailsPageV1: React.FC = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -653,20 +707,19 @@ const TableDetailsPageV1: React.FC = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
+      navigate(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const updateTableDetailsState = useCallback((data) => {
+  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -678,14 +731,11 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const activeCol = prev?.columns.find((column) => {
-          return (
-            EntityLink.getTableEntityLink(
-              prev.fullyQualifiedName ?? '',
-              column.name ?? ''
-            ) === suggestion.entityLink
-          );
-        });
+        const activeCol = findColumnByEntityLink(
+          prev.fullyQualifiedName ?? '',
+          prev.columns,
+          suggestion.entityLink
+        );
 
         if (!activeCol) {
           return {
@@ -695,18 +745,17 @@ const TableDetailsPageV1: React.FC = () => {
               : { tags: suggestion.tagLabels }),
           };
         } else {
-          const updatedColumns = prev.columns.map((column) => {
-            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
-              return {
-                ...column,
-                ...(suggestion.type === SuggestionType.SuggestDescription
-                  ? { description: suggestion.description }
-                  : { tags: suggestion.tagLabels }),
-              };
-            } else {
-              return column;
-            }
-          });
+          const update =
+            suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels };
+
+          // Update the column in the nested structure
+          const updatedColumns = updateColumnInNestedStructure(
+            prev.columns,
+            activeCol.fullyQualifiedName ?? '',
+            update
+          );
 
           return {
             ...prev,
@@ -730,7 +779,7 @@ const TableDetailsPageV1: React.FC = () => {
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchTestCaseSummary();
+      getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
 
@@ -754,12 +803,24 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  if (loading) {
+  const toggleTabExpanded = () => {
+    setIsTabExpanded((prev) => !prev);
+  };
+
+  if (loading || isLoading) {
     return <Loader />;
   }
 
   if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.table-details'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!tableDetails) {
@@ -768,20 +829,21 @@ const TableDetailsPageV1: React.FC = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.table'),
       })}
       title="Table details">
       <GenericProvider<Table>
+        customizedPage={customizedPage}
         data={tableDetails}
+        isTabExpanded={isTabExpanded}
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Col data-testid="entity-page-header" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -792,6 +854,7 @@ const TableDetailsPageV1: React.FC = () => {
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={tablePermissions}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleDisplayNameUpdate}
               onFollowClick={handleFollowTable}
               onOwnerUpdate={handleUpdateOwner}
@@ -803,16 +866,23 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={
-                isTourOpen
-                  ? activeTabForTourDatasetPage
-                  : activeTab ?? EntityTabs.SCHEMA
-              }
-              className="table-details-page-tabs entity-details-page-tabs"
+              activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

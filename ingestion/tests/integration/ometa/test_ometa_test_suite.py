@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -112,7 +112,6 @@ class OMetaTestSuiteTest(TestCase):
                 entityLink=EntityLink(
                     "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
                 ),
-                testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
                 parameterValues=[TestCaseParameterValue(name="foo", value="10")],
             )
@@ -127,6 +126,29 @@ class OMetaTestSuiteTest(TestCase):
                 testResultValue=[TestResultValue(name="foo", value="10")],
             ),
             test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
+        )
+
+        # Create test case with special characters in FQN to test URL encoding
+        cls.metadata.create_or_update(
+            CreateTestCaseRequest(
+                name=TestCaseEntityName("testCase:With/Special&Characters"),
+                entityLink=EntityLink(
+                    "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
+                ),
+                testDefinition=cls.test_definition.fullyQualifiedName,
+                parameterValues=[TestCaseParameterValue(name="foo", value="20")],
+            )
+        )
+
+        cls.metadata.add_test_case_results(
+            test_results=TestCaseResult(
+                timestamp=datetime_to_ts(datetime.now(timezone.utc)),
+                testCaseStatus=TestCaseStatus.Success,
+                result="Test Case with special chars Success",
+                sampleData=None,
+                testResultValue=[TestResultValue(name="foo", value="20")],
+            ),
+            test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCase:With/Special&Characters",
         )
 
     def test_get_or_create_test_suite(self):
@@ -169,7 +191,6 @@ class OMetaTestSuiteTest(TestCase):
 
         test_case = self.metadata.get_or_create_test_case(
             test_case_fqn,
-            test_suite_fqn=self.test_suite.fullyQualifiedName.root,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
             test_case_parameter_values=[
@@ -188,6 +209,22 @@ class OMetaTestSuiteTest(TestCase):
         )
 
         assert res
+
+    def test_get_test_case_results_with_special_characters(self):
+        """test get test case results with special characters in FQN (: / &)"""
+        # This test validates that URL encoding works correctly for FQNs with special chars
+        res = self.metadata.get_test_case_results(
+            "sample_data.ecommerce_db.shopify.dim_address.testCase:With/Special&Characters",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+        )
+
+        assert (
+            res is not None
+        ), "Should fetch results for test case with special characters"
+        assert len(res) > 0, "Should have at least one result"
+        assert res[0].result == "Test Case with special chars Success"
+        assert res[0].testCaseStatus == TestCaseStatus.Success
 
     @classmethod
     def tearDownClass(cls) -> None:

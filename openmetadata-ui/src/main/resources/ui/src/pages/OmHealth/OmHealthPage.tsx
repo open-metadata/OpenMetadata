@@ -13,7 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { map, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import ConnectionStepCard from '../../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
@@ -63,7 +63,7 @@ const OmHealthPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.health-check')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row className="bg-white p-lg border-radius-sm" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

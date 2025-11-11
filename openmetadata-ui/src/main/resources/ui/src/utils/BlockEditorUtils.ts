@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
-import { isEmpty } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import Showdown from 'showdown';
+import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
+import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
+import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
+import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
+import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
@@ -84,10 +90,13 @@ export const formatContent = (
 ) => {
   // Create a new DOMParser
   const parser = new DOMParser();
-  const doc = parser.parseFromString(
-    _convertMarkdownFormatToHtmlString(htmlString),
-    'text/html'
-  );
+
+  // Only convert markdown to HTML if the content is not already HTML
+  const processedContent = isHTMLString(htmlString)
+    ? htmlString
+    : _convertMarkdownFormatToHtmlString(htmlString);
+
+  const doc = parser.parseFromString(processedContent, 'text/html');
 
   // Use querySelectorAll to find all anchor tags with text content starting with "@" or "#"
   const anchorTags = doc.querySelectorAll(
@@ -148,6 +157,7 @@ export const isHTMLString = (content: string) => {
       /^\s*>{1,}\s/, // Blockquotes
       /^---|\*\*\*|___/, // Horizontal rules
       /`{1,3}[^`]+`{1,3}/, // Code blocks
+      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
     ];
 
     const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
@@ -187,9 +197,54 @@ export const getHtmlStringFromMarkdownString = (content: string) => {
  * @param editor The editor instance
  * @param newContent The new content to set
  */
+export const transformImgTagsToFileAttachment = (
+  htmlString: string
+): string => {
+  // Input validation - ensure we have a valid string
+  if (!htmlString || !isString(htmlString)) {
+    return String(htmlString || '');
+  }
+
+  if (!htmlString.includes('<img')) {
+    return htmlString;
+  }
+
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlString;
+
+  const imgTags = tempDiv.querySelectorAll('img[src]');
+
+  imgTags.forEach((img) => {
+    const src = img.getAttribute('src');
+    const alt = img.getAttribute('alt') || '';
+    const title = img.getAttribute('title') || '';
+
+    if (src) {
+      const fileDiv = document.createElement('div');
+      fileDiv.setAttribute('data-type', 'file-attachment');
+      fileDiv.setAttribute('data-url', src);
+      fileDiv.setAttribute('data-filename', title || alt || 'image');
+      fileDiv.setAttribute('data-mimetype', 'image');
+      fileDiv.setAttribute('data-uploading', 'false');
+      fileDiv.setAttribute('data-upload-progress', '0');
+      fileDiv.setAttribute('data-is-image', 'true');
+      if (alt) {
+        fileDiv.setAttribute('data-alt', alt);
+      }
+
+      img.parentNode?.replaceChild(fileDiv, img);
+    }
+  });
+
+  return tempDiv.innerHTML;
+};
+
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  const htmlString = getHtmlStringFromMarkdownString(newContent);
+  let htmlString = getHtmlStringFromMarkdownString(newContent);
+
+  // Transform img tags to file-attachment divs before Tiptap processes them
+  htmlString = transformImgTagsToFileAttachment(htmlString);
 
   editor.commands.setContent(htmlString);
 
@@ -225,4 +280,52 @@ export const getTextFromHtmlString = (description?: string): string => {
   }
 
   return description.replace(/<[^>]{1,1000}>/g, '').trim();
+};
+
+export const getAcceptedFileTypes = (fileType: FileType) => {
+  switch (fileType) {
+    case FileType.IMAGE:
+      return 'image/*';
+    case FileType.VIDEO:
+      return 'video/*';
+    case FileType.AUDIO:
+      return 'audio/*';
+    case FileType.FILE:
+    default:
+      return '*/*';
+  }
+};
+
+/**
+ * Get the file type from the mime type
+ * @param mimeType The mime type
+ * @returns The file type
+ */
+export const getFileTypeFromMimeType = (mimeType: string) => {
+  if (mimeType.startsWith(FileType.IMAGE)) {
+    return FileType.IMAGE;
+  }
+
+  if (mimeType.startsWith(FileType.VIDEO)) {
+    return FileType.VIDEO;
+  }
+
+  if (mimeType.startsWith(FileType.AUDIO)) {
+    return FileType.AUDIO;
+  }
+
+  return FileType.FILE;
+};
+
+export const getFileIcon = (fileType: FileType) => {
+  switch (fileType) {
+    case FileType.IMAGE:
+      return IconFormatImage;
+    case FileType.VIDEO:
+      return IconFormatVideo;
+    case FileType.AUDIO:
+      return IconFormatAudio;
+    default:
+      return IconFormatAttachment;
+  }
 };

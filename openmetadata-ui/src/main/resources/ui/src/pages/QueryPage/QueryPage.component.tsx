@@ -14,9 +14,9 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -24,7 +24,6 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import QueryCard from '../../components/Database/TableQueries/QueryCard';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { getEntityDetailsPath } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -42,12 +41,15 @@ import {
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const QueryPage = () => {
-  const { queryId } = useParams<{ queryId: string }>();
+  const { queryId } = useRequiredParams<{ queryId: string }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -77,7 +79,7 @@ const QueryPage = () => {
         queryId || ''
       );
       setQueryPermissions(permission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -175,27 +177,31 @@ const QueryPage = () => {
   };
 
   const afterDeleteAction = () => {
-    history.back();
+    navigate(-1);
   };
 
   if (isLoading.permission || isLoading.query) {
     return <Loader />;
   }
   if (!isViewAllowed) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.query'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isUndefined(query)) {
-    return (
-      <div className="flex-center font-medium" data-testid="no-queries">
-        <ErrorPlaceHolder />
-      </div>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return (
     <PageLayoutV1 pageTitle={t('label.query')}>
-      <Row className="p-x-lg" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
         </Col>

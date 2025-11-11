@@ -18,7 +18,7 @@ import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCasePageTabs } from '../IncidentManager.interface';
 import { TestCaseClassBase, TestCaseTabType } from './TestCaseClassBase';
 
 describe('TestCaseClassBase', () => {
@@ -48,7 +48,7 @@ describe('TestCaseClassBase', () => {
           name: i18n.t('label.test-case-result'),
         },
         Tab: TestCaseResultTab,
-        key: IncidentManagerTabs.TEST_CASE_RESULTS,
+        key: TestCasePageTabs.TEST_CASE_RESULTS,
       },
       {
         LabelComponent: TabsLabel,
@@ -58,11 +58,11 @@ describe('TestCaseClassBase', () => {
           count: openTaskCount,
         },
         Tab: TestCaseIncidentTab,
-        key: IncidentManagerTabs.ISSUES,
+        key: TestCasePageTabs.ISSUES,
       },
     ];
 
-    const result = testCaseClassBase.getTab(openTaskCount);
+    const result = testCaseClassBase.getTab(openTaskCount, false);
 
     expect(result).toEqual(expectedTabs);
   });
@@ -74,6 +74,7 @@ describe('TestCaseClassBase', () => {
       'testDefinition',
       'owners',
       'incidentId',
+      'tags',
     ];
 
     const result = testCaseClassBase.getFields();

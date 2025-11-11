@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -25,6 +27,9 @@ import {
   UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../support/tag/ClassificationClass';
+import { TagClass } from '../support/tag/TagClass';
+import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
@@ -36,6 +41,7 @@ import {
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from './common';
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
@@ -49,29 +55,34 @@ type TaskEntity = {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
-export const checkDisplayName = async (page: Page, displayName: string) => {
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName
-  );
+export const checkName = async (page: Page, name: string) => {
+  await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
 
 export const selectActiveGlossary = async (
   page: Page,
-  glossaryName: string
+  glossaryName: string,
+  bWaitForResponse = true
 ) => {
   const menuItem = page.getByRole('menuitem', { name: glossaryName });
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
   if (!isSelected) {
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
-    await menuItem.click();
-    await glossaryResponse;
-  } else {
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    if (bWaitForResponse) {
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
+      await menuItem.click();
+      await glossaryResponse;
+    } else {
+      await menuItem.click();
+    }
   }
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 export const selectActiveGlossaryTerm = async (
@@ -79,6 +90,12 @@ export const selectActiveGlossaryTerm = async (
   glossaryTermName: string
 ) => {
   await page.getByTestId(glossaryTermName).click();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
@@ -166,7 +183,7 @@ export const validateForm = async (page: Page) => {
   );
 
   // Max length validation
-  await page.locator('[data-testid="name"]').type(INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').fill(INVALID_NAMES.MAX_LENGTH);
 
   await expect(page.locator('#name_help')).toHaveText(
     NAME_MAX_LENGTH_VALIDATION_ERROR
@@ -174,9 +191,7 @@ export const validateForm = async (page: Page) => {
 
   // With special char validation
   await page.locator('[data-testid="name"]').clear();
-  await page
-    .locator('[data-testid="name"]')
-    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.getByTestId('name').fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
 
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
@@ -189,7 +204,7 @@ export const addTeamAsReviewer = async (
   isSelectableInsideForm = false
 ) => {
   const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc'
+    '/api/v1/search/query?q=&index=team_search_index&from=0&size=*&sort_field=displayName.keyword&sort_order=asc'
   );
 
   const teamsSearchResponse = page.waitForResponse(
@@ -301,7 +316,7 @@ export const createGlossary = async (
 
   await expect(page).toHaveURL(/\/glossary\//);
 
-  await checkDisplayName(page, glossaryData.name);
+  await checkName(page, glossaryData.name);
 };
 
 export const verifyGlossaryDetails = async (
@@ -313,7 +328,7 @@ export const verifyGlossaryDetails = async (
     .locator('span')
     .click();
 
-  await checkDisplayName(page, glossaryDetails.name);
+  await checkName(page, glossaryDetails.name);
 
   const viewerContainerText = await page.textContent(
     '[data-testid="viewer-container"]'
@@ -521,13 +536,91 @@ export const verifyTaskCreated = async (
     .toContain(glossaryTermData);
 };
 
+export const verifyWorkflowInstanceExists = async (
+  page: Page,
+  glossaryTermFqn: string
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(
+    `<#E::glossaryTerm::${glossaryTermFqn}>`
+  );
+
+  await expect
+    .poll(
+      async () => {
+        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
+        const endTs = new Date().getTime();
+
+        const workflowInstanceResponse = await apiContext
+          .get(
+            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
+          )
+          .then((res) => res.json());
+
+        return workflowInstanceResponse?.data?.length > 0;
+      },
+      {
+        message: 'To verify workflow instance exists',
+        timeout: 200_000,
+        intervals: [50_000],
+      }
+    )
+    .toBe(true);
+};
+
+export const verifyGlossaryWorkflowReviewerCase = async (
+  page: Page,
+  glossaryTermFqn: string
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(
+    `<#E::glossaryTerm::${glossaryTermFqn}>`
+  );
+
+  await expect
+    .poll(
+      async () => {
+        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
+        const endTs = new Date().getTime();
+
+        const workflowInstanceResponse = await apiContext
+          .get(
+            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
+          )
+          .then((res) => res.json());
+
+        if (workflowInstanceResponse?.data?.length === 0) {
+          return '';
+        }
+
+        const workflowInstanceId = workflowInstanceResponse?.data[0]?.id;
+
+        if (!workflowInstanceId) {
+          return '';
+        }
+
+        const workflowInstanceState = await apiContext
+          .get(
+            `api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}`
+          )
+          .then((res) => res.json());
+
+        return workflowInstanceState?.data[0]?.stage?.displayName ?? '';
+      },
+      {
+        message: 'To verify workflow instance exists',
+        timeout: 200_000,
+        intervals: [50_000],
+      }
+    )
+    .toEqual('Auto-Approved by Reviewer');
+};
+
 export const validateGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
-  await taskCountRes;
 
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
@@ -604,10 +697,30 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
+  await expect(
+    page.getByTestId('glossary-terms-table').getByTestId('loader')
+  ).toBeHidden();
+  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
+
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Terms')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Description')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Owners')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Status')
+  ).toBeVisible();
+
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
+    await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toBeVisible();
     await expect(page.locator(statusSelector)).toContainText(status);
   }
 };
@@ -673,17 +786,25 @@ export const addAssetToGlossaryTerm = async (
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityName = get(asset, 'entityResponseData.name');
     const searchRes = page.waitForResponse('/api/v1/search/query*');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
 
+    const visibleName = entityDisplayName ?? entityName;
     await page
       .locator(
         '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
       )
-      .fill(entityName);
+      .fill(visibleName);
 
     await searchRes;
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   await page.click('[data-testid="save-btn"]');
@@ -722,19 +843,6 @@ export const updateNameForGlossaryTerm = async (
   return data;
 };
 
-export const verifyGlossaryTermAssets = async (
-  page: Page,
-  glossary: GlossaryData,
-  glossaryTermData: GlossaryTermData,
-  assetsLength: number
-) => {
-  await page.click('[data-testid="overview"]');
-  await redirectToHomePage(page);
-  await sidebarClick(page, SidebarItem.GLOSSARY);
-  await selectActiveGlossary(page, glossary.displayName);
-  await goToAssetsTab(page, glossaryTermData.displayName, assetsLength);
-};
-
 export const renameGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTerm,
@@ -753,9 +861,9 @@ export const dragAndDropTerm = async (
   dragElement: string,
   dropTarget: string
 ) => {
-  await page.getByRole('cell', { name: dragElement }).hover();
+  await page.getByRole('cell', { name: dragElement, exact: true }).hover();
   await page.mouse.down();
-  await page.getByRole('cell', { name: dropTarget }).hover();
+  await page.getByRole('cell', { name: dropTarget, exact: true }).hover();
   await page.mouse.up();
 };
 
@@ -763,7 +871,8 @@ export const confirmationDragAndDropGlossary = async (
   page: Page,
   dragElement: string,
   dropElement: string,
-  isHeader = false
+  isHeader = false,
+  tickCheckbox = false
 ) => {
   await expect(
     page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
@@ -775,28 +884,51 @@ export const confirmationDragAndDropGlossary = async (
     }`
   );
 
+  if (tickCheckbox) {
+    await page.getByTestId('confirm-status-checkbox').click();
+  }
+
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  await page.getByRole('button', { name: 'Move' }).click();
   await patchGlossaryTermResponse;
 };
 
 export const changeTermHierarchyFromModal = async (
   page: Page,
-  dragElement: string,
-  dropElement: string
+  entityDisplayName: string,
+  entityFqn: string,
+  isGlossaryTerm = true
 ) => {
-  await selectActiveGlossaryTerm(page, dragElement);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
+
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  await page.getByLabel('Select Parent').click();
+  await page.waitForSelector('.async-tree-select-list-dropdown', {
+    state: 'visible',
+  });
+
+  if (isGlossaryTerm) {
+    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
+    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await searchRes;
+  }
+
+  await page.getByTestId(`tag-${entityFqn}`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
-    .locator('[data-testid="change-parent-select"] > .ant-select-selector')
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('button', { name: 'Save' })
     .click();
-  await page.getByTitle(dropElement).click();
-  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByRole('button', { name: 'Submit' }).click();
   await saveRes;
+
+  await expect(
+    page.locator('[role="dialog"].change-parent-hierarchy-modal')
+  ).toBeHidden();
 };
 
 export const deleteGlossaryOrGlossaryTerm = async (
@@ -815,17 +947,13 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const endpoint = isGlossaryTerm
-    ? '/api/v1/glossaryTerms/*'
-    : '/api/v1/glossaries/*';
+    ? '/api/v1/glossaryTerms/async/*'
+    : '/api/v1/glossaries/async/*';
   const deleteRes = page.waitForResponse(endpoint);
   await page.click('[data-testid="confirm-button"]');
   await deleteRes;
 
-  if (isGlossaryTerm) {
-    await toastNotification(page, /"Glossary Term" deleted successfully!/);
-  } else {
-    await toastNotification(page, /"Glossary" deleted successfully!/);
-  }
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
@@ -971,7 +1099,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -984,6 +1112,7 @@ export const createDescriptionTaskForGlossary = async (
   }
 
   if (addDescription) {
+    await page.locator(descriptionBox).clear();
     await page
       .locator(descriptionBox)
       .fill(value.description ?? 'Updated description');
@@ -1026,7 +1155,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1096,11 +1225,10 @@ export const approveTagsTask = async (
   await selectActiveGlossary(page, entity.data.displayName);
   await page.waitForLoadState('networkidle');
 
-  const tagVisibility = await page.isVisible(
-    `[data-testid="tag-${value.tag}"]`
-  );
+  const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
+  await tagVisibility.scrollIntoViewIfNeeded();
 
-  expect(tagVisibility).toBe(true);
+  await expect(tagVisibility).toBeVisible();
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
@@ -1237,7 +1365,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 3;
+  const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows
@@ -1404,6 +1532,21 @@ export const updateGlossaryTermOwners = async (
   await glossaryTermResponse;
 };
 
+export const updateGlossaryReviewer = async (
+  page: Page,
+  reviewers: string[]
+) => {
+  await addMultiOwner({
+    page,
+    ownerNames: reviewers,
+    activatorBtnDataTestId: 'Add',
+    resultTestId: 'glossary-reviewer',
+    endpoint: EntityTypeEndpoint.Glossary,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
+};
+
 export const updateGlossaryTermReviewers = async (
   page: Page,
   term: GlossaryTermData,
@@ -1450,4 +1593,104 @@ export const checkGlossaryTermDetails = async (
       '[data-testid="reviewers-container"] [data-testid="owner-link"]'
     )
   ).toContainText(reviewer.responseData.displayName);
+};
+
+export const setupGlossaryDenyPermissionTest = async (
+  apiContext: any,
+  isGlossary?: boolean
+) => {
+  // Create all necessary resources
+  const dataConsumerUser = new UserClass();
+  const id = uuid();
+  const glossary1 = new Glossary();
+  const glossaryTerm1 = new GlossaryTerm(glossary1);
+  await glossary1.create(apiContext);
+  await glossaryTerm1.create(apiContext);
+
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+
+  await dataConsumerUser.create(apiContext);
+  await classification.create(apiContext);
+  await tag.create(apiContext);
+
+  // Setup permissions
+  const dataConsumerPolicy = new PolicyClass();
+  const dataConsumerRole = new RolesClass();
+
+  // Create domain access policy
+  const matchTagRule = [
+    {
+      name: 'Hidden from Non Admins',
+      description: '',
+      resources: ['All'],
+      operations: ['All'],
+      effect: 'deny',
+      condition: `matchAllTags('${tag.responseData.fullyQualifiedName}')`,
+    },
+  ];
+
+  await dataConsumerPolicy.create(apiContext, matchTagRule);
+  await dataConsumerRole.create(apiContext, [
+    dataConsumerPolicy.responseData.name,
+  ]);
+
+  // Create team for the user
+  const dataConsumerTeam = new TeamClass({
+    name: `PW_data_consumer_team-${id}`,
+    displayName: `PW Data Consumer Team ${id}`,
+    description: 'playwright data consumer team description',
+    teamType: 'Group',
+    users: [dataConsumerUser.responseData.id ?? ''],
+    defaultRoles: [dataConsumerRole.responseData.id ?? ''],
+  });
+
+  await dataConsumerTeam.create(apiContext);
+
+  // Set domain ownership
+  await (isGlossary ? glossary1 : glossaryTerm1).patch(apiContext, [
+    {
+      op: 'add',
+      path: '/tags/0',
+      value: {
+        tagFQN: tag.responseData.fullyQualifiedName,
+        source: 'Classification',
+      },
+    },
+  ]);
+
+  // Return cleanup function and all created resources
+  const cleanup = async (apiContext1: APIRequestContext) => {
+    await glossaryTerm1.delete(apiContext);
+    await glossary1.delete(apiContext);
+    await dataConsumerUser.delete(apiContext1);
+    await dataConsumerTeam.delete(apiContext1);
+    await dataConsumerPolicy.delete(apiContext1);
+    await dataConsumerRole.delete(apiContext1);
+  };
+
+  return {
+    dataConsumerUser,
+    glossary1,
+    glossaryTerm1,
+    dataConsumerTeam,
+    dataConsumerPolicy,
+    dataConsumerRole,
+    cleanup,
+  };
+};
+
+export const performExpandAll = async (page: Page) => {
+  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  await page.getByTestId('expand-collapse-all-button').click();
+  await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };

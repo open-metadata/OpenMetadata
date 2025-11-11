@@ -38,7 +38,6 @@ import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
-import i18next, { t } from 'i18next';
 import {
   isEmpty,
   isEqual,
@@ -49,7 +48,7 @@ import {
   trim,
   uniqBy,
 } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -63,8 +62,9 @@ import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
+  DATA_CONTRACT_STATUS_OPTIONS,
+  DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
@@ -103,12 +103,15 @@ import {
   ModifiedDestination,
   ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
+import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { showSuccessToast } from '../ToastUtils';
+import { getTermQuery } from '../SearchUtils';
+import { showErrorToast, showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -130,27 +133,27 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
-      return i18next.t('label.fqn-uppercase');
+      return t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return i18next.t('label.owner-plural');
+      return t('label.owner-plural');
     case 'matchAnyEventType':
-      return i18next.t('label.event-type');
+      return t('label.event-type');
     case 'matchTestResult':
-      return i18next.t('label.test-entity', {
-        entity: i18next.t('label.result-plural'),
+      return t('label.test-entity', {
+        entity: t('label.result-plural'),
       });
     case 'matchUpdatedBy':
-      return i18next.t('label.updated-by');
+      return t('label.updated-by');
     case 'matchAnyFieldChange':
-      return i18next.t('label.field-change');
+      return t('label.field-change');
     case 'matchPipelineState':
-      return i18next.t('label.pipeline-state');
+      return t('label.pipeline-state');
     case 'matchIngestionPipelineState':
-      return i18next.t('label.pipeline-state');
+      return t('label.pipeline-state');
     case 'matchAnySource':
-      return i18next.t('label.source-match');
+      return t('label.source-match');
     case 'matchAnyEntityId':
-      return i18next.t('label.entity-id-match');
+      return t('label.entity-id-match');
     default:
       return '';
   }
@@ -168,7 +171,7 @@ export const listLengthValidator =
     if (!list || list.length < minLengthRequired) {
       return Promise.reject(
         new Error(
-          i18next.t('message.length-validator-error', {
+          t('message.length-validator-error', {
             length: minLengthRequired,
             field: name,
           })
@@ -184,17 +187,17 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case SubscriptionType.ActivityFeed:
-      return i18next.t('label.activity-feed-plural');
+      return t('label.activity-feed-plural');
     case SubscriptionType.Email:
-      return i18next.t('label.email');
+      return t('label.email');
     case SubscriptionType.Webhook:
-      return i18next.t('label.webhook');
+      return t('label.webhook');
     case SubscriptionType.Slack:
-      return i18next.t('label.slack');
+      return t('label.slack');
     case SubscriptionType.MSTeams:
-      return i18next.t('label.ms-team-plural');
+      return t('label.ms-team-plural');
     case SubscriptionType.GChat:
-      return i18next.t('label.g-chat');
+      return t('label.g-chat');
     default:
       return '';
   }
@@ -203,9 +206,9 @@ export const getAlertActionTypeDisplayName = (
 export const getDisplayNameForEntities = (entity: string) => {
   switch (entity) {
     case 'kpi':
-      return i18next.t('label.kpi-uppercase');
+      return t('label.kpi-uppercase');
     case 'mlmodel':
-      return i18next.t('label.ml-model');
+      return t('label.ml-model');
     default:
       return startCase(entity);
   }
@@ -216,31 +219,29 @@ export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const searchEntity = async ({
   searchText,
   searchIndex,
-  filters,
+  queryFilter,
   showDisplayNameAsLabel = true,
   setSourceAsValue = false,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
-  filters?: string;
+  queryFilter?: Record<string, unknown>;
   showDisplayNameAsLabel?: boolean;
   setSourceAsValue?: boolean;
 }) => {
   try {
-    const response = await searchData(
-      searchText,
-      1,
-      PAGE_SIZE_LARGE,
-      filters ?? '',
-      '',
-      '',
-      searchIndex
-    );
+    const response = await searchQuery({
+      query: searchText,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_LARGE,
+      queryFilter,
+      searchIndex,
+    });
     const searchIndexEntityTypeMapping =
       searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
-      response.data.hits.hits.map((d) => {
+      response.hits.hits.map((d) => {
         // Providing an option to hide display names, for inputs like 'fqnList',
         // where users can input text alongside selection options.
         // This helps avoid displaying the same option twice
@@ -264,6 +265,13 @@ export const searchEntity = async ({
       'label'
     );
   } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', {
+        entity: t('label.search'),
+      })
+    );
+
     return [];
   }
 };
@@ -288,7 +296,9 @@ const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    filters: 'isBot:false',
+    queryFilter: getTermQuery({
+      isBot: 'false',
+    }),
   });
 };
 
@@ -296,7 +306,9 @@ const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
-    filters: 'isBot:false',
+    queryFilter: getTermQuery({
+      isBot: 'false',
+    }),
   });
 };
 
@@ -351,20 +363,41 @@ export const getSupportedFilterOptions = (
   }));
 
 export const getConnectionTimeoutField = () => (
+  <Row align="middle">
+    <Col span={7}>{`${t('label.connection-timeout')} (${t(
+      'label.second-plural'
+    )})`}</Col>
+    <Col span={1}>:</Col>
+    <Col data-testid="connection-timeout" span={16}>
+      <Form.Item name="timeout">
+        <Input
+          data-testid="connection-timeout-input"
+          defaultValue={10}
+          placeholder={`${t('label.connection-timeout')} (${t(
+            'label.second-plural'
+          )})`}
+          type="number"
+        />
+      </Form.Item>
+    </Col>
+  </Row>
+);
+
+export const getReadTimeoutField = () => (
   <>
-    <Row align="middle">
-      <Col span={7}>{`${t('label.connection-timeout')} (${t(
-        'label.second-plural'
-      )})`}</Col>
+    <Row align="middle" className="mt-4">
+      <Col span={7}>{`${t('label.read-type', {
+        type: t('label.timeout'),
+      })} (${t('label.second-plural')})`}</Col>
       <Col span={1}>:</Col>
-      <Col data-testid="connection-timeout" span={16}>
-        <Form.Item name="timeout">
+      <Col data-testid="read-timeout" span={16}>
+        <Form.Item name="readTimeout">
           <Input
-            data-testid="connection-timeout-input"
-            defaultValue={10}
-            placeholder={`${t('label.connection-timeout')} (${t(
-              'label.second-plural'
-            )})`}
+            data-testid="read-timeout-input"
+            defaultValue={DEFAULT_READ_TIMEOUT}
+            placeholder={`${t('label.read-type', {
+              type: t('label.timeout'),
+            })} (${t('label.second-plural')})`}
             type="number"
           />
         </Form.Item>
@@ -402,7 +435,10 @@ export const getDestinationConfigField = (
               />
             </Form.Item>
           </Col>
-          {type === SubscriptionType.Webhook && (
+          {(type === SubscriptionType.Webhook ||
+            type === SubscriptionType.Slack ||
+            type === SubscriptionType.MSTeams ||
+            type === SubscriptionType.GChat) && (
             <Col span={24}>
               <Collapse
                 className="webhook-config-collapse"
@@ -507,6 +543,96 @@ export const getDestinationConfigField = (
                                           ]}>
                                           <Input
                                             data-testid={`header-value-input-${name}`}
+                                            placeholder={t('label.value')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                    </Row>
+                                  </div>
+
+                                  <Button
+                                    icon={<CloseOutlined />}
+                                    onClick={() => remove(name)}
+                                  />
+                                </div>
+                              </Col>
+                            ))}
+
+                            <Col span={24}>
+                              <Form.ErrorList errors={errors} />
+                            </Col>
+                          </Row>
+                        )}
+                      </Form.List>
+                    </Col>
+                    <Col span={24}>
+                      <Form.List name={[fieldName, 'config', 'queryParams']}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <Row
+                            data-testid={`webhook-${fieldName}-query-params-list`}
+                            gutter={[8, 8]}
+                            key="queryParams">
+                            <Col span={24}>
+                              <Row align="middle" justify="space-between">
+                                <Col>
+                                  <Typography.Text>
+                                    {`${t('label.query-parameter-plural')}:`}
+                                  </Typography.Text>
+                                </Col>
+                                <Col>
+                                  <Col>
+                                    <Button
+                                      icon={<PlusOutlined />}
+                                      type="primary"
+                                      onClick={() => add({})}
+                                    />
+                                  </Col>
+                                </Col>
+                              </Row>
+                            </Col>
+                            {fields.map(({ key, name }) => (
+                              <Col key={key} span={24}>
+                                <div className="flex gap-4">
+                                  <div className="flex-1 w-min-0">
+                                    <Row gutter={[8, 8]}>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'key']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.key'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`query-param-key-input-${name}`}
+                                            placeholder={t('label.key')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'value']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.value'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`query-param-value-input-${name}`}
                                             placeholder={t('label.value')}
                                           />
                                         </Form.Item>
@@ -654,6 +780,14 @@ export const getMessageFromArgumentName = (argumentName: string) => {
           }),
         }),
       });
+    case 'entityNameList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.entity'),
+          }),
+        }),
+      });
     case 'ownerNameList':
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
@@ -704,6 +838,12 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
           entity: t('label.test-case-result'),
+        }),
+      });
+    case 'contractStatusList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.data-contract-status'),
         }),
       });
     case 'testSuiteList':
@@ -781,6 +921,23 @@ export const getFieldByArgumentType = (
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.table-lowercase'),
+          })}
+        />
+      );
+
+      break;
+
+    case 'entityNameList':
+      field = (
+        <AsyncSelect
+          api={getTableSuggestions}
+          className="w-full"
+          data-testid="entity-name-select"
+          maxTagTextLength={45}
+          mode="tags"
+          optionFilterProp="label"
+          placeholder={t('label.search-by-type', {
+            type: t('label.entity-lowercase'),
           })}
         />
       );
@@ -914,6 +1071,21 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'contractStatusList':
+      field = (
+        <Select
+          className="w-full"
+          data-testid="contract-status-select"
+          mode="multiple"
+          options={DATA_CONTRACT_STATUS_OPTIONS}
+          placeholder={t('label.select-field', {
+            field: t('label.data-contract-status'),
+          })}
+        />
+      );
+
+      break;
+
     case 'testSuiteList':
       field = (
         <AsyncSelect
@@ -1020,6 +1192,36 @@ export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
         value,
       }));
 
+/**
+ * @description Function to get query params webhook config converted from an array
+ */
+export const getConfigQueryParamsObjectFromArray = (
+  queryParams?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  queryParams?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get query params webhook config converted from an object
+ */
+export const getConfigQueryParamsArrayFromObject = (
+  queryParams?: Webhook['queryParams']
+) =>
+  isUndefined(queryParams)
+    ? queryParams
+    : Object.entries(queryParams).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
@@ -1027,12 +1229,16 @@ export const getFormattedDestinations = (
     const { destinationType, config, ...otherData } = destination;
 
     const headers = getConfigHeaderObjectFromArray(config?.headers);
+    const queryParams = getConfigQueryParamsObjectFromArray(
+      config?.queryParams
+    );
 
     return {
       ...otherData,
       config: {
         ...config,
         headers: isEmpty(headers) ? undefined : headers,
+        queryParams: isEmpty(queryParams) ? undefined : queryParams,
       },
     };
   });
@@ -1073,9 +1279,15 @@ export const handleAlertSave = async ({
         config: {
           ...d.config,
           headers: getConfigHeaderObjectFromArray(d.config?.headers),
+          queryParams: getConfigQueryParamsObjectFromArray(
+            d.config?.queryParams
+          ),
         },
         category: d.category,
         timeout: data.timeout,
+        readTimeout: data.readTimeout,
+        notifyDownstream: d.notifyDownstream,
+        downstreamDepth: d.downstreamDepth,
       };
     });
     let alertDetails;
@@ -1107,7 +1319,7 @@ export const handleAlertSave = async ({
       alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
     } else {
       // Remove timeout from alert object since it's only for UI
-      const { timeout, ...finalData } = data;
+      const { timeout, readTimeout, ...finalData } = data;
 
       alertDetails = await createAlertAPI({
         ...finalData,
@@ -1194,7 +1406,8 @@ export const getFilteredDestinationOptions = (
 export const getSourceOptionsFromResourceList = (
   resources: Array<string>,
   showCheckbox?: boolean,
-  selectedResource?: string[]
+  selectedResource?: string[],
+  showIcon?: boolean
 ) =>
   resources.map((resource) => {
     const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
@@ -1207,7 +1420,9 @@ export const getSourceOptionsFromResourceList = (
           {showCheckbox && (
             <Checkbox checked={selectedResource?.includes(resource)} />
           )}
-          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          {sourceIcon && showIcon && (
+            <div className="d-flex h-4 w-4">{sourceIcon}</div>
+          )}
           <span>{getEntityNameLabel(resource ?? '')}</span>
         </div>
       ),
@@ -1340,6 +1555,7 @@ export const getAlertExtraInfo = (
   return (
     <>
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="total-events-count"
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
@@ -1347,6 +1563,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.totalEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="pending-events-count"
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
@@ -1354,6 +1571,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.pendingEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="failed-events-count"
         label={t('label.failed-entity', {
           entity: t('label.event-plural'),
@@ -1396,6 +1614,7 @@ export const getModifiedAlertDataForForm = (
   return {
     ...alertData,
     timeout: alertData.destinations[0].timeout ?? 10,
+    readTimeout: alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
     destinations: alertData.destinations.map((destination) => {
       const isExternalDestination =
         destination.category === SubscriptionCategory.External;
@@ -1408,6 +1627,9 @@ export const getModifiedAlertDataForForm = (
         config: {
           ...destination.config,
           headers: getConfigHeaderArrayFromObject(destination.config?.headers),
+          queryParams: getConfigQueryParamsArrayFromObject(
+            destination.config?.queryParams
+          ),
         },
       };
     }),

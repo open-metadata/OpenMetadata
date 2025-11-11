@@ -13,7 +13,7 @@
 
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -92,7 +92,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="entity-active-user-card"
       id={DataInsightChartType.DailyActiveUsers}
       loading={isLoading}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -19,7 +18,6 @@ import {
   MOCK_GLOSSARY,
 } from '../../../mocks/Glossary.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
-import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import GlossaryHeader from './GlossaryHeader.component';
@@ -44,11 +42,11 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryFqn: 'glossaryFqn',
     action: 'action',
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock(
@@ -80,11 +78,10 @@ jest.mock('../../Entity/EntityHeader/EntityHeader.component', () => ({
 jest.mock(
   '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component',
   () => {
-    return jest.fn().mockImplementation(({ onCancel, onSubmit }) => (
+    return jest.fn().mockImplementation(({ onCancel }) => (
       <div data-testid="glossary-change-parent-modal">
         <span>ChangeParentHierarchyComponent</span>
         <button onClick={onCancel}>Cancel_Button</button>
-        <button onClick={() => onSubmit('test.data')}>Submit_Button</button>
       </div>
     ));
   }
@@ -165,7 +162,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTermsById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
-  patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  moveGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 const mockOnDelete = jest.fn();
@@ -324,33 +321,5 @@ describe('GlossaryHeader component', () => {
     expect(
       screen.queryByText('ChangeParentHierarchyComponent')
     ).not.toBeInTheDocument();
-  });
-
-  it('should call onSubmit of ChangeParentHierarchy Component along with the patch API', async () => {
-    render(
-      <GlossaryHeader
-        updateVote={mockOnUpdateVote}
-        onAddGlossaryTerm={mockOnDelete}
-        onDelete={mockOnDelete}
-      />
-    );
-
-    expect(
-      screen.queryByText('ChangeParentHierarchyComponent')
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.change-parent-entity'));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Submit_Button'));
-    });
-
-    expect(patchGlossaryTerm).toHaveBeenCalled();
   });
 });

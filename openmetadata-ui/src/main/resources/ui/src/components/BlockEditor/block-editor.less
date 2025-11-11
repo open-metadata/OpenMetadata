@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 @border-radius: 6px;
 @border-color: #e8e8ed;
@@ -18,7 +18,7 @@
 @hover-bg: #00000005;
 @callout-bg: #f8f8fa;
 @callout-warning-bg: #fff3dc;
-@callout-info-bg: #d1e9ff;
+@callout-info-bg: @primary-1;
 @callout-danger-bg: #ff4c3b33;
 @callout-border: #afafc1;
 
@@ -275,7 +275,7 @@
   align-items: center;
   justify-content: center;
   border: @global-border;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   width: 100%;
 
   .more-menu-items > .ant-btn-compact-first-item,
@@ -289,7 +289,7 @@
   padding: 12px 0px;
   background-color: @white;
   border: @global-border;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   overflow-y: auto;
   .slash-command-item {
     padding: 6px;
@@ -301,6 +301,9 @@
       width: 32px;
       height: 32px;
       box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
+      &.svg-image {
+        padding: 4px;
+      }
     }
   }
 }
@@ -311,7 +314,7 @@
   padding: 12px 0px;
   background-color: @white;
   border: @global-border;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   overflow-y: auto;
   .mention-item {
     padding: 6px;
@@ -335,7 +338,7 @@
   padding: 4px;
   background: @white;
   border: @global-border;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
 
   button,
   a {
@@ -412,21 +415,6 @@
     fill: @primary-color;
   }
 }
-.image-placeholder {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  background-color: @grey-2;
-  border-width: 2px;
-  border-style: dashed;
-  border-radius: 4px;
-  user-select: none;
-  cursor: pointer;
-  padding: 1.5rem;
-  width: 100%;
-  font-size: 20px;
-}
 
 .om-image-node-wrapper {
   border-radius: 4px;
@@ -436,6 +424,10 @@
 
 .om-image-node-popover {
   min-width: 400px;
+
+  .ant-popover-inner-content {
+    width: auto;
+  }
 }
 .om-node-image-upload > .ant-upload-select {
   width: 100%;
@@ -517,7 +509,7 @@ body .om-image-node-embed-link-btn-col {
   padding: 4px 8px;
   background-color: @white;
   border: @global-border;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   button {
     padding: 0px;
   }

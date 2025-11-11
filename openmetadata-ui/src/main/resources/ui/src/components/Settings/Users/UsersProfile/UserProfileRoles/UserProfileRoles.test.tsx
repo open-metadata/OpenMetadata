@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
@@ -184,12 +183,8 @@ describe('Test User Profile Roles Component', () => {
       screen.getByTestId('user-profile-edit-roles-cancel-button')
     );
 
-    expect(
-      screen.getByText('37a00e0b-383c-4451-b63f-0bad4c745abc')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('afc5583c-e268-4f6c-a638-a876d04ebaa1')
-    ).toBeInTheDocument();
+    expect(screen.getByText('37a00e0b-383...')).toBeInTheDocument();
+    expect(screen.getByText('afc5583c-e26...')).toBeInTheDocument();
 
     expect(screen.queryByText('admin')).not.toBeInTheDocument();
   });

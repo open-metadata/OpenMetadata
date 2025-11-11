@@ -23,9 +23,9 @@ export interface NavigationItem {
      */
     id: string;
     /**
-     * Order of the navigation item in the menu.
+     * Determine if item is visible or not
      */
-    order: number;
+    isHidden?: boolean;
     /**
      * Reference to a Page ID that this navigation item links to.
      */
@@ -49,9 +49,9 @@ export interface ChildElement {
      */
     id: string;
     /**
-     * Order of the navigation item in the menu.
+     * Determine if item is visible or not
      */
-    order: number;
+    isHidden?: boolean;
     /**
      * Reference to a Page ID that this navigation item links to.
      */

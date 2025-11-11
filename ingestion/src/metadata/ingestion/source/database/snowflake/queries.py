@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,33 @@ SQL Queries used during ingestion
 """
 
 import textwrap
+
+SNOWFLAKE_GET_TABLE_NAMES = """
+    select TABLE_NAME, NULL, TABLE_TYPE from information_schema.tables
+    where TABLE_SCHEMA = '{schema}'
+    AND COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    AND {include_views}
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
+select TABLE_NAME, DELETED, TABLE_TYPE
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        TABLE_TYPE,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and {include_views}
+)
+where ROW_NUMBER = 1
+"""
 
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
@@ -31,18 +58,32 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
     {filters}
+    ORDER BY start_time
     LIMIT {result_limit}
+    OFFSET {offset}
     """
 )
 
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
-SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
+SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
+"""
+)
+
+SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_NAME as SCHEMA_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA IS NULL
+      and OBJECT_NAME IS NOT NULL
+      and COLUMN_NAME IS NULL
+      and DOMAIN = 'SCHEMA'
 """
 )
 
@@ -60,7 +101,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
       and TABLE_SCHEMA = '{schema}'
       and TABLE_TYPE = 'EXTERNAL TABLE'
@@ -86,7 +127,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
@@ -111,7 +152,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where  TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'VIEW'
@@ -134,13 +175,25 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where  TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'MATERIALIZED VIEW'
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
 )
 where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STREAM = """
+SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
 """
 
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
@@ -159,7 +212,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
@@ -185,7 +238,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
@@ -250,6 +303,10 @@ SNOWFLAKE_TEST_GET_VIEWS = """
 SELECT TABLE_NAME FROM "{database_name}".information_schema.views LIMIT 1
 """
 
+SNOWFLAKE_TEST_GET_STREAMS = """
+SHOW STREAMS IN DATABASE "{database_name}"
+"""
+
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
 
 
@@ -281,13 +338,13 @@ SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
 select
 table_name as table_name,
 created as created_at
-from snowflake.account_usage.tables
+from {account_usage}.tables
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
 """
 )
 
-SNOWFLAKE_GET_STORED_PROCEDURES = textwrap.dedent(
+SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS = textwrap.dedent(
     """
 SELECT
   PROCEDURE_NAME AS name,
@@ -301,11 +358,9 @@ FROM {account_usage}.PROCEDURES
 WHERE PROCEDURE_CATALOG = '{database_name}'
   AND PROCEDURE_SCHEMA = '{schema_name}'
   AND DELETED IS NULL
-    """
-)
 
-SNOWFLAKE_GET_FUNCTIONS = textwrap.dedent(
-    """
+UNION ALL
+
 SELECT
   FUNCTION_NAME AS name,
   FUNCTION_OWNER AS owner,
@@ -389,6 +444,23 @@ ORDER BY PROCEDURE_START_TIME DESC
 SNOWFLAKE_GET_TABLE_DDL = """
 SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
 """
+
+SNOWFLAKE_GET_VIEW_DEFINITION = """
+SELECT table_name "view_name",
+    table_schema "schema",
+    view_definition "view_def"
+FROM information_schema.views
+WHERE view_definition is not null
+"""
+
+SNOWFLAKE_GET_VIEW_DDL = """
+SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
+"""
+
+SNOWFLAKE_GET_STREAM_DEFINITION = """
+SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
+"""
+
 SNOWFLAKE_QUERY_LOG_QUERY = """
     SELECT
         QUERY_ID,

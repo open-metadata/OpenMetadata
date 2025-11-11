@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -54,6 +53,14 @@ jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: {},
+    onUpdate: jest.fn(),
+    filterWidgets: jest.fn(),
+  }),
+}));
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>

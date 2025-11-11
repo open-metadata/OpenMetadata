@@ -42,10 +42,22 @@
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
+    "billingProjectId": {
+      "title": "Billing Project ID",
+      "description": "Billing Project ID",
+      "type": "string",
+      "default": null
+    },
     "credentials": {
       "title": "GCP Credentials",
       "description": "GCP Credentials",
       "$ref": "../../../../security/credentials/gcpCredentials.json"
+    },
+    "includePolicyTags": {
+      "title": "Include Policy Tags",
+      "description": "Option to include policy tags as part of column description.",
+      "type": "boolean",
+      "default": true
     },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
@@ -76,7 +88,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -129,8 +141,8 @@
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
     "costPerTB": {
       "title": "Cost Per TiB",

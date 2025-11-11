@@ -16,7 +16,7 @@ import { Button, List, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
@@ -25,6 +25,7 @@ import {
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
+import { useRovingFocus } from '../../../hooks/useRovingFocus';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
@@ -77,12 +78,13 @@ export const SelectableList = ({
   emptyPlaceholderText,
   height = ADD_USER_CONTAINER_HEIGHT,
 }: SelectableListProps) => {
+  const [listOptions, setListOptions] = useState<EntityReference[]>([]);
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
   const { t } = useTranslation();
   const [pagingInfo, setPagingInfo] = useState<Paging>(pagingObject);
 
-  const [selectedItemsInternal, setSelectedItemInternal] = useState<
+  const [selectedItemsInternal, setSelectedItemsInternal] = useState<
     Map<string, EntityReference>
   >(() => {
     const selectedItemMap = new Map();
@@ -96,15 +98,22 @@ export const SelectableList = ({
   const [fetchOptionFailed, setFetchOptionFailed] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  const checkActiveSelectedItem = (item: EntityReference) => {
+    return (
+      selectedItemsInternal.has(item.id) ||
+      selectedItemsInternal.has(item.name ?? '') // Name in case of Bulk Action, since we are using the name as the id
+    );
+  };
+
   useEffect(() => {
-    setSelectedItemInternal(() => {
+    setSelectedItemsInternal(() => {
       const selectedItemMap = new Map();
 
       selectedItems.forEach((item) => selectedItemMap.set(item.id, item));
 
       return selectedItemMap;
     });
-  }, [setSelectedItemInternal, selectedItems]);
+  }, [selectedItems]);
 
   const sortUniqueListFromSelectedList = useCallback(
     (items: Map<string, EntityReference>, listOptions: EntityReference[]) => {
@@ -114,7 +123,7 @@ export const SelectableList = ({
 
       return [
         ...items.values(),
-        ...listOptions.filter((option) => !items.has(option.id)),
+        ...listOptions.filter((option) => !checkActiveSelectedItem(option)),
       ];
     },
     [selectedItemsInternal]
@@ -125,12 +134,10 @@ export const SelectableList = ({
     try {
       const { data, paging } = await fetchOptions('');
 
-      setUniqueOptions(
-        sortUniqueListFromSelectedList(selectedItemsInternal, data)
-      );
+      setListOptions(data);
       setPagingInfo(paging);
       fetchOptionFailed && setFetchOptionFailed(false);
-    } catch (error) {
+    } catch {
       setFetchOptionFailed(true);
     } finally {
       setFetching(false);
@@ -140,6 +147,12 @@ export const SelectableList = ({
   useEffect(() => {
     fetchListOptions();
   }, []);
+
+  useEffect(() => {
+    setUniqueOptions(
+      sortUniqueListFromSelectedList(selectedItemsInternal, listOptions)
+    );
+  }, [listOptions]);
 
   const handleSearch = useCallback(
     async (search: string) => {
@@ -182,15 +195,18 @@ export const SelectableList = ({
   const handleUpdate = useCallback(
     async (updateItems: EntityReference[]) => {
       setUpdating(true);
-      await onUpdate?.(updateItems);
-      setUpdating(false);
+      try {
+        await onUpdate?.(updateItems);
+      } finally {
+        setUpdating(false);
+      }
     },
     [setUpdating, onUpdate]
   );
 
   const selectionHandler = (item: EntityReference) => {
     if (multiSelect) {
-      setSelectedItemInternal((itemsMap) => {
+      setSelectedItemsInternal((itemsMap) => {
         const id = item.id;
         const newItemsMap = cloneDeep(itemsMap);
         if (newItemsMap.has(id)) {
@@ -210,6 +226,11 @@ export const SelectableList = ({
     }
   };
 
+  const { containerRef, getItemProps } = useRovingFocus({
+    totalItems: uniqueOptions.length,
+    onSelect: (index) => selectionHandler(uniqueOptions[index]),
+  });
+
   const handleUpdateClick = async () => {
     handleUpdate([...selectedItemsInternal.values()]);
   };
@@ -219,7 +240,7 @@ export const SelectableList = ({
   }, [handleUpdate]);
 
   const handleClearAllClick = () => {
-    setSelectedItemInternal(new Map());
+    setSelectedItemsInternal(new Map());
     onChange?.([]);
   };
 
@@ -278,54 +299,61 @@ export const SelectableList = ({
       }}
       size="small">
       {uniqueOptions.length > 0 && (
-        <VirtualList
-          className="selectable-list-virtual-list"
-          data={uniqueOptions}
-          height={height}
-          itemHeight={40}
-          itemKey="id"
-          onScroll={onScroll}>
-          {(item) => (
-            <List.Item
-              className={classNames('selectable-list-item', 'cursor-pointer', {
-                active: selectedItemsInternal.has(item.id),
-              })}
-              extra={
-                multiSelect ? (
-                  <CheckOutlined
-                    className={classNames('selectable-list-item-checkmark', {
-                      active: selectedItemsInternal.has(item.id),
-                    })}
-                  />
-                ) : (
-                  selectedItemsInternal.has(item.id) && (
-                    <RemoveIcon
-                      removeIconTooltipLabel={removeIconTooltipLabel}
-                      removeOwner={handleRemoveClick}
+        <div ref={containerRef}>
+          <VirtualList
+            className="selectable-list-virtual-list"
+            data={uniqueOptions}
+            height={height}
+            itemHeight={40}
+            itemKey="id"
+            onScroll={onScroll}>
+            {(item, index) => (
+              <List.Item
+                className={classNames(
+                  'selectable-list-item',
+                  'cursor-pointer',
+                  {
+                    active: checkActiveSelectedItem(item),
+                  }
+                )}
+                extra={
+                  multiSelect ? (
+                    <CheckOutlined
+                      className={classNames('selectable-list-item-checkmark', {
+                        active: checkActiveSelectedItem(item),
+                      })}
                     />
+                  ) : (
+                    checkActiveSelectedItem(item) && (
+                      <RemoveIcon
+                        removeIconTooltipLabel={removeIconTooltipLabel}
+                        removeOwner={handleRemoveClick}
+                      />
+                    )
                   )
-                )
-              }
-              key={item.id}
-              title={getEntityName(item)}
-              onClick={(e) => {
-                // Used to stop click propagation event anywhere in the component to parent
-                // TeamDetailsV1 collapsible panel
-                e.stopPropagation();
-                selectionHandler(item);
-              }}>
-              {customTagRenderer ? (
-                customTagRenderer(item)
-              ) : (
-                <UserTag
-                  avatarType="outlined"
-                  id={item.name ?? ''}
-                  name={getEntityName(item)}
-                />
-              )}
-            </List.Item>
-          )}
-        </VirtualList>
+                }
+                key={item.id}
+                {...getItemProps(index)}
+                title={getEntityName(item)}
+                onClick={(e) => {
+                  // Used to stop click propagation event anywhere in the component to parent
+                  // TeamDetailsV1 collapsible panel
+                  e.stopPropagation();
+                  selectionHandler(item);
+                }}>
+                {customTagRenderer ? (
+                  customTagRenderer(item)
+                ) : (
+                  <UserTag
+                    avatarType="outlined"
+                    id={item.name ?? ''}
+                    name={getEntityName(item)}
+                  />
+                )}
+              </List.Item>
+            )}
+          </VirtualList>
+        </div>
       )}
     </List>
   );

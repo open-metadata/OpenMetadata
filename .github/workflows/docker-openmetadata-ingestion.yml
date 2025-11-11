@@ -53,3 +53,29 @@ jobs:
           push: true
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./ingestion/Dockerfile
+
+      # Publish the openmetadata/ingestion-slim image with fewer dependencies
+      - name: Prepare Slim for Docker Build&Push
+        id: prepare-sim
+        uses: ./.github/actions/prepare-for-docker-build-and-push
+        with:
+          image: openmetadata/ingestion-slim
+          tag: ${{ inputs.docker_release_tag }}
+          push_latest: ${{ inputs.push_latest_tag_to_release }}
+          is_ingestion: true
+          release_version: ${{ inputs.pypi_release_version }}
+          dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+
+      - name: Build and push Slim if event is workflow_dispatch and input is checked
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.prepare-sim.outputs.tags }}
+          file: ./ingestion/Dockerfile
+          build-args: |
+            INGESTION_DEPENDENCY=slim

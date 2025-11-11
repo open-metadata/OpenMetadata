@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useCallback } from 'react';
+import { Col, Row } from 'antd';
+import { compare } from 'fast-json-patch';
+import { kebabCase } from 'lodash';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import gridBgImg from '../../assets/img/grid-bg-img.png';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -29,6 +31,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
+import './customize-details-page.less';
 import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
 
 export const CustomizeDetailsPage = ({
@@ -36,7 +39,7 @@ export const CustomizeDetailsPage = ({
   onSaveLayout,
 }: CustomizeMyDataProps) => {
   const { t } = useTranslation();
-  const { currentPage, currentPageType } = useCustomizeStore();
+  const { currentPage, currentPageType, getPage } = useCustomizeStore();
 
   const handleReset = useCallback(async () => {
     await onSaveLayout();
@@ -53,39 +56,58 @@ export const CustomizeDetailsPage = ({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  // Disable save if there are no diffs between original and edited page
+  const disableSave = useMemo(() => {
+    if (!currentPageType) {
+      return true;
+    }
+
+    const originalPage =
+      getPage(currentPageType) ?? ({ pageType: currentPageType } as Page);
+    const editedPage = (currentPage ??
+      ({ pageType: currentPageType } as Page)) as Page;
+
+    const jsonPatch = compare(originalPage, editedPage);
+
+    return jsonPatch.length === 0;
+  }, [currentPageType, currentPage, getPage]);
+
   if (!currentPageType) {
     return null;
   }
 
   return (
     <PageLayoutV1
-      mainContainerClassName="p-t-0"
-      pageContainerStyle={{
-        backgroundImage: `url(${gridBgImg})`,
-      }}
+      className="bg-grey"
       pageTitle={t('label.customize-entity', {
-        entity: t('label.landing-page'),
+        entity: t('label.' + kebabCase(currentPageType)),
       })}>
-      <CustomizablePageHeader
-        personaName={getEntityName(personaDetails)}
-        onReset={handleReset}
-        onSave={handleSave}
-      />
-      <div className="m-md">
-        <DataAssetsHeader
-          isCustomizedView
-          dataAsset={entityDummyData as Table}
-          entityType={
-            PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
-          }
-          permissions={{} as OperationPermission}
-          onDisplayNameUpdate={asyncNoop}
-          onOwnerUpdate={asyncNoop}
-          onRestoreDataAsset={asyncNoop}
-          onTierUpdate={asyncNoop}
-        />
-      </div>
-      <CustomizeTabWidget />
+      <Row className="customize-details-page" gutter={[0, 20]}>
+        <Col span={24}>
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={getEntityName(personaDetails)}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+        </Col>
+        <Col span={24}>
+          <DataAssetsHeader
+            isCustomizedView
+            dataAsset={entityDummyData as Table}
+            entityType={
+              PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
+            }
+            permissions={{} as OperationPermission}
+            onDisplayNameUpdate={asyncNoop}
+            onOwnerUpdate={asyncNoop}
+            onRestoreDataAsset={asyncNoop}
+            onTierUpdate={asyncNoop}
+          />
+        </Col>
+        {/* It will render cols inside the row */}
+        <CustomizeTabWidget />
+      </Row>
     </PageLayoutV1>
   );
 };

@@ -12,14 +12,14 @@
  */
 import { Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/success-badge.svg';
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import {
   UserCSVRecord,
@@ -103,7 +103,7 @@ export const UserImportResult = ({
         width: 300,
         render: (description: string) => {
           return (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               className="w-80"
               enableSeeMoreVariant={false}
               markdown={description}
@@ -202,7 +202,6 @@ export const UserImportResult = ({
 
   return (
     <Table
-      bordered
       className="vertical-top-align-td"
       columns={columns}
       data-testid="import-result-table"

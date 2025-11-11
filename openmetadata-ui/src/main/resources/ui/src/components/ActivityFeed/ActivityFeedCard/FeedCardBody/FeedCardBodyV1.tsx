@@ -14,7 +14,7 @@
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
@@ -164,10 +164,7 @@ const FeedCardBodyV1 = ({
 
   return (
     <div
-      className={classNames(
-        'feed-card-body bg-grey-5 p-sm rounded-6',
-        isEditPost ? '' : className
-      )}>
+      className={classNames('p-y-sm rounded-6', isEditPost ? '' : className)}>
       <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>

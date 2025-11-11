@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
@@ -51,39 +51,40 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -120,6 +121,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -144,6 +147,7 @@ import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -153,10 +157,8 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.util.email.TemplateConstants;
@@ -183,7 +185,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domains,personas,defaultPersona";
+  static final String FIELDS =
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -217,7 +220,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
@@ -264,8 +267,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String teamParam,
       @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -301,6 +304,73 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isBot != null) {
       filter.addQueryParam("isBot", String.valueOf(isBot));
     }
+    ResultList<User> users =
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    users.getData().forEach(user -> decryptOrNullify(securityContext, user));
+    return users;
+  }
+
+  @GET
+  @Path("/online")
+  @Operation(
+      operationId = "listOnlineUsers",
+      summary = "List online users",
+      description =
+          "Get a list of users who have been active within the specified time window. Admin access only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of online users",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserList.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Admin access required")
+      })
+  public ResultList<User> listOnlineUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Time window in minutes (default: 5). Examples: 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
+              schema = @Schema(type = "integer", example = "5"))
+          @QueryParam("timeWindow")
+          @DefaultValue("5")
+          int timeWindow,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of users before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of users after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    // Admin access check
+    authorizer.authorizeAdmin(securityContext);
+
+    // Calculate the timestamp threshold
+    long currentTimeMillis = System.currentTimeMillis();
+    long timeWindowMillis = timeWindow * 60 * 1000L; // Convert minutes to milliseconds
+    long thresholdTimestamp = currentTimeMillis - timeWindowMillis;
+
+    // Create filter for online users - uses both lastLoginTime and lastActivityTime
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
+    filter.addQueryParam("isBot", "false"); // Exclude bots from online users
+
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     users.getData().forEach(user -> decryptOrNullify(securityContext, user));
@@ -600,7 +670,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
         if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
-          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          User created =
+              addHref(
+                  uriInfo,
+                  repository.create(uriInfo, user.withLastLoginTime(System.currentTimeMillis())));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
           throw new CustomExceptionMessage(
@@ -650,12 +723,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
     if (isBasicAuth() && getSmtpSettings().getEnableSmtpServer()) {
       try {
-        authHandler.sendInviteMailToUser(
-            uriInfo,
-            user,
-            String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
-            create.getCreatePasswordType(),
-            create.getPassword());
+        SecurityConfigurationManager.getInstance()
+            .getAuthenticatorHandler()
+            .sendInviteMailToUser(
+                uriInfo,
+                user,
+                String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
+                create.getCreatePasswordType(),
+                create.getPassword());
       } catch (Exception ex) {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
@@ -707,7 +782,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
     }
-    PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
+    PutResponse<User> response =
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -743,7 +819,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    User updatedUser = repository.createOrUpdate(uriInfo, user).getEntity();
+    User updatedUser =
+        repository
+            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName())
+            .getEntity();
     jwtAuthMechanism =
         JsonUtils.convertValue(
             updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
@@ -780,7 +859,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
+    PutResponse<User> response =
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     // Invalidate Bot Token in Cache
     BotTokenCache.invalidateToken(user.getName());
@@ -890,6 +970,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
           authorizer.authorizeAdmin(securityContext);
           continue;
+        }
+        // Check if updating personaPreferences - users can only update their own
+        if (path.startsWith("/personaPreferences")) {
+          String authenticatedUserName = securityContext.getUserPrincipal().getName();
+          User authenticatedUser =
+              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+          if (!authenticatedUser.getId().equals(id)) {
+            throw new AuthorizationException("Users can only update their own persona preferences");
+          }
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
@@ -1005,6 +1094,81 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listUserAssets",
+      summary = "List assets owned by this user or their teams",
+      description =
+          "Get a paginated list of assets that are owned by this user or any of the teams they belong to. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+      })
+  public Response listUserAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{name}/assets")
+  @Operation(
+      operationId = "listUserAssetsByName",
+      summary = "List assets owned by this user or their teams by name",
+      description =
+          "Get a paginated list of assets that are owned by this user or any of the teams they belong to. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+      })
+  public Response listUserAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+  }
+
   @POST
   @Path("/signup")
   @Operation(
@@ -1017,8 +1181,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create)
       throws IOException {
-    User registeredUser = authHandler.registerUser(create);
-    authHandler.sendEmailVerification(uriInfo, registeredUser);
+    User registeredUser =
+        SecurityConfigurationManager.getInstance().getAuthenticatorHandler().registerUser(create);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .sendEmailVerification(uriInfo, registeredUser);
     return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
         .entity(registeredUser)
         .build();
@@ -1041,7 +1208,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("token")
           String token) {
-    authHandler.confirmEmailRegistration(uriInfo, token);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .confirmEmailRegistration(uriInfo, token);
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
@@ -1067,7 +1236,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
-    authHandler.resendRegistrationToken(uriInfo, registeredUser);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .resendRegistrationToken(uriInfo, registeredUser);
     return Response.status(Response.Status.OK)
         .entity("Email Verification Mail Sent. Please check your Mailbox.")
         .build();
@@ -1101,11 +1272,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     try {
       // send a mail to the User with the Update
-      authHandler.sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getPasswordResetSubject(),
-          TemplateConstants.RESET_LINK_TEMPLATE);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .sendPasswordResetLink(
+              uriInfo,
+              registeredUser,
+              EmailUtil.getPasswordResetSubject(),
+              TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -1133,7 +1306,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request)
       throws IOException {
-    authHandler.resetUserPasswordWithToken(uriInfo, request);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .resetUserPasswordWithToken(uriInfo, request);
     return Response.status(200).entity("Password Changed Successfully").build();
   }
 
@@ -1159,34 +1334,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid ChangePasswordRequest request)
       throws IOException {
     if (request.getRequestType() == SELF) {
-      authHandler.changeUserPwdWithOldPwd(
-          uriInfo, securityContext.getUserPrincipal().getName(), request);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
       authorizer.authorizeAdmin(securityContext);
-      authHandler.changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
     }
     return Response.status(OK).entity("Password Updated Successfully").build();
-  }
-
-  @POST
-  @Path("/checkEmailInUse")
-  @Operation(
-      operationId = "checkEmailInUse",
-      summary = "Check if a email is already in use",
-      description = "Check if a email is already in use",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Return true or false",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Boolean.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response checkEmailInUse(@Valid EmailRequest request) {
-    boolean emailExists = repository.checkEmailAlreadyExists(request.getEmail());
-    return Response.status(Response.Status.OK).entity(emailExists).build();
   }
 
   @POST
@@ -1240,7 +1397,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
     }
     loginRequest.withPassword(new String(decodedBytes));
-    return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
+    return Response.status(Response.Status.OK)
+        .entity(
+            SecurityConfigurationManager.getInstance()
+                .getAuthenticatorHandler()
+                .loginUser(loginRequest))
+        .build();
   }
 
   @POST
@@ -1264,7 +1426,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Valid TokenRefreshRequest refreshRequest) {
     return Response.status(Response.Status.OK)
-        .entity(authHandler.getNewAccessToken(refreshRequest))
+        .entity(
+            SecurityConfigurationManager.getInstance()
+                .getAuthenticatorHandler()
+                .getNewAccessToken(refreshRequest))
         .build();
   }
 
@@ -1437,7 +1602,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("team")
           String team) {
-    return exportCsvInternalAsync(securityContext, team);
+    return exportCsvInternalAsync(securityContext, team, false);
   }
 
   @GET
@@ -1465,7 +1630,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("team")
           String team)
       throws IOException {
-    return exportCsvInternal(securityContext, team);
+    return exportCsvInternal(securityContext, team, false);
   }
 
   @PUT
@@ -1501,7 +1666,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, team, csv, dryRun);
+    return importCsvInternal(securityContext, team, csv, dryRun, false);
   }
 
   @PUT
@@ -1536,7 +1701,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, team, csv, dryRun);
+    return importCsvInternalAsync(securityContext, team, csv, dryRun, false);
   }
 
   public void validateEmailAlreadyExists(String email) {
@@ -1583,7 +1748,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // TODO remove this -> Still valid TODO?
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
-    PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
+    PutResponse<User> response =
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
@@ -1749,5 +1915,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Remove mails for non-admin users
     PIIMasker.maskUser(authorizer, securityContext, user);
+  }
+
+  private CatalogSecurityContext createSecurityContext(String userName, String email) {
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    return new CatalogSecurityContext(
+        catalogPrincipal, "https", SecurityContext.BASIC_AUTH, new HashSet<>());
   }
 }

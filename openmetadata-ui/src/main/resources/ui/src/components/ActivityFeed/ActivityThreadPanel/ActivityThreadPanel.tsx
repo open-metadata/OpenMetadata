@@ -14,7 +14,7 @@
 import { Drawer, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';

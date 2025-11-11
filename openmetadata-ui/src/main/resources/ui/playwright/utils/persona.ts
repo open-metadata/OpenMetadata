@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../constant/settings';
+import { redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+import { settingClick } from './sidebar';
 
 export const updatePersonaDisplayName = async ({
   page,
@@ -33,4 +37,109 @@ export const updatePersonaDisplayName = async ({
   await page.fill('#displayName', displayName);
 
   await page.click('[data-testid="save-button"]');
+};
+
+/**
+ * Navigate to persona settings as admin
+ */
+export const navigateToPersonaSettings = async (page: Page) => {
+  await redirectToHomePage(page);
+  await settingClick(page, GlobalSettingOptions.PERSONA);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};
+
+/**
+ * Check if persona is present/absent in profile dropdown
+ */
+export const checkPersonaInProfile = async (
+  page: Page,
+  expectedPersonaName?: string
+) => {
+  await page.locator('[data-testid="dropdown-profile"] svg').click();
+  await page.waitForSelector('[role="menu"].profile-dropdown', {
+    state: 'visible',
+  });
+  await page.getByTestId('user-name').click();
+  await page.waitForLoadState('networkidle');
+
+  if (expectedPersonaName) {
+    // Expect persona to be visible with specific name
+    await expect(page.getByTestId('default-persona-chip')).toBeVisible();
+    await expect(page.getByTestId('default-persona-chip')).toContainText(
+      expectedPersonaName
+    );
+  } else {
+    // Expect no persona to be visible
+    await expect(page.getByText('No default persona')).toBeVisible();
+  }
+};
+
+/**
+ * Set a persona as default through the admin UI
+ */
+export const setPersonaAsDefault = async (page: Page) => {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('set-as-default-button').click();
+
+  const setAsDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const setAsDefaultConfirmationModal = page.getByTestId(
+    'default-persona-confirmation-modal'
+  );
+
+  await setAsDefaultConfirmationModal.getByText('Yes').click();
+  await setAsDefaultResponse;
+};
+
+/**
+ * Remove persona default through the admin UI
+ */
+export const removePersonaDefault = async (
+  page: Page,
+  personaName?: string
+) => {
+  await page.getByTestId(`persona-details-card-${personaName}`).click();
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('remove-default-button').click();
+
+  const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const removeDefaultConfirmationModal = page.getByTestId(
+    'default-persona-confirmation-modal'
+  );
+
+  await removeDefaultConfirmationModal.getByText('Yes').click();
+  await removeDefaultResponse;
+};
+
+export const navigateToPersonaWithPagination = async (
+  page: Page,
+  personaName: string,
+  click = true,
+  maxPages = 15
+) => {
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    const locator = page.getByTestId(`persona-details-card-${personaName}`);
+
+    // Check if element is visible on current page
+    if (await locator.isVisible()) {
+      if (click) {
+        await locator.click();
+      }
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
+    const getPersonas = page.waitForResponse('/api/v1/personas*');
+    await nextBtn.click();
+    await getPersonas;
+
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+  }
 };

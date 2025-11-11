@@ -11,27 +11,32 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-
-import React from 'react';
+import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import ModelTab from '../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
-import Lineage from '../components/Lineage/Lineage.component';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { CSMode } from '../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelClassBase';
-import i18n from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 export const getDashboardDataModelDetailPageTabs = ({
   feedCount,
@@ -75,6 +80,7 @@ export const getDashboardDataModelDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DASHBOARD_DATA_MODEL}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDataModel}
@@ -98,12 +104,13 @@ export const getDashboardDataModelDetailPageTabs = ({
             children: (
               <Card>
                 <SchemaEditor
-                  editorClass="custom-code-mirror-theme full-screen-editor-height"
+                  editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
                   mode={{ name: CSMode.SQL }}
                   options={{
                     styleActiveLine: false,
                     readOnly: true,
                   }}
+                  refreshEditor={activeTab === EntityTabs.SQL}
                   value={dataModelData?.sql}
                 />
               </Card>
@@ -121,15 +128,27 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={dataModelData as SourceType}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -143,17 +162,15 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="p-md">
-          <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={
-              dataModelPermissions.EditAll ||
-              dataModelPermissions.EditCustomFields
-            }
-            hasPermission={dataModelPermissions.ViewAll}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
+          entityType={EntityType.DASHBOARD_DATA_MODEL}
+          hasEditAccess={
+            dataModelPermissions.EditAll ||
+            dataModelPermissions.EditCustomFields
+          }
+          hasPermission={dataModelPermissions.ViewAll}
+          isVersionView={false}
+        />
       ),
     },
   ];

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -40,3 +40,12 @@ def _(element, compiler, **kw):
 @compiles(MD5, PythonDialects.BigQuery.value)
 def _(element, compiler, **kw):
     return f"TO_HEX(MD5(CAST({compiler.process(element.clauses, **kw)} AS STRING)))"
+
+
+@compiles(MD5, PythonDialects.Teradata.value)
+def _(element, compiler, **kw):
+    # There is no MD5 in Teradata or any other hashes
+    # But we can use UDF function hash_md5 published by Teradata Community
+    return (
+        f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"
+    )

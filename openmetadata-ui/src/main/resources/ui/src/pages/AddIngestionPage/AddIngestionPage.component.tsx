@@ -13,9 +13,9 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -25,17 +25,18 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
-  getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -50,18 +51,18 @@ import {
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const AddIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionType, serviceCategory } = useParams<{
-    serviceCategory: string;
-    ingestionType: string;
-  }>();
+  const { ingestionType, serviceCategory } =
+    useRequiredParams<{ ingestionType: string; serviceCategory: string }>();
   const { fqn: serviceFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -198,12 +199,17 @@ const AddIngestionPage = () => {
   };
 
   const goToSettingsPage = () => {
-    history.push(getSettingsPathFromPipelineType(ingestionType));
+    navigate(getSettingsPathFromPipelineType(ingestionType));
   };
 
   const goToService = () => {
-    history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+    navigate(
+      getServiceDetailsPath(
+        serviceFQN,
+        serviceCategory,
+        EntityTabs.AGENTS,
+        ServiceAgentSubTabs.METADATA
+      )
     );
   };
 
@@ -231,7 +237,7 @@ const AddIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <div>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -296,8 +302,12 @@ const AddIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -308,4 +318,4 @@ const AddIngestionPage = () => {
   );
 };
 
-export default AddIngestionPage;
+export default withPageLayout(AddIngestionPage);

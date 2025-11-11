@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import { useTheme } from '@mui/material';
 import { Col, Row } from 'antd';
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Legend,
   LegendProps,
@@ -25,13 +27,15 @@ import {
   YAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
+import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../utils/DataInsightUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
+import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -39,15 +43,32 @@ const CustomBarChart = ({
   chartCollection,
   tickFormatter,
   name,
+  noDataPlaceholderText,
 }: CustomBarChartProps) => {
+  const theme = useTheme();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+
+  const { showBrush, endIndex } = useMemo(() => {
+    return {
+      showBrush: data.length > PROFILER_CHART_DATA_SIZE,
+      endIndex: PROFILER_CHART_DATA_SIZE,
+    };
+  }, [data.length]);
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   if (data.length === 0) {
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder className="mt-0-important" />
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            placeholderText={noDataPlaceholderText}
+          />
         </Col>
       </Row>
     );
@@ -65,27 +86,41 @@ const CustomBarChart = ({
       id={`${name}_graph`}
       minHeight={300}>
       <BarChart className="w-full" data={data} margin={{ left: 16 }}>
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid
+          horizontal={renderHorizontalGridLine}
+          stroke={GRAPH_BACKGROUND_COLOR}
+          strokeDasharray="3 3"
+          vertical={false}
+        />
         <XAxis
+          axisLine={false}
           dataKey="name"
           padding={{ left: 16, right: 16 }}
           tick={{ fontSize: 12 }}
+          tickLine={false}
         />
 
         <YAxis
           allowDataOverflow
+          axisLine={false}
           padding={{ top: 16, bottom: 16 }}
           tick={{ fontSize: 12 }}
           tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
+          tickLine={false}
         />
         <Tooltip
           content={
-            <CustomTooltip
-              dateTimeFormatter={formatDateTime}
+            <CustomDQTooltip
+              dateTimeFormatter={formatDateTimeLong}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
             />
           }
+          cursor={{
+            fill: theme.palette.grey[100],
+            stroke: theme.palette.grey[200],
+            strokeDasharray: '3 3',
+          }}
         />
         {information.map((info) => (
           <Bar
@@ -96,10 +131,19 @@ const CustomBarChart = ({
             }
             key={info.dataKey}
             name={info.title}
-            stackId={info.stackId}
+            stackId="custom-bar-chart"
           />
         ))}
         <Legend onClick={handleClick} />
+        {showBrush && (
+          <Brush
+            data={data}
+            endIndex={endIndex}
+            gap={5}
+            height={30}
+            padding={{ left: 16, right: 16 }}
+          />
+        )}
       </BarChart>
     </ResponsiveContainer>
   );

@@ -13,7 +13,7 @@
 
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isArray } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
@@ -52,7 +52,7 @@ export const AlertDetailsComponent = ({
   const { t } = useTranslation();
 
   return (
-    <Row align="middle" className="page-container" gutter={[16, 16]}>
+    <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
         <div className="d-flex items-center justify-between">
           {breadcrumb ? <TitleBreadcrumb titleLinks={breadcrumb} /> : null}

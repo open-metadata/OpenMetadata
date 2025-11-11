@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Thread, ThreadType } from '../../../../generated/entity/feed/thread';
 import FeedCardHeader from './FeedCardHeader';
@@ -33,7 +32,7 @@ const mockProps2 = {
   isEntityFeed: false,
 };
 
-jest.mock('../../../../constants/constants', () => ({
+jest.mock('../../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn().mockReturnValue('user-profile-path'),
 }));
 

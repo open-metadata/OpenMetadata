@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import '../../../test/unit/mocks/recharts.mock';
 import { CustomBarChartProps } from './Chart.interface';
 import OperationDateBarChart from './OperationDateBarChart';
@@ -42,6 +41,28 @@ jest.mock('../../../utils/DataInsightUtils', () => {
   });
 });
 
+const mockData = Array.from({ length: 501 }, (_, index) => ({
+  name: `test ${index}`,
+  value: index,
+}));
+
+jest.mock('../../../utils/ChartUtils', () => ({
+  tooltipFormatter: jest.fn(),
+  updateActiveChartFilter: jest.fn(),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+}));
+jest.mock('../../../constants/profiler.constant', () => ({
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>),
+}));
+
 describe('OperationDateBarChart component test', () => {
   it('Component should render', async () => {
     render(<OperationDateBarChart {...mockCustomBarChartProp} />);
@@ -53,8 +74,23 @@ describe('OperationDateBarChart component test', () => {
 
     expect(container).toBeInTheDocument();
     expect(XAxis).toBeInTheDocument();
-    expect(YAxis).not.toBeInTheDocument();
+    expect(YAxis).toBeInTheDocument();
     expect(noData).not.toBeInTheDocument();
+    expect(screen.queryByText('Brush')).not.toBeInTheDocument();
+  });
+
+  it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {
+    render(
+      <OperationDateBarChart
+        {...mockCustomBarChartProp}
+        chartCollection={{
+          data: mockData,
+          information: mockCustomBarChartProp.chartCollection.information,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Brush')).toBeInTheDocument();
   });
 
   it('If there is no data, placeholder should be visible', async () => {
@@ -68,7 +104,7 @@ describe('OperationDateBarChart component test', () => {
       />
     );
 
-    const noData = await screen.findByTestId('no-data-placeholder');
+    const noData = await screen.findByText('ErrorPlaceHolder');
 
     expect(noData).toBeInTheDocument();
   });

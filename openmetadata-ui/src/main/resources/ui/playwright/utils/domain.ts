@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { SubDomain } from '../support/domain/SubDomain';
@@ -21,6 +23,8 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { TeamClass } from '../support/team/TeamClass';
+import { UserClass } from '../support/user/UserClass';
 import {
   closeFirstPopupAlert,
   descriptionBox,
@@ -29,9 +33,35 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
+  toastNotification,
+  uuid,
 } from './common';
 import { addOwner } from './entity';
 import { sidebarClick } from './sidebar';
+
+const waitForAssetModalInitialLoad = async (page: Page) => {
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+    timeout: 10000,
+  });
+};
+
+const waitForSearchDebounce = async (page: Page) => {
+  // Wait for loader to appear and disappear after search
+  // This ensures search debounce completed and results are stable
+  try {
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'attached',
+      timeout: 999,
+    });
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+  } catch (e) {
+    // Loader never appeared - search was instant, which is fine
+    // Just continue without waiting
+  }
+};
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
@@ -45,6 +75,14 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
     .fill(domain.name);
   await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -105,10 +143,31 @@ export const validateDomainForm = async (page: Page) => {
 };
 
 export const selectDomain = async (page: Page, domain: Domain['data']) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+  const searchBox = page
+    .getByTestId('page-layout-v1')
+    .getByPlaceholder('Search');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await Promise.all([
+    searchBox.fill(domain.name),
+    page.waitForResponse('/api/v1/search/query?q=*&index=domain_search_index*'),
+  ]);
+
+  await waitForSearchDebounce(page);
+
+  await Promise.all([
+    page.getByTestId(domain.name).click(),
+    page.waitForResponse('/api/v1/domains/name/*'),
+  ]);
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 export const selectSubDomain = async (
@@ -123,65 +182,114 @@ export const selectSubDomain = async (
 
   if (!isSelected) {
     const subDomainRes = page.waitForResponse(
-      '/api/v1/search/query?*&from=0&size=50&index=domain_search_index'
+      '/api/v1/search/query?q=*&from=0&size=0&index=domain_search_index&deleted=false&track_total_hits=true'
     );
     await menuItem.click();
     await subDomainRes;
+    await page.waitForLoadState('networkidle');
   }
 
-  await page.getByTestId('subdomains').getByText('Sub Domains').click();
-  const res = page.waitForResponse(
-    '/api/v1/search/query?*&index=data_product_search_index'
+  const subDomainRes = page.waitForResponse(
+    '/api/v1/search/query?q=*&from=0&size=50&index=domain_search_index&deleted=false&track_total_hits=true'
   );
+  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await subDomainRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await page.getByTestId(subDomain.name).click();
-  await res;
+  await page.waitForLoadState('networkidle');
 };
 
 export const selectDataProductFromTab = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  const dpRes = page.waitForResponse(
-    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
-  );
-  await page.getByText('Data Products').click();
+  const dpRes = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=data_product_search_index')
+    );
+  });
+  await page
+    .locator('.domain-details-page-tabs')
+    .getByText('Data Products')
+    .click();
 
   await dpRes;
 
-  const dpDataRes = page.waitForResponse('/api/v1/dataProducts/name/*');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await page
-    .getByTestId(`explore-card-${dataProduct.name}`)
-    .getByTestId('entity-link')
-    .click();
-  await dpDataRes;
+  await Promise.all([
+    page
+      .getByTestId(`explore-card-${dataProduct.name}`)
+      .getByTestId('entity-link')
+      .click(),
+    page.waitForResponse('/api/v1/dataProducts/name/*'),
+  ]);
 };
 
 export const selectDataProduct = async (
   page: Page,
-  domain: Domain['data'],
   dataProduct: DataProduct['data']
 ) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+  const searchBox = page
+    .getByTestId('page-layout-v1')
+    .getByPlaceholder('Search');
 
-  await selectDataProductFromTab(page, dataProduct);
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await Promise.all([
+    searchBox.fill(dataProduct.name),
+    page.waitForResponse(
+      '/api/v1/search/query?q=*&index=data_product_search_index*'
+    ),
+  ]);
+
+  await waitForSearchDebounce(page);
+
+  await Promise.all([
+    page.getByTestId(dataProduct.name).click(),
+    page.waitForResponse('/api/v1/dataProducts/name/*'),
+  ]);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
-const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
-  await selectDomain(page, domain);
+const goToAssetsTab = async (
+  page: Page,
+  domain: Domain['data'],
+  skipDomainSelection = false
+) => {
+  if (!skipDomainSelection) {
+    await selectDomain(page, domain);
+  }
+
   await checkDomainDisplayName(page, domain.displayName);
-  await page.getByTestId('assets').click();
+
+  await Promise.all([
+    page.getByTestId('assets').click(),
+    page.waitForResponse('/api/v1/search/query?q=&index=all*'),
+  ]);
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
-  await page.locator('[data-testid="name"]').fill(entity.name);
-  await page.locator('[data-testid="display-name"]').fill(entity.displayName);
+  await page.locator('#root\\/name').fill(entity.name);
+  await page.locator('#root\\/displayName').fill(entity.displayName);
   await page.locator(descriptionBox).fill(entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
@@ -195,22 +303,17 @@ const fillCommonFormItems = async (
   }
 };
 
-const fillDomainForm = async (
+export const fillDomainForm = async (
   page: Page,
   entity: Domain['data'] | SubDomain['data'],
   isDomain = true
 ) => {
   await fillCommonFormItems(page, entity);
-  if (isDomain) {
-    await page.click('[data-testid="domainType"]');
-  } else {
-    await page
-      .getByLabel('Add Sub Domain')
-      .getByTestId('domainType')
-      .locator('div')
-      .click();
-  }
-  await page.getByTitle(entity.domainType).locator('div').click();
+
+  const domainTypeCombo = page.getByRole('combobox', { name: 'Domain Type' });
+  await domainTypeCombo.click();
+
+  await page.getByRole('option', { name: entity.domainType }).click();
 };
 
 export const checkDomainDisplayName = async (
@@ -242,11 +345,11 @@ export const verifyDomain = async (
 ) => {
   await checkDomainDisplayName(page, domain.displayName);
 
-  const viewerContainerText = await page.textContent(
-    '[data-testid="viewer-container"]'
-  );
+  await expect(page.getByText(domain.description)).toBeVisible();
 
-  await expect(viewerContainerText).toContain(domain.description);
+  expect(
+    await page.locator(`[id="KnowledgePanel\\.Description"]`).textContent()
+  ).toContain(domain.description);
 
   if (!isEmpty(domain.owners) && !isUndefined(domain.owners)) {
     await expect(
@@ -272,23 +375,28 @@ export const createDomain = async (
   validate = false
 ) => {
   await page.click('[data-testid="add-domain"]');
-  await page.waitForSelector('[data-testid="form-heading"]');
 
-  await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
-    'Add Domain'
-  );
+  await page.waitForSelector('h6:has-text("Add Domain")', { timeout: 5000 });
 
-  await page.click('[data-testid="save-domain"]');
+  await expect(page.locator('h6:has-text("Add Domain")')).toBeVisible();
+
+  const saveButton = page.getByRole('button', { name: 'Save' });
 
   if (validate) {
+    await saveButton.click();
     await validateDomainForm(page);
   }
 
   await fillDomainForm(page, domain);
 
   const domainRes = page.waitForResponse('/api/v1/domains');
-  await page.click('[data-testid="save-domain"]');
+  await saveButton.click();
   await domainRes;
+
+  await toastNotification(page, /Domain created successfully/);
+
+  await selectDomain(page, domain);
+
   await checkDomainDisplayName(page, domain.displayName);
   await checkAssetsCount(page, 0);
   await checkDataProductCount(page, 0);
@@ -305,7 +413,7 @@ export const createSubDomain = async (
 
   await fillDomainForm(page, subDomain, false);
   const saveRes = page.waitForResponse('/api/v1/domains');
-  await page.getByTestId('save-sub-domain').click();
+  await page.getByTestId('save-btn').click();
   await saveRes;
 };
 
@@ -313,10 +421,11 @@ export const addAssetsToDomain = async (
   page: Page,
   domain: Domain,
   assets: EntityClass[],
-  navigateToAssetsTab = true
+  navigateToAssetsTab = true,
+  skipDomainSelection = false
 ) => {
   if (navigateToAssetsTab) {
-    await goToAssetsTab(page, domain.data);
+    await goToAssetsTab(page, domain.data, skipDomainSelection);
   }
   await checkAssetsCount(page, 0);
 
@@ -327,20 +436,30 @@ export const addAssetsToDomain = async (
   await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
+  await waitForAssetModalInitialLoad(page);
+
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&*`
     );
     await page
       .getByTestId('asset-selection-modal')
       .getByTestId('searchbar')
-      .fill(name);
+      .fill(visibleName);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
@@ -352,7 +471,7 @@ export const addAssetsToDomain = async (
     return (
       response
         .url()
-        .includes('/api/v1/search/query?q=**&index=all&from=0&size=15') &&
+        .includes('/api/v1/search/query?q=&index=all&from=0&size=15') &&
       queryFilter !== null &&
       queryFilter !== ''
     );
@@ -377,6 +496,8 @@ export const addServicesToDomain = async (
 
   await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+
+  await waitForAssetModalInitialLoad(page);
 
   for (const asset of assets) {
     const name = get(asset, 'name');
@@ -417,6 +538,8 @@ export const addAssetsToDataProduct = async (
 
   await page.getByTestId('data-product-details-add-button').click();
 
+  await waitForAssetModalInitialLoad(page);
+
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
@@ -437,6 +560,28 @@ export const addAssetsToDataProduct = async (
   await assetsAddRes;
 
   await checkAssetsCount(page, assets.length);
+
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    await page
+      .locator(
+        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
+      )
+      .click();
+
+    await page.waitForLoadState('networkidle');
+
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.DataProducts')
+        .getByTestId('data-products-list')
+        .getByTestId(`data-product-${dataProductFqn}`)
+    ).toBeVisible();
+
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const removeAssetsFromDataProduct = async (
@@ -497,11 +642,13 @@ export const createDataProduct = async (
   await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
-  await expect(page.getByText('Add Data Product')).toBeVisible();
+  await expect(page.getByTestId('form-heading')).toContainText(
+    'Add Data Product'
+  );
 
   await fillCommonFormItems(page, dataProduct);
   const saveRes = page.waitForResponse('/api/v1/dataProducts');
-  await page.getByTestId('save-data-product').click();
+  await page.getByTestId('save-btn').click();
   await saveRes;
 };
 
@@ -522,16 +669,18 @@ export const verifyDataProductAssetsAfterDelete = async (
   }
 ) => {
   const { apiContext } = await getApiContext(page);
-  const newDataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
+  const newDataProduct1 = new DataProduct([domain], 'PW_DataProduct_Sales');
 
   await test.step('Add assets to DataProduct Sales', async () => {
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DOMAIN);
+
     if (subDomain) {
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await selectSubDomain(page, domain.data, subDomain.data);
       await selectDataProductFromTab(page, dataProduct1.data);
     } else {
-      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
     }
     await addAssetsToDataProduct(
       page,
@@ -542,12 +691,14 @@ export const verifyDataProductAssetsAfterDelete = async (
 
   await test.step('Add assets to DataProduct Finance', async () => {
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DOMAIN);
+
     if (subDomain) {
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await selectSubDomain(page, domain.data, subDomain.data);
       await selectDataProductFromTab(page, dataProduct2.data);
     } else {
-      await selectDataProduct(page, domain.data, dataProduct2.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct2.data);
     }
     await addAssetsToDataProduct(
       page,
@@ -579,12 +730,14 @@ export const verifyDataProductAssetsAfterDelete = async (
     'Verify assets are not present in the newly created data product',
     async () => {
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
+
       if (subDomain) {
+        await sidebarClick(page, SidebarItem.DOMAIN);
         await selectSubDomain(page, domain.data, subDomain.data);
         await selectDataProductFromTab(page, newDataProduct1.data);
       } else {
-        await selectDataProduct(page, domain.data, newDataProduct1.data);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, newDataProduct1.data);
       }
       await checkAssetsCount(page, 0);
     }
@@ -616,7 +769,13 @@ export const addTagsAndGlossaryToDomain = async (
     const input = page.locator(`${container} #tagsForm_tags`);
     await input.click();
     await input.fill(value);
-    await page.getByTestId(`tag-${value}`).click();
+    const tag = page.getByTestId(`tag-${value}`);
+    if (containerType === 'glossary') {
+      // To avoid clicking on white space between checkbox and text
+      await tag.locator('.ant-select-tree-checkbox').click();
+    } else {
+      await tag.click();
+    }
 
     // Save and wait for response
     const updateResponse = page.waitForResponse(
@@ -635,4 +794,327 @@ export const addTagsAndGlossaryToDomain = async (
 
   // Add glossary term
   await addTagOrTerm('glossary', glossaryTermFqn);
+};
+
+/**
+ * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
+ */
+export const verifyActiveDomainIsDefault = async (page: Page) => {
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    'All Domains'
+  );
+};
+
+/**
+ * Sets up a complete environment for domain ownership testing
+ * Creates user, policy, role, domain, data product and assigns ownership
+ * Returns all created objects and a cleanup function
+ */
+export const setupDomainOwnershipTest = async (apiContext: any) => {
+  // Create all necessary resources
+  const dataConsumerUser = new UserClass();
+  const id = uuid();
+  const domainForTest = new Domain({
+    name: `PW_Domain_Owner_Rule_Testing-${id}`,
+    displayName: `PW_Domain_Owner_Rule_Testing-${id}`,
+    description: 'playwright domain description',
+    domainType: 'Aggregate',
+    fullyQualifiedName: `PW_Domain_Owner_Rule_Testing-${id}`,
+  });
+  const dataProductForTest = new DataProduct(
+    [domainForTest],
+    `PW_DataProduct_Owner_Rule-${id}`
+  );
+
+  await dataConsumerUser.create(apiContext);
+  await domainForTest.create(apiContext);
+
+  // Setup permissions
+  const dataConsumerPolicy = new PolicyClass();
+  const dataConsumerRole = new RolesClass();
+
+  // Create domain access policy
+  const domainRule = [
+    {
+      name: 'DomainRule',
+      description: '',
+      resources: ['dataProduct', 'domain'],
+      operations: ['All'],
+      effect: 'allow',
+      condition: 'isOwner()',
+    },
+  ];
+
+  await dataConsumerPolicy.create(apiContext, domainRule);
+  await dataConsumerRole.create(apiContext, [
+    dataConsumerPolicy.responseData.name,
+  ]);
+
+  await dataProductForTest.create(apiContext);
+
+  // Create team for the user
+  const dataConsumerTeam = new TeamClass({
+    name: `PW_data_consumer_team-${id}`,
+    displayName: `PW Data Consumer Team ${id}`,
+    description: 'playwright data consumer team description',
+    teamType: 'Group',
+    users: [dataConsumerUser.responseData.id ?? ''],
+    defaultRoles: [dataConsumerRole.responseData.id ?? ''],
+  });
+
+  await dataConsumerTeam.create(apiContext);
+
+  // Set domain ownership
+  await domainForTest.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/owners/0',
+        value: {
+          id: dataConsumerUser.responseData.id,
+          type: 'user',
+        },
+      },
+    ],
+  });
+
+  // Return cleanup function and all created resources
+  const cleanup = async (apiContext1: APIRequestContext) => {
+    await dataProductForTest.delete(apiContext1);
+    await domainForTest.delete(apiContext1);
+    await dataConsumerUser.delete(apiContext1);
+    await dataConsumerTeam.delete(apiContext1);
+    await dataConsumerPolicy.delete(apiContext1);
+    await dataConsumerRole.delete(apiContext1);
+  };
+
+  return {
+    dataConsumerUser,
+    domainForTest,
+    dataProductForTest,
+    dataConsumerTeam,
+    dataConsumerPolicy,
+    dataConsumerRole,
+    cleanup,
+  };
+};
+
+/**
+ * Sets up a complete environment for testing hasDomain() rule condition
+ * Creates user, domain, subdomain, assets, policy with hasDomain(), role, and team
+ * Returns all created objects and a cleanup function
+ */
+export const setupDomainHasDomainTest = async (
+  apiContext: APIRequestContext
+) => {
+  const id = uuid();
+
+  // Create test user
+  const testUser = new UserClass();
+  await testUser.create(apiContext);
+  const mainDomain = new Domain();
+  await mainDomain.create(apiContext);
+  const subDomain = new SubDomain(mainDomain);
+  await subDomain.create(apiContext);
+
+  // Create assets for domain and subdomain
+  const domainTable = new TableClass();
+  const subDomainTable = new TableClass();
+  await domainTable.create(apiContext);
+  await subDomainTable.create(apiContext);
+
+  // Create policy with hasDomain() rule
+  const domainPolicy = new PolicyClass();
+  const domainRule = [
+    {
+      name: 'HasDomainRule',
+      description: '',
+      resources: ['All'],
+      operations: ['All'],
+      effect: 'allow',
+      condition: 'hasDomain()',
+    },
+  ];
+  await domainPolicy.create(apiContext, domainRule);
+
+  // Create role with the policy
+  const domainRole = new RolesClass();
+  await domainRole.create(apiContext, [domainPolicy.responseData.name]);
+
+  // Create team with the user and assign the role
+  const domainTeam = new TeamClass({
+    name: `PW_Team_HasDomain_${id}`,
+    displayName: `PW Team HasDomain ${id}`,
+    description: 'Team for hasDomain() rule testing',
+    teamType: 'Group',
+    users: [testUser.responseData.id ?? ''],
+    defaultRoles: [domainRole.responseData.id ?? ''],
+  });
+  await domainTeam.create(apiContext);
+
+  // Add user to domain
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Assign assets to domain and subdomain
+  await domainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  await subDomainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: subDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Cleanup function
+  const cleanup = async (cleanupContext: APIRequestContext) => {
+    await domainTable.delete(cleanupContext);
+    await subDomainTable.delete(cleanupContext);
+    await subDomain.delete(cleanupContext);
+    await mainDomain.delete(cleanupContext);
+    await domainTeam.delete(cleanupContext);
+    await domainRole.delete(cleanupContext);
+    await domainPolicy.delete(cleanupContext);
+    await testUser.delete(cleanupContext);
+  };
+
+  return {
+    testUser,
+    mainDomain,
+    subDomain,
+    domainTable,
+    subDomainTable,
+    domainPolicy,
+    domainRole,
+    domainTeam,
+    cleanup,
+  };
+};
+
+export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
+  const id = uuid();
+
+  // Create test user
+  const testUser = new UserClass();
+  await testUser.create(apiContext);
+  const mainDomain = new Domain();
+  await mainDomain.create(apiContext);
+
+  // Create assets for domain
+  const domainTable = new TableClass();
+  const noDomainTable = new TableClass();
+  await domainTable.create(apiContext);
+  await noDomainTable.create(apiContext);
+
+  // Create policy with hasDomain() rule
+  const domainPolicy = new PolicyClass();
+  const domainRule = [
+    {
+      name: 'NoDomainRule',
+      description: '',
+      resources: ['All'],
+      operations: ['ViewAll'],
+      effect: 'deny',
+      condition: 'noDomain()',
+    },
+  ];
+  await domainPolicy.create(apiContext, domainRule);
+
+  // Create role with the policy
+  const domainRole = new RolesClass();
+  await domainRole.create(apiContext, [domainPolicy.responseData.name]);
+
+  // Create team with the user and assign the role
+  const domainTeam = new TeamClass({
+    name: `PW_Team_NoDomain_${id}`,
+    displayName: `PW Team NoDomain ${id}`,
+    description: 'Team for noDomain() rule testing',
+    teamType: 'Group',
+    users: [testUser.responseData.id ?? ''],
+    defaultRoles: [domainRole.responseData.id ?? ''],
+  });
+  await domainTeam.create(apiContext);
+
+  // Add user to domain
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Assign assets to domain and subdomain
+  await domainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Cleanup function
+  const cleanup = async (cleanupContext: APIRequestContext) => {
+    await domainTable.delete(cleanupContext);
+    await noDomainTable.delete(cleanupContext);
+    await mainDomain.delete(cleanupContext);
+    await domainTeam.delete(cleanupContext);
+    await domainRole.delete(cleanupContext);
+    await domainPolicy.delete(cleanupContext);
+    await testUser.delete(cleanupContext);
+  };
+
+  return {
+    testUser,
+    mainDomain,
+    domainTable,
+    noDomainTable,
+    domainPolicy,
+    domainRole,
+    domainTeam,
+    cleanup,
+  };
 };

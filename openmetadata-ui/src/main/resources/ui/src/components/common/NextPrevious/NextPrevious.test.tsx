@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE } from '../../../constants/constants';
 import NextPrevious from './NextPrevious';
@@ -215,7 +214,7 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toBeInTheDocument();
 
     expect(pageIndicator).toHaveTextContent(
-      `${totalPage}/${totalPage} label.page`
+      `label.page ${totalPage} of ${totalPage}`
     );
   });
 

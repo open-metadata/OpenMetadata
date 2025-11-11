@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Typography } from 'antd';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Box, Tooltip as MUITooltip } from '@mui/material';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { get, isEmpty, isUndefined, noop } from 'lodash';
+import { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -41,6 +45,7 @@ import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
+import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -50,7 +55,10 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import Fqn from './Fqn';
+import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
+import { getPrioritizedEditPermission } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -77,7 +85,7 @@ export const getQueryFilterToIncludeDomain = (
       must: [
         {
           term: {
-            'domain.fullyQualifiedName': domainFqn,
+            'domains.fullyQualifiedName': domainFqn,
           },
         },
         {
@@ -115,7 +123,7 @@ export const getQueryFilterToExcludeDomainTerms = (
     ? [
         {
           term: {
-            'domain.fullyQualifiedName': parentFqn,
+            'domains.fullyQualifiedName': parentFqn,
           },
         },
       ]
@@ -130,7 +138,7 @@ export const getQueryFilterToExcludeDomainTerms = (
               must_not: [
                 {
                   term: {
-                    'domain.fullyQualifiedName': fqn,
+                    'domains.fullyQualifiedName': fqn,
                   },
                 },
               ],
@@ -145,7 +153,24 @@ export const getQueryFilterToExcludeDomainTerms = (
 export const getQueryFilterForDomain = (domainFqn: string) => ({
   query: {
     bool: {
-      must: [{ prefix: { 'domain.fullyQualifiedName': domainFqn } }],
+      must: [
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'domains.fullyQualifiedName': domainFqn,
+                },
+              },
+              {
+                prefix: {
+                  'domains.fullyQualifiedName': `${domainFqn}.`,
+                },
+              },
+            ],
+          },
+        },
+      ],
       must_not: [
         {
           term: {
@@ -175,10 +200,33 @@ export const domainTypeTooltipDataRender = () => (
   </Space>
 );
 
+export const iconTooltipDataRender = () => (
+  <MUITooltip arrow placement="top" title={t('message.icon-aspect-ratio')}>
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        cursor: 'help',
+        lineHeight: 0,
+        pointerEvents: 'auto',
+      }}>
+      <InfoOutlinedIcon
+        data-testid="mui-helper-icon"
+        sx={{
+          fontSize: 16,
+          color: 'text.secondary',
+          pointerEvents: 'auto',
+        }}
+      />
+    </Box>
+  </MUITooltip>
+);
+
 export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
   const domainOptions: ItemType[] = [
     {
-      label: i18n.t('label.all-domain-plural'),
+      label: t('label.all-domain-plural'),
       key: DEFAULT_DOMAIN_VALUE,
     },
   ];
@@ -212,19 +260,39 @@ export const renderDomainLink = (
   domain: EntityReference,
   domainDisplayName: ReactNode,
   showDomainHeading: boolean,
-  textClassName?: string
-) => (
-  <Link
-    className={classNames(
-      'no-underline',
-      { 'text-xs': !showDomainHeading },
-      textClassName
-    )}
-    data-testid="domain-link"
-    to={getDomainPath(domain?.fullyQualifiedName)}>
-    {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
-  </Link>
-);
+  textClassName?: string,
+  trimLink?: boolean
+) => {
+  const displayName = isUndefined(domainDisplayName)
+    ? getEntityName(domain)
+    : domainDisplayName;
+
+  return (
+    <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+      <Link
+        className={classNames(
+          'no-underline domain-link domain-link-text font-medium',
+          {
+            'text-sm': !showDomainHeading,
+            'text-truncate truncate w-max-full': trimLink,
+          },
+          textClassName
+        )}
+        data-testid="domain-link"
+        to={getDomainPath(domain?.fullyQualifiedName)}>
+        {trimLink ? (
+          <Typography.Text
+            className="domain-link-name"
+            ellipsis={{ tooltip: false }}>
+            {displayName}
+          </Typography.Text>
+        ) : (
+          <>{displayName}</>
+        )}
+      </Link>
+    </Tooltip>
+  );
+};
 
 export const initializeDomainEntityRef = (
   domains: EntityReference[],
@@ -238,16 +306,6 @@ export const initializeDomainEntityRef = (
   }
 
   return undefined;
-};
-
-export const getDomainFieldFromEntityType = (
-  entityType: EntityType
-): string => {
-  if (entityType === EntityType.TEAM || entityType === EntityType.USER) {
-    return 'domains';
-  } else {
-    return 'domain';
-  }
 };
 
 export const convertDomainsToTreeOptions = (
@@ -328,12 +386,11 @@ export const getDomainDetailTabs = ({
   domain,
   isVersionsView,
   domainPermission,
-  subDomains,
+  subDomainsCount,
   dataProductsCount,
   assetCount,
   activeTab,
   onAddDataProduct,
-  isSubDomainsLoading,
   queryFilter,
   assetTabRef,
   dataProductsTabRef,
@@ -343,13 +400,15 @@ export const getDomainDetailTabs = ({
   handleAssetClick,
   handleAssetSave,
   setShowAddSubDomainModal,
+  feedCount,
+  onFeedUpdate,
 }: DomainDetailPageTabProps) => {
   return [
     {
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={i18n.t('label.documentation')}
+          name={t('label.documentation')}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -360,18 +419,17 @@ export const getDomainDetailTabs = ({
           {
             label: (
               <TabsLabel
-                count={subDomains.length ?? 0}
+                count={subDomainsCount ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
-                name={i18n.t('label.sub-domain-plural')}
+                name={t('label.sub-domain-plural')}
               />
             ),
             key: EntityTabs.SUBDOMAINS,
             children: (
               <SubDomainsTable
-                isLoading={isSubDomainsLoading}
+                domainFqn={domain.fullyQualifiedName ?? ''}
                 permissions={domainPermission}
-                subDomains={subDomains}
                 onAddSubDomain={() => setShowAddSubDomainModal(true)}
               />
             ),
@@ -382,7 +440,7 @@ export const getDomainDetailTabs = ({
                 count={dataProductsCount ?? 0}
                 id={EntityTabs.DATA_PRODUCTS}
                 isActive={activeTab === EntityTabs.DATA_PRODUCTS}
-                name={i18n.t('label.data-product-plural')}
+                name={t('label.data-product-plural')}
               />
             ),
             key: EntityTabs.DATA_PRODUCTS,
@@ -397,40 +455,63 @@ export const getDomainDetailTabs = ({
           {
             label: (
               <TabsLabel
+                count={feedCount?.totalCount ?? 0}
+                id={EntityTabs.ACTIVITY_FEED}
+                isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+                name={t('label.activity-feed-and-task-plural')}
+              />
+            ),
+            key: EntityTabs.ACTIVITY_FEED,
+            children: (
+              <ActivityFeedTab
+                refetchFeed
+                entityFeedTotalCount={feedCount?.totalCount ?? 0}
+                entityType={EntityType.DOMAIN}
+                feedCount={feedCount}
+                layoutType={ActivityFeedLayoutType.THREE_PANEL}
+                owners={domain.owners}
+                onFeedUpdate={onFeedUpdate ?? noop}
+                onUpdateEntityDetails={noop}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={i18n.t('label.asset-plural')}
+                name={t('label.asset-plural')}
               />
             ),
             key: EntityTabs.ASSETS,
             children: (
               <ResizablePanels
-                className="domain-height-with-resizable-panel"
+                className="h-full domain-height-with-resizable-panel"
                 firstPanel={{
+                  wrapInCard: false,
                   className: 'domain-resizable-panel-container',
                   children: (
-                    <div className="p-x-md p-y-md">
-                      <AssetsTabs
-                        assetCount={assetCount}
-                        entityFqn={domain.fullyQualifiedName}
-                        isSummaryPanelOpen={false}
-                        permissions={domainPermission}
-                        queryFilter={queryFilter}
-                        ref={assetTabRef}
-                        type={AssetsOfEntity.DOMAIN}
-                        onAddAsset={() => setAssetModalVisible(true)}
-                        onAssetClick={handleAssetClick}
-                        onRemoveAsset={handleAssetSave}
-                      />
-                    </div>
+                    <AssetsTabs
+                      assetCount={assetCount}
+                      entityFqn={domain.fullyQualifiedName}
+                      isSummaryPanelOpen={false}
+                      permissions={domainPermission}
+                      queryFilter={queryFilter}
+                      ref={assetTabRef}
+                      type={AssetsOfEntity.DOMAIN}
+                      onAddAsset={() => setAssetModalVisible(true)}
+                      onAssetClick={handleAssetClick}
+                      onRemoveAsset={handleAssetSave}
+                    />
                   ),
                   minWidth: 800,
                   flex: 0.87,
                 }}
                 hideSecondPanel={!previewAsset}
-                pageTitle={i18n.t('label.domain')}
+                pageTitle={t('label.domain')}
                 secondPanel={{
+                  wrapInCard: false,
                   children: previewAsset && (
                     <EntitySummaryPanel
                       entityDetails={previewAsset}
@@ -449,21 +530,19 @@ export const getDomainDetailTabs = ({
             label: (
               <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
-                name={i18n.t('label.custom-property-plural')}
+                name={t('label.custom-property-plural')}
               />
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
-              <div className="m-sm">
-                <CustomPropertyTable<EntityType.DOMAIN>
-                  entityType={EntityType.DOMAIN}
-                  hasEditAccess={
-                    domainPermission.EditAll ||
-                    domainPermission.EditCustomFields
-                  }
-                  hasPermission={domainPermission.ViewAll}
-                />
-              </div>
+              <CustomPropertyTable<EntityType.DOMAIN>
+                entityType={EntityType.DOMAIN}
+                hasEditAccess={getPrioritizedEditPermission(
+                  domainPermission,
+                  Operation.EditCustomFields
+                )}
+                hasPermission={domainPermission.ViewAll}
+              />
             ),
           },
         ]
@@ -484,5 +563,48 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       showTaskHandler={false}
       widgetConfig={widgetConfig}
     />
+  );
+};
+
+export const getDomainIcon = (iconURL?: string) => {
+  // Try to render the icon using the utility (handles both URLs and icon names)
+  const iconElement = renderIcon(iconURL, {
+    size: 24,
+    className: 'domain-icon-url h-6 w-6',
+  });
+
+  // If we got an icon element, return it
+  if (iconElement) {
+    return iconElement;
+  }
+
+  // Otherwise return the default domain icon
+  return <DomainIcon className="domain-default-icon" />;
+};
+
+export const DomainListItemRenderer = (props: EntityReference) => {
+  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
+  const fqn = `(${props.fullyQualifiedName ?? ''})`;
+
+  return (
+    <div className="d-flex items-center gap-2">
+      <DomainIcon
+        color={DE_ACTIVE_COLOR}
+        height={20}
+        name="folder"
+        width={20}
+      />
+      <div className="d-flex items-center w-max-400">
+        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
+        {isSubDomain && (
+          <Typography.Text
+            ellipsis
+            className="m-l-xss text-xs"
+            type="secondary">
+            {fqn}
+          </Typography.Text>
+        )}
+      </div>
+    </div>
   );
 };

@@ -14,10 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -37,7 +36,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   createTeam,
   deleteUserFromTeam,
@@ -50,11 +49,12 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
 const TeamsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
@@ -191,18 +191,16 @@ const TeamsPage = () => {
   const fetchAssets = async (selectedTeam: Team) => {
     if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
       try {
-        const res = await searchData(
-          ``,
-          0,
-          0,
-          `owners.id:${selectedTeam.id}`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
-        const total = res?.data?.hits?.total.value ?? 0;
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 0,
+          pageSize: 0,
+          queryFilter: getTermQuery({ 'owners.id': selectedTeam.id }),
+          searchIndex: SearchIndex.ALL,
+        });
+        const total = res?.hits?.total.value ?? 0;
         setAssets(total);
-      } catch (error) {
+      } catch {
         // Error
       }
     }
@@ -238,6 +236,7 @@ const TeamsPage = () => {
       const data = await getTeamByName(name, {
         fields: [
           TabSpecificField.USERS,
+          TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,
@@ -452,7 +451,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(getTeamsWithFqnPath(TeamType.Organization));
+      : navigate(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
@@ -493,11 +492,24 @@ const TeamsPage = () => {
   }
 
   if (!hasViewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.team-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isEmpty(selectedTeam)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
   }
 
   return (

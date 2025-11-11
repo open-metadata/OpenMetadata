@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,6 +44,11 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 from metadata.utils.importer import (
     DynamicImportException,
     MissingPluginException,
@@ -178,12 +183,20 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
-    def validate(self):
+    @inject
+    def validate(
+        self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None
+    ):
+        if profiler_config_class is None:
+            raise DependencyNotFoundError(
+                "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
+            )
+
         try:
             if not self.config.source.serviceConnection.root.config.supportsProfiler:
                 raise AttributeError()
         except AttributeError:
-            if ProfilerProcessorConfig.model_validate(
+            if profiler_config_class.model_validate(
                 self.config.processor.model_dump().get("config")
             ).ignoreValidation:
                 logger.debug(

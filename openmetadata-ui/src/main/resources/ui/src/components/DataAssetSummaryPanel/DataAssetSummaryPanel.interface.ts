@@ -12,6 +12,7 @@
  */
 import { EntityTags } from 'Models';
 import { EntityType } from '../../enums/entity.enum';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
@@ -20,6 +21,10 @@ export type DataAssetSummaryPanelProps = {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
-  dataAsset: SearchedDataProps['data'][number]['_source'];
+  dataAsset: SearchedDataProps['data'][number]['_source'] & {
+    dataProducts: DataProduct[];
+  };
   entityType: EntityType;
+  isDomainVisible?: boolean;
+  isLineageView?: boolean;
 };

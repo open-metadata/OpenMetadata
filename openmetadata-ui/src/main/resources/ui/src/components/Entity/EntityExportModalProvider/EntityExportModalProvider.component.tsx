@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal } from 'antd';
+import { Badge, Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString } from 'lodash';
-import React, {
+import { isString, lowerCase } from 'lodash';
+import {
+  createContext,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -24,8 +26,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import {
+  BETA_EXPORT_TYPES,
+  ExportTypes,
+} from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import {
@@ -35,10 +42,9 @@ import {
   ExportData,
 } from './EntityExportModalProvider.interface';
 
-const EntityExportModalContext =
-  React.createContext<EntityExportModalContextProps>(
-    {} as EntityExportModalContextProps
-  );
+const EntityExportModalContext = createContext<EntityExportModalContextProps>(
+  {} as EntityExportModalContextProps
+);
 
 export const EntityExportModalProvider = ({
   children,
@@ -58,9 +64,22 @@ export const EntityExportModalProvider = ({
 
   const [csvExportData, setCSVExportData] = useState<string>();
 
+  const selectedExportType =
+    Form.useWatch<ExportTypes>(['exportType'], form) ?? ExportTypes.CSV;
+
   const isBulkEdit = useMemo(
-    () => isBulkEditRoute(location.pathname),
-    [location]
+    () => isBulkEditRoute(location.pathname) || exportData?.hideExportModal,
+    [location, exportData?.hideExportModal]
+  );
+
+  const exportTypesOptions = useMemo(
+    () =>
+      exportUtilClassBase
+        .getExportTypeOptions()
+        .filter((option) =>
+          exportData?.exportTypes.includes(option.value as ExportTypes)
+        ),
+    [exportData]
   );
 
   const handleCancel = () => {
@@ -90,19 +109,43 @@ export const EntityExportModalProvider = ({
     document.body.removeChild(element);
   };
 
-  const handleExport = async ({ fileName }: { fileName: string }) => {
+  const handleExport = async ({
+    fileName,
+    exportType,
+  }: {
+    fileName: string;
+    exportType: ExportTypes;
+  }) => {
     if (exportData === null) {
       return;
     }
     try {
       setDownloading(true);
+
+      if (exportType !== ExportTypes.CSV) {
+        await exportUtilClassBase.exportMethodBasedOnType({
+          exportType,
+          exportData: {
+            ...exportData,
+            name: fileName,
+          },
+        });
+
+        handleCancel();
+        setDownloading(false);
+
+        return;
+      }
+
       // assigning the job data to ref here, as exportData.onExport may take time to return the data
       // and websocket connection may be respond before that, so we need to keep the job data in ref
       // to handle the download
       csvExportJobRef.current = {
         fileName: fileName,
       };
-      const data = await exportData.onExport(exportData.name);
+      const data = await exportData.onExport(exportData.name, {
+        recursive: !isBulkEdit,
+      });
 
       if (isString(data)) {
         handleDownload(data, fileName);
@@ -142,6 +185,13 @@ export const EntityExportModalProvider = ({
     [isBulkEdit]
   );
 
+  const handleClearCSVExportData = useCallback(() => {
+    setCSVExportData(undefined);
+    setCSVExportJob(undefined);
+    setExportData(null);
+    csvExportJobRef.current = undefined;
+  }, []);
+
   const handleCSVExportJobUpdate = useCallback(
     (response: Partial<CSVExportWebsocketResponse>) => {
       // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
@@ -172,12 +222,15 @@ export const EntityExportModalProvider = ({
   useEffect(() => {
     if (exportData) {
       if (isBulkEdit) {
-        handleExport({ fileName: 'bulk-edit' });
+        handleExport({
+          fileName: 'bulk-edit',
+          exportType: ExportTypes.CSV,
+        });
       } else {
-        form.setFieldValue(
-          'fileName',
-          `${exportData.name}_${getCurrentISODate()}`
-        );
+        form.setFieldsValue({
+          fileName: `${exportData.name}_${getCurrentISODate()}`,
+          exportType: exportData.exportTypes[0],
+        });
       }
     }
   }, [isBulkEdit, exportData]);
@@ -185,7 +238,7 @@ export const EntityExportModalProvider = ({
   const providerValue = useMemo(
     () => ({
       csvExportData,
-      clearCSVExportData: () => setCSVExportData(undefined),
+      clearCSVExportData: handleClearCSVExportData,
       showModal,
       triggerExportForBulkEdit: (exportData: ExportData) => {
         setExportData(exportData);
@@ -212,6 +265,7 @@ export const EntityExportModalProvider = ({
               htmlType: 'submit',
               id: 'submit-button',
               disabled: downloading,
+              loading: selectedExportType !== ExportTypes.CSV && downloading,
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
@@ -221,13 +275,40 @@ export const EntityExportModalProvider = ({
               id="export-form"
               layout="vertical"
               onFinish={handleExport}>
+              <Form.Item label={`${t('label.export-type')}:`} name="exportType">
+                <Select
+                  data-testid="export-type-select"
+                  disabled={exportData.exportTypes.length === 1}>
+                  {exportTypesOptions.map((type) => (
+                    <Select.Option
+                      key={type.value}
+                      title={type.value}
+                      value={type.value}>
+                      <div className="d-flex items-center">
+                        {type.label}
+                        {BETA_EXPORT_TYPES.includes(type.value) && (
+                          <Badge
+                            className="m-l-xs service-beta-tag"
+                            count={t('label.beta')}
+                            size="small"
+                          />
+                        )}
+                      </div>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
               <Form.Item
                 className={classNames({ 'mb-0': !csvExportJob?.jobId })}
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
                 name="fileName">
-                <Input addonAfter=".csv" data-testid="file-name-input" />
+                <Input
+                  addonAfter={`.${lowerCase(selectedExportType)}`}
+                  data-testid="file-name-input"
+                />
               </Form.Item>
             </Form>
 
@@ -247,4 +328,4 @@ export const EntityExportModalProvider = ({
 };
 
 export const useEntityExportModalProvider = () =>
-  React.useContext<EntityExportModalContextProps>(EntityExportModalContext);
+  useContext<EntityExportModalContextProps>(EntityExportModalContext);

@@ -1,9 +1,9 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.ALL;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.schema.type.MetadataOperation.DELETE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_CUSTOM_FIELDS;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
@@ -13,7 +13,11 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_QUERIES;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_USAGE;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -83,17 +87,18 @@ class PolicyEvaluatorTest {
       ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
     };
     ResourcePermission rp1 = getResourcePermission("r1", Access.DENY, op1);
+    rp1.setPermissions(PolicyEvaluator.trimPermissions(rp1.getPermissions()));
     List<MetadataOperation> expectedOp1 = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
 
     MetadataOperation[] op2 = {
       ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS, EDIT_DISPLAY_NAME
     };
     ResourcePermission rp2 = getResourcePermission("r2", Access.ALLOW, op2);
+    rp2.setPermissions(PolicyEvaluator.trimPermissions(rp2.getPermissions()));
     List<MetadataOperation> expectedOp2 =
         new ArrayList<>(List.of(ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL));
 
     List<ResourcePermission> rpList = List.of(rp1, rp2);
-    PolicyEvaluator.trimResourcePermissions(rpList);
     assertEqualsPermissions(expectedOp1, rpList.get(0).getPermissions());
     assertEqualsPermissions(expectedOp2, rpList.get(1).getPermissions());
   }
@@ -104,28 +109,10 @@ class PolicyEvaluatorTest {
       ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
     };
     ResourcePermission rp = getResourcePermission("testResource", Access.ALLOW, operations);
-    ResourcePermission trimmedRp = PolicyEvaluator.trimResourcePermission(rp);
+    List<Permission> trimmedPermissions = PolicyEvaluator.trimPermissions(rp.getPermissions());
+    rp.setPermissions(trimmedPermissions);
     List<MetadataOperation> expectedOperations = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
-    assertEqualsPermissions(expectedOperations, trimmedRp.getPermissions());
-  }
-
-  @Test
-  void trimPermissions_withAllowAccess_trimmed() {
-    List<Permission> permissions =
-        getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
-    List<MetadataOperation> expectedOperations =
-        Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
-    List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
-  }
-
-  @Test
-  void trimPermissions_withDenyAccess_trimmed() {
-    List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.DENY);
-    List<MetadataOperation> expectedOperations =
-        Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
-    List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualsPermissions(expectedOperations, rp.getPermissions());
   }
 
   @Test

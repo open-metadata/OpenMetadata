@@ -21,6 +21,7 @@ import {
   MenuProps,
   Row,
   Select,
+  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -35,6 +36,7 @@ import {
   isEqual,
   isUndefined,
   last,
+  orderBy,
   startCase,
   unionBy,
 } from 'lodash';
@@ -47,15 +49,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -109,15 +109,23 @@ import {
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
-import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
+import { EntityType } from '../../../../enums/entity.enum';
+import { EntityReference } from '../../../../generated/tests/testCase';
+import { getUsers } from '../../../../rest/userAPI';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -130,7 +138,7 @@ export const TaskTabNew = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -156,7 +164,7 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
-    initialAssignees: usersList,
+    isPostsLoading,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -234,6 +242,7 @@ export const TaskTabNew = ({
     noSuggestionTaskMenuOptions,
   ]);
 
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -293,7 +302,7 @@ export const TaskTabNew = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
+    navigate({
       pathname: getTaskDetailPath(taskThread),
     });
   };
@@ -316,12 +325,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link header-link"
+              className="break-all text-sm entity-link header-link whitespace-normal"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -424,15 +433,21 @@ export const TaskTabNew = ({
     (!hasGlossaryReviewer && isOwner) ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
+  const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
+  const [recentComment, setRecentComment] = useState<string>('');
+
+  const shouldEditAssignee =
+    (isCreator || hasEditAccess) && !isTaskClosed && owners.length === 0;
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
         // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
       })
       .finally(() => {
-        editorRef.current?.clearEditorValue();
+        setHasAddedComment(true);
+        editorRef.current?.clearEditorContent();
         setShowFeedEditor(false);
+        setRecentComment(comment);
       });
   };
 
@@ -454,13 +469,13 @@ export const TaskTabNew = ({
   };
 
   const onTaskReject = () => {
-    if (!isTaskGlossaryApproval && isEmpty(comment)) {
+    if (!isTaskGlossaryApproval && !hasAddedComment) {
       showErrorToast(t('server.task-closed-without-comment'));
 
       return;
     }
 
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : recentComment;
     updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
       comment: updatedComment,
     } as unknown as TaskDetails)
@@ -747,9 +762,7 @@ export const TaskTabNew = ({
                 }}
                 overlayClassName="task-action-dropdown"
                 onClick={() =>
-                  taskAction.key === TaskActionMode.EDIT
-                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                    : onTaskResolve()
+                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>
                 {taskAction.label}
               </Dropdown.Button>
@@ -815,6 +828,36 @@ export const TaskTabNew = ({
     }
   };
 
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.assignee'),
+        })
+      );
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users only when the task is a test case result and the assignees are getting edited
+    if (isTaskTestCaseResult && isEmpty(usersList) && isEditAssignee) {
+      fetchInitialAssign();
+    }
+  }, [isTaskTestCaseResult, usersList, isEditAssignee]);
+
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
@@ -823,6 +866,10 @@ export const TaskTabNew = ({
   useEffect(() => {
     setTaskAction(latestAction);
   }, [latestAction]);
+
+  const handleEditClick = () => {
+    setIsEditAssignee(true);
+  };
 
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeaderNew thread={taskThread} />
@@ -839,13 +886,21 @@ export const TaskTabNew = ({
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col className="flex items-center gap-2" span={16}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              name={taskThread.createdBy ?? ''}
-              width="24"
-            />
-            <Typography.Text>{taskThread.createdBy}</Typography.Text>
+          <Col span={16}>
+            <Link
+              className="no-underline flex items-center gap-2"
+              to={getUserPath(taskThread.createdBy ?? '')}>
+              <UserPopOverCard userName={taskThread.createdBy ?? ''}>
+                <div className="d-flex items-center">
+                  <ProfilePicture
+                    name={taskThread.createdBy ?? ''}
+                    width="24"
+                  />
+                </div>
+              </UserPopOverCard>
+
+              <Typography.Text>{taskThread.createdBy}</Typography.Text>
+            </Link>
           </Col>
 
           {isEditAssignee ? (
@@ -895,43 +950,39 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col className="flex items-center gap-2 text-grey-muted" span={8}>
+              <Col className="flex gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
-              <Col className="flex items-center gap-2" span={16}>
+              <Col className="flex gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      name={taskThread?.task?.assignees[0].displayName ?? ''}
-                      width="24"
-                    />
+                    <UserPopOverCard
+                      userName={taskThread?.task?.assignees[0].name ?? ''}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          name={taskThread?.task?.assignees[0].name ?? ''}
+                          width="24"
+                        />
+                      </div>
+                    </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
-                      {taskThread?.task?.assignees[0].displayName}
+                      {getEntityName(taskThread?.task?.assignees[0])}
                     </Typography.Text>
                   </div>
                 ) : (
-                  <UserAvatarGroup
+                  <OwnerLabel
+                    isAssignee
                     avatarSize={24}
-                    className="p-t-05"
+                    hasPermission={shouldEditAssignee}
+                    isCompactView={false}
                     owners={taskThread?.task?.assignees}
+                    showLabel={false}
+                    onEditClick={handleEditClick}
                   />
                 )}
-                {(isCreator || hasEditAccess) &&
-                !isTaskClosed &&
-                owners.length === 0 ? (
-                  <Button
-                    className="flex-center p-0 h-auto"
-                    data-testid="edit-assignees"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditAssignee(true)}
-                  />
-                ) : null}
               </Col>
             </>
           )}
@@ -994,6 +1045,46 @@ export const TaskTabNew = ({
     );
   };
 
+  const closeFeedEditor = () => {
+    setShowFeedEditor(false);
+  };
+
+  const posts = useMemo(() => {
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(taskThread.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={taskThread}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [taskThread, closeFeedEditor, isPostsLoading]);
+
+  useEffect(() => {
+    closeFeedEditor();
+  }, [taskThread.id]);
+
+  useEffect(() => {
+    setHasAddedComment(false);
+  }, [taskThread.id]);
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1035,7 +1126,9 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
+        {taskThread.task?.status === ThreadTaskStatus.Open &&
+          !rest.isOpenInDrawer &&
+          ActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
@@ -1053,7 +1146,9 @@ export const TaskTabNew = ({
                 className={classNames(
                   'm-t-md feed-editor activity-feed-editor-container-new',
                   {
-                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                    'm-b-md':
+                      (showFeedEditor && taskThread?.posts?.length === 0) ||
+                      rest.isOpenInDrawer,
                   }
                 )}
                 onSave={onSave}
@@ -1063,12 +1158,15 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      key={taskThread.id}
-                      name={getEntityName(currentUser)}
-                      size={32}
-                    />
+                    <UserPopOverCard userName={currentUser?.name ?? ''}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          key={taskThread.id}
+                          name={currentUser?.name ?? ''}
+                          width="32"
+                        />
+                      </div>
+                    </UserPopOverCard>
                   </div>
 
                   <Input
@@ -1081,21 +1179,7 @@ export const TaskTabNew = ({
               )
             )}
 
-            {taskThread?.posts && taskThread?.posts?.length > 0 && (
-              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts
-                  ?.slice()
-                  .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                  .map((reply, index, arr) => (
-                    <CommentCard
-                      feed={taskThread}
-                      isLastReply={index === arr.length - 1}
-                      key={reply.id}
-                      post={reply}
-                    />
-                  ))}
-              </Col>
-            )}
+            {posts}
           </div>
         </Col>
       </Col>
@@ -1109,7 +1193,7 @@ export const TaskTabNew = ({
           okButtonProps={{
             loading: isActionLoading,
           }}
-          okText={t('label.submit')}
+          okText={t('label.save')}
           open={showEditTaskModel}
           title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
           width={768}
@@ -1219,7 +1303,7 @@ export const TaskTabNew = ({
           okButtonProps={{
             loading: isActionLoading,
           }}
-          okText={t('label.submit')}
+          okText={t('label.save')}
           open={isEditAssignee}
           title={`${t('label.re-assign')} ${t('label.task')} #${
             taskDetails?.id

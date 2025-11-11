@@ -13,7 +13,13 @@
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/entity/type';
+import { TagLabel } from '../../generated/tests/testCase';
 import { ColumnLineage } from '../../generated/type/entityLineage';
+import {
+  SearchSourceAlias,
+  TableSearchSource,
+} from '../../interface/search.interface';
+import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -22,6 +28,7 @@ export interface LineageProps {
   hasEditAccess: boolean;
   isFullScreen?: boolean;
   entity?: SourceType;
+  isPlatformLineage?: boolean;
 }
 
 export interface EntityLineageResponse {
@@ -51,6 +58,27 @@ export interface EdgeDetails {
   extraInfo?: EdgeDetails;
 }
 
+export interface ColumnLevelLineageNode
+  extends Pick<
+    TableSearchSource,
+    'owners' | 'tags' | 'domains' | 'description' | 'id'
+  > {
+  fromEntity: EdgeFromToData;
+  toEntity: EdgeFromToData;
+  pipeline?: EntityReference;
+  source?: string;
+  sqlQuery?: string;
+  column?: ColumnLineage;
+  description?: string;
+  pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
+  docId?: string;
+  extraInfo?: EdgeDetails;
+  nodeDepth?: number;
+  tier?: TagLabel | string;
+  name?: string;
+  entityType?: EntityType;
+}
+
 export type LineageSourceType = Omit<SourceType, 'service'> & {
   direction: string;
   depth: number;
@@ -62,6 +90,7 @@ export type NodeData = {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;
   };
+  nodeDepth?: number;
 };
 
 export type LineageData = {
@@ -80,6 +109,16 @@ export interface LineageEntityReference extends EntityReference {
     parentId?: string;
     childrenLength?: number;
   };
-  expandPerformed?: boolean;
+  upstreamExpandPerformed?: boolean;
+  downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
+  serviceType?: FormattedDatabaseServiceType;
 }
+
+export type LineageNode = SearchSourceAlias & {
+  nodeDepth?: number;
+  paging: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
+};

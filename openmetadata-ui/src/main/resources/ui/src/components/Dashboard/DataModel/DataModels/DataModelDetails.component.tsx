@@ -14,15 +14,12 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
@@ -31,12 +28,21 @@ import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
-import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDataModelUtils';
+import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../../utils/RouterUtils';
+import { updateCertificationTag } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../../common/IconButtons/EditIconButton';
+import Loader from '../../../common/Loader/Loader';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -56,11 +62,13 @@ const DataModelDetails = ({
   onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedDataModelFQN } = useFqn();
-  const { customizedPage } = useCustomPages(PageType.DashboardDataModel);
-
+  const { customizedPage, isLoading } = useCustomPages(
+    PageType.DashboardDataModel
+  );
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -102,7 +110,7 @@ const DataModelDetails = ({
   };
 
   const versionHandler = () => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD_DATA_MODEL,
         decodedDataModelFQN,
@@ -113,13 +121,16 @@ const DataModelDetails = ({
 
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
-      history.push({
-        pathname: getEntityDetailsPath(
+      navigate(
+        getEntityDetailsPath(
           EntityType.DASHBOARD_DATA_MODEL,
           decodedDataModelFQN,
           tabValue
         ),
-      });
+        {
+          replace: true,
+        }
+      );
     }
   };
 
@@ -131,8 +142,7 @@ const DataModelDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.data-model'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -146,9 +156,8 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const { editLineagePermission } = useMemo(() => {
@@ -161,23 +170,24 @@ const DataModelDetails = ({
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
-    const allTabs = getDashboardDataModelDetailPageTabs({
-      feedCount,
-      activeTab,
-      handleFeedCount,
-      editLineagePermission,
-      dataModelData,
-      dataModelPermissions,
-      deleted: deleted ?? false,
-      getEntityFeedCount,
-      fetchDataModel,
-      labelMap: tabLabelMap,
-    });
+    const allTabs =
+      dashboardDataModelClassBase.getDashboardDataModelDetailPageTabs({
+        feedCount,
+        activeTab: activeTab ?? EntityTabs.MODEL,
+        handleFeedCount,
+        editLineagePermission,
+        dataModelData,
+        dataModelPermissions,
+        deleted: deleted ?? false,
+        getEntityFeedCount,
+        fetchDataModel,
+        labelMap: tabLabelMap,
+      });
 
     return getDetailsTabWithNewLabel(
       allTabs,
       customizedPage?.tabs,
-      EntityTabs.TASKS
+      EntityTabs.MODEL
     );
   }, [
     feedCount.conversationCount,
@@ -185,18 +195,51 @@ const DataModelDetails = ({
     dataModelData?.sql,
     deleted,
     handleFeedCount,
+    customizedPage?.tabs,
     editLineagePermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(
+        tabs[0],
+        activeTab ?? EntityTabs.MODEL,
+        PageType.DashboardDataModel
+      ),
+    [tabs[0], activeTab]
+  );
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (dataModelData) {
+        const certificationTag: DashboardDataModel['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...dataModelData,
+          certification: certificationTag,
+        };
+
+        await onUpdateDataModel(updatedTableDetails as DashboardDataModel);
+      }
+    },
+    [onUpdateDataModel, dataModelData]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.data-model'),
       })}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -206,6 +249,7 @@ const DataModelDetails = ({
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             openTaskCount={feedCount.openTaskCount}
             permissions={dataModelPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}
@@ -216,16 +260,29 @@ const DataModelDetails = ({
           />
         </Col>
         <GenericProvider<DashboardDataModel>
+          customizedPage={customizedPage}
           data={dataModelData}
+          isTabExpanded={isTabExpanded}
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.MODEL}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={(activeKey: string) =>
                 handleTabChange(activeKey as EntityTabs)
               }

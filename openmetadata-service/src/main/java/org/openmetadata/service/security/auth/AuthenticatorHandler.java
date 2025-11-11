@@ -5,10 +5,10 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import freemarker.template.TemplateException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -28,6 +28,15 @@ public interface AuthenticatorHandler {
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   void init(OpenMetadataApplicationConfig config);
+
+  /**
+   * Reload the authentication configuration without restarting the server
+   * @param config New authentication configuration
+   */
+  default void reload(OpenMetadataApplicationConfig config) {
+    // Default implementation reinitializes
+    init(config);
+  }
 
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
 

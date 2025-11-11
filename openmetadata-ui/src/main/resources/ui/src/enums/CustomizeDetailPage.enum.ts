@@ -19,6 +19,7 @@ export enum WidgetWidths {
 export enum DetailPageWidgetKeys {
   TABS = 'KnowledgePanel.Tabs',
   HEADER = 'KnowledgePanel.Header',
+  LEFT_PANEL = 'KnowledgePanel.LeftPanel',
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   DESCRIPTION = 'KnowledgePanel.Description',
   TABLE_SCHEMA = 'KnowledgePanel.TableSchema',
@@ -47,6 +48,10 @@ export enum DetailPageWidgetKeys {
   API_SCHEMA = 'KnowledgePanel.APISchema',
   RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
   ML_MODEL_FEATURES = 'KnowledgePanel.MlModelFeatures',
+  CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
+  DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',
+  WORKSHEETS = 'KnowledgePanel.Worksheets',
+  WORKSHEET_COLUMNS = 'KnowledgePanel.WorksheetColumns',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {
@@ -63,4 +68,5 @@ export enum GlossaryTermDetailPageWidgetKeys {
   CUSTOM_PROPERTIES = 'KnowledgePanel.CustomProperties',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   TERMS_TABLE = 'KnowledgePanel.TermsTable',
+  WORKFLOW_HISTORY = 'KnowledgePanel.WorkflowHistory',
 }

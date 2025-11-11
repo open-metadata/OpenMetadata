@@ -11,20 +11,12 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import Qs from 'qs';
 import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Status } from '../generated/entity/applications/appRunRecord';
-import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
-import { getSettingPath } from '../utils/RouterUtils';
-import { getEncodedFqn } from '../utils/StringsUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -35,7 +27,7 @@ export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
-export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
+export const GRAPH_BACKGROUND_COLOR = '#E9EAEB';
 export const GRAYED_OUT_COLOR = '#959595';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
@@ -55,13 +47,16 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
+export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
+export const MAX_NAME_LENGTH = 256;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -70,8 +65,11 @@ export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
+export const VERSION = 'VERSION';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -89,9 +87,13 @@ export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
+export const AIRFLOW_HYBRID = 'Hybrid';
+export const COLLATE_SAAS = 'CollateSaaS';
+export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
+export const RUNNER = 'ingestionRunner';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR500 = t('message.something-went-wrong');
+export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
@@ -132,6 +134,8 @@ export const ROUTES = {
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
   LOGOUT: '/logout',
+  PLATFORM_LINEAGE: '/lineage',
+  PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -140,6 +144,7 @@ export const ROUTES = {
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
+  KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -152,6 +157,7 @@ export const ROUTES = {
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}`,
   SERVICE_VERSION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SERVICE_WITH_SUB_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
   SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
@@ -164,6 +170,7 @@ export const ROUTES = {
   TAG_DETAILS: `/tags/${PLACEHOLDER_ROUTE_FQN}`,
   TAG_ITEM: `/tag/${PLACEHOLDER_ROUTE_FQN}`,
   TAG_ITEM_WITH_TAB: `/tag/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TAG_ITEM_WITH_SUB_TAB: `/tag/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   TAG_VERSION: `/tags/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SIGNUP: '/signup',
   REGISTER: '/register',
@@ -203,9 +210,13 @@ export const ROUTES = {
   DOMAIN: '/domain',
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DOMAIN_DETAILS_WITH_SUBTAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   DOMAIN_VERSION: `/domain/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
 
   ADD_DOMAIN: '/domain/add',
+
+  DATA_PRODUCT: '/dataProduct',
+  ADD_DATA_PRODUCT: '/dataProduct/add',
 
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/glossary/add',
@@ -220,7 +231,6 @@ export const ROUTES = {
   BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/add-field`,
-  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
@@ -243,15 +253,19 @@ export const ROUTES = {
   TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
   TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/add-ingestion`,
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
-  ADD_TEST_SUITES: `/add-test-suites`,
 
   // data quality
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_QUALITY_WITH_SUB_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   INCIDENT_MANAGER: '/incident-manager',
-  INCIDENT_MANAGER_DETAILS: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}`,
-  INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
+  // test case
+  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_FQN}`,
+  TEST_CASE_DETAILS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TEST_CASE_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
@@ -268,6 +282,8 @@ export const ROUTES = {
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // Observability
   OBSERVABILITY: '/observability',
@@ -291,6 +307,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {
@@ -301,231 +320,17 @@ export const SOCKET_EVENTS = {
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
   SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+  CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
+  DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
+  MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
+  CHART_DATA_STREAM: 'chartDataStream',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': [t('message.in-this-database')],
-};
-
-export const getTagsDetailsPath = (entityFQN: string) => {
-  let path = ROUTES.TAG_DETAILS;
-  const classification = getPartialNameFromFQN(entityFQN, ['service']);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
-
-  return path;
-};
-
-export const getVersionPath = (
-  entityType: string,
-  fqn: string,
-  version: string,
-  tab?: string
-) => {
-  let path = tab
-    ? ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB
-    : ROUTES.ENTITY_VERSION_DETAILS;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab ?? '');
-
-  return path;
-};
-
-export const getServiceDetailsPath = (
-  serviceFQN: string,
-  serviceCat: string,
-  tab?: string
-) => {
-  let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN));
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
-export const getExplorePath: (args: {
-  tab?: string;
-  search?: string;
-  extraParameters?: Record<string, unknown>;
-  isPersistFilters?: boolean;
-}) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
-  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
-    PLACEHOLDER_ROUTE_TAB,
-    tab ?? ''
-  );
-  let paramsObject: Record<string, unknown> = Qs.parse(
-    location.search.startsWith('?')
-      ? location.search.substr(1)
-      : location.search
-  );
-
-  const { search: paramSearch } = paramsObject;
-
-  /**
-   * persist the filters if isPersistFilters is true
-   * otherwise only persist the search and passed extra params
-   * */
-  if (isPersistFilters) {
-    if (!isUndefined(search)) {
-      paramsObject = {
-        ...paramsObject,
-        search,
-      };
-    }
-    if (!isUndefined(extraParameters)) {
-      paramsObject = {
-        ...paramsObject,
-        ...extraParameters,
-      };
-    }
-  } else {
-    paramsObject = {
-      search: isUndefined(search) ? paramSearch : search,
-      ...(!isUndefined(extraParameters) ? extraParameters : {}),
-    };
-  }
-
-  const query = Qs.stringify(paramsObject);
-
-  return `${pathname}?${query}`;
-};
-
-export const getEntityDetailsPath = (
-  entityType: EntityType,
-  fqn: string,
-  tab?: string,
-  subTab = 'all'
-) => {
-  let path = tab ? ROUTES.ENTITY_DETAILS_WITH_TAB : ROUTES.ENTITY_DETAILS;
-
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.ENTITY_DETAILS_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-  path = path.replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType);
-
-  return path;
-};
-
-export const getGlossaryTermDetailsPath = (
-  glossaryFQN: string,
-  tab?: string,
-  subTab = 'all'
-) => {
-  let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
-
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryFQN));
-
-  return path;
-};
-
-export const getTeamAndUserDetailsPath = (name?: string) => {
-  let path = getSettingPath(
-    GlobalSettingsMenuCategory.MEMBERS,
-    GlobalSettingOptions.TEAMS
-  );
-  if (name) {
-    path = getSettingPath(
-      GlobalSettingsMenuCategory.MEMBERS,
-      GlobalSettingOptions.TEAMS,
-      true
-    );
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
-  }
-
-  return path;
-};
-
-export const getEditWebhookPath = (webhookName: string) => {
-  let path = ROUTES.EDIT_WEBHOOK;
-  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
-
-  return path;
-};
-
-export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
-  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
-
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.USER_PROFILE_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
-
-  return path;
-};
-
-export const getBotsPath = (botsName: string) => {
-  let path = ROUTES.BOTS_PROFILE;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
-
-  return path;
-};
-
-export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
-  let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    getEncodedFqn(entityTypeFQN)
-  );
-
-  return path;
-};
-
-export const getCreateUserPath = (bot: boolean) => {
-  let path = bot ? ROUTES.CREATE_USER_WITH_BOT : ROUTES.CREATE_USER;
-
-  if (bot) {
-    path = path.replace(PLACEHOLDER_USER_BOT, 'bot');
-  }
-
-  return path;
-};
-
-export const getUsersPagePath = (isAdmin?: boolean) => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
-    isAdmin ? 'admins' : 'users'
-  }`;
-};
-
-export const getBotsPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`;
-};
-
-export const getKpiPath = (kpiName: string) => {
-  let path = ROUTES.EDIT_KPI;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(kpiName));
-
-  return path;
+  '/database/': [i18n.t('message.in-this-database')],
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;
@@ -550,7 +355,15 @@ export const ENTITY_PATH = {
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
   metrics: 'metric',
+  dataAssets: 'dataAsset',
+  query: 'query',
+  testCases: 'testCase',
   domains: 'domain',
+  charts: 'chart',
+  directories: 'directory',
+  files: 'file',
+  spreadsheets: 'spreadsheet',
+  worksheets: 'worksheet',
 };
 
 export const VALIDATION_MESSAGES = {
@@ -578,6 +391,10 @@ export const VALIDATION_MESSAGES = {
       min: '${min}',
       max: '${max}',
     }),
+    min: i18n.t('message.entity-size-less-than', {
+      entity: '${label}',
+      min: '${min}',
+    }),
   },
 };
 
@@ -586,7 +403,7 @@ export const ERROR_MESSAGE = {
 };
 
 export const ICON_DIMENSION = {
-  with: 14,
+  width: 14,
   height: 14,
   fontSize: 14,
 };
@@ -625,8 +442,20 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+  [Status.Pending]: 'Pending',
 };
 
 export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,
 };
+
+export const INITIAL_CHART_FILTERS = {
+  showDeletedCharts: false,
+};
+
+export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
+export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
+
+export const BREADCRUMB_SEPARATOR = '/';
+
+export const FULLSCREEN_QUERY_PARAM_KEY = 'fullscreen';

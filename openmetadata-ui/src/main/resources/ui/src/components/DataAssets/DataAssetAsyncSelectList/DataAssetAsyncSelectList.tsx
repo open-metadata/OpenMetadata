@@ -13,12 +13,12 @@
 import { Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { usePaging } from '../../../hooks/paging/usePaging';
+import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
   getEntityName,
@@ -43,15 +43,11 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   searchIndex = SearchIndex.ALL,
   value: selectedValue,
   filterFqns = [],
+  queryFilter,
   ...props
 }) => {
-  const {
-    currentPage,
-    handlePagingChange,
-    handlePageChange,
-    paging,
-    pageSize,
-  } = usePaging(PAGE_SIZE);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
   const [options, setOptions] = useState<DataAssetOption[]>(
@@ -68,10 +64,10 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       const dataAssetsResponse = await searchQuery({
         query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
-        pageSize: pageSize,
+        pageSize: PAGE_SIZE,
         searchIndex: searchIndex,
         // Filter out bots from user search
-        queryFilter: {
+        queryFilter: queryFilter ?? {
           query: { bool: { must_not: [{ match: { isBot: true } }] } },
         },
       });
@@ -104,7 +100,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         },
       };
     },
-    [pageSize]
+    [searchIndex, queryFilter]
   );
 
   const loadOptions = useCallback(
@@ -114,16 +110,16 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       try {
         const res = await fetchOptions(value, 1);
         setOptions(res.data);
-        handlePagingChange(res.paging);
         setSearchValue(value);
-        handlePageChange(1);
+        setPaging(res.paging);
+        setCurrentPage(1);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
-    [fetchOptions, handlePagingChange, handlePageChange]
+    [fetchOptions]
   );
 
   const optionList = useMemo(() => {
@@ -193,8 +189,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
           setHasContentLoading(true);
           const res = await fetchOptions(searchValue, currentPage + 1);
           setOptions((prev) => [...prev, ...res.data]);
-          handlePagingChange(res.paging);
-          handlePageChange((prev) => prev + 1);
+          setPaging(res.paging);
+          setCurrentPage((prev) => prev + 1);
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {
@@ -231,6 +227,16 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     }
   };
 
+  const handleBlur = useCallback(() => {
+    setCurrentPage(1);
+    setSearchValue('');
+    setOptions([]);
+  }, []);
+
+  const handleFocus = useCallback(() => {
+    loadOptions('');
+  }, []);
+
   const internalValue = useMemo(() => {
     if (isString(selectedValue) || isArray(selectedValue)) {
       return selectedValue as string | string[];
@@ -254,13 +260,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       options={optionList}
       style={{ width: '100%' }}
       value={internalValue}
-      onBlur={() => {
-        handlePageChange(1);
-        setSearchValue('');
-        setOptions([]);
-      }}
+      onBlur={handleBlur}
       onChange={handleChange}
-      onFocus={() => loadOptions('')}
+      onFocus={handleFocus}
       onPopupScroll={onScroll}
       onSearch={debounceFetcher}
       {...props}

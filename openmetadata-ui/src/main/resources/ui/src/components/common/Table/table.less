@@ -10,27 +10,71 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .table-container {
+  height: initial !important;
+  border-radius: 12px;
+  background-color: @white;
+  border: 1px solid @border-color-1;
+  overflow: hidden;
+
+  .ant-table-body {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
   .custom-column-dropdown-menu {
-    margin-right: 10px;
-    padding: 0;
     border: none;
-    color: @primary-color;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    color: @grey-600;
 
     .ant-dropdown-menu {
       background-color: @white;
-      border-color: @grey-4;
+      border-color: @border-color;
     }
 
     .ant-dropdown-menu-item {
       padding-left: 0px;
       padding-right: 0px;
     }
+
     .ant-dropdown-menu-item:hover {
       background-color: @white;
       color: inherit;
+    }
+    svg {
+      height: 24px;
+    }
+  }
+
+  .pagination-container {
+    border-top: 1px solid @border-color;
+    padding: 16px 0;
+  }
+}
+
+.custom-card-with-table {
+  &.table-container {
+    border: none;
+    border-radius: 0px 0px @border-rad-sm @border-rad-sm;
+  }
+  .ant-table {
+    table > tbody > tr:last-child > td {
+      border-bottom: none;
+    }
+    tr > td:first-child.name-column {
+      padding-left: 16px;
     }
   }
 }

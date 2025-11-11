@@ -60,7 +60,7 @@ export const createDescriptionTask = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
 
     await assigneeField.fill(value.assignee);
@@ -70,7 +70,7 @@ export const createDescriptionTask = async (
     const dropdownValue = page.getByTestId(value.assignee);
     await dropdownValue.hover();
     await dropdownValue.click();
-    await page.click('body');
+    await clickOutside(page);
   }
 
   if (addDescription) {
@@ -113,7 +113,7 @@ export const createTagTask = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -146,7 +146,9 @@ export const createTagTask = async (
     await clickOutside(page);
   }
 
+  const taskResponse = page.waitForResponse(`/api/v1/feed`);
   await page.click('button[type="submit"]');
+  await taskResponse;
 
   await toastNotification(page, /Task created successfully./);
 };

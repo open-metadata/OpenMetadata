@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: OpenMetadata APIs
+  version: 1.6.0
+servers:
+  - url: "/api"
+    description: Current Host
+  - url: "http://localhost:8585/api"
+    description: Endpoint URL
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - BearerAuth: []

@@ -12,19 +12,19 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 
 // Mock the required dependencies
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'test-dashboard' }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider');
@@ -105,7 +105,7 @@ describe('DashboardDetailsPage', () => {
 
     expect(getDashboardByFqn).toHaveBeenCalledWith('test-dashboard', {
       fields:
-        'domain,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
+        'domains,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
     });
 
     expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();

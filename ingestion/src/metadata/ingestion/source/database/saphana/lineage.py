@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,17 +29,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import test_connection_common
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ParsedLineage,
     parse_registry,
 )
 from metadata.ingestion.source.database.saphana.models import SapHanaLineageModel
 from metadata.ingestion.source.database.saphana.queries import SAPHANA_LINEAGE
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -111,6 +109,17 @@ class SaphanaLineageSource(Source):
                 try:
                     lineage_model = SapHanaLineageModel.validate(dict(row))
 
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        lineage_model.name,
+                    ):
+                        self.status.filter(
+                            lineage_model.name,
+                            "View Object Filtered Out",
+                        )
+                        continue
+
+                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
                     yield from self.parse_cdata(
                         metadata=self.metadata, lineage_model=lineage_model
                     )
@@ -141,23 +150,22 @@ class SaphanaLineageSource(Source):
             if to_entity:
                 yield from parsed_lineage.to_request(
                     metadata=metadata,
+                    engine=self.engine,
                     service_name=self.config.serviceName,
                     to_entity=to_entity,
                 )
         except Exception as exc:
             error = (
                 f"Error parsing CDATA XML for {lineage_model.object_suffix} at "
-                + f"{lineage_model.package_id}/{lineage_model.object_name} due to [{exc}]"
+                + f"{lineage_model.name} due to [{exc}]"
             )
             self.status.failed(
                 error=StackTraceError(
-                    name=lineage_model.object_name,
+                    name=lineage_model.name,
                     error=error,
                     stackTrace=traceback.format_exc(),
                 )
             )
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(self.metadata, self.engine, self.service_connection)
-        raise_test_connection_exception(result)
+        test_connection_common(self.metadata, self.engine, self.service_connection)

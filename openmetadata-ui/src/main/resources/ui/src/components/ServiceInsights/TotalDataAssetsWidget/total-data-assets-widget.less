@@ -15,11 +15,6 @@
 .total-data-assets-widget.ant-card {
   height: 100%;
 
-  .bullet {
-    width: 8px;
-    height: 8px;
-    border-radius: 4px;
-  }
   .icon-container {
     display: flex;
     align-items: center;
@@ -31,22 +26,28 @@
   }
 
   .assets-list-container {
-    flex: 0.5;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background-color: @grey-1;
-    border-radius: @border-radius-xs;
-    height: fit-content;
+    background-color: @grey-50;
+    border-radius: @border-rad-xs;
+    height: 100%;
   }
 
-  .total-data-assets-info {
+  .tooltip-container {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    height: 100%;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 8px;
+    z-index: 10;
+    pointer-events: none;
+    text-align: center;
   }
 
   .ant-card-body {

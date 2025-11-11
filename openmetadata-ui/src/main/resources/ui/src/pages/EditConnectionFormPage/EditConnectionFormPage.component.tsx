@@ -16,9 +16,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -35,6 +35,7 @@ import {
 } from '../../constants/Services.constant';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -48,18 +49,19 @@ import {
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function EditConnectionFormPage() {
-  const { t } = useTranslation();
-  const { serviceCategory } = useParams<{
+  const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN } = useFqn();
+  const { t } = useTranslation();
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
   );
-  const history = useHistory();
+  const navigate = useNavigate();
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeServiceStep, setActiveServiceStep] = useState(1);
@@ -73,15 +75,10 @@ function EditConnectionFormPage() {
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
 
   const handleConfigSave = (updatedData: ConfigData) => {
-    const configData: ServicesUpdateRequest = {
-      ...serviceDetails,
-      connection: {
-        config: {
-          ...serviceDetails?.connection?.config,
-          ...updatedData,
-        },
-      },
-    };
+    const configData = serviceUtilClassBase.getEditConfigData(
+      serviceDetails,
+      updatedData
+    );
 
     setServiceConfig(configData);
     setActiveServiceStep(2);
@@ -113,7 +110,7 @@ function EditConnectionFormPage() {
     try {
       setSaveServiceState('waiting');
       const response = await patchService(
-        serviceCategory,
+        serviceCategory as ServiceCategory,
         serviceDetails.id,
         jsonPatch
       );
@@ -122,7 +119,9 @@ function EditConnectionFormPage() {
         owners: response?.owners ?? serviceDetails?.owners,
       });
 
-      history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
+      navigate(
+        getPathByServiceFQN(serviceCategory as ServiceCategory, serviceFQN)
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -133,9 +132,13 @@ function EditConnectionFormPage() {
   const fetchServiceDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
-        fields: TabSpecificField.OWNERS,
-      });
+      const response = await getServiceByFQN(
+        serviceCategory as ServiceCategory,
+        serviceFQN,
+        {
+          fields: TabSpecificField.OWNERS,
+        }
+      );
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
@@ -150,10 +153,15 @@ function EditConnectionFormPage() {
           imgSrc: serviceUtilClassBase.getServiceTypeLogo(
             response as SearchSourceAlias
           ),
-          url: getPathByServiceFQN(serviceCategory, serviceFQN),
+          url: getPathByServiceFQN(
+            serviceCategory as ServiceCategory,
+            serviceFQN
+          ),
         },
         {
-          name: t('label.edit-entity', { entity: t('label.connection') }),
+          name: t('label.edit-entity', {
+            entity: t('label.connection'),
+          }),
           url: '',
           activeTitle: true,
         },
@@ -171,7 +179,7 @@ function EditConnectionFormPage() {
   };
 
   const onCancel = () => {
-    history.goBack();
+    navigate(-1);
   };
 
   const handleFiltersInputBackClick = () => setActiveServiceStep(1);
@@ -189,6 +197,10 @@ function EditConnectionFormPage() {
     fetchServiceDetail();
   }, [serviceFQN, serviceCategory]);
 
+  useEffect(() => {
+    serviceUtilClassBase.setEditServiceDetails(serviceDetails);
+  }, [serviceDetails, serviceCategory]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -196,12 +208,12 @@ function EditConnectionFormPage() {
   if (isError && !isLoading) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(serviceCategory, serviceFQN)}
+        {getEntityMissingError(serviceCategory as ServiceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     );
   }
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
@@ -222,7 +234,7 @@ function EditConnectionFormPage() {
             cancelText={t('label.back')}
             data={serviceDetails}
             okText={t('label.next')}
-            serviceCategory={serviceCategory}
+            serviceCategory={serviceCategory as ServiceCategory}
             serviceType={serviceDetails?.serviceType ?? ''}
             status={saveServiceState}
             onCancel={onCancel}
@@ -237,7 +249,7 @@ function EditConnectionFormPage() {
           <FiltersConfigForm
             cancelText={t('label.back')}
             data={serviceDetails}
-            serviceCategory={serviceCategory}
+            serviceCategory={serviceCategory as ServiceCategory}
             serviceType={serviceDetails?.serviceType ?? ''}
             status={saveServiceState}
             onCancel={handleFiltersInputBackClick}
@@ -248,7 +260,7 @@ function EditConnectionFormPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   return (
@@ -259,6 +271,8 @@ function EditConnectionFormPage() {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
@@ -267,7 +281,7 @@ function EditConnectionFormPage() {
           <ServiceDocPanel
             activeField={activeField}
             serviceName={serviceDetails?.serviceType ?? ''}
-            serviceType={getServiceType(serviceCategory)}
+            serviceType={getServiceType(serviceCategory as ServiceCategory)}
           />
         ),
         className: 'service-doc-panel content-resizable-panel-container',
@@ -278,4 +292,4 @@ function EditConnectionFormPage() {
   );
 }
 
-export default EditConnectionFormPage;
+export default withPageLayout(EditConnectionFormPage);

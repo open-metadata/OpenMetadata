@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import InlineAlert from './InlineAlert';
 
 const mockSetInlineAlertDetails = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     inlineAlertDetails: undefined,
     setInlineAlertDetails: mockSetInlineAlertDetails,
-  }),
+  })),
 }));
 
 const mockProps = {
@@ -32,10 +31,6 @@ const mockProps = {
 };
 
 describe('InlineAlert', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('should render alert with basic props', () => {
     render(<InlineAlert {...mockProps} />);
 
@@ -44,8 +39,15 @@ describe('InlineAlert', () => {
   });
 
   it('should handle show more/less functionality when subDescription is provided', () => {
+    const mockTestProps = {
+      type: 'error' as const,
+      heading: 'Test Heading',
+      description:
+        'This is a very long description that should be truncated and this is for test purpose. This is a very long description that should be and this is for test purpose. This is a very long desc',
+      onClose: jest.fn(),
+    };
     const subDescription = 'Additional details here';
-    render(<InlineAlert {...mockProps} subDescription={subDescription} />);
+    render(<InlineAlert {...mockTestProps} subDescription={subDescription} />);
 
     // Initially subDescription should not be visible
     expect(screen.queryByText(subDescription)).not.toBeInTheDocument();
@@ -53,7 +55,7 @@ describe('InlineAlert', () => {
     // Click "more" button
     fireEvent.click(screen.getByTestId('read-more-button'));
 
-    expect(screen.getByText(subDescription)).toBeInTheDocument();
+    expect(screen.getByText(/Additional details here/i)).toBeInTheDocument();
 
     // Click "less" button
     fireEvent.click(screen.getByTestId('read-less-button'));

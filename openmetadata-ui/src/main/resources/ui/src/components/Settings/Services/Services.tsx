@@ -16,12 +16,10 @@ import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  DISABLED,
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
@@ -33,37 +31,42 @@ import {
   servicesDisplayName,
 } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getAddServicePath } from '../../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+} from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
+  getSearchIndexFromService,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { columnFilterIcon } from '../../../utils/TableColumn.util';
+import {
+  columnFilterIcon,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -74,11 +77,11 @@ interface ServicesProps {
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
-  const { isFetchingStatus, platform } = useAirflowStatus();
+  const { isFetchingStatus } = useAirflowStatus();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    history.push(getAddServicePath(serviceName));
+    navigate(getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);
@@ -98,40 +101,17 @@ const Services = ({ serviceName }: ServicesProps) => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
-  const filterString = useMemo(() => {
+  const serviceTypeQueryFilter = useMemo(() => {
     return serviceTypeFilter?.length
-      ? `(${serviceTypeFilter
-          .map((type) => `serviceType:${type}`)
-          .join(' OR ')})`
+      ? getTermQuery({ serviceType: serviceTypeFilter }, 'should', 1)
       : undefined;
   }, [serviceTypeFilter]);
-
-  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const searchIndex = useMemo(() => {
     setSearchTerm('');
     setServiceTypeFilter([]);
 
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return SearchIndex.DATABASE_SERVICE;
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return SearchIndex.DASHBOARD_SERVICE;
-      case ServiceCategory.MESSAGING_SERVICES:
-        return SearchIndex.MESSAGING_SERVICE;
-      case ServiceCategory.PIPELINE_SERVICES:
-        return SearchIndex.PIPELINE_SERVICE;
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return SearchIndex.ML_MODEL_SERVICE;
-      case ServiceCategory.STORAGE_SERVICES:
-        return SearchIndex.STORAGE_SERVICE;
-      case ServiceCategory.SEARCH_SERVICES:
-        return SearchIndex.SEARCH_SERVICE;
-      case ServiceCategory.API_SERVICES:
-        return SearchIndex.API_SERVICE_INDEX;
-    }
-
-    return SearchIndex.DATABASE_SERVICE;
+    return getSearchIndexFromService(serviceName);
   }, [serviceName]);
 
   const getServiceDetails = useCallback(
@@ -140,19 +120,19 @@ const Services = ({ serviceName }: ServicesProps) => {
       currentPage,
       after,
       before,
-      filters,
+      queryFilter,
     }: {
       search?: string;
       limit?: number;
       currentPage?: number;
       after?: string;
       before?: string;
-      filters?: string;
+      queryFilter?: Record<string, unknown>;
     }) => {
       setIsLoading(true);
       try {
         let services = [];
-        if (search || !isEmpty(filters)) {
+        if (search || !isEmpty(queryFilter)) {
           const {
             hits: { hits, total },
           } = await searchService({
@@ -160,7 +140,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             searchIndex,
             limit: pageSize,
             currentPage,
-            filters,
+            queryFilter,
             deleted,
           });
 
@@ -204,23 +184,23 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServicePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (searchTerm || filterString) {
+      if (searchTerm || serviceTypeQueryFilter) {
         handlePageChange(currentPage);
         getServiceDetails({
           currentPage,
           search: searchTerm,
           limit: pageSize,
-          filters: filterString,
+          queryFilter: serviceTypeQueryFilter,
         });
       } else if (cursorType) {
         handlePageChange(currentPage);
         getServiceDetails({
           [cursorType]: paging[cursorType],
-          filters: filterString,
+          queryFilter: serviceTypeQueryFilter,
         });
       }
     },
-    [getServiceDetails, searchTerm, filterString, paging, pageSize]
+    [getServiceDetails, searchTerm, serviceTypeQueryFilter, paging, pageSize]
   );
 
   const addServicePermission = useMemo(
@@ -259,19 +239,30 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.SEARCH_SERVICES;
       case ServiceCategory.API_SERVICES:
         return PAGE_HEADERS.API_SERVICES;
+      case ServiceCategory.SECURITY_SERVICES:
+        return PAGE_HEADERS.SECURITY_SERVICES;
+      case ServiceCategory.DRIVE_SERVICES:
+        return PAGE_HEADERS.DRIVE_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
   }, [serviceName]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (addServicePermission && isEmpty(searchTerm) && !filterString) {
+    if (
+      addServicePermission &&
+      isEmpty(searchTerm) &&
+      !serviceTypeQueryFilter
+    ) {
       return (
         <ErrorPlaceHolder
-          className="p-lg"
+          className="p-lg border-none"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
+          permissionValue={t('label.create-entity', {
+            entity: `${servicesDisplayName[serviceName]}`,
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
         />
@@ -280,7 +271,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
     return (
       <ErrorPlaceHolder
-        className="mt-24"
+        className="mt-24 border-none"
         type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );
@@ -289,7 +280,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     servicesDisplayName,
     serviceName,
     searchTerm,
-    filterString,
+    serviceTypeQueryFilter,
     addServicePermission,
     handleAddServiceClick,
   ]);
@@ -300,6 +291,30 @@ const Services = ({ serviceName }: ServicesProps) => {
       value,
     }));
   }, [serviceName]);
+
+  const customPaginationTableProps = useMemo(
+    () => ({
+      showPagination,
+      currentPage,
+      isLoading,
+      isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
+      pageSize,
+      paging,
+      pagingHandler: handleServicePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      showPagination,
+      currentPage,
+      isLoading,
+      searchTerm,
+      serviceTypeFilter,
+      pageSize,
+      paging,
+      handleServicePageChange,
+      handlePageSizeChange,
+    ]
+  );
 
   const columns: ColumnsType<ServicesType> = [
     {
@@ -331,9 +346,8 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       render: (description) =>
         description ? (
-          <RichTextEditorPreviewerV1
+          <RichTextEditorPreviewerNew
             className="max-two-lines"
-            enableSeeMoreVariant={false}
             markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
@@ -356,13 +370,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         </span>
       ),
     },
-    {
-      title: t('label.owner-plural'),
-      dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-      key: TABLE_COLUMNS_KEYS.OWNERS,
-      width: 200,
-      render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-    },
+    ...ownerTableObject<ServicesType>(),
   ];
 
   const serviceCardRenderer = (service: ServicesType) => {
@@ -437,9 +445,16 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      filters: filterString,
+      queryFilter: serviceTypeQueryFilter,
     });
-  }, [searchIndex, pageSize, serviceName, searchTerm, filterString, deleted]);
+  }, [
+    searchIndex,
+    pageSize,
+    serviceName,
+    searchTerm,
+    serviceTypeQueryFilter,
+    deleted,
+  ]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
@@ -450,7 +465,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   return (
     <Row
-      className="justify-center m-b-md"
+      className="justify-center"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>
@@ -468,7 +483,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                     })
                   : NO_PERMISSION_FOR_ACTION
               }>
-              {addServicePermission && !isPlatFormDisabled && (
+              {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
                   <Button
                     className="m-b-xs"
@@ -489,6 +504,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          customPaginationProps={customPaginationTableProps}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
@@ -496,7 +512,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             search: searchTerm,
           }}
           tableProps={{
-            bordered: true,
             columns,
             dataSource: serviceDetails,
             rowKey: 'fullyQualifiedName',
@@ -509,19 +524,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleServicePageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

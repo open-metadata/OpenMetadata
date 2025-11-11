@@ -43,11 +43,17 @@ We execute a query on query history table of the respective data source to perfo
 For example: `query_text not ilike '--- metabase query %'`
 
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/usage/filter-query-set) document for further examples on filter conditions.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage/filter-query-set" target="_blank">this</a> document for further examples on filter conditions.
 $$
 
 $$section
 ### Number of Retries $(id="retries")
 
 Times to retry the workflow in case it ends with a failure.
+$$
+
+$$section
+### Raise on Error $(id="raiseOnError")
+
+Mark the workflow as failed or avoid raising exceptions.
 $$

@@ -47,6 +47,10 @@
         "config": {
           "description": "Pipeline configuration for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "metadata": {
+          "description": "Metadata for the pipeline status.",
+          "$ref": "../../../type/basic.json#/definitions/map"
         }
       },
       "additionalProperties": false
@@ -176,6 +180,11 @@
       "description": "Set the logging level for the workflow.",
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
+    "raiseOnError": {
+      "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+      "type": "boolean",
+      "default": true
+    },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
       "type": "boolean",
@@ -185,6 +194,11 @@
       "description": "True if the pipeline is ready to be run in the next schedule. False if it is paused.",
       "type": "boolean",
       "default": true
+    },
+    "enableStreamableLogs": {
+      "description": "Enable real-time log streaming to the OpenMetadata server. When enabled, ingestion logs will be automatically shipped to the server's configured log storage backend (S3 or compatible).",
+      "type": "boolean",
+      "default": false
     },
     "href": {
       "description": "Link to this ingestion pipeline resource.",
@@ -202,6 +216,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../../type/basic.json#/definitions/impersonatedBy"
+    },
     "changeDescription": {
       "description": "Change that led to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
@@ -209,6 +227,10 @@
     "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../../type/entityReferenceList.json"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -218,16 +240,20 @@
     "provider" : {
       "$ref": "../../../type/basic.json#/definitions/providerType"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReferenceList.json"
     },
     "applicationType": {
       "description": "Type of the application when pipelineType is 'application'.",
       "type": "string"
     },
-    "ingestionAgent" : {
+    "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
       "$ref": "../../../type/entityReference.json"
     }
   },

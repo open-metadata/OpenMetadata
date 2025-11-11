@@ -14,16 +14,25 @@
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 
 export interface SeverityFormProps {
-  onSubmit?: (severity: Severities) => Promise<void>;
+  onSubmit?: (severity?: Severities) => Promise<void>;
 }
 
 export interface SeverityProps extends SeverityFormProps {
   severity?: Severities;
   hasPermission?: boolean;
+  newLook?: boolean;
+  headerName?: string;
+  isInline?: boolean;
 }
 
 export interface SeverityModalProps {
   initialSeverity?: Severities;
   onCancel: () => void;
   onSubmit: (severity: Severities) => Promise<void>;
+}
+
+export interface InlineSeverityProps {
+  severity?: Severities;
+  hasEditPermission: boolean;
+  onSubmit: SeverityProps['onSubmit'];
 }

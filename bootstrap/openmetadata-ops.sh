@@ -40,7 +40,7 @@ fi
 if [ -d "${LIBS_DIR}" ]; then
   # First, add collate-service jar to the classpath.
   # This is required for cases where we override classes from dependencies.
-  for file in "${LIBS_DIR}"collate-service-*.jar;
+  for file in "${LIBS_DIR}"collate-spec-*.jar;
   do
       CLASSPATH="$CLASSPATH":"$file"
   done
@@ -54,4 +54,5 @@ else
 fi
 
 ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${OPENMETADATA_SETUP_MAIN_CLASS} -c $CONFIG_FILE_PATH "$@"
+exit $?
 

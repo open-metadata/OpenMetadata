@@ -7,6 +7,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
@@ -91,5 +92,50 @@ public final class ColumnUtil {
       tags.addAll(getAllTags(c));
     }
     return tags;
+  }
+
+  /**
+   * Finds a column by its Fully Qualified Name (FQN).
+   */
+  public static Column findColumn(List<Column> columns, String columnFqn) {
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName().equals(columnFqn)) {
+        return column;
+      }
+      if (column.getChildren() != null) {
+        Column childColumn = findColumn(column.getChildren(), columnFqn);
+        if (childColumn != null) {
+          return childColumn;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Adds or updates a column within the given column list.
+   * If the column exists, it updates its values.
+   * If the column does not exist, it adds it to the list.
+   */
+  public static void addOrUpdateColumn(List<Column> columns, Column newColumn) {
+    Optional<Column> existingColumn =
+        columns.stream()
+            .filter(col -> col.getFullyQualifiedName().equals(newColumn.getFullyQualifiedName()))
+            .findFirst();
+
+    if (existingColumn.isPresent()) {
+      // Update existing column
+      Column col = existingColumn.get();
+      col.withDisplayName(newColumn.getDisplayName())
+          .withDescription(newColumn.getDescription())
+          .withDataType(newColumn.getDataType())
+          .withDataTypeDisplay(newColumn.getDataTypeDisplay())
+          .withDataLength(newColumn.getDataLength())
+          .withChildren(newColumn.getChildren())
+          .withArrayDataType(newColumn.getArrayDataType());
+    } else {
+      // Add new column
+      columns.add(newColumn);
+    }
   }
 }

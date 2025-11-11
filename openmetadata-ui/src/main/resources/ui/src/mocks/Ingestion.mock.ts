@@ -12,14 +12,13 @@
  */
 
 import { IngestionProps } from '../components/Settings/Services/Ingestion/ingestion.interface';
-import { ServiceCategory } from '../enums/service.enum';
+import { AirflowStatusContextType } from '../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { AuthProvider } from '../generated/entity/services/connections/serviceConnection';
 import {
   IngestionPipeline,
   PipelineState,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { UseAirflowStatusProps } from '../hooks/useAirflowStatus';
 import { ServicesType } from '../interface/service.interface';
 
 export const mockIngestionData: IngestionPipeline = {
@@ -213,11 +212,9 @@ const mockPaging = {
 };
 
 const mockPagingCursor = {
-  cursorData: {
-    cursorType: null,
-    cursorValue: undefined,
-  },
-  currentPage: 1,
+  cursorType: undefined,
+  cursorValue: undefined,
+  currentPage: '1',
   pageSize: 10,
 };
 
@@ -228,16 +225,14 @@ const mockCurrentOnPageChange = jest.fn();
 export const ingestionProps: IngestionProps = {
   ingestionPipelineList: mockIngestionWorkFlow.data
     .data as unknown as IngestionPipeline[],
-  serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
   serviceDetails: mockService,
-  serviceName: '',
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,
   searchText: '',
   airflowInformation: {
     isAirflowAvailable: true,
     isFetchingStatus: false,
     platform: 'airflow',
-  } as UseAirflowStatusProps,
+  } as AirflowStatusContextType,
   handleIngestionListUpdate: mockCurrentHandleIngestionListUpdate,
   handleSearchChange: mockCurrentHandleSearchChange,
   onPageChange: mockCurrentOnPageChange,
@@ -251,4 +246,7 @@ export const ingestionProps: IngestionProps = {
     showPagination: true,
     pagingCursor: mockPagingCursor,
   },
+  handleTypeFilterChange: jest.fn(),
+  handleStatusFilterChange: jest.fn(),
+  refreshAgentsList: jest.fn(),
 };

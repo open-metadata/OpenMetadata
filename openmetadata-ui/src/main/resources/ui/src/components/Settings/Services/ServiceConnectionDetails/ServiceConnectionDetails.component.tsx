@@ -11,20 +11,26 @@
  *  limitations under the License.
  */
 
-import { Row } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Col, Input, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
+import { DriveServiceType } from '../../../../generated/entity/services/driveService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
 import { MetadataServiceType } from '../../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../../../../generated/entity/services/securityService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
-import { ConfigData } from '../../../../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+} from '../../../../interface/service.interface';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import './service-connection-details.less';
@@ -33,12 +39,14 @@ type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
   serviceCategory: string;
   serviceFQN: string;
+  extraInfo?: ExtraInfoType | null;
 };
 
 const ServiceConnectionDetails = ({
   connectionDetails,
   serviceCategory,
   serviceFQN,
+  extraInfo,
 }: Readonly<ServiceConnectionDetailsProps>) => {
   const [schema, setSchema] = useState<Record<string, any>>({});
   const [data, setData] = useState<ReactNode>();
@@ -117,6 +125,22 @@ const ServiceConnectionDetails = ({
         );
 
         break;
+      case EntityType.SECURITY_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getSecurityServiceConfig(
+            serviceFQN as SecurityServiceType
+          ).schema
+        );
+
+        break;
+      case EntityType.DRIVE_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getDriveServiceConfig(
+            serviceFQN as DriveServiceType
+          ).schema
+        );
+
+        break;
     }
   }, [serviceCategory, serviceFQN]);
 
@@ -134,13 +158,51 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <div
-      className="service-connection-details"
-      data-testid="service-connection-details">
-      <Row className="w-full" gutter={[8, 8]}>
-        {data}
-      </Row>
-    </div>
+    <>
+      <div
+        className="service-connection-details"
+        data-testid="service-connection-details">
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
+      </div>
+
+      {extraInfo && (
+        <div className="service-connection-details m-t-md m-y-lg">
+          <Row className="w-full" gutter={[8, 8]}>
+            <Col span={12}>
+              <Row>
+                <Col className="d-flex items-center" span={8}>
+                  <Space size={0}>
+                    <p className="text-grey-muted m-0">{extraInfo.headerKey}</p>
+                    {extraInfo.description && (
+                      <Tooltip
+                        placement="bottom"
+                        title={extraInfo.description}
+                        trigger="hover">
+                        <InfoCircleOutlined
+                          className="m-x-xss"
+                          style={{ color: '#C4C4C4' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Space>
+                </Col>
+                <Col span={16}>
+                  <Input
+                    readOnly
+                    className="w-full border-none"
+                    data-testid="input-field"
+                    type="text"
+                    value={extraInfo.displayName ?? extraInfo.name}
+                  />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </div>
+      )}
+    </>
   );
 };
 

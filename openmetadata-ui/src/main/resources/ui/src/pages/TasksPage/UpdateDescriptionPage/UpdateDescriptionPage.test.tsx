@@ -11,25 +11,27 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
+import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateDescription from './UpdateDescriptionPage';
+const mockNavigate = jest.fn();
 
-const mockUseHistory = {
-  push: jest.fn(),
-  goBack: jest.fn(),
-};
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest
     .fn()
     .mockImplementation(() => ({ search: '?field=columns&value=shop_id' }));
 });
 
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -115,7 +117,9 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 describe('UpdateDescriptionPage', () => {
   it('should render component', async () => {
-    render(<UpdateDescription />);
+    render(
+      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
+    );
 
     expect(
       await screen.findByText('TitleBreadcrumb.component')
@@ -132,19 +136,23 @@ describe('UpdateDescriptionPage', () => {
   });
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
-    render(<UpdateDescription />);
+    render(
+      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
+    );
     const cancelBtn = await screen.findByTestId('cancel-btn');
 
     act(() => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('should submit form when submit button is clicked', async () => {
     const mockPostThread = postThread as jest.Mock;
-    render(<UpdateDescription />);
+    render(
+      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
+    );
     const submitBtn = await screen.findByTestId('submit-btn');
 
     await act(async () => {

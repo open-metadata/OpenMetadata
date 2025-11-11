@@ -26,8 +26,9 @@ export const FEED_REACTIONS = [
   'eyes',
   'rocket',
 ];
-export const FIRST_FEED_SELECTOR =
-  '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child';
+// Returns the nth feed message container (0-based) regardless of page context (widget, drawer, or full page)
+const getNthFeedMessage = (page: Page, indexZeroBased: number) =>
+  page.locator('[data-testid="message-container"]').nth(indexZeroBased);
 
 export const checkDescriptionInEditModal = async (
   page: Page,
@@ -85,15 +86,20 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await deleteResponse;
 };
 
-export const reactOnFeed = async (page: Page) => {
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
+  // Ensure at least one message exists; the caller usually checks, but we guard here
+  const message = getNthFeedMessage(page, Math.max(0, feedNumber - 1));
+
+  await expect(message).toBeVisible();
+
   for (const reaction of FEED_REACTIONS) {
-    await page
-      .locator(
-        '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
-      )
+    const addReactionButton = message
       .locator('[data-testid="feed-reaction-container"]')
-      .locator('[data-testid="add-reactions"]')
-      .click();
+      .locator('[data-testid="add-reactions"]');
+
+    await expect(addReactionButton).toBeVisible();
+
+    await addReactionButton.click();
 
     await page
       .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
@@ -122,32 +128,7 @@ export const addMentionCommentInFeed = async (
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  // Click on add reply
-  const feedResponse = page.waitForResponse('/api/v1/feed/*');
-
-  if (isReply) {
-    await page
-      .locator(FIRST_FEED_SELECTOR)
-      .locator('[data-testid="reply-count"]')
-      .click();
-  } else {
-    await page
-      .locator(FIRST_FEED_SELECTOR)
-      .locator('[data-testid="thread-count"]')
-      .click();
-  }
-  await feedResponse;
-
-  await page.waitForSelector('.ant-drawer-content', {
-    state: 'visible',
-  });
-
-  // Type reply with mention
-  await page
-    .locator(
-      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-    )
-    .click();
+  await page.getByTestId('comments-input-field').click();
 
   const userSuggestionsResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${user}***`

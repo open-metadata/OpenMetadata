@@ -15,10 +15,12 @@ declare module 'Models' {
   import { EntityType } from '../enums/entity.enum';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
+  import { CreateDriveService } from '../generated/api/services/createDriveService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
   import { CreateMlModelService } from '../generated/api/services/createMlModelService';
   import { CreatePipelineService } from '../generated/api/services/createPipelineService';
   import { CreateSearchService } from '../generated/api/services/createSearchService';
+  import { CreateSecurityService } from '../generated/api/services/createSecurityService';
   import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
@@ -37,7 +39,9 @@ declare module 'Models' {
     | CreateDatabaseService
     | CreateMessagingService
     | CreateStorageService
-    | CreateSearchService;
+    | CreateSearchService
+    | CreateSecurityService
+    | CreateDriveService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -139,7 +143,9 @@ declare module 'Models' {
     | 'metadataServices'
     | 'storageServices'
     | 'searchServices'
-    | 'apiServices';
+    | 'apiServices'
+    | 'securityServices'
+    | 'driveServices';
 
   export type SearchDataFunctionType = {
     queryString: string;

@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -26,10 +26,13 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataAs
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
@@ -44,9 +47,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.Web
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
@@ -126,11 +127,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void createIndexInternal(String entityType) throws IOException {
     IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
     if (!searchRepository.indexExists(resultIndexType)) {
+      LOG.info(String.format("[Data Insights] Creating Index for Entity Type: '%s'", entityType));
       searchRepository.createIndex(resultIndexType);
     }
     DataInsightsSearchInterface searchInterface = getSearchInterface();
     if (!searchInterface.dataAssetDataStreamExists(
         getDataStreamName(searchRepository.getClusterAlias(), entityType))) {
+      LOG.info(String.format("[Data Insights] Creating Index for Entity Type: '%s'", entityType));
       searchRepository
           .getSearchClient()
           .addIndexAlias(
@@ -141,11 +144,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void deleteIndexInternal(String entityType) {
     IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
     if (searchRepository.indexExists(resultIndexType)) {
+      LOG.info(String.format("[Data Insights] Deleting Index for Entity Type: '%s'", entityType));
       searchRepository.deleteIndex(resultIndexType);
     }
   }
 
-  private void createDataQualityDataIndex() {
+  public void createDataQualityDataIndex() {
     try {
       createIndexInternal(Entity.TEST_CASE_RESULT);
       createIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -156,15 +160,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void deleteDataQualityDataIndex() {
+  public void deleteDataQualityDataIndex() {
     deleteIndexInternal(Entity.TEST_CASE_RESULT);
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  private void createOrUpdateDataAssetsDataStream() {
+  public void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
-    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();
     String language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
@@ -182,8 +186,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
               dataAssetIndex,
               language,
               dataAssetsConfig.getRetention());
-        } else {
-          searchInterface.updateLifecyclePolicy(dataAssetsConfig.getRetention());
         }
       }
     } catch (IOException ex) {
@@ -191,7 +193,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void deleteDataAssetsDataStream() {
+  public void deleteDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
@@ -212,7 +214,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     super.init(app);
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
-
+    JsonUtils.validateJsonSchema(config, DataInsightsAppConfig.class);
     // Get the configuration for the different modules
     costAnalysisConfig = config.getModuleConfiguration().getCostAnalysis();
     dataAssetsConfig = parseDataAssetsConfig(config.getModuleConfiguration().getDataAssets());
@@ -432,10 +434,16 @@ public class DataInsightsApp extends AbstractNativeApplication {
     Stats jobDataStats = jobData.getStats();
 
     // Update Entity Level Stats
-    StepStats entityLevelStats = jobDataStats.getEntityStats();
+    EntityStats entityLevelStats = jobDataStats.getEntityStats();
     if (entityLevelStats == null) {
       entityLevelStats =
-          new StepStats().withTotalRecords(null).withFailedRecords(null).withSuccessRecords(null);
+          new EntityStats()
+              .withAdditionalProperty(
+                  entityType,
+                  new StepStats()
+                      .withTotalRecords(null)
+                      .withFailedRecords(null)
+                      .withSuccessRecords(null));
     }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
@@ -452,18 +460,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     stats.setTotalRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
-            .map(s -> (StepStats) s)
             .mapToInt(StepStats::getTotalRecords)
             .sum());
 
     stats.setSuccessRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
-            .map(s -> (StepStats) s)
             .mapToInt(StepStats::getSuccessRecords)
             .sum());
     stats.setFailedRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
-            .map(s -> (StepStats) s)
             .mapToInt(StepStats::getFailedRecords)
             .sum());
 

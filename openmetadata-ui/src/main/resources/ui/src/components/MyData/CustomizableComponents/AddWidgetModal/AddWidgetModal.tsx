@@ -15,7 +15,7 @@ import { CheckOutlined } from '@ant-design/icons';
 import { Modal, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LIGHT_GREEN_COLOR,
@@ -51,12 +51,12 @@ function AddWidgetModal({
   const fetchKnowledgePanels = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getAllKnowledgePanels({
+      const { data } = await getAllKnowledgePanels({
         fqnPrefix: 'KnowledgePanel',
         limit: PAGE_SIZE_MEDIUM,
       });
 
-      setWidgetsList(response.data);
+      setWidgetsList(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

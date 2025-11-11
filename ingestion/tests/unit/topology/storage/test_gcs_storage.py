@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -259,7 +259,7 @@ class StorageUnitTest(TestCase):
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
                 sourceUrl=SourceUrl(
-                    "https://console.cloud.google.com/storage/browser/test_bucket;tab=objects?project=my-gcp-project"
+                    "https://console.cloud.google.com/storage/browser/test_bucket?project=my-gcp-project"
                 ),
                 fullPath="gs://test_bucket",
             ),
@@ -304,7 +304,7 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    f"https://console.cloud.google.com/storage/browser/_details/test_bucket/transactions;tab=live_object?project=my-gcp-project"
+                    f"https://console.cloud.google.com/storage/browser/test_bucket/transactions?project=my-gcp-project"
                 ),
                 fullPath="gs://test_bucket/transactions",
             ),

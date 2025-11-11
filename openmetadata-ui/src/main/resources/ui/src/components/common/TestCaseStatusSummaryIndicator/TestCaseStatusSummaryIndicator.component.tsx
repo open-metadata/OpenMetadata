@@ -12,16 +12,13 @@
  */
 import { Space, Tooltip, Typography } from 'antd';
 import { omit, startCase } from 'lodash';
-import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useFqn } from '../../../hooks/useFqn';
-import { TableProfilerTab } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { ProfilerTabPath } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import TestIndicator from '../TestIndicator/TestIndicator';
 import { TestCaseStatusSummaryIndicatorProps } from './TestCaseStatusSummaryIndicator.interface';
 
@@ -31,16 +28,13 @@ const TestCaseStatusSummaryIndicator = ({
   const { fqn } = useFqn();
 
   const redirectPath = useMemo(
-    () => ({
-      pathname: getEntityDetailsPath(
+    () =>
+      getEntityDetailsPath(
         EntityType.TABLE,
         fqn,
-        EntityTabs.PROFILER
+        EntityTabs.PROFILER,
+        ProfilerTabPath.DATA_QUALITY
       ),
-      search: Qs.stringify({
-        activeTab: TableProfilerTab.DATA_QUALITY,
-      }),
-    }),
     [fqn]
   );
 

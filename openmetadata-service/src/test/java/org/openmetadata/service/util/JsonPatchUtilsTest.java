@@ -1,18 +1,18 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
-import com.github.fge.jsonpatch.JsonPatchException;
-import java.io.IOException;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonReader;
 import java.io.StringReader;
 import java.util.Set;
 import java.util.UUID;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonPatch;
-import javax.json.JsonReader;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -85,7 +85,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddClassificationTag() throws JsonPatchException, IOException {
+  void testAddClassificationTag() {
     // Create a patch to add a new Classification tag
     String patchString =
         "[\n"
@@ -116,7 +116,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testRemoveGlossaryTag() throws JsonPatchException, IOException {
+  void testRemoveGlossaryTag() {
     // Create a patch to remove the Glossary tag
     String patchString =
         "[\n"
@@ -141,7 +141,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddClassificationAndRemoveGlossaryTag() throws IOException {
+  void testAddClassificationAndRemoveGlossaryTag() {
     // Create a patch to add a Classification tag and remove a Glossary tag
     String patchString =
         "[\n"
@@ -177,7 +177,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testReplaceTierTag() throws JsonPatchException, IOException {
+  void testReplaceTierTag() {
     // Create a patch to replace the Tier tag
     String patchString =
         "[\n"
@@ -203,7 +203,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testModifyNonTagField() throws JsonPatchException, IOException {
+  void testModifyNonTagField() {
     // Create a patch to modify a non-tag field (e.g., description)
     String patchString =
         "[\n"
@@ -229,7 +229,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddClassificationTagAtColumn() throws Exception {
+  void testAddClassificationTagAtColumn() {
     // Create a patch to add a new Classification tag
     String patchString =
         "[\n"
@@ -275,5 +275,94 @@ class JsonPatchUtilsTest {
         operations.contains(MetadataOperation.EDIT_TAGS),
         "MetadataOperations should contain EDIT_TAGS");
     assertEquals(1, operations.size(), "There should be exactly one MetadataOperation");
+  }
+
+  @Test
+  void testAddCertificationTag() {
+    // Create a patch to add a new Certification tag
+    long currentTime = System.currentTimeMillis();
+    String patchString = getPatchString(currentTime, "    \"op\": \"add\",\n");
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
+
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
+    assertEquals(1, operations.size());
+  }
+
+  @Test
+  void testReplaceCertificationTag() {
+    // Create a patch to replace the Certification tag
+    long currentTime = System.currentTimeMillis();
+    String patchString = getPatchString(currentTime, "    \"op\": \"replace\",\n");
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
+
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
+    assertEquals(1, operations.size());
+  }
+
+  @Test
+  void testRemoveCertificationTag() {
+    // Create a patch to remove the Certification tag
+    String patchString =
+        """
+            [
+              {
+                "op": "remove",
+                "path": "/certification"
+              }
+            ]""";
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
+    assertEquals(1, operations.size());
+  }
+
+  private static @NotNull String getPatchString(long currentTime, String operationString) {
+    long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
+    long expiryTime = currentTime + oneYearInMillis;
+    return "[\n"
+        + "  {\n"
+        + operationString
+        + "    \"path\": \"/certification\",\n"
+        + "    \"value\": {\n"
+        + "      \"tagLabel\": {\n"
+        + "        \"tagFQN\": \"Certification.Gold\",\n"
+        + "        \"labelType\": \"Manual\",\n"
+        + "        \"state\": \"Confirmed\"\n"
+        + "      },\n"
+        + "      \"appliedDate\": "
+        + currentTime
+        + ",\n"
+        + "      \"expiryDate\": "
+        + expiryTime
+        + "\n"
+        + "    }\n"
+        + "  }\n"
+        + "]";
   }
 }

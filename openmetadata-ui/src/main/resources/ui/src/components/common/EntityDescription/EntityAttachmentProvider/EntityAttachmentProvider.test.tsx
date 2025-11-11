@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
 import React from 'react';
@@ -91,6 +91,9 @@ describe('EntityAttachmentProvider', () => {
   const mockOnImageUpload = jest.fn();
   const mockView = {
     state: {
+      doc: {
+        descendants: jest.fn(),
+      },
       schema: {
         nodes: {
           image: {
@@ -103,6 +106,8 @@ describe('EntityAttachmentProvider', () => {
       },
       tr: {
         insert: jest.fn(),
+        replaceWith: jest.fn(),
+        delete: jest.fn(),
       },
     },
     dispatch: jest.fn(),
@@ -166,17 +171,40 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).toHaveBeenCalledWith(
       mockFile,
       EntityType.TABLE,
       undefined
     );
-    expect(mockView.state.schema.nodes.image.create).toHaveBeenCalledWith({
-      src: mockUrl,
+
+    // Verify temporary node creation
+    expect(
+      mockView.state.schema.nodes.fileAttachment.create
+    ).toHaveBeenCalledWith({
+      url: '',
+      fileName: mockFile.name,
+      fileSize: mockFile.size,
+      mimeType: mockFile.type,
+      isUploading: true,
+      uploadProgress: 0,
+      tempFile: mockFile,
+      isImage: true,
+      alt: mockFile.name,
+    });
+
+    // Verify final node creation
+    expect(
+      mockView.state.schema.nodes.fileAttachment.create
+    ).toHaveBeenCalledWith({
+      url: mockUrl,
+      fileName: mockFile.name,
+      fileSize: mockFile.size,
+      mimeType: mockFile.type,
+      isUploading: false,
+      uploadProgress: 100,
+      isImage: true,
       alt: mockFile.name,
     });
     expect(mockView.dispatch).toHaveBeenCalled();
@@ -194,15 +222,30 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).toHaveBeenCalledWith(
       mockFile,
       EntityType.TABLE,
       undefined
     );
+
+    // Verify temporary node creation
+    expect(
+      mockView.state.schema.nodes.fileAttachment.create
+    ).toHaveBeenCalledWith({
+      url: '',
+      fileName: mockFile.name,
+      fileSize: mockFile.size,
+      mimeType: mockFile.type,
+      isUploading: true,
+      uploadProgress: 0,
+      tempFile: mockFile,
+      isImage: false,
+      alt: mockFile.name,
+    });
+
+    // Verify final node creation
     expect(
       mockView.state.schema.nodes.fileAttachment.create
     ).toHaveBeenCalledWith({
@@ -210,6 +253,10 @@ describe('EntityAttachmentProvider', () => {
       fileName: mockFile.name,
       fileSize: mockFile.size,
       mimeType: mockFile.type,
+      isUploading: false,
+      uploadProgress: 100,
+      isImage: false,
+      alt: mockFile.name,
     });
     expect(mockView.dispatch).toHaveBeenCalled();
   });
@@ -224,9 +271,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(showErrorToast).toHaveBeenCalledWith(
       'message.only-image-files-supported'
@@ -236,7 +281,9 @@ describe('EntityAttachmentProvider', () => {
   it('handles upload error with string error', async () => {
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
     const errorMessage = 'Upload failed';
-    mockOnImageUpload.mockRejectedValue(errorMessage);
+    mockOnImageUpload.mockRejectedValue({
+      response: { data: { message: errorMessage } },
+    });
 
     render(
       <EntityAttachmentProvider entityType={EntityType.TABLE}>
@@ -253,9 +300,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(screen.getByTestId('error-message')).toHaveTextContent(errorMessage);
   });
@@ -272,9 +317,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(showErrorToast).toHaveBeenCalledWith(
       mockError,
@@ -298,9 +341,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).not.toHaveBeenCalled();
   });
@@ -322,9 +363,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).not.toHaveBeenCalled();
   });

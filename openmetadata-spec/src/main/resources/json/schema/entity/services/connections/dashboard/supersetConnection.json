@@ -41,11 +41,7 @@
         {
           "$ref": "../database/mysqlConnection.json"
         }
-      ],
-      "default": {
-        "provider": "db",
-        "type": "SupersetApiConnection"
-      }
+      ]
     },
     "dashboardFilterPattern": {
       "description": "Regex to exclude or include dashboards that matches the pattern.",

@@ -15,6 +15,11 @@
  */
 export interface PowerBIConnection {
     /**
+     * API URL to call powerbi rest apis to extract metadata. Default to
+     * `https://api.powerbi.com`. You can provide youw own in case of different environment
+     */
+    apiURL?: string;
+    /**
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
@@ -38,6 +43,10 @@ export interface PowerBIConnection {
      * Regex exclude or include data models that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Dashboard URL for PowerBI service.
      */
@@ -238,6 +247,8 @@ export interface Credentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -280,6 +291,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**

@@ -44,6 +44,10 @@
       "description": "Name used for display purposes. Example 'Data Science team'.",
       "type": "string"
     },
+    "externalId": {
+      "description": "External identifier for the team from an external identity provider (e.g., Azure AD group ID).",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the team.",
       "$ref": "../../type/basic.json#/definitions/markdown"
@@ -59,6 +63,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

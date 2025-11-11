@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .edge-drawer-sql-editor {
   border: 1px solid @border-color;
@@ -26,6 +26,10 @@
   .ant-drawer-content-wrapper {
     box-shadow: none;
     border: @global-border;
+
+    .ant-drawer-title {
+      width: 100%;
+    }
   }
 }
 
@@ -34,7 +38,16 @@
 
   .ant-drawer-header {
     border-bottom: none;
-    padding-bottom: 0 !important;
+    align-items: flex-start;
+  }
+
+  .entity-header-title-link {
+    // added to fix title overlap with close button
+    max-width: 95%;
+  }
+
+  .ant-drawer-body {
+    padding-top: 0 !important;
   }
 
   .entity-header-display-name {
@@ -74,5 +87,26 @@
 
   .aborted {
     color: @aborted-color;
+  }
+}
+
+.edge-info-drawer {
+  .summary-panel-card {
+    .ant-btn-sm {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .ant-space.schema-description {
+      gap: 8px !important; // needed to override inline styles
+
+      .ant-typography {
+        color: @grey-4;
+      }
+    }
   }
 }

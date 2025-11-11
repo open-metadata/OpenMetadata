@@ -12,7 +12,8 @@
  */
 
 import { Button, Card, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
@@ -24,6 +25,7 @@ import {
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
+import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
@@ -37,6 +39,8 @@ const FeedCardBodyNew = ({
   onUpdate,
   onEditCancel,
   showThread,
+  isForFeedTab,
+  isFeedWidget,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -65,6 +69,16 @@ const FeedCardBodyNew = ({
 
       if (cardStyle === CardStyle.Tags) {
         return <TagsFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.Owner) {
+        return (
+          <OwnersFeed
+            feed={feed}
+            isForFeedTab={isForFeedTab}
+            showThread={showThread}
+          />
+        );
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
@@ -123,15 +137,16 @@ const FeedCardBodyNew = ({
 
   return (
     <div
-      className={`${showThread ? 'show-thread' : 'hide-thread'} ${
-        feed.cardStyle === 'description' ? 'description' : ''
-      } ${
+      className={classNames(
+        showThread ? 'show-thread' : 'hide-thread',
+        feed.cardStyle === 'description' ? 'description' : '',
         !showThread &&
-        feed.cardStyle === 'description' &&
-        feed.fieldOperation === 'updated'
+          feed.cardStyle === 'description' &&
+          feed.fieldOperation === 'updated'
           ? 'updated'
-          : ''
-      }`}>
+          : '',
+        isFeedWidget && 'feed-widget-body'
+      )}>
       {feedBodyRender}
     </div>
   );

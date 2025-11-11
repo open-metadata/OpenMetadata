@@ -1,25 +1,27 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.beans.BeanInfo;
-import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -36,14 +38,15 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.IncidentManagerException;
+import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
@@ -59,6 +62,11 @@ public class TestCaseResolutionStatusRepository
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
+  @Override
+  protected List<String> getExcludeSearchFields() {
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
@@ -94,8 +102,7 @@ public class TestCaseResolutionStatusRepository
   }
 
   public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(
-      UUID id, JsonPatch patch, String user)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+      UUID id, JsonPatch patch, String user) {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));
@@ -108,6 +115,8 @@ public class TestCaseResolutionStatusRepository
     validatePatchFields(updated, original);
 
     timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    setInheritedFields(updated);
+    postUpdate(updated);
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
   }
 
@@ -155,32 +164,6 @@ public class TestCaseResolutionStatusRepository
     return JsonUtils.readValue(jsonThread, Thread.class);
   }
 
-  /**
-   * Ensure we are following the correct status flow
-   */
-  private void validateStatus(
-      TestCaseResolutionStatusTypes lastStatus, TestCaseResolutionStatusTypes newStatus) {
-    switch (lastStatus) {
-      case New -> {
-        /* New can go to any status */
-      }
-      case Ack -> {
-        if (newStatus.equals(TestCaseResolutionStatusTypes.New)) {
-          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
-        }
-      }
-      case Assigned -> {
-        if (List.of(TestCaseResolutionStatusTypes.New, TestCaseResolutionStatusTypes.Ack)
-            .contains(newStatus)) {
-          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
-        }
-      }
-        // We only validate status if the last one is unresolved, so we should
-        // never land here
-      default -> throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
-    }
-  }
-
   @Override
   @Transaction
   public void storeInternal(
@@ -195,9 +178,6 @@ public class TestCaseResolutionStatusRepository
     // if we have an ongoing incident, set the stateId if the new record to be created
     // and validate the flow
     if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
-      validateStatus(
-          lastIncident.getTestCaseResolutionStatusType(),
-          recordEntity.getTestCaseResolutionStatusType());
       // If there is an unresolved incident update the state ID
       recordEntity.setStateId(lastIncident.getStateId());
       // If the last incident had a severity assigned and the incoming incident does not, inherit
@@ -343,6 +323,15 @@ public class TestCaseResolutionStatusRepository
     MessageParser.EntityLink entityLink =
         new MessageParser.EntityLink(
             Entity.TEST_CASE, incidentStatus.getTestCaseReference().getFullyQualifiedName());
+
+    // Fetch the TestCase to get its domains
+    TestCase testCase =
+        Entity.getEntity(
+            Entity.TEST_CASE,
+            incidentStatus.getTestCaseReference().getId(),
+            "domains",
+            Include.ALL);
+
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())
@@ -354,6 +343,14 @@ public class TestCaseResolutionStatusRepository
             .withTask(taskDetails)
             .withUpdatedBy(incidentStatus.getUpdatedBy().getName())
             .withUpdatedAt(System.currentTimeMillis());
+
+    // Inherit domains from the test case
+    if (testCase.getDomains() != null && !testCase.getDomains().isEmpty()) {
+      List<UUID> domainIds =
+          testCase.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList());
+      thread.withDomains(domainIds);
+    }
+
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
 
@@ -363,8 +360,9 @@ public class TestCaseResolutionStatusRepository
 
   private void patchTaskAssignee(Thread originalTask, EntityReference newAssignee, String user) {
     Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-    updatedTask.setTask(
-        updatedTask.getTask().withAssignees(Collections.singletonList(newAssignee)));
+    List<EntityReference> updatedAssignees =
+        nullOrEmpty(newAssignee) ? new ArrayList<>() : Collections.singletonList(newAssignee);
+    updatedTask.setTask(updatedTask.getTask().withAssignees(updatedAssignees));
 
     JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
 
@@ -403,14 +401,16 @@ public class TestCaseResolutionStatusRepository
 
   public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
     // if originEntityFQN is present, we need to join with test_case table
-    if (filter.getQueryParam("originEntityFQN") != null) {
+    if ((filter.getQueryParam("originEntityFQN") != null)
+        || (filter.getQueryParam("include") != null)) {
       condition =
           """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) tc \
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
               ON entityFQNHash = testCaseHash
               """
               + condition;
     }
+
     return condition;
   }
 
@@ -481,5 +481,32 @@ public class TestCaseResolutionStatusRepository
       }
     }
     if (!metrics.isEmpty()) newIncident.setMetrics(metrics);
+  }
+
+  public void cleanUpAssignees(String assignee) {
+    List<TestCaseResolutionStatus> testCaseResolutionStatuses =
+        JsonUtils.readObjects(
+            ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+                .listTestCaseResolutionForAssignee(assignee),
+            TestCaseResolutionStatus.class);
+
+    for (TestCaseResolutionStatus testCaseResolutionStatus : testCaseResolutionStatuses) {
+      // We'll keep the status as assigned but remove the deleted user as the assignee
+      // Incidents are treated as immutable entities -- hence we create a new one
+      setInheritedFields(testCaseResolutionStatus);
+      TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
+      TestCaseResolutionStatus newStatus =
+          mapper.createToEntity(
+              new CreateTestCaseResolutionStatus()
+                  .withTestCaseReference(
+                      testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName())
+                  .withTestCaseResolutionStatusType(
+                      testCaseResolutionStatus.getTestCaseResolutionStatusType())
+                  .withTestCaseResolutionStatusDetails(new Assigned())
+                  .withSeverity(testCaseResolutionStatus.getSeverity()),
+              INGESTION_BOT_NAME);
+
+      createNewRecord(newStatus, newStatus.getTestCaseReference().getFullyQualifiedName());
+    }
   }
 }
