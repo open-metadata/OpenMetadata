@@ -192,7 +192,7 @@ function APIEndpointsTab({
     } else {
       getAPICollectionEndpoints({ paging: { limit: pageSize } });
     }
-  }, [apiCollection, pageSize, pagingCursor]);
+  }, [apiCollection, pageSize, pagingCursor, getAPICollectionEndpoints]);
 
   return (
     <TableAntd
