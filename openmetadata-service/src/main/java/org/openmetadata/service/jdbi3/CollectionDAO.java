@@ -1816,6 +1816,19 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    // Fetch ALL relationships for a single entity (both FROM and TO) - fixes N+1 problem
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'from' as direction "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :entityId AND fromEntity = :entityType AND deleted = FALSE "
+            + "UNION ALL "
+            + "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'to' as direction "
+            + "FROM entity_relationship "
+            + "WHERE toId = :entityId AND toEntity = :entityType AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findAllRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId, @Bind("entityType") String entityType);
+
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
@@ -4113,32 +4126,15 @@ public interface CollectionDAO {
       return "nameHash";
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            ""
-                + "SELECT t.classificationHash, COUNT(*) AS termCount "
-                + "FROM tag t "
-                + "JOIN JSON_TABLE("
-                + "    :jsonHashes, "
-                + "    '$[*]' COLUMNS (classificationHash VARCHAR(64) PATH '$')"
-                + ") AS h "
-                + "  ON t.classificationHash = h.classificationHash "
-                + "WHERE t.deleted = FALSE "
-                + "GROUP BY t.classificationHash",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            ""
-                + "SELECT t.classificationHash, COUNT(*) AS termCount "
-                + "FROM tag t "
-                + "JOIN UNNEST(:hashArray::text[]) AS h(classificationHash) "
-                + "  ON t.classificationHash = h.classificationHash "
-                + "WHERE t.deleted = FALSE "
-                + "GROUP BY t.classificationHash",
-        connectionType = POSTGRES)
+    // Much more efficient: Use IN clause with proper index usage
+    @SqlQuery(
+        "SELECT classificationHash, COUNT(*) AS termCount "
+            + "FROM tag "
+            + "WHERE classificationHash IN (<hashArray>) "
+            + "AND deleted = FALSE "
+            + "GROUP BY classificationHash")
     @RegisterRowMapper(TermCountMapper.class)
-    List<Pair<String, Integer>> bulkGetTermCounts(
-        @Bind("jsonHashes") String jsonHashes, @Bind("hashArray") List<String> hashArray);
+    List<Pair<String, Integer>> bulkGetTermCounts(@BindList("hashArray") List<String> hashArray);
 
     class TermCountMapper implements RowMapper<Pair<String, Integer>> {
       @Override
@@ -4438,7 +4434,7 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -4450,7 +4446,7 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
@@ -6437,6 +6433,16 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running' AND extension = 'status'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"failed\"') WHERE json->>'status' = 'running' AND extension = 'status'",
+        connectionType = POSTGRES)
+    void markAllStaleEntriesFailed();
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -6877,6 +6883,16 @@ public interface CollectionDAO {
     List<String> listTestCaseDimensionResultsByKey(
         @BindFQN("testCaseFQN") String testCaseFQN,
         @Bind("dimensionKey") String dimensionKey,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND dimensionName = :dimensionName AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResultsByDimensionName(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("dimensionName") String dimensionName,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs);
 

@@ -63,8 +63,17 @@ public class OpenSearchSourceBuilderFactory
 
   private final SearchSettings searchSettings;
 
+  // Cache the expensive composite configuration
+  private volatile AssetTypeConfiguration cachedCompositeConfig = null;
+  private volatile long cacheTimestamp = 0;
+  private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
   public OpenSearchSourceBuilderFactory(SearchSettings searchSettings) {
     this.searchSettings = searchSettings;
+  }
+
+  public SearchSettings getSearchSettings() {
+    return searchSettings;
   }
 
   @Override
@@ -84,7 +93,7 @@ public class OpenSearchSourceBuilderFactory
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
+            .fuzziness(Fuzziness.ONE)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
             .tieBreaker(0.5f);
@@ -182,7 +191,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
     QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
     QueryBuilder finalQuery = applyFunctionScoring(baseQuery, compositeConfig);
 
@@ -218,7 +227,7 @@ public class OpenSearchSourceBuilderFactory
   private AssetTypeConfiguration getAssetConfiguration(String indexName) {
     String resolvedIndex = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
     if (resolvedIndex.equals(INDEX_ALL) || resolvedIndex.equals(INDEX_DATA_ASSET)) {
-      return buildCompositeAssetConfig(searchSettings);
+      return getOrBuildCompositeConfig(); // Use cached version!
     } else {
       return findAssetTypeConfig(indexName, searchSettings);
     }
@@ -276,7 +285,7 @@ public class OpenSearchSourceBuilderFactory
         .fields(fields)
         .defaultOperator(Operator.AND)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
         .tieBreaker(DEFAULT_TIE_BREAKER);
@@ -395,10 +404,11 @@ public class OpenSearchSourceBuilderFactory
       MultiMatchQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
               .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
+              .fuzziness(Fuzziness.ONE)
               .maxExpansions(10)
               .prefixLength(1)
-              .operator(Operator.AND)
+              .operator(Operator.OR)
+              .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
               .tieBreaker(DEFAULT_TIE_BREAKER);
       fields.forEach(fuzzyQueryBuilder::field);
       combinedQuery.should(fuzzyQueryBuilder.boost(multiplier));
@@ -435,7 +445,7 @@ public class OpenSearchSourceBuilderFactory
   private MultiMatchQueryBuilder createStandardFuzzyQuery(String query) {
     return QueryBuilders.multiMatchQuery(query)
         .type(MOST_FIELDS)
-        .fuzziness(Fuzziness.AUTO)
+        .fuzziness(Fuzziness.ONE)
         .maxExpansions(10)
         .prefixLength(1)
         .operator(Operator.OR)
@@ -760,7 +770,7 @@ public class OpenSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildEntitySpecificAggregateSearchBuilder(
       String query, int from, int size) {
-    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
     QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = collectAllBoostFunctions();
@@ -903,6 +913,21 @@ public class OpenSearchSourceBuilderFactory
     functionScore.boost(FUNCTION_BOOST_FACTOR);
 
     return functionScore;
+  }
+
+  private AssetTypeConfiguration getOrBuildCompositeConfig() {
+    long now = System.currentTimeMillis();
+    if (cachedCompositeConfig == null || (now - cacheTimestamp) > CACHE_TTL_MS) {
+      synchronized (this) {
+        // Double-check after acquiring lock
+        if (cachedCompositeConfig == null || (now - cacheTimestamp) > CACHE_TTL_MS) {
+          cachedCompositeConfig = buildCompositeAssetConfig(searchSettings);
+          cacheTimestamp = now;
+          LOG.debug("Rebuilt composite asset configuration cache");
+        }
+      }
+    }
+    return cachedCompositeConfig;
   }
 
   private AssetTypeConfiguration buildCompositeAssetConfig(SearchSettings searchSettings) {

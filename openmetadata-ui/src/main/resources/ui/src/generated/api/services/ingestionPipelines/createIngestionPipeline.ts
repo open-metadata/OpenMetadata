@@ -349,6 +349,11 @@ export interface Pipeline {
      */
     overrideMetadata?: boolean;
     /**
+     * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+     * Database, Schema, Table) with custom mappings and inheritance rules.
+     */
+    ownerConfig?: OwnerConfiguration;
+    /**
      * Configuration to tune how far we want to look back in query logs to process Stored
      * Procedures results.
      *
@@ -864,6 +869,10 @@ export interface Pipeline {
  *
  * Regex to include/exclude FHIR resource types
  *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
+ *
  * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
@@ -884,12 +893,14 @@ export interface FilterPattern {
  *
  * This schema defines the Slack App Token Configuration
  *
+ * Configuration for the Collate AI Quality Agent.
+ *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
- * Configuration for the Collate AI Quality Agent.
+ * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -902,6 +913,8 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
+     *
+     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -924,12 +937,20 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?:             string;
+    userToken?: string;
+    /**
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?:                boolean;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
      *
      * Maximum number of events sent in a batch (Default 100).
+     *
+     * Number of entities to process in each batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -948,10 +969,14 @@ export interface CollateAIAppConfig {
     autoTune?: boolean;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
+     *
+     * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
      */
     entities?: string[];
     /**
@@ -980,6 +1005,8 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
+     *
+     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
@@ -991,11 +1018,9 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
+     * Force cache warmup even if another instance is detected (use with caution).
      */
-    active?: boolean;
+    force?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -1006,6 +1031,16 @@ export interface CollateAIAppConfig {
      * one month).
      */
     changeEventRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -1718,8 +1753,10 @@ export enum SearchIndexMappingLanguage {
 export enum CollateAIAppConfigType {
     AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
+    CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -2185,6 +2222,45 @@ export enum OperationType {
 }
 
 /**
+ * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+ * Database, Schema, Table) with custom mappings and inheritance rules.
+ *
+ * Configuration for assigning owners to ingested entities following topology hierarchy with
+ * inheritance support
+ */
+export interface OwnerConfiguration {
+    /**
+     * Owner for database entities. Can be a single owner for all databases, or a map of
+     * database names to owner(s).
+     */
+    database?: { [key: string]: string[] | string } | string;
+    /**
+     * Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs
+     * to owner(s).
+     */
+    databaseSchema?: { [key: string]: string[] | string } | string;
+    /**
+     * Default owner applied to all entities when no specific owner is configured (user or team
+     * name/email)
+     */
+    default?: string;
+    /**
+     * Enable child entities to inherit owner from parent entities when they don't have a
+     * specific owner configured
+     */
+    enableInheritance?: boolean;
+    /**
+     * Owner for the service level
+     */
+    service?: string;
+    /**
+     * Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to
+     * owner(s).
+     */
+    table?: { [key: string]: string[] | string } | string;
+}
+
+/**
  * Processing Engine Configuration. If not provided, the Native Engine will be used by
  * default.
  *
@@ -2439,6 +2515,8 @@ export interface ServiceConnection {
  * Alation Connection Config
  *
  * Alation Sink Connection Config
+ *
+ * Collibra Connection Config
  *
  * Airflow Metadata Database Connection Config
  *
@@ -2720,6 +2798,8 @@ export interface ConfigObject {
      *
      * Host and port of the Alation service.
      *
+     * Host and port of the Collibra service.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -2756,7 +2836,7 @@ export interface ConfigObject {
      *
      * API key to authenticate with the SAP ERP APIs.
      *
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */
@@ -2792,7 +2872,7 @@ export interface ConfigObject {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -2823,6 +2903,8 @@ export interface ConfigObject {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      *
      * Password to connect to Airbyte.
      */
@@ -2880,8 +2962,8 @@ export interface ConfigObject {
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -2937,9 +3019,17 @@ export interface ConfigObject {
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
      *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
+     *
      * Username to connect to Airbyte.
      */
     username?: string;
+    /**
+     * API URL to call powerbi rest apis to extract metadata. Default to
+     * `https://api.powerbi.com`. You can provide youw own in case of different environment
+     */
+    apiURL?: string;
     /**
      * Authority URI for the PowerBI service.
      */
@@ -3465,6 +3555,18 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
@@ -3479,7 +3581,7 @@ export interface ConfigObject {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -3884,6 +3986,20 @@ export interface ConfigObject {
     ingestUsersAndGroups?: boolean;
     datasourceLinks?:      { [key: string]: string };
     /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
+    /**
      * Pipeline Service Number Of Status
      */
     numberOfStatus?: number;
@@ -3921,6 +4037,11 @@ export interface ConfigObject {
      * We support username/password or client certificate authentication
      */
     nifiConfig?: NifiCredentialsConfiguration;
+    /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
     /**
      * Spline UI Host & Port.
      */
@@ -6011,6 +6132,8 @@ export enum TokenType {
  *
  * OpenMetadata service type
  *
+ * Collibra service type
+ *
  * Custom pipeline service type
  *
  * Custom Ml model service type
@@ -6056,6 +6179,7 @@ export enum PurpleType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
+    Collibra = "Collibra",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",

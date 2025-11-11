@@ -160,7 +160,7 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=70.0",
+    "setuptools~=78.1.1",
     "shapely",
     "collate-data-diff>=0.11.6",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
@@ -168,6 +168,7 @@ base_requirements = {
     "snowflake-connector-python>=3.13.1,<4.0.0",
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
     "mysql-connector-python>=9.1;python_version>='3.9'",
+    "httpx~=0.28.0",
 }
 
 plugins: Dict[str, Set[str]] = {
@@ -254,7 +255,6 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
-        "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {

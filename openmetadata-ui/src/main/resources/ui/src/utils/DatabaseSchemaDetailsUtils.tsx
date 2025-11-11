@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
@@ -22,6 +23,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -105,6 +107,18 @@ export const getDataBaseSchemaPageBaseTabs = ({
           onUpdateFeedCount={handleFeedCount}
         />
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

@@ -12,6 +12,7 @@
  */
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
 import { NavigateFunction } from 'react-router-dom';
@@ -47,6 +48,23 @@ import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
+import { patchApiCollection } from '../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
+import { patchChartDetails } from '../rest/chartsAPI';
+import { patchDashboardDetails } from '../rest/dashboardAPI';
+import {
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from '../rest/databaseAPI';
+import { patchDataModelDetails } from '../rest/dataModelsAPI';
+import { patchDataProduct } from '../rest/dataProductAPI';
+import { patchMlModelDetails } from '../rest/mlModelAPI';
+import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../rest/storageAPI';
+import { patchStoredProceduresDetails } from '../rest/storedProceduresAPI';
+import { patchTableDetails } from '../rest/tableAPI';
+import { patchTopicDetails } from '../rest/topicsAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
@@ -67,6 +85,7 @@ import {
 import {
   getApplicationDetailsPath,
   getBotsPath,
+  getClassificationTagPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -87,6 +106,8 @@ import {
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
+
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
 
@@ -104,6 +125,24 @@ class EntityUtilClassBase {
       ...FormattedDriveServiceType,
     });
   }
+
+  protected ENTITY_PATCH_API_MAP: Record<EntityType, PatchAPIFunction> = {
+    [EntityType.TABLE]: patchTableDetails,
+    [EntityType.DASHBOARD]: patchDashboardDetails,
+    [EntityType.TOPIC]: patchTopicDetails,
+    [EntityType.PIPELINE]: patchPipelineDetails,
+    [EntityType.MLMODEL]: patchMlModelDetails,
+    [EntityType.CHART]: patchChartDetails,
+    [EntityType.API_COLLECTION]: patchApiCollection,
+    [EntityType.API_ENDPOINT]: patchApiEndPoint,
+    [EntityType.DATABASE]: patchDatabaseDetails,
+    [EntityType.DATABASE_SCHEMA]: patchDatabaseSchemaDetails,
+    [EntityType.STORED_PROCEDURE]: patchStoredProceduresDetails,
+    [EntityType.CONTAINER]: patchContainerDetails,
+    [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
+    [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
+    [EntityType.DATA_PRODUCT]: patchDataProduct,
+  } as Record<EntityType, PatchAPIFunction>;
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
     obj: T
@@ -218,6 +257,7 @@ class EntityUtilClassBase {
         );
       case SearchIndex.TAG:
       case EntityType.TAG:
+        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
       case EntityType.CLASSIFICATION:
         return getTagsDetailsPath(fullyQualifiedName);
 
@@ -259,7 +299,7 @@ class EntityUtilClassBase {
 
       case EntityType.DOMAIN:
       case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName, tab);
+        return getDomainDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
@@ -366,6 +406,19 @@ class EntityUtilClassBase {
     }
   }
 
+  public getEntityPatchAPI(entityType: EntityType): PatchAPIFunction {
+    if (!entityType) {
+      throw new Error('Entity type is required');
+    }
+
+    const api = this.ENTITY_PATCH_API_MAP[entityType];
+
+    if (!api) {
+      throw new Error(`No patch API available for entity type: ${entityType}`);
+    }
+
+    return api;
+  }
   public getEntityByFqn(entityType: string, fqn: string, fields?: string) {
     return getEntityByFqnUtil(entityType, fqn, fields);
   }
@@ -574,6 +627,11 @@ class EntityUtilClassBase {
       this.getEntityTypeLookupMap().get(normalizedKey) ??
       serviceType
     );
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public shouldShowEntityStatus(entityType: string): boolean {
+    return false;
   }
 }
 

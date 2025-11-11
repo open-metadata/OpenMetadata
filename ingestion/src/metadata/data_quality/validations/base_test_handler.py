@@ -45,9 +45,11 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 if TYPE_CHECKING:
     from pandas import DataFrame
+    from sqlalchemy import Column
 
 logger = test_suite_logger()
 
@@ -62,6 +64,9 @@ DIMENSION_VALUE_KEY = "dimension_value"
 DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
+DIMENSION_SUM_VALUE_KEY = (
+    "sum_value"  # For statistical validators weighted calculations
+)
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -75,9 +80,9 @@ class TestEvaluation(TypedDict, total=False):
     """
 
     matched: bool
-    passed_rows: int
-    failed_rows: int
-    total_rows: int
+    passed_rows: Optional[int]
+    failed_rows: Optional[int]
+    total_rows: Optional[int]
 
 
 class DimensionInfo(TypedDict):
@@ -192,9 +197,8 @@ class BaseTestValidator(ABC):
     def _run_dimensional_validation(self) -> List[DimensionResult]:
         """Execute dimensional validation for this test
 
-        This method should implement the dimensional logic specific to each test type.
-        It will be called automatically by the template method when dimensionColumns
-        are configured in the test case.
+        Default implementation that delegates to _execute_dimensional_validation
+        for each dimension column. This provides a common pattern across validators.
 
         The new approach runs separate queries for each dimension column instead of
         combining them with GROUP BY. For example, if dimensionColumns = ["country", "age"],
@@ -202,11 +206,173 @@ class BaseTestValidator(ABC):
         1. Run one query: GROUP BY country -> {"Spain": result1, "Argentina": result2}
         2. Run another query: GROUP BY age -> {"10": result3, "12": result4}
 
+        Override this method only if you need completely different dimensional logic.
+        Most validators should just implement _execute_dimensional_validation instead.
+
         Returns:
-            List[DimensionResult]: Empty list by default. Override in child classes
-                to implement dimensional validation support.
+            List[DimensionResult]: List of dimension-specific test results
         """
-        return []
+        try:
+            dimension_columns = self.test_case.dimensionColumns or []
+            if not dimension_columns:
+                return []
+
+            column: Union[SQALikeColumn, Column] = self.get_column()
+
+            test_params = self._get_test_parameters()
+            metrics_to_compute = self._get_metrics_to_compute(test_params)
+
+            dimension_results = []
+            for dimension_column in dimension_columns:
+                try:
+                    dimension_col = self.get_column(dimension_column)
+
+                    single_dimension_results = self._execute_dimensional_validation(
+                        column, dimension_col, metrics_to_compute, test_params
+                    )
+
+                    dimension_results.extend(single_dimension_results)
+
+                except Exception as exc:
+                    logger.warning(
+                        f"Error executing dimensional query for column {dimension_column}: {exc}"
+                    )
+                    logger.debug(traceback.format_exc())
+                    continue
+
+            return dimension_results
+
+        except Exception as exc:
+            logger.warning(f"Error executing dimensional validation: {exc}")
+            logger.debug(traceback.format_exc())
+            return []
+
+    def _get_test_parameters(self) -> dict:
+        """Get test-specific parameters from test case
+
+        Default implementation returns empty dict. Override in child classes
+        that need to extract and process test parameters.
+
+        Returns:
+            dict: Test parameters, or empty dict if validator has no parameters.
+        """
+        return {}
+
+    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+        """Get metrics that need to be computed for this test
+
+        Default implementation returns empty dict. Override in child classes
+        that implement dimensional validation.
+
+        Args:
+            test_params: Optional test parameters (may affect which metrics to compute)
+
+        Returns:
+            dict: Dictionary mapping metric names to Metrics enum values
+                  e.g., {"MIN": Metrics.MIN} or {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+        """
+        return {}
+
+    def get_column(
+        self, column_name: Optional[str] = None
+    ) -> Union[SQALikeColumn, Column]:
+        """Get column object from column_name. If no column_name is present,
+        it returns the main column for the test.
+
+        Uses cooperative multiple inheritance. Implementation provided by
+        SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        Concrete validators must inherit from one of these mixins.
+
+        Returns:
+            Column object (sqlalchemy.Column or SQALikeColumn depending on mixin)
+        """
+        return super().get_column(column_name)  # type: ignore
+
+    def _execute_dimensional_validation(
+        self,
+        column: Union[SQALikeColumn, Column],
+        dimension_col: Union[SQALikeColumn, Column],
+        metrics_to_compute: dict,
+        test_params: Optional[dict],
+    ) -> List[DimensionResult]:
+        """Execute dimensional validation query for a single dimension column
+
+        Must be implemented by child classes to support dimensional validation.
+
+        Args:
+            column: The column being tested (e.g., revenue)
+            dimension_col: The dimension column to group by (e.g., region)
+            metrics_to_compute: Dict mapping metric names to Metrics enum values
+            test_params: Test parameters including bounds, allowed values, etc.
+
+        Returns:
+            List[DimensionResult]: List of dimension results for each dimension value
+
+        Raises:
+            NotImplementedError: If child class doesn't override this method
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _execute_dimensional_validation() for dimensional validation"
+        )
+
+    def _evaluate_test_condition(
+        self, metric_values: dict, test_params: Optional[dict] = None
+    ) -> TestEvaluation:
+        """Evaluate the test condition based on computed metrics
+
+        This is the core logic that determines if the test passes or fails.
+        Override in child classes to implement test-specific evaluation logic.
+
+        Default implementation raises NotImplementedError. Validators that have been
+        migrated to the new pattern should override this method.
+
+        Args:
+            metric_values: Dictionary with Metrics enum names as keys
+                          e.g., {"COUNT": 100, "MEAN": 42.5}
+            test_params: Optional test parameters (bounds, allowed values, etc.)
+                        Some validators don't need parameters (e.g., uniqueness test)
+
+        Returns:
+            TestEvaluation: TypedDict with keys:
+                - matched: bool - whether test passed
+                - passed_rows: Optional[int] - number of passing rows (None for statistical tests)
+                - failed_rows: Optional[int] - number of failing rows (None for statistical tests)
+                - total_rows: Optional[int] - total row count (None for statistical tests)
+
+        Raises:
+            NotImplementedError: If child class doesn't override this method
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _evaluate_test_condition()"
+        )
+
+    def _format_result_message(
+        self,
+        metric_values: dict,
+        dimension_info: Optional[DimensionInfo] = None,
+        test_params: Optional[dict] = None,
+    ) -> str:
+        """Format the result message for the test
+
+        Override in child classes to provide human-readable test results.
+
+        Default implementation raises NotImplementedError. Validators that have been
+        migrated to the new pattern should override this method.
+
+        Args:
+            metric_values: Dictionary with Metrics enum names as keys
+            dimension_info: Optional dimension details for dimensional results
+            test_params: Optional test parameters (for displaying bounds, thresholds, etc.)
+
+        Returns:
+            str: Formatted result message
+
+        Raises:
+            NotImplementedError: If child class doesn't override this method
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _format_result_message()"
+        )
 
     def _extract_dimension_value(self, row: dict) -> str:
         """Extract and format dimension value from result row
@@ -278,23 +444,18 @@ class BaseTestValidator(ABC):
                 dimension_name=dimension_col_name,
                 dimension_value=dimension_value,
             ),
+            test_params=test_params,
         )
 
         test_result_values = self._get_test_result_values(metric_values)
         impact_score = row.get(DIMENSION_IMPACT_SCORE_KEY, 0.0)
-
-        # Get total_rows from evaluation if present, otherwise from metric_values
-        # Import here to avoid circular import (metrics.registry -> utils.importer -> base_test_handler)
-        from metadata.profiler.metrics.registry import Metrics
-
-        total_rows = evaluation.get("total_rows", metric_values.get(Metrics.COUNT.name))
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
             test_case_status=self.get_test_case_status(evaluation["matched"]),
             result=result_message,
             test_result_value=test_result_values,
-            total_rows=total_rows,
+            total_rows=evaluation["total_rows"],
             passed_rows=evaluation["passed_rows"],
             failed_rows=evaluation["failed_rows"],
             impact_score=impact_score,
@@ -407,7 +568,7 @@ class BaseTestValidator(ABC):
         if not self.is_dimensional_test():
             return False  # No dimensions to validate
 
-        if not hasattr(self, "_get_column_name"):
+        if not hasattr(self, "get_column"):
             logger.warning("Validator does not support dimensional column validation")
             return False
 
@@ -415,7 +576,7 @@ class BaseTestValidator(ABC):
             missing_columns = []
             for dim_col in self.test_case.dimensionColumns:
                 try:
-                    self._get_column_name(dim_col)  # type: ignore[attr-defined] - Delegates to child class
+                    self.get_column(dim_col)  # type: ignore[attr-defined] - Delegates to child class
                 except ValueError:
                     missing_columns.append(dim_col)
                 except NotImplementedError:
@@ -443,8 +604,8 @@ class BaseTestValidator(ABC):
         test_case_status: TestCaseStatus,
         result: str,
         test_result_value: List[TestResultValue],
-        total_rows: int,
-        passed_rows: int,
+        total_rows: Optional[int] = None,
+        passed_rows: Optional[int] = None,
         failed_rows: Optional[int] = None,
         impact_score: Optional[float] = None,
     ) -> "DimensionResult":
@@ -455,24 +616,30 @@ class BaseTestValidator(ABC):
             test_case_status: Status of the test for this dimension combination
             result: Details of test case results for this dimension combination
             test_result_value: List of test result values
-            total_rows: Total number of rows in this dimension
-            passed_rows: Number of rows that passed for this dimension
-            failed_rows: Number of rows that failed for this dimension (auto-calculated if None)
+            total_rows: Total number of rows in this dimension (None for statistical validators)
+            passed_rows: Number of rows that passed for this dimension (None for statistical validators)
+            failed_rows: Number of rows that failed for this dimension (auto-calculated if None, None for statistical validators)
             impact_score: Optional impact score for this dimension (0-1 range)
 
         Returns:
             DimensionResult: Dimension result object with calculated percentages
         """
-        if failed_rows is None:
-            failed_rows = total_rows - passed_rows
-
-        # Derive one percentage from the other to ensure they sum to 100%
-        if total_rows > 0:
-            passed_rows_percentage = round(passed_rows / total_rows * 100, 2)
-            failed_rows_percentage = round(100 - passed_rows_percentage, 2)
+        # Handle row counts and percentages for statistical validators
+        if total_rows is None or passed_rows is None:
+            passed_rows_percentage = None
+            failed_rows_percentage = None
         else:
-            passed_rows_percentage = 0
-            failed_rows_percentage = 0
+            # Row-by-row validators: calculate percentages
+            if failed_rows is None:
+                failed_rows = total_rows - passed_rows
+
+            # Derive one percentage from the other to ensure they sum to 100%
+            if total_rows > 0:
+                passed_rows_percentage = round(passed_rows / total_rows * 100, 2)
+                failed_rows_percentage = round(100 - passed_rows_percentage, 2)
+            else:
+                passed_rows_percentage = 0
+                failed_rows_percentage = 0
 
         dimension_values_array = [
             DimensionValue(name=name, value=value)
