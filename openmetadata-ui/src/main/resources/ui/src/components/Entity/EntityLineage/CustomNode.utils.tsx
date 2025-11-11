@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import DownloadIcon from '@mui/icons-material/SaveAlt';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { Stack, Tooltip } from '@mui/material';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
@@ -24,6 +26,8 @@ import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
+import { Plus, Dataflow01 } from '@untitledui/icons';
+import { capitalize } from 'lodash';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -67,29 +71,41 @@ export const getColumnHandle = (
   }
 };
 
+const ExpandHandle = ({
+  onClickHandler,
+}: {
+  onClickHandler: (depth: number) => void;
+}) => {
+  const [showExpandAll, setShowExpandAll] = useState(false);
+
+  return (
+    <div
+      className={classNames(
+        'absolute lineage-node-handle-expand-all flex-center',
+        'react-flow__handle-right'
+      )}
+      onClick={(e) => e.stopPropagation()}
+      onMouseOut={() => setShowExpandAll(false)}
+      onMouseOver={() => setShowExpandAll(true)}>
+      <Plus className="lineage-expand-icon" onClick={() => onClickHandler(1)} />
+      {showExpandAll && (
+        <>
+          <div className="lineage-expand-icons-separator" />
+          <Dataflow01
+            className="lineage-expand-icon"
+            onClick={() => onClickHandler(50)}
+          />
+        </>
+      )}
+    </div>
+  );
+};
+
 export const getExpandHandle = (
   direction: LineageDirection,
-  onClickHandler: () => void
+  onClickHandler: (depth: number) => void
 ) => {
-  return (
-    <Button
-      className={classNames(
-        'absolute lineage-node-handle flex-center',
-        direction === LineageDirection.Downstream
-          ? 'react-flow__handle-right'
-          : 'react-flow__handle-left'
-      )}
-      icon={
-        <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
-      }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClickHandler();
-      }}
-    />
-  );
+  return <ExpandHandle onClickHandler={onClickHandler} />;
 };
 
 export const getCollapseHandle = (
@@ -142,7 +158,7 @@ const getColumnNameContent = (column: Column, isLoading: boolean) => {
         ellipsis={{
           tooltip: true,
         }}>
-        {getEntityName(column)}
+        {capitalize(getEntityName(column))}
       </Typography.Text>
     </>
   );
@@ -159,53 +175,81 @@ export const getColumnContent = (
 ) => {
   const { fullyQualifiedName } = column;
   const columnNameContentRender = getColumnNameContent(column, isLoading);
+  const handleViewImpactClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleDownloadImpactClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
 
   return (
-    <div
-      className={classNames(
-        'custom-node-column-container',
-        isColumnTraced && 'custom-node-header-tracing'
-      )}
-      data-testid={`column-${fullyQualifiedName}`}
-      key={fullyQualifiedName}
-      onClick={(e) => {
-        e.stopPropagation();
-        onColumnClick(fullyQualifiedName ?? '');
-      }}>
-      {getColumnHandle(
-        EntityLineageNodeType.DEFAULT,
-        isConnectable,
-        'lineage-column-node-handle',
-        encodeLineageHandles(fullyQualifiedName ?? '')
-      )}
-      <Row className="items-center" gutter={12}>
-        <Col className="custom-node-name-container" flex="1">
-          {/* Use isLoading to show skeleton, to avoid flickering and typography truncation issue, 
+    <Tooltip
+      arrow
+      placement="right"
+      slotProps={{
+        tooltip: {
+          sx: {
+            padding: '4px 8px',
+          },
+        },
+      }}
+      title={
+        <Stack
+          className="custom-node-column-container-tooltip"
+          direction="row"
+          spacing={2}>
+          <TrendingDownIcon onClick={handleViewImpactClick} />
+          <DownloadIcon onClick={handleDownloadImpactClick} />
+        </Stack>
+      }>
+      <div
+        className={classNames(
+          'custom-node-column-container',
+          isColumnTraced && 'custom-node-header-column-tracing'
+        )}
+        data-testid={`column-${fullyQualifiedName}`}
+        key={fullyQualifiedName}
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation();
+          onColumnClick(fullyQualifiedName ?? '');
+        }}>
+        {getColumnHandle(
+          EntityLineageNodeType.DEFAULT,
+          isConnectable,
+          'lineage-column-node-handle',
+          encodeLineageHandles(fullyQualifiedName ?? '')
+        )}
+        <Row className="items-center" gutter={12}>
+          <Col className="custom-node-name-container" flex="1">
+            {/* Use isLoading to show skeleton, to avoid flickering and typography truncation issue, 
           due to showDataObservabilitySummary conditional rendering */}
-          {columnNameContentRender}
-        </Col>
+            {columnNameContentRender}
+          </Col>
 
-        {column.constraint && (
-          <Col
-            className={classNames(
-              'custom-node-constraint',
-              showDataObservabilitySummary ? 'text-left' : 'text-right'
-            )}
-            flex="80px">
-            {column.constraint}
-          </Col>
-        )}
-        {showDataObservabilitySummary && (
-          <Col flex="80px">
-            <TestSuiteSummaryWidget
-              isLoading={isLoading}
-              size="small"
-              summary={summary}
-            />
-          </Col>
-        )}
-      </Row>
-    </div>
+          {column.constraint && (
+            <Col
+              className={classNames(
+                'custom-node-constraint',
+                showDataObservabilitySummary ? 'text-left' : 'text-right'
+              )}
+              flex="80px">
+              {column.constraint}
+            </Col>
+          )}
+          {showDataObservabilitySummary && (
+            <Col flex="80px">
+              <TestSuiteSummaryWidget
+                isLoading={isLoading}
+                size="small"
+                summary={summary}
+              />
+            </Col>
+          )}
+        </Row>
+      </div>
+    </Tooltip>
   );
 };
 
@@ -214,11 +258,13 @@ export function getNodeClassNames({
   showDqTracing,
   isTraced,
   isBaseNode,
+  isColumnsListExpanded,
 }: {
   isSelected: boolean;
   showDqTracing: boolean;
   isTraced: boolean;
   isBaseNode: boolean;
+  isColumnsListExpanded: boolean;
 }) {
   return classNames(
     'lineage-node p-0',
@@ -227,6 +273,7 @@ export function getNodeClassNames({
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
+      'columns-expanded': isColumnsListExpanded,
     }
   );
 }
