@@ -113,9 +113,9 @@ public class OpenMetadata {
     return VersionUtils.getVersionFromString(OPENMETADATA_VERSION_CLIENT.getVersion());
   }
 
-  private void applyExtraHeaders(RequestTemplate template, Map<String, Object> extraHeaders) {
-    for (Map.Entry<String, Object> entry : extraHeaders.entrySet()) {
-      String headerValue = entry.getValue() != null ? entry.getValue().toString() : "";
+  private void applyExtraHeaders(RequestTemplate template, Map<String, String> extraHeaders) {
+    for (Map.Entry<String, String> entry : extraHeaders.entrySet()) {
+      String headerValue = entry.getValue() != null ? entry.getValue() : "";
       template.header(entry.getKey(), headerValue);
       LOG.debug("Applied extra header: {} = {}", entry.getKey(), headerValue);
     }
