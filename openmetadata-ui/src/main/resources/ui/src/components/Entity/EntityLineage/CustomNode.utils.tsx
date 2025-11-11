@@ -13,8 +13,7 @@
 import { Dataflow01, Plus } from '@untitledui/icons';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize } from 'lodash';
-import { Fragment, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -77,6 +76,26 @@ const ExpandHandle = ({
 }) => {
   const [showExpandAll, setShowExpandAll] = useState(false);
 
+  const handleLineageNodeHandleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleLineageNodeHandleMouseOver = useCallback(() => {
+    setShowExpandAll(true);
+  }, []);
+
+  const handleLineageNodeHandleMouseOut = useCallback(() => {
+    setShowExpandAll(false);
+  }, []);
+
+  const handleLineageExpandIconClick = useCallback(() => {
+    onClickHandler(1);
+  }, [onClickHandler]);
+
+  const handleLineageExpandAllIconClick = useCallback(() => {
+    onClickHandler(50);
+  }, [onClickHandler]);
+
   return (
     <div
       className={classNames(
@@ -85,16 +104,19 @@ const ExpandHandle = ({
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      onClick={(e) => e.stopPropagation()}
-      onMouseOut={() => setShowExpandAll(false)}
-      onMouseOver={() => setShowExpandAll(true)}>
-      <Plus className="lineage-expand-icon" onClick={() => onClickHandler(1)} />
+      onClick={handleLineageNodeHandleClick}
+      onMouseOut={handleLineageNodeHandleMouseOut}
+      onMouseOver={handleLineageNodeHandleMouseOver}>
+      <Plus
+        className="lineage-expand-icon"
+        onClick={handleLineageExpandIconClick}
+      />
       {showExpandAll && (
         <>
           <div className="lineage-expand-icons-separator" />
           <Dataflow01
             className="lineage-expand-icon"
-            onClick={() => onClickHandler(50)}
+            onClick={handleLineageExpandAllIconClick}
           />
         </>
       )}
@@ -159,7 +181,7 @@ const getColumnNameContent = (column: Column, isLoading: boolean) => {
         ellipsis={{
           tooltip: true,
         }}>
-        {capitalize(getEntityName(column))}
+        {getEntityName(column)}
       </Typography.Text>
     </>
   );
