@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Home02 } from '@untitledui/icons';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -1851,6 +1852,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               activeTitle: true,
             },
           ]
+        : platformView
+        ? [
+            {
+              name: '',
+              icon: <Home02 size={12} />,
+              url: '/',
+              activeTitle: true,
+            },
+            {
+              name: t('label.lineage'),
+              url: '',
+            },
+          ]
         : [],
     [entity, isFullScreen, entityType]
   );
@@ -1864,7 +1878,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
         {isFullScreen && breadcrumbs.length > 0 && (
-          <TitleBreadcrumb className="p-b-sm" titleLinks={breadcrumbs} />
+          <TitleBreadcrumb
+            useCustomArrow
+            className="p-b-sm"
+            titleLinks={breadcrumbs}
+          />
         )}
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />

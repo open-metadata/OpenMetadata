@@ -29,6 +29,7 @@ export interface LineageProps {
   isFullScreen?: boolean;
   entity?: SourceType;
   isPlatformLineage?: boolean;
+  platformHeader?: React.ReactNode;
 }
 
 export interface EntityLineageResponse {
