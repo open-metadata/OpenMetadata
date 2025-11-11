@@ -23,10 +23,7 @@ import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
-import {
-  parseHandlebarsFromBackend,
-  serializeHandlebarsForBackend,
-} from './HandlebarUtils';
+import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
@@ -128,9 +125,12 @@ export const formatContent = (
   }
   let modifiedHtmlString = doc.body.innerHTML;
 
-  // Clean up handlebars blocks when formatting for server
+  // Apply additional transformations based on format
   if (formatFor === 'server') {
-    modifiedHtmlString = serializeHandlebarsForBackend(modifiedHtmlString);
+    modifiedHtmlString =
+      blockEditorExtensionsClassBase.serializeContentForBackend(
+        modifiedHtmlString
+      );
   }
 
   return modifiedHtmlString;
@@ -255,8 +255,9 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
   // Transform img tags to file-attachment divs before Tiptap processes them
   htmlString = transformImgTagsToFileAttachment(htmlString);
 
-  // Parse handlebars from backend format
-  htmlString = parseHandlebarsFromBackend(htmlString);
+  // Apply additional transformations from backend format
+  htmlString =
+    blockEditorExtensionsClassBase.parseContentFromBackend(htmlString);
 
   editor.commands.setContent(htmlString);
 
