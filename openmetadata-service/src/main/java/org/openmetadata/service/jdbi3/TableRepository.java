@@ -541,6 +541,18 @@ public class TableRepository extends EntityRepository<Table> {
             .entityExtensionDAO()
             .insert(
                 tableId, extension, "pipelineObservability", JsonUtils.pojoToJson(observability));
+
+        // Index pipeline status data to Elasticsearch for Trends and Metrics APIs
+        try {
+          indexPipelineStatus(table, observability);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to index pipeline status for table {} and pipeline {}: {}",
+              table.getFullyQualifiedName(),
+              pipelineFqn,
+              e.getMessage(),
+              e);
+        }
       }
     }
 
@@ -567,6 +579,18 @@ public class TableRepository extends EntityRepository<Table> {
               extension,
               "pipelineObservability",
               JsonUtils.pojoToJson(pipelineObservability));
+
+      // Index pipeline status data to Elasticsearch for Trends and Metrics APIs
+      try {
+        indexPipelineStatus(table, pipelineObservability);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to index pipeline status for table {} and pipeline {}: {}",
+            table.getFullyQualifiedName(),
+            pipelineFqn,
+            e.getMessage(),
+            e);
+      }
     }
 
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
@@ -576,6 +600,15 @@ public class TableRepository extends EntityRepository<Table> {
   public Table getPipelineObservability(UUID tableId) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
+    List<PipelineObservability> pipelineObservabilityList = getAllPipelineObservability(table);
+    table.setPipelineObservability(pipelineObservabilityList);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table;
+  }
+
+  public Table getPipelineObservabilityByName(String tableFqn) {
+    // Validate the request content
+    Table table = findByName(tableFqn, NON_DELETED);
     List<PipelineObservability> pipelineObservabilityList = getAllPipelineObservability(table);
     table.setPipelineObservability(pipelineObservabilityList);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
@@ -2349,5 +2382,73 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return flattened;
+  }
+
+  private void indexPipelineStatus(Table table, PipelineObservability observability)
+      throws IOException {
+    if (observability.getPipeline() == null
+        || observability.getPipeline().getFullyQualifiedName() == null) {
+      return;
+    }
+
+    String pipelineFqn = observability.getPipeline().getFullyQualifiedName();
+    String pipelineId =
+        observability.getPipeline().getId() != null
+            ? observability.getPipeline().getId().toString()
+            : "";
+    String pipelineName = observability.getPipeline().getName();
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("pipelineId", pipelineId);
+    doc.put("pipelineFqn", pipelineFqn);
+    doc.put("pipelineName", pipelineName);
+    doc.put("serviceType", table.getServiceType());
+    doc.put("serviceName", table.getService() != null ? table.getService().getName() : "");
+    doc.put("tableId", table.getId().toString());
+    doc.put("tableFqn", table.getFullyQualifiedName());
+
+    if (observability.getLastRunStatus() != null) {
+      doc.put("executionStatus", observability.getLastRunStatus().value());
+    }
+
+    doc.put(
+        "timestamp",
+        observability.getLastRunTime() != null
+            ? observability.getLastRunTime()
+            : System.currentTimeMillis());
+
+    if (observability.getEndTime() != null) {
+      doc.put("endTime", observability.getEndTime());
+
+      // Calculate runtime in milliseconds (endTime - timestamp)
+      Long timestamp =
+          observability.getLastRunTime() != null
+              ? observability.getLastRunTime()
+              : System.currentTimeMillis();
+      Long runtime = observability.getEndTime() - timestamp;
+      doc.put("runtime", runtime);
+    }
+
+    if (observability.getStartTime() != null) {
+      doc.put("startTime", observability.getStartTime());
+    }
+
+    if (observability.getScheduleInterval() != null) {
+      doc.put("scheduleInterval", observability.getScheduleInterval());
+    }
+
+    doc.put("deleted", false);
+    doc.put("entityType", "pipelineStatus");
+
+    String docId = pipelineFqn + "_" + table.getId().toString();
+    String docJson = JsonUtils.pojoToJson(doc);
+
+    searchRepository.getSearchClient().createEntity("pipeline_status_search_index", docId, docJson);
+
+    LOG.debug(
+        "Indexed pipeline status for table {} and pipeline {} with doc ID {}",
+        table.getFullyQualifiedName(),
+        pipelineFqn,
+        docId);
   }
 }

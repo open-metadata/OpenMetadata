@@ -689,7 +689,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @GET
-  @Path("/{id}/observability")
+  @Path("/name/{fqn}/observability")
   @Operation(
       operationId = "getPipelineObservability",
       summary = "Get pipeline observability data",
@@ -702,18 +702,20 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = PipelineObservabilityResponse.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Pipeline for instance {fqn} is not found")
       })
   public Response getPipelineObservability(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PipelineObservabilityResponse response = repository.getPipelineObservability(id);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    PipelineObservabilityResponse response = repository.getPipelineObservability(fqn);
     return Response.ok(response).build();
   }
 
@@ -751,9 +753,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("endTs")
           @NotNull
           Long endTs,
-      @Parameter(description = "Filter by specific pipeline ID", schema = @Schema(type = "UUID"))
-          @QueryParam("pipelineId")
-          UUID pipelineId,
+      @Parameter(description = "Filter by specific pipeline FQN", schema = @Schema(type = "string"))
+          @QueryParam("pipelineFqn")
+          String pipelineFqn,
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
           String serviceType) {
@@ -764,7 +766,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     try {
       PipelineExecutionTrendList trendList =
-          repository.getPipelineExecutionTrend(startTs, endTs, pipelineId, serviceType);
+          repository.getPipelineExecutionTrend(startTs, endTs, pipelineFqn, serviceType);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineExecutionTrendList emptyTrend =
@@ -810,9 +812,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("endTs")
           @NotNull
           Long endTs,
-      @Parameter(description = "Filter by specific pipeline ID", schema = @Schema(type = "UUID"))
-          @QueryParam("pipelineId")
-          UUID pipelineId,
+      @Parameter(description = "Filter by specific pipeline FQN", schema = @Schema(type = "string"))
+          @QueryParam("pipelineFqn")
+          String pipelineFqn,
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
           String serviceType) {
@@ -823,7 +825,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     try {
       PipelineRuntimeTrendList trendList =
-          repository.getPipelineRuntimeTrend(startTs, endTs, pipelineId, serviceType);
+          repository.getPipelineRuntimeTrend(startTs, endTs, pipelineFqn, serviceType);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineRuntimeTrendList emptyTrend =

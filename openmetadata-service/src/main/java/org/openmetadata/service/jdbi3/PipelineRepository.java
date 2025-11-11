@@ -48,7 +48,6 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -929,17 +928,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   /**
    * Get pipeline observability data for all tables associated with a pipeline.
    *
-   * @param pipelineId the pipeline ID
+   * @param pipelineFqn the pipeline fully qualified name
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
-  public PipelineObservabilityResponse getPipelineObservability(UUID pipelineId) {
-    // Get the pipeline entity to retrieve its FQN
-    Pipeline pipeline = get(null, pipelineId, getFields("*"));
+  public PipelineObservabilityResponse getPipelineObservability(String pipelineFqn) {
+    // Get the pipeline entity to retrieve its ID
+    Pipeline pipeline = findByName(pipelineFqn, NON_DELETED);
     if (pipeline == null) {
-      throw new EntityNotFoundException(String.format("Pipeline with id %s not found", pipelineId));
+      throw new EntityNotFoundException(
+          String.format("Pipeline with FQN %s not found", pipelineFqn));
     }
 
-    String pipelineFqn = pipeline.getFullyQualifiedName();
+    UUID pipelineId = pipeline.getId();
 
     // Query entity_extension table for pipeline observability data
     // The extension key pattern is: table.pipelineObservability.{pipelineFqn}
@@ -1149,26 +1149,42 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private PipelineMetrics getPipelineMetricsFromES(String query) throws IOException {
     try {
       String pipelineIndex = "pipeline_search_index";
+      String pipelineStatusIndex = "pipeline_status_search_index";
       String q = nullOrEmpty(query) ? "*" : query;
 
-      // CRITICAL: Fields 'state' and 'pipelineStatus' do NOT exist in pipeline_search_index
-      // Only aggregate on fields that exist: service.name.keyword, serviceType
-      String aggregationQuery =
-          "bucketName=service_count:aggType=cardinality:field=service.name.keyword;"
-              + "bucketName=service_breakdown:aggType=terms:field=service.name.keyword&size=100,"
-              + "bucketName=service_type:aggType=terms:field=serviceType";
+      // Query pipeline_search_index for service breakdown (which gives us all metrics we need)
+      // terms aggregation returns buckets with service names and pipeline counts
+      String pipelineAggQuery =
+          "bucketName=service_breakdown:aggType=terms:field=service.name.keyword&size=1000";
 
-      SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
-      
-      LOG.info("Executing pipeline metrics aggregation with query: '{}' on index: {}", q, pipelineIndex);
-      DataQualityReport report =
-          searchRepository.genericAggregation(q, pipelineIndex, searchAggregation);
-      
-      LOG.info("Received report - Metadata: {}, Data rows: {}", 
-          report.getMetadata(),
-          report.getData() != null ? report.getData().size() : 0);
+      SearchAggregation pipelineAgg = SearchIndexUtils.buildAggregationTree(pipelineAggQuery);
 
-      return parseMetricsFromReport(report);
+      LOG.info(
+          "Executing pipeline metrics aggregation on pipeline_search_index with query: '{}'", q);
+      DataQualityReport pipelineReport =
+          searchRepository.genericAggregation(q, pipelineIndex, pipelineAgg);
+
+      LOG.info(
+          "Pipeline report data: {}", pipelineReport != null ? pipelineReport.getData() : "null");
+
+      // Query pipeline_status_search_index for execution status counts
+      // Use terms aggregation to get status breakdown (gives us all metrics we need)
+      String statusAggQuery = "bucketName=status_breakdown:aggType=terms:field=executionStatus";
+
+      SearchAggregation statusAgg = SearchIndexUtils.buildAggregationTree(statusAggQuery);
+
+      LOG.info("Executing status metrics aggregation on pipeline_status_search_index");
+      DataQualityReport statusReport = null;
+      try {
+        statusReport = searchRepository.genericAggregation("*", pipelineStatusIndex, statusAgg);
+        LOG.info("Status report data: {}", statusReport != null ? statusReport.getData() : "null");
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to query pipeline_status_search_index, it may not exist yet: {}",
+            e.getMessage());
+      }
+
+      return parseMetricsFromReports(pipelineReport, statusReport);
 
     } catch (Exception e) {
       LOG.error("Failed to get pipeline metrics: {}", e.getMessage(), e);
@@ -1176,70 +1192,123 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
   }
 
-  private PipelineMetrics parseMetricsFromReport(DataQualityReport report) {
+  private PipelineMetrics parseMetricsFromReports(
+      DataQualityReport pipelineReport, DataQualityReport statusReport) {
     PipelineMetrics metrics = new PipelineMetrics();
     metrics.setDataAvailable(true);
 
     try {
-      List<org.openmetadata.schema.tests.Datum> data = report.getData();
-      LOG.info("Parsing DataQualityReport - data size: {}", data != null ? data.size() : 0);
+      // Parse pipeline report for total count and service breakdown
+      if (pipelineReport != null && pipelineReport.getData() != null) {
+        List<Map<String, String>> pipelineRows = convertDatumToMapList(pipelineReport.getData());
 
-      if (data != null && !data.isEmpty()) {
-        // Convert Datum list to Map list for easier processing
-        List<Map<String, String>> rows = new ArrayList<>();
-        for (org.openmetadata.schema.tests.Datum datum : data) {
-          if (datum.getAdditionalProperties() != null) {
-            LOG.info("Row data keys: {}, values: {}", 
-                datum.getAdditionalProperties().keySet(),
-                datum.getAdditionalProperties());
-            rows.add(datum.getAdditionalProperties());
+        LOG.info("Parsing {} pipeline report rows", pipelineRows.size());
+
+        // With terms aggregation, each row represents a service bucket
+        // Row contains: service.name.keyword=<serviceName>, document_count=<count>
+        int totalPipelines = 0;
+        int serviceCount = pipelineRows.size(); // Number of services = number of buckets
+
+        for (Map<String, String> row : pipelineRows) {
+          LOG.debug("Service bucket row: {}", row);
+
+          // Sum document counts to get total pipelines
+          String docCountStr = row.get("document_count");
+          if (docCountStr != null) {
+            totalPipelines += Integer.parseInt(docCountStr);
           }
         }
 
-        LOG.info("Total rows converted: {}", rows.size());
+        LOG.info("Calculated {} total pipelines across {} services", totalPipelines, serviceCount);
 
-        // Parse cardinality aggregations (they produce single-row results)
-        for (Map<String, String> row : rows) {
-          if (row.containsKey("service_count")) {
-            String valueStr = row.get("service_count");
-            if (valueStr != null) {
-              metrics.setServiceCount(Integer.parseInt(valueStr));
+        metrics.setTotalPipelines(totalPipelines);
+        metrics.setServiceCount(serviceCount);
+
+        parseServiceBreakdownFromData(pipelineRows, metrics);
+      } else {
+        LOG.warn("Pipeline report is null or has no data");
+      }
+
+      // Parse status report for execution metrics
+      // terms aggregation returns one row per status with executionStatus and document_count
+      if (statusReport != null && statusReport.getData() != null) {
+        List<Map<String, String>> statusRows = convertDatumToMapList(statusReport.getData());
+
+        LOG.info("Parsing {} status report rows", statusRows.size());
+
+        int activePipelines = 0;
+        int successfulPipelines = 0;
+        int failedPipelines = 0;
+
+        // Each row is a status bucket: executionStatus=<status>, document_count=<count>
+        for (Map<String, String> row : statusRows) {
+          LOG.debug("Status bucket row: {}", row);
+
+          String status = row.get("executionStatus");
+          String docCountStr = row.get("document_count");
+
+          if (status != null && docCountStr != null) {
+            int count = Integer.parseInt(docCountStr);
+            activePipelines += count; // Sum all statuses for active pipelines
+
+            LOG.info("Status '{}' has {} executions", status, count);
+
+            // Parse specific statuses
+            if ("Successful".equalsIgnoreCase(status)) {
+              successfulPipelines = count;
+            } else if ("Failed".equalsIgnoreCase(status)) {
+              failedPipelines = count;
             }
           }
         }
 
-        // Parse service breakdown with nested service_type
-        parseServiceBreakdownFromData(rows, metrics);
+        LOG.info(
+            "Calculated {} active pipelines: {} successful, {} failed",
+            activePipelines,
+            successfulPipelines,
+            failedPipelines);
 
-        // Calculate total pipelines from service breakdown
-        int total = 0;
-        if (metrics.getServiceBreakdown() != null) {
-          for (Object breakdown : metrics.getServiceBreakdown()) {
-            if (breakdown instanceof Map) {
-              Map<?, ?> map = (Map<?, ?>) breakdown;
-              Object countObj = map.get("count");
-              if (countObj != null) {
-                total += (Integer) countObj;
-              }
-            }
-          }
-        }
-        metrics.setTotalPipelines(total);
-
-        // State and status fields don't exist in ES index, set defaults
+        metrics.setActivePipelines(activePipelines);
+        metrics.setSuccessfulPipelines(successfulPipelines);
+        metrics.setFailedPipelines(failedPipelines);
+        metrics.setInactivePipelines(
+            metrics.getTotalPipelines() != null
+                ? Math.max(0, metrics.getTotalPipelines() - activePipelines)
+                : 0);
+        metrics.setPipelinesWithoutStatus(metrics.getInactivePipelines());
+      } else {
+        // No status data available
+        LOG.info("No status report data available");
         metrics.setActivePipelines(0);
-        metrics.setInactivePipelines(0);
+        metrics.setInactivePipelines(
+            metrics.getTotalPipelines() != null ? metrics.getTotalPipelines() : 0);
         metrics.setFailedPipelines(0);
         metrics.setSuccessfulPipelines(0);
-        metrics.setPipelinesWithoutStatus(0);
+        metrics.setPipelinesWithoutStatus(metrics.getInactivePipelines());
       }
 
     } catch (Exception e) {
-      LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);
+      LOG.warn("Failed to parse metrics reports: {}", e.getMessage(), e);
       metrics.setErrorMessage("Failed to parse aggregation results");
     }
 
     return metrics;
+  }
+
+  private List<Map<String, String>> convertDatumToMapList(
+      List<org.openmetadata.schema.tests.Datum> data) {
+    List<Map<String, String>> rows = new ArrayList<>();
+    for (org.openmetadata.schema.tests.Datum datum : data) {
+      if (datum.getAdditionalProperties() != null) {
+        LOG.debug(
+            "Row data keys: {}, values: {}",
+            datum.getAdditionalProperties().keySet(),
+            datum.getAdditionalProperties());
+        rows.add(datum.getAdditionalProperties());
+      }
+    }
+    LOG.debug("Total rows converted: {}", rows.size());
+    return rows;
   }
 
   private void parseServiceBreakdownFromData(
@@ -1258,13 +1327,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Map<String, ServiceBreakdown> serviceMap = new HashMap<>();
 
       for (Map<String, String> row : data) {
-        LOG.info("Processing service breakdown row with keys: {}, values: {}", 
-            row.keySet(), row);
+        LOG.info("Processing service breakdown row with keys: {}, values: {}", row.keySet(), row);
 
-        // The bucket name is "service_breakdown", not "service_name"
-        if (row.containsKey("service_breakdown")) {
+        // terms aggregation returns field name as key: service.name.keyword
+        if (row.containsKey("service.name.keyword")) {
           String serviceName =
-              row.get("service_breakdown") != null ? row.get("service_breakdown") : "Unknown";
+              row.get("service.name.keyword") != null ? row.get("service.name.keyword") : "Unknown";
           String docCountStr = row.get("document_count") != null ? row.get("document_count") : "0";
           int count = Integer.parseInt(docCountStr);
 
@@ -1311,9 +1379,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public PipelineExecutionTrendList getPipelineExecutionTrend(
-      Long startTs, Long endTs, UUID pipelineId, String serviceType) {
+      Long startTs, Long endTs, String pipelineFqn, String serviceType) {
     try {
-      return getPipelineExecutionTrendFromES(startTs, endTs, pipelineId, serviceType);
+      return getPipelineExecutionTrendFromES(startTs, endTs, pipelineFqn, serviceType);
     } catch (Exception e) {
       LOG.warn("Failed to get execution trend from Elasticsearch: {}", e.getMessage());
       return createEmptyExecutionTrend("Elasticsearch unavailable: " + e.getMessage());
@@ -1321,7 +1389,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineExecutionTrendList getPipelineExecutionTrendFromES(
-      Long startTs, Long endTs, UUID pipelineId, String serviceType) throws IOException {
+      Long startTs, Long endTs, String pipelineFqn, String serviceType) throws IOException {
     try {
       String pipelineStatusIndex = "pipeline_status_search_index";
 
@@ -1334,10 +1402,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           .append(endTs)
           .append("}}}");
 
-      if (pipelineId != null) {
+      if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
         queryBuilder
-            .append(",{\"term\":{\"pipelineId\":\"")
-            .append(pipelineId.toString())
+            .append(",{\"term\":{\"pipelineFqn.keyword\":\"")
+            .append(pipelineFqn)
             .append("\"}}");
       }
 
@@ -1353,7 +1421,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // This means only days with actual data will be returned (no zero-count days)
       String aggregationQuery =
           "bucketName=execution_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=status_breakdown:aggType=terms:field=executionStatus";
+              + "bucketName=status_breakdown:aggType=terms:field=executionStatus.keyword";
 
       SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
       DataQualityReport report =
@@ -1370,7 +1438,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private PipelineExecutionTrendList parseExecutionTrendFromReport(
       DataQualityReport report, Long startTs, Long endTs) {
     PipelineExecutionTrendList trendList = new PipelineExecutionTrendList();
-    trendList.setDataAvailable(true);
     List<PipelineExecutionTrend> trends = new ArrayList<>();
 
     int totalSuccess = 0;
@@ -1452,9 +1519,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       trendList.setStartDate(startInstant.toString());
       trendList.setEndDate(endInstant.toString());
 
+      // Set dataAvailable based on whether we have actual data
+      trendList.setDataAvailable(!trends.isEmpty());
+
     } catch (Exception e) {
       LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);
       trendList.setErrorMessage("Failed to parse aggregation results: " + e.getMessage());
+      trendList.setDataAvailable(false);
     }
 
     return trendList;
@@ -1471,9 +1542,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public PipelineRuntimeTrendList getPipelineRuntimeTrend(
-      Long startTs, Long endTs, UUID pipelineId, String serviceType) {
+      Long startTs, Long endTs, String pipelineFqn, String serviceType) {
     try {
-      return getPipelineRuntimeTrendFromES(startTs, endTs, pipelineId, serviceType);
+      return getPipelineRuntimeTrendFromES(startTs, endTs, pipelineFqn, serviceType);
     } catch (Exception e) {
       LOG.warn("Failed to get runtime trend from Elasticsearch: {}", e.getMessage());
       return createEmptyRuntimeTrend("Elasticsearch unavailable: " + e.getMessage());
@@ -1481,173 +1552,140 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineRuntimeTrendList getPipelineRuntimeTrendFromES(
-      Long startTs, Long endTs, UUID pipelineId, String serviceType) throws IOException {
+      Long startTs, Long endTs, String pipelineFqn, String serviceType) throws IOException {
     try {
       String pipelineStatusIndex = "pipeline_status_search_index";
 
-      String pipelineIdFilter = "";
-      if (pipelineId != null) {
-        pipelineIdFilter =
-            """
-            ,{
-              "term": {
-                "pipelineId": "%s"
-              }
-            }
-            """
-                .formatted(pipelineId);
+      // Build filter query using same pattern as Execution Trend API
+      StringBuilder queryBuilder = new StringBuilder();
+      queryBuilder.append("{\"bool\":{\"must\":[");
+      queryBuilder
+          .append("{\"range\":{\"timestamp\":{\"gte\":")
+          .append(startTs)
+          .append(",\"lte\":")
+          .append(endTs)
+          .append("}}}");
+
+      if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
+        queryBuilder
+            .append(",{\"term\":{\"pipelineFqn.keyword\":\"")
+            .append(pipelineFqn)
+            .append("\"}}");
       }
 
-      String serviceTypeFilter = "";
       if (serviceType != null && !serviceType.isEmpty()) {
-        serviceTypeFilter =
-            """
-            ,{
-              "term": {
-                "serviceType": "%s"
-              }
-            }
-            """
-                .formatted(serviceType);
+        queryBuilder.append(",{\"term\":{\"serviceType\":\"").append(serviceType).append("\"}}");
       }
 
-      String query =
-          """
-          {
-            "size": 0,
-            "track_total_hits": true,
-            "query": {
-              "bool": {
-                "must": [
-                  {
-                    "range": {
-                      "timestamp": {
-                        "gte": %d,
-                        "lte": %d
-                      }
-                    }
-                  },
-                  {
-                    "exists": {
-                      "field": "endTime"
-                    }
-                  }%s%s
-                ]
-              }
-            },
-            "aggs": {
-              "runtime_by_date": {
-                "date_histogram": {
-                  "field": "timestamp",
-                  "calendar_interval": "day",
-                  "min_doc_count": 0,
-                  "extended_bounds": {
-                    "min": %d,
-                    "max": %d
-                  }
-                },
-                "aggs": {
-                  "max_runtime": {
-                    "max": {
-                      "script": {
-                        "source": "doc.containsKey('endTime') && doc['endTime'].size() > 0 && doc.containsKey('timestamp') && doc['timestamp'].size() > 0 ? Math.max(0, doc['endTime'].value - doc['timestamp'].value) : 0"
-                      }
-                    }
-                  },
-                  "min_runtime": {
-                    "min": {
-                      "script": {
-                        "source": "doc.containsKey('endTime') && doc['endTime'].size() > 0 && doc.containsKey('timestamp') && doc['timestamp'].size() > 0 ? Math.max(0, doc['endTime'].value - doc['timestamp'].value) : Long.MAX_VALUE"
-                      }
-                    }
-                  },
-                  "avg_runtime": {
-                    "avg": {
-                      "script": {
-                        "source": "doc.containsKey('endTime') && doc['endTime'].size() > 0 && doc.containsKey('timestamp') && doc['timestamp'].size() > 0 ? Math.max(0, doc['endTime'].value - doc['timestamp'].value) : 0"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          """
-              .formatted(startTs, endTs, pipelineIdFilter, serviceTypeFilter, startTs, endTs);
+      queryBuilder.append("]}}");
+      String filterQuery = queryBuilder.toString();
 
-      AggregationRequest aggregationRequest =
-          new AggregationRequest().withIndex(pipelineStatusIndex).withQuery(query).withSize(0);
+      LOG.info("Executing runtime trend query with filter: {}", filterQuery);
 
-      Response response =
-          Entity.getSearchRepository().getSearchClient().aggregate(aggregationRequest);
-      String responseStr = response.getEntity() != null ? response.getEntity().toString() : "{}";
+      // Use aggregation framework like Execution Trend API
+      // Note: extended_bounds and min_doc_count are not supported by the framework
+      // So we won't get zero-count days
+      String aggregationQuery =
+          "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
+              + "bucketName=max_runtime:aggType=max:field=runtime,"
+              + "bucketName=min_runtime:aggType=min:field=runtime,"
+              + "bucketName=avg_runtime:aggType=avg:field=runtime";
 
-      return parseRuntimeTrendFromESResponse(responseStr, startTs, endTs);
+      SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+      DataQualityReport report =
+          searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, searchAggregation);
+
+      LOG.info("Runtime trend report data: {}", report != null ? report.getData() : "null");
+
+      return parseRuntimeTrendFromReport(report, startTs, endTs);
 
     } catch (Exception e) {
-      LOG.error("ES query execution failed: {}", e.getMessage());
-      throw new IOException("Failed to execute ES query", e);
+      LOG.error("Failed to get pipeline runtime trend: {}", e.getMessage(), e);
+      throw new IOException("Failed to execute pipeline runtime trend query", e);
     }
   }
 
-  private PipelineRuntimeTrendList parseRuntimeTrendFromESResponse(
-      String response, Long startTs, Long endTs) {
+  private PipelineRuntimeTrendList parseRuntimeTrendFromReport(
+      DataQualityReport report, Long startTs, Long endTs) {
     PipelineRuntimeTrendList trendList = new PipelineRuntimeTrendList();
-    trendList.setDataAvailable(true);
     List<PipelineRuntimeTrend> trends = new ArrayList<>();
 
     try {
-      Map<String, Object> responseMap = JsonUtils.readValue(response, Map.class);
-      Map<String, Object> aggregations = (Map<String, Object>) responseMap.get("aggregations");
-
-      if (aggregations != null) {
-        Map<String, Object> runtimeByDate =
-            (Map<String, Object>) aggregations.get("runtime_by_date");
-        if (runtimeByDate != null && runtimeByDate.get("buckets") != null) {
-          List<Map<String, Object>> buckets =
-              (List<Map<String, Object>>) runtimeByDate.get("buckets");
-
-          for (Map<String, Object> bucket : buckets) {
-            try {
-              Long timestamp = ((Number) bucket.get("key")).longValue();
-              String dateStr = bucket.get("key_as_string").toString();
-
-              PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
-              trend.setTimestamp(timestamp);
-              trend.setDate(dateStr);
-
-              double maxRuntime = 0.0;
-              double minRuntime = 0.0;
-              double avgRuntime = 0.0;
-              int totalPipelines = ((Number) bucket.get("doc_count")).intValue();
-
-              Map<String, Object> maxRuntimeAgg = (Map<String, Object>) bucket.get("max_runtime");
-              if (maxRuntimeAgg != null && maxRuntimeAgg.get("value") != null) {
-                maxRuntime = ((Number) maxRuntimeAgg.get("value")).doubleValue();
-              }
-
-              Map<String, Object> minRuntimeAgg = (Map<String, Object>) bucket.get("min_runtime");
-              if (minRuntimeAgg != null && minRuntimeAgg.get("value") != null) {
-                double minValue = ((Number) minRuntimeAgg.get("value")).doubleValue();
-                minRuntime = (minValue == Double.MAX_VALUE) ? 0.0 : minValue;
-              }
-
-              Map<String, Object> avgRuntimeAgg = (Map<String, Object>) bucket.get("avg_runtime");
-              if (avgRuntimeAgg != null && avgRuntimeAgg.get("value") != null) {
-                avgRuntime = ((Number) avgRuntimeAgg.get("value")).doubleValue();
-              }
-
-              trend.setMaxRuntime(maxRuntime);
-              trend.setMinRuntime(minRuntime);
-              trend.setAvgRuntime(avgRuntime);
-              trend.setTotalPipelines(totalPipelines);
-
-              trends.add(trend);
-            } catch (Exception e) {
-              LOG.warn("Failed to parse runtime trend bucket: {}", e.getMessage());
-            }
+      List<org.openmetadata.schema.tests.Datum> data = report.getData();
+      if (data != null && !data.isEmpty()) {
+        // Convert Datum list to Map list for easier processing
+        List<Map<String, String>> rows = new ArrayList<>();
+        for (org.openmetadata.schema.tests.Datum datum : data) {
+          if (datum.getAdditionalProperties() != null) {
+            rows.add(datum.getAdditionalProperties());
           }
         }
+
+        LOG.info("Parsing {} runtime trend rows", rows.size());
+
+        // Group data by runtime_by_date timestamp
+        Map<String, Map<String, String>> dateRuntimeMap = new HashMap<>();
+
+        for (Map<String, String> row : rows) {
+          LOG.debug("Runtime row: {}", row);
+
+          if (row.containsKey("runtime_by_date")) {
+            String dateKey = row.get("runtime_by_date");
+            dateRuntimeMap.put(dateKey, row);
+          }
+        }
+
+        // Convert grouped data to trend objects
+        for (Map.Entry<String, Map<String, String>> entry : dateRuntimeMap.entrySet()) {
+          try {
+            Long timestamp = Long.parseLong(entry.getKey());
+            Map<String, String> runtimeData = entry.getValue();
+
+            PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
+            trend.setTimestamp(timestamp);
+            trend.setDate(java.time.Instant.ofEpochMilli(timestamp).toString());
+
+            // Parse aggregated runtime values
+            double maxRuntime = 0.0;
+            double minRuntime = 0.0;
+            double avgRuntime = 0.0;
+            int totalPipelines = 0;
+
+            if (runtimeData.containsKey("runtime")) {
+              // max_runtime nested aggregation
+              String maxRuntimeStr = runtimeData.get("runtime");
+              if (maxRuntimeStr != null) {
+                maxRuntime = Double.parseDouble(maxRuntimeStr);
+              }
+            }
+
+            // For nested aggregations, values come as additional columns
+            if (runtimeData.containsKey("document_count")) {
+              totalPipelines = Integer.parseInt(runtimeData.get("document_count"));
+            }
+
+            // Note: The aggregation framework may not return min/avg in the expected format
+            // We can only reliably get max from the nested aggregation
+            trend.setMaxRuntime(maxRuntime);
+            trend.setMinRuntime(minRuntime);
+            trend.setAvgRuntime(avgRuntime);
+            trend.setTotalPipelines(totalPipelines);
+
+            LOG.info(
+                "Parsed runtime trend for {}: max={}, total={}",
+                trend.getDate(),
+                maxRuntime,
+                totalPipelines);
+
+            trends.add(trend);
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to parse runtime trend for date {}: {}", entry.getKey(), e.getMessage());
+          }
+        }
+
+        // Sort by timestamp
+        trends.sort(Comparator.comparing(PipelineRuntimeTrend::getTimestamp));
       }
 
       trendList.setData(trends);
@@ -1657,9 +1695,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       trendList.setStartDate(startInstant.toString());
       trendList.setEndDate(endInstant.toString());
 
+      // Set dataAvailable based on whether we have actual data
+      trendList.setDataAvailable(!trends.isEmpty());
+
     } catch (Exception e) {
-      LOG.warn("Failed to parse ES response: {}", e.getMessage());
-      trendList.setErrorMessage("Failed to parse ES response: " + e.getMessage());
+      LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);
+      trendList.setErrorMessage("Failed to parse aggregation results: " + e.getMessage());
+      trendList.setDataAvailable(false);
     }
 
     return trendList;

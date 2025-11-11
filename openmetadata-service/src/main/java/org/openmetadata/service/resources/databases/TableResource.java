@@ -906,6 +906,36 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @GET
+  @Path("/name/{fqn}/pipelineObservability")
+  @Operation(
+      operationId = "getPipelineObservabilityByFQN",
+      summary = "Get pipeline observability data by table FQN",
+      description = "Get pipeline observability data for the table using fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table with pipeline observability data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table getPipelineObservabilityByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the table",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    Table table = repository.getPipelineObservabilityByName(fqn);
+    return addHref(uriInfo, table);
+  }
+
   @DELETE
   @Path("/{id}/pipelineObservability")
   @Operation(
