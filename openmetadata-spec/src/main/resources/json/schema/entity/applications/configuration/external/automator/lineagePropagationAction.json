@@ -79,6 +79,13 @@
       "type": "integer",
       "default": null
     },
+    "propagationDepthMode": {
+      "title": "Propagation Depth Mode",
+      "description": "Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources with no parents). 'DATA_ASSET' calculates depth relative to each data asset being processed, ensuring each asset only receives metadata from nodes within the specified number of hops upstream.",
+      "type": "string",
+      "enum": ["ROOT", "DATA_ASSET"],
+      "default": "ROOT"
+    },
     "propagationStopConfigs": {
       "title": "Propagation Stop Configurations",
       "description": "List of configurations to stop propagation based on conditions",
