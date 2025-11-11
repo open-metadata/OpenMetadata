@@ -27,6 +27,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -79,6 +81,8 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -653,6 +657,15 @@ public class TagRepository extends EntityRepository<Tag> {
       super(original, updated, operation);
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      // adding the reviewer should add the person as assignee to the task
+      if (!original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -827,6 +840,34 @@ public class TagRepository extends EntityRepository<Tag> {
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
     } catch (EntityNotFoundException ex) {
       LOG.info("No approval task found for tag {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  protected void updateTaskWithNewReviewers(Tag tag) {
+    try {
+      MessageParser.EntityLink about =
+          new MessageParser.EntityLink(TAG, tag.getFullyQualifiedName());
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      tag =
+          Entity.getEntityByName(
+              Entity.TAG,
+              tag.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
+
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(tag.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for tag {}", TaskType.RequestApproval, tag.getFullyQualifiedName());
     }
   }
 
