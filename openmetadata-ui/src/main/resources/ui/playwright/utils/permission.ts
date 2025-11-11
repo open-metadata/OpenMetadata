@@ -183,7 +183,16 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await page.getByTestId('lineage-config').click();
+
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).not.toBeVisible();
+
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Cancel' })
+    .click();
 
   await page.click('[data-testid="custom_properties"]');
   await page.waitForLoadState('networkidle');
