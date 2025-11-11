@@ -5203,4 +5203,270 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     LOG.info("test_CreateWorkflowWithoutEntityTypes completed successfully");
   }
+
+  @Test
+  @Order(22)
+  void test_reviewerChangeUpdatesApprovalTasks(TestInfo test) throws Exception {
+    LOG.info("Starting test_reviewerChangeUpdatesApprovalTasks");
+
+    // Create reviewer users for this test
+    CreateUser createReviewer1 =
+        new CreateUser()
+            .withName("test_reviewer1_" + UUID.randomUUID().toString().substring(0, 8))
+            .withEmail("test_reviewer1@example.com")
+            .withDisplayName("Test Reviewer 1");
+    User reviewer1 = userTest.createEntity(createReviewer1, ADMIN_AUTH_HEADERS);
+    EntityReference reviewer1Ref = reviewer1.getEntityReference();
+    LOG.debug("Created reviewer user 1: {}", reviewer1.getName());
+
+    CreateUser createReviewer2 =
+        new CreateUser()
+            .withName("test_reviewer2_" + UUID.randomUUID().toString().substring(0, 8))
+            .withEmail("test_reviewer2@example.com")
+            .withDisplayName("Test Reviewer 2");
+    User reviewer2 = userTest.createEntity(createReviewer2, ADMIN_AUTH_HEADERS);
+    EntityReference reviewer2Ref = reviewer2.getEntityReference();
+    LOG.debug("Created reviewer user 2: {}", reviewer2.getName());
+
+    // Create an approval workflow for tags (which support reviewers)
+    String approvalWorkflowJson =
+        """
+    {
+      "name": "tagApprovalWorkflow",
+      "displayName": "Tag Approval Workflow",
+      "description": "Workflow for testing reviewer change functionality",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["tag"],
+          "events": ["Created", "Updated"],
+          "exclude": ["reviewers"],
+          "filter": {}
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "ApproveTag",
+          "displayName": "Approve Tag",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"],
+          "branches": ["true", "false"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "ApproveTag"
+        },
+        {
+          "from": "ApproveTag",
+          "to": "end",
+          "condition": "true"
+        },
+        {
+          "from": "ApproveTag",
+          "to": "end",
+          "condition": "false"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition approvalWorkflow =
+        JsonUtils.readValue(approvalWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Create the approval workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(approvalWorkflow));
+
+    assertTrue(
+        response.getStatus() == Response.Status.CREATED.getStatusCode()
+            || response.getStatus() == Response.Status.OK.getStatusCode(),
+        "Should successfully create tag approval workflow");
+
+    WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
+    assertNotNull(createdWorkflow);
+    LOG.debug("Created tag approval workflow: {}", createdWorkflow.getName());
+
+    // Wait for workflow to be ready
+    java.lang.Thread.sleep(2000);
+
+    // Create a classification for our test tags
+    String classificationName =
+        "TestClassification_" + UUID.randomUUID().toString().substring(0, 8);
+    Classification classification =
+        classificationTest.createEntity(
+            classificationTest.createRequest(classificationName), ADMIN_AUTH_HEADERS);
+    LOG.debug("Created classification: {}", classification.getName());
+
+    // Create a tag with initial reviewer - simple test with reviewer1 first
+    String tagName = "TestTag_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateTag createTag =
+        tagTest
+            .createRequest(tagName, classification.getName())
+            .withReviewers(List.of(reviewer1Ref));
+
+    // Create the tag with ADMIN (not a reviewer) so it triggers approval workflow
+    Tag tag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+    assertNotNull(tag.getEntityStatus(), "Tag should have an entity status");
+    assertEquals(1, tag.getReviewers().size(), "Tag should have 1 reviewer");
+    assertEquals(
+        reviewer1.getId(),
+        tag.getReviewers().getFirst().getId(),
+        "reviewer1 should be the reviewer");
+    LOG.debug("Created tag with reviewer1: {}, Status: {}", tag.getName(), tag.getEntityStatus());
+
+    // Wait for workflow to process the create event
+    java.lang.Thread.sleep(5000);
+
+    // Verify that an approval task was created and assigned to the reviewers
+    String entityLink =
+        new MessageParser.EntityLink(
+                org.openmetadata.service.Entity.TAG, tag.getFullyQualifiedName())
+            .getLinkString();
+
+    // Wait for task to be created
+    ThreadList threads = null;
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              ThreadList taskList =
+                  feedResourceTest.listTasks(
+                      entityLink,
+                      null,
+                      null,
+                      TaskStatus.Open,
+                      100,
+                      authHeaders(reviewer1.getName()));
+              if (taskList.getData().isEmpty()) {
+                LOG.debug("Waiting for task to be created for tag...");
+                return false;
+              }
+              return true;
+            });
+
+    threads =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer1.getName()));
+
+    // The approval workflow should have created a task
+    assertFalse(threads.getData().isEmpty(), "Should have at least one task for the tag");
+
+    // Find the approval task (there might be other tasks too)
+    Thread approvalTask =
+        threads.getData().stream()
+            .filter(
+                t ->
+                    t.getTask() != null
+                        && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                            t.getTask().getType()))
+            .findFirst()
+            .orElse(null);
+
+    if (approvalTask == null) {
+      // If no approval task, check if it's a different task type
+      LOG.warn("No approval task found. Found {} tasks total", threads.getData().size());
+      for (Thread t : threads.getData()) {
+        LOG.debug(
+            "Task type: {}, Status: {}",
+            t.getTask() != null ? t.getTask().getType() : "null",
+            t.getTask() != null ? t.getTask().getStatus() : "null");
+      }
+      // For now, just check that we have tasks
+      assertFalse(threads.getData().isEmpty(), "Should have tasks for the tag");
+      approvalTask = threads.getData().getFirst();
+    }
+
+    org.openmetadata.schema.type.TaskDetails taskDetails = approvalTask.getTask();
+    assertNotNull(taskDetails, "Task details should not be null");
+    assertEquals(TaskStatus.Open, taskDetails.getStatus(), "Task should be open");
+
+    // Verify initial assignee is reviewer1
+    List<EntityReference> assignees = taskDetails.getAssignees();
+    assertNotNull(assignees, "Assignees should not be null");
+    assertFalse(assignees.isEmpty(), "Task should have at least 1 assignee");
+    assertTrue(
+        assignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId())),
+        "reviewer1 should be an assignee");
+    LOG.debug("Initial task assignee verified: reviewer1");
+
+    // Now update the tag's reviewers - simple change from reviewer1 to reviewer2
+    // Create a JSON Patch to update reviewers
+    String jsonPatch =
+        "[{\"op\":\"replace\",\"path\":\"/reviewers\",\"value\":[{\"id\":\""
+            + reviewer2.getId()
+            + "\",\"type\":\"user\"}]}]";
+
+    Tag updatedTag =
+        tagTest.patchEntity(tag.getId(), JsonUtils.readTree(jsonPatch), ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, updatedTag.getReviewers().size(), "Updated tag should have 1 reviewer");
+    assertEquals(
+        reviewer2.getId(),
+        updatedTag.getReviewers().getFirst().getId(),
+        "reviewer2 should now be the reviewer");
+    LOG.debug("Tag reviewer changed from reviewer1 to reviewer2");
+
+    // Wait for the async task update to complete
+    java.lang.Thread.sleep(3000);
+
+    // Verify that the task assignees have been updated
+    threads =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer2.getName()));
+
+    assertFalse(threads.getData().isEmpty(), "Should still have tasks");
+    approvalTask =
+        threads.getData().stream()
+            .filter(t -> t.getTask() != null && t.getTask().getId().equals(taskDetails.getId()))
+            .findFirst()
+            .orElse(threads.getData().getFirst());
+
+    org.openmetadata.schema.type.TaskDetails updatedTaskDetails = approvalTask.getTask();
+
+    // Verify updated assignee is now reviewer2 instead of reviewer1
+    List<EntityReference> updatedAssignees = updatedTaskDetails.getAssignees();
+    assertNotNull(updatedAssignees, "Updated assignees should not be null");
+    assertFalse(updatedAssignees.isEmpty(), "Task should have at least 1 assignee after update");
+    assertTrue(
+        updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer2.getId())),
+        "reviewer2 should now be an assignee after reviewer update");
+    assertFalse(
+        updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId())),
+        "reviewer1 should no longer be an assignee after reviewer update");
+
+    LOG.info(
+        "test_reviewerChangeUpdatesApprovalTasks completed successfully - task assignee successfully changed from reviewer1 to reviewer2");
+  }
 }
