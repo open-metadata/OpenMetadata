@@ -36,6 +36,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
@@ -273,11 +274,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.chart'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(chartDetails)} title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader
