@@ -90,6 +90,7 @@ export class WorksheetClass extends EntityClass {
     name: this.worksheetName,
     displayName: this.worksheetName,
     service: this.service.name,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -136,6 +137,7 @@ export class WorksheetClass extends EntityClass {
           name: this.worksheetName,
           spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
           columns: this.worksheetColumns,
+          description: this.entity.description,
         },
       }
     );
@@ -172,12 +174,22 @@ export class WorksheetClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
       spreadsheet: this.spreadsheetResponseData,
     };
+  }
+
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    spreadsheet: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.spreadsheetResponseData = data.spreadsheet;
   }
 
   async visitEntityPage(page: Page) {
