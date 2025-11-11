@@ -40,9 +40,6 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.generated.schema.entity.services.connections.pipeline.airbyte.oauthClientAuth import (
-    Oauth20ClientCredentialsAuthentication,
-)
 from metadata.ingestion.source.pipeline.airbyte.metadata import (
     AirbytePipelineDetails,
     AirbyteSource,
@@ -56,7 +53,8 @@ with open(mock_file_path, encoding=UTF_8) as file:
     mock_data: dict = json.load(file)
 
 mock_cloud_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/airbyte_cloud_dataset.json"
+    Path(__file__).parent.parent.parent
+    / "resources/datasets/airbyte_cloud_dataset.json"
 )
 with open(mock_cloud_file_path, encoding=UTF_8) as file:
     mock_cloud_data: dict = json.load(file)
@@ -385,7 +383,8 @@ mock_airbyte_cloud_config = {
 }
 
 EXPECTED_CLOUD_AIRBYTE_DETAILS = AirbytePipelineDetails(
-    workspace=mock_cloud_data["workspace"][0], connection=mock_cloud_data["connection"][0]
+    workspace=mock_cloud_data["workspace"][0],
+    connection=mock_cloud_data["connection"][0],
 )
 
 MOCK_CLOUD_CONNECTION_URI_PATH = (
@@ -480,18 +479,14 @@ class AirbyteCloudUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
 
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_cloud_config)
         self.airbyte = AirbyteSource.create(
             mock_airbyte_cloud_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.airbyte.context.get().__dict__[
-            "pipeline"
-        ] = MOCK_CLOUD_PIPELINE.name.root
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_CLOUD_PIPELINE.name.root
         self.airbyte.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
@@ -505,20 +500,18 @@ class AirbyteCloudUnitTest(TestCase):
 
     def test_pipeline_list(self):
         assert (
-            list(self.airbyte.get_pipelines_list())[0]
-            == EXPECTED_CLOUD_AIRBYTE_DETAILS
+            list(self.airbyte.get_pipelines_list())[0] == EXPECTED_CLOUD_AIRBYTE_DETAILS
         )
 
     def test_pipeline_name(self):
-        assert (
-            self.airbyte.get_pipeline_name(EXPECTED_CLOUD_AIRBYTE_DETAILS)
-            == mock_cloud_data.get("connection")[0].get("name")
-        )
+        assert self.airbyte.get_pipeline_name(
+            EXPECTED_CLOUD_AIRBYTE_DETAILS
+        ) == mock_cloud_data.get("connection")[0].get("name")
 
     def test_pipelines(self):
-        pipeline = list(
-            self.airbyte.yield_pipeline(EXPECTED_CLOUD_AIRBYTE_DETAILS)
-        )[0].right
+        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_CLOUD_AIRBYTE_DETAILS))[
+            0
+        ].right
         assert pipeline == EXPECTED_CLOUD_CREATED_PIPELINES
 
     def test_pipeline_status(self):
