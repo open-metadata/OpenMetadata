@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -33,11 +34,14 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 @ExtendWith(MockitoExtension.class)
 @Slf4j
@@ -45,6 +49,10 @@ public class OpenMetadataOperationsTest {
 
   @Mock private CollectionDAO mockCollectionDAO;
   @Mock private AppRepository mockAppRepository;
+
+  @Mock
+  private org.openmetadata.service.jdbi3.AppMarketPlaceRepository mockAppMarketPlaceRepository;
+
   @Mock private App mockApp;
 
   private OpenMetadataOperations operations;
@@ -249,6 +257,77 @@ public class OpenMetadataOperationsTest {
 
       assertEquals(1, result);
     }
+  }
+
+  @Test
+  void testIsAppInstalled_Logic() throws Exception {
+    // Test the isAppInstalled logic that checks if an app is already installed
+
+    // Test case 1: App is installed
+    App existingApp = new App().withName("DataInsightsApplication");
+    when(mockAppRepository.findByName("DataInsightsApplication", Include.NON_DELETED))
+        .thenReturn(existingApp);
+
+    // Use reflection to call the private isAppInstalled method
+    java.lang.reflect.Method isAppInstalledMethod =
+        OpenMetadataOperations.class.getDeclaredMethod(
+            "isAppInstalled", AppRepository.class, String.class);
+    isAppInstalledMethod.setAccessible(true);
+
+    OpenMetadataOperations ops = new OpenMetadataOperations();
+    boolean result =
+        (boolean) isAppInstalledMethod.invoke(ops, mockAppRepository, "DataInsightsApplication");
+
+    assertTrue(result, "isAppInstalled should return true when app exists");
+    verify(mockAppRepository).findByName("DataInsightsApplication", Include.NON_DELETED);
+
+    // Test case 2: App is not installed
+    when(mockAppRepository.findByName("NonExistentApp", Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("App not found"));
+
+    boolean resultNotFound =
+        (boolean) isAppInstalledMethod.invoke(ops, mockAppRepository, "NonExistentApp");
+
+    assertFalse(resultNotFound, "isAppInstalled should return false when app does not exist");
+
+    System.out.println("isAppInstalled logic test passed");
+  }
+
+  @Test
+  void testDeleteApplication_Logic() throws Exception {
+    // Test the deleteApplication logic used in force reinstallation
+
+    // Create a mock DeleteResponse for successful deletion
+    @SuppressWarnings("unchecked")
+    DeleteResponse<App> mockDeleteResponse = mock(DeleteResponse.class);
+
+    // Test case 1: App exists and can be deleted
+    when(mockAppRepository.deleteByName("admin", "DataInsightsApplication", true, true))
+        .thenReturn(mockDeleteResponse);
+
+    // Use reflection to call the private deleteApplication method
+    java.lang.reflect.Method deleteApplicationMethod =
+        OpenMetadataOperations.class.getDeclaredMethod(
+            "deleteApplication", AppRepository.class, String.class);
+    deleteApplicationMethod.setAccessible(true);
+
+    OpenMetadataOperations ops = new OpenMetadataOperations();
+    boolean result =
+        (boolean) deleteApplicationMethod.invoke(ops, mockAppRepository, "DataInsightsApplication");
+
+    assertTrue(result, "deleteApplication should return true when app is successfully deleted");
+    verify(mockAppRepository).deleteByName("admin", "DataInsightsApplication", true, true);
+
+    // Test case 2: App does not exist
+    when(mockAppRepository.deleteByName("admin", "NonExistentApp", true, true))
+        .thenThrow(new EntityNotFoundException("App not found"));
+
+    boolean resultNotFound =
+        (boolean) deleteApplicationMethod.invoke(ops, mockAppRepository, "NonExistentApp");
+
+    assertFalse(resultNotFound, "deleteApplication should return false when app does not exist");
+
+    System.out.println("deleteApplication logic test passed");
   }
 
   // Helper methods using reflection to access private fields for testing

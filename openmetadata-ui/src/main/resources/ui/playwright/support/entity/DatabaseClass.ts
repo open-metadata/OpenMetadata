@@ -59,6 +59,7 @@ export class DatabaseClass extends EntityClass {
   entity = {
     name: `pw-database-${uuid()}`,
     service: this.service.name,
+    description: 'description',
   };
   schema = {
     name: `pw-database-schema-${uuid()}`,
@@ -193,6 +194,18 @@ export class DatabaseClass extends EntityClass {
       schema: this.schemaResponseData,
       table: this.tableResponseData,
     };
+  }
+
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    schema: ResponseDataWithServiceType;
+    table: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.schemaResponseData = data.schema;
+    this.tableResponseData = data.table;
   }
 
   async visitEntityPage(page: Page) {

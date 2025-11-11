@@ -22,18 +22,29 @@
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.",
+      "description": "Username to connect to Salesforce. This user should have privileges to read all the metadata in Salesforce.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "Password to connect to the Salesforce.",
+      "description": "Password to connect to Salesforce.",
       "type": "string",
       "format": "password"
     },
     "securityToken": {
       "title": "Security Token",
-      "description": "Salesforce Security Token.",
+      "description": "Salesforce Security Token for username/password authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "consumerKey": {
+      "title": "Consumer Key",
+      "description": "Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration. Required along with Consumer Secret for OAuth authentication.",
+      "type": "string"
+    },
+    "consumerSecret": {
+      "title": "Consumer Secret",
+      "description": "Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration. Required along with Consumer Key for OAuth authentication.",
       "type": "string",
       "format": "password"
     },
@@ -97,6 +108,5 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false,
-  "required": ["username"]
+  "additionalProperties": false
 }

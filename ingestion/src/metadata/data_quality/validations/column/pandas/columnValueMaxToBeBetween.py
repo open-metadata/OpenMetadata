@@ -46,29 +46,6 @@ class ColumnValueMaxToBeBetweenValidator(
 ):
     """Validator for column value max to be between test case"""
 
-    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            SQALikeColumn: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                self.runner,
-            )
-        else:
-            return self.get_column_name(
-                column_name,
-                self.runner,
-            )
-
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
 
@@ -106,19 +83,18 @@ class ColumnValueMaxToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
+        checker = self._get_validation_checker(test_params)
         dimension_results = []
 
         try:
-            min_bound = test_params["minValueForMaxInCol"]
-            max_bound = test_params["maxValueForMaxInCol"]
-
-            def is_violation_max(value: object) -> bool:
-                return not (min_bound <= value <= max_bound)
-
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            max_impl = Metrics.MAX(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
-                lambda: {Metrics.MAX.name: [], DIMENSION_TOTAL_COUNT_KEY: []}
+                lambda: {
+                    Metrics.MAX.name: max_impl.create_accumulator(),
+                    DIMENSION_TOTAL_COUNT_KEY: 0,
+                }
             )
 
             for df in dfs:
@@ -128,24 +104,35 @@ class ColumnValueMaxToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][Metrics.MAX.name].append(
-                        Metrics.MAX(column).df_fn([group_df])
+                    dimension_aggregates[dimension_value][
+                        Metrics.MAX.name
+                    ] = max_impl.update_accumulator(
+                        dimension_aggregates[dimension_value][Metrics.MAX.name],
+                        group_df,
                     )
+
                     dimension_aggregates[dimension_value][
                         DIMENSION_TOTAL_COUNT_KEY
-                    ].append(len(group_df))
+                    ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                maxes_list = [m for m in agg[Metrics.MAX.name] if pd.notna(m)]
-                total_rows = sum(agg[DIMENSION_TOTAL_COUNT_KEY])
+                max_value = agg[Metrics.MAX.name]
+                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not maxes_list:
+                if max_value is None:
+                    logger.warning(
+                        "Skipping '%s=%s' dimension since 'max' is 'None'",
+                        dimension_col.name,
+                        dimension_value,
+                    )
                     continue
 
-                max_value = max(maxes_list)
-
-                failed_count = total_rows if is_violation_max(max_value) else 0
+                failed_count = (
+                    total_rows
+                    if checker.violates_pandas({Metrics.MAX.name: max_value})
+                    else 0
+                )
 
                 results_data.append(
                     {
@@ -168,10 +155,14 @@ class ColumnValueMaxToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={Metrics.MAX.name: "max"},
+                    agg_functions={
+                        Metrics.MAX.name: "max",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metric=Metrics.MAX.name,
-                    violation_predicate=lambda v: is_violation_max(v),
+                    violation_metrics=[Metrics.MAX.name],
+                    violation_predicate=checker.violates_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):

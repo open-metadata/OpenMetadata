@@ -6433,6 +6433,16 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running' AND extension = 'status'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"failed\"') WHERE json->>'status' = 'running' AND extension = 'status'",
+        connectionType = POSTGRES)
+    void markAllStaleEntriesFailed();
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -6873,6 +6883,16 @@ public interface CollectionDAO {
     List<String> listTestCaseDimensionResultsByKey(
         @BindFQN("testCaseFQN") String testCaseFQN,
         @Bind("dimensionKey") String dimensionKey,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND dimensionName = :dimensionName AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResultsByDimensionName(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("dimensionName") String dimensionName,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs);
 
