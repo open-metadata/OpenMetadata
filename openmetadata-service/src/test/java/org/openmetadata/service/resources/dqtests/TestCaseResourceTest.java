@@ -4483,6 +4483,26 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertTrue(dimensions.containsKey("column"));
     assertEquals(3, dimensions.get("column").size());
     assertTrue(dimensions.get("column").containsAll(List.of("address", "email", "phone")));
+
+    // Test 5: Filter by dimension name (all column results regardless of value)
+    target =
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .queryParam("dimensionName", "column");
+    response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    json = response.readEntity(String.class);
+    ResultList<TestCaseDimensionResult> columnDimensionResults =
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
+
+    assertEquals(9, columnDimensionResults.getData().size()); // All 3 days × 3 columns
+    assertTrue(
+        columnDimensionResults.getData().stream()
+            .allMatch(r -> r.getDimensionKey().startsWith("column=")));
   }
 
   @Test

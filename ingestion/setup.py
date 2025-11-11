@@ -71,6 +71,7 @@ VERSIONS = {
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
+    "griffe2md": "griffe2md~=1.2",
 }
 
 COMMONS = {
@@ -160,7 +161,7 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=70.0",
+    "setuptools~=78.1.1",
     "shapely",
     "collate-data-diff>=0.11.6",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
@@ -361,6 +362,10 @@ plugins: Dict[str, Set[str]] = {
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
+    # Install with: pip install 'openmetadata-ingestion[pandas]'
+    "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
+    "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
@@ -467,6 +472,10 @@ test = {
     VERSIONS["kafka-connect"],
 }
 
+docs = {
+    VERSIONS["griffe2md"],
+}
+
 if sys.version_info >= (3, 9):
     test.add("locust~=2.32.0")
 
@@ -537,5 +546,6 @@ setup(
                 "sklearn",
             }
         ),
+        "docs": docs,
     },
 )
