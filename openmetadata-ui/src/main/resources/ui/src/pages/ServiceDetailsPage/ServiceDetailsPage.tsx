@@ -44,6 +44,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
@@ -127,6 +128,11 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
+import {
+  EXTENSION_POINTS,
+  PluginEntityDetailsContext,
+  TabContribution,
+} from '../../utils/ExtensionPointTypes';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -157,6 +163,7 @@ import ServiceMainTabContent from './ServiceMainTabContent';
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { extensionRegistry } = useApplicationsProvider();
   const airflowInformation = useAirflowStatus();
   const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
@@ -1525,6 +1532,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
+    // Create extension context for plugins
+    const extensionContext: PluginEntityDetailsContext = {
+      serviceCategory: serviceCategory as ServiceCategory,
+      serviceDetails,
+    };
+
     if (!isMetadataService && !isSecurityService) {
       tabs.push(
         {
@@ -1635,7 +1648,29 @@ const ServiceDetailsPage: FunctionComponent = () => {
       children: testConnectionTab,
     });
 
-    return tabs
+    // Get plugin-contributed tabs
+    const pluginTabs = extensionRegistry
+      .getContributions<TabContribution>(EXTENSION_POINTS.SERVICE_DETAILS_TABS)
+      .filter((tab) => {
+        // Apply condition if provided
+        if (tab.condition) {
+          return tab.condition(extensionContext);
+        }
+
+        return !tab.isHidden;
+      })
+      .map((tab) => ({
+        key: tab.key,
+        name: tab.label,
+        count: tab.count,
+        children: <tab.component {...extensionContext} />,
+        isHidden: false, // Already filtered above
+      }));
+
+    // Merge core tabs and plugin tabs
+    const allTabs = [...tabs, ...pluginTabs];
+
+    return allTabs
       .filter((tab) => !tab.isHidden)
       .map((tab) => ({
         label: (
@@ -1689,6 +1724,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     onSpreadsheetsPageChange,
     isFilesLoading,
     isSpreadsheetsLoading,
+    extensionRegistry,
+    decodedServiceFQN,
+    isOpenMetadataService,
   ]);
 
   const afterAutoPilotAppTrigger = useCallback(() => {

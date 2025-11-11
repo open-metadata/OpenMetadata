@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../../generated/entity/type';
-import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
-import type { AppPlugin } from '../plugins/AppPlugin';
-
-export type ApplicationsContextType = {
-  applications: EntityReference[];
-  plugins: AppPlugin[];
-  extensionRegistry: ExtensionPointRegistry;
-};
+export interface DeleteModalMUIProps {
+  /** Whether the modal is open */
+  open: boolean;
+  /** Title of the entity being deleted */
+  entityTitle: string;
+  /** Confirmation message to display */
+  message: string;
+  /** Whether the delete action is in progress */
+  isDeleting?: boolean;
+  /** Callback when cancel is clicked */
+  onCancel: () => void;
+  /** Callback when delete is confirmed */
+  onDelete: () => void;
+}
