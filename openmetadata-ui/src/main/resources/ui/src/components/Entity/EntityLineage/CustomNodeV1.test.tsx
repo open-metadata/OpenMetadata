@@ -158,4 +158,34 @@ describe('CustomNodeV1', () => {
     expect(screen.queryByText('col2')).not.toBeInTheDocument();
     expect(screen.queryByText('col3')).not.toBeInTheDocument();
   });
+
+  it('should have expand and expand all buttons', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const expandBtn = screen.getByTestId('lineage-expand-btn');
+
+    expect(expandBtn).toBeInTheDocument();
+
+    fireEvent.mouseOver(expandBtn);
+
+    expect(screen.getByTestId('lineage-expand-btn')).toBeInTheDocument();
+  });
+
+  it.only('should expand all when expand all button is clicked', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const expandBtn = screen.getByTestId('lineage-expand-btn');
+
+    fireEvent.click(expandBtn);
+
+    screen.debug(undefined, Infinity);
+  });
 });

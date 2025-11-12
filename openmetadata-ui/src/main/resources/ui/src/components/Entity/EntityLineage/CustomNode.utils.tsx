@@ -111,6 +111,7 @@ const ExpandHandle = ({
         aria-hidden="false"
         aria-label="expand"
         className="lineage-expand-icon"
+        data-testid="lineage-expand-btn"
         role="button"
         tabIndex={0}
         onClick={handleLineageExpandIconClick}
@@ -120,6 +121,7 @@ const ExpandHandle = ({
           <div className="lineage-expand-icons-separator" />
           <Dataflow01
             className="lineage-expand-icon"
+            data-testid="lineage-expand-all-btn"
             onClick={handleLineageExpandAllIconClick}
           />
         </>
