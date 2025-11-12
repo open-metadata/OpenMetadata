@@ -111,7 +111,7 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -920,10 +920,11 @@ class LookerSource(DashboardServiceSource):
         """
         for db_service_prefix in self.get_db_service_prefixes() or []:
             db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
-            lineage_parser = LineageParser(
-                f"create view {view_name} as {sql_query}",
-                self._get_db_dialect(db_service_name),
+            lineage_parser = create_lineage_parser(
+                query=f"create view {view_name} as {sql_query}",
+                dialect=self._get_db_dialect(db_service_name),
                 timeout_seconds=30,
+                parser_type=self.source_config.parserType,
             )
             if lineage_parser.source_tables:
                 self._parsed_views[view_name] = sql_query

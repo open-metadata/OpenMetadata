@@ -12,6 +12,12 @@
         "DashboardMetadata"
       ],
       "default": "DashboardMetadata"
+    },
+    "lineageParserType": {
+      "description": "Type of parser to use for SQL lineage extraction. SQLGlot is recommended for best accuracy and performance.",
+      "type": "string",
+      "enum": ["sqlglot", "sqlfluff", "sqlparse", "auto"],
+      "default": "sqlglot"
     }
   },
   "properties": {
@@ -102,6 +108,12 @@
       "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
       "type": "boolean",
       "default": false
+    },
+    "parserType": {
+      "title": "Lineage Parser Type",
+      "description": "Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default, recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse' (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).",
+      "$ref": "#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false

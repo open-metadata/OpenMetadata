@@ -27,6 +27,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+MASK_TOKEN = "?"
+
 
 class Column:
     """Column representation compatible with collate-sqllineage format."""
@@ -84,6 +86,60 @@ class SQLGlotLineageRunner:
     more accurate and faster parsing engine.
     """
 
+    @staticmethod
+    def _mask_query_literals(parsed_tree) -> str:
+        """
+        Mask all literal values in the query for privacy/logging.
+
+        Args:
+            parsed_tree: SQLGlot parsed expression tree
+
+        Returns:
+            Query string with all literals replaced by '?'
+        """
+        if not parsed_tree:
+            return ""
+
+        try:
+            # Collect all literals with their positions
+            literals_to_mask = []
+
+            for node in parsed_tree.walk():
+                if isinstance(node, exp.Literal):
+                    literals_to_mask.append(node)
+
+            # Transform by creating new literal nodes with MASK_TOKEN
+            def mask_literals(node):
+                """Transform function to mask literal nodes."""
+                if isinstance(node, exp.Literal):
+                    # Create a new literal with the mask token
+                    masked_literal = exp.Literal.string(MASK_TOKEN)
+                    return masked_literal
+                return node
+
+            # Apply the transformation
+            masked_tree = parsed_tree.transform(mask_literals, copy=True)
+
+            # Generate SQL from masked tree
+            masked_sql = masked_tree.sql()
+
+            # Replace the quoted mask token with unquoted
+            import re
+
+            # Match '?' or "?" (with optional escaping)
+            masked_sql = re.sub(r"'[\?\\]*\?'", MASK_TOKEN, masked_sql)
+            masked_sql = re.sub(r'"[\?\\]*\?"', MASK_TOKEN, masked_sql)
+
+            return masked_sql
+
+        except Exception as e:
+            logger.debug(f"Failed to mask query literals with SQLGlot: {e}")
+            # Fallback to string representation
+            try:
+                return str(parsed_tree)
+            except Exception:
+                return ""
+
     def __init__(
         self, query: str, dialect: Optional[str] = None, schema: Optional[dict] = None
     ):
@@ -102,18 +158,35 @@ class SQLGlotLineageRunner:
             )
 
         self.query = query
-        self.dialect = dialect or "ansi"
+        #  Map commonly used dialects to SQLGlot equivalents
+        dialect_mapping = {
+            "ansi": None,  # SQLGlot's default
+            "tsql": "tsql",
+            "mssql": "tsql",
+        }
+        self.dialect = dialect_mapping.get(dialect, dialect) if dialect else None
         self.schema = schema
         self._parsed = None
         self._column_lineage_cache = None
         self._source_tables_cache = None
         self._target_tables_cache = None
 
+        # Compatibility properties for LineageParser interface
+        self.query_parsing_success = True
+        self.query_parsing_failure_reason = None
+
         try:
             self._parsed = sqlglot.parse_one(query, dialect=self.dialect)
+            # Mask sensitive data in query for logging
+            self.masked_query = (
+                self._mask_query_literals(self._parsed) if self._parsed else query
+            )
         except Exception as e:
             logger.debug(f"Failed to parse query with SQLGlot: {e}")
             self._parsed = None
+            self.masked_query = query  # Use original if masking fails
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = f"SQLGlot parsing failed: {str(e)}"
 
     def get_column_lineage(self) -> List[Tuple[Column, Column]]:
         """
@@ -174,6 +247,14 @@ class SQLGlotLineageRunner:
 
         self._column_lineage_cache = lineage_edges
         return lineage_edges
+
+    @property
+    def column_lineage(self) -> List[Tuple[Column, Column]]:
+        """
+        Column lineage property for compatibility with LineageParser interface.
+        Returns cached column lineage.
+        """
+        return self.get_column_lineage()
 
     def _get_target_columns(self) -> Set[str]:
         """Extract target columns from SELECT/INSERT statement."""
@@ -273,9 +354,16 @@ class SQLGlotLineageRunner:
         try:
             # Check for INSERT
             for insert in self._parsed.find_all(exp.Insert):
-                if insert.this and isinstance(insert.this, exp.Table):
-                    table_name = self._get_table_name(insert.this)
-                    tables.add(Table(table_name))
+                if insert.this:
+                    # INSERT can have Schema (with column list) or Table directly
+                    if isinstance(insert.this, exp.Schema) and isinstance(
+                        insert.this.this, exp.Table
+                    ):
+                        table_name = self._get_table_name(insert.this.this)
+                        tables.add(Table(table_name))
+                    elif isinstance(insert.this, exp.Table):
+                        table_name = self._get_table_name(insert.this)
+                        tables.add(Table(table_name))
 
             # Check for UPDATE
             for update in self._parsed.find_all(exp.Update):

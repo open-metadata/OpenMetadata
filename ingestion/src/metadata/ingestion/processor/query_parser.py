@@ -14,7 +14,7 @@ Query parser implementation
 
 import datetime
 import traceback
-from typing import Optional
+from typing import Optional, Union
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.type.basic import DateTime
@@ -23,7 +23,10 @@ from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import (
+    LineageParserType,
+    create_lineage_parser,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -31,13 +34,19 @@ from metadata.utils.time_utils import datetime_to_timestamp
 logger = ingestion_logger()
 
 
-def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[ParsedData]:
+def parse_sql_statement(
+    record: TableQuery,
+    dialect: Dialect,
+    parser_type: Optional[Union[str, LineageParserType]] = None,
+) -> Optional[ParsedData]:
     """
     Use the lineage parser and work with the tokens
     to convert a RAW SQL statement into
     QueryParserData.
     :param record: TableQuery from usage
     :param dialect: dialect used to compute lineage
+    :param parser_type: Type of parser to use (sqlglot, sqlfluff, sqlparse, auto).
+                        Defaults to sqlglot if not specified.
     :return: QueryParserData
     """
 
@@ -48,7 +57,10 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
 
     start_time = datetime_to_timestamp(start_time, milliseconds=True)
 
-    lineage_parser = LineageParser(record.query, dialect=dialect)
+    # Use parser factory to create the appropriate parser
+    lineage_parser = create_lineage_parser(
+        query=record.query, dialect=dialect, parser_type=parser_type
+    )
 
     if not lineage_parser.involved_tables:
         return None
@@ -80,11 +92,13 @@ class QueryParserProcessor(Processor):
         config: ConfigModel,
         metadata: OpenMetadata,
         connection_type: str,
+        parser_type: Optional[Union[str, LineageParserType]] = None,
     ):
         super().__init__()
         self.config = config
         self.metadata = metadata
         self.connection_type = connection_type
+        self.parser_type = parser_type
 
     @property
     def name(self) -> str:
@@ -100,7 +114,15 @@ class QueryParserProcessor(Processor):
     ):
         config = ConfigModel.model_validate(config_dict)
         connection_type = kwargs.pop("connection_type", "")
-        return cls(config, metadata, connection_type)
+        # Extract parser_type from pipeline configuration if available
+        parser_type = None
+        if hasattr(config, "source") and hasattr(config.source, "sourceConfig"):
+            source_config = config.source.sourceConfig.root
+            if hasattr(source_config, "config") and hasattr(
+                source_config.config, "parserType"
+            ):
+                parser_type = source_config.config.parserType
+        return cls(config, metadata, connection_type, parser_type)
 
     def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
         if record is None or record.queries is None:
@@ -116,6 +138,7 @@ class QueryParserProcessor(Processor):
                 parsed_sql = parse_sql_statement(
                     table_query,
                     ConnectionTypeDialectMapper.dialect_of(self.connection_type),
+                    parser_type=self.parser_type,
                 )
                 if parsed_sql:
                     data.append(parsed_sql)

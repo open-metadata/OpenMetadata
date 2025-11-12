@@ -2,7 +2,7 @@ import re
 from typing import List, Optional
 
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.utils.logger import ingestion_logger
 
 NATIVE_QUERY_PARSER_EXPRESSION = re.compile(
@@ -80,8 +80,11 @@ def parse_databricks_native_query_source(
 
             return [{"database": database, "schema": schema, "table": table}]
         try:
-            parser = LineageParser(
-                parser_query, dialect=Dialect.DATABRICKS, timeout_seconds=30
+            parser = create_lineage_parser(
+                query=parser_query,
+                dialect=Dialect.DATABRICKS,
+                timeout_seconds=30,
+                parser_type=None,
             )
             if parser.query_parsing_success is False:
                 raise Exception(parser.query_parsing_failure_reason)
