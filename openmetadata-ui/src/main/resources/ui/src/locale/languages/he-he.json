@@ -1160,6 +1160,8 @@
     "null": "ריק",
     "number": "Number",
     "number-day-plural": "{{number}} ימים",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} שעות",
     "number-of-object-plural": "מספר אובייקטים",
     "number-of-retries": "מספר ניסיונות מחדש",

@@ -1160,6 +1160,8 @@
     "null": "नल",
     "number": "संख्या",
     "number-day-plural": "{{number}} दिवस",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} तास",
     "number-of-object-plural": "वस्तूंची संख्या",
     "number-of-retries": "पुन्हा प्रयत्नांची संख्या",

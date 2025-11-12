@@ -1160,6 +1160,8 @@
     "null": "Null",
     "number": "Number",
     "number-day-plural": "{{number}} dagen",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} uren",
     "number-of-object-plural": "Aantal objecten",
     "number-of-retries": "Aantal herhalingen",

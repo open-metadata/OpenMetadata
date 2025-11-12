@@ -1160,6 +1160,8 @@
     "null": "Boş",
     "number": "Sayı",
     "number-day-plural": "{{number}} gün",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} saat",
     "number-of-object-plural": "Nesne Sayısı",
     "number-of-retries": "Yeniden Deneme Sayısı",

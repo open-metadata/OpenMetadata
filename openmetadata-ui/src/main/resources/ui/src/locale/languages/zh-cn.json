@@ -1160,6 +1160,8 @@
     "null": "Null",
     "number": "Number",
     "number-day-plural": "{{number}} 天",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} 小时",
     "number-of-object-plural": "对象个数",
     "number-of-retries": "重试次数",

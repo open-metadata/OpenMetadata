@@ -27,7 +27,9 @@ import {
 } from '../../../../rest/testAPI';
 import {
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -42,10 +44,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const defaultRange = useMemo(
     () => ({
       initialRange: {
-        startTs: getEpochMillisForPastDays(
-          PROFILER_FILTER_RANGE.last30days.days
+        startTs: getStartOfDayInMillis(
+          getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
         ),
-        endTs: getCurrentMillis(),
+        endTs: getEndOfDayInMillis(getCurrentMillis()),
       },
       key: 'last30days',
       title: PROFILER_FILTER_RANGE.last30days.title,

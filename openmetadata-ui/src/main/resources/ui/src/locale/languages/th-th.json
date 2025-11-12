@@ -1160,6 +1160,8 @@
     "null": "ค่าว่าง",
     "number": "หมายเลข",
     "number-day-plural": "{{number}} วัน",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} ชั่วโมง",
     "number-of-object-plural": "จำนวนวัตถุ",
     "number-of-retries": "จำนวนครั้งที่ลองใหม่",

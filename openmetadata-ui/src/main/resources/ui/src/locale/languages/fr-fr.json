@@ -1160,6 +1160,8 @@
     "null": "Null",
     "number": "Nombre",
     "number-day-plural": "{{number}} jours",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} heures",
     "number-of-object-plural": "Nombre d'Objets",
     "number-of-retries": "Nombre de Tentatives",

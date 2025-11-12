@@ -1160,6 +1160,8 @@
     "null": "널",
     "number": "숫자",
     "number-day-plural": "{{number}} 일",
+    "number-dimension-associated": "{{number}} Dimension Associated",
+    "number-dimension-plural-associated": "{{number}} Dimensions Associated",
     "number-hr-plural": "{{number}} 시간",
     "number-of-object-plural": "객체 수",
     "number-of-retries": "재시도 횟수",
