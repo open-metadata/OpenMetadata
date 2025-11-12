@@ -128,7 +128,7 @@
       "type": "boolean",
       "default": false
     },
-    "domains": {
+    "domains" : {
       "description": "Domains the Worksheet belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -167,11 +167,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "spreadsheet",
-    "service"
-  ],
+  "required": ["id", "name", "spreadsheet", "service"],
   "additionalProperties": false
 }
