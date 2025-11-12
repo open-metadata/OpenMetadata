@@ -72,6 +72,7 @@ const RolesListPage = () => {
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const { permissions } = usePermissionProvider();
@@ -224,7 +225,7 @@ const RolesListPage = () => {
     ];
   }, []);
 
-  const fetchRoles = async (paging?: Paging) => {
+  const fetchRoles = async (paging?: Partial<Paging>) => {
     setIsLoading(true);
     try {
       const data = await getRoles(
@@ -253,18 +254,28 @@ const RolesListPage = () => {
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
     if (cursorType && paging) {
       fetchRoles({
         [cursorType]: paging[cursorType],
         total: paging.total,
       } as Paging);
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
   useEffect(() => {
-    fetchRoles();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchRoles({ [cursorType]: cursorValue });
+    } else {
+      fetchRoles();
+    }
+  }, [pageSize, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>

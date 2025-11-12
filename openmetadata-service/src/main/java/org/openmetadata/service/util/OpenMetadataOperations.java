@@ -150,7 +150,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -773,6 +773,47 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup orphaned relationships due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "tagUsageCleanup",
+      description =
+          "Cleans up orphaned tag usages where referenced tags or glossary terms no longer exist. "
+              + "By default, runs in dry-run mode to only identify orphaned tag usages.")
+  public Integer cleanupOrphanedTagUsages(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned tag usages. Without this flag, the command only identifies orphaned tag usages (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of tag usages to process in each batch.")
+          int batchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info("Running Tag Usage Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
+      parseConfig();
+
+      TagUsageCleanup cleanup = new TagUsageCleanup(collectionDAO, dryRun);
+      TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(batchSize);
+
+      LOG.info("Total tag usages scanned: {}", result.getTotalTagUsagesScanned());
+      LOG.info("Orphaned tag usages found: {}", result.getOrphanedTagUsagesFound());
+      LOG.info("Tag usages deleted: {}", result.getTagUsagesDeleted());
+
+      if (dryRun && result.getOrphanedTagUsagesFound() > 0) {
+        LOG.info("To actually delete these orphaned tag usages, run with --delete");
+        return 1;
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned tag usages due to ", e);
       return 1;
     }
   }
