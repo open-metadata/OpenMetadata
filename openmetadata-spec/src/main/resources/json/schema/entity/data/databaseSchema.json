@@ -6,10 +6,10 @@
   "description": "This schema defines the Database Schema entity. A `Database Schema` is collection of tables, views, stored procedures, and other database objects.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
-  "definitions": {},
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+"definitions": {
+
+  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this schema instance.",
@@ -31,9 +31,9 @@
       "description": "Description of the schema instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "dataProducts": {
+    "dataProducts" : {
       "description": "List of data products this entity is part of.",
-      "$ref": "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -101,7 +101,7 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod": {
+    "retentionPeriod" : {
       "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -176,11 +176,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "database",
-    "service"
-  ],
+  "required": ["id", "name", "database", "service"],
   "additionalProperties": false
 }

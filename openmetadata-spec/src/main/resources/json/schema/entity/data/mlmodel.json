@@ -6,18 +6,13 @@
   "description": "This schema defines the Model entity. `Machine Learning Models` are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.MlModel",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "featureType": {
       "javaType": "org.openmetadata.schema.type.MlFeatureDataType",
       "description": "This enum defines the type of data stored in a ML Feature.",
       "type": "string",
-      "enum": [
-        "numerical",
-        "categorical"
-      ],
+      "enum": ["numerical", "categorical"],
       "javaEnums": [
         {
           "name": "Numerical"
@@ -282,15 +277,15 @@
       "description": "Source URL of mlModel.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domains": {
+    "domains" : {
       "description": "Domains the MLModel belongs to. When not set, the MLModel inherits the domain from the ML Model Service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "dataProducts": {
+    "dataProducts" : {
       "description": "List of data products this entity is part of.",
-      "$ref": "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json"
     },
-    "votes": {
+    "votes" : {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -312,11 +307,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "algorithm",
-    "service"
-  ],
+  "required": ["id", "name", "algorithm", "service"],
   "additionalProperties": false
 }

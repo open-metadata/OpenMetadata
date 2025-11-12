@@ -30,45 +30,19 @@
         "Other"
       ],
       "javaEnums": [
-        {
-          "name": "Document"
-        },
-        {
-          "name": "Spreadsheet"
-        },
-        {
-          "name": "Presentation"
-        },
-        {
-          "name": "Image"
-        },
-        {
-          "name": "Video"
-        },
-        {
-          "name": "Audio"
-        },
-        {
-          "name": "PDF"
-        },
-        {
-          "name": "Archive"
-        },
-        {
-          "name": "Code"
-        },
-        {
-          "name": "Data"
-        },
-        {
-          "name": "CSV"
-        },
-        {
-          "name": "Text"
-        },
-        {
-          "name": "Other"
-        }
+        {"name": "Document"},
+        {"name": "Spreadsheet"},
+        {"name": "Presentation"},
+        {"name": "Image"},
+        {"name": "Video"},
+        {"name": "Audio"},
+        {"name": "PDF"},
+        {"name": "Archive"},
+        {"name": "Code"},
+        {"name": "Data"},
+        {"name":  "CSV"},
+        {"name":  "Text"},
+        {"name": "Other"}
       ]
     }
   },
@@ -212,7 +186,7 @@
       "type": "boolean",
       "default": false
     },
-    "domains": {
+    "domains" : {
       "description": "Domains the File belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -251,10 +225,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "service"
-  ],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

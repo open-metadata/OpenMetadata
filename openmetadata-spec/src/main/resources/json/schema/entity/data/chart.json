@@ -6,9 +6,7 @@
   "description": "A `Chart` presents data visually. Charts can be part of `Dashboards`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Chart",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "chartType": {
       "javaType": "org.openmetadata.schema.type.ChartType",
@@ -174,7 +172,7 @@
       "type": "boolean",
       "default": false
     },
-    "domains": {
+    "domains" : {
       "description": "Domains the Chart belongs to. The Chart inherits domain from the dashboard service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -213,10 +211,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "service"
-  ],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

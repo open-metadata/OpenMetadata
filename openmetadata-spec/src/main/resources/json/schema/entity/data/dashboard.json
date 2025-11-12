@@ -6,9 +6,7 @@
   "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are typically updated in real-time and allow interactive data exploration.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Dashboard",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "dashboardType": {
       "javaType": "org.openmetadata.schema.type.DashboardType",
@@ -167,10 +165,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "service"
-  ],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

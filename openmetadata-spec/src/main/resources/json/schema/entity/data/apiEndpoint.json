@@ -6,9 +6,7 @@
   "description": "This schema defines the APIEndpoint entity. An APIEndpoint is a specific endpoint of an API that is part of an API Collection.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.APIEndpoint",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "apiRequestMethod": {
       "javaType": "org.openmetadata.schema.type.APIRequestMethod",
@@ -191,11 +189,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "service",
-    "endpointURL"
-  ],
+  "required": ["id", "name", "service", "endpointURL"],
   "additionalProperties": false
 }

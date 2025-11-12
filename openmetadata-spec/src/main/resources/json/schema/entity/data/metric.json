@@ -6,9 +6,7 @@
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Metric",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "metricExpression": {
       "type": "object",
@@ -55,35 +53,35 @@
       "description": "This schema defines the type of Metric.",
       "type": "string",
       "enum": [
-        "COUNT",
-        "SUM",
-        "AVERAGE",
-        "RATIO",
-        "PERCENTAGE",
-        "MIN",
-        "MAX",
-        "MEDIAN",
-        "MODE",
-        "STANDARD_DEVIATION",
-        "VARIANCE",
-        "OTHER"
-      ]
+            "COUNT",
+            "SUM",
+            "AVERAGE",
+            "RATIO",
+            "PERCENTAGE",
+            "MIN",
+            "MAX",
+            "MEDIAN",
+            "MODE",
+            "STANDARD_DEVIATION",
+            "VARIANCE",
+            "OTHER"
+        ]
     },
     "unitOfMeasurement": {
       "javaType": "org.openmetadata.schema.type.MetricUnitOfMeasurement",
       "description": "This schema defines the type of Metric's unit of measurement.",
       "type": "string",
       "enum": [
-        "COUNT",
-        "DOLLARS",
-        "PERCENTAGE",
-        "TIMESTAMP",
-        "SIZE",
-        "REQUESTS",
-        "EVENTS",
-        "TRANSACTIONS",
-        "OTHER"
-      ]
+            "COUNT",
+            "DOLLARS",
+            "PERCENTAGE",
+            "TIMESTAMP",
+            "SIZE",
+            "REQUESTS",
+            "EVENTS",
+            "TRANSACTIONS",
+            "OTHER"
+        ]
     },
     "metricGranularity": {
       "javaType": "org.openmetadata.schema.type.MetricGranularity",
@@ -205,7 +203,7 @@
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref": "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -223,9 +221,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": [
-    "id",
-    "name"
-  ],
+  "required": ["id", "name"],
   "additionalProperties": false
 }
