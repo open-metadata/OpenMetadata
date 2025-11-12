@@ -1149,6 +1149,7 @@
     "not-covered": "未カバー",
     "not-found-lowercase": "見つかりません",
     "not-null": "NULLではない",
+    "not-set": "Not set",
     "not-used": "未使用",
     "notification": "通知",
     "notification-alert": "通知アラート",

@@ -1149,6 +1149,7 @@
     "not-covered": "ไม่ครอบคลุม",
     "not-found-lowercase": "ไม่พบ",
     "not-null": "ไม่เป็นค่าว่าง",
+    "not-set": "Not set",
     "not-used": "ไม่ได้ใช้งาน",
     "notification": "การแจ้งเตือน",
     "notification-alert": "การแจ้งเตือนการแจ้งเตือน",

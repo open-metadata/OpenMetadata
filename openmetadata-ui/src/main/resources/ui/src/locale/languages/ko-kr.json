@@ -1149,6 +1149,7 @@
     "not-covered": "포함되지 않음",
     "not-found-lowercase": "찾을 수 없음",
     "not-null": "널이 아님",
+    "not-set": "Not set",
     "not-used": "사용되지 않음",
     "notification": "알림",
     "notification-alert": "알림 경고",
