@@ -48,6 +48,7 @@ const MarketPlacePage = () => {
     handlePageChange,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +56,7 @@ const MarketPlacePage = () => {
     useState<AppMarketPlaceDefinition[]>();
 
   const fetchApplicationList = useCallback(
-    async (pagingOffset?: Paging) => {
+    async (pagingOffset?: Partial<Paging>) => {
       try {
         setIsLoading(true);
         const { data, paging } = await getMarketPlaceApplicationList({
@@ -79,12 +80,17 @@ const MarketPlacePage = () => {
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    cursorType &&
+    if (cursorType) {
       fetchApplicationList({
         [cursorType]: paging[cursorType],
         total: paging.total,
-      } as Paging);
+      });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
+    }
   };
 
   const viewAppDetails = (item: AppMarketPlaceDefinition) => {
@@ -92,8 +98,14 @@ const MarketPlacePage = () => {
   };
 
   useEffect(() => {
-    fetchApplicationList();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchApplicationList({ [cursorType]: cursorValue });
+    } else {
+      fetchApplicationList();
+    }
+  }, [pageSize, pagingCursor]);
 
   if (isLoading) {
     return <Loader />;
