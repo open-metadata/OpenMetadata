@@ -97,8 +97,7 @@ export const IngestionPipelineList = ({
     const selectedPipelines =
       pipelines?.filter(
         (p) =>
-          p.fullyQualifiedName &&
-          selectedRowKeys.indexOf(p.fullyQualifiedName) > -1
+          p.fullyQualifiedName && selectedRowKeys.includes(p.fullyQualifiedName)
       ) ?? [];
 
     const promises = (selectedPipelines ?? [])?.map((pipeline) =>
