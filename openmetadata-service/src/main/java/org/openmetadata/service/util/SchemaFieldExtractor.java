@@ -607,7 +607,7 @@ public class SchemaFieldExtractor {
             Map.entry("notificationTemplate", "events"),
             Map.entry("tag", "classification"),
             Map.entry("classification", "classification"),
-            Map.entry("page", "page"));
+            Map.entry("page", "data"));
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 
