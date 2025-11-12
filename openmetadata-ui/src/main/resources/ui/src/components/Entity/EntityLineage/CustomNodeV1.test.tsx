@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react-test-renderer';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
@@ -30,6 +31,16 @@ const mockNodeDataProps = {
         { fullyQualifiedName: 'col2', name: 'col2' },
         { fullyQualifiedName: 'col3', name: 'col3' },
       ],
+      testSuite: {
+        deleted: false,
+        description: 'This is an executable test suite linked to an entity',
+        displayName: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        fullyQualifiedName:
+          'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        id: 'fafada0f-a2e7-4dbe-a65c-8de057a63a7c',
+        name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        type: 'testSuite',
+      },
     },
   },
   selected: false,
@@ -69,6 +80,7 @@ const mockNodeDataProps2 = {
 
 const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
+let isDataObservabilityLayerActive = false;
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
@@ -87,7 +99,12 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       downstreamEdges: [],
     },
     columnsHavingLineage: [],
-    activeLayer: [LineageLayer.ColumnLevelLineage],
+    activeLayer: [
+      LineageLayer.ColumnLevelLineage,
+      ...(isDataObservabilityLayerActive
+        ? [LineageLayer.DataObservability]
+        : []),
+    ],
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
     loadChildNodesHandler: loadChildNodesHandlerMock,
@@ -98,6 +115,16 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: () => 'Columns',
   }),
+}));
+
+jest.mock('../../../rest/testAPI', () => ({
+  getTestCaseExecutionSummary: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      testPassed: 5,
+      testFailed: 2,
+      testAborted: 1,
+    })
+  ),
 }));
 
 describe('CustomNodeV1', () => {
@@ -205,5 +232,24 @@ describe('CustomNodeV1', () => {
       'Downstream',
       50
     );
+  });
+
+  it('should have Test summary widget when observability layer is applied', async () => {
+    isDataObservabilityLayerActive = true;
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    await act(async () => {
+      jest.runAllTimers(); // or jest.advanceTimersByTime(1000);
+    });
+
+    screen.debug(undefined, Infinity);
+
+    expect(screen.getByTestId('test-passed')).toBeInTheDocument();
+    expect(screen.getByTestId('test-aborted')).toBeInTheDocument();
+    expect(screen.getByTestId('test-failed')).toBeInTheDocument();
   });
 });
