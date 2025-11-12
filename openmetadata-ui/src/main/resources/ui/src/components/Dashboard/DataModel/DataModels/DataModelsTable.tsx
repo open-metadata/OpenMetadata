@@ -63,6 +63,7 @@ const DataModelTable = ({
     currentPage,
     pageSize,
     paging,
+    pagingCursor,
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
@@ -155,19 +156,32 @@ const DataModelTable = ({
   }) => {
     if (cursorType) {
       fetchDashboardsDataModel({ [cursorType]: paging[cursorType] });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
-    handlePageChange(currentPage);
   };
 
   const handleShowDeletedChange = (checked: boolean) => {
     handleShowDeleted(checked);
-    handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(PAGE_SIZE_BASE);
+    handlePageChange(
+      INITIAL_PAGING_VALUE,
+      { cursorType: null, cursorValue: undefined },
+      PAGE_SIZE_BASE
+    );
   };
 
   useEffect(() => {
-    fetchDashboardsDataModel();
-  }, [pageSize, showDeleted]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchDashboardsDataModel({ [cursorType]: cursorValue });
+    } else {
+      fetchDashboardsDataModel();
+    }
+  }, [pageSize, showDeleted, pagingCursor]);
 
   return (
     <Table

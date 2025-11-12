@@ -23,7 +23,7 @@ import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/R
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
-import { NO_DATA } from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
@@ -68,6 +68,7 @@ function APIEndpointsTab({
     pageSize,
     handlePagingChange,
     handlePageSizeChange,
+    pagingCursor,
   } = usePaging();
   const { filters, setFilters } = useTableFilters({
     showDeletedEndpoints: false,
@@ -160,15 +161,38 @@ function APIEndpointsTab({
             [cursorType]: paging[cursorType],
           },
         });
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, getAPICollectionEndpoints]
   );
 
+  const handleDeleteAction = () => {
+    setFilters({
+      ...filters,
+      showDeletedEndpoints: !filters.showDeletedEndpoints,
+    });
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+  };
+
   useEffect(() => {
-    getAPICollectionEndpoints({ paging: { limit: pageSize } });
-  }, [apiCollection, pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getAPICollectionEndpoints({
+        paging: { [cursorType]: cursorValue, limit: pageSize },
+      });
+    } else {
+      getAPICollectionEndpoints({ paging: { limit: pageSize } });
+    }
+  }, [apiCollection, pageSize, pagingCursor, getAPICollectionEndpoints]);
 
   return (
     <TableAntd
@@ -191,12 +215,7 @@ function APIEndpointsTab({
             <Switch
               checked={filters.showDeletedEndpoints}
               data-testid="show-deleted"
-              onClick={() =>
-                setFilters({
-                  ...filters,
-                  showDeletedEndpoints: !filters.showDeletedEndpoints,
-                })
-              }
+              onClick={handleDeleteAction}
             />
             <Typography.Text className="m-l-xs">
               {t('label.deleted')}
