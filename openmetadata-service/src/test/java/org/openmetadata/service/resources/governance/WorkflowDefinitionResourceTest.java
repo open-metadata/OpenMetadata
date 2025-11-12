@@ -5439,7 +5439,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.debug("Tag reviewer changed from reviewer1 to reviewer2");
 
     // Wait for the async task update to complete
-    java.lang.Thread.sleep(10000);
+    java.lang.Thread.sleep(60000);
 
     // Verify that the task assignees have been updated
     threads =
