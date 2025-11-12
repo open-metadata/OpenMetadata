@@ -220,8 +220,6 @@ database:
     leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
     validationTimeout: ${DB_VALIDATION_TIMEOUT:-300000}  # 300 seconds
-    socketTimeout: ${DB_SOCKET_TIMEOUT:-0}
-    connectTimeout: ${DB_CONNECT_TIMEOUT:-30000}
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
