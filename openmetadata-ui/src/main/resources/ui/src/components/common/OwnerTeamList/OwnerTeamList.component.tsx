@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography, useTheme } from '@mui/material';
-import { Dropdown } from 'antd';
-import React, { useMemo } from 'react';
+import { Box, Button, MenuItem, Typography, useTheme } from '@mui/material';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { StyledMenu } from '../../LineageTable/LineageTable.styled';
 
 export interface OwnerTeamListProps {
   owners: EntityReference[];
@@ -30,6 +30,16 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
   avatarSize,
 }) => {
   const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   const { visibleTeam, remainingTeam } = useMemo(() => {
     return {
@@ -79,23 +89,7 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
       </Link>
 
       {owners.length > 1 && (
-        <Dropdown
-          menu={{
-            items: remainingTeam.map((owner) => ({
-              key: owner.id,
-              label: (
-                <Link
-                  className="d-flex no-underline items-center gap-2 relative"
-                  data-testid="owner-link"
-                  to={getOwnerPath(owner)}>
-                  <Typography noWrap sx={{ width: '9rem' }} variant="body2">
-                    {getEntityName(owner)}
-                  </Typography>
-                </Link>
-              ),
-            })),
-            className: 'owner-dropdown-container',
-          }}>
+        <>
           <Button
             size="small"
             sx={{
@@ -106,10 +100,53 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
               minWidth: 'fit-content',
               color: theme.palette.allShades.brand[700],
             }}
-            variant="text">
+            variant="text"
+            onClick={handleClick}>
             {`+${owners.length - 1}`}
           </Button>
-        </Dropdown>
+
+          <StyledMenu
+            anchorEl={anchorEl}
+            id="owner-user-options-menu"
+            open={open}
+            slotProps={{
+              paper: {
+                sx: {
+                  marginTop: '0',
+                },
+              },
+            }}
+            sx={{
+              zIndex: 9999,
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+            onClose={handleClose}>
+            {remainingTeam.map((owner) => (
+              <MenuItem
+                key={owner.id}
+                sx={{
+                  padding: '8px 16px',
+                  textDecoration: 'none',
+                }}
+                onClick={handleClose}>
+                <Link data-testid="owner-link" to={getOwnerPath(owner)}>
+                  <Typography
+                    noWrap
+                    sx={{
+                      width: '9rem',
+                      color: theme.palette.allShades.gray[900],
+                    }}
+                    variant="body2">
+                    {getEntityName(owner)}
+                  </Typography>
+                </Link>
+              </MenuItem>
+            ))}
+          </StyledMenu>
+        </>
       )}
     </Box>
   );
