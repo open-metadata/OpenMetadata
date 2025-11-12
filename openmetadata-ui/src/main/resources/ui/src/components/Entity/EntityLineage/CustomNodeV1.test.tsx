@@ -111,12 +111,6 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   })),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: () => 'Columns',
-  }),
-}));
-
 jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -149,7 +143,7 @@ describe('CustomNodeV1', () => {
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
   });
 
-  it('should render columns dropdown button', () => {
+  it('should render children dropdown button', () => {
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
@@ -160,18 +154,18 @@ describe('CustomNodeV1', () => {
     screen.logTestingPlaygroundURL();
 
     expect(
-      screen.getByRole('button', { name: /\d+\s*columns/i })
+      screen.getByTestId('children-info-dropdown-btn')
     ).toBeInTheDocument();
   });
 
-  it('should toggle columns list when columns dropdown button is clicked', () => {
+  it('should toggle columns list when children dropdown button is clicked', () => {
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
       </ReactFlowProvider>
     );
 
-    const button = screen.getByRole('button', { name: /\d+\s*columns/i });
+    const button = screen.getByTestId('children-info-dropdown-btn');
 
     expect(button).toBeInTheDocument();
 
