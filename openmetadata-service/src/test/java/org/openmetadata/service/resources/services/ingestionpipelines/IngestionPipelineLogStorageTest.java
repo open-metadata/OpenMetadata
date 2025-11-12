@@ -592,27 +592,17 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     Map<String, Object> logData = Map.of("logs", "Test log content for close stream");
     WebTarget writeTarget =
         getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
-    Response writeResponse =
-        writeTarget
-            .request(MediaType.APPLICATION_JSON)
-            .headers(ADMIN_AUTH_HEADERS)
-            .post(Entity.json(logData));
-    assertEquals(200, writeResponse.getStatus());
+    TestUtils.post(writeTarget, logData, ADMIN_AUTH_HEADERS);
 
     // Now close the stream
     WebTarget closeTarget =
         getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
-    Response closeResponse =
-        closeTarget
-            .request(MediaType.APPLICATION_JSON)
-            .headers(ADMIN_AUTH_HEADERS)
-            .post(Entity.json(""));
-    assertEquals(200, closeResponse.getStatus());
+    Map<String, Object> closeResponse =
+        TestUtils.post(closeTarget, "", Map.class, ADMIN_AUTH_HEADERS);
 
     // Verify the response indicates success
-    Map<?, ?> responseMap = closeResponse.readEntity(Map.class);
-    assertTrue(responseMap.containsKey("message"));
-    assertEquals("Log stream closed successfully", responseMap.get("message"));
+    assertTrue(closeResponse.containsKey("message"));
+    assertEquals("Log stream closed successfully", closeResponse.get("message"));
   }
 
   private static IngestionPipeline createTestPipeline() throws IOException {
