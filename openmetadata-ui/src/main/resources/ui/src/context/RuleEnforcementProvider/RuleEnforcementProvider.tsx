@@ -16,7 +16,6 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -37,11 +36,10 @@ const RuleEnforcementContext = createContext<RuleEnforcementContextType>(
 );
 interface RuleEnforcementProviderProps {
   children: React.ReactNode;
-  initialEntityTypes?: EntityType[];
 }
 
 export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
-  ({ children, initialEntityTypes = [] }) => {
+  ({ children }) => {
     const [rules, setRules] = useState<Record<string, ParsedRule[]>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [loadedEntityTypes, setLoadedEntityTypes] = useState<Set<string>>(
@@ -68,9 +66,7 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
 
           setLoadedEntityTypes((prev) => new Set([...prev, entityType]));
         } catch (err) {
-          const error = err as AxiosError;
-          const errorMessage = `Failed to fetch rules for ${entityType}`;
-          showErrorToast(error, errorMessage);
+          showErrorToast(err as AxiosError);
         } finally {
           setIsLoading(false);
         }
@@ -93,13 +89,6 @@ export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
       },
       [getRulesForEntity]
     );
-
-    // Load initial entity types on mount
-    useEffect(() => {
-      if (initialEntityTypes.length > 0) {
-        Promise.all(initialEntityTypes.map(fetchRulesForEntity));
-      }
-    }, []);
 
     const contextValue = useMemo(
       () => ({

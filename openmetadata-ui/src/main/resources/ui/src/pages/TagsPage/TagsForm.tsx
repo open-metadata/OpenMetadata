@@ -54,9 +54,7 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.CLASSIFICATION,
-  });
+  const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
   const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
     'domains',
     form

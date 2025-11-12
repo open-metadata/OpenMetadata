@@ -440,46 +440,6 @@ describe('RuleEnforcementProvider', () => {
     });
   });
 
-  describe('initialEntityTypes', () => {
-    it('should fetch rules for initial entity types on mount', async () => {
-      render(
-        <RuleEnforcementProvider
-          initialEntityTypes={[EntityType.TABLE, EntityType.DASHBOARD]}>
-          <div data-testid="test-child">Test Child</div>
-        </RuleEnforcementProvider>
-      );
-
-      await waitFor(() => {
-        expect(getEntityRules).toHaveBeenCalledWith(EntityType.TABLE);
-        expect(getEntityRules).toHaveBeenCalledWith(EntityType.DASHBOARD);
-      });
-    });
-
-    it('should not fetch rules when no initial entity types provided', () => {
-      render(
-        <RuleEnforcementProvider>
-          <div data-testid="test-child">Test Child</div>
-        </RuleEnforcementProvider>
-      );
-
-      expect(getEntityRules).not.toHaveBeenCalled();
-    });
-
-    it('should handle errors when fetching initial entity types', async () => {
-      (getEntityRules as jest.Mock).mockRejectedValue(new Error('Fetch error'));
-
-      render(
-        <RuleEnforcementProvider initialEntityTypes={[EntityType.TABLE]}>
-          <div data-testid="test-child">Test Child</div>
-        </RuleEnforcementProvider>
-      );
-
-      await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalled();
-      });
-    });
-  });
-
   describe('Context memoization', () => {
     it('should memoize context value', () => {
       const TestConsumer = () => {

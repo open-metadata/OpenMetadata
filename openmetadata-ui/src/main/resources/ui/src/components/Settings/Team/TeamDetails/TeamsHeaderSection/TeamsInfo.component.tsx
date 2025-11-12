@@ -56,9 +56,7 @@ const TeamsInfo = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { currentUser } = useApplicationStore();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.TEAM,
-  });
+  const { entityRules } = useEntityRules(EntityType.TEAM);
 
   const { email, owners, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,

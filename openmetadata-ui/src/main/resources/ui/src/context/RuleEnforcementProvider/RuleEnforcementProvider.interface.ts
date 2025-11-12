@@ -58,7 +58,6 @@ export interface DataAssetRuleValidation {
   maxDataProducts: number;
   canAddMultipleGlossaryTerm: boolean;
   requireDomainForDataProduct: boolean;
-  warnings: string[];
 }
 
 export interface RuleEnforcementContextType {

@@ -69,9 +69,7 @@ const IncidentManagerPageHeader = ({
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.TABLE,
-  });
+  const { entityRules } = useEntityRules(EntityType.TABLE);
   const [activeTask, setActiveTask] = useState<Thread>();
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();

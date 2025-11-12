@@ -39,9 +39,7 @@ export const ContractDetailFormTab: React.FC<{
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.TABLE,
-  });
+  const { entityRules } = useEntityRules(EntityType.TABLE);
 
   const fields: FieldProp[] = [
     {

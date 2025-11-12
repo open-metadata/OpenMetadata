@@ -63,9 +63,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editDataProductPermission,
   onDataProductUpdate,
 }: EntityRightPanelProps<T>) => {
-  const { entityRules } = useEntityRules({
-    entityType,
-  });
+  const { entityRules } = useEntityRules(entityType);
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();

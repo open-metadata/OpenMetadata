@@ -53,9 +53,7 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.GLOSSARY,
-  });
+  const { entityRules } = useEntityRules(EntityType.GLOSSARY);
   const { currentUser } = useApplicationStore();
   const { activeDomainEntityRef } = useDomainStore();
 

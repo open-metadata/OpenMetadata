@@ -80,9 +80,7 @@ import './test-suite-details-page.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.TEST_SUITE,
-  });
+  const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const navigate = useNavigate();

@@ -111,9 +111,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     string | null
   >(null);
 
-  const { entityRules } = useEntityRules({
-    entityType: type,
-  });
+  const { entityRules } = useEntityRules(type);
 
   useEffect(() => {
     setLayout(

@@ -39,9 +39,7 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.TABLE,
-  });
+  const { entityRules } = useEntityRules(EntityType.TABLE);
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
   const handleUpdateOwner = async (owners: Query['owners']) => {

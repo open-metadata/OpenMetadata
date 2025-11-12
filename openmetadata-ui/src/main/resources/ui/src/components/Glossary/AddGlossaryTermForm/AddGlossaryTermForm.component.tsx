@@ -42,9 +42,7 @@ const AddGlossaryTermForm = ({
   formRef: form,
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
-  const { entityRules } = useEntityRules({
-    entityType: EntityType.GLOSSARY_TERM,
-  });
+  const { entityRules } = useEntityRules(EntityType.GLOSSARY_TERM);
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
   const { t } = useTranslation();

@@ -73,7 +73,6 @@ export const getEntityRulesValidation = (
     maxDataProducts: Infinity,
     canAddMultipleGlossaryTerm: true,
     requireDomainForDataProduct: false,
-    warnings: [] as string[],
   };
 
   rules.forEach((rule) => {
@@ -85,9 +84,6 @@ export const getEntityRulesValidation = (
       case RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP:
         hints.canAddMultipleUserOwners = true;
         hints.canAddMultipleTeamOwner = false;
-        hints.warnings.push(
-          'Entity must have either multiple user owners or a single team owner'
-        );
 
         break;
 
@@ -105,7 +101,6 @@ export const getEntityRulesValidation = (
 
       case RuleType.DATA_PRODUCT_DOMAIN_VALIDATION:
         hints.requireDomainForDataProduct = true;
-        hints.warnings.push('Domain must be set before adding data products');
 
         break;
 
@@ -113,7 +108,6 @@ export const getEntityRulesValidation = (
         // Check if entity is a table and limit glossary terms
         if (entityType.toLowerCase() === 'table') {
           hints.canAddMultipleGlossaryTerm = false;
-          hints.warnings.push('Tables can only have a single Glossary Term');
         }
 
         break;

@@ -156,9 +156,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
-  const { entityRules } = useEntityRules({
-    entityType: entityType,
-  });
+  const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
 
   const fetchDataContract = async (entityId: string) => {

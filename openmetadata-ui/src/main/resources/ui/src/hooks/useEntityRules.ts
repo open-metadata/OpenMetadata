@@ -15,15 +15,7 @@ import { useEffect, useMemo } from 'react';
 import { useRuleEnforcementProvider } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { EntityType } from '../enums/entity.enum';
 
-interface UseEntityRulesOptions {
-  entityType: EntityType;
-  autoFetch?: boolean;
-}
-
-/**
- * Hook to easily use rule enforcement in components
- */
-export const useEntityRules = ({ entityType }: UseEntityRulesOptions) => {
+export const useEntityRules = (entityType: EntityType) => {
   const {
     rules: allEntityRules,
     fetchRulesForEntity,
@@ -44,7 +36,6 @@ export const useEntityRules = ({ entityType }: UseEntityRulesOptions) => {
     [allEntityRules, entityType]
   );
 
-  // Auto-fetch rules for entity type if enabled
   useEffect(() => {
     if (entityType) {
       fetchRulesForEntity(entityType);
