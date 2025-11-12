@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.datamodels;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +44,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -85,6 +88,12 @@ public class DashboardDataModelResource
 
   public DashboardDataModelResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD_DATA_MODEL, authorizer, limits);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+
+    return listOf(MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {

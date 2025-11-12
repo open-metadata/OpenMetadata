@@ -80,6 +80,10 @@ export interface ChangeEvent {
      */
     id?: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -235,6 +239,10 @@ export interface ChangeEventClass {
      * Unique identifier for the event.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */

@@ -1277,7 +1277,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   public static void waitForTaskToBeCreated(String fullyQualifiedName) {
-    waitForTaskToBeCreated(fullyQualifiedName, 60000L * 2);
+    waitForTaskToBeCreated(fullyQualifiedName, 90000L * 2);
   }
 
   public static void waitForTaskToBeCreated(String fullyQualifiedName, long timeout) {

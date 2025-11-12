@@ -97,6 +97,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     pageSize,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
@@ -193,7 +194,11 @@ const Services = ({ serviceName }: ServicesProps) => {
           queryFilter: serviceTypeQueryFilter,
         });
       } else if (cursorType) {
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
         getServiceDetails({
           [cursorType]: paging[cursorType],
           queryFilter: serviceTypeQueryFilter,
@@ -435,13 +440,28 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServiceSearch = useCallback(
     async (search: string) => {
-      handlePageChange(INITIAL_PAGING_VALUE);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       setSearchTerm(search);
     },
     [getServiceDetails]
   );
 
   useEffect(() => {
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getServiceDetails({
+        search: searchTerm,
+        limit: pageSize,
+        queryFilter: serviceTypeQueryFilter,
+        [cursorType as 'before' | 'after']: cursorValue,
+      });
+
+      return;
+    }
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
@@ -454,6 +474,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     searchTerm,
     serviceTypeQueryFilter,
     deleted,
+    pagingCursor,
   ]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
