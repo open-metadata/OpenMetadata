@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
@@ -92,6 +92,12 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   })),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: () => 'Columns',
+  }),
+}));
+
 describe('CustomNodeV1', () => {
   it('renders node correctly', () => {
     render(
@@ -112,5 +118,44 @@ describe('CustomNodeV1', () => {
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
+  });
+
+  it('should render columns dropdown button', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    screen.debug(undefined, Infinity);
+    screen.logTestingPlaygroundURL();
+
+    expect(
+      screen.getByRole('button', { name: /\d+\s*columns/i })
+    ).toBeInTheDocument();
+  });
+
+  it('should toggle columns list when columns dropdown button is clicked', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const button = screen.getByRole('button', { name: /\d+\s*columns/i });
+
+    expect(button).toBeInTheDocument();
+
+    fireEvent.click(button);
+
+    expect(screen.getByText('col1')).toBeInTheDocument();
+    expect(screen.getByText('col2')).toBeInTheDocument();
+    expect(screen.getByText('col3')).toBeInTheDocument();
+
+    fireEvent.click(button);
+
+    expect(screen.queryByText('col1')).not.toBeInTheDocument();
+    expect(screen.queryByText('col2')).not.toBeInTheDocument();
+    expect(screen.queryByText('col3')).not.toBeInTheDocument();
   });
 });
