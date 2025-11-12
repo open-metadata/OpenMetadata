@@ -220,14 +220,14 @@ database:
     leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
     validationTimeout: ${DB_VALIDATION_TIMEOUT:-300000}  # 300 seconds
+    socketTimeout: ${DB_SOCKET_TIMEOUT:-0}
+    connectTimeout: ${DB_CONNECT_TIMEOUT:-30000}
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
     preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
     reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
-    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30000}
-    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-30000}
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
     loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds

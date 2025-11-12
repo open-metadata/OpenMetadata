@@ -254,6 +254,8 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("characterEncoding", "UTF-8");
     props.putIfAbsent("useUnicode", "true");
     props.putIfAbsent("connectionCollation", "utf8mb4_unicode_ci");
+    props.putIfAbsent("connectTimeout", "30");
+    props.putIfAbsent("socketTimeout", "0");
 
     Map<String, String> properties = getProperties();
     if (properties != null && properties.containsKey("rewriteBatchedStatements")) {
