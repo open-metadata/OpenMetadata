@@ -41,6 +41,12 @@ export interface DatabaseServiceQueryLineagePipeline {
      */
     overrideViewLineage?: boolean;
     /**
+     * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+     * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+     * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+     */
+    parserType?: LineageParserType;
+    /**
      * Configuration to set the timeout for parsing the query in seconds.
      */
     parsingTimeoutLimit?: number;
@@ -116,6 +122,21 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+ * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+ * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+ *
+ * Type of parser to use for SQL lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance.
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**
