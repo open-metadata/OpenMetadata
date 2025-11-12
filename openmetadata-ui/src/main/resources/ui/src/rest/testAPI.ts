@@ -245,7 +245,7 @@ export const getTestCaseDimensionResultsByFqn = async (
 ) => {
   const response = await APIClient.get<
     PagingResponse<TestCaseDimensionResult[]>
-  >(`${testCaseUrl}/dimensionResults/${fqn}`, {
+  >(`${testCaseUrl}/dimensionResults/${getEncodedFqn(fqn)}`, {
     params,
   });
 
