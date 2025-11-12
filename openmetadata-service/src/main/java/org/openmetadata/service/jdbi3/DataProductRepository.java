@@ -432,7 +432,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     public void updateReviewers() {
       super.updateReviewers();
       // adding the reviewer should add the person as assignee to the task
-      if (!original.getReviewers().equals(updated.getReviewers())) {
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
         updateTaskWithNewReviewers(updated);
       }
     }
