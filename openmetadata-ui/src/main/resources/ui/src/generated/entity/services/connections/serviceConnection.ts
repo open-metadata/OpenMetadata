@@ -983,7 +983,12 @@ export interface ConfigObject {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
+    includePolicyTags?: boolean;
+    /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?:       LineageParserType;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -3023,7 +3028,12 @@ export interface ConfigConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?:       LineageParserType;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -3101,6 +3111,20 @@ export interface AuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+}
+
+/**
+ * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+ * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+ *
+ * Type of SQL parser to use for lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance (100% parse success vs 10% for SQLFluff).
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**
@@ -3355,6 +3379,11 @@ export interface DatabaseConnectionClass {
      */
     ingestAllDatabases?: boolean;
     /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?: LineageParserType;
+    /**
      * Password to connect to MSSQL.
      */
     password?:                string;
@@ -3545,7 +3574,12 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?:       LineageParserType;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.

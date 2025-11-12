@@ -640,7 +640,12 @@ export interface MetadataDatabaseConnection {
      *
      * Matillion Host
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?:       LineageParserType;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -752,6 +757,20 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+ * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+ *
+ * Type of SQL parser to use for lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance (100% parse success vs 10% for SQLFluff).
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**
@@ -927,6 +946,11 @@ export interface DatabaseConnectionClass {
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
+    /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?: LineageParserType;
     /**
      * Password to connect to MSSQL.
      */
