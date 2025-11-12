@@ -166,6 +166,8 @@ export interface ServiceConnection {
  *
  * Mssql Database Connection Config
  *
+ * Microsoft Access Database Connection Config
+ *
  * Mysql Database Connection Config
  *
  * SQLite Database Connection Config
@@ -602,6 +604,9 @@ export interface ConfigObject {
      *
      * Password to connect to MSSQL.
      *
+     * Password to connect to Microsoft Access database. Optional for databases without
+     * security.
+     *
      * Password to connect to SQLite. Blank for in-memory database.
      *
      * Password to connect to Oracle.
@@ -679,6 +684,9 @@ export interface ConfigObject {
      *
      * Username to connect to MSSQL. This user should have privileges to read all the metadata
      * in MsSQL.
+     *
+     * Username to connect to Microsoft Access database. Optional for databases without
+     * security.
      *
      * Username to connect to MySQL. This user should have privileges to read all the metadata
      * in Mysql.
@@ -897,7 +905,10 @@ export interface ConfigObject {
     /**
      * Mode Workspace Name
      */
-    workspaceName?:     string;
+    workspaceName?: string;
+    /**
+     * Additional ODBC connection options as key-value pairs.
+     */
     connectionOptions?: { [key: string]: string };
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
@@ -1005,7 +1016,10 @@ export interface ConfigObject {
      */
     billingProjectId?: string;
     /**
-     * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
+     * If using Metastore, Key-Value pairs that will be used to add configs to the
+     * SparkSession.
+     *
+     * Additional SQLAlchemy connection arguments.
      */
     connectionArguments?: { [key: string]: any };
     /**
@@ -1081,6 +1095,9 @@ export interface ConfigObject {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use the
+     * filename as the database name.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
@@ -1257,6 +1274,16 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
+    /**
+     * Full path to the Microsoft Access database file (.mdb or .accdb). Example:
+     * C:\path\to\database.accdb
+     */
+    databaseFilePath?: string;
+    /**
+     * ODBC driver name for Microsoft Access. Default is 'Microsoft Access Driver (*.mdb,
+     * *.accdb)'.
+     */
+    odbcDriver?: string;
     /**
      * Use slow logs to extract lineage.
      */
@@ -3856,6 +3883,7 @@ export enum SaslMechanismType {
  * Couchbase driver scheme options.
  */
 export enum ConfigScheme {
+    AccessPyodbc = "access+pyodbc",
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
@@ -4228,6 +4256,7 @@ export enum ConfigType {
     Metabase = "Metabase",
     MetadataES = "MetadataES",
     MicroStrategy = "MicroStrategy",
+    MicrosoftAccess = "MicrosoftAccess",
     Mlflow = "Mlflow",
     Mode = "Mode",
     MongoDB = "MongoDB",
