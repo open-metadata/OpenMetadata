@@ -1446,7 +1446,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
         queryBuilder
-            .append(",{\"term\":{\"pipelineFqn.keyword\":\"")
+            .append(",{\"term\":{\"pipelineFqn\":\"")
             .append(pipelineFqn)
             .append("\"}}");
       }
@@ -1620,6 +1620,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String pipelineStatusIndex = "pipeline_status_search_index";
 
       // Build filter query using same pattern as Execution Trend API
+      // IMPORTANT: Add filter to only include documents that have endTime field
+      // because runtime is calculated as (endTime - timestamp)
       StringBuilder queryBuilder = new StringBuilder();
       queryBuilder.append("{\"bool\":{\"must\":[");
       queryBuilder
@@ -1629,9 +1631,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           .append(endTs)
           .append("}}}");
 
+      // Filter to only include documents that have endTime (required for runtime calculation)
+      queryBuilder.append(",{\"exists\":{\"field\":\"endTime\"}}");
+
       if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
         queryBuilder
-            .append(",{\"term\":{\"pipelineFqn.keyword\":\"")
+            .append(",{\"term\":{\"pipelineFqn\":\"")
             .append(pipelineFqn)
             .append("\"}}");
       }
@@ -1643,7 +1648,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       queryBuilder.append("]}}");
       String filterQuery = queryBuilder.toString();
 
-      LOG.info("Executing runtime trend query with filter: {}", filterQuery);
+      LOG.info("Runtime Trend - Filter query: {}", filterQuery);
+      LOG.info("Runtime Trend - pipelineFqn parameter: {}", pipelineFqn);
 
       // Use aggregation framework like Execution Trend API
       // Note: extended_bounds and min_doc_count are not supported by the framework
@@ -1659,8 +1665,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
       DataQualityReport report =
           searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, searchAggregation);
-
-      LOG.info("Runtime trend report data: {}", report != null ? report.getData() : "null");
 
       return parseRuntimeTrendFromReport(report, startTs, endTs);
 
@@ -1686,14 +1690,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           }
         }
 
-        LOG.info("Parsing {} runtime trend rows", rows.size());
-
         // Group data by timestamp (similar to execution trend grouping by status)
         // Each metric creates a separate row, we need to group them by date
         Map<String, Map<String, String>> dateRuntimeMap = new HashMap<>();
 
         for (Map<String, String> row : rows) {
-          LOG.info("Runtime row keys: {}, values: {}", row.keySet(), row);
 
           // The aggregation framework uses field names as keys
           // date_histogram: key is "timestamp"
@@ -1766,14 +1767,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             trend.setMinRuntime(minRuntime);
             trend.setAvgRuntime(avgRuntime);
             trend.setTotalPipelines(totalPipelines);
-
-            LOG.info(
-                "Parsed runtime trend for {}: max={}, min={}, avg={}, total={}",
-                trend.getDate(),
-                maxRuntime,
-                minRuntime,
-                avgRuntime,
-                totalPipelines);
 
             trends.add(trend);
           } catch (Exception e) {
