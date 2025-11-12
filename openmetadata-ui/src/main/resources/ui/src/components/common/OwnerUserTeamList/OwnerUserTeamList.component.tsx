@@ -1,0 +1,90 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Box, Divider, useTheme } from '@mui/material';
+import { Button } from 'antd';
+import classNames from 'classnames';
+import { ReactNode } from 'react';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { OwnerTeamList } from '../OwnerTeamList/OwnerTeamList.component';
+import OwnerUserList from '../OwnerUserList/OwnerUserList.component';
+
+interface OwnerUserTeamListProps {
+  owners: EntityReference[];
+  hasPermission?: boolean;
+  isAssignee?: boolean;
+  onEditClick?: () => void;
+  avatarSize: number;
+  className?: string;
+  isCompactView: boolean;
+  ownerDisplayName?: ReactNode[];
+}
+
+const OwnerUserTeamList = ({
+  owners,
+  hasPermission,
+  onEditClick,
+  avatarSize,
+  className,
+  isAssignee,
+  isCompactView,
+  ownerDisplayName,
+}: OwnerUserTeamListProps) => {
+  const theme = useTheme();
+  const showMultipleTypeTeam = owners.filter(
+    (owner) => owner.type === OwnerType.TEAM
+  );
+  const showMultipleTypeUser = owners.filter(
+    (owner) => owner.type === OwnerType.USER
+  );
+
+  return (
+    <Box
+      className={classNames(className)}
+      sx={{ width: '100%', display: 'flex', alignItems: 'center' }}>
+      <OwnerUserList
+        avatarSize={avatarSize}
+        className={className}
+        isCompactView={isCompactView}
+        maxVisibleOwners={2}
+        ownerDisplayName={ownerDisplayName}
+        owners={showMultipleTypeUser}
+      />
+
+      <Divider
+        flexItem
+        orientation="vertical"
+        sx={{
+          margin: '0 10px',
+          background: theme.palette.allShades.blueGray[100],
+        }}
+        variant="middle"
+      />
+
+      <OwnerTeamList avatarSize={avatarSize} owners={showMultipleTypeTeam} />
+
+      {hasPermission && isAssignee && (
+        <Button
+          className="p-0 flex-center h-auto"
+          data-testid="edit-assignees"
+          icon={<EditIcon width="14px" />}
+          type="text"
+          onClick={onEditClick}
+        />
+      )}
+    </Box>
+  );
+};
+
+export default OwnerUserTeamList;
