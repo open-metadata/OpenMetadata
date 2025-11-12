@@ -12,13 +12,14 @@
  */
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
 import ErrorPlaceHolderNew from '../ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../Loader/Loader';
+import SearchBarComponent from '../SearchBarComponent/SearchBar.component';
 import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
 const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
@@ -28,14 +29,17 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+  const [searchText, setSearchText] = useState<string>('');
+
   const entityDetails = useMemo(() => {
     return getEntityChildDetailsV1(
       entityType,
       dataAsset,
       highlights,
-      isLoading
+      isLoading,
+      searchText
     );
-  }, [dataAsset, entityType, highlights, isLoading]);
+  }, [dataAsset, entityType, highlights, isLoading, searchText]);
 
   if (isLoading) {
     return <Loader size="small" />;
@@ -49,6 +53,17 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     <div
       className="entity-details-section"
       data-testid="entity-details-section">
+      <div className="p-x-md">
+        <SearchBarComponent
+          containerClassName="searchbar-container"
+          placeholder={t('label.search-for-type', {
+            type: t('label.schema'),
+          })}
+          searchValue={searchText}
+          typingInterval={350}
+          onSearch={setSearchText}
+        />
+      </div>
       {entityDetails}
     </div>
   ) : (

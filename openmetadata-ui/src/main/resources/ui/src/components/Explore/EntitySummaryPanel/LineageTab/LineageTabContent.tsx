@@ -13,7 +13,7 @@
 
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -31,6 +31,7 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
 import './LineageTabContent.less';
@@ -42,6 +43,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
+  const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
     useMemo(() => {
@@ -122,8 +124,37 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     return items;
   }, [filter, upstreamNodes, downstreamNodes, lineageData, entityFqn]);
 
+  const filteredLineageItems = useMemo(() => {
+    if (!searchText) {
+      return lineageItems;
+    }
+
+    const searchLower = searchText.toLowerCase();
+
+    return lineageItems.filter((item) => {
+      const entityName = item.entity.name?.toLowerCase() || '';
+      const entityDisplayName = item.entity.displayName?.toLowerCase() || '';
+      const entityFqn = item.entity.fullyQualifiedName?.toLowerCase() || '';
+
+      return (
+        entityName.includes(searchLower) ||
+        entityDisplayName.includes(searchLower) ||
+        entityFqn.includes(searchLower)
+      );
+    });
+  }, [lineageItems, searchText]);
+
   return (
     <div className="lineage-tab-content">
+      <SearchBarComponent
+        containerClassName="searchbar-container"
+        placeholder={t('label.search-for-type', {
+          type: t('label.entity-plural'),
+        })}
+        searchValue={searchText}
+        typingInterval={350}
+        onSearch={setSearchText}
+      />
       <div className="lineage-filter-buttons">
         <Button
           className={`lineage-filter-button ${
@@ -157,8 +188,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
       {/* Lineage Items */}
       <div className="lineage-items-list">
-        {lineageItems.length > 0 ? (
-          lineageItems.map((item) => (
+        {filteredLineageItems.length > 0 ? (
+          filteredLineageItems.map((item) => (
             <Link
               className="lineage-item-link"
               key={

@@ -14,7 +14,7 @@
 import { Divider, Link } from '@mui/material';
 import { Avatar, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -38,6 +38,7 @@ import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
+import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
@@ -238,6 +239,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
   });
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
   const [activeTab, setActiveTab] = useState<string>('data-quality');
+  const [searchText, setSearchText] = useState<string>('');
 
   // Incident-related state
   const [incidents, setIncidents] = useState<TestCaseResolutionStatus[]>([]);
@@ -394,33 +396,78 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     fetchIncidents();
   }, [entityFQN]);
 
-  // Filter test cases based on active filter
-  const filteredTestCases = testCases.filter((testCase) => {
-    const status = testCase.testCaseResult?.testCaseStatus;
+  // Filter test cases based on active filter and search text
+  const filteredTestCases = useMemo(() => {
+    return testCases.filter((testCase) => {
+      const status = testCase.testCaseResult?.testCaseStatus;
+      const matchesStatus = status?.toLowerCase() === activeFilter;
 
-    return status?.toLowerCase() === activeFilter;
-  });
+      if (!searchText) {
+        return matchesStatus;
+      }
 
-  // Filter incidents based on active incident filter
-  const filteredIncidents = incidents.filter((incident) => {
-    const status = incident.testCaseResolutionStatusType;
-    if (!status) {
-      return false;
-    }
+      const searchLower = searchText.toLowerCase();
+      const testCaseName = testCase.name?.toLowerCase() || '';
+      const testCaseDisplayName =
+        testCase.displayName?.toLowerCase() ||
+        testCase.fullyQualifiedName?.toLowerCase() ||
+        '';
 
-    switch (activeIncidentFilter) {
-      case 'new':
-        return status === TestCaseResolutionStatusTypes.New;
-      case 'ack':
-        return status === TestCaseResolutionStatusTypes.ACK;
-      case 'assigned':
-        return status === TestCaseResolutionStatusTypes.Assigned;
-      case 'resolved':
-        return status === TestCaseResolutionStatusTypes.Resolved;
-      default:
+      return (
+        matchesStatus &&
+        (testCaseName.includes(searchLower) ||
+          testCaseDisplayName.includes(searchLower))
+      );
+    });
+  }, [testCases, activeFilter, searchText]);
+
+  // Filter incidents based on active incident filter and search text
+  const filteredIncidents = useMemo(() => {
+    return incidents.filter((incident) => {
+      const status = incident.testCaseResolutionStatusType;
+      if (!status) {
         return false;
-    }
-  });
+      }
+
+      let matchesStatus = false;
+      switch (activeIncidentFilter) {
+        case 'new':
+          matchesStatus = status === TestCaseResolutionStatusTypes.New;
+
+          break;
+        case 'ack':
+          matchesStatus = status === TestCaseResolutionStatusTypes.ACK;
+
+          break;
+        case 'assigned':
+          matchesStatus = status === TestCaseResolutionStatusTypes.Assigned;
+
+          break;
+        case 'resolved':
+          matchesStatus = status === TestCaseResolutionStatusTypes.Resolved;
+
+          break;
+        default:
+          return false;
+      }
+
+      if (!searchText) {
+        return matchesStatus;
+      }
+
+      const searchLower = searchText.toLowerCase();
+      const testCaseName =
+        incident.testCaseReference?.name?.toLowerCase() || '';
+      const testCaseDisplayName =
+        incident.testCaseReference?.displayName?.toLowerCase() || '';
+
+      return (
+        matchesStatus &&
+        (testCaseName.includes(searchLower) ||
+          testCaseDisplayName.includes(searchLower))
+      );
+    });
+  }, [incidents, activeIncidentFilter, searchText]);
 
   const handleFilterChange = (filter: FilterStatus) => {
     setActiveFilter(filter);
@@ -645,18 +692,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 </button>
               </div>
               <div>
-                <div className="resolved-section">
+                <button
+                  className="resolved-section"
+                  type="button"
+                  onClick={() => handleIncidentFilterChange('resolved')}>
                   <Typography.Text className="resolved-label">
                     {t('label.-with-colon', { text: t('label.resolved') })}
                   </Typography.Text>
                   <Typography.Text className="resolved-value">
                     {incidentCounts.resolved.toString().padStart(2, '0')}
                   </Typography.Text>
-                </div>
+                </button>
               </div>
             </div>
-
-            {/* Resolved Row */}
 
             {/* Test Cases Section */}
             <div className="test-cases-section">
@@ -682,6 +730,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
   return (
     <div className="data-quality-tab-container">
+      <div className="p-x-md">
+        <SearchBarComponent
+          containerClassName="searchbar-container"
+          placeholder={t('label.search-for-type', {
+            type:
+              activeTab === 'data-quality'
+                ? t('label.test-case-plural')
+                : t('label.incident-plural'),
+          })}
+          searchValue={searchText}
+          typingInterval={350}
+          onSearch={setSearchText}
+        />
+      </div>
       <Tabs
         activeKey={activeTab}
         className="data-quality-tabs"
