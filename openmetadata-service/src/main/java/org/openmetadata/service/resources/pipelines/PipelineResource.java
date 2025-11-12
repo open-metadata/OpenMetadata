@@ -711,11 +711,34 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               description = "Fully qualified name of the pipeline",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn) {
+          String fqn,
+      @Parameter(
+              description =
+                  "Filter by execution status (Successful, Failed, Running, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter pipeline observability data after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline observability data before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(
+              description = "Limit the number of observability records per table",
+              schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("limit")
+          int limit) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    PipelineObservabilityResponse response = repository.getPipelineObservability(fqn);
+    PipelineObservabilityResponse response =
+        repository.getPipelineObservability(fqn, status, startTs, endTs, limit);
     return Response.ok(response).build();
   }
 

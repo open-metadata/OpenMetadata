@@ -2408,20 +2408,18 @@ public class TableRepository extends EntityRepository<Table> {
             ? observability.getLastRunTime()
             : System.currentTimeMillis());
 
+    if (observability.getStartTime() != null) {
+      doc.put("startTime", observability.getStartTime());
+    }
+
     if (observability.getEndTime() != null) {
       doc.put("endTime", observability.getEndTime());
 
-      // Calculate runtime in milliseconds (endTime - timestamp)
-      Long timestamp =
-          observability.getLastRunTime() != null
-              ? observability.getLastRunTime()
-              : System.currentTimeMillis();
-      Long runtime = observability.getEndTime() - timestamp;
-      doc.put("runtime", runtime);
-    }
-
-    if (observability.getStartTime() != null) {
-      doc.put("startTime", observability.getStartTime());
+      // Calculate runtime in milliseconds (endTime - startTime)
+      if (observability.getStartTime() != null) {
+        Long runtime = observability.getEndTime() - observability.getStartTime();
+        doc.put("runtime", runtime);
+      }
     }
 
     if (observability.getScheduleInterval() != null) {
@@ -2434,12 +2432,16 @@ public class TableRepository extends EntityRepository<Table> {
     String docId = pipelineFqn + "_" + table.getId().toString();
     String docJson = JsonUtils.pojoToJson(doc);
 
-    searchRepository.getSearchClient().createEntity("pipeline_status_search_index", docId, docJson);
+    // Use getIndexOrAliasName to get the correct index name with prefix
+    String indexName =
+        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+    searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 
     LOG.debug(
-        "Indexed pipeline status for table {} and pipeline {} with doc ID {}",
+        "Indexed pipeline status for table {} and pipeline {} to index {} with doc ID {}",
         table.getFullyQualifiedName(),
         pipelineFqn,
+        indexName,
         docId);
   }
 }

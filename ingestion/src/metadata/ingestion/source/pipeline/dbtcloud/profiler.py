@@ -99,15 +99,18 @@ class DBTCloudProfilerSource(PipelineProfilerSource):
                         table_fqns = self._extract_table_fqns_from_job(job)
 
                         # Create observability data
+                        # Use run-specific times for accurate runtime calculation
                         observability = PipelineObservability(
                             pipeline=pipeline_ref,
                             scheduleInterval=job.schedule.cron
                             if job.schedule
                             else None,
-                            startTime=self._convert_to_timestamp(job.created_at)
-                            if job.created_at
+                            startTime=self._convert_to_timestamp(latest_run.started_at)
+                            if latest_run.started_at
                             else None,
-                            endTime=None,  # dbt jobs don't typically have end dates
+                            endTime=self._convert_to_timestamp(latest_run.finished_at)
+                            if latest_run.finished_at
+                            else None,
                             lastRunTime=self._convert_to_timestamp(
                                 latest_run.finished_at
                             )

@@ -932,6 +932,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(String pipelineFqn) {
+    return getPipelineObservability(pipelineFqn, null, null, null, 10);
+  }
+
+  /**
+   * Get pipeline observability data for all tables associated with a pipeline with filters.
+   *
+   * @param pipelineFqn the pipeline fully qualified name
+   * @param status filter by execution status (Successful, Failed, Running, Pending, Skipped)
+   * @param startTs filter observability data after this timestamp
+   * @param endTs filter observability data before this timestamp
+   * @param limit limit the number of observability records per table
+   * @return PipelineObservabilityResponse containing observability data grouped by tables
+   */
+  public PipelineObservabilityResponse getPipelineObservability(
+      String pipelineFqn, String status, Long startTs, Long endTs, int limit) {
     // Get the pipeline entity to retrieve its ID
     Pipeline pipeline = findByName(pipelineFqn, NON_DELETED);
     if (pipeline == null) {
@@ -974,7 +989,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           EntityReference tableRef =
               Entity.getEntityReferenceById(Entity.TABLE, tableId, Include.NON_DELETED);
 
-          // Parse observability data for this table
+          // Parse and filter observability data for this table
           List<org.openmetadata.schema.type.PipelineObservability> observabilityData =
               new ArrayList<>();
           for (CollectionDAO.ExtensionWithIdAndSchemaObject record : tableRecords) {
@@ -982,7 +997,34 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               org.openmetadata.schema.type.PipelineObservability observability =
                   JsonUtils.readValue(
                       record.getJson(), org.openmetadata.schema.type.PipelineObservability.class);
-              observabilityData.add(observability);
+
+              // Apply filters
+              boolean matchesFilter = true;
+
+              // Filter by status
+              if (status != null && !status.isEmpty() && observability.getLastRunStatus() != null) {
+                matchesFilter =
+                    observability.getLastRunStatus().value().equalsIgnoreCase(status.trim());
+              }
+
+              // Filter by time range (using lastRunTime)
+              if (matchesFilter && observability.getLastRunTime() != null) {
+                if (startTs != null && observability.getLastRunTime() < startTs) {
+                  matchesFilter = false;
+                }
+                if (endTs != null && observability.getLastRunTime() > endTs) {
+                  matchesFilter = false;
+                }
+              }
+
+              // Add if matches all filters
+              if (matchesFilter) {
+                observabilityData.add(observability);
+                // Apply limit per table
+                if (observabilityData.size() >= limit) {
+                  break;
+                }
+              }
             }
           }
 
@@ -1421,12 +1463,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // This means only days with actual data will be returned (no zero-count days)
       String aggregationQuery =
           "bucketName=execution_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=status_breakdown:aggType=terms:field=executionStatus.keyword";
+              + "bucketName=status_breakdown:aggType=terms:field=executionStatus";
+
+      LOG.info("Execution Trend - Filter query: {}", filterQuery);
+      LOG.info("Execution Trend - Aggregation query string: {}", aggregationQuery);
 
       SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+      LOG.info(
+          "Execution Trend - Search aggregation metadata: {}",
+          searchAggregation.getAggregationMetadata());
+
       DataQualityReport report =
           searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, searchAggregation);
 
+      LOG.info(
+          "Execution Trend - Report metadata: {}", report != null ? report.getMetadata() : "null");
       return parseExecutionTrendFromReport(report, startTs, endTs);
 
     } catch (Exception e) {
@@ -1446,7 +1497,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     try {
       List<org.openmetadata.schema.tests.Datum> data = report.getData();
+      LOG.info("Execution Trend - Report data size: {}", data != null ? data.size() : 0);
       if (data != null && !data.isEmpty()) {
+        LOG.info("Execution Trend - First datum: {}", data.get(0));
+        LOG.info(
+            "Execution Trend - First datum additional properties: {}",
+            data.get(0).getAdditionalProperties());
         // Convert Datum list to Map list for easier processing
         List<Map<String, String>> rows = new ArrayList<>();
         for (org.openmetadata.schema.tests.Datum datum : data) {
@@ -1454,13 +1510,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             rows.add(datum.getAdditionalProperties());
           }
         }
+        LOG.info("Execution Trend - Rows count: {}", rows.size());
 
-        // Group data by execution_by_date timestamp
+        // Group data by timestamp (date_histogram key is the timestamp field value)
         Map<String, Map<String, Integer>> dateStatusMap = new HashMap<>();
 
         for (Map<String, String> row : rows) {
-          if (row.containsKey("execution_by_date")) {
-            String dateKey = row.get("execution_by_date").toString();
+          LOG.debug("Execution Trend - Row keys: {}", row.keySet());
+          // The aggregation framework uses field names as keys, not bucket names
+          // date_histogram aggregation: key is "timestamp" (the field name)
+          // terms aggregation: key is "executionStatus" (the field name)
+          if (row.containsKey("timestamp")) {
+            String dateKey = row.get("timestamp").toString();
             String status =
                 row.containsKey("executionStatus") ? row.get("executionStatus").toString() : "";
             String docCountStr =
@@ -1482,11 +1543,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             trend.setTimestamp(timestamp);
             trend.setDate(java.time.Instant.ofEpochMilli(timestamp).toString());
 
-            int success = statusCounts.getOrDefault("Successful", 0);
-            int failed = statusCounts.getOrDefault("Failed", 0);
-            int pending = statusCounts.getOrDefault("Pending", 0);
-            int skipped = statusCounts.getOrDefault("Skipped", 0);
-            int total = success + failed + pending + skipped;
+            // Status values are lowercased by Elasticsearch's lowercase_normalizer
+            int success = statusCounts.getOrDefault("successful", 0);
+            int failed = statusCounts.getOrDefault("failed", 0);
+            int pending = statusCounts.getOrDefault("pending", 0);
+            int skipped = statusCounts.getOrDefault("skipped", 0);
+            int running = statusCounts.getOrDefault("running", 0);
+            int total = success + failed + pending + skipped + running;
 
             trend.setSuccessCount(success);
             trend.setFailedCount(failed);
@@ -1585,10 +1648,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // Use aggregation framework like Execution Trend API
       // Note: extended_bounds and min_doc_count are not supported by the framework
       // So we won't get zero-count days
+      // Metric aggregations (max, min, avg) must be siblings under date_histogram
+      // Comma = nest level, Double-colon (::) = siblings at same level
       String aggregationQuery =
           "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=max_runtime:aggType=max:field=runtime,"
-              + "bucketName=min_runtime:aggType=min:field=runtime,"
+              + "bucketName=max_runtime:aggType=max:field=runtime::"
+              + "bucketName=min_runtime:aggType=min:field=runtime::"
               + "bucketName=avg_runtime:aggType=avg:field=runtime";
 
       SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
@@ -1623,15 +1688,45 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
         LOG.info("Parsing {} runtime trend rows", rows.size());
 
-        // Group data by runtime_by_date timestamp
+        // Group data by timestamp (similar to execution trend grouping by status)
+        // Each metric creates a separate row, we need to group them by date
         Map<String, Map<String, String>> dateRuntimeMap = new HashMap<>();
 
         for (Map<String, String> row : rows) {
-          LOG.debug("Runtime row: {}", row);
+          LOG.info("Runtime row keys: {}, values: {}", row.keySet(), row);
 
-          if (row.containsKey("runtime_by_date")) {
-            String dateKey = row.get("runtime_by_date");
-            dateRuntimeMap.put(dateKey, row);
+          // The aggregation framework uses field names as keys
+          // date_histogram: key is "timestamp"
+          // metric aggregations: key is the "field" name (runtime)
+          if (row.containsKey("timestamp")) {
+            String dateKey = row.get("timestamp");
+            dateRuntimeMap.putIfAbsent(dateKey, new HashMap<>());
+
+            // Merge all metric values into the same date entry
+            // The "runtime" field contains the metric value
+            // We need to determine which metric this is based on other row data
+            if (row.containsKey("runtime")) {
+              String runtimeValue = row.get("runtime");
+              // Since we have 3 separate rows per date (one per metric),
+              // we'll store all of them and aggregate later
+              // For now, we'll collect the first non-null value for each metric type
+              Map<String, String> existingData = dateRuntimeMap.get(dateKey);
+
+              // If this is the first metric for this date, store it
+              if (!existingData.containsKey("max_runtime") && runtimeValue != null) {
+                existingData.put("max_runtime", runtimeValue);
+              } else if (!existingData.containsKey("min_runtime") && runtimeValue != null) {
+                existingData.put("min_runtime", runtimeValue);
+              } else if (!existingData.containsKey("avg_runtime") && runtimeValue != null) {
+                existingData.put("avg_runtime", runtimeValue);
+              }
+
+              // Store document count from first row
+              if (!existingData.containsKey("document_count")
+                  && row.containsKey("document_count")) {
+                existingData.put("document_count", row.get("document_count"));
+              }
+            }
           }
         }
 
@@ -1651,30 +1746,33 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             double avgRuntime = 0.0;
             int totalPipelines = 0;
 
-            if (runtimeData.containsKey("runtime")) {
-              // max_runtime nested aggregation
-              String maxRuntimeStr = runtimeData.get("runtime");
-              if (maxRuntimeStr != null) {
-                maxRuntime = Double.parseDouble(maxRuntimeStr);
-              }
+            if (runtimeData.containsKey("max_runtime")) {
+              maxRuntime = Double.parseDouble(runtimeData.get("max_runtime"));
             }
 
-            // For nested aggregations, values come as additional columns
+            if (runtimeData.containsKey("min_runtime")) {
+              minRuntime = Double.parseDouble(runtimeData.get("min_runtime"));
+            }
+
+            if (runtimeData.containsKey("avg_runtime")) {
+              avgRuntime = Double.parseDouble(runtimeData.get("avg_runtime"));
+            }
+
             if (runtimeData.containsKey("document_count")) {
               totalPipelines = Integer.parseInt(runtimeData.get("document_count"));
             }
 
-            // Note: The aggregation framework may not return min/avg in the expected format
-            // We can only reliably get max from the nested aggregation
             trend.setMaxRuntime(maxRuntime);
             trend.setMinRuntime(minRuntime);
             trend.setAvgRuntime(avgRuntime);
             trend.setTotalPipelines(totalPipelines);
 
             LOG.info(
-                "Parsed runtime trend for {}: max={}, total={}",
+                "Parsed runtime trend for {}: max={}, min={}, avg={}, total={}",
                 trend.getDate(),
                 maxRuntime,
+                minRuntime,
+                avgRuntime,
                 totalPipelines);
 
             trends.add(trend);
