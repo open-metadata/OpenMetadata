@@ -78,6 +78,7 @@ function DatabaseSchemaVersionPage() {
     handlePagingChange,
     handlePageChange,
     currentPage,
+    pagingCursor,
   } = pagingInfo;
 
   const [tableData, setTableData] = useState<Array<Table>>([]);
@@ -200,8 +201,12 @@ function DatabaseSchemaVersionPage() {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, getSchemaTables]
   );
@@ -433,9 +438,16 @@ function DatabaseSchemaVersionPage() {
 
   useEffect(() => {
     if (!isEmpty(currentVersionData)) {
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        getSchemaTables({ [cursorType]: cursorValue, limit: pageSize });
+
+        return;
+      }
       getSchemaTables({ limit: pageSize });
     }
-  }, [currentVersionData, pageSize]);
+  }, [currentVersionData, pageSize, pagingCursor]);
 
   return versionComponent;
 }
