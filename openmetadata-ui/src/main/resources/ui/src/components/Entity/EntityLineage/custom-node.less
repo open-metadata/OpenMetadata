@@ -486,9 +486,24 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #ffffff;
-            border-color: #d92d20;
+            background-color: #fef3f2;
+            border-left-color: #d92d20;
           }
+        }
+      }
+    }
+  }
+}
+
+.lineage-node {
+  &.data-quality-failed-custom-node-header,
+  &.custom-node-header-active.data-quality-failed-custom-node-header {
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container.custom-node-header-column-tracing {
+          border-color: #d92d20;
+          background-color: #ffffff;
+          color: #bc1b06;
         }
       }
     }
