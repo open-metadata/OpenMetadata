@@ -1066,19 +1066,22 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
 
     Query existingQuery = requestBuilder.query();
-    org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.BoolQueryBuilder baseQueryBuilder =
-        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.boolQuery()
-            .should(existingQuery)
-            .should(
-                Query.of(
-                    q ->
-                        q.matchPhrase(
-                            mp -> mp.field("fullyQualifiedName").query(request.getQuery()))))
-            .should(
-                Query.of(q -> q.matchPhrase(mp -> mp.field("name").query(request.getQuery()))))
-            .should(
-                Query.of(
-                    q -> q.matchPhrase(mp -> mp.field("displayName").query(request.getQuery()))));
+    org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.BoolQueryBuilder
+        baseQueryBuilder =
+            org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.boolQuery()
+                .should(existingQuery)
+                .should(
+                    Query.of(
+                        q ->
+                            q.matchPhrase(
+                                mp -> mp.field("fullyQualifiedName").query(request.getQuery()))))
+                .should(
+                    Query.of(q -> q.matchPhrase(mp -> mp.field("name").query(request.getQuery()))))
+                .should(
+                    Query.of(
+                        q ->
+                            q.matchPhrase(
+                                mp -> mp.field("displayName").query(request.getQuery()))));
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
       baseQueryBuilder
@@ -1086,9 +1089,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
               Query.of(
                   q ->
                       q.matchPhrase(
-                          mp ->
-                              mp.field("glossary.fullyQualifiedName")
-                                  .query(request.getQuery()))))
+                          mp -> mp.field("glossary.fullyQualifiedName").query(request.getQuery()))))
           .should(
               Query.of(
                   q ->
@@ -1101,8 +1102,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
               Query.of(
                   q ->
                       q.matchPhrase(
-                          mp ->
-                              mp.field("parent.fullyQualifiedName").query(request.getQuery()))))
+                          mp -> mp.field("parent.fullyQualifiedName").query(request.getQuery()))))
           .should(
               Query.of(
                   q ->

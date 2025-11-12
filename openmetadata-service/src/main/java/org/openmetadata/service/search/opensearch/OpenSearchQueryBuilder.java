@@ -92,8 +92,16 @@ public class OpenSearchQueryBuilder {
                   if (tieBreaker != null) {
                     m.tieBreaker(Double.parseDouble(tieBreaker));
                   }
-                  if (fuzziness != null) {
+                  if (fuzziness != null && !fuzziness.equals("0")) {
                     m.fuzziness(fuzziness);
+                    m.prefixLength(1); // Require first character to match exactly
+                    m.maxExpansions(10); // Limit fuzzy expansions
+                    // When using fuzziness with OR operator, require minimum token match
+                    // to avoid overly permissive matching (e.g., "2<70%" means 2 tokens or 70% must
+                    // match)
+                    if (operator == Operator.Or) {
+                      m.minimumShouldMatch("2<70%");
+                    }
                   }
                   return m;
                 }));

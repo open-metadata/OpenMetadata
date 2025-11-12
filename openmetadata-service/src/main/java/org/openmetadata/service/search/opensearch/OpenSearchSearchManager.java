@@ -1,5 +1,19 @@
 package org.openmetadata.service.search.opensearch;
 
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.ENTITY_RELATIONSHIP_DIRECTION_ENTITY;
+import static org.openmetadata.service.search.SearchClient.ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
+import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -11,6 +25,18 @@ import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -55,33 +81,6 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.ENTITY_RELATIONSHIP_DIRECTION_ENTITY;
-import static org.openmetadata.service.search.SearchClient.ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY;
-import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
-import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 /**
  * OpenSearch implementation of search management operations.
@@ -1108,19 +1107,24 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
 
     Query existingQuery = requestBuilder.query();
-    org.openmetadata.service.search.opensearch.OpenSearchQueryBuilder.BoolQueryBuilder baseQueryBuilder =
-        org.openmetadata.service.search.opensearch.OpenSearchQueryBuilder.boolQuery()
-            .should(existingQuery)
-            .should(
-                Query.of(
-                    q ->
-                        q.matchPhrase(
-                            mp -> mp.field("fullyQualifiedName").query(request.getQuery()))))
-            .should(
-                Query.of(q -> q.matchPhrase(mp -> mp.field("name").query(request.getQuery()))))
-            .should(
-                Query.of(
-                    q -> q.matchPhrase(mp -> mp.field("displayName").query(request.getQuery()))));
+
+    // Build bool query matching main branch structure - all should clauses at same level
+    org.openmetadata.service.search.opensearch.OpenSearchQueryBuilder.BoolQueryBuilder
+        baseQueryBuilder =
+            org.openmetadata.service.search.opensearch.OpenSearchQueryBuilder.boolQuery()
+                .should(existingQuery)
+                .should(
+                    Query.of(
+                        q ->
+                            q.matchPhrase(
+                                mp -> mp.field("fullyQualifiedName").query(request.getQuery()))))
+                .should(
+                    Query.of(q -> q.matchPhrase(mp -> mp.field("name").query(request.getQuery()))))
+                .should(
+                    Query.of(
+                        q ->
+                            q.matchPhrase(
+                                mp -> mp.field("displayName").query(request.getQuery()))));
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
       baseQueryBuilder
@@ -1128,23 +1132,22 @@ public class OpenSearchSearchManager implements SearchManagementClient {
               Query.of(
                   q ->
                       q.matchPhrase(
-                          mp ->
-                              mp.field("glossary.fullyQualifiedName")
-                                  .query(request.getQuery()))))
+                          mp -> mp.field("glossary.fullyQualifiedName").query(request.getQuery()))))
           .should(
               Query.of(
                   q ->
                       q.matchPhrase(
                           mp -> mp.field("glossary.displayName").query(request.getQuery()))))
-          .must(Query.of(q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved")))));
+          .must(
+              Query.of(
+                  q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved")))));
     } else if (indexName.equalsIgnoreCase(domainIndex)) {
       baseQueryBuilder
           .should(
               Query.of(
                   q ->
                       q.matchPhrase(
-                          mp ->
-                              mp.field("parent.fullyQualifiedName").query(request.getQuery()))))
+                          mp -> mp.field("parent.fullyQualifiedName").query(request.getQuery()))))
           .should(
               Query.of(
                   q ->
