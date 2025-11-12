@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -76,7 +78,9 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
     doc.put(
         "upstreamEntityRelationship", SearchIndex.populateUpstreamEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
-    doc.put("queries", table.getQueries());
+    if (!nullOrEmpty(table.getQueries())) {
+      doc.put("queries", table.getQueries());
+    }
     doc.put(
         "changeSummary",
         Optional.ofNullable(table.getChangeDescription())

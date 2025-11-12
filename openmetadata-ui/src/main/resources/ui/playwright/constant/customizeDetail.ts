@@ -100,6 +100,7 @@ export const TOPIC_DEFAULT_TABS = [
   EntityTabs.SAMPLE_DATA,
   EntityTabs.CONFIG,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -107,6 +108,7 @@ export const DASHBOARD_DEFAULT_TABS = [
   EntityTabs.DETAILS,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -115,6 +117,7 @@ export const MLMODEL_DEFAULT_TABS = [
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.DETAILS,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -123,6 +126,7 @@ export const PIPELINE_DEFAULT_TABS = [
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.EXECUTIONS,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -131,12 +135,14 @@ export const DASHBOARD_DATAMODEL_DEFAULT_TABS = [
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.SQL,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
 export const API_COLLECTION_DEFAULT_TABS = [
   EntityTabs.API_ENDPOINT,
   EntityTabs.ACTIVITY_FEED,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -145,6 +151,7 @@ export const SEARCH_INDEX_DEFAULT_TABS = [
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.SAMPLE_DATA,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.SEARCH_INDEX_SETTINGS,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
@@ -154,12 +161,14 @@ export const CONTAINER_DEFAULT_TABS = [
   EntityTabs.CHILDREN,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
 export const DATABASE_DEFAULT_TABS = [
   EntityTabs.SCHEMAS,
   EntityTabs.ACTIVITY_FEED,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -167,6 +176,7 @@ export const DATABASE_SCHEMA_DEFAULT_TABS = [
   EntityTabs.TABLE,
   EntityTabs.STORED_PROCEDURE,
   EntityTabs.ACTIVITY_FEED,
+  EntityTabs.CONTRACT,
   ...(process.env.PLAYWRIGHT_IS_OSS ? [] : [EntityTabs.ER_DIAGRAM]),
   EntityTabs.CUSTOM_PROPERTIES,
 ];
@@ -175,6 +185,7 @@ export const STORED_PROCEDURE_DEFAULT_TABS = [
   EntityTabs.CODE,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -182,6 +193,7 @@ export const API_ENDPOINT_DEFAULT_TABS = [
   EntityTabs.SCHEMA,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -189,6 +201,7 @@ export const DASHBOARD_DATA_MODEL_DEFAULT_TABS = [
   EntityTabs.MODEL,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -197,6 +210,7 @@ export const ML_MODEL_DEFAULT_TABS = [
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.DETAILS,
   EntityTabs.LINEAGE,
+  EntityTabs.CONTRACT,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 

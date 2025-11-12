@@ -63,7 +63,13 @@ export const IngestionPipelineList = ({
 
   const pagingInfo = usePaging();
 
-  const { handlePageChange, paging, handlePagingChange, pageSize } = pagingInfo;
+  const {
+    handlePageChange,
+    paging,
+    handlePagingChange,
+    pageSize,
+    pagingCursor,
+  } = pagingInfo;
 
   const { t } = useTranslation();
 
@@ -165,15 +171,30 @@ export const IngestionPipelineList = ({
           paging: { [cursorType]: paging[cursorType] },
           limit: pageSize,
         });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
     },
     [fetchPipelines, paging, handlePageChange]
   );
 
   useEffect(() => {
-    isAirflowAvailable && fetchPipelines({ limit: pageSize });
-  }, [serviceName, isAirflowAvailable, pageSize]);
+    if (isAirflowAvailable) {
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        fetchPipelines({
+          paging: { [cursorType]: cursorValue },
+          limit: pageSize,
+        });
+      } else {
+        fetchPipelines({ limit: pageSize });
+      }
+    }
+  }, [serviceName, isAirflowAvailable, pageSize, pagingCursor]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
     useCallback(

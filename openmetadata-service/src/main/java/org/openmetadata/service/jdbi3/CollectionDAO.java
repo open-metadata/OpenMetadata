@@ -6887,6 +6887,16 @@ public interface CollectionDAO {
         @Bind("endTs") Long endTs);
 
     @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND dimensionName = :dimensionName AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResultsByDimensionName(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("dimensionName") String dimensionName,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
         "SELECT DISTINCT dimensionKey FROM test_case_dimension_results_time_series "
             + "WHERE entityFQNHash = :testCaseFQN AND timestamp >= :startTs AND timestamp <= :endTs")
     List<String> listAvailableDimensionKeys(

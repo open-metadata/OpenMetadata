@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
@@ -620,4 +621,62 @@ export const readElementInListWithScroll = async (
 
     retryCount++;
   }
+};
+
+export const testPaginationNavigation = async (
+  page: Page,
+  waitForLoadSelector?: string
+) => {
+  await page.waitForLoadState('networkidle');
+
+  if (waitForLoadSelector) {
+    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  const nextButton = page.locator('[data-testid="next"]');
+
+  const isNextButtonEnabled = await nextButton.isEnabled();
+
+  if (!isNextButtonEnabled) {
+    return;
+  }
+
+  await nextButton.click();
+
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  const currentUrl = page.url();
+  const urlObj = new URL(currentUrl);
+  const searchParams = urlObj.searchParams;
+
+  expect(searchParams.get('currentPage')).toBe('2');
+  expect(searchParams.get('cursorType')).toBe('after');
+
+  const afterValue = searchParams.get('cursorValue');
+
+  expect(afterValue).toBeTruthy();
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  if (waitForLoadSelector) {
+    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  const reloadedUrl = page.url();
+
+  expect(reloadedUrl).toBe(currentUrl);
+
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+
+  await expect(paginationText).toBeVisible();
+
+  const paginationTextContent = await paginationText.textContent();
+
+  expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
