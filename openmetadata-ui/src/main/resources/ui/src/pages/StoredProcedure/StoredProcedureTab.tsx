@@ -22,15 +22,11 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
-<<<<<<< HEAD
-import { INITIAL_PAGING_VALUE } from '../../constants/constants';
-=======
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
 } from '../../constants/constants';
->>>>>>> 8a8420cb4b (Feat: Added search functionality for schema tables and stored procedures)
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Include } from '../../generated/type/include';
