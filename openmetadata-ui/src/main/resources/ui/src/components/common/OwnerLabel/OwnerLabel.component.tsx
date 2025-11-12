@@ -41,7 +41,7 @@ export const OwnerLabel = ({
   },
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
-  avatarSize = 32,
+  avatarSize = 24,
   isAssignee = false,
   onEditClick,
   ownerLabelClassName,
@@ -80,10 +80,11 @@ export const OwnerLabel = ({
               <Typography
                 className={className}
                 sx={{
+                  marginBottom: 0,
                   fontWeight: 500,
+                  fontSize: '14px',
                   color: theme.palette.allShades.brand[700],
-                }}
-                variant="body2">
+                }}>
                 {placeHolder ?? t('label.owner-plural')}
               </Typography>
             )}

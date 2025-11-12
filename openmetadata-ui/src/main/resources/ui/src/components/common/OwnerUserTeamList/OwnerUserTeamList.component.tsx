@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, useTheme } from '@mui/material';
-import { Button } from 'antd';
+import { Box, Divider, IconButton, useTheme } from '@mui/material';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -76,13 +75,13 @@ const OwnerUserTeamList = ({
       <OwnerTeamList avatarSize={avatarSize} owners={showMultipleTypeTeam} />
 
       {hasPermission && isAssignee && (
-        <Button
-          className="p-0 flex-center h-auto"
+        <IconButton
           data-testid="edit-assignees"
-          icon={<EditIcon width="14px" />}
-          type="text"
-          onClick={onEditClick}
-        />
+          size="small"
+          sx={{ padding: 0, marginLeft: '8px' }}
+          onClick={onEditClick}>
+          <EditIcon style={{ width: '14px', height: '14px' }} />
+        </IconButton>
       )}
     </Box>
   );

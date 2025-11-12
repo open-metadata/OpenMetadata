@@ -327,7 +327,6 @@ const TeamsInfo = ({
       />
       <Divider className="vertical-divider" type="vertical" />
       <OwnerLabel
-        className="text-sm"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         multiple={{

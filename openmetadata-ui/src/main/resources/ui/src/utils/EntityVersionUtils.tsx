@@ -1348,7 +1348,18 @@ export const getOwnerVersionLabel = (
     );
 
     if (!isEmpty(owners)) {
-      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
+      return (
+        <OwnerLabel
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+          {...(ownerField === TabSpecificField.OWNERS
+            ? {
+                isCompactView: false,
+                showLabel: false,
+              }
+            : {})}
+        />
+      );
     }
   }
 
@@ -1359,6 +1370,12 @@ export const getOwnerVersionLabel = (
           getOwnerLabelName(item, EntityChangeOperations.NORMAL)
         )}
         owners={defaultItems}
+        {...(ownerField === TabSpecificField.OWNERS
+          ? {
+              isCompactView: false,
+              showLabel: false,
+            }
+          : {})}
       />
     );
   }
