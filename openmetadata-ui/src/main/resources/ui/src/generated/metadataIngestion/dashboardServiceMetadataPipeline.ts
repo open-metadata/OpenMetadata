@@ -75,6 +75,12 @@ export interface DashboardServiceMetadataPipeline {
      */
     overrideMetadata?: boolean;
     /**
+     * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+     * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+     * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+     */
+    parserType?: LineageParserType;
+    /**
      * Regex to exclude or include projects that matches the pattern.
      */
     projectFilterPattern?: FilterPattern;
@@ -117,6 +123,21 @@ export interface LineageInformation {
      */
     dbServicePrefixes?: string[];
     [property: string]: any;
+}
+
+/**
+ * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+ * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+ * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+ *
+ * Type of parser to use for SQL lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance.
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**
