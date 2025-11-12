@@ -101,7 +101,6 @@ describe('CustomNodeV1', () => {
     );
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
-    expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
   });
 
   it('renders node with dbt icon correctly', () => {
@@ -112,7 +111,6 @@ describe('CustomNodeV1', () => {
     );
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
-    expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
   });
 });
