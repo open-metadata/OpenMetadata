@@ -226,8 +226,6 @@ database:
     preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
     reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
-    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30000}
-    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-30000}
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
     loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
