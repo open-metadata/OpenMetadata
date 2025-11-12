@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import NodeChildren from './NodeChildren.component';
@@ -76,40 +75,14 @@ jest.mock('../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () =>
 );
 
 describe('NodeChildren Component', () => {
-  it('should show show more button when there are columns without lineage', () => {
-    render(<NodeChildren isConnectable={false} node={mockNode} />);
-
-    const showMoreButton = screen.getByTestId('show-more-columns-btn');
-
-    expect(showMoreButton).toBeInTheDocument();
-  });
-
-  it('should hide show more button when all columns are shown after clicking show more button', () => {
-    render(<NodeChildren isConnectable={false} node={mockNode} />);
-
-    const showMoreButton = screen.getByTestId('show-more-columns-btn');
-    fireEvent.click(showMoreButton);
-
-    expect(
-      screen.queryByTestId('show-more-columns-btn')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should hide show more button when all columns are shown', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      ...mockLineageProvider,
-      columnsHavingLineage: ['test.fqn.column1', 'test.fqn.column2'],
-    }));
-
-    render(<NodeChildren isConnectable={false} node={mockNode} />);
-
-    expect(
-      screen.queryByTestId('show-more-columns-btn')
-    ).not.toBeInTheDocument();
-  });
-
   it('should show all columns when searching', () => {
-    render(<NodeChildren isConnectable={false} node={mockNode} />);
+    render(
+      <NodeChildren
+        isColumnsListExpanded
+        isConnectable={false}
+        node={mockNode}
+      />
+    );
 
     const searchInput = screen.getByPlaceholderText('label.search-entity');
     act(() => {
@@ -120,19 +93,14 @@ describe('NodeChildren Component', () => {
     expect(screen.getByText('column2')).toBeInTheDocument();
   });
 
-  it('should hide show more button when searching', () => {
-    render(<NodeChildren isConnectable={false} node={mockNode} />);
-
-    const searchInput = screen.getByPlaceholderText('label.search-entity');
-    fireEvent.change(searchInput, { target: { value: 'column' } });
-
-    expect(
-      screen.queryByTestId('show-more-columns-btn')
-    ).not.toBeInTheDocument();
-  });
-
   it('should filter columns based on search input', () => {
-    render(<NodeChildren isConnectable={false} node={mockNode} />);
+    render(
+      <NodeChildren
+        isColumnsListExpanded
+        isConnectable={false}
+        node={mockNode}
+      />
+    );
 
     const searchInput = screen.getByPlaceholderText('label.search-entity');
     fireEvent.change(searchInput, { target: { value: 'column1' } });
