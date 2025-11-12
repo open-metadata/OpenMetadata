@@ -314,6 +314,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     Database database = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database);
   }
+
   @PUT
   @Path("/bulk")
   @Operation(
@@ -329,14 +330,20 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = org.openmetadata.schema.type.api.BulkOperationResult.class))),
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(
             responseCode = "202",
             description = "Bulk operation accepted for async processing",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = org.openmetadata.schema.type.api.BulkOperationResult.class))),
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response bulkCreateOrUpdate(

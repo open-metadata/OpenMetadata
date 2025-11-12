@@ -13,7 +13,6 @@ This is the main used sink for all OM Workflows.
 It picks up the generated Entities and send them
 to the OM API.
 """
-import queue
 import traceback
 from functools import singledispatchmethod
 from typing import Any, Dict, Optional, TypeVar, Union
@@ -876,44 +875,5 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             logger.info(f"Flushing {len(self.table_buffer)} remaining tables on close")
             self._flush_table_buffer()
 
-        # Signal workers to stop (poison pill pattern)
-        logger.info(f"Stopping {len(self.workers)} bulk API worker threads...")
-        self.stop_workers.set()
-
-        # Send poison pills to unblock workers
-        for _ in self.workers:
-            try:
-                self.batch_queue.put(None, block=False)
-            except queue.Full:
-                pass
-
-        # Wait for all workers to finish
-        for worker in self.workers:
-            worker.join(timeout=30.0)
-            if worker.is_alive():
-                logger.warning(f"{worker.name} did not terminate gracefully")
-
-        logger.info("All bulk API workers stopped")
-
         # Process deferred lifecycle data now that all tables exist
         self._process_deferred_lifecycle_data()
-
-        # Report bulk API timing statistics
-        if self.bulk_api_call_count > 0:
-            avg_time_per_call = self.bulk_api_total_time / self.bulk_api_call_count
-            avg_tables_per_sec = (
-                self.bulk_api_total_tables / self.bulk_api_total_time
-                if self.bulk_api_total_time > 0
-                else 0
-            )
-            logger.info("=" * 70)
-            logger.info("BULK API PERFORMANCE METRICS")
-            logger.info("=" * 70)
-            logger.info(f"Total bulk API calls: {self.bulk_api_call_count}")
-            logger.info(f"Total tables processed: {self.bulk_api_total_tables}")
-            logger.info(
-                f"Total time in bulk API: {self.bulk_api_total_time:.2f}s ({self.bulk_api_total_time/60:.2f}m)"
-            )
-            logger.info(f"Average time per bulk call: {avg_time_per_call:.2f}s")
-            logger.info(f"Average throughput: {avg_tables_per_sec:.1f} tables/sec")
-            logger.info("=" * 70)
