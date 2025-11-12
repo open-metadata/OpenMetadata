@@ -112,6 +112,7 @@ export enum Operation {
     Trigger = "Trigger",
     ViewAll = "ViewAll",
     ViewBasic = "ViewBasic",
+    ViewCustomFields = "ViewCustomFields",
     ViewDataProfile = "ViewDataProfile",
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
@@ -120,7 +121,6 @@ export enum Operation {
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",
-    ViewCustomFields = "ViewCustomFields",
 }
 
 /**
