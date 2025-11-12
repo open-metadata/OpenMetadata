@@ -23,11 +23,11 @@ on:
       - reopened
       - ready_for_review
     paths-ignore:
-      - '.github/**'
-      - 'openmetadata-dist/**'
-      - 'docker/**'
-      - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml' 
+      - ".github/**"
+      - "openmetadata-dist/**"
+      - "docker/**"
+      - "!docker/development/docker-compose.yml"
+      - "!docker/development/docker-compose-postgres.yml"
 
 permissions:
   contents: read
@@ -99,7 +99,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -114,10 +114,10 @@ jobs:
             npx playwright test --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled
           elif [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
             # Shards 1-5 run ingestion tests if ingestion files changed
-            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/5
+            npx playwright test --project=chromium --grep @ingestion --shard=${{ matrix.shardIndex }}/5
           else
-            # Shards 1-5 run all other tests (excluding DataAssetRules)
-            npx playwright test --shard=${{ matrix.shardIndex }}/5
+            # Shards 1-5 run all other tests (excluding DataAssetRules via chromium project)
+            npx playwright test --project=chromium --shard=${{ matrix.shardIndex }}/5
           fi
         env:
           PLAYWRIGHT_IS_OSS: true

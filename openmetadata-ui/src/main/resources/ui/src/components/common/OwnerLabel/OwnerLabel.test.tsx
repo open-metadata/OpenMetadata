@@ -12,6 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import '../../../test/unit/mocks/mui.mock';
 import { OwnerLabel } from './OwnerLabel.component';
 
 const mockOwner = [

@@ -117,6 +117,7 @@ const TableQueryRightPanel = ({
                 hasPermission={false}
                 isCompactView={false}
                 owners={query.owners}
+                showLabel={false}
               />
             </ExpandableCard>
           </Col>
