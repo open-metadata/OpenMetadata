@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@mui/material';
+import { Button } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
@@ -175,7 +175,7 @@ const EntityFooter = ({
   };
 
   return (
-    <Box className="entity-footer">
+    <div className="entity-footer">
       <Button
         className={classNames(
           'columns-info-dropdown-label',
@@ -186,7 +186,7 @@ const EntityFooter = ({
         {columnsInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
-    </Box>
+    </div>
   );
 };
 
@@ -196,14 +196,14 @@ const LineageNodeLabelV1 = ({
   toggleColumnsList,
 }: LineageNodeLabelProps) => {
   return (
-    <Box className="custom-node-label-container m-0">
+    <div className="custom-node-label-container m-0">
       <EntityLabel node={node} />
       <EntityFooter
         isColumnsListExpanded={isColumnsListExpanded}
         node={node}
         toggleColumnsList={toggleColumnsList}
       />
-    </Box>
+    </div>
   );
 };
 
