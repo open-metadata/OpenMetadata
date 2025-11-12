@@ -15,8 +15,7 @@ import { Button } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
@@ -28,6 +27,7 @@ import {
   TestSummary,
 } from '../../../generated/tests/testCase';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
+import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -162,17 +162,25 @@ const EntityFooter = ({
   node,
   toggleColumnsList,
 }: LineageNodeLabelPropsExtended) => {
-  const { t } = useTranslation();
+  const { children, childrenHeading } = useMemo(
+    () => getEntityChildrenAndLabel(node),
+    [node.id]
+  );
 
-  const columnsCount = node.columnNames?.length ?? 0;
-  const columnsInfoDropdownLabel = `${columnsCount} ${t(
-    columnsCount === 1 ? 'label.column' : 'label.column-plural'
-  )}`;
+  const childrenCount = children.length;
 
-  const handleClickColumnInfoDropdown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleColumnsList?.();
-  };
+  const childrenInfoDropdownLabel = useMemo(
+    () => `${childrenCount} ${childrenHeading}`,
+    [childrenCount, childrenHeading]
+  );
+
+  const handleClickColumnInfoDropdown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleColumnsList?.();
+    },
+    [toggleColumnsList]
+  );
 
   return (
     <div className="entity-footer">
@@ -183,7 +191,7 @@ const EntityFooter = ({
         )}
         variant="outlined"
         onClick={handleClickColumnInfoDropdown}>
-        {columnsInfoDropdownLabel}
+        {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
     </div>
