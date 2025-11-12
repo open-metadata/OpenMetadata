@@ -434,8 +434,9 @@ function ServiceVersionPage() {
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs =
-      serviceCategory !== ServiceCategory.METADATA_SERVICES
-        ? [
+      serviceCategory === ServiceCategory.METADATA_SERVICES
+        ? []
+        : [
             {
               name: getCountLabel(serviceCategory),
               key: getCountLabel(serviceCategory).toLowerCase(),
@@ -454,8 +455,7 @@ function ServiceVersionPage() {
                 />
               ),
             },
-          ]
-        : [];
+          ];
 
     return tabs.map((tab) => ({
       label: <TabsLabel count={tab.count} id={tab.key} name={tab.name} />,
