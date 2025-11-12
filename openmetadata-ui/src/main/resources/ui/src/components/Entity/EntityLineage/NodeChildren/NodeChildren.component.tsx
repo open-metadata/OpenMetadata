@@ -38,7 +38,7 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({
   node,
   isConnectable,
-  isColumnsListExpanded,
+  isChildrenListExpanded,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
@@ -130,7 +130,7 @@ const NodeChildren = ({
         expandAllColumns ||
         isEditMode ||
         showAllColumns ||
-        isColumnsListExpanded
+        isChildrenListExpanded
       ) {
         return true;
       }
@@ -142,7 +142,7 @@ const NodeChildren = ({
       columnsHavingLineage,
       expandAllColumns,
       showAllColumns,
-      isColumnsListExpanded,
+      isChildrenListExpanded,
     ]
   );
 
@@ -303,10 +303,10 @@ const NodeChildren = ({
 
   if (
     supportsColumns &&
-    (isColumnLayerEnabled || showDataObservability || isColumnsListExpanded)
+    (isColumnLayerEnabled || showDataObservability || isChildrenListExpanded)
   ) {
     return (
-      (isColumnLayerEnabled || isColumnsListExpanded) && (
+      (isColumnLayerEnabled || isChildrenListExpanded) && (
         <div className="column-container">
           <div className="search-box">
             <Input
@@ -319,7 +319,7 @@ const NodeChildren = ({
               onClick={(e) => e.stopPropagation()}
             />
 
-            {isColumnsListExpanded && !isEmpty(renderedColumns) && (
+            {isChildrenListExpanded && !isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   {renderedColumns}

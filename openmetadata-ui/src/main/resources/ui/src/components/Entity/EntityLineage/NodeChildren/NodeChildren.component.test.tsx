@@ -78,7 +78,7 @@ describe('NodeChildren Component', () => {
   it('should show all columns when searching', () => {
     render(
       <NodeChildren
-        isColumnsListExpanded
+        isChildrenListExpanded
         isConnectable={false}
         node={mockNode}
       />
@@ -96,7 +96,7 @@ describe('NodeChildren Component', () => {
   it('should filter columns based on search input', () => {
     render(
       <NodeChildren
-        isColumnsListExpanded
+        isChildrenListExpanded
         isConnectable={false}
         node={mockNode}
       />

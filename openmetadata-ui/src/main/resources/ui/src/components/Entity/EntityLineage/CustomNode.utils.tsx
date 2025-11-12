@@ -259,13 +259,13 @@ export function getNodeClassNames({
   showDqTracing,
   isTraced,
   isBaseNode,
-  isColumnsListExpanded,
+  isChildrenListExpanded,
 }: {
   isSelected: boolean;
   showDqTracing: boolean;
   isTraced: boolean;
   isBaseNode: boolean;
-  isColumnsListExpanded: boolean;
+  isChildrenListExpanded: boolean;
 }) {
   return classNames(
     'lineage-node p-0',
@@ -274,7 +274,7 @@ export function getNodeClassNames({
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
-      'columns-expanded': isColumnsListExpanded,
+      'columns-expanded': isChildrenListExpanded,
     }
   );
 }
