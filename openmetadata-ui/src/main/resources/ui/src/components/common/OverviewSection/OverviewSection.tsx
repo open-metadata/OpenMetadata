@@ -40,7 +40,7 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         ((info.visible || []).includes(componentType) || isDomain) && !isOwners
       );
     });
-  }, [entityInfoV1, componentType, isDomainVisible, t]);
+  }, [entityInfoV1, componentType, isDomainVisible]);
 
   // Hide the entire section (including title) when there's no content
   const hasContent = entityInfoV1 && visibleEntityInfo.length > 0;
