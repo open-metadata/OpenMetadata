@@ -52,6 +52,7 @@ const OwnerUserTeamList = ({
   return (
     <Box
       className={classNames(className)}
+      flexWrap="wrap"
       sx={{ width: '100%', display: 'flex', alignItems: 'center' }}>
       <OwnerUserList
         avatarSize={avatarSize}

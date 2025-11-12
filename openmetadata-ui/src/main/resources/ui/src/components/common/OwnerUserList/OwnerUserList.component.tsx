@@ -56,24 +56,26 @@ const OwnerUserList = ({
           : reverse(visibleOwners),
         remainingOwnersCount,
       };
-    }, [owners]);
+    }, [owners, showAllOwners, maxVisibleOwners]);
 
   return (
     <>
-      <IconUser
-        data-testid="user-owner-icon"
-        style={{
-          width: avatarSize,
-          height: avatarSize,
-          color: theme.palette.allShades.gray[700],
-          flex: 'none',
-          marginRight: '2px',
-        }}
-      />
+      {!isCompactView && (
+        <IconUser
+          data-testid="user-owner-icon"
+          style={{
+            width: avatarSize,
+            height: avatarSize,
+            color: theme.palette.allShades.gray[700],
+            flex: 'none',
+            marginRight: '2px',
+          }}
+        />
+      )}
+
       <Box
         className={classNames('avatar-group', className)}
         sx={{
-          width: '100%',
           display: 'flex',
           alignItems: 'center',
           position: 'relative',

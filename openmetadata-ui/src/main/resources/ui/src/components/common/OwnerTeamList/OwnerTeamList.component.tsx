@@ -31,9 +31,6 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
 }) => {
   const theme = useTheme();
 
-  // Calculate font size based on avatar size
-  const fontSize = Math.max(8, Math.floor(avatarSize * 0.6)); // Reduced to 40% of avatar size
-
   const { visibleTeam, remainingTeam } = useMemo(() => {
     return {
       visibleTeam: owners.slice(0, 1)[0],
@@ -47,7 +44,6 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
         display: 'flex',
         alignItems: 'center',
         position: 'relative',
-        width: '100%',
       }}>
       <Link
         className="no-underline"
@@ -73,11 +69,10 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
             sx={{
               color: theme.palette.allShades.gray[900],
               maxWidth: owners.length > 1 ? '50px' : '120px',
-              fontSize: `${fontSize}px`,
+              fontSize: '12px',
+              fontWeight: 500,
               lineHeight: 'initial',
-            }}
-            // variant="body2"
-          >
+            }}>
             {getEntityName(visibleTeam)}
           </Typography>
         </Box>
@@ -106,7 +101,7 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
             sx={{
               marginLeft: '8px',
               fontWeight: 400,
-              fontSize: `${fontSize}px`,
+              fontSize: '12px',
               padding: 0,
               minWidth: 'fit-content',
               color: theme.palette.allShades.brand[700],
