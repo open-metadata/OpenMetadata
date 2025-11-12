@@ -48,6 +48,7 @@ import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngin
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.notifications.template.testing.EntityFixtureLoader;
 import org.openmetadata.service.notifications.template.testing.MockChangeEventFactory;
@@ -410,6 +411,10 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     }
 
     return validation;
+  }
+
+  public List<HandlebarsHelperMetadata> getHelperMetadata() {
+    return templateProcessor.getHelperMetadata();
   }
 
   private NotificationTemplate getDefaultTemplateFromSeed(String fqn) throws IOException {

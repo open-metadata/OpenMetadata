@@ -4873,6 +4873,49 @@ public interface CollectionDAO {
         @Bind("source") List<Integer> sources,
         @Bind("tagFQNHash") List<String> tagFQNHashes,
         @Bind("targetFQNHash") List<String> targetFQNHashes);
+
+    @SqlQuery("SELECT COUNT(*) FROM tag_usage")
+    long getTotalTagUsageCount();
+
+    @SqlQuery(
+        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(TagUsageObjectMapper.class)
+    List<TagUsageObject> getAllTagUsagesPaginated(
+        @Bind("offset") long offset, @Bind("limit") int limit);
+
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash")
+    int deleteTagUsage(
+        @Bind("source") int source,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("targetFQNHash") String targetFQNHash);
+  }
+
+  @Getter
+  @Builder
+  class TagUsageObject {
+    private int source;
+    private String tagFQN;
+    private String tagFQNHash;
+    private String targetFQNHash;
+    private int labelType;
+    private int state;
+    private String reason;
+  }
+
+  class TagUsageObjectMapper implements RowMapper<TagUsageObject> {
+    @Override
+    public TagUsageObject map(ResultSet r, StatementContext ctx) throws SQLException {
+      return TagUsageObject.builder()
+          .source(r.getInt("source"))
+          .tagFQN(r.getString("tagFQN"))
+          .tagFQNHash(r.getString("tagFQNHash"))
+          .targetFQNHash(r.getString("targetFQNHash"))
+          .labelType(r.getInt("labelType"))
+          .state(r.getInt("state"))
+          .reason(r.getString("reason"))
+          .build();
+    }
   }
 
   interface RoleDAO extends EntityDAO<Role> {
