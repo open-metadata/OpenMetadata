@@ -9,13 +9,19 @@
     "mssqlType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Mssql"],
+      "enum": [
+        "Mssql"
+      ],
       "default": "Mssql"
     },
     "mssqlScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
+      "enum": [
+        "mssql+pyodbc",
+        "mssql+pytds",
+        "mssql+pymssql"
+      ],
       "default": "mssql+pytds"
     }
   },
@@ -71,7 +77,12 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
+        "excludes": [
+          "^db_.*",
+          "^guest$",
+          "^information_schema$",
+          "^sys$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -85,7 +96,11 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^msdb$", "^model$", "^tempdb$"]
+        "excludes": [
+          "^msdb$",
+          "^model$",
+          "^tempdb$"
+        ]
       }
     },
     "connectionOptions": {
@@ -128,8 +143,16 @@
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["database"]
+  "required": [
+    "database"
+  ]
 }

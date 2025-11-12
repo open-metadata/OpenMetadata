@@ -9,13 +9,17 @@
     "snowflakeType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Snowflake"],
+      "enum": [
+        "Snowflake"
+      ],
       "default": "Snowflake"
     },
     "snowflakeScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["snowflake"],
+      "enum": [
+        "snowflake"
+      ],
       "default": "snowflake"
     }
   },
@@ -118,7 +122,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^information_schema$"]
+        "excludes": [
+          "^information_schema$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -132,7 +138,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^snowflake$"]
+        "excludes": [
+          "^snowflake$"
+        ]
       }
     },
     "supportsMetadataExtraction": {
@@ -187,8 +195,18 @@
       "description": "Snowflake source host for the Snowflake account.",
       "type": "string",
       "default": "app.snowflake.com"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account", "warehouse"]
+  "required": [
+    "username",
+    "account",
+    "warehouse"
+  ]
 }
