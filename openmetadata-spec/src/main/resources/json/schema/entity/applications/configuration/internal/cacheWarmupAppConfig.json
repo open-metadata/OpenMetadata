@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/cacheWarmupApp.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CacheWarmupApp",
+  "type": "object",
+  "description": "Cache Warmup Application Configuration.",
+  "definitions": {
+    "cacheWarmupType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["CacheWarmup"],
+      "default": "CacheWarmup"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/cacheWarmupType",
+      "default": "CacheWarmup"
+    },
+    "entities": {
+      "title": "Entities",
+      "description": "List of entity types to warm up in cache. Use 'all' to warm up all entity types.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["all"],
+      "uniqueItems": true
+    },
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Number of entities to process in each batch.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 10,
+      "maximum": 1000
+    },
+    "consumerThreads": {
+      "title": "Consumer Threads",
+      "description": "Number of parallel threads for processing entities and warming cache.",
+      "type": "integer",
+      "default": 4,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "queueSize": {
+      "title": "Queue Size",
+      "description": "Internal queue size for entity processing pipeline.",
+      "type": "integer",
+      "default": 1000,
+      "minimum": 100,
+      "maximum": 10000
+    },
+    "force": {
+      "title": "Force Warmup",
+      "description": "Force cache warmup even if another instance is detected (use with caution).",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

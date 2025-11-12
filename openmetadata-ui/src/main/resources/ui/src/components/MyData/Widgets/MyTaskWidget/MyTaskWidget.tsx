@@ -110,7 +110,6 @@ const MyTaskWidget = ({
         sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
         title={t('label.my-task-plural')}
         widgetKey={widgetKey}
-        widgetWidth={myTaskData?.w}
         onSortChange={(key) => handleSortByClick(key as MyTaskFilter)}
         onTitleClick={() => {
           if (currentUser?.name) {
@@ -144,8 +143,8 @@ const MyTaskWidget = ({
             icon={
               <MyTaskNoDataIcon
                 data-testid="my-task-no-data-icon"
-                height={SIZE.LARGE}
-                width={SIZE.LARGE}
+                height={SIZE.MEDIUM}
+                width={SIZE.MEDIUM}
               />
             }
             title={t('label.no-tasks-yet')}

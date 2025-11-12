@@ -29,14 +29,14 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -73,17 +73,16 @@ const DomainsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
 
-      const res = await searchData(
-        '',
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_MEDIUM,
-        '',
+      const res = await searchQuery({
+        query: '',
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
         sortField,
         sortOrder,
-        SearchIndex.DOMAIN
-      );
+        searchIndex: SearchIndex.DOMAIN,
+      });
 
-      const domains = res?.data?.hits?.hits.map((hit) => hit._source);
+      const domains = res?.hits?.hits.map((hit) => hit._source);
       const sortedDomains = applySortToData(domains, selectedSortBy);
       setDomains(sortedDomains as Domain[]);
     } catch {
@@ -131,7 +130,9 @@ const DomainsWidget = ({
         actionButtonLink={ROUTES.DOMAIN}
         actionButtonText={t('label.explore-domain')}
         description={t('message.domains-no-data-message')}
-        icon={<DomainNoDataPlaceholder />}
+        icon={
+          <DomainNoDataPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+        }
         title={t('label.no-domains-yet')}
       />
     ),
@@ -148,6 +149,7 @@ const DomainsWidget = ({
                 'domain-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
               onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
@@ -231,7 +233,6 @@ const DomainsWidget = ({
         sortOptions={DOMAIN_SORT_BY_OPTIONS}
         title={t('label.domain-plural')}
         widgetKey={widgetKey}
-        widgetWidth={2}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />

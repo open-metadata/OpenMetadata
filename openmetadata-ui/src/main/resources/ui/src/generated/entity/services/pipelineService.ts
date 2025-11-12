@@ -57,6 +57,10 @@ export interface PipelineService {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -172,7 +176,7 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -183,6 +187,8 @@ export interface PipelineConnection {
  * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
+ *
+ * AWS Kinesis Firehose Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
  *
@@ -216,8 +222,10 @@ export interface PipelineConnection {
  * Azure Data Factory Connection Config
  *
  * Stitch Connection
+ *
+ * Snowplow Pipeline Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Underlying database connection. See
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
@@ -265,19 +273,26 @@ export interface ConfigClass {
     packageConnection?: S3Connection | string;
     awsConfig?:         AWSCredentials;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     */
+    messagingServiceName?: string;
+    /**
      * Airbyte API version.
      */
     apiVersion?: string;
     /**
-     * Password to connect to Airbyte.
+     * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+     * (for Airbyte Cloud)
      */
-    password?: string;
+    auth?: Authentication;
     /**
-     * Username to connect to Airbyte.
-     */
-    username?: string;
-    /**
-     * Fivetran API Secret.
+     * Fivetran API Key.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -356,6 +371,11 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
+    /**
      * Spline UI Host & Port.
      */
     uiHostPort?: string;
@@ -396,11 +416,6 @@ export interface ConfigClass {
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
     /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     */
-    messagingServiceName?: string;
-    /**
      * ID of your DBT cloud account
      */
     accountId?: string;
@@ -440,6 +455,27 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
+    /**
+     * Snowplow BDP Organization ID
+     */
+    organizationId?: string;
+    [property: string]: any;
 }
 
 /**
@@ -456,6 +492,33 @@ export interface UsernamePasswordAuthentication {
      * KafkaConnect user to authenticate to the API.
      */
     username?: string;
+}
+
+/**
+ * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+ * (for Airbyte Cloud)
+ *
+ * Username and password authentication
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface Authentication {
+    /**
+     * Password to connect to Airbyte.
+     */
+    password?: string;
+    /**
+     * Username to connect to Airbyte.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 /**
@@ -502,6 +565,15 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -934,6 +1006,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * We support username/password or client certificate authentication
  *
  * Configuration for connecting to Nifi Basic Auth.
@@ -1064,9 +1146,11 @@ export enum PipelineServiceType {
     Flink = "Flink",
     GluePipeline = "GluePipeline",
     KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssis = "SSIS",
@@ -1170,6 +1254,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -1224,9 +1312,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

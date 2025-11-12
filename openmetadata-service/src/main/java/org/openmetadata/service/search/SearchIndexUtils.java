@@ -253,7 +253,8 @@ public final class SearchIndexUtils {
           Map<String, String> nestedAggregationMetadata = new HashMap<>();
 
           String nestedAggregationSibling = nestedAggregationSiblings[j];
-          String[] parts = nestedAggregationSibling.split(":(?!:)");
+          String[] parts =
+              nestedAggregationSibling.split(Utilities.doubleQuoteRegexEscape(":(?!:)"));
           for (String part : parts) {
             if (part.contains("&")) {
               String[] subParts = part.split("&");

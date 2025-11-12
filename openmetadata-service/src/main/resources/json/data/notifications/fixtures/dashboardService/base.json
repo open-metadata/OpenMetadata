@@ -1,0 +1,28 @@
+{
+  "id": "9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+  "name": "sample-dashboard-service",
+  "displayName": "Sample Dashboard Service",
+  "fullyQualifiedName": "sample-dashboard-service",
+  "description": "Mock dashboard service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/dashboardServices/9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+  "serviceType": "Superset",
+  "connection": {
+    "config": {
+      "type": "Superset",
+      "hostPort": "http://localhost:8088"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

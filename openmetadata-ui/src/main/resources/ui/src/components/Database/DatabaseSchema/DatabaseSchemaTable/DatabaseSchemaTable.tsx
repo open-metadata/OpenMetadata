@@ -54,6 +54,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
@@ -111,6 +112,7 @@ export const DatabaseSchemaTable = ({
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const fetchDatabaseSchema = useCallback(
@@ -147,19 +149,27 @@ export const DatabaseSchemaTable = ({
   ) => {
     setIsLoading(true);
     try {
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       const response = await searchQuery({
-        query: `(name.keyword:*${searchValue}*) OR (description.keyword:*${searchValue}*)`,
+        query: '',
         pageNumber,
         pageSize: PAGE_SIZE,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                { term: { 'database.fullyQualifiedName': decodedDatabaseFQN } },
-              ],
-            },
-          },
-        },
+        queryFilter: getTermQuery(
+          { 'database.fullyQualifiedName': decodedDatabaseFQN },
+          'must',
+          undefined,
+          searchValue
+            ? {
+                wildcardShouldQueries: {
+                  'name.keyword': `*${searchValue}*`,
+                  'description.keyword': `*${searchValue}*`,
+                },
+              }
+            : undefined
+        ),
         searchIndex: SearchIndex.DATABASE_SCHEMA,
         includeDeleted: showDeletedSchemas,
         trackTotalHits: true,
@@ -177,17 +187,25 @@ export const DatabaseSchemaTable = ({
 
   const handleShowDeletedSchemas = useCallback((value: boolean) => {
     setShowDeletedSchemas(value);
-    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   }, []);
 
   const handleSchemaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
       if (searchValue) {
         searchSchema(searchValue, currentPage);
+        handlePageChange(currentPage);
       } else if (cursorType) {
         fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, fetchDatabaseSchema, searchSchema, searchValue]
   );
@@ -300,6 +318,13 @@ export const DatabaseSchemaTable = ({
 
       return;
     }
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchDatabaseSchema({ [cursorType]: cursorValue });
+
+      return;
+    }
 
     fetchDatabaseSchema();
   }, [
@@ -308,6 +333,7 @@ export const DatabaseSchemaTable = ({
     showDeletedSchemas,
     isDatabaseDeleted,
     isCustomizationPage,
+    pagingCursor,
   ]);
 
   return (
@@ -355,7 +381,7 @@ export const DatabaseSchemaTable = ({
         placeholder: t('label.search-for-type', {
           type: t('label.schema'),
         }),
-        value: searchValue,
+        searchValue: searchValue,
         typingInterval: 500,
         onSearch: onSchemaSearch,
       }}

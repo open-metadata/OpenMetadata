@@ -17,14 +17,18 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
@@ -43,6 +47,10 @@ const entities = [
   SearchIndexClass,
   DashboardDataModelClass,
   MetricClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ] as const;
 
 // Create 2 page and authenticate 1 with admin and another with normal user
@@ -69,7 +77,6 @@ entities.forEach((EntityClass) => {
 
       await user.create(apiContext);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -202,7 +209,6 @@ entities.forEach((EntityClass) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });

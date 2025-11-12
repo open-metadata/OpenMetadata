@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../../styles/variables.less');
+@import (reference) '../../../../styles/variables.less';
 
 .table-profiler-container {
   height: 100%;
@@ -56,4 +56,45 @@
   width: 18px;
   height: 18px;
   font-size: 8px;
+}
+
+.profiler-settings-drawer {
+  .ant-drawer-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0 @padding-lg @padding-lg;
+  }
+
+  .profiler-settings-loader {
+    min-height: calc(100vh - 200px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profiler-settings-drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: @padding-lg;
+    padding-right: @padding-sm;
+    padding-bottom: @padding-lg;
+
+    .delete-btn {
+      &.ant-btn-icon-only {
+        height: 32px;
+        width: 32px;
+      }
+    }
+  }
+
+  .profiler-settings-form {
+    padding-right: @padding-sm;
+  }
+}
+
+.drawer-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
 }

@@ -31,16 +31,18 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
 
 @Slf4j
 public class MSTeamsPublisher implements Destination<ChangeEvent> {
-  private final MessageDecorator<TeamsMessage> teamsMessageFormatter =
-      new MSTeamsMessageDecorator();
+  private final HandlebarsNotificationMessageEngine messageEngine;
   private final Webhook webhook;
   private final Client client;
 
@@ -53,10 +55,12 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       this.eventSubscription = eventSubscription;
       this.subscriptionDestination = subscriptionDestination;
       this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
-
-      // Build Client
-      client =
+      this.client =
           getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
+      this.messageEngine =
+          new HandlebarsNotificationMessageEngine(
+              (NotificationTemplateRepository)
+                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
     } else {
       throw new IllegalArgumentException("MsTeams Alert Invoked with Illegal Type and Settings.");
     }
@@ -65,13 +69,17 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      TeamsMessage teamsMessage =
-          teamsMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
+      // Generate message using new Handlebars pipeline
+      NotificationMessage message =
+          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
+      TeamsMessage teamsMessage = (TeamsMessage) message;
+
+      // Send using existing webhook utilities
       String eventJson = JsonUtils.pojoToJson(teamsMessage);
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), MS_TEAMS, client, event, eventJson);
+          getTargetsForWebhookAlert(webhook, subscriptionDestination, client, event, eventJson);
       targets.add(getTarget(client, webhook, eventJson));
+
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, teamsMessage);
       }
@@ -88,7 +96,9 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      TeamsMessage teamsMessage = teamsMessageFormatter.buildOutgoingTestMessage();
+      // Use legacy test message (unchanged)
+      TeamsMessage teamsMessage = new MSTeamsMessageDecorator().buildOutgoingTestMessage();
+
       deliverTestWebhookMessage(
           this, getTarget(client, webhook, JsonUtils.pojoToJson(teamsMessage)), teamsMessage);
     } catch (Exception e) {

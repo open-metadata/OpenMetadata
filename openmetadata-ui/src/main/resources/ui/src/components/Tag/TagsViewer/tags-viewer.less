@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .tag-popover-container {
   padding: 0;
@@ -42,5 +42,18 @@
       font-weight: 400;
       font-size: 12px;
     }
+  }
+}
+
+.plus-more-tag {
+  &.new-look {
+    color: @primary-color;
+    font-size: 12px;
+    font-weight: 500;
+    background-color: unset;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
   }
 }

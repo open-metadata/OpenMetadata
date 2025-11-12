@@ -123,9 +123,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
       });
-      setGlossaries((prev) =>
-        filterTreeNodeOptions([...prev, ...data], filterOptions)
-      );
+      setGlossaries(filterTreeNodeOptions(data, filterOptions));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -141,7 +139,10 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     <KeyDownStopPropagationWrapper>
       <div ref={dropdownContainerRef}>
         {isLoading ? <Loader size="small" /> : menu}
-        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+        <Space
+          className="p-sm p-b-xss p-l-xs custom-dropdown-render"
+          data-testid="custom-drop-down-menu"
+          size={8}>
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"

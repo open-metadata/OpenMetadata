@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -60,6 +61,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -76,7 +78,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -97,7 +98,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owners,followers,votes,tags,extension,domains,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
     Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
@@ -301,7 +302,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -316,7 +322,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -326,12 +337,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
-      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      entity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     resourceContext =
@@ -355,12 +371,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      entity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
@@ -406,6 +427,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
             uriInfo,
@@ -413,7 +435,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             securityContext.getUserPrincipal().getName(),
             patch,
             changeSource,
-            ifMatchHeader);
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -461,6 +484,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         securityContext,
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
             uriInfo,
@@ -468,7 +492,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             securityContext.getUserPrincipal().getName(),
             patch,
             changeSource,
-            ifMatchHeader);
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -518,7 +543,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {
             WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, entity, e.getMessage());
+                jobId,
+                securityContext,
+                entity,
+                e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
@@ -584,7 +612,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while exporting.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
@@ -635,7 +663,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -685,7 +713,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -715,7 +743,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while importing.", e);
             WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
@@ -796,7 +824,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

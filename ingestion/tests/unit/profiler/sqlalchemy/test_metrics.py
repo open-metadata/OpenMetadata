@@ -52,6 +52,7 @@ class User(Base):
     dob = Column(DateTime)  # date of birth
     tob = Column(Time)  # time of birth
     doe = Column(Date)  # date of employment
+    email = Column(String(256))  # unique email for testing allValuesUnique
 
 
 class MetricsTest(TestCase):
@@ -114,6 +115,7 @@ class MetricsTest(TestCase):
                 dob=datetime.datetime(1992, 5, 17),
                 tob=datetime.time(11, 2, 32),
                 doe=datetime.date(2020, 1, 12),
+                email="john1@example.com",
             ),
             User(
                 name="Jane",
@@ -124,6 +126,7 @@ class MetricsTest(TestCase):
                 dob=datetime.datetime(1991, 4, 4),
                 tob=datetime.time(10, 1, 31),
                 doe=datetime.date(2009, 11, 11),
+                email="jane@example.com",
             ),
             User(
                 name="John",
@@ -134,6 +137,7 @@ class MetricsTest(TestCase):
                 dob=datetime.datetime(1982, 2, 2),
                 tob=datetime.time(9, 3, 25),
                 doe=datetime.date(2012, 12, 1),
+                email="john2@example.com",
             ),
         ]
         cls.sqa_profiler_interface.session.add_all(data)
@@ -178,9 +182,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        # SQLITE STD custom implementation returns the squared STD.
-        # Only useful for testing purposes
-        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.5
 
     def test_earliest_time(self):
         """
@@ -342,7 +344,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 9
+        assert res.get(Metrics.COLUMN_COUNT.name) == 10
 
     def test_avg(self):
         """
@@ -444,8 +446,188 @@ class MetricsTest(TestCase):
         assert len(age_histogram["frequencies"]) == 1
         assert id_histogram
         assert len(id_histogram["frequencies"]) == 2
-        assert comments_histogram
-        assert len(comments_histogram["frequencies"]) == 1
+        assert comments_histogram is None
+
+    def test_cardinality_distribution(self):
+        """
+        Check cardinality distribution computation
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with string column that has repeated values (name column has "John" twice)
+        name_cardinality = res.get(User.name.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+
+        assert name_cardinality
+        assert "categories" in name_cardinality
+        assert "counts" in name_cardinality
+        assert "percentages" in name_cardinality
+        assert len(name_cardinality["categories"]) > 0
+        assert len(name_cardinality["counts"]) > 0
+        assert len(name_cardinality["percentages"]) > 0
+
+        # Check that "John" appears as a category (appears twice in test data)
+        assert "John" in name_cardinality["categories"]
+        john_index = name_cardinality["categories"].index("John")
+        assert name_cardinality["counts"][john_index] == 2
+
+        # Check that percentages sum to approximately 100%
+        assert abs(sum(name_cardinality["percentages"]) - 100.0) < 0.1
+
+    def test_cardinality_distribution_all_distinct(self):
+        """
+        Check cardinality distribution when all values are distinct
+
+        Note: The existing test data doesn't have a string column where all values are unique.
+        This test verifies the logic works correctly by checking that with non-unique data,
+        we don't get the allValuesUnique flag.
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # The name column has: ["John", "Jane", "John"] - not all distinct
+        # So it should return a normal cardinality distribution, not the allValuesUnique flag
+        name_cardinality = res.get(User.name.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+
+        assert name_cardinality is not None
+        # Should have categories (distribution), not allValuesUnique flag
+        assert name_cardinality.get("categories") is not None
+        assert name_cardinality.get("allValuesUnique") is not True
+
+    def test_cardinality_distribution_all_values_unique_flag(self):
+        """
+        Test that allValuesUnique flag is returned when count equals distinct_count
+
+        The email column has all unique values, so it should trigger the allValuesUnique flag.
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # email column has all unique values: ["john1@example.com", "jane@example.com", "john2@example.com"]
+        # Count: 3, DistinctCount: 3
+        email_cardinality = res.get(User.email.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+
+        # Should return the allValuesUnique flag
+        assert email_cardinality is not None
+        assert email_cardinality.get("allValuesUnique") is True
+        # Should not have categories/counts/percentages when allValuesUnique is True
+        assert email_cardinality.get("categories") is None
+
+    def test_cardinality_distribution_unsupported_type(self):
+        """
+        Check cardinality distribution with unsupported data types
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with integer column (not concatenable)
+        age_cardinality = res.get(User.age.name)[Metrics.CARDINALITY_DISTRIBUTION.name]
+
+        # Should return None for unsupported types
+        assert age_cardinality is None
+
+    def test_cardinality_distribution_empty_table(self):
+        """
+        Check cardinality distribution with empty table
+        """
+        # Create a new table with no data
+        class EmptyUser(Base):
+            __tablename__ = "empty_users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(256))
+
+        EmptyUser.__table__.create(bind=self.engine)
+
+        with patch.object(SQASampler, "build_table_orm", return_value=EmptyUser):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+            )
+        empty_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            self.table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+        )
+
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=empty_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Should return None for empty table
+        name_cardinality = res.get(EmptyUser.name.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+        assert name_cardinality is None
 
     def test_like_count(self):
         """
@@ -789,8 +971,8 @@ class MetricsTest(TestCase):
         Run the histogram on an empty table
         """
 
-        class EmptyUser(Base):
-            __tablename__ = "empty_users"
+        class EmptyUser2(Base):
+            __tablename__ = "empty_users2"
             id = Column(Integer, primary_key=True)
             name = Column(String(256))
             fullname = Column(String(256))
@@ -798,9 +980,9 @@ class MetricsTest(TestCase):
             comments = Column(TEXT)
             age = Column(Integer)
 
-        EmptyUser.__table__.create(bind=self.engine)
+        EmptyUser2.__table__.create(bind=self.engine)
 
-        with patch.object(SQASampler, "build_table_orm", return_value=EmptyUser):
+        with patch.object(SQASampler, "build_table_orm", return_value=EmptyUser2):
             sampler = SQASampler(
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
@@ -826,7 +1008,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(EmptyUser.age.name) is None
+        assert res.get(EmptyUser2.age.name) is None
 
     def test_not_like_count(self):
         """

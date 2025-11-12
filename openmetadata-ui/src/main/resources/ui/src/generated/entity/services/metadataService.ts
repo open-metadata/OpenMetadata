@@ -53,6 +53,10 @@ export interface MetadataService {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -185,6 +189,8 @@ export interface MetadataConnection {
  * Alation Connection Config
  *
  * Alation Sink Connection Config
+ *
+ * Collibra Connection Config
  */
 export interface Connection {
     /**
@@ -204,6 +210,8 @@ export interface Connection {
      * Host and port of the Atlas service.
      *
      * Host and port of the Alation service.
+     *
+     * Host and port of the Collibra service.
      */
     hostPort?: string;
     /**
@@ -214,6 +222,8 @@ export interface Connection {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      */
     password?: string;
     /**
@@ -234,6 +244,9 @@ export interface Connection {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      */
     username?: string;
     /**
@@ -432,6 +445,20 @@ export interface Connection {
      */
     projectName?:     string;
     datasourceLinks?: { [key: string]: string };
+    /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
 }
 
 /**
@@ -671,6 +698,10 @@ export interface AzureCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -843,6 +874,7 @@ export enum RunMode {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -900,6 +932,8 @@ export interface OpenMetadataJWTClientConfig {
  *
  * Service type.
  *
+ * Collibra service type
+ *
  * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  *
  * Type of database service such as Amundsen, Atlas...
@@ -909,6 +943,7 @@ export enum MetadataServiceType {
     AlationSink = "AlationSink",
     Amundsen = "Amundsen",
     Atlas = "Atlas",
+    Collibra = "Collibra",
     MetadataES = "MetadataES",
     OpenMetadata = "OpenMetadata",
 }
@@ -1024,6 +1059,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -1078,9 +1117,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

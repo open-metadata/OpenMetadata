@@ -22,14 +22,18 @@ import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -63,6 +67,10 @@ const entities = [
   DashboardDataModelClass,
   MetricClass,
   ChartClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ] as const;
 
 const adminUser = new UserClass();
@@ -110,7 +118,6 @@ entities.forEach((EntityClass) => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -174,8 +181,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
-      const OWNER1 = EntityDataClass.team1.data.displayName;
-      const OWNER2 = EntityDataClass.team2.data.displayName;
+      const OWNER1 = EntityDataClass.team1.responseData.displayName;
+      const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
@@ -285,7 +292,16 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (!['Store Procedure', 'Metric', 'Chart'].includes(entity.type)) {
+    if (
+      ![
+        'Store Procedure',
+        'Metric',
+        'Chart',
+        'Directory',
+        'File',
+        'Spreadsheet',
+      ].includes(entity.type)
+    ) {
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
       }) => {
@@ -605,7 +621,6 @@ entities.forEach((EntityClass) => {
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });
@@ -615,7 +630,7 @@ entities.forEach((EntityClass) => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    // get the token from localStorage
+    // get the token
     const token = await getToken(page);
 
     // create a new context with the token

@@ -19,6 +19,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataQu
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
@@ -30,7 +31,6 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeri
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -135,10 +135,7 @@ public class DataQualityWorkflow {
     try {
       searchRepository
           .getSearchClient()
-          .deleteByQuery(
-              indexName,
-              String.format(
-                  "{\"@timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
+          .deleteByRangeQuery(indexName, "@timestamp", null, startTimestamp, null, endTimestamp);
     } catch (Exception rx) {
       throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }

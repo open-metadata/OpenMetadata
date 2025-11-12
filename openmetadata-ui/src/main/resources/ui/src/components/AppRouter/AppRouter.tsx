@@ -27,6 +27,8 @@ import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 
 const AppRouter = () => {
   const location = useCustomLocation();
@@ -35,8 +37,13 @@ const AppRouter = () => {
 
   // web analytics instance
   const analytics = useAnalytics();
-  const { currentUser, isAuthenticated, isApplicationLoading } =
-    useApplicationStore();
+  const {
+    currentUser,
+    isAuthenticated,
+    isApplicationLoading,
+    isAuthenticating,
+  } = useApplicationStore();
+  const { plugins = [] } = useApplicationsProvider();
 
   useEffect(() => {
     const { pathname } = location;
@@ -77,11 +84,12 @@ const AppRouter = () => {
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
-   * If the application is loading, show the loader.
+   * isAuthenticating is true when determining auth state and false when complete.
+   * If the application is loading or authenticating, show the loader.
    * If the user is authenticated, show the AppContainer.
    * If the user is not authenticated, show the UnAuthenticatedAppRouter.
    */
-  if (isApplicationLoading) {
+  if (isApplicationLoading || isAuthenticating) {
     return <Loader fullScreen />;
   }
 
@@ -92,10 +100,10 @@ const AppRouter = () => {
       <Route element={<AccessNotAllowedPage />} path={ROUTES.UNAUTHORISED} />
       <Route
         element={
-          !isEmpty(currentUser) ? (
-            <Navigate replace to={ROUTES.HOME} />
-          ) : (
+          isEmpty(currentUser) ? (
             <SignUpPage />
+          ) : (
+            <Navigate replace to={ROUTES.HOME} />
           )
         }
         path={ROUTES.SIGNUP}
@@ -105,6 +113,22 @@ const AppRouter = () => {
        */}
       <Route element={<SamlCallback />} path={ROUTES.SAML_CALLBACK} />
       <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
+
+      {/* Render APP position plugin routes (they handle their own layouts) */}
+      {isAuthenticated &&
+        plugins?.flatMap((plugin) => {
+          const routes = plugin.getRoutes?.() || [];
+          // Filter routes with APP position
+          const appRoutes = routes.filter(
+            (route) => route.position === RoutePosition.APP
+          );
+
+          return appRoutes.map((route, idx) => (
+            <Route key={`${plugin.name}-app-${idx}`} {...route} />
+          ));
+        })}
+
+      {/* Default authenticated and unauthenticated routes */}
       {isAuthenticated ? (
         <Route element={<AppContainer />} path="*" />
       ) : (

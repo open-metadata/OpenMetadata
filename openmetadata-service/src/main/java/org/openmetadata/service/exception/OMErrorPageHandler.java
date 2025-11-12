@@ -72,25 +72,39 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
       OMWebConfiguration webConfiguration, HttpServletResponse response) {
     // Attach Response Header from OM
     // Hsts
-    webConfiguration.getHstsHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getHstsHeaderFactory() != null) {
+      webConfiguration.getHstsHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Frame Options
-    webConfiguration.getFrameOptionsHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getFrameOptionsHeaderFactory() != null) {
+      webConfiguration.getFrameOptionsHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Content Option
-    webConfiguration.getContentTypeOptionsHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getContentTypeOptionsHeaderFactory() != null) {
+      webConfiguration.getContentTypeOptionsHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Xss Protections
-    webConfiguration.getXssProtectionHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getXssProtectionHeaderFactory() != null) {
+      webConfiguration.getXssProtectionHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // CSP
-    webConfiguration.getCspHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getCspHeaderFactory() != null) {
+      webConfiguration.getCspHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Referrer Policy
-    webConfiguration.getReferrerPolicyHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getReferrerPolicyHeaderFactory() != null) {
+      webConfiguration.getReferrerPolicyHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Policy Permission
-    webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getPermissionPolicyHeaderFactory() != null) {
+      webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Cache-Control
     if (!nullOrEmpty(webConfiguration.getCacheControl())) {

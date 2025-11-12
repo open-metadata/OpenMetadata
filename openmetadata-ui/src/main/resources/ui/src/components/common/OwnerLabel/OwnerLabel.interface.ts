@@ -14,6 +14,7 @@ import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/tests/testCase';
 
 export interface OwnerLabelProps {
+  showDashPlaceholder?: boolean;
   owners?: EntityReference[];
   showLabel?: boolean;
   className?: string;
@@ -31,4 +32,5 @@ export interface OwnerLabelProps {
   avatarSize?: number;
   isAssignee?: boolean;
   onEditClick?: () => void;
+  ownerLabelClassName?: string;
 }

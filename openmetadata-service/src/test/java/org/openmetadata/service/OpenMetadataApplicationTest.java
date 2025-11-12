@@ -23,7 +23,6 @@ import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
-import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.jersey.validation.Validators;
@@ -46,7 +45,6 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.eclipse.jetty.client.HttpClient;
-import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyClientProperties;
@@ -69,6 +67,7 @@ import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
@@ -167,17 +166,15 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withUsername("username");
     sqlContainer.start();
 
-    // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
-    DataSourceFactory dataSourceFactory = new DataSourceFactory();
+    // Note: Added HikariCPDataSourceFactory since this configuration is needed by the
+    // WorkflowHandler.
+    HikariCPDataSourceFactory dataSourceFactory = new HikariCPDataSourceFactory();
     dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
     dataSourceFactory.setUser(sqlContainer.getUsername());
     dataSourceFactory.setPassword(sqlContainer.getPassword());
     dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
     config.setDataSourceFactory(dataSourceFactory);
 
-    final String flyWayMigrationScriptsLocation =
-        ResourceHelpers.resourceFilePath(
-            "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
     final String nativeMigrationScriptsLocation =
         ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
 
@@ -192,17 +189,6 @@ public abstract class OpenMetadataApplicationTest {
     } catch (Exception ex) {
       LOG.info("Extension migrations not found");
     }
-    Flyway flyway =
-        Flyway.configure()
-            .dataSource(
-                sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
-            .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + flyWayMigrationScriptsLocation)
-            .sqlMigrationPrefix("v")
-            .cleanDisabled(false)
-            .load();
-    flyway.clean();
-    flyway.migrate();
 
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     ELASTIC_SEARCH_CONTAINER.withPassword("password");
@@ -226,8 +212,6 @@ public abstract class OpenMetadataApplicationTest {
     IndexMappingLoader.init(getEsConfig());
 
     // Migration overrides
-    configOverrides.add(
-        ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
 
@@ -273,6 +257,7 @@ public abstract class OpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
+            config.getMigrationConfiguration().getFlywayPath(),
             config,
             forceMigrations);
     // Initialize search repository
@@ -282,7 +267,7 @@ public abstract class OpenMetadataApplicationTest {
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(false);
     WorkflowHandler.initialize(config);
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
@@ -479,21 +464,18 @@ public abstract class OpenMetadataApplicationTest {
 
       LOG.info("Redis container started at {}:{}", redisHost, redisPort);
 
-      // Add Redis configuration overrides
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.enabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.provider", "REDIS_STANDALONE"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.host", redisHost));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.port", redisPort.toString()));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.authType", "PASSWORD"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.password", "test-password"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.useSsl", "false"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.database", "0"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.ttlSeconds", "3600"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.connectionTimeoutSecs", "5"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.socketTimeoutSecs", "60"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.maxRetries", "3"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupEnabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupThreads", "2"));
+      // Add Redis configuration overrides for the new cache system
+      // Note: redis.url should be host:port without the redis:// scheme
+      String redisUrl = String.format("%s:%d", redisHost, redisPort);
+      configOverrides.add(ConfigOverride.config("cache.provider", "redis"));
+      configOverrides.add(ConfigOverride.config("cache.redis.url", redisUrl));
+      configOverrides.add(ConfigOverride.config("cache.redis.keyspace", "om:test"));
+      configOverrides.add(ConfigOverride.config("cache.redis.passwordRef", "test-password"));
+      configOverrides.add(ConfigOverride.config("cache.redis.connectTimeoutMs", "2000"));
+      configOverrides.add(ConfigOverride.config("cache.redis.poolSize", "16"));
+      configOverrides.add(ConfigOverride.config("cache.entityTtlSeconds", "900"));
+      configOverrides.add(ConfigOverride.config("cache.relationshipTtlSeconds", "900"));
+      configOverrides.add(ConfigOverride.config("cache.tagTtlSeconds", "900"));
 
       LOG.info("Redis configuration overrides added");
     } else {
@@ -507,12 +489,9 @@ public abstract class OpenMetadataApplicationTest {
   private static void setupRdfIfEnabled() {
     String enableRdf = System.getProperty("enableRdf");
     String rdfContainerImage = System.getProperty("rdfContainerImage");
-    enableRdf = "true";
     if ("true".equals(enableRdf)) {
       LOG.info("RDF is enabled for tests. Starting Fuseki container...");
-
       if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
-        // Using the same image as in docker-compose
         rdfContainerImage = "stain/jena-fuseki:latest";
       }
 

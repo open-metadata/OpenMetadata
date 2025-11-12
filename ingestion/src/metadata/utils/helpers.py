@@ -207,6 +207,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     :param container: container with element
     :return: element or None
     """
+    logger.debug(f"[find_in_iter] Searching for element '{element}'")
     return next((elem for elem in container if elem == element), None)
 
 
@@ -581,3 +582,14 @@ def pprint_format_object(data: Any) -> str:
     Pretty print an object in a format that is easy to read
     """
     return pprint.pformat(data, width=150)
+
+
+def can_spawn_child_process() -> bool:
+    """
+    Check if the current process can spawn a child process
+    """
+    # pylint: disable=import-outside-toplevel
+    from multiprocessing import Process
+
+    process = Process(target=lambda: None)
+    return not process.daemon

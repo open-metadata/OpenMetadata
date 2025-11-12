@@ -37,6 +37,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
 import io.jsonwebtoken.lang.Collections;
 import jakarta.json.JsonPatch;
@@ -66,6 +69,7 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -81,6 +85,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -88,6 +93,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -100,7 +106,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
-import org.openmetadata.service.util.ResultList;
 
 /*
  * Feed relationships:
@@ -208,7 +213,7 @@ public class FeedRepository {
   public abstract static class TaskWorkflow {
     protected final ThreadContext threadContext;
 
-    TaskWorkflow(ThreadContext threadContext) {
+    public TaskWorkflow(ThreadContext threadContext) {
       this.threadContext = threadContext;
     }
 
@@ -217,12 +222,130 @@ public class FeedRepository {
     @SuppressWarnings("unused")
     protected void closeTask(String user, CloseTask closeTask) {}
 
+    /**
+     * Check if this task supports multi-approval.
+     * ALL workflows support multi-approval by default after the upgrade.
+     * Only legacy workflows (deployed before multi-approval feature) return false.
+     */
+    public boolean supportsMultiApproval() {
+      // Check if this workflow was deployed with multi-approval support
+      // by checking if the task has approval threshold variables
+      return WorkflowHandler.getInstance()
+          .hasMultiApprovalSupport(threadContext.getThread().getId());
+    }
+
     protected final TaskType getTaskType() {
       return threadContext.getThread().getTask().getType();
     }
 
     protected final EntityLink getAbout() {
       return threadContext.getAbout();
+    }
+  }
+
+  /** Inner class to track changes to Thread fields and build ChangeDescription */
+  public static class ThreadUpdater {
+    private final Thread original;
+    private final Thread updated;
+    private final ChangeDescription changeDescription = new ChangeDescription();
+
+    public ThreadUpdater(Thread original, Thread updated) {
+      this.original = original;
+      this.updated = updated;
+    }
+
+    public void update() {
+      updateMessage();
+      updateResolved();
+      updateAnnouncement();
+      updateTaskAssignees();
+      updateReactions();
+    }
+
+    private void updateMessage() {
+      if (!Objects.equals(original.getMessage(), updated.getMessage())) {
+        fieldUpdated(changeDescription, "message", original.getMessage(), updated.getMessage());
+      }
+    }
+
+    private void updateResolved() {
+      if (!Objects.equals(original.getResolved(), updated.getResolved())) {
+        fieldUpdated(changeDescription, "resolved", original.getResolved(), updated.getResolved());
+      }
+    }
+
+    private void updateAnnouncement() {
+      if (original.getAnnouncement() != null && updated.getAnnouncement() != null) {
+        // Check description changes
+        if (!Objects.equals(
+            original.getAnnouncement().getDescription(),
+            updated.getAnnouncement().getDescription())) {
+          fieldUpdated(
+              changeDescription,
+              "announcement.description",
+              original.getAnnouncement().getDescription(),
+              updated.getAnnouncement().getDescription());
+        }
+
+        // Check startTime changes
+        if (!Objects.equals(
+            original.getAnnouncement().getStartTime(), updated.getAnnouncement().getStartTime())) {
+          fieldUpdated(
+              changeDescription,
+              "announcement.startTime",
+              original.getAnnouncement().getStartTime(),
+              updated.getAnnouncement().getStartTime());
+        }
+
+        // Check endTime changes
+        if (!Objects.equals(
+            original.getAnnouncement().getEndTime(), updated.getAnnouncement().getEndTime())) {
+          fieldUpdated(
+              changeDescription,
+              "announcement.endTime",
+              original.getAnnouncement().getEndTime(),
+              updated.getAnnouncement().getEndTime());
+        }
+      } else if (original.getAnnouncement() == null && updated.getAnnouncement() != null) {
+        fieldAdded(changeDescription, "announcement", updated.getAnnouncement());
+      } else if (original.getAnnouncement() != null && updated.getAnnouncement() == null) {
+        fieldDeleted(changeDescription, "announcement", original.getAnnouncement());
+      }
+    }
+
+    private void updateTaskAssignees() {
+      if (original.getTask() != null && updated.getTask() != null) {
+        List<EntityReference> origAssignees = listOrEmpty(original.getTask().getAssignees());
+        List<EntityReference> updatedAssignees = listOrEmpty(updated.getTask().getAssignees());
+
+        // Sort for consistent comparison
+        origAssignees.sort(compareEntityReference);
+        updatedAssignees.sort(compareEntityReference);
+
+        if (!origAssignees.equals(updatedAssignees)) {
+          fieldUpdated(changeDescription, "task.assignees", origAssignees, updatedAssignees);
+        }
+      }
+    }
+
+    private void updateReactions() {
+      List<Reaction> origReactions = listOrEmpty(original.getReactions());
+      List<Reaction> updatedReactions = listOrEmpty(updated.getReactions());
+
+      if (origReactions.size() != updatedReactions.size()
+          || !origReactions.containsAll(updatedReactions)) {
+        fieldUpdated(changeDescription, "reactions", origReactions, updatedReactions);
+      }
+    }
+
+    public ChangeDescription getChangeDescription() {
+      return changeDescription;
+    }
+
+    public boolean hasChanges() {
+      return !listOrEmpty(changeDescription.getFieldsAdded()).isEmpty()
+          || !listOrEmpty(changeDescription.getFieldsUpdated()).isEmpty()
+          || !listOrEmpty(changeDescription.getFieldsDeleted()).isEmpty();
     }
   }
 
@@ -384,10 +507,39 @@ public class FeedRepository {
     EntityInterface aboutEntity = threadContext.getAboutEntity();
     String origJson = JsonUtils.pojoToJson(aboutEntity);
     EntityInterface updatedEntity = taskWorkflow.performTask(user, resolveTask);
+
+    // For tasks that support multi-approval, check if the task is actually completed
+    if (taskWorkflow.supportsMultiApproval()) {
+      // Check if the workflow task is still open
+      UUID taskId = threadContext.getThread().getId();
+      boolean isTaskStillOpen = WorkflowHandler.getInstance().isTaskStillOpen(taskId);
+
+      if (isTaskStillOpen) {
+        // Task is still open, waiting for more approvals
+        // Don't close the task or apply patches yet
+        return;
+      }
+    }
+
+    // Task is completed, apply the changes
     String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
     EntityRepository<?> repository = threadContext.getEntityRepository();
     repository.patch(null, aboutEntity.getId(), user, patch);
+    if (!origJson.equals(updatedEntityJson)) {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityId(aboutEntity.getId())
+              .withEntityType(threadContext.getAbout().getEntityType())
+              .withEntityFullyQualifiedName(aboutEntity.getFullyQualifiedName())
+              .withUserName(user)
+              .withTimestamp(System.currentTimeMillis())
+              .withEntity(updatedEntity);
+
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+    }
 
     // Update the attributes
     threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
@@ -878,6 +1030,11 @@ public class FeedRepository {
     if (updated.getAnnouncement() != null) {
       validateAnnouncement(updated);
     }
+
+    // Compute change description using ThreadUpdater
+    ThreadUpdater threadUpdater = new ThreadUpdater(original, updated);
+    threadUpdater.update();
+    updated.setChangeDescription(threadUpdater.getChangeDescription());
 
     // Update the attributes
     EventType change = patchUpdate(original, updated) ? THREAD_UPDATED : ENTITY_NO_CHANGE;

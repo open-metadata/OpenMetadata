@@ -24,13 +24,13 @@ import { EntityType } from '../../../enums/entity.enum';
 import { TagSource } from '../../../generated/entity/data/container';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
+import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { StatusClass } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -238,8 +238,8 @@ const ChangeParentHierarchy = ({
                   <StatusBadge
                     className="p-x-xs p-y-xss"
                     dataTestId=""
-                    label={Status.InReview}
-                    status={StatusClass[Status.InReview]}
+                    label={EntityStatus.InReview}
+                    status={EntityStatusClass[EntityStatus.InReview]}
                   />
                 </span>
               </span>

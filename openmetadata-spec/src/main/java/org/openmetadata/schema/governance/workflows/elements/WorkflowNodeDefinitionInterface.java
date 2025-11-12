@@ -8,7 +8,10 @@ import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
@@ -24,6 +27,11 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = SetEntityCertificationTaskDefinition.class,
       name = "setEntityCertificationTask"),
+  @JsonSubTypes.Type(
+      value = SetEntityAttributeTaskDefinition.class,
+      name = "setEntityAttributeTask"),
+  @JsonSubTypes.Type(value = RollbackEntityTaskDefinition.class, name = "rollbackEntityTask"),
+  @JsonSubTypes.Type(value = DataCompletenessTaskDefinition.class, name = "dataCompletenessTask"),
   @JsonSubTypes.Type(value = StartEventDefinition.class, name = "startEvent"),
   @JsonSubTypes.Type(value = EndEventDefinition.class, name = "endEvent"),
   @JsonSubTypes.Type(

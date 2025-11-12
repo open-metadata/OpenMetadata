@@ -14,7 +14,6 @@ import { Divider, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
-import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -51,13 +50,12 @@ import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVer
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
@@ -75,8 +73,7 @@ const IncidentManagerPageHeader = ({
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn } = useRequiredParams<{ fqn: string }>();
-  const decodedFqn = getDecodedFqn(fqn);
+  const { fqn: decodedFqn } = useRequiredParams<{ fqn: string }>();
   const {
     setActiveThread,
     entityThread,
@@ -108,7 +105,7 @@ const IncidentManagerPageHeader = ({
     [testCaseData]
   );
 
-  const handleSeverityUpdate = async (severity: Severities) => {
+  const handleSeverityUpdate = async (severity?: Severities) => {
     if (isUndefined(testCaseStatusData)) {
       return;
     }
@@ -353,16 +350,12 @@ const IncidentManagerPageHeader = ({
             <Link
               className="font-medium flex-center gap-2"
               data-testid="table-name"
-              to={{
-                pathname: getEntityDetailsPath(
-                  EntityType.TABLE,
-                  tableFqn,
-                  EntityTabs.PROFILER
-                ),
-                search: QueryString.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
               {getNameFromFQN(tableFqn)}
               <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
