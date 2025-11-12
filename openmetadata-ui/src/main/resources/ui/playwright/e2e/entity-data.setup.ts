@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,29 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
+import { test as setup } from '@playwright/test';
+import { EntityDataClass } from '../support/entity/EntityDataClass';
+import { performAdminLogin } from '../utils/admin';
 
-.lineage-control-buttons {
-  position: absolute;
-  right: 20px;
-  top: 12px;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border-radius: 10px;
-  z-index: 1000;
-  border: 1px solid @border-color;
-  overflow: hidden;
+setup('create entity data prerequisites', async ({ browser }) => {
+  setup.setTimeout(300 * 1000);
 
-  .lineage-button {
-    width: 44px;
-    height: 44px;
-    padding: 8px 12px;
+  const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    &.active,
-    &:hover {
-      background-color: @blue-5;
-      color: @primary-color;
-    }
+  try {
+    await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
+    EntityDataClass.saveResponseData();
+  } finally {
+    await afterAction();
   }
-}
+});

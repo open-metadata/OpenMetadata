@@ -14,6 +14,7 @@
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -80,6 +81,18 @@ export const getFileDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: lineageTab,
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={i18n.t('label.contract')}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

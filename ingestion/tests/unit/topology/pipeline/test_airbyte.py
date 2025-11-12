@@ -52,12 +52,23 @@ mock_file_path = (
 with open(mock_file_path, encoding=UTF_8) as file:
     mock_data: dict = json.load(file)
 
+mock_cloud_file_path = (
+    Path(__file__).parent.parent.parent
+    / "resources/datasets/airbyte_cloud_dataset.json"
+)
+with open(mock_cloud_file_path, encoding=UTF_8) as file:
+    mock_cloud_data: dict = json.load(file)
+
 mock_airbyte_config = {
     "source": {
         "type": "airbyte",
         "serviceName": "airbyte_source",
         "serviceConnection": {
-            "config": {"type": "Airbyte", "hostPort": "http://localhost:1234"}
+            "config": {
+                "type": "Airbyte",
+                "hostPort": "http://localhost:1234",
+                "auth": {"username": "airbyte", "password": "airbyte"},
+            }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
@@ -253,6 +264,7 @@ class AirbyteUnitTest(TestCase):
         self.client.list_jobs.return_value = mock_data.get("jobs")
         self.client.list_workspaces.return_value = mock_data.get("workspace")
         self.client.list_connections.return_value = mock_data.get("connection")
+        self.airbyte.airbyte_cloud = False
 
     def test_pipeline_list(self):
         assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS
@@ -338,3 +350,175 @@ class AirbyteUnitTest(TestCase):
             # Compare just the UUID string value from both sides
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+
+# ================= Airbyte Cloud Test Setup =================
+
+mock_airbyte_cloud_config = {
+    "source": {
+        "type": "airbyte",
+        "serviceName": "airbyte_cloud_source",
+        "serviceConnection": {
+            "config": {
+                "type": "Airbyte",
+                "hostPort": "https://api.airbyte.com",
+                "auth": {
+                    "clientId": "test_client_id",
+                    "clientSecret": "test_client_secret",
+                },
+            }
+        },
+        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        }
+    },
+}
+
+EXPECTED_CLOUD_AIRBYTE_DETAILS = AirbytePipelineDetails(
+    workspace=mock_cloud_data["workspace"][0],
+    connection=mock_cloud_data["connection"][0],
+)
+
+MOCK_CLOUD_CONNECTION_URI_PATH = (
+    "https://cloud.airbyte.com/workspaces/af5680ec-2687-4fe0-bd55-5ad5f020a603/"
+    "connections/a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f"
+)
+
+EXPECTED_CLOUD_PIPELINE_STATUS = [
+    OMetaPipelineStatus(
+        pipeline_fqn="airbyte_cloud_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+        pipeline_status=PipelineStatus(
+            executionStatus=StatusType.Pending.value,
+            taskStatus=[
+                TaskStatus(
+                    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                    executionStatus=StatusType.Pending.value,
+                    startTime=1655469294000,
+                    endTime=None,
+                    logLink=f"{MOCK_CLOUD_CONNECTION_URI_PATH}/timeline",
+                )
+            ],
+            timestamp=1655469294000,
+        ),
+    ),
+    OMetaPipelineStatus(
+        pipeline_fqn="airbyte_cloud_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+        pipeline_status=PipelineStatus(
+            executionStatus=StatusType.Successful.value,
+            taskStatus=[
+                TaskStatus(
+                    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                    executionStatus=StatusType.Successful.value,
+                    startTime=1655387114000,
+                    endTime=1655387254000,
+                    logLink=f"{MOCK_CLOUD_CONNECTION_URI_PATH}/timeline",
+                )
+            ],
+            timestamp=1655387114000,
+        ),
+    ),
+]
+
+EXPECTED_CLOUD_CREATED_PIPELINES = CreatePipelineRequest(
+    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    displayName="MSSQL <> Postgres",
+    sourceUrl=MOCK_CLOUD_CONNECTION_URI_PATH,
+    tasks=[
+        Task(
+            name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            displayName="MSSQL <> Postgres",
+            sourceUrl=f"{MOCK_CLOUD_CONNECTION_URI_PATH}/status",
+        )
+    ],
+    service=FullyQualifiedEntityName("airbyte_cloud_source"),
+)
+
+MOCK_CLOUD_PIPELINE_SERVICE = PipelineService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="airbyte_cloud_source",
+    fullyQualifiedName=FullyQualifiedEntityName("airbyte_cloud_source"),
+    connection=PipelineConnection(),
+    serviceType=PipelineServiceType.Airbyte,
+)
+
+MOCK_CLOUD_PIPELINE = Pipeline(
+    id="2aaa012e-099a-11ed-861d-0242ac120002",
+    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    fullyQualifiedName="airbyte_cloud_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    displayName="MSSQL <> Postgres",
+    sourceUrl=MOCK_CLOUD_CONNECTION_URI_PATH,
+    tasks=[
+        Task(
+            name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            displayName="MSSQL <> Postgres",
+            sourceUrl=f"{MOCK_CLOUD_CONNECTION_URI_PATH}/status",
+        )
+    ],
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    ),
+)
+
+
+class AirbyteCloudUnitTest(TestCase):
+    """Test class for Airbyte Cloud source module."""
+
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
+    def __init__(self, methodName, airbyte_cloud_client, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
+
+        config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_cloud_config)
+        self.airbyte = AirbyteSource.create(
+            mock_airbyte_cloud_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_CLOUD_PIPELINE.name.root
+        self.airbyte.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
+        self.client = airbyte_cloud_client.return_value
+        self.client.__class__ = AirbyteCloudClient
+        self.client.list_jobs.return_value = mock_cloud_data.get("jobs")
+        self.client.list_workspaces.return_value = mock_cloud_data.get("workspace")
+        self.client.list_connections.return_value = mock_cloud_data.get("connection")
+        self.airbyte.airbyte_cloud = True
+        self.airbyte.source_url_prefix = "https://cloud.airbyte.com"
+
+    def test_pipeline_list(self):
+        assert (
+            list(self.airbyte.get_pipelines_list())[0] == EXPECTED_CLOUD_AIRBYTE_DETAILS
+        )
+
+    def test_pipeline_name(self):
+        assert self.airbyte.get_pipeline_name(
+            EXPECTED_CLOUD_AIRBYTE_DETAILS
+        ) == mock_cloud_data.get("connection")[0].get("name")
+
+    def test_pipelines(self):
+        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_CLOUD_AIRBYTE_DETAILS))[
+            0
+        ].right
+        assert pipeline == EXPECTED_CLOUD_CREATED_PIPELINES
+
+    def test_pipeline_status(self):
+        status = [
+            either.right
+            for either in self.airbyte.yield_pipeline_status(
+                EXPECTED_CLOUD_AIRBYTE_DETAILS
+            )
+        ]
+        assert status == EXPECTED_CLOUD_PIPELINE_STATUS

@@ -1175,9 +1175,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (updatedBy != null) {
       entity.setUpdatedBy(updatedBy);
     }
-    if (impersonatedBy != null) {
-      entity.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to clear it when null (regular user operations)
+    entity.setImpersonatedBy(impersonatedBy);
 
     return createNewEntity(entity);
   }
@@ -1444,9 +1443,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
-      if (impersonatedBy != null) {
-        updated.setImpersonatedBy(impersonatedBy);
-      }
+      // Always set impersonatedBy to clear it when null (regular user operations)
+      updated.setImpersonatedBy(impersonatedBy);
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
@@ -1463,9 +1461,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
-      if (impersonatedBy != null) {
-        updated.setImpersonatedBy(impersonatedBy);
-      }
+      // Always set impersonatedBy to clear it when null (regular user operations)
+      updated.setImpersonatedBy(impersonatedBy);
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
@@ -1604,9 +1601,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
-    if (impersonatedBy != null) {
-      updated.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to clear it when null (regular user operations)
+    updated.setImpersonatedBy(impersonatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1637,9 +1633,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
-    if (impersonatedBy != null) {
-      updated.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to clear it when null (regular user operations)
+    updated.setImpersonatedBy(impersonatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1809,10 +1804,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setDomains(validatedDomains);
     restorePatchAttributes(original, updated);
 
-    // Set impersonatedBy after all attribute restoration to prevent it from being overwritten
-    if (impersonatedBy != null) {
-      updated.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to the passed value (which can be null)
+    // This ensures that when regular users make changes (impersonatedBy=null),
+    // any existing impersonatedBy value is cleared, preventing it from persisting
+    updated.setImpersonatedBy(impersonatedBy);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;

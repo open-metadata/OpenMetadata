@@ -54,10 +54,13 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -67,6 +70,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
+import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RdfTestUtils;
@@ -604,5 +608,111 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // Verify database no longer exists in RDF after hard delete
     RdfTestUtils.verifyEntityNotInRdf(database.getFullyQualifiedName());
+  }
+
+  @Test
+  void testFieldFetchersForServiceAndName(TestInfo test) throws IOException {
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    String timestamp = String.valueOf(System.currentTimeMillis());
+
+    CreateDatabaseService createDatabaseService =
+        new CreateDatabaseService()
+            .withName("fieldFetcherTestService_" + timestamp)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService databaseService =
+        databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+
+    String dbName1 = "fieldFetcherTestDb1_" + timestamp;
+    String dbName2 = "fieldFetcherTestDb2_" + timestamp;
+
+    CreateDatabase createDb1 =
+        new CreateDatabase().withName(dbName1).withService(databaseService.getFullyQualifiedName());
+    CreateDatabase createDb2 =
+        new CreateDatabase().withName(dbName2).withService(databaseService.getFullyQualifiedName());
+
+    Database db1 = createAndCheckEntity(createDb1, ADMIN_AUTH_HEADERS);
+    Database db2 = createAndCheckEntity(createDb2, ADMIN_AUTH_HEADERS);
+
+    try {
+      ResultList<Database> dbListWithService =
+          listEntities(
+              Map.of("fields", "service", "service", databaseService.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS);
+
+      Database foundDb1 =
+          dbListWithService.getData().stream()
+              .filter(db -> db.getId().equals(db1.getId()))
+              .findFirst()
+              .orElse(null);
+      Database foundDb2 =
+          dbListWithService.getData().stream()
+              .filter(db -> db.getId().equals(db2.getId()))
+              .findFirst()
+              .orElse(null);
+
+      assertNotNull(foundDb1, "Database 1 should be found in list");
+      assertNotNull(foundDb2, "Database 2 should be found in list");
+
+      assertNotNull(foundDb1.getName(), "Database name should always be present in list response");
+      assertEquals(dbName1, foundDb1.getName(), "Database 1 name should match");
+
+      assertNotNull(foundDb2.getName(), "Database name should always be present in list response");
+      assertEquals(dbName2, foundDb2.getName(), "Database 2 name should match");
+
+      assertNotNull(
+          foundDb1.getService(),
+          "Service should be fetched via fieldFetcher when 'service' field is requested");
+      assertEquals(
+          databaseService.getName(),
+          foundDb1.getService().getName(),
+          "Database 1 service name should be correct via field fetcher");
+      assertEquals(
+          databaseService.getId(),
+          foundDb1.getService().getId(),
+          "Database 1 service ID should be correct via field fetcher");
+
+      assertNotNull(
+          foundDb2.getService(),
+          "Service should be fetched via fieldFetcher when 'service' field is requested");
+      assertEquals(
+          databaseService.getName(),
+          foundDb2.getService().getName(),
+          "Database 2 service name should be correct via field fetcher");
+      assertEquals(
+          databaseService.getId(),
+          foundDb2.getService().getId(),
+          "Database 2 service ID should be correct via field fetcher");
+
+      ResultList<Database> dbListWithoutService =
+          listEntities(
+              Map.of("fields", "", "service", databaseService.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS);
+
+      Database foundDb1WithoutService =
+          dbListWithoutService.getData().stream()
+              .filter(db -> db.getId().equals(db1.getId()))
+              .findFirst()
+              .orElse(null);
+
+      assertNotNull(foundDb1WithoutService, "Database should be found even without service field");
+      assertNotNull(
+          foundDb1WithoutService.getName(),
+          "Database name should always be present regardless of fields");
+      assertEquals(
+          dbName1,
+          foundDb1WithoutService.getName(),
+          "Database name should match even without service field");
+
+      assertNotNull(
+          foundDb1WithoutService.getService(),
+          "Service is always fetched as default field even when not in fields param");
+
+    } finally {
+      deleteEntity(db1.getId(), ADMIN_AUTH_HEADERS);
+      deleteEntity(db2.getId(), ADMIN_AUTH_HEADERS);
+      databaseServiceResourceTest.deleteEntity(
+          databaseService.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
   }
 }

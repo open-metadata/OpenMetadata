@@ -1,0 +1,30 @@
+{
+    "workspace": [
+        {
+            "workspaceId": "af5680ec-2687-4fe0-bd55-5ad5f020a603",
+            "name": "af5680ec-2687-4fe0-bd55-5ad5f020a603",
+            "dataResidency": "US"
+        }
+    ],
+    "connection": [
+        {
+            "connectionId": "a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            "name": "MSSQL <> Postgres",
+            "sourceId": "ed3783a9-8479-4be0-80aa-2075ccc6e310",
+            "destinationId": "4181764f-3ed8-44cb-9b8e-fefff7fb5ea9",
+            "status": "active"
+        }
+    ],
+    "jobs": [
+        {
+            "status": "pending",
+            "startTime": "2022-06-17T12:34:54Z",
+            "lastUpdatedAt": null
+        },
+        {
+            "status": "succeeded",
+            "startTime": "2022-06-16T13:45:14Z",
+            "lastUpdatedAt": "2022-06-16T13:47:34Z"
+        }
+    ]
+}
