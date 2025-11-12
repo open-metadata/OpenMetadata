@@ -192,6 +192,23 @@ jest.mock('../../../common/StatusBadge/StatusBadgeV2.component', () => {
   ));
 });
 
+// Mock SearchBarComponent
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ onSearch, placeholder, searchValue }) => (
+      <div data-testid="search-bar">
+        <input
+          data-testid="search-input"
+          placeholder={placeholder}
+          value={searchValue}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
+    )),
+}));
+
 // Mock API functions
 jest.mock('../../../../rest/testAPI', () => ({
   listTestCases: jest.fn(),
