@@ -189,6 +189,7 @@ const EntityFooter = ({
           'children-info-dropdown-label',
           isChildrenListExpanded ? 'expanded' : 'collapsed'
         )}
+        data-testid="children-info-dropdown-btn"
         variant="outlined"
         onClick={handleClickColumnInfoDropdown}>
         {childrenInfoDropdownLabel}
