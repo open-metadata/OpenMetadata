@@ -144,9 +144,9 @@ const ExpandCollapseHandles = memo(
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
-  const [isColumnsListExpanded, setIsColumnsListExpanded] = useState(false);
+  const [isChildrenListExpanded, setIsChildrenListExpanded] = useState(false);
   const toggleColumnsList = useCallback(() => {
-    setIsColumnsListExpanded((prev) => !prev);
+    setIsChildrenListExpanded((prev) => !prev);
   }, []);
 
   const {
@@ -194,7 +194,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     showDqTracing: showDqTracing ?? false,
     isTraced,
     isBaseNode: isRootNode,
-    isColumnsListExpanded,
+    isChildrenListExpanded,
   });
 
   const onExpand = useCallback(
@@ -219,7 +219,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     return (
       <>
         <LineageNodeLabelV1
-          isColumnsListExpanded={isColumnsListExpanded}
+          isChildrenListExpanded={isChildrenListExpanded}
           node={node}
           toggleColumnsList={toggleColumnsList}
         />
@@ -235,7 +235,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     isSelected,
     isEditMode,
     isRootNode,
-    isColumnsListExpanded,
+    isChildrenListExpanded,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
@@ -288,7 +288,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
         <NodeChildren
-          isColumnsListExpanded={isColumnsListExpanded}
+          isChildrenListExpanded={isChildrenListExpanded}
           isConnectable={isConnectable}
           node={node}
         />

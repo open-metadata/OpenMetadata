@@ -35,7 +35,7 @@ import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWid
 
 interface LineageNodeLabelProps {
   node: SourceType;
-  isColumnsListExpanded?: boolean;
+  isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
 }
 
@@ -158,7 +158,7 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
 };
 
 const EntityFooter = ({
-  isColumnsListExpanded,
+  isChildrenListExpanded,
   node,
   toggleColumnsList,
 }: LineageNodeLabelPropsExtended) => {
@@ -186,8 +186,8 @@ const EntityFooter = ({
     <div className="entity-footer">
       <Button
         className={classNames(
-          'columns-info-dropdown-label',
-          isColumnsListExpanded ? 'expanded' : 'collapsed'
+          'children-info-dropdown-label',
+          isChildrenListExpanded ? 'expanded' : 'collapsed'
         )}
         variant="outlined"
         onClick={handleClickColumnInfoDropdown}>
@@ -200,14 +200,14 @@ const EntityFooter = ({
 
 const LineageNodeLabelV1 = ({
   node,
-  isColumnsListExpanded,
+  isChildrenListExpanded,
   toggleColumnsList,
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
       <EntityLabel node={node} />
       <EntityFooter
-        isColumnsListExpanded={isColumnsListExpanded}
+        isChildrenListExpanded={isChildrenListExpanded}
         node={node}
         toggleColumnsList={toggleColumnsList}
       />
