@@ -240,16 +240,28 @@ jest.mock('../../hooks/useFqn', () => ({
   })),
 }));
 
-jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn().mockImplementation(() => ({
-    paging: { total: 10, pageSize: 10, currentPage: 1 },
+jest.mock('../../hooks/paging/usePaging', () => {
+  const mockPaging = { total: 10 };
+  const mockPagingCursor = {
+    cursorType: undefined,
+    cursorValue: undefined,
+    currentPage: '1',
     pageSize: 10,
-    currentPage: 1,
-    pagingCursor: { before: null, after: null },
-    handlePageChange: jest.fn(),
-    handlePagingChange: jest.fn(),
-  })),
-}));
+  };
+
+  return {
+    usePaging: jest.fn().mockImplementation(() => ({
+      paging: mockPaging,
+      pageSize: 10,
+      currentPage: 1,
+      pagingCursor: mockPagingCursor,
+      showPagination: true,
+      handlePageChange: jest.fn(),
+      handlePagingChange: jest.fn(),
+      handlePageSizeChange: jest.fn(),
+    })),
+  };
+});
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
