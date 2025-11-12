@@ -68,6 +68,7 @@ const mockNodeDataProps2 = {
 };
 
 const onMockColumnClick = jest.fn();
+const loadChildNodesHandlerMock = jest.fn();
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
@@ -89,6 +90,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     activeLayer: [LineageLayer.ColumnLevelLineage],
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
+    loadChildNodesHandler: loadChildNodesHandlerMock,
   })),
 }));
 
@@ -175,7 +177,7 @@ describe('CustomNodeV1', () => {
     expect(screen.getByTestId('lineage-expand-btn')).toBeInTheDocument();
   });
 
-  it.only('should expand all when expand all button is clicked', () => {
+  it('should expand all when expand all button is clicked', () => {
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
@@ -186,6 +188,22 @@ describe('CustomNodeV1', () => {
 
     fireEvent.click(expandBtn);
 
-    screen.debug(undefined, Infinity);
+    expect(loadChildNodesHandlerMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'Downstream',
+      1
+    );
+
+    fireEvent.mouseOver(expandBtn);
+
+    const expandAllBtn = screen.getByTestId('lineage-expand-all-btn');
+
+    fireEvent.click(expandAllBtn);
+
+    expect(loadChildNodesHandlerMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'Downstream',
+      50
+    );
   });
 });
