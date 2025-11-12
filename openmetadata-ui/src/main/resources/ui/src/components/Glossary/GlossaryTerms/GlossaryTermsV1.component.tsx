@@ -276,7 +276,7 @@ const GlossaryTermsV1 = ({
                     !isVersionView &&
                     (permissions.EditAll || permissions.EditCustomFields)
                   }
-                  hasPermission={permissions.ViewAll}
+                  hasPermission={permissions.ViewCustomFields}
                   isVersionView={isVersionView}
                 />
               ),

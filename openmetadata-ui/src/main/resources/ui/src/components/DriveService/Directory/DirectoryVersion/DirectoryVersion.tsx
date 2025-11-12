@@ -233,7 +233,7 @@ const DirectoryVersion = ({
             isVersionView
             entityType={EntityType.DIRECTORY}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

@@ -541,7 +541,7 @@ export const getDomainDetailTabs = ({
                   domainPermission,
                   Operation.EditCustomFields
                 )}
-                hasPermission={domainPermission.ViewAll}
+                hasPermission={domainPermission.ViewCustomFields}
               />
             ),
           },

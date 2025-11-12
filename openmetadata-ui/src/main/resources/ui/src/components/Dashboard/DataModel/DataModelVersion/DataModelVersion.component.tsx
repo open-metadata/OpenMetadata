@@ -199,7 +199,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

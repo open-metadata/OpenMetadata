@@ -225,7 +225,7 @@ export const getDataProductDetailTabs = ({
               Operation.EditCustomFields
             ) && !isVersionsView
           }
-          hasPermission={dataProductPermission.ViewAll}
+          hasPermission={dataProductPermission.ViewCustomFields}
           isVersionView={isVersionsView}
         />
       ),

@@ -38,6 +38,7 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   showTaskHandler?: boolean;
   showDataProductContainer?: boolean;
   afterSlot?: React.ReactNode;
+  viewCustomPropertiesPermission?: boolean;
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
@@ -61,6 +62,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editCustomAttributePermission,
   editDataProductPermission,
   onDataProductUpdate,
+  viewCustomPropertiesPermission,
 }: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
@@ -124,7 +126,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             isRenderedInRightPanel
             entityType={entityType as T}
             hasEditAccess={Boolean(editCustomAttributePermission)}
-            hasPermission={Boolean(viewAllPermission)}
+            hasPermission={Boolean(viewCustomPropertiesPermission)}
             maxDataCap={5}
           />
         )}

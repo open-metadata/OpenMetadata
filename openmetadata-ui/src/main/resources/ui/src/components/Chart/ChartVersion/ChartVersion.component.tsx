@@ -185,7 +185,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
             isVersionView
             entityType={EntityType.CHART}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

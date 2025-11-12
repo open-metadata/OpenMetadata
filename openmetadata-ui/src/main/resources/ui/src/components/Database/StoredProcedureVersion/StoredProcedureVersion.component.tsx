@@ -164,7 +164,7 @@ const StoredProcedureVersion = ({
             isVersionView
             entityType={EntityType.STORED_PROCEDURE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

@@ -209,7 +209,7 @@ const WorksheetVersion = ({
             isVersionView
             entityType={EntityType.WORKSHEET}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

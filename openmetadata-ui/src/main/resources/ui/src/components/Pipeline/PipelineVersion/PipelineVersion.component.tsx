@@ -249,7 +249,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             isVersionView
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

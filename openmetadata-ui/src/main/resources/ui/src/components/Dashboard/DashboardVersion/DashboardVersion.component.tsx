@@ -241,7 +241,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

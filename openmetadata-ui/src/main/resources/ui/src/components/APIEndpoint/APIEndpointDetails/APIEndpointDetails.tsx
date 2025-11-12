@@ -183,6 +183,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -194,6 +195,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           apiEndpointPermissions.EditLineage) &&
         !deleted,
       viewAllPermission: apiEndpointPermissions.ViewAll,
+      viewCustomPropertiesPermission: apiEndpointPermissions.ViewCustomFields,
     }),
     [apiEndpointPermissions, deleted]
   );
@@ -214,6 +216,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editLineagePermission,
     });
 
@@ -231,6 +234,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     handleFeedCount,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editLineagePermission,
     customizedPage,
   ]);

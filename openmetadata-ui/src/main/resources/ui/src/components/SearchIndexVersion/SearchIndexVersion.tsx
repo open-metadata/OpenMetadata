@@ -193,7 +193,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
             isVersionView
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

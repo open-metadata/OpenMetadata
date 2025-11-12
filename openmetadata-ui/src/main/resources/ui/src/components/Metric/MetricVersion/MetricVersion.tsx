@@ -170,7 +170,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
             isVersionView
             entityType={EntityType.METRIC}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

@@ -276,6 +276,7 @@ function DirectoryDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -305,6 +306,7 @@ function DirectoryDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: directoryPermissions.ViewAll,
+      viewCustomPropertiesPermission: directoryPermissions.ViewCustomFields,
     }),
     [directoryPermissions, deleted]
   );
@@ -344,7 +346,7 @@ function DirectoryDetails({
         <CustomPropertyTable<EntityType.DIRECTORY>
           entityType={EntityType.DIRECTORY}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -379,6 +381,7 @@ function DirectoryDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

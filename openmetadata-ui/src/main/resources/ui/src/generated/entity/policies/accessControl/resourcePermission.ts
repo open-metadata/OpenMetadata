@@ -120,6 +120,7 @@ export enum Operation {
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",
+    ViewCustomFields = "ViewCustomFields",
 }
 
 /**

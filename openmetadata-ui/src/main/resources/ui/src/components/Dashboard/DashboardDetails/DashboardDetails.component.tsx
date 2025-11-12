@@ -222,6 +222,7 @@ const DashboardDetails = ({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -236,6 +237,7 @@ const DashboardDetails = ({
           PermissionOperation.EditLineage
         ) && !deleted,
       viewAllPermission: dashboardPermissions.ViewAll,
+      viewCustomPropertiesPermission: dashboardPermissions.ViewCustomFields,
     }),
     [dashboardPermissions, deleted]
   );
@@ -247,6 +249,7 @@ const DashboardDetails = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       dashboardDetails,
       deleted: deleted ?? false,
       handleFeedCount,

@@ -318,7 +318,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
             isVersionView
             entityType={EntityType.TABLE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

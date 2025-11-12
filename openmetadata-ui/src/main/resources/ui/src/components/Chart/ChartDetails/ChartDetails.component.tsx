@@ -197,6 +197,7 @@ const ChartDetails = ({
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editAllPermission: chartPermissions.EditAll && !deleted,
@@ -206,6 +207,7 @@ const ChartDetails = ({
         (chartPermissions.EditAll || chartPermissions.EditCustomFields) &&
         !deleted,
       viewAllPermission: chartPermissions.ViewAll,
+      viewCustomPropertiesPermission: chartPermissions.ViewCustomFields,
     }),
     [chartPermissions, deleted]
   );
@@ -217,6 +219,7 @@ const ChartDetails = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       chartDetails,
       deleted: deleted ?? false,
       handleFeedCount,

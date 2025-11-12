@@ -263,6 +263,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     editLineagePermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -292,6 +293,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         Operation.ViewSampleData
       ),
       viewAllPermission: topicPermissions.ViewAll,
+      viewCustomPropertiesPermission: topicPermissions.ViewCustomFields,
     }),
     [topicPermissions, deleted]
   );
@@ -354,7 +356,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <CustomPropertyTable<EntityType.TOPIC>
           entityType={EntityType.TOPIC}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       viewSampleDataPermission,
@@ -391,6 +393,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     editAllPermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

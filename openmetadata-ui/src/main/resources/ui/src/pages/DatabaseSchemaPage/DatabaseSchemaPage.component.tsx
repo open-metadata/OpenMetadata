@@ -431,7 +431,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     fetchTableCount();
   }, [filters.showDeletedTables]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
     () => ({
       editCustomAttributePermission:
         getPrioritizedEditPermission(
@@ -439,6 +443,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
+      viewCustomPropertiesPermission: databaseSchemaPermission.ViewCustomFields,
     }),
 
     [databaseSchemaPermission, databaseSchema]
@@ -483,6 +488,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       activeTab,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       databaseSchemaPermission,
       storedProcedureCount,
       getEntityFeedCount,
@@ -504,6 +510,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     editCustomAttributePermission,
     tableCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     storedProcedureCount,
     databaseSchemaPermission,
     handleExtensionUpdate,

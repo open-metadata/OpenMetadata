@@ -95,6 +95,10 @@ function DatabaseVersionPage() {
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
   );
+  const viewCustomPropertiesPermission = useMemo(
+    () => servicePermissions.ViewCustomFields,
+    [servicePermissions]
+  );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
@@ -252,7 +256,7 @@ function DatabaseVersionPage() {
             isVersionView
             entityType={EntityType.DATABASE}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },

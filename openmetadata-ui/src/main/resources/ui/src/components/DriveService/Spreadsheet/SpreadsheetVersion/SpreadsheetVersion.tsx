@@ -228,7 +228,7 @@ const SpreadsheetVersion = ({
             isVersionView
             entityType={EntityType.SPREADSHEET}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

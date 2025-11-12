@@ -262,6 +262,7 @@ function SpreadsheetDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -291,6 +292,7 @@ function SpreadsheetDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: spreadsheetPermissions.ViewAll,
+      viewCustomPropertiesPermission: spreadsheetPermissions.ViewCustomFields,
     }),
     [spreadsheetPermissions, deleted]
   );
@@ -330,7 +332,7 @@ function SpreadsheetDetails({
         <CustomPropertyTable<EntityType.SPREADSHEET>
           entityType={EntityType.SPREADSHEET}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -364,6 +366,7 @@ function SpreadsheetDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

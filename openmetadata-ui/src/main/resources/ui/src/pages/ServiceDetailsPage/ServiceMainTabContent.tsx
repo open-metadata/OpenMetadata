@@ -219,6 +219,7 @@ function ServiceMainTabContent({
 
   const {
     editTagsPermission,
+    viewCustomPropertiesPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editDataProductPermission,
@@ -235,6 +236,7 @@ function ServiceMainTabContent({
         !serviceDetails.deleted,
       editDataProductPermission:
         servicePermission.EditAll && !serviceDetails.deleted,
+      viewCustomPropertiesPermission: servicePermission.ViewCustomFields,
     }),
     [servicePermission, serviceDetails]
   );
@@ -347,6 +349,9 @@ function ServiceMainTabContent({
                       entityType !== EntityType.METADATA_SERVICE
                     }
                     showTaskHandler={false}
+                    viewCustomPropertiesPermission={
+                      viewCustomPropertiesPermission
+                    }
                     onDataProductUpdate={onDataProductUpdate}
                     onTagSelectionChange={handleTagSelection}
                   />

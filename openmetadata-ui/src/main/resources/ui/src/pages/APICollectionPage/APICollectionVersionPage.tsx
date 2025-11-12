@@ -125,6 +125,10 @@ const APICollectionVersionPage = () => {
     [collectionPermissions]
   );
 
+  const viewCustomPropertiesPermission = useMemo(
+    () => collectionPermissions.ViewCustomFields,
+    [collectionPermissions]
+  );
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
       () =>
@@ -335,7 +339,7 @@ const APICollectionVersionPage = () => {
             isVersionView
             entityType={EntityType.API_COLLECTION}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },

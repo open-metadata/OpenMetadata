@@ -216,7 +216,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             isVersionView
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

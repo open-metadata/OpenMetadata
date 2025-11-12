@@ -100,6 +100,11 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
+  const viewCustomPropertiesPermission = useMemo(
+    () => servicePermissions.ViewCustomFields,
+    [servicePermissions]
+  );
+
   const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
@@ -304,7 +309,7 @@ function DatabaseSchemaVersionPage() {
             isVersionView
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },

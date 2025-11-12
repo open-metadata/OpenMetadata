@@ -252,6 +252,7 @@ function FileDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -277,6 +278,7 @@ function FileDetails({
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
       viewAllPermission: filePermissions.ViewAll,
+      viewCustomPropertiesPermission: filePermissions.ViewCustomFields,
     }),
     [filePermissions, deleted]
   );
@@ -315,7 +317,7 @@ function FileDetails({
         <CustomPropertyTable<EntityType.FILE>
           entityType={EntityType.FILE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -349,6 +351,7 @@ function FileDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

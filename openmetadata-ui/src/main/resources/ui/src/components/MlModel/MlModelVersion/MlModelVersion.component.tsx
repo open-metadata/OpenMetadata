@@ -322,7 +322,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             isVersionView
             entityType={EntityType.MLMODEL}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

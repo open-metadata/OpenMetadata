@@ -44,6 +44,7 @@ export const getMlModelDetailsPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   fetchMlModel,
   handleFeedCount,
   mlModelDetail,
@@ -150,7 +151,7 @@ export const getMlModelDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.MLMODEL>
           entityType={EntityType.MLMODEL}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

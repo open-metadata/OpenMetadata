@@ -60,6 +60,7 @@ const DocumentationTab = ({
     editCustomAttributePermission,
     viewAllPermission,
     editTagsPermission,
+    viewCustomPropertiesPermission,
     editGlossaryTermsPermission,
   } = useMemo(() => {
     if (isVersionsView) {
@@ -96,6 +97,7 @@ const DocumentationTab = ({
         Operation.EditGlossaryTerms
       ),
       viewAllPermission: permissions?.ViewAll,
+      viewCustomPropertiesPermission: permissions.ViewCustomFields,
     };
   }, [permissions, isVersionsView, resourceType]);
 
@@ -197,7 +199,7 @@ const DocumentationTab = ({
                 isRenderedInRightPanel
                 entityType={EntityType.DATA_PRODUCT}
                 hasEditAccess={Boolean(editCustomAttributePermission)}
-                hasPermission={Boolean(viewAllPermission)}
+                hasPermission={Boolean(viewCustomPropertiesPermission)}
                 maxDataCap={5}
               />
             )}

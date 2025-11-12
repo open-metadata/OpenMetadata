@@ -186,7 +186,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
             isVersionView
             entityType={EntityType.TOPIC}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

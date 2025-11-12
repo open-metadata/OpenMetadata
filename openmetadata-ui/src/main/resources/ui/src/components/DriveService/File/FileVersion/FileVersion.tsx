@@ -178,7 +178,7 @@ const FileVersion = ({
             isVersionView
             entityType={EntityType.FILE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },

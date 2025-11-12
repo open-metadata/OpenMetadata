@@ -168,7 +168,7 @@ export const getDashboardDataModelDetailPageTabs = ({
             dataModelPermissions.EditAll ||
             dataModelPermissions.EditCustomFields
           }
-          hasPermission={dataModelPermissions.ViewAll}
+          hasPermission={dataModelPermissions.ViewCustomFields}
           isVersionView={false}
         />
       ),

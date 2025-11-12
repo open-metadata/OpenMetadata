@@ -187,6 +187,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     editLineagePermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -206,6 +207,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           Operation.ViewSampleData
         ) && !deleted,
       viewAllPermission: metricPermissions.ViewAll,
+      viewCustomPropertiesPermission: metricPermissions.ViewCustomFields,
     }),
     [metricPermissions, deleted]
   );
@@ -225,6 +227,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       getEntityFeedCount,
       labelMap: tabLabelMap,
     });
@@ -247,6 +250,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     editAllPermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
 
   const toggleTabExpanded = () => {

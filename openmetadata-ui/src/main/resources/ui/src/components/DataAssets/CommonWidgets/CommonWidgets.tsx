@@ -198,6 +198,7 @@ export const CommonWidgets = ({
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
@@ -221,6 +222,7 @@ export const CommonWidgets = ({
         permissions.ViewTests,
       viewAllPermission: permissions.ViewAll,
       viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+      viewCustomPropertiesPermission: permissions.ViewCustomFields,
     }),
     [permissions, deleted]
   );
@@ -390,7 +392,7 @@ export const CommonWidgets = ({
           isRenderedInRightPanel
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
-          hasPermission={Boolean(viewAllPermission)}
+          hasPermission={viewCustomPropertiesPermission}
           maxDataCap={5}
         />
       );

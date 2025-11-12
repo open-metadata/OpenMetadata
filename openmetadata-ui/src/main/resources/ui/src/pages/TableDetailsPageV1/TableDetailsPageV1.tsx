@@ -480,6 +480,7 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     viewAllPermission,
     viewBasicPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -521,6 +522,7 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions,
         Operation.ViewBasic
       ),
+      viewCustomPropertiesPermission: tablePermissions.ViewCustomFields,
     }),
     [tablePermissions, deleted]
   );
@@ -539,6 +541,7 @@ const TableDetailsPageV1: React.FC = () => {
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editCustomAttributePermission,
       viewSampleDataPermission,
       viewQueriesPermission,
@@ -568,6 +571,7 @@ const TableDetailsPageV1: React.FC = () => {
     getEntityFeedCount,
     handleFeedCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editCustomAttributePermission,
     viewSampleDataPermission,
     viewQueriesPermission,

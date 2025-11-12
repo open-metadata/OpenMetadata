@@ -168,7 +168,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
             isVersionView
             entityType={EntityType.API_ENDPOINT}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={entityPermissions.ViewCustomFields}
           />
         ),
       },
