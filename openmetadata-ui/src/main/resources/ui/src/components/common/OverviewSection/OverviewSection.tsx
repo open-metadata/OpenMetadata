@@ -25,13 +25,16 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // Compute visible rows when using entityInfoV1
   const visibleEntityInfo = entityInfoV1
     ? entityInfoV1.filter((info) => {
         const isDomain =
           isDomainVisible && info.name === t('label.domain-plural');
+        const isOwners = info.name === 'Owners';
 
-        return (info.visible || []).includes(componentType) || isDomain;
+        return (
+          ((info.visible || []).includes(componentType) || isDomain) &&
+          !isOwners
+        );
       })
     : [];
 
@@ -47,13 +50,11 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       showEditButton={showEditButton}
       title={t('label.overview')}
       onEdit={onEdit}>
-      {entityInfoV1 && (
-        <CommonEntitySummaryInfoV1
-          componentType={componentType}
-          entityInfo={entityInfoV1}
-          isDomainVisible={isDomainVisible}
-        />
-      )}
+      <CommonEntitySummaryInfoV1
+        componentType={componentType}
+        entityInfo={visibleEntityInfo}
+        isDomainVisible={isDomainVisible}
+      />
     </SectionWithEdit>
   );
 };
