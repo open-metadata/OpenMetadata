@@ -15,7 +15,7 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
@@ -76,6 +76,7 @@ const UserListPageV1 = () => {
   const [showReactiveModal, setShowReactiveModal] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const latestSearchIdRef = useRef(0);
   const {
     filters: { isDeleted, user: searchValue },
     setFilters,
@@ -141,6 +142,7 @@ const UserListPageV1 = () => {
   ) => {
     return new Promise<Array<User>>((resolve) => {
       const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
+      const currentSearchId = ++latestSearchIdRef.current;
 
       const queryFilter = getTermQuery({
         isAdmin: String(isAdmin),
@@ -156,19 +158,25 @@ const UserListPageV1 = () => {
         includeDeleted: isDeleted,
       })
         .then((res) => {
-          const data = res.hits.hits.map(({ _source }) => _source);
-          handlePagingChange({
-            total: res.hits.total.value,
-          });
-          resolve(data);
+          if (currentSearchId === latestSearchIdRef.current) {
+            const data = res.hits.hits.map(({ _source }) => _source);
+            handlePagingChange({
+              total: res.hits.total.value,
+            });
+            resolve(data);
+          } else {
+            resolve([]);
+          }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.user'),
-            })
-          );
+          if (currentSearchId === latestSearchIdRef.current) {
+            showErrorToast(
+              err,
+              t('server.entity-fetch-error', {
+                entity: t('label.user'),
+              })
+            );
+          }
           resolve([]);
         });
     });
@@ -179,7 +187,9 @@ const UserListPageV1 = () => {
 
     userQuerySearch(value, pageNumber, isAdminPage, isDeleted).then(
       (resUsers) => {
-        setUserList(resUsers);
+        if (resUsers.length > 0) {
+          setUserList(resUsers);
+        }
         setIsDataLoading(false);
       }
     );
@@ -450,8 +460,7 @@ const UserListPageV1 = () => {
         type: t('label.user'),
       })}...`,
       searchValue: searchValue,
-      typingInterval: 500,
-      urlSearchKey: 'user',
+      typingInterval: 350,
       onSearch: handleSearch,
     }),
     [searchValue, handleSearch]
