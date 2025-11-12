@@ -1066,73 +1066,52 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
 
     Query existingQuery = requestBuilder.query();
-    Query baseQuery =
-        Query.of(
-            q ->
-                q.bool(
-                    b ->
-                        b.should(existingQuery)
-                            .should(
-                                s ->
-                                    s.matchPhrase(
-                                        mp ->
-                                            mp.field("fullyQualifiedName")
-                                                .query(request.getQuery())))
-                            .should(
-                                s ->
-                                    s.matchPhrase(mp -> mp.field("name").query(request.getQuery())))
-                            .should(
-                                s ->
-                                    s.matchPhrase(
-                                        mp -> mp.field("displayName").query(request.getQuery())))));
+    org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.BoolQueryBuilder baseQueryBuilder =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.boolQuery()
+            .should(existingQuery)
+            .should(
+                Query.of(
+                    q ->
+                        q.matchPhrase(
+                            mp -> mp.field("fullyQualifiedName").query(request.getQuery()))))
+            .should(
+                Query.of(q -> q.matchPhrase(mp -> mp.field("name").query(request.getQuery()))))
+            .should(
+                Query.of(
+                    q -> q.matchPhrase(mp -> mp.field("displayName").query(request.getQuery()))));
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
-      Query glossaryQuery =
-          Query.of(
-              q ->
-                  q.bool(
-                      b ->
-                          b.should(baseQuery)
-                              .should(
-                                  s ->
-                                      s.matchPhrase(
-                                          mp ->
-                                              mp.field("glossary.fullyQualifiedName")
-                                                  .query(request.getQuery())))
-                              .should(
-                                  s ->
-                                      s.matchPhrase(
-                                          mp ->
-                                              mp.field("glossary.displayName")
-                                                  .query(request.getQuery())))
-                              .must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")))
-                              .minimumShouldMatch("1")));
-      requestBuilder.query(glossaryQuery);
+      baseQueryBuilder
+          .should(
+              Query.of(
+                  q ->
+                      q.matchPhrase(
+                          mp ->
+                              mp.field("glossary.fullyQualifiedName")
+                                  .query(request.getQuery()))))
+          .should(
+              Query.of(
+                  q ->
+                      q.matchPhrase(
+                          mp -> mp.field("glossary.displayName").query(request.getQuery()))))
+          .must(Query.of(q -> q.match(m -> m.field("entityStatus").query("Approved"))));
     } else if (indexName.equalsIgnoreCase(domainIndex)) {
-      Query domainQuery =
-          Query.of(
-              q ->
-                  q.bool(
-                      b ->
-                          b.should(baseQuery)
-                              .should(
-                                  s ->
-                                      s.matchPhrase(
-                                          mp ->
-                                              mp.field("parent.fullyQualifiedName")
-                                                  .query(request.getQuery())))
-                              .should(
-                                  s ->
-                                      s.matchPhrase(
-                                          mp ->
-                                              mp.field("parent.displayName")
-                                                  .query(request.getQuery())))
-                              .minimumShouldMatch("1")));
-      requestBuilder.query(domainQuery);
-    } else {
-      requestBuilder.query(
-          Query.of(q -> q.bool(b -> b.should(existingQuery).minimumShouldMatch("1"))));
+      baseQueryBuilder
+          .should(
+              Query.of(
+                  q ->
+                      q.matchPhrase(
+                          mp ->
+                              mp.field("parent.fullyQualifiedName").query(request.getQuery()))))
+          .should(
+              Query.of(
+                  q ->
+                      q.matchPhrase(
+                          mp -> mp.field("parent.displayName").query(request.getQuery()))));
     }
+
+    baseQueryBuilder.minimumShouldMatch(1);
+    requestBuilder.query(baseQueryBuilder.build());
 
     // Add fqnParts aggregation to fetch parent terms
     requestBuilder.aggregation(
