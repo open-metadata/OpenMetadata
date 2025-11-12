@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Box } from '@mui/material';
 import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -23,6 +24,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
@@ -142,9 +144,14 @@ const IncidentManagerDetailPage = ({
       isDimensionalityTabVisible
     );
 
-    return tabs.map(({ LabelComponent, labelProps, key, Tab }) => ({
+    return tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
       key,
-      label: <LabelComponent {...labelProps} />,
+      label: (
+        <Box alignItems="center" display="flex" gap={1}>
+          <LabelComponent {...labelProps} />
+          {isBeta && <BetaBadge />}
+        </Box>
+      ),
       children: <Tab />,
     }));
   }, [

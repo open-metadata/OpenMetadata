@@ -415,7 +415,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             testCaseEditPermission || testCaseDeletePermission;
 
           return (
-            <Box alignItems="center" display="flex" gap={2}>
+            <Box
+              alignItems="center"
+              display="flex"
+              gap={2.5}
+              justifyContent="end">
               {dimensions.length > 0 && (
                 <Tooltip
                   arrow

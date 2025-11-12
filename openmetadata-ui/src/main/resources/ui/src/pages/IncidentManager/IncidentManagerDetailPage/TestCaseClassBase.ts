@@ -30,6 +30,7 @@ export interface TestCaseTabType {
   labelProps: TabsLabelProps;
   Tab: () => ReactElement;
   key: TestCasePageTabs;
+  isBeta?: boolean;
 }
 
 class TestCaseClassBase {
@@ -64,6 +65,7 @@ class TestCaseClassBase {
               },
               Tab: DimensionalityTab,
               key: TestCasePageTabs.DIMENSIONALITY,
+              isBeta: true,
             },
           ]
         : []),
