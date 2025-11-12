@@ -30,11 +30,6 @@
       "title": "Cycle Start",
       "description": "The start of this limit cycle.",
       "$ref": "../type/basic.json#/definitions/date"
-    },
-    "actionCreditsMultiplier": {
-      "description": "Multiplier to calculate credits per action",
-      "type": "number",
-      "default": 0.5
     }
   },
   "required": ["enable"],
