@@ -16,9 +16,11 @@ import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
@@ -28,6 +30,7 @@ const CustomPropertiesSection = ({
   entityDetails,
   entityType,
   entityTypeDetail,
+  viewCustomPropertiesPermission,
   isEntityDataLoading,
 }: CustomPropertiesSectionProps) => {
   const { t } = useTranslation();
@@ -45,6 +48,19 @@ const CustomPropertiesSection = ({
   const customProperties = entityTypeDetail?.customProperties || [];
   const extensionData = entityData?.extension || {};
 
+  if (!viewCustomPropertiesPermission) {
+    return (
+      <div className="items-center d-block align-items-center text-center">
+        <ErrorPlaceHolder
+          className="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.custom-property-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      </div>
+    );
+  }
   if (customProperties.length === 0) {
     return (
       <div className="entity-summary-panel-tab-content">

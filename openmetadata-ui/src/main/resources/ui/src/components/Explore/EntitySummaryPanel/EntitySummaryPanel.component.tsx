@@ -689,6 +689,9 @@ export default function EntitySummaryPanel({
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
               isEntityDataLoading={isEntityDataLoading}
+              viewCustomPropertiesPermission={
+                entityPermissions.ViewCustomFields
+              }
             />
           </>
         );

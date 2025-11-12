@@ -154,6 +154,7 @@ const defaultProps = {
   entityType: EntityType.TABLE,
   entityTypeDetail: mockEntityTypeDetail,
   isEntityDataLoading: false,
+  viewCustomPropertiesPermission: true,
 };
 
 describe('CustomPropertiesSection', () => {
@@ -234,6 +235,21 @@ describe('CustomPropertiesSection', () => {
       ).toBeInTheDocument();
       expect(container.querySelector('.text-justify')).toBeInTheDocument();
       expect(container.querySelector('.text-grey-muted')).toBeInTheDocument();
+    });
+  });
+
+  describe('Permission Error', () => {
+    it('should render permission error when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('trans-component')).toHaveTextContent(
+        'message.no-access-placeholder - label.view-entity -'
+      );
     });
   });
 
