@@ -23,7 +23,6 @@ import {
   assignTagToChildren,
   getFirstRowColumnLink,
   removeTagsFromChildren,
-  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { columnPaginationTable } from '../../utils/table';
@@ -252,73 +251,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
       '15 / Page'
     );
-  });
-
-  test('Verify search feature in tables and stored procedure', async ({
-    dataConsumerPage: page,
-  }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
-
-    const waitForTableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*index=table_search_index*'
-    );
-
-    await page.getByTestId('searchbar').fill('agent_performance_summary');
-    await waitForTableSearchResponse;
-
-    await expect(
-      page.getByText('agent_performance_summary').first()
-    ).toBeVisible();
-
-    await expect(
-      page.getByText('big_data_table_with_nested_columns').first()
-    ).not.toBeVisible();
-
-    await page.getByText('Stored Procedures').click();
-    await waitForAllLoadersToDisappear(page);
-
-    const waitForStoreProcedureSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*stored_procedure_search_index*'
-    );
-
-    await page.getByTestId('searchbar').fill('calculate_average');
-    await waitForStoreProcedureSearchResponse;
-
-    await expect(page.locator('tbody')).toContainText('calculate_average');
-
-    await expect(
-      page.getByText('calculate_interest').first()
-    ).not.toBeVisible();
-  });
-
-  test('Verify search feature in service page', async ({
-    dataConsumerPage: page,
-  }) => {
-    await page.goto('/service/databaseServices/sample_data/databases');
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('service-children-table')).toBeVisible();
-
-    const waitForTableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*index=database_search_index*'
-    );
-
-    await page.getByTestId('searchbar').fill('ecommerce_db');
-    await page.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(page);
-    await waitForTableSearchResponse;
-
-    await expect(page.getByText('ecommerce_db').first()).toBeVisible();
-
-    await page.getByTestId('searchbar').fill('test');
-    await page.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(page);
-    await waitForTableSearchResponse;
-
-    await expect(page.getByText('ecommerce_db').first()).not.toBeVisible();
   });
 });
 

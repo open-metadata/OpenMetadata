@@ -672,3 +672,29 @@ export const testTableSorting = async (page: Page, columnHeader: string) => {
 
   expect(afterSecondClickValue).not.toBe(afterFirstClickValue);
 };
+
+export const testTableSearch = async (
+  page: Page,
+  searchIndex: string,
+  searchTerm: string,
+  notVisibleText: string
+) => {
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.getByText(searchTerm).first()).toBeVisible();
+  await expect(page.getByText(notVisibleText).first()).toBeVisible();
+
+  const waitForSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*index=${searchIndex}*`
+  );
+
+  await page.getByTestId('searchbar').fill(searchTerm);
+  await waitForSearchResponse;
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.getByText(searchTerm).first()).toBeVisible();
+
+  await expect(page.getByText(notVisibleText).first()).not.toBeVisible();
+};
