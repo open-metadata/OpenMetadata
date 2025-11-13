@@ -28,6 +28,7 @@ interface OwnerUserTeamListProps {
   className?: string;
   isCompactView: boolean;
   ownerDisplayName?: Map<string, ReactNode>;
+  placement?: 'vertical' | 'horizontal';
 }
 
 const OwnerUserTeamList = ({
@@ -39,6 +40,7 @@ const OwnerUserTeamList = ({
   isAssignee,
   isCompactView,
   ownerDisplayName,
+  placement = 'horizontal',
 }: OwnerUserTeamListProps) => {
   const theme = useTheme();
   const showMultipleTypeTeam = owners.filter(
@@ -51,8 +53,13 @@ const OwnerUserTeamList = ({
   return (
     <Box
       className={classNames(className)}
-      flexWrap="wrap"
-      sx={{ width: '100%', display: 'flex', alignItems: 'center' }}>
+      sx={{
+        width: '100%',
+        display: 'flex',
+        alignItems: placement === 'vertical' ? 'flex-start' : 'center',
+        flexDirection: placement === 'vertical' ? 'column' : 'row',
+        gap: placement === 'vertical' ? '8px' : '0',
+      }}>
       <OwnerUserList
         avatarSize={avatarSize}
         className={className}
@@ -62,20 +69,23 @@ const OwnerUserTeamList = ({
         owners={showMultipleTypeUser}
       />
 
-      <Divider
-        flexItem
-        orientation="vertical"
-        sx={{
-          margin: '0 10px',
-          background: theme.palette.allShades.blueGray[100],
-        }}
-        variant="middle"
-      />
+      {placement === 'horizontal' && (
+        <Divider
+          flexItem
+          orientation="vertical"
+          sx={{
+            margin: '0 10px',
+            background: theme.palette.allShades.blueGray[100],
+          }}
+          variant="middle"
+        />
+      )}
 
       <OwnerTeamList
         avatarSize={avatarSize}
         ownerDisplayName={ownerDisplayName}
         owners={showMultipleTypeTeam}
+        placement={placement}
       />
 
       {hasPermission && isAssignee && (

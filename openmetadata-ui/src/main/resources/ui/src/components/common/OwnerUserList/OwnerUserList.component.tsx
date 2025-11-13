@@ -59,7 +59,11 @@ const OwnerUserList = ({
     }, [owners, showAllOwners, maxVisibleOwners]);
 
   return (
-    <>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+      }}>
       {!isCompactView && (
         <IconUser
           data-testid="user-owner-icon"
@@ -117,7 +121,7 @@ const OwnerUserList = ({
           showAllOwners={showAllOwners}
         />
       )}
-    </>
+    </Box>
   );
 };
 

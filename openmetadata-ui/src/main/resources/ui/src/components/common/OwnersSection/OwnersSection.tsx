@@ -166,6 +166,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           isCompactView={false}
           maxVisibleOwners={4}
           owners={displayOwners}
+          placement="vertical"
           showLabel={false}
         />
       </div>

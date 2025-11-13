@@ -24,12 +24,14 @@ export interface OwnerTeamListProps {
   owners: EntityReference[];
   avatarSize: number;
   ownerDisplayName?: Map<string, ReactNode>;
+  placement?: 'vertical' | 'horizontal';
 }
 
 export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
   owners,
   avatarSize,
   ownerDisplayName,
+  placement,
 }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -80,7 +82,10 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
             noWrap
             sx={{
               color: theme.palette.allShades.gray[900],
-              maxWidth: owners.length > 1 ? '50px' : '120px',
+              maxWidth:
+                placement === 'vertical' || owners.length < 2
+                  ? '120px'
+                  : '50px',
               fontSize: '12px',
               fontWeight: 500,
               lineHeight: 'initial',
@@ -139,7 +144,7 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
                   <Typography
                     noWrap
                     sx={{
-                      width: '9rem',
+                      width: '12rem',
                       color: theme.palette.allShades.gray[900],
                     }}
                     variant="body2">

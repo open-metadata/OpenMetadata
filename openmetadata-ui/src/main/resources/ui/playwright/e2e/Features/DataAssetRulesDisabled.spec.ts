@@ -160,102 +160,120 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe(`@dataAssetRules Data Asset Rules Disabled`, () => {
-  for (const EntityClass of entities) {
-    const entity = new EntityClass();
-    const entityName = entity.getType();
+test.describe(
+  `Data Asset Rules Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    for (const EntityClass of entities) {
+      const entity = new EntityClass();
+      const entityName = entity.getType();
 
-    test(`Verify the ${entityName} entity item action after rules disabled`, async ({
-      page,
-      browser,
-    }) => {
-      test.slow(true);
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.create(apiContext);
-      await afterAction();
-
-      await redirectToHomePage(page);
-      await entity.visitEntityPage(page);
-
-      // Assign and Team and User both owner together
-      const teamName = team.responseData.displayName;
-      await addMultiOwner({
+      test(`Verify the ${entityName} entity item action after rules disabled`, async ({
         page,
-        ownerNames: [user.getUserName(), user2.getUserName()],
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: entity.endpoint,
-        type: 'Users',
-      });
+        browser,
+      }) => {
+        test.slow(true);
 
-      await page.click(`[data-testid="edit-owner"]`);
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await entity.create(apiContext);
+        await afterAction();
 
-      await expect(
-        page.locator("[data-testid='select-owner-tabs']")
-      ).toBeVisible();
+        await redirectToHomePage(page);
+        await entity.visitEntityPage(page);
 
-      await page.waitForSelector(
-        '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-        { state: 'detached' }
-      );
+        // Assign and Team and User both owner together
+        const teamName = team.responseData.displayName;
+        await addMultiOwner({
+          page,
+          ownerNames: [user.getUserName(), user2.getUserName()],
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: entity.endpoint,
+          type: 'Users',
+        });
 
-      await page
-        .locator("[data-testid='select-owner-tabs']")
-        .getByRole('tab', { name: 'Teams' })
-        .click();
+        await page.click(`[data-testid="edit-owner"]`);
 
-      await page.waitForSelector(
-        '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-        { state: 'detached' }
-      );
-
-      const searchUser = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(teamName)}*`
-      );
-      await page.getByTestId(`owner-select-teams-search-bar`).fill(teamName);
-      await searchUser;
-
-      const ownerItem = page.getByRole('listitem', {
-        name: teamName,
-        exact: true,
-      });
-
-      await ownerItem.waitFor({ state: 'visible' });
-      await ownerItem.click();
-      const patchRequest = page.waitForResponse(`/api/v1/${entity.endpoint}/*`);
-      await page
-        .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
-        .getByTestId('selectable-list-update-btn')
-        .click();
-      await patchRequest;
-
-      await expect(
-        page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-      ).toBeVisible();
-
-      for (const name of [user.getUserName(), user2.getUserName(), teamName]) {
         await expect(
-          page.getByTestId('data-assets-header').getByTestId(`${name}`)
+          page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
-      }
 
-      await assignDomain(page, domain.responseData);
-      await assignDomain(page, domain2.responseData, false);
+        await page.waitForSelector(
+          '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+          { state: 'detached' }
+        );
 
-      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+        await page
+          .locator("[data-testid='select-owner-tabs']")
+          .getByRole('tab', { name: 'Teams' })
+          .click();
 
-      // Add Multiple DataProduct, since default single select is off
-      if (!entityName.includes('Service')) {
-        await assignDataProduct(page, domain.responseData, [
-          createdDataProducts[0].responseData,
-          createdDataProducts[1].responseData,
-        ]);
-      }
+        await page.waitForSelector(
+          '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+          { state: 'detached' }
+        );
 
-      // Add Multiple GlossaryTerm to Table
-      await assignGlossaryTerm(page, glossaryTerm.responseData);
-      await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
-    });
+        const searchUser = page.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent(teamName)}*`
+        );
+        await page.getByTestId(`owner-select-teams-search-bar`).fill(teamName);
+        await searchUser;
+
+        const ownerItem = page.getByRole('listitem', {
+          name: teamName,
+          exact: true,
+        });
+
+        await ownerItem.waitFor({ state: 'visible' });
+        await ownerItem.click();
+        const patchRequest = page.waitForResponse(
+          `/api/v1/${entity.endpoint}/*`
+        );
+        await page
+          .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+          .getByTestId('selectable-list-update-btn')
+          .click();
+        await patchRequest;
+
+        await expect(
+          page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
+        ).toBeVisible();
+
+        for (const name of [
+          user.getUserName(),
+          user2.getUserName(),
+          teamName,
+        ]) {
+          await expect(
+            page.getByTestId('data-assets-header').getByTestId(`${name}`)
+          ).toBeVisible();
+        }
+
+        await assignDomain(page, domain.responseData);
+        await assignDomain(page, domain2.responseData, false);
+
+        await expect(page.getByTestId('domain-count-button')).toBeVisible();
+
+        // Add Multiple DataProduct, since default single select is off
+        if (!entityName.includes('Service')) {
+          await assignDataProduct(page, domain.responseData, [
+            createdDataProducts[0].responseData,
+          ]);
+
+          await assignDataProduct(
+            page,
+            domain.responseData,
+            [createdDataProducts[1].responseData],
+            'Edit'
+          );
+        }
+
+        // Add Multiple GlossaryTerm to Table
+        await assignGlossaryTerm(page, glossaryTerm.responseData);
+        await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+      });
+    }
   }
-});
+);

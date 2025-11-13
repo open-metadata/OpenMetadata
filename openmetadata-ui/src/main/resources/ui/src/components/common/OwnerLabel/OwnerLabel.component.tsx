@@ -45,6 +45,7 @@ export const OwnerLabel = ({
   isAssignee = false,
   onEditClick,
   ownerLabelClassName,
+  placement,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -157,6 +158,7 @@ export const OwnerLabel = ({
             isCompactView={isCompactView}
             ownerDisplayName={ownerDisplayName}
             owners={owners}
+            placement={placement}
             onEditClick={onEditClick}
           />
         )}

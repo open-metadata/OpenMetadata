@@ -157,71 +157,79 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe(`@dataAssetRules Data Asset Rules Enabled`, async () => {
-  for (const EntityClass of entities) {
-    const entity = new EntityClass();
-    const entityName = entity.getType();
+test.describe(
+  `Data Asset Rules Enabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  async () => {
+    for (const EntityClass of entities) {
+      const entity = new EntityClass();
+      const entityName = entity.getType();
 
-    test(`Verify the ${entityName} Entity Action items after rules is Enabled`, async ({
-      page,
-      browser,
-    }) => {
-      test.slow(true);
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.create(apiContext);
-      await afterAction();
-
-      await redirectToHomePage(page);
-      await entity.visitEntityPage(page);
-
-      // If after adding single team it closes then default rule is working. Single team or multiple users
-      await addOwner({
+      test(`Verify the ${entityName} Entity Action items after rules is Enabled`, async ({
         page,
-        owner: team.responseData.displayName,
-        type: 'Teams',
-        endpoint: entity.endpoint,
-        dataTestId: 'data-assets-header',
-      });
+        browser,
+      }) => {
+        test.slow(true);
 
-      // Single Domain Add Check
-      await assignSingleSelectDomain(page, domain.responseData);
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await entity.create(apiContext);
+        await afterAction();
 
-      // Exclude this check at Service Level Entities
-      if (!entityName.includes('Service')) {
-        // Here the createdDataProducts[1] will only be available due to single select type is enabled
-        await assignDataProduct(page, domain.responseData, [
-          createdDataProducts[0].responseData,
-        ]);
-        await assignDataProduct(
+        await redirectToHomePage(page);
+        await entity.visitEntityPage(page);
+
+        // If after adding single team it closes then default rule is working. Single team or multiple users
+        await addOwner({
           page,
-          domain.responseData,
-          [createdDataProducts[1].responseData],
-          'Edit'
-        );
+          owner: team.responseData.displayName,
+          type: 'Teams',
+          endpoint: entity.endpoint,
+          dataTestId: 'data-assets-header',
+        });
 
-        await expect(
-          page
-            .getByTestId('KnowledgePanel.DataProducts')
-            .getByTestId('data-products-list')
-            .getByTestId(
-              `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
-            )
-        ).not.toBeVisible();
-      }
+        // Single Domain Add Check
+        await assignSingleSelectDomain(page, domain.responseData);
 
-      if (entityName === 'Table') {
-        // Only glossaryTerm2.responseData data will be available due to single select type is enabled
-        await assignGlossaryTerm(page, glossaryTerm.responseData);
-        await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+        // Exclude this check at Service Level Entities
+        if (!entityName.includes('Service')) {
+          // Here the createdDataProducts[1] will only be available due to single select type is enabled
+          await assignDataProduct(page, domain.responseData, [
+            createdDataProducts[0].responseData,
+          ]);
+          await assignDataProduct(
+            page,
+            domain.responseData,
+            [createdDataProducts[1].responseData],
+            'Edit'
+          );
 
-        await expect(
-          page
-            .getByTestId('KnowledgePanel.GlossaryTerms')
-            .getByTestId('glossary-container')
-            .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
-        ).not.toBeVisible();
-      }
-    });
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.DataProducts')
+              .getByTestId('data-products-list')
+              .getByTestId(
+                `data-product-${createdDataProducts[0].responseData.fullyQualifiedName}`
+              )
+          ).not.toBeVisible();
+        }
+
+        if (entityName === 'Table') {
+          // Only glossaryTerm2.responseData data will be available due to single select type is enabled
+          await assignGlossaryTerm(page, glossaryTerm.responseData);
+          await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.GlossaryTerms')
+              .getByTestId('glossary-container')
+              .getByTestId(
+                `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+              )
+          ).not.toBeVisible();
+        }
+      });
+    }
   }
-});
+);
