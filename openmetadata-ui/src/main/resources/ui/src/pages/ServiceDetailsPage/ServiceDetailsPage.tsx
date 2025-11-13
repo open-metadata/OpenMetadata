@@ -1599,11 +1599,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
           count: filesPaging.total,
           children: (
             <FilesTable
+              fetchFiles={fetchFiles}
               files={files}
               handlePageChange={onFilesPageChange}
               handleShowDeleted={handleShowDeleted}
               isLoading={isFilesLoading}
               paging={filesPagingInfo}
+              serviceFqn={decodedServiceFQN}
+              setFiles={setFiles}
+              setIsLoading={setIsFilesLoading}
               showDeleted={showDeleted}
             />
           ),
@@ -1614,10 +1618,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
           count: spreadsheetsPaging.total,
           children: (
             <SpreadsheetsTable
+              fetchSpreadsheets={fetchSpreadsheets}
               handlePageChange={onSpreadsheetsPageChange}
               handleShowDeleted={handleShowDeleted}
               isLoading={isSpreadsheetsLoading}
               paging={spreadsheetsPagingInfo}
+              serviceFqn={decodedServiceFQN}
+              setIsLoading={setIsSpreadsheetsLoading}
+              setSpreadsheets={setSpreadsheets}
               showDeleted={showDeleted}
               spreadsheets={spreadsheets}
             />
