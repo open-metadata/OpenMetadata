@@ -110,7 +110,7 @@ class ColumnValueLengthsToBeBetweenValidator(
 
                     dimension_aggregates[dimension_value][
                         Metrics.MIN_LENGTH.name
-                    ] = max_impl.update_accumulator(
+                    ] = min_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.MIN_LENGTH.name],
                         group_df,
                     )
