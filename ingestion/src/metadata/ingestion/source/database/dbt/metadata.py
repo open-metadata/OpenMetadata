@@ -346,6 +346,9 @@ class DbtSource(DbtServiceSource):
                         )
                     )
             try:
+                # Deduplicate tags before building FQNs
+                dbt_tags_list = list(set(dbt_tags_list)) if dbt_tags_list else []
+
                 # Create all the tags added
                 dbt_tag_labels = [
                     fqn.build(
