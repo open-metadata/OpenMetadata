@@ -255,7 +255,6 @@ describe('RuleEnforcementUtils', () => {
           maxDataProducts: Infinity,
           canAddMultipleGlossaryTerm: true,
           requireDomainForDataProduct: false,
-          warnings: [],
         });
       });
 
@@ -264,12 +263,11 @@ describe('RuleEnforcementUtils', () => {
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(true);
-        expect(hints.warnings).toEqual([]);
       });
     });
 
     describe('MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP rule', () => {
-      it('should apply ownership constraints and add warning', () => {
+      it('should apply ownership constraints', () => {
         const rules: ParsedRule[] = [
           {
             type: RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP,
@@ -285,9 +283,6 @@ describe('RuleEnforcementUtils', () => {
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(false);
-        expect(hints.warnings).toContain(
-          'Entity must have either multiple user owners or a single team owner'
-        );
       });
     });
 
@@ -332,7 +327,7 @@ describe('RuleEnforcementUtils', () => {
     });
 
     describe('DATA_PRODUCT_DOMAIN_VALIDATION rule', () => {
-      it('should require domain for data product and add warning', () => {
+      it('should require domain for data product', () => {
         const rules: ParsedRule[] = [
           {
             type: RuleType.DATA_PRODUCT_DOMAIN_VALIDATION,
@@ -347,9 +342,6 @@ describe('RuleEnforcementUtils', () => {
         const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.requireDomainForDataProduct).toBe(true);
-        expect(hints.warnings).toContain(
-          'Domain must be set before adding data products'
-        );
       });
     });
 
@@ -369,9 +361,6 @@ describe('RuleEnforcementUtils', () => {
         const hints = getEntityRulesValidation(rules, EntityType.TABLE);
 
         expect(hints.canAddMultipleGlossaryTerm).toBe(false);
-        expect(hints.warnings).toContain(
-          'Tables can only have a single Glossary Term'
-        );
       });
 
       it('should not restrict glossary terms for non-table entity types', () => {
@@ -389,7 +378,6 @@ describe('RuleEnforcementUtils', () => {
         const hints = getEntityRulesValidation(rules, EntityType.DASHBOARD);
 
         expect(hints.canAddMultipleGlossaryTerm).toBe(true);
-        expect(hints.warnings).toEqual([]);
       });
 
       it('should handle case-insensitive table entity type', () => {
@@ -427,7 +415,6 @@ describe('RuleEnforcementUtils', () => {
 
         expect(hints.canAddMultipleUserOwners).toBe(true);
         expect(hints.canAddMultipleTeamOwner).toBe(true);
-        expect(hints.warnings).toEqual([]);
       });
     });
 
@@ -505,13 +492,6 @@ describe('RuleEnforcementUtils', () => {
         expect(hints.canAddMultipleDomains).toBe(false);
         expect(hints.maxDomains).toBe(1);
         expect(hints.requireDomainForDataProduct).toBe(true);
-        expect(hints.warnings).toHaveLength(2);
-        expect(hints.warnings).toContain(
-          'Entity must have either multiple user owners or a single team owner'
-        );
-        expect(hints.warnings).toContain(
-          'Domain must be set before adding data products'
-        );
       });
 
       it('should handle mix of enabled and disabled rules', () => {
@@ -539,48 +519,6 @@ describe('RuleEnforcementUtils', () => {
         expect(hints.canAddMultipleDomains).toBe(false);
         expect(hints.canAddMultipleDataProducts).toBe(true);
       });
-
-      it('should accumulate warnings from multiple rules', () => {
-        const rules: ParsedRule[] = [
-          {
-            type: RuleType.MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP,
-            condition: { multipleUsersOrSingleTeamOwnership: true },
-            enabled: true,
-            ignoredEntities: [],
-            description: 'Ownership rule',
-            name: 'Ownership Rule',
-          },
-          {
-            type: RuleType.DATA_PRODUCT_DOMAIN_VALIDATION,
-            condition: { validateDataProductDomainMatch: true },
-            enabled: true,
-            ignoredEntities: [],
-            description: 'Domain validation',
-            name: 'Domain Validation',
-          },
-          {
-            type: RuleType.SINGLE_GLOSSARY_TERM_FOR_TABLE,
-            condition: { '<=': 1, filterTagsBySource: 'Glossary' },
-            enabled: true,
-            ignoredEntities: [],
-            description: 'Glossary term rule',
-            name: 'Glossary Term Rule',
-          },
-        ];
-
-        const hints = getEntityRulesValidation(rules, EntityType.TABLE);
-
-        expect(hints.warnings).toHaveLength(3);
-        expect(hints.warnings).toContain(
-          'Entity must have either multiple user owners or a single team owner'
-        );
-        expect(hints.warnings).toContain(
-          'Domain must be set before adding data products'
-        );
-        expect(hints.warnings).toContain(
-          'Tables can only have a single Glossary Term'
-        );
-      });
     });
 
     describe('Custom rules', () => {
@@ -607,7 +545,6 @@ describe('RuleEnforcementUtils', () => {
           maxDataProducts: Infinity,
           canAddMultipleGlossaryTerm: true,
           requireDomainForDataProduct: false,
-          warnings: [],
         });
       });
     });

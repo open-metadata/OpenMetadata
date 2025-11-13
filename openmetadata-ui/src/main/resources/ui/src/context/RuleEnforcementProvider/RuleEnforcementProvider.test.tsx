@@ -70,9 +70,6 @@ const mockUIHints = {
   maxDataProducts: Infinity,
   canAddMultipleGlossaryTermTable: true,
   requireDomainForDataProduct: false,
-  warnings: [
-    'Entity must have either multiple user owners or a single team owner',
-  ],
 };
 
 describe('RuleEnforcementProvider', () => {
@@ -209,10 +206,7 @@ describe('RuleEnforcementProvider', () => {
       });
 
       await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalledWith(
-          mockError,
-          'Failed to fetch rules for table'
-        );
+        expect(showErrorToast).toHaveBeenCalledWith(mockError);
         expect(result.current.isLoading).toBe(false);
       });
     });
@@ -375,7 +369,6 @@ describe('RuleEnforcementProvider', () => {
         maxDataProducts: Infinity,
         canAddMultipleGlossaryTermTable: true,
         requireDomainForDataProduct: false,
-        warnings: [],
       });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -389,7 +382,6 @@ describe('RuleEnforcementProvider', () => {
       const hints = result.current.getEntityRuleValidation(EntityType.TABLE);
 
       expect(hints.canAddMultipleUserOwners).toBe(true);
-      expect(hints.warnings).toEqual([]);
     });
 
     it('should return UI hints based on loaded rules', async () => {

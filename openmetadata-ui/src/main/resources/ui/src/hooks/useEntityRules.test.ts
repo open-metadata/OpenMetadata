@@ -49,9 +49,6 @@ describe('useEntityRules', () => {
     maxDataProducts: Infinity,
     canAddMultipleGlossaryTerm: true,
     requireDomainForDataProduct: false,
-    warnings: [
-      'Entity must have either multiple user owners or a single team owner',
-    ],
   };
 
   beforeEach(() => {
@@ -68,18 +65,14 @@ describe('useEntityRules', () => {
 
   describe('Basic functionality', () => {
     it('should return rules for the specified entity type', () => {
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
 
       expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.TABLE);
       expect(result.current.rules).toEqual(mockParsedRules);
     });
 
     it('should return entity rules (UI hints) for the specified entity type', () => {
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
 
       expect(mockGetEntityRuleValidation).toHaveBeenCalledWith(
         EntityType.TABLE
@@ -95,9 +88,7 @@ describe('useEntityRules', () => {
         isLoading: true,
       });
 
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
 
       expect(result.current.isLoading).toBe(true);
     });
@@ -106,7 +97,7 @@ describe('useEntityRules', () => {
   describe('Entity type changes', () => {
     it('should fetch rules for new entity type when entityType changes', () => {
       const { rerender } = renderHook(
-        ({ entityType }) => useEntityRules({ entityType }),
+        ({ entityType }) => useEntityRules(entityType),
         {
           initialProps: { entityType: EntityType.TABLE },
         }
@@ -142,7 +133,7 @@ describe('useEntityRules', () => {
       });
 
       const { result, rerender } = renderHook(
-        ({ entityType }) => useEntityRules({ entityType }),
+        ({ entityType }) => useEntityRules(entityType),
         {
           initialProps: { entityType: EntityType.TABLE },
         }
@@ -159,7 +150,7 @@ describe('useEntityRules', () => {
   describe('Memoization', () => {
     it('should memoize rules and return the same reference when dependencies do not change', () => {
       const { result, rerender } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
+        useEntityRules(EntityType.TABLE)
       );
 
       const firstRulesReference = result.current.rules;
@@ -171,7 +162,7 @@ describe('useEntityRules', () => {
 
     it('should memoize entityRules and return the same reference when dependencies do not change', () => {
       const { result, rerender } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
+        useEntityRules(EntityType.TABLE)
       );
 
       const firstEntityRulesReference = result.current.entityRules;
@@ -199,7 +190,7 @@ describe('useEntityRules', () => {
       });
 
       const { result, rerender } = renderHook(
-        ({ entityType }) => useEntityRules({ entityType }),
+        ({ entityType }) => useEntityRules(entityType),
         {
           initialProps: { entityType: EntityType.TABLE },
         }
@@ -218,9 +209,7 @@ describe('useEntityRules', () => {
 
   describe('Different entity types', () => {
     it('should work with DASHBOARD entity type', () => {
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.DASHBOARD })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.DASHBOARD));
 
       expect(mockFetchRulesForEntity).toHaveBeenCalledWith(
         EntityType.DASHBOARD
@@ -233,9 +222,7 @@ describe('useEntityRules', () => {
     });
 
     it('should work with TOPIC entity type', () => {
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TOPIC })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TOPIC));
 
       expect(mockFetchRulesForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
       expect(mockGetRulesForEntity).toHaveBeenCalledWith(EntityType.TOPIC);
@@ -246,9 +233,7 @@ describe('useEntityRules', () => {
     });
 
     it('should work with CONTAINER entity type', () => {
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.CONTAINER })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.CONTAINER));
 
       expect(mockFetchRulesForEntity).toHaveBeenCalledWith(
         EntityType.CONTAINER
@@ -265,9 +250,7 @@ describe('useEntityRules', () => {
     it('should handle empty rules array', () => {
       mockGetRulesForEntity.mockReturnValue([]);
 
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
 
       expect(result.current.rules).toEqual([]);
     });
@@ -286,9 +269,7 @@ describe('useEntityRules', () => {
       };
       mockGetEntityRuleValidation.mockReturnValue(defaultHints);
 
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
 
       expect(result.current.entityRules).toEqual(defaultHints);
     });
@@ -323,9 +304,7 @@ describe('useEntityRules', () => {
 
       mockGetRulesForEntity.mockReturnValue(multipleRules);
 
-      const { result } = renderHook(() =>
-        useEntityRules({ entityType: EntityType.TABLE })
-      );
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
 
       expect(result.current.rules).toEqual(multipleRules);
       expect(result.current.rules).toHaveLength(3);
