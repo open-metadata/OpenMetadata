@@ -285,7 +285,6 @@
           .custom-node-column-container.custom-node-header-column-tracing {
             background-color: #ffffff;
             border-color: #1570ef;
-            color: #155eef;
           }
         }
       }
@@ -359,7 +358,9 @@
         .custom-node-column-container.custom-node-header-column-tracing {
           background-color: #ffffff;
           border-color: #1570ef;
-          color: #155eef;
+          &:hover {
+            background-color: @primary-1;
+          }
         }
       }
     }
@@ -503,7 +504,7 @@
         .custom-node-column-container.custom-node-header-column-tracing {
           border-color: #d92d20;
           background-color: #ffffff;
-          color: #bc1b06;
+          color: black;
         }
       }
     }
