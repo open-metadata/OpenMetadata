@@ -48,8 +48,7 @@ export const getELKLayoutedElementsV1 = async (
   edges: Edge[] = [],
   isExpanded = true,
   expandAllColumns = false,
-  columnsHavingLineage: string[] = [],
-  config: LayoutConfig = {}
+  columnsHavingLineage: string[] = []
 ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
   const rootNode = nodes.find((n) => n.data.isRootNode);
 
@@ -65,15 +64,15 @@ export const getELKLayoutedElementsV1 = async (
   );
 
   const elkNodes: ElkNode[] = nodes.map((node) => {
-    const isRoot = node.id === rootNode.id;
+    const nodeDepth = node.data?.nodeDepth;
 
     return {
       id: node.id,
       width: NODE_WIDTH,
       height: nodeHeightMap.get(node.id) ?? NODE_HEIGHT,
-      ...(isRoot && {
-        properties: {
-          'org.eclipse.elk.priority': '100',
+      ...(nodeDepth !== undefined && {
+        layoutOptions: {
+          'elk.partitioning.partition': String(nodeDepth),
         },
       }),
     };
@@ -88,15 +87,10 @@ export const getELKLayoutedElementsV1 = async (
   const layoutOptions = {
     'elk.algorithm': 'layered',
     'elk.direction': 'RIGHT',
-    'elk.spacing.nodeNode': String(config.verticalSpacing ?? 40),
-    'elk.layered.spacing.nodeNodeBetweenLayers': String(
-      config.horizontalSpacing ?? 40
-    ),
+    'elk.spacing.nodeNode': 40,
+    'elk.layered.spacing.nodeNodeBetweenLayers': 40,
     'elk.layered.nodePlacement.strategy': 'SIMPLE',
-    // 'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-    // 'elk.separateConnectedComponents': 'false',
-    // 'elk.alignment': 'CENTER',
-    // 'elk.contentAlignment': 'V_CENTER H_CENTER',
+    'elk.partitioning.activate': 'true',
   };
 
   try {
@@ -115,10 +109,6 @@ export const getELKLayoutedElementsV1 = async (
       return { nodes, edges };
     }
 
-    const rootX = rootLayoutedNode.x ?? 0;
-    const rootCenterY =
-      (rootLayoutedNode.y ?? 0) + (rootLayoutedNode.height ?? 0) / 2;
-
     const updatedNodes: Node[] = nodes.map((node) => {
       const layoutedNode = layoutedGraph.children?.find(
         (n) => n.id === node.id
@@ -131,9 +121,6 @@ export const getELKLayoutedElementsV1 = async (
           hidden: false,
         };
       }
-
-      const nodeCenterY =
-        (layoutedNode.y ?? 0) + (layoutedNode.height ?? 0) / 2;
 
       return {
         ...node,

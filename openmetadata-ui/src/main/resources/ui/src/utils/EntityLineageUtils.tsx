@@ -105,7 +105,6 @@ import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
-import { getELKLayoutedElementsV1 } from './LineageLayoutUtils';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -243,11 +242,12 @@ export const getLayoutedElements = (
 
 // Layout options for the elk graph https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-mrtree.html
 const layoutOptions = {
-  'elk.algorithm': 'mrtree',
+  'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '100',
+  'elk.spacing.nodeNode': 100,
+  'elk.layered.spacing.nodeNodeBetweenLayers': 50,
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
+  'elk.partitioning.activate': 'true',
 };
 
 const elk = new ELK();
@@ -266,6 +266,7 @@ export const getELKLayoutedElements = async (
       columnsHavingLineage
     );
     const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
+    const nodeDepth = node.data?.nodeDepth;
 
     return {
       ...node,
@@ -273,6 +274,11 @@ export const getELKLayoutedElements = async (
       sourcePosition: 'right',
       width: NODE_WIDTH,
       height: nodeHeight,
+      ...(nodeDepth !== undefined && {
+        layoutOptions: {
+          'elk.partitioning.partition': String(nodeDepth),
+        },
+      }),
     };
   });
 
@@ -786,15 +792,14 @@ const getNodeType = (
 
 export const positionNodesUsingElk = async (
   nodes: Node[],
-  upstreamEdges: Edge[],
-  downstreamEdges: Edge[],
+  edges: Edge[],
   isColView: boolean,
   expandAllColumns = false,
   columnsHavingLineage: string[] = []
 ) => {
-  const obj = await getELKLayoutedElementsV1(
+  const obj = await getELKLayoutedElements(
     nodes,
-    [...upstreamEdges, ...downstreamEdges],
+    edges,
     isColView,
     expandAllColumns,
     columnsHavingLineage
@@ -854,6 +859,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
+        nodeDepth: node.nodeDepth,
         isRootNode: entityFqn === node.fullyQualifiedName,
         hasIncomers: incomingMap.has(node.id),
         hasOutgoers: outgoingMap.has(node.id),
@@ -1449,6 +1455,7 @@ const processNodeArray = (
       entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
       entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
     },
+    nodeDepth: node.nodeDepth,
     upstreamExpandPerformed:
       (node.entity as LineageEntityReference).upstreamExpandPerformed !==
       undefined
