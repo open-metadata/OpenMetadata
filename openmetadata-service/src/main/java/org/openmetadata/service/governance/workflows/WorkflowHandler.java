@@ -271,44 +271,6 @@ public class WorkflowHandler {
             triggerWorkflowKey,
             e.getMessage());
       }
-
-      // Step 3: Delete old deployments to prevent confusion with old process definitions
-      // This is critical for periodicBatchEntity triggers that may have changed format
-      try {
-        // Delete ALL trigger deployments that start with the trigger key
-        // This includes both the base trigger (e.g., "SetTierForMLModelTrigger") and
-        // any entity-specific variants (e.g., "SetTierForMLModelTrigger-dashboard",
-        // "SetTierForMLModelTrigger-table")
-        List<ProcessDefinition> oldTriggerDefinitions =
-            repositoryService
-                .createProcessDefinitionQuery()
-                .processDefinitionKeyLike(triggerWorkflowKey + "%")
-                .list();
-
-        for (ProcessDefinition pd : oldTriggerDefinitions) {
-          LOG.info(
-              "Removing old trigger deployment: {} (version: {})", pd.getKey(), pd.getVersion());
-          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
-        }
-
-        // Delete old main workflow deployments
-        List<ProcessDefinition> oldMainDefinitions =
-            repositoryService
-                .createProcessDefinitionQuery()
-                .processDefinitionKey(workflowName)
-                .list();
-
-        for (ProcessDefinition pd : oldMainDefinitions) {
-          LOG.info(
-              "Removing old main workflow deployment: {} (version: {})",
-              pd.getKey(),
-              pd.getVersion());
-          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
-        }
-      } catch (Exception e) {
-        LOG.warn(
-            "Error removing old deployments for workflow {}: {}", workflowName, e.getMessage());
-      }
     }
 
     // Deploy Main Workflow
