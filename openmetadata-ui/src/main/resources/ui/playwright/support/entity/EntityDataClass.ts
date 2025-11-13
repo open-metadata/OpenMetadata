@@ -63,25 +63,25 @@ export class EntityDataClass {
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
   static readonly user1 = new UserClass({
     email: `pw.user.one${randomUUID}@example.com`,
-    firstName: 'PWUser',
-    lastName: `One`,
+    firstName: 'PW%User',
+    lastName: `One-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly user2 = new UserClass({
     email: `pw.user.two${randomUUID}@example.com`,
-    firstName: 'PWUser',
-    lastName: `Two`,
+    firstName: 'PW%User',
+    lastName: `Two-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly user3 = new UserClass({
     email: `pw.user.three${randomUUID}@example.com`,
-    firstName: 'PWUser',
-    lastName: `Three`,
+    firstName: 'PW%User',
+    lastName: `Three-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly team1 = new TeamClass({
     name: `PW%team-1${randomUUID}`,
-    displayName: `PW Team 1 ${randomUUID}`,
+    displayName: `PW%Team 1-${randomUUID}`,
     description: 'playwright team 1 description',
     teamType: 'Group',
     users: [],
@@ -89,7 +89,7 @@ export class EntityDataClass {
   });
   static readonly team2 = new TeamClass({
     name: `PW%team-2${randomUUID}`,
-    displayName: `PW Team 2 ${randomUUID}`,
+    displayName: `PW%Team 2-${randomUUID}`,
     description: 'playwright team 2 description',
     teamType: 'Group',
     users: [],
