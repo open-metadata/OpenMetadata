@@ -83,11 +83,26 @@ public class TagLabelUtil {
       List<String> tagFQNs = tagFqnMap.getOrDefault(targetHash, Collections.emptyList());
       List<String> termFQNs = termFqnMap.getOrDefault(targetHash, Collections.emptyList());
 
-      Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
-      GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
+      try {
+        Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
+        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to fetch classification tags for target {}. Skipping these tags. Error: {}",
+            targetHash,
+            ex.getMessage());
+      }
 
-      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
-      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+      try {
+        GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
+        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to fetch glossary terms {} for target {}. Skipping these terms. Error: {}",
+            termFQNs,
+            targetHash,
+            ex.getMessage());
+      }
 
       result.put(targetHash, tagLabels);
     }
@@ -112,20 +127,28 @@ public class TagLabelUtil {
   }
 
   public static void applyTagCommonFields(TagLabel label) {
-    if (label.getSource() == TagSource.CLASSIFICATION) {
-      Tag tag = getTag(label.getTagFQN());
-      label.setName(tag.getName());
-      label.setDisplayName(tag.getDisplayName());
-      label.setDescription(tag.getDescription());
-      label.setStyle(tag.getStyle());
-    } else if (label.getSource() == TagSource.GLOSSARY) {
-      GlossaryTerm glossaryTerm = getGlossaryTerm(label.getTagFQN());
-      label.setName(glossaryTerm.getName());
-      label.setDisplayName(glossaryTerm.getDisplayName());
-      label.setDescription(glossaryTerm.getDescription());
-      label.setStyle(glossaryTerm.getStyle());
-    } else {
-      throw new IllegalArgumentException("Invalid source type " + label.getSource());
+    try {
+      if (label.getSource() == TagSource.CLASSIFICATION) {
+        Tag tag = getTag(label.getTagFQN());
+        label.setName(tag.getName());
+        label.setDisplayName(tag.getDisplayName());
+        label.setDescription(tag.getDescription());
+        label.setStyle(tag.getStyle());
+      } else if (label.getSource() == TagSource.GLOSSARY) {
+        GlossaryTerm glossaryTerm = getGlossaryTerm(label.getTagFQN());
+        label.setName(glossaryTerm.getName());
+        label.setDisplayName(glossaryTerm.getDisplayName());
+        label.setDescription(glossaryTerm.getDescription());
+        label.setStyle(glossaryTerm.getStyle());
+      } else {
+        throw new IllegalArgumentException("Invalid source type " + label.getSource());
+      }
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to apply common fields for {} tag '{}'. Tag label will be returned without enrichment. Error: {}",
+          label.getSource(),
+          label.getTagFQN(),
+          ex.getMessage());
     }
   }
 
@@ -162,7 +185,15 @@ public class TagLabelUtil {
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
     for (TagLabel tagLabel : tagLabels) {
       if (tagLabel != null) {
-        EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+        try {
+          EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+        } catch (Exception ex) {
+          LOG.warn(
+              "Failed to fetch derived tags for {} '{}'. Skipping derived tags for this label. Error: {}",
+              tagLabel.getSource(),
+              tagLabel.getTagFQN(),
+              ex.getMessage());
+        }
       }
     }
     updatedTagLabels.sort(compareTagLabel);
