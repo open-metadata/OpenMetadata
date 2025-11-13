@@ -135,6 +135,8 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
     () => Date.now() - 7 * 24 * 60 * 60 * 1000
   ),
   getCurrentMillis: jest.fn(() => Date.now()),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../rest/applicationAPI', () => ({
