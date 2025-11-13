@@ -20,7 +20,7 @@ export interface OwnerLabelProps {
   className?: string;
   onUpdate?: (owners?: EntityReference[]) => void;
   hasPermission?: boolean;
-  ownerDisplayName?: ReactNode[];
+  ownerDisplayName?: Map<string, ReactNode>;
   placeHolder?: string;
   maxVisibleOwners?: number;
   multiple?: {

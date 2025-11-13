@@ -157,7 +157,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe(`Data Asset Rules Enabled`, async () => {
+test.describe(`@dataAssetRules Data Asset Rules Enabled`, async () => {
   for (const EntityClass of entities) {
     const entity = new EntityClass();
     const entityName = entity.getType();

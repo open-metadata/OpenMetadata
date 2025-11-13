@@ -27,7 +27,7 @@ interface OwnerUserTeamListProps {
   avatarSize: number;
   className?: string;
   isCompactView: boolean;
-  ownerDisplayName?: ReactNode[];
+  ownerDisplayName?: Map<string, ReactNode>;
 }
 
 const OwnerUserTeamList = ({
@@ -72,7 +72,11 @@ const OwnerUserTeamList = ({
         variant="middle"
       />
 
-      <OwnerTeamList avatarSize={avatarSize} owners={showMultipleTypeTeam} />
+      <OwnerTeamList
+        avatarSize={avatarSize}
+        ownerDisplayName={ownerDisplayName}
+        owners={showMultipleTypeTeam}
+      />
 
       {hasPermission && isAssignee && (
         <IconButton

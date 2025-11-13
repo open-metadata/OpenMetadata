@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, MenuItem, Typography, useTheme } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { EntityReference } from '../../../generated/entity/type';
@@ -23,11 +23,13 @@ import { StyledMenu } from '../../LineageTable/LineageTable.styled';
 export interface OwnerTeamListProps {
   owners: EntityReference[];
   avatarSize: number;
+  ownerDisplayName?: Map<string, ReactNode>;
 }
 
 export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
   owners,
   avatarSize,
+  ownerDisplayName,
 }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -83,7 +85,8 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
               fontWeight: 500,
               lineHeight: 'initial',
             }}>
-            {getEntityName(visibleTeam)}
+            {ownerDisplayName?.get(visibleTeam.name ?? '') ??
+              getEntityName(visibleTeam)}
           </Typography>
         </Box>
       </Link>
@@ -140,7 +143,8 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
                       color: theme.palette.allShades.gray[900],
                     }}
                     variant="body2">
-                    {getEntityName(owner)}
+                    {ownerDisplayName?.get(owner.name ?? '') ??
+                      getEntityName(owner)}
                   </Typography>
                 </Link>
               </MenuItem>

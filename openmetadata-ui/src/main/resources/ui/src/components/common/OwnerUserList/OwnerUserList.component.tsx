@@ -26,7 +26,7 @@ interface OwnerUserListProps {
   className?: string;
   isCompactView: boolean;
   ownerLabelClassName?: string;
-  ownerDisplayName?: ReactNode[];
+  ownerDisplayName?: Map<string, ReactNode>;
 }
 
 const OwnerUserList = ({
@@ -85,7 +85,7 @@ const OwnerUserList = ({
           gap: isCompactView ? '8px' : '0',
           flexWrap: isCompactView ? 'wrap' : 'initial',
         }}>
-        {renderVisibleOwners.map((owner: EntityReference, index: number) => (
+        {renderVisibleOwners.map((owner: EntityReference) => (
           <Box
             className={classNames(
               {
@@ -99,7 +99,7 @@ const OwnerUserList = ({
               className={className}
               isCompactView={isCompactView}
               owner={owner}
-              ownerDisplayName={ownerDisplayName?.[index]}
+              ownerDisplayName={ownerDisplayName?.get(owner.name ?? '')}
             />
           </Box>
         ))}

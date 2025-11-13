@@ -110,15 +110,33 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [ "${{ matrix.shardIndex }}" -eq "6" ]; then
-            # Shard 6 runs ONLY DataAssetRules tests - explicitly exclude chromium project
-            npx playwright test --project=setup --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled --reporter=list,html,@estruyf/github-actions-reporter,blob
+            echo "🔹 Running DataAssetRules-only tests on shard 6"
+
+            # Run only the special specs or projects here
+            npx playwright test \
+              --project=setup \
+              --project=DataAssetRulesEnabled \
+              --project=DataAssetRulesDisabled \
+              --grep @dataAssetRules \
+              --reporter=list,html,@estruyf/github-actions-reporter,blob
+
           elif [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
-            # Shards 1-5 run ingestion tests if ingestion files changed
-            npx playwright test --project=chromium --grep @ingestion --shard=${{ matrix.shardIndex }}/5
+            echo "🔹 Running ingestion tests on shards 1–5"
+            npx playwright test \
+              --project=chromium \
+              --grep @ingestion \
+              --shard=${{ matrix.shardIndex }}/5 \
+              --reporter=list,html,@estruyf/github-actions-reporter,blob
+
           else
-            # Shards 1-5 run all other tests (excluding DataAssetRules via chromium project)
-            npx playwright test --project=chromium --shard=${{ matrix.shardIndex }}/5
+            echo "🔹 Running all other tests (excluding DataAssetRules) on shards 1–5"
+            npx playwright test \
+              --project=chromium \
+              --grep-invert @dataAssetRules \
+              --shard=${{ matrix.shardIndex }}/5 \
+              --reporter=list,html,@estruyf/github-actions-reporter,blob
           fi
+
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}

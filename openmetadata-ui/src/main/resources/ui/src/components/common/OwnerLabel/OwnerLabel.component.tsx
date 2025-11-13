@@ -162,7 +162,11 @@ export const OwnerLabel = ({
         )}
 
         {isMultipleTeam && (
-          <OwnerTeamList avatarSize={avatarSize} owners={owners} />
+          <OwnerTeamList
+            avatarSize={avatarSize}
+            ownerDisplayName={ownerDisplayName}
+            owners={owners}
+          />
         )}
 
         {isMultipleUser && (

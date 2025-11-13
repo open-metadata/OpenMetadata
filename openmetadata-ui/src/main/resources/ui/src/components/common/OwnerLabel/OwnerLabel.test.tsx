@@ -66,8 +66,11 @@ describe('OwnerLabel component', () => {
   });
 
   it('should render ownerDisplayName if provided', async () => {
+    const ownerDisplayNameMap = new Map<string, string>([
+      [mockOwner[0].name, 'ownerDisplayName'],
+    ]);
     render(
-      <OwnerLabel ownerDisplayName={['ownerDisplayName']} owners={mockOwner} />,
+      <OwnerLabel ownerDisplayName={ownerDisplayNameMap} owners={mockOwner} />,
       { wrapper: MemoryRouter }
     );
 
