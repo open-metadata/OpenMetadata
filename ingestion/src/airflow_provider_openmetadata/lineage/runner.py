@@ -18,6 +18,16 @@ from typing import List, Optional
 from airflow.configuration import conf
 from pydantic import BaseModel
 
+# Version detection for Airflow 3.x compatibility
+try:
+    import airflow
+    from packaging import version
+
+    AIRFLOW_VERSION = version.parse(airflow.__version__)
+    IS_AIRFLOW_3_OR_HIGHER = AIRFLOW_VERSION.major >= 3
+except Exception:
+    IS_AIRFLOW_3_OR_HIGHER = False
+
 from airflow_provider_openmetadata.lineage.status import STATUS_MAP
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -100,7 +110,17 @@ class AirflowLineageRunner:
         self.dag = dag
         self.xlets = xlets
 
-        self.host_port = conf.get("webserver", "base_url")
+        # Get base_url with fallback for Airflow 3.x ([api] section) and 2.x ([webserver] section)
+        try:
+            if IS_AIRFLOW_3_OR_HIGHER:
+                self.host_port = conf.get("api", "base_url")
+            else:
+                self.host_port = conf.get("webserver", "base_url")
+        except Exception:
+            # Fallback: try alternate section
+            self.host_port = conf.get(
+                "webserver" if IS_AIRFLOW_3_OR_HIGHER else "api", "base_url"
+            )
 
     def get_or_create_pipeline_service(self) -> PipelineService:
         """
@@ -266,9 +286,16 @@ class AirflowLineageRunner:
             )
             for task_instance in task_instances
         ]
+
+        # Airflow 3.x uses logical_date instead of execution_date
+        execution_date = (
+            getattr(task_instances[0], "logical_date", None)
+            or task_instances[0].execution_date
+        )
+
         return PipelineStatus(
             # Use any of the task execution dates for the status execution date
-            timestamp=datetime_to_ts(task_instances[0].execution_date),
+            timestamp=datetime_to_ts(execution_date),
             executionStatus=self.get_dag_status_from_task_instances(task_instances),
             taskStatus=task_status,
         )
