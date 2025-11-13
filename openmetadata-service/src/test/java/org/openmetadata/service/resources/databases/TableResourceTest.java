@@ -226,6 +226,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsBulkAPI = true;
     supportsSearchIndex = true;
   }
 

@@ -19,6 +19,7 @@ from typing import List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, validate_call
 
+from metadata.generated.schema.api.data.bulkCreateTable import BulkCreateTable
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -335,3 +336,40 @@ class OMetaTableMixin:
             data=custom_metric.model_dump_json(),
         )
         return Table(**resp)
+
+    def bulk_create_or_update_tables(
+        self, bulk_request: BulkCreateTable, use_async: bool = False
+    ):
+        """Bulk create or update multiple tables in a single API call.
+
+        Args:
+            bulk_request (BulkCreateTable): Bulk create request containing list of tables
+            use_async (bool): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        import json
+
+        from metadata.generated.schema.type.bulkOperationResult import (
+            BulkOperationResult,
+        )
+
+        # Backend endpoint expects List<CreateTable> directly, not wrapped in BulkCreateTable
+        # Serialize the tables list to JSON
+        tables_json = json.dumps(
+            [
+                table.model_dump(mode="json", by_alias=True, exclude_none=True)
+                for table in bulk_request.tables
+            ]
+        )
+
+        # Build URL with async parameter if requested
+        url = f"{self.get_suffix(Table)}/bulk"
+        if use_async:
+            url += "?async=true"
+
+        resp = self.client.put(url, data=tables_json)
+
+        # Backend returns BulkOperationResult in both async and sync modes
+        return BulkOperationResult(**resp)

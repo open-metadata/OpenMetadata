@@ -79,6 +79,7 @@ public class DashboardDataModelResourceTest
         DashboardDataModelResource.DashboardDataModelList.class,
         "dashboard/datamodels",
         DashboardDataModelResource.FIELDS);
+    supportsBulkAPI = true;
   }
 
   @Test

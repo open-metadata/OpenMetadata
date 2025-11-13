@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -36,6 +37,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +65,9 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
+import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -948,5 +953,105 @@ public class IngestionPipelineResourceTest
           JsonUtils.convertValue(updated.getConfig(), MessagingServiceMetadataPipeline.class);
       assertEquals(origConfig, updatedConfig);
     }
+  }
+
+  @Test
+  void testProgressTrackingInIngestionStatus(TestInfo test) throws IOException {
+    // Create a test ingestion pipeline
+    CreateIngestionPipeline create = createRequest(test);
+    IngestionPipeline pipeline = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create progress data with all entity types using ProgressProperty
+    Progress progressData = new Progress();
+    progressData.withAdditionalProperty(
+        "databases",
+        new ProgressProperty().withTotal(1).withProcessed(1).withEstimatedRemainingSeconds(0));
+    progressData.withAdditionalProperty(
+        "schemas",
+        new ProgressProperty().withTotal(47).withProcessed(30).withEstimatedRemainingSeconds(120));
+    progressData.withAdditionalProperty(
+        "tables",
+        new ProgressProperty()
+            .withTotal(9621)
+            .withProcessed(5000)
+            .withEstimatedRemainingSeconds(600));
+    progressData.withAdditionalProperty(
+        "stored_procedures",
+        new ProgressProperty().withTotal(100).withProcessed(0).withEstimatedRemainingSeconds(null));
+
+    // Create step summary with progress
+    List<StepSummary> steps = new ArrayList<>();
+    StepSummary stepSummary =
+        new StepSummary()
+            .withName("TestSource")
+            .withRecords(5000)
+            .withUpdatedRecords(100)
+            .withWarnings(5)
+            .withErrors(2)
+            .withFiltered(50)
+            .withProgress(progressData);
+    steps.add(stepSummary);
+
+    // Create and submit pipeline status with progress data
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withRunId(runId)
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withStartDate(System.currentTimeMillis())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(steps);
+
+    TestUtils.put(
+        getPipelineStatusTarget(pipeline.getFullyQualifiedName()),
+        pipelineStatus,
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Retrieve the status and verify it was stored correctly
+    PipelineStatus retrievedStatus =
+        TestUtils.get(
+            getPipelineStatusByRunId(pipeline.getFullyQualifiedName(), runId),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(retrievedStatus);
+    assertNotNull(retrievedStatus.getStatus());
+    assertEquals(1, retrievedStatus.getStatus().size());
+    assertNotNull(retrievedStatus.getStatus().get(0).getProgress());
+
+    // Verify progress data was persisted correctly
+    Progress retrievedProgress = retrievedStatus.getStatus().get(0).getProgress();
+    assertEquals(4, retrievedProgress.getAdditionalProperties().size());
+
+    // Verify databases progress
+    ProgressProperty dbProgress = retrievedProgress.getAdditionalProperties().get("databases");
+    assertNotNull(dbProgress);
+    assertEquals(1, dbProgress.getTotal());
+    assertEquals(1, dbProgress.getProcessed());
+    assertEquals(0, dbProgress.getEstimatedRemainingSeconds());
+
+    // Verify schemas progress
+    ProgressProperty schemaProgress = retrievedProgress.getAdditionalProperties().get("schemas");
+    assertNotNull(schemaProgress);
+    assertEquals(47, schemaProgress.getTotal());
+    assertEquals(30, schemaProgress.getProcessed());
+    assertEquals(120, schemaProgress.getEstimatedRemainingSeconds());
+
+    // Verify tables progress
+    ProgressProperty tableProgress = retrievedProgress.getAdditionalProperties().get("tables");
+    assertNotNull(tableProgress);
+    assertEquals(9621, tableProgress.getTotal());
+    assertEquals(5000, tableProgress.getProcessed());
+    assertEquals(600, tableProgress.getEstimatedRemainingSeconds());
+
+    // Verify stored procedures progress (no estimate yet)
+    ProgressProperty spProgress =
+        retrievedProgress.getAdditionalProperties().get("stored_procedures");
+    assertNotNull(spProgress);
+    assertEquals(100, spProgress.getTotal());
+    assertEquals(0, spProgress.getProcessed());
+    assertNull(spProgress.getEstimatedRemainingSeconds());
   }
 }

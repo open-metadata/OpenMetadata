@@ -79,6 +79,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
         "dashboards",
         DashboardResource.FIELDS);
     supportsSearchIndex = true;
+    supportsBulkAPI = true;
   }
 
   @BeforeAll

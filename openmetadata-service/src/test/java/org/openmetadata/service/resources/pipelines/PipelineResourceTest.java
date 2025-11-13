@@ -84,6 +84,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   public PipelineResourceTest() {
     super(
         Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS);
+    supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
   }
