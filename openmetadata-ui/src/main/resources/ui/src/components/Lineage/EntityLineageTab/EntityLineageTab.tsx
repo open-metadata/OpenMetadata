@@ -16,7 +16,7 @@ import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import LineageTable from '../../LineageTable/LineageTable';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { LineageNew } from '../LineageNew/LineageNew';
+import Lineage from '../Lineage.component';
 
 interface EntityLineageTabProps {
   deleted: boolean;
@@ -43,11 +43,11 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
 
   const lineageTab = useMemo(
     () => (
-      <LineageNew
-      // deleted={deleted}
-      // entity={entity as SourceType}
-      // entityType={entityType}
-      // hasEditAccess={hasEditAccess}
+      <Lineage
+        deleted={deleted}
+        entity={entity as SourceType}
+        entityType={entityType}
+        hasEditAccess={hasEditAccess}
       />
     ),
     [deleted, entity, entityType, hasEditAccess]

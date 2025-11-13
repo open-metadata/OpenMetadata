@@ -32,6 +32,7 @@ import { LineagePlatformView } from '../../../../context/LineageProvider/Lineage
 import { EntityType } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
@@ -92,12 +93,12 @@ const StyledButton = styled((props: ToggleButtonProps) => (
 
 const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const {
-    activeLayer,
     onUpdateLayerView,
     onPlatformViewChange,
     platformView,
     isPlatformLineage,
   } = useLineageProvider();
+  const { activeLayer } = useLineageStore();
   const { t } = useTranslation();
   const [layersAnchorEl, setLayersAnchorEl] =
     React.useState<null | HTMLElement>(null);

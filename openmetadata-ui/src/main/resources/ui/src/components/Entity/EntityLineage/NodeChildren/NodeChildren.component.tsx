@@ -29,6 +29,7 @@ import {
   EntityReference,
   TestSummary,
 } from '../../../../generated/tests/testCase';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import EntityLink from '../../../../utils/EntityLink';
@@ -43,12 +44,14 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { Panel } = Collapse;
   const {
     tracedColumns,
-    activeLayer,
     onColumnClick,
     columnsHavingLineage,
     isEditMode,
     expandAllColumns,
   } = useLineageProvider();
+
+  const { activeLayer } = useLineageStore();
+
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);

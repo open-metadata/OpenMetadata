@@ -35,6 +35,7 @@ import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { centerNodePosition } from '../../../../utils/EntityLineageUtils';
 import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
 
@@ -50,11 +51,11 @@ const LineageControlButtons: FC<{
   const {
     reactFlowInstance,
     redraw,
-    activeLayer,
     isEditMode,
     expandAllColumns,
     toggleColumnView,
   } = useLineageProvider();
+  const { activeLayer } = useLineageStore();
   const navigate = useNavigate();
   const location = useCustomLocation();
 

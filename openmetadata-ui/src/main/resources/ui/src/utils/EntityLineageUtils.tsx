@@ -105,6 +105,7 @@ import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
+import { getELKLayoutedElementsV1 } from './LineageLayoutUtils';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -785,14 +786,15 @@ const getNodeType = (
 
 export const positionNodesUsingElk = async (
   nodes: Node[],
-  edges: Edge[],
+  upstreamEdges: Edge[],
+  downstreamEdges: Edge[],
   isColView: boolean,
   expandAllColumns = false,
   columnsHavingLineage: string[] = []
 ) => {
-  const obj = await getELKLayoutedElements(
+  const obj = await getELKLayoutedElementsV1(
     nodes,
-    edges,
+    [...upstreamEdges, ...downstreamEdges],
     isColView,
     expandAllColumns,
     columnsHavingLineage
@@ -1441,25 +1443,23 @@ const processNodeArray = (
   nodes: Record<string, NodeData>,
   entityFqn: string
 ): LineageEntityReference[] => {
-  return Object.values(nodes)
-    .map((node: NodeData) => ({
-      ...node.entity,
-      paging: {
-        entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
-        entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
-      },
-      upstreamExpandPerformed:
-        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
-        undefined
-          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
-          : node.entity.fullyQualifiedName === entityFqn,
-      downstreamExpandPerformed:
-        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
-        undefined
-          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
-          : node.entity.fullyQualifiedName === entityFqn,
-    }))
-    .flat();
+  return Object.values(nodes).map((node: NodeData) => ({
+    ...node.entity,
+    paging: {
+      entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
+      entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
+    },
+    upstreamExpandPerformed:
+      (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+      undefined
+        ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+        : node.entity.fullyQualifiedName === entityFqn,
+    downstreamExpandPerformed:
+      (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+      undefined
+        ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+        : node.entity.fullyQualifiedName === entityFqn,
+  }));
 };
 
 const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
@@ -1570,9 +1570,7 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
-
-  const processedNodes: LineageEntityReference[] = [...nodesArray];
+  const nodesArray = processNodeArray(nodes, rootFqn);
 
   // Process edges
   const allEdges = [
@@ -1592,7 +1590,7 @@ export const parseLineageData = (
   );
 
   // Combine all nodes and edges
-  const finalNodes = [...processedNodes, ...newNodes];
+  const finalNodes = [...nodesArray, ...newNodes];
   const finalEdges = [
     ...(processedEdges as unknown as EdgeDetails[]),
     ...newEdges,
