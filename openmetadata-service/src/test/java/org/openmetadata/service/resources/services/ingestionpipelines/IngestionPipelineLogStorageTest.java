@@ -106,7 +106,6 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     }
   }
 
-  @Test
   void setupTestData() throws Exception {
     if (initialized) {
       return;
@@ -171,13 +170,13 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
               .withServiceType(CreateDatabaseService.DatabaseServiceType.BigQuery)
               .withConnection(new DatabaseConnection().withConfig(new BigQueryConnection()));
 
-      WebTarget target = getResource("services/databaseServices");
+      WebTarget target = getResource("v1/services/databaseServices");
       databaseService =
           TestUtils.post(target, createService, DatabaseService.class, ADMIN_AUTH_HEADERS);
     } catch (Exception e) {
       // If service already exists, fetch it
       if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-        WebTarget target = getResource("services/databaseServices/name/test-db-service-logs");
+        WebTarget target = getResource("v1/services/databaseServices/name/test-db-service-logs");
         databaseService = TestUtils.get(target, DatabaseService.class, ADMIN_AUTH_HEADERS);
       } else {
         throw e;
@@ -205,6 +204,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     assertTrue(metrics.getS3ReadsCount() > initialReads, "S3 read count should increase");
   }
 
+  @Test
   void testStreamingEndpoint() throws Exception {
     setupTestData();
     if (testPipeline == null) {
@@ -212,11 +212,11 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
       return;
     }
 
-    String pipelineId = testPipeline.getId().toString();
+    String pipelineFQN = testPipeline.getFullyQualifiedName();
     String runId = UUID.randomUUID().toString();
 
     WebTarget streamTarget =
-        getResource("services/ingestionPipelines/" + pipelineId + "/logs/" + runId + "/stream");
+        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/stream");
 
     String logData = "Stream endpoint test log\n";
     Response streamResponse =
@@ -232,7 +232,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
 
     // Read logs back through REST endpoint
     WebTarget getTarget =
-        getResource("services/ingestionPipelines/" + pipelineId + "/logs/" + runId);
+        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
     Response getResponse =
         getTarget
             .request(MediaType.APPLICATION_JSON)
@@ -326,7 +326,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     // Clean up test pipeline first (before deleting the service it depends on)
     if (testPipeline != null) {
       try {
-        WebTarget target = getResource("services/ingestionPipelines/" + testPipeline.getId());
+        WebTarget target = getResource("v1/services/ingestionPipelines/" + testPipeline.getId());
         TestUtils.delete(target, ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         LOG.warn("Failed to delete test pipeline: {}", e.getMessage());
@@ -336,7 +336,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     // Clean up database service after pipeline is deleted
     if (databaseService != null) {
       try {
-        WebTarget target = getResource("services/databaseServices/" + databaseService.getId());
+        WebTarget target = getResource("v1/services/databaseServices/" + databaseService.getId());
         TestUtils.delete(target, ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         LOG.warn("Failed to delete database service: {}", e.getMessage());
@@ -585,18 +585,22 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   @Test
   void testCloseLogStream() throws Exception {
     setupTestData(); // Ensure setup has run
-    String pipelineFQN = "test.pipeline.closestream";
+    if (testPipeline == null) {
+      LOG.warn("Skipping close log stream test - pipeline not created");
+      return;
+    }
+    String pipelineFQN = testPipeline.getFullyQualifiedName();
     UUID runId = UUID.randomUUID();
 
     // First, write some logs to create an active stream
     Map<String, Object> logData = Map.of("logs", "Test log content for close stream");
     WebTarget writeTarget =
-        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
     TestUtils.post(writeTarget, logData, ADMIN_AUTH_HEADERS);
 
     // Now close the stream
     WebTarget closeTarget =
-        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
+        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
     Map<String, Object> closeResponse =
         TestUtils.post(closeTarget, "", Map.class, ADMIN_AUTH_HEADERS);
 
@@ -628,13 +632,13 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
                       .withRetries(3)
                       .withRetryDelay(300));
 
-      WebTarget target = getResource("services/ingestionPipelines");
+      WebTarget target = getResource("v1/services/ingestionPipelines");
       return TestUtils.post(target, createRequest, IngestionPipeline.class, ADMIN_AUTH_HEADERS);
     } catch (Exception e) {
       // If pipeline already exists, fetch it
       if (e.getMessage() != null && e.getMessage().contains("already exists")) {
         String fqn = databaseService.getFullyQualifiedName() + ".test-pipeline-logs";
-        WebTarget target = getResource("services/ingestionPipelines/name/" + fqn);
+        WebTarget target = getResource("v1/services/ingestionPipelines/name/" + fqn);
         return TestUtils.get(target, IngestionPipeline.class, ADMIN_AUTH_HEADERS);
       } else {
         throw new IOException("Failed to create test pipeline", e);
