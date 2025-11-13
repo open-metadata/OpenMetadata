@@ -10,29 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
-
-.lineage-control-buttons {
-  position: absolute;
-  right: 20px;
-  top: 12px;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border-radius: 10px;
-  z-index: 1000;
-  border: 1px solid @border-color;
-  overflow: hidden;
-
-  .lineage-button {
-    width: 44px;
-    height: 44px;
-    padding: 8px 12px;
-
-    &.active,
-    &:hover {
-      background-color: @blue-5;
-      color: @primary-color;
-    }
-  }
+/**
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface OauthClientAuth {
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret: string;
 }

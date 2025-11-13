@@ -359,7 +359,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const handleShowDeleted = useCallback(
     (value: boolean) => {
       setShowDeleted(value);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
     [handlePageChange]
   );
@@ -1188,8 +1191,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getOtherDetails({
           [cursorType]: paging[cursorType],
         });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, getOtherDetails, handlePageChange]
   );
@@ -1308,9 +1318,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
-    handlePageChange(INITIAL_PAGING_VALUE);
-    getOtherDetails({ limit: pageSize });
-  }, [showDeleted, deleted, pageSize]);
+    const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
+    if (cursorType && cursorValue) {
+      getOtherDetails({ limit: pageSize, [cursorType]: paging[cursorType] });
+    } else {
+      getOtherDetails({ limit: pageSize });
+    }
+  }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -1583,38 +1597,36 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
       tabs.push(
-        ...[
-          {
-            name: t('label.file-plural'),
-            key: EntityTabs.FILES,
-            count: filesPaging.total,
-            children: (
-              <FilesTable
-                files={files}
-                handlePageChange={onFilesPageChange}
-                handleShowDeleted={handleShowDeleted}
-                isLoading={isFilesLoading}
-                paging={filesPagingInfo}
-                showDeleted={showDeleted}
-              />
-            ),
-          },
-          {
-            name: t('label.spreadsheet-plural'),
-            key: EntityTabs.SPREADSHEETS,
-            count: spreadsheetsPaging.total,
-            children: (
-              <SpreadsheetsTable
-                handlePageChange={onSpreadsheetsPageChange}
-                handleShowDeleted={handleShowDeleted}
-                isLoading={isSpreadsheetsLoading}
-                paging={spreadsheetsPagingInfo}
-                showDeleted={showDeleted}
-                spreadsheets={spreadsheets}
-              />
-            ),
-          },
-        ]
+        {
+          name: t('label.file-plural'),
+          key: EntityTabs.FILES,
+          count: filesPaging.total,
+          children: (
+            <FilesTable
+              files={files}
+              handlePageChange={onFilesPageChange}
+              handleShowDeleted={handleShowDeleted}
+              isLoading={isFilesLoading}
+              paging={filesPagingInfo}
+              showDeleted={showDeleted}
+            />
+          ),
+        },
+        {
+          name: t('label.spreadsheet-plural'),
+          key: EntityTabs.SPREADSHEETS,
+          count: spreadsheetsPaging.total,
+          children: (
+            <SpreadsheetsTable
+              handlePageChange={onSpreadsheetsPageChange}
+              handleShowDeleted={handleShowDeleted}
+              isLoading={isSpreadsheetsLoading}
+              paging={spreadsheetsPagingInfo}
+              showDeleted={showDeleted}
+              spreadsheets={spreadsheets}
+            />
+          ),
+        }
       );
     }
 

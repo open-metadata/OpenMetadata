@@ -23,6 +23,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
@@ -1532,13 +1533,28 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   // Ensure the response has been received and check the status code
   await lineageApi;
 
+  await waitForAllLoadersToDisappear(page);
+
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
+    await page.getByTestId('lineage-config').click();
+
     await expect(
-      page.locator('[data-testid="edit-lineage"]')
+      page.getByRole('menuitem', { name: 'Edit Lineage' })
     ).not.toBeVisible();
+
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
   } else {
-    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
+    await page.getByTestId('lineage-config').click();
+
+    await expect(
+      page.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).toBeVisible();
+
+    await clickOutside(page);
   }
 };
 
@@ -1977,7 +1993,7 @@ export const checkExploreSearchFilter = async (
   await expect(
     page.getByTestId(
       `table-data-card_${
-        (entity as any)?.entityResponseData?.fullyQualifiedName
+        (entity as TableClass)?.entityResponseData?.fullyQualifiedName
       }`
     )
   ).toBeVisible();

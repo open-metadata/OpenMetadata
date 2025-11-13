@@ -3,6 +3,7 @@ package org.openmetadata.service.notifications.template.handlebars;
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.HandlebarsException;
 import com.github.jknack.handlebars.Template;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
@@ -74,5 +75,12 @@ public class HandlebarsNotificationTemplateProcessor implements NotificationTemp
     }
 
     return String.format("Template validation failed: %s", message);
+  }
+
+  @Override
+  public List<HandlebarsHelperMetadata> getHelperMetadata() {
+    return HandlebarsProvider.getAllHelperInstances().stream()
+        .map(HandlebarsHelper::getMetadata)
+        .toList();
   }
 }
