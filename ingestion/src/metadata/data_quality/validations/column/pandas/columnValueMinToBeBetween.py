@@ -100,6 +100,9 @@ class ColumnValueMinToBeBetweenValidator(
 
             for df in dfs:
                 df_typed = cast(pd.DataFrame, df)
+                # Cast dimension column to string to ensure compatibility with string literals ('NULL', 'Others')
+                # This prevents type mismatch errors when mixing numeric columns with string labels
+                df_typed[dimension_col.name] = df_typed[dimension_col.name].astype(str)
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
