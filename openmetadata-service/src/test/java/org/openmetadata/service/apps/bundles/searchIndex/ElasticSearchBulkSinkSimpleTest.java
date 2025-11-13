@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 
-import es.org.elasticsearch.client.RestHighLevelClient;
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +22,7 @@ class ElasticSearchBulkSinkSimpleTest {
 
   @Mock private SearchRepository searchRepository;
   @Mock private ElasticSearchClient searchClient;
-  @Mock private RestHighLevelClient restHighLevelClient;
+  @Mock private ElasticsearchClient restHighLevelClient;
   @Mock private IndexMapping indexMapping;
 
   private ElasticSearchBulkSink elasticSearchBulkSink;
@@ -30,7 +30,7 @@ class ElasticSearchBulkSinkSimpleTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    lenient().when(searchClient.getClient()).thenReturn(restHighLevelClient);
+    lenient().when(searchClient.getNewClient()).thenReturn(restHighLevelClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
     lenient().when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
