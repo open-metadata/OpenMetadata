@@ -251,6 +251,43 @@ describe('CustomPropertiesSection', () => {
         'message.no-access-placeholder - label.view-entity -'
       );
     });
+
+    it('should not render custom properties when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
+      expect(screen.queryByText('Property 2')).not.toBeInTheDocument();
+      expect(screen.queryByText('value1')).not.toBeInTheDocument();
+    });
+
+    it('should not render view all button when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
+    });
+
+    it('should render permission error with correct placeholder type', () => {
+      const { container } = render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(
+        container.querySelector('.permission-error-placeholder')
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Custom Properties Rendering', () => {
@@ -697,6 +734,73 @@ describe('CustomPropertiesSection', () => {
       const dashElements = screen.getAllByText('-');
 
       expect(dashElements.length).toBeGreaterThan(0); // Missing data placeholder
+    });
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties when viewCustomPropertiesPermission is true', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission
+        />
+      );
+
+      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByText('value1')).toBeInTheDocument();
+    });
+
+    it('should hide custom properties and show error when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
+      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
+    });
+
+    it('should take precedence over loading state when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          isEntityDataLoading
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
+
+    it('should show permission error even when no custom properties exist', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          entityTypeDetail={{ customProperties: [] }}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('trans-component')).toHaveTextContent(
+        'message.no-access-placeholder'
+      );
+    });
+
+    it('should display custom properties correctly when permission is granted and data exists', () => {
+      const { container } = render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission
+        />
+      );
+
+      expect(
+        container.querySelector('.custom-properties-list')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByText('Property 2')).toBeInTheDocument();
     });
   });
 
