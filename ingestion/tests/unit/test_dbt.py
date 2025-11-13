@@ -1067,6 +1067,121 @@ class DbtUnitTest(TestCase):
 
         self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)
 
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_classification_tags(self, get_tag_label):
+        """Test processing classification tags from dbt meta.openmetadata.tags"""
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN="PersonalData.Email",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+
+        # Create mock manifest meta with classification tags
+        manifest_meta = {
+            "openmetadata": {"tags": ["PII.Sensitive", "PersonalData.Email"]}
+        }
+
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+
+        expected_tags = [
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=TagSource.Classification,
+            ),
+            TagLabel(
+                tagFQN="PersonalData.Email",
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=TagSource.Classification,
+            ),
+        ]
+
+        self.assertEqual(dbt_meta_tags, expected_tags)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_combined_meta_tags(self, get_tag_label):
+        """Test processing combined glossary, tier, and classification tags"""
+        get_tag_label.side_effect = [
+            # Glossary term
+            TagLabel(
+                tagFQN="Test_Glossary.term_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+            # Tier tag
+            TagLabel(
+                tagFQN="Tier.Tier1",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            # Classification tags
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+
+        # Create mock manifest meta with all types of tags
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Test_Glossary.term_one"],
+                "tier": "Tier.Tier1",
+                "tags": ["PII.Sensitive"],
+            }
+        }
+
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+
+        # Should have 3 tags: 1 glossary + 1 tier + 1 classification
+        self.assertEqual(len(dbt_meta_tags), 3)
+
+    def test_dbt_classification_tags_edge_cases(self):
+        """Test edge cases for classification tags processing"""
+
+        # Test with empty tags list
+        manifest_meta = {"openmetadata": {"tags": []}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+        self.assertEqual(dbt_meta_tags, [])
+
+        # Test with invalid tag format (no dot separator)
+        # These should be silently skipped
+        manifest_meta = {
+            "openmetadata": {"tags": ["InvalidTag"]}  # Missing classification part
+        }
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+        # Should return empty list as invalid tags are skipped
+        self.assertEqual(dbt_meta_tags, [])
+
+        # Test with None tags
+        manifest_meta = {"openmetadata": {"tags": None}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+        self.assertEqual(dbt_meta_tags, [])
+
     def test_parse_exposure_node_exposure_absent(self):
         _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)
 
