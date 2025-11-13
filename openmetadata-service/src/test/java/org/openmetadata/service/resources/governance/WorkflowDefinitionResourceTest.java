@@ -4375,7 +4375,10 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     CreateUser createReviewer =
         new CreateUser()
             .withName("test_reviewer_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withEmail("test_reviewer@example.com")
+            .withEmail(
+                "test_reviewer_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", "")
+                    + "@example.com")
             .withDisplayName("Test Reviewer");
     User reviewerUser = userTest.createEntity(createReviewer, ADMIN_AUTH_HEADERS);
     EntityReference reviewerRef = reviewerUser.getEntityReference();
@@ -4533,7 +4536,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     CreateTag createTag =
         new CreateTag()
-            .withName("test_tag")
+            .withName(
+                "test_tag_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", ""))
             .withDescription("Initial tag description")
             .withClassification(classification.getName())
             .withReviewers(listOf(reviewerRef));
@@ -5212,8 +5217,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Create reviewer users for this test
     CreateUser createReviewer1 =
         new CreateUser()
-            .withName("test_reviewer1_" + UUID.randomUUID().toString().substring(0, 8))
-            .withEmail("test_reviewer1@example.com")
+            .withName(
+                "test_reviewer1_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", ""))
+            .withEmail(
+                "test_reviewer1_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", "")
+                    + "@example.com")
             .withDisplayName("Test Reviewer 1");
     User reviewer1 = userTest.createEntity(createReviewer1, ADMIN_AUTH_HEADERS);
     EntityReference reviewer1Ref = reviewer1.getEntityReference();
@@ -5221,8 +5231,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     CreateUser createReviewer2 =
         new CreateUser()
-            .withName("test_reviewer2_" + UUID.randomUUID().toString().substring(0, 8))
-            .withEmail("test_reviewer2@example.com")
+            .withName(
+                "test_reviewer2_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", ""))
+            .withEmail(
+                "test_reviewer2_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", "")
+                    + "@example.com")
             .withDisplayName("Test Reviewer 2");
     User reviewer2 = userTest.createEntity(createReviewer2, ADMIN_AUTH_HEADERS);
     EntityReference reviewer2Ref = reviewer2.getEntityReference();
@@ -5438,8 +5453,92 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         "reviewer2 should now be the reviewer");
     LOG.debug("Tag reviewer changed from reviewer1 to reviewer2");
 
-    // Wait for the async task update to complete
-    java.lang.Thread.sleep(60000);
+    // Debug: Let's see what the current task looks like immediately after reviewer change
+    ThreadList immediateTaskCheck =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer1.getName()));
+    LOG.warn(
+        "DEBUGGING: Immediate task check after reviewer change - found {} tasks for reviewer1",
+        immediateTaskCheck.getData().size());
+
+    immediateTaskCheck =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer2.getName()));
+    LOG.warn(
+        "DEBUGGING: Immediate task check after reviewer change - found {} tasks for reviewer2",
+        immediateTaskCheck.getData().size());
+
+    // Wait for the async task assignee update to complete using Awaitility
+    final Integer taskId = taskDetails.getId();
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              try {
+                ThreadList taskThreads =
+                    feedResourceTest.listTasks(
+                        entityLink,
+                        null,
+                        null,
+                        TaskStatus.Open,
+                        100,
+                        authHeaders(reviewer2.getName()));
+
+                if (taskThreads.getData().isEmpty()) {
+                  return false;
+                }
+
+                Thread taskThread =
+                    taskThreads.getData().stream()
+                        .filter(
+                            t ->
+                                t.getTask() != null
+                                    && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                                        t.getTask().getType())
+                                    && t.getTask().getId().equals(taskId))
+                        .findFirst()
+                        .orElse(null);
+
+                if (taskThread == null || taskThread.getTask() == null) {
+                  return false;
+                }
+
+                List<EntityReference> currentAssignees = taskThread.getTask().getAssignees();
+                if (currentAssignees == null || currentAssignees.isEmpty()) {
+                  return false;
+                }
+
+                boolean hasReviewer2 =
+                    currentAssignees.stream().anyMatch(a -> a.getId().equals(reviewer2.getId()));
+                boolean hasReviewer1 =
+                    currentAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId()));
+
+                LOG.warn(
+                    "DEBUGGING: Task ID: {}, Total assignees: {}, Reviewer1 ID: {}, Reviewer2 ID: {}, Has reviewer1: {}, Has reviewer2: {}",
+                    taskThread.getTask().getId(),
+                    currentAssignees.size(),
+                    reviewer1.getId(),
+                    reviewer2.getId(),
+                    hasReviewer1,
+                    hasReviewer2);
+
+                // Log actual assignee IDs
+                for (EntityReference assignee : currentAssignees) {
+                  LOG.warn(
+                      "DEBUGGING: Current assignee ID: {}, Name: {}",
+                      assignee.getId(),
+                      assignee.getName());
+                }
+
+                // Task assignees should have been updated: reviewer2 should be present, reviewer1
+                // should not
+                return hasReviewer2 && !hasReviewer1;
+              } catch (Exception e) {
+                LOG.warn("Error checking task assignees: {}", e.getMessage());
+                return false;
+              }
+            });
 
     // Verify that the task assignees have been updated
     threads =
@@ -5449,7 +5548,12 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertFalse(threads.getData().isEmpty(), "Should still have tasks");
     approvalTask =
         threads.getData().stream()
-            .filter(t -> t.getTask() != null && t.getTask().getId().equals(taskDetails.getId()))
+            .filter(
+                t ->
+                    t.getTask() != null
+                        && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                            t.getTask().getType())
+                        && t.getTask().getId().equals(taskDetails.getId()))
             .findFirst()
             .orElse(threads.getData().getFirst());
 
