@@ -194,7 +194,11 @@ export class UserClass {
   }
 
   getUserName() {
-    return `${this.data.firstName}${this.data.lastName}`;
+    return this.responseData.name;;
+  }
+
+  getUserDisplayName() {
+    return this.responseData.displayName;
   }
 
   async login(
