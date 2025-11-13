@@ -47,6 +47,9 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateRenderResponse;
+import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
@@ -61,6 +64,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
@@ -256,7 +260,6 @@ public class NotificationTemplateResource
                     schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
@@ -284,7 +287,6 @@ public class NotificationTemplateResource
                 "Notification template for instance {id} and version {version} is not found")
       })
   public NotificationTemplate getVersion(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
@@ -614,9 +616,9 @@ public class NotificationTemplateResource
   @Path("/validate")
   @Operation(
       operationId = "validateNotificationTemplate",
-      summary = "Validate a notification template",
+      summary = "Validate notification template syntax",
       description =
-          "Validates the syntax and structure of a notification template without saving it. "
+          "Validates only the Handlebars syntax of template subject and body without generating mock data or sending. "
               + "Requires CREATE or EDIT_ALL permission for notification templates.",
       responses = {
         @ApiResponse(
@@ -627,14 +629,9 @@ public class NotificationTemplateResource
                     mediaType = "application/json",
                     schema =
                         @Schema(implementation = NotificationTemplateValidationResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized"),
-        @ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - CREATE or EDIT_ALL permission required")
+        @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response validateTemplate(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid NotificationTemplateValidationRequest request) {
 
@@ -654,5 +651,105 @@ public class NotificationTemplateResource
     NotificationTemplateValidationResponse response = repository.validate(request);
 
     return Response.ok(response).build();
+  }
+
+  @POST
+  @Path("/render")
+  @Operation(
+      operationId = "renderNotificationTemplate",
+      summary = "Render notification template with mock data",
+      description =
+          "Generates mock ChangeEvent data for the specified resource and eventType, then renders the template. "
+              + "Returns the rendered subject and body for preview. Does not send to any destination. "
+              + "Requires CREATE or EDIT_ALL permission for notification templates.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Rendering result with validation and render outputs",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = NotificationTemplateRenderResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response renderTemplate(
+      @Context SecurityContext securityContext, @Valid NotificationTemplateRenderRequest request) {
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.CREATE), getResourceContext()),
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+                getResourceContext()));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    NotificationTemplateRenderResponse response = repository.render(request);
+
+    return Response.ok(response).build();
+  }
+
+  @POST
+  @Path("/send")
+  @Operation(
+      operationId = "sendNotificationTemplateTest",
+      summary = "Validate and send notification template to external destinations",
+      description =
+          "Validates template syntax, generates mock ChangeEvent data, and sends to specified external destinations. "
+              + "Returns validation status only. Delivery errors are logged server-side. "
+              + "Only external destinations (Email, Slack, Teams, GChat, Webhook) are supported. "
+              + "Requires CREATE or EDIT_ALL permission for notification templates.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(implementation = NotificationTemplateValidationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request or validation failure")
+      })
+  public Response sendTemplate(
+      @Context SecurityContext securityContext, @Valid NotificationTemplateSendRequest request) {
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.CREATE), getResourceContext()),
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+                getResourceContext()));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    NotificationTemplateValidationResponse response = repository.send(request);
+
+    return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/helpers")
+  @Operation(
+      operationId = "getHandlebarsHelpers",
+      summary = "Get available Handlebars helpers",
+      description =
+          "Returns a list of all available Handlebars helpers with their usage information. "
+              + "Requires VIEW_BASIC permission for notification templates.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Handlebars helpers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = HandlebarsHelperMetadata.class)))
+      })
+  public List<HandlebarsHelperMetadata> getHandlebarsHelpers(
+      @Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    return repository.getHelperMetadata();
   }
 }

@@ -77,6 +77,7 @@ const NotificationListPage = () => {
     handlePagingChange,
     showPagination,
     paging,
+    pagingCursor,
   } = usePaging();
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
@@ -180,8 +181,14 @@ const NotificationListPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchAlerts();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchAlerts({ [cursorType]: cursorValue });
+    } else {
+      fetchAlerts();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -197,7 +204,14 @@ const NotificationListPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchAlerts({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
     },
     [paging]
