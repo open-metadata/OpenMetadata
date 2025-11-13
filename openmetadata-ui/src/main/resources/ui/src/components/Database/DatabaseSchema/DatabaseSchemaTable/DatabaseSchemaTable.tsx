@@ -52,6 +52,7 @@ import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsU
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
+  getColumnSorter,
   getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
@@ -254,6 +255,7 @@ export const DatabaseSchemaTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
+        sorter: getColumnSorter<DatabaseSchema, 'name'>('name'),
         render: (_, record: DatabaseSchema) => (
           <DisplayName
             displayName={stringToHTML(

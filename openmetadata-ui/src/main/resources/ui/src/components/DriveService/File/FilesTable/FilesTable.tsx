@@ -28,7 +28,7 @@ import {
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { tagTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -53,6 +53,7 @@ function FilesTable({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
+        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record: ServicePageData) => {
           const fileDisplayName = getEntityName(record);
 

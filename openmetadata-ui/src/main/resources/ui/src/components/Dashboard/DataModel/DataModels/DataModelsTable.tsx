@@ -37,7 +37,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import {
   dataProductTableObject,
@@ -78,6 +78,7 @@ const DataModelTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
+        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record: ServicePageData) => {
           const dataModelDisplayName = getEntityName(record);
 

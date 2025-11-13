@@ -35,7 +35,7 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { highlightSearchText } from './EntityUtils';
+import { getColumnSorter, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import { stringToHTML } from './StringsUtils';
@@ -61,6 +61,7 @@ export const getServiceMainTabColumns = (
     dataIndex: TABLE_COLUMNS_KEYS.NAME,
     key: TABLE_COLUMNS_KEYS.NAME,
     width: 280,
+    sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
         displayName={stringToHTML(

@@ -42,7 +42,7 @@ import {
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface APIEndpointsTabProps {
@@ -113,6 +113,7 @@ function APIEndpointsTab({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 400,
+        sorter: getColumnSorter<APIEndpoint, 'name'>('name'),
         render: (_, record: APIEndpoint) => {
           return (
             <div className="d-inline-flex w-max-90">

@@ -637,3 +637,38 @@ export const testPaginationNavigation = async (
 
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
+
+export const testTableSorting = async (page: Page, columnHeader: string) => {
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const header = page.locator(`th:has-text("${columnHeader}")`).first();
+  const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
+
+  const getFirstCellValue = async () => {
+    const firstCell = page.locator(`${visibleRowSelector} td`).first();
+    await firstCell.waitFor({ state: 'visible' });
+
+    return (await firstCell.textContent())?.trim();
+  };
+
+  const rowCount = await page.locator(visibleRowSelector).count();
+  if (rowCount <= 1) {
+    return;
+  }
+
+  const initialValue = await getFirstCellValue();
+
+  await header.click();
+  await header.click();
+
+  const afterFirstClickValue = await getFirstCellValue();
+
+  expect(afterFirstClickValue).not.toBe(initialValue);
+
+  await header.click();
+
+  const afterSecondClickValue = await getFirstCellValue();
+
+  expect(afterSecondClickValue).not.toBe(afterFirstClickValue);
+};

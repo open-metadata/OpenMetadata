@@ -59,6 +59,7 @@ import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
+  getColumnSorter,
   getEntityBulkEditPath,
   highlightSearchText,
 } from '../../utils/EntityUtils';
@@ -263,6 +264,7 @@ function SchemaTablesTab({
         dataIndex: 'name',
         key: 'name',
         width: 300,
+        sorter: getColumnSorter<Table, 'name'>('name'),
         render: (_, record: Table) => {
           return (
             <DisplayName

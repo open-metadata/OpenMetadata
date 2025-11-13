@@ -39,7 +39,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { highlightSearchText } from '../../utils/EntityUtils';
+import { getColumnSorter, highlightSearchText } from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -171,6 +171,7 @@ const StoredProcedureTab = () => {
         dataIndex: 'name',
         key: 'name',
         width: 350,
+        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record) => (
           <DisplayName
             displayName={stringToHTML(
