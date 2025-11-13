@@ -17,6 +17,8 @@ import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { OverviewSectionProps } from './OverviewSection.interface';
 import './OverviewSection.less';
 
+const EXCLUDED_ITEMS = ['Owners', 'Tier'];
+
 const OverviewSection: React.FC<OverviewSectionProps> = ({
   onEdit,
   showEditButton = false,
@@ -32,13 +34,15 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
     }
 
     return entityInfoV1.filter((info) => {
+      if (EXCLUDED_ITEMS.includes(info.name)) {
+        return false;
+      }
+
       const isDomain =
         isDomainVisible && info.name === t('label.domain-plural');
-      const isOwners = info.name === 'Owners';
+      const isVisibleInComponent = (info.visible ?? []).includes(componentType);
 
-      return (
-        ((info.visible || []).includes(componentType) || isDomain) && !isOwners
-      );
+      return isVisibleInComponent || isDomain;
     });
   }, [entityInfoV1, componentType, isDomainVisible]);
 
