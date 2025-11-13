@@ -45,6 +45,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -82,6 +83,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   public DatabaseResourceTest() {
     super(
         Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
+    supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
@@ -440,6 +442,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     }
   }
 
+  @Order(2)
   @Test
   void testBulkServiceFetchingForDatabases(TestInfo test) throws IOException {
     // This test verifies that when databases are fetched in bulk with the service field,
