@@ -443,6 +443,10 @@ class DbtSource(DbtServiceSource):
                 ),
                 fetch_multiple_entities=True,
             )
+
+            if not table_entities:
+                return None
+
             logger.debug(
                 f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
             )
@@ -487,7 +491,9 @@ class DbtSource(DbtServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get table entity from OpenMetadata: {exc}")
+            logger.warning(
+                f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}"
+            )
 
         return None
 
