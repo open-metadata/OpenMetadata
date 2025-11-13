@@ -910,6 +910,7 @@ class DbtSource(DbtServiceSource):
                 query_fqn = fqn._build(  # pylint: disable=protected-access
                     *source_elements[-3:]
                 )
+                query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
                 query = (
                     f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
                 )
