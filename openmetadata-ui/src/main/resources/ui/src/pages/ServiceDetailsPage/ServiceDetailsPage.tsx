@@ -1597,38 +1597,36 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
       tabs.push(
-        ...[
-          {
-            name: t('label.file-plural'),
-            key: EntityTabs.FILES,
-            count: filesPaging.total,
-            children: (
-              <FilesTable
-                files={files}
-                handlePageChange={onFilesPageChange}
-                handleShowDeleted={handleShowDeleted}
-                isLoading={isFilesLoading}
-                paging={filesPagingInfo}
-                showDeleted={showDeleted}
-              />
-            ),
-          },
-          {
-            name: t('label.spreadsheet-plural'),
-            key: EntityTabs.SPREADSHEETS,
-            count: spreadsheetsPaging.total,
-            children: (
-              <SpreadsheetsTable
-                handlePageChange={onSpreadsheetsPageChange}
-                handleShowDeleted={handleShowDeleted}
-                isLoading={isSpreadsheetsLoading}
-                paging={spreadsheetsPagingInfo}
-                showDeleted={showDeleted}
-                spreadsheets={spreadsheets}
-              />
-            ),
-          },
-        ]
+        {
+          name: t('label.file-plural'),
+          key: EntityTabs.FILES,
+          count: filesPaging.total,
+          children: (
+            <FilesTable
+              files={files}
+              handlePageChange={onFilesPageChange}
+              handleShowDeleted={handleShowDeleted}
+              isLoading={isFilesLoading}
+              paging={filesPagingInfo}
+              showDeleted={showDeleted}
+            />
+          ),
+        },
+        {
+          name: t('label.spreadsheet-plural'),
+          key: EntityTabs.SPREADSHEETS,
+          count: spreadsheetsPaging.total,
+          children: (
+            <SpreadsheetsTable
+              handlePageChange={onSpreadsheetsPageChange}
+              handleShowDeleted={handleShowDeleted}
+              isLoading={isSpreadsheetsLoading}
+              paging={spreadsheetsPagingInfo}
+              showDeleted={showDeleted}
+              spreadsheets={spreadsheets}
+            />
+          ),
+        }
       );
     }
 

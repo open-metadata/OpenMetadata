@@ -2,13 +2,14 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.SINK;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getErrorsFromBulkResponse;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import es.org.elasticsearch.action.DocWriteRequest;
-import es.org.elasticsearch.action.bulk.BulkRequest;
-import es.org.elasticsearch.action.bulk.BulkResponse;
-import es.org.elasticsearch.client.RequestOptions;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import jakarta.json.stream.JsonGenerator;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,7 +26,12 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
-public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
+public class ElasticSearchIndexSink
+    implements Sink<List<BulkOperation>, es.co.elastic.clients.elasticsearch.core.BulkResponse> {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
+      new JacksonJsonpMapper(OBJECT_MAPPER);
+
   private final StepStats stats = new StepStats();
   private final SearchRepository searchRepository;
   private final long maxPayLoadSizeInBytes;
@@ -38,68 +44,74 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   }
 
   @Override
-  public BulkResponse write(BulkRequest data, Map<String, Object> contextData)
-      throws SearchIndexException {
-    LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
+  public es.co.elastic.clients.elasticsearch.core.BulkResponse write(
+      List<BulkOperation> data, Map<String, Object> contextData) throws SearchIndexException {
+    LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.size());
     try {
       List<?> entityNames =
           (List<?>)
               Optional.ofNullable(contextData.get(ENTITY_NAME_LIST_KEY))
                   .orElse(Collections.emptyList());
       List<EntityError> entityErrorList = new ArrayList<>();
-      BulkResponse response = null;
+      es.co.elastic.clients.elasticsearch.core.BulkResponse response = null;
 
-      BulkRequest bufferData = new BulkRequest();
-      long requestIndex = 0; // Index to track the corresponding entity name
+      List<BulkOperation> bufferData = new ArrayList<>();
+      long bufferSize = 0;
+      int requestIndex = 0;
 
-      for (DocWriteRequest<?> request : data.requests()) {
-        long requestSize = new BulkRequest().add(request).estimatedSizeInBytes();
+      for (BulkOperation operation : data) {
+        long operationSize = estimateBulkOperationSize(operation);
 
-        if (requestSize > maxPayLoadSizeInBytes) {
+        if (operationSize > maxPayLoadSizeInBytes) {
           entityErrorList.add(
               new EntityError()
                   .withMessage("Entity size exceeds elastic search maximum payload size")
-                  .withEntity(entityNames.get(Math.toIntExact(requestIndex))));
+                  .withEntity(
+                      requestIndex < entityNames.size()
+                          ? entityNames.get(requestIndex)
+                          : String.format("Unknown entity at index %d", requestIndex)));
           requestIndex++;
           continue;
         }
 
-        if (bufferData.estimatedSizeInBytes() + requestSize > maxPayLoadSizeInBytes) {
-          response = searchRepository.getSearchClient().bulk(bufferData, RequestOptions.DEFAULT);
-          entityErrorList.addAll(getErrorsFromBulkResponse(response));
-          bufferData = new BulkRequest();
+        if (bufferSize + operationSize > maxPayLoadSizeInBytes && !bufferData.isEmpty()) {
+          response = searchRepository.getSearchClient().bulkElasticSearch(bufferData);
+          entityErrorList.addAll(
+              extractErrorsFromResponse(response, entityNames, requestIndex - bufferData.size()));
+          bufferData = new ArrayList<>();
+          bufferSize = 0;
         }
 
-        bufferData.add(request);
+        bufferData.add(operation);
+        bufferSize += operationSize;
         requestIndex++;
       }
 
-      // Send the last buffer if it has any requests
-      if (!bufferData.requests().isEmpty()) {
-        response = searchRepository.getSearchClient().bulk(bufferData, RequestOptions.DEFAULT);
-        entityErrorList.addAll(getErrorsFromBulkResponse(response));
+      if (!bufferData.isEmpty()) {
+        response = searchRepository.getSearchClient().bulkElasticSearch(bufferData);
+        entityErrorList.addAll(
+            extractErrorsFromResponse(response, entityNames, requestIndex - bufferData.size()));
       }
 
       LOG.debug(
           "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          data.numberOfActions(),
-          data.numberOfActions() - entityErrorList.size(),
+          data.size(),
+          data.size() - entityErrorList.size(),
           entityErrorList.size());
-      updateStats(data.numberOfActions() - entityErrorList.size(), entityErrorList.size());
+      updateStats(data.size() - entityErrorList.size(), entityErrorList.size());
 
-      // Handle errors
       if (!entityErrorList.isEmpty()) {
         throw new SearchIndexException(
             new IndexingError()
                 .withErrorSource(SINK)
-                .withSubmittedCount(data.numberOfActions())
-                .withSuccessCount(data.numberOfActions() - entityErrorList.size())
+                .withSubmittedCount(data.size())
+                .withSuccessCount(data.size() - entityErrorList.size())
                 .withFailedCount(entityErrorList.size())
                 .withMessage(String.format("Issues in Sink To Elastic Search: %s", entityErrorList))
                 .withFailedEntities(entityErrorList));
       }
 
-      return response; // Return the last response
+      return response;
     } catch (SearchIndexException ex) {
       updateStats(ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
       throw ex;
@@ -107,15 +119,52 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(IndexingError.ErrorSource.SINK)
-              .withSubmittedCount(data.numberOfActions())
+              .withSubmittedCount(data.size())
               .withSuccessCount(0)
-              .withFailedCount(data.numberOfActions())
+              .withFailedCount(data.size())
               .withMessage(String.format("Issue in Sink to Elastic Search: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug("[ESSearchIndexSink] Failed, Details : {}", JsonUtils.pojoToJson(indexingError));
-      updateStats(0, data.numberOfActions());
+      updateStats(0, data.size());
       throw new SearchIndexException(indexingError);
     }
+  }
+
+  private long estimateBulkOperationSize(BulkOperation operation) {
+    try {
+      StringWriter writer = new StringWriter();
+      JsonGenerator generator = JACKSON_JSONP_MAPPER.jsonProvider().createGenerator(writer);
+      operation.serialize(generator, JACKSON_JSONP_MAPPER);
+      generator.close();
+      return writer.toString().getBytes(StandardCharsets.UTF_8).length;
+    } catch (Exception e) {
+      LOG.warn("Failed to estimate bulk operation size, using default: {}", e.getMessage());
+      return 1024;
+    }
+  }
+
+  private List<EntityError> extractErrorsFromResponse(
+      es.co.elastic.clients.elasticsearch.core.BulkResponse response,
+      List<?> entityNames,
+      int startIndex) {
+    List<EntityError> errors = new ArrayList<>();
+    if (response != null && response.errors()) {
+      for (int i = 0; i < response.items().size(); i++) {
+        es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem item =
+            response.items().get(i);
+        if (item.error() != null) {
+          int entityIndex = startIndex + i;
+          errors.add(
+              new EntityError()
+                  .withMessage(item.error().reason())
+                  .withEntity(
+                      entityIndex < entityNames.size()
+                          ? entityNames.get(entityIndex)
+                          : String.format("Unknown entity at index %d", entityIndex)));
+        }
+      }
+    }
+    return errors;
   }
 
   @Override

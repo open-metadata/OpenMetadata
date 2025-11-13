@@ -822,6 +822,7 @@ class SampleDataSource(
         yield from self.ingest_users()
         yield from self.ingest_drives()
         yield from self.ingest_tables()
+        self.ingest_tables_sample_data()
         yield from self.ingest_glue()
         yield from self.ingest_mysql()
         yield from self.ingest_stored_procedures()
@@ -1419,6 +1420,14 @@ class SampleDataSource(
 
             yield Either(right=table_and_db)
 
+    def ingest_tables_sample_data(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Tables Sample Data"""
+        db_fqn = f"sample_data.{self.database['name']}"
+        db = self.metadata.get_by_name(entity=Database, fqn=db_fqn)
+        schema = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=f"{db_fqn}.{self.database_schema['name']}"
+        )
+        for table in self.tables["tables"]:
             if table.get("sampleData"):
                 table_fqn = fqn.build(
                     self.metadata,
@@ -1426,7 +1435,7 @@ class SampleDataSource(
                     service_name=self.database_service.name.root,
                     database_name=db.name.root,
                     schema_name=schema.name.root,
-                    table_name=table_and_db.name.root,
+                    table_name=table.get("name"),
                 )
 
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
