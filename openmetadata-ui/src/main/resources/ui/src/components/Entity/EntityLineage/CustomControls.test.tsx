@@ -132,10 +132,8 @@ describe('CustomControls', () => {
     expect(screen.getByLabelText('label.filter-plural')).toBeInTheDocument();
     expect(screen.getByText('label.lineage')).toBeInTheDocument();
     expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
-    expect(screen.getByLabelText('label.export-as-type')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('label.lineage-configuration')
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('label.export')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-config')).toBeInTheDocument();
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
   });
 
@@ -208,7 +206,7 @@ describe('CustomControls', () => {
       wrapper: MemoryRouter,
     });
 
-    const settingsButton = screen.getByLabelText('label.lineage-configuration');
+    const settingsButton = screen.getByTestId('lineage-config');
     fireEvent.click(settingsButton);
 
     expect(screen.getByTestId('lineage-config-modal')).toBeInTheDocument();
@@ -219,7 +217,7 @@ describe('CustomControls', () => {
       wrapper: MemoryRouter,
     });
 
-    const settingsButton = screen.getByLabelText('label.lineage-configuration');
+    const settingsButton = screen.getByTestId('lineage-config');
     fireEvent.click(settingsButton);
 
     const saveButton = screen.getByText('Save');

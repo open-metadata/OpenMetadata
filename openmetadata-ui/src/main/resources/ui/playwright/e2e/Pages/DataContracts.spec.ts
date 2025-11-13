@@ -74,9 +74,6 @@ import {
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const adminUser = new UserClass();
-const user = new UserClass();
-
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
   TableClass,
@@ -111,16 +108,9 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-const testPersona = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
-
 test.describe('Data Contracts', () => {
+  const user = new UserClass();
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -2171,8 +2161,18 @@ test.describe('Data Contracts', () => {
 });
 
 entitiesWithDataContracts.forEach((EntityClass) => {
+  const adminUser = new UserClass();
   const entity = new EntityClass();
   const entityType = entity.getType();
+
+  const testPersona = base.extend<{ page: Page }>({
+    page: async ({ browser }, use) => {
+      const adminPage = await browser.newPage();
+      await adminUser.login(adminPage);
+      await use(adminPage);
+      await adminPage.close();
+    },
+  });
 
   testPersona.describe(`Data Contracts With Persona ${entityType}`, () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {

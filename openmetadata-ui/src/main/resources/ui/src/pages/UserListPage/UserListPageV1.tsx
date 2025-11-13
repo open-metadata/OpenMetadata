@@ -92,6 +92,7 @@ const UserListPageV1 = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
+    pagingCursor,
     pageSize,
     paging,
     showPagination,
@@ -190,7 +191,11 @@ const UserListPageV1 = () => {
         handlePageChange(currentPage);
         getSearchedUsers(searchValue, currentPage);
       } else if (cursorType && paging[cursorType]) {
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
         fetchUsersList({
           isAdmin: isAdminPage,
           [cursorType]: paging[cursorType],
@@ -211,8 +216,11 @@ const UserListPageV1 = () => {
   );
 
   const handleShowDeletedUserChange = (value: boolean) => {
-    handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(globalPageSize);
+    handlePageChange(
+      INITIAL_PAGING_VALUE,
+      { cursorType: null, cursorValue: undefined },
+      globalPageSize
+    );
     // Clear search value, on Toggle delete
     setFilters({ isDeleted: value || null, user: null });
   };
@@ -228,22 +236,29 @@ const UserListPageV1 = () => {
 
   useEffect(() => {
     // Perform reset
-    setFilters({});
     setIsDataLoading(true);
-    handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(globalPageSize);
   }, [isAdminPage]);
 
   useEffect(() => {
     if (searchValue) {
       getSearchedUsers(searchValue, 1);
     } else {
-      fetchUsersList({
-        isAdmin: isAdminPage,
-        include: isDeleted ? Include.Deleted : Include.NonDeleted,
-      });
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        fetchUsersList({
+          isAdmin: isAdminPage,
+          include: isDeleted ? Include.Deleted : Include.NonDeleted,
+          [cursorType]: cursorValue,
+        });
+      } else {
+        fetchUsersList({
+          isAdmin: isAdminPage,
+          include: isDeleted ? Include.Deleted : Include.NonDeleted,
+        });
+      }
     }
-  }, [pageSize, isAdminPage, searchValue, isDeleted]);
+  }, [pageSize, isAdminPage, searchValue, isDeleted, pagingCursor]);
 
   const handleAddNewUser = () => {
     navigate(ROUTES.CREATE_USER, {
