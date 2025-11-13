@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.security.policyevaluator.SubjectContext.isDomainParentOrEqual;
 
 import java.util.Arrays;
 import java.util.List;
@@ -77,8 +78,9 @@ public class RuleEvaluator {
       input = "none",
       description =
           "Returns true if the logged in user has domain access to the entity being accessed. "
-              + "For entities with domains (explicit or inherited), the user must have at least one matching domain. "
-              + "For entities without domains, users without domains can access them.",
+              + "For entities with domains (explicit or inherited), the user must have at least one matching domain or subdomain. "
+              + "Users with a parent domain can access resources in its subdomains. "
+              + "For entities without domains, all users can access them.",
       examples = {"hasDomain()", "!hasDomain()"})
   public boolean hasDomain() {
     if (expressionValidation) {
@@ -144,12 +146,18 @@ public class RuleEvaluator {
               "hasDomain() - Domain match found by ID: {}, returning true", userDomain.getId());
           return true;
         }
-        if (userDomain.getFullyQualifiedName() != null
-            && userDomain.getFullyQualifiedName().equals(resourceDomain.getFullyQualifiedName())) {
-          LOG.info(
-              "hasDomain() - Domain match found by FQN: {}, returning true",
-              userDomain.getFullyQualifiedName());
-          return true;
+
+        String userDomainFQN = userDomain.getFullyQualifiedName();
+        String resourceDomainFQN = resourceDomain.getFullyQualifiedName();
+
+        if (userDomainFQN != null && resourceDomainFQN != null) {
+          if (isDomainParentOrEqual(userDomainFQN, resourceDomainFQN)) {
+            LOG.info(
+                "hasDomain() - Domain access granted: User domain {} matches or is parent of resource domain {}, returning true",
+                userDomainFQN,
+                resourceDomainFQN);
+            return true;
+          }
         }
       }
     }
