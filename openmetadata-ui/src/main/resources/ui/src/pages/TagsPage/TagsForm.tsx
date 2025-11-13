@@ -13,6 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Modal, Space, Typography } from 'antd';
+import { isArray } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
@@ -304,7 +305,11 @@ const TagsForm = ({
       setSaving(true);
       const submitData = {
         ...data,
-        domains: selectedDomain?.map((domain) => domain.fullyQualifiedName),
+        domains: selectedDomain
+          ? (isArray(selectedDomain) ? selectedDomain : [selectedDomain])?.map(
+              (domain) => domain.fullyQualifiedName
+            )
+          : undefined,
       };
       await onSubmit(submitData);
       form.setFieldsValue(DEFAULT_FORM_VALUE);

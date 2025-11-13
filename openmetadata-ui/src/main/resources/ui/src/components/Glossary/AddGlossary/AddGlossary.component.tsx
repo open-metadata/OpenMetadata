@@ -31,6 +31,7 @@ import {
   getPopupContainer,
 } from '../../../utils/formUtils';
 
+import { isArray } from 'lodash';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -67,10 +68,9 @@ const AddGlossary = ({
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
-  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
-    'domains',
-    form
-  );
+  const selectedDomain = Form.useWatch<
+    EntityReference | EntityReference[] | undefined
+  >('domains', form);
 
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
@@ -103,10 +103,11 @@ const AddGlossary = ({
       owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
-      domains:
-        (selectedDomain
-          ?.map((d) => d.fullyQualifiedName)
-          .filter(Boolean) as string[]) ?? [],
+      domains: selectedDomain
+        ? ((isArray(selectedDomain) ? selectedDomain : [selectedDomain])
+            .map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[]) ?? []
+        : undefined,
     };
     onSave(data);
   };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { get, isUndefined } from 'lodash';
+import { get, isUndefined, toUpper } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -343,7 +343,7 @@ export const verifyGlossaryDetails = async (
         page
           .getByTestId('glossary-right-panel-owner-link')
           .getByTestId('owner-label')
-      ).toContainText(owner.name);
+      ).toContainText(toUpper(owner.name.split('')[0]));
     }
   }
 

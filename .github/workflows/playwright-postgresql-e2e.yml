@@ -110,8 +110,8 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [ "${{ matrix.shardIndex }}" -eq "6" ]; then
-            # Shard 6 runs ONLY DataAssetRules tests
-            npx playwright test --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled
+            # Shard 6 runs ONLY DataAssetRules tests - explicitly exclude chromium project
+            npx playwright test --project=setup --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled --reporter=list,html,@estruyf/github-actions-reporter,blob
           elif [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
             # Shards 1-5 run ingestion tests if ingestion files changed
             npx playwright test --project=chromium --grep @ingestion --shard=${{ matrix.shardIndex }}/5

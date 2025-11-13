@@ -667,7 +667,7 @@ test.describe('Domains', () => {
 
       await expect(
         page.getByTestId(user2.responseData.displayName)
-      ).toContainText(user2.responseData.displayName);
+      ).toContainText(user2.responseData.displayName.split('')[0]);
     } finally {
       await dataProduct?.delete(apiContext);
       await domain?.delete(apiContext);

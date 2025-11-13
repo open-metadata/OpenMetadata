@@ -1348,18 +1348,7 @@ export const getOwnerVersionLabel = (
     );
 
     if (!isEmpty(owners)) {
-      return (
-        <OwnerLabel
-          ownerDisplayName={ownerDisplayName}
-          owners={owners}
-          {...(ownerField === TabSpecificField.OWNERS
-            ? {
-                isCompactView: false,
-                showLabel: false,
-              }
-            : {})}
-        />
-      );
+      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
     }
   }
 

@@ -331,6 +331,28 @@ export const removeDomain = async (
   );
 };
 
+export const removeSingleSelectDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
+};
+
 export const assignDataProduct = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
