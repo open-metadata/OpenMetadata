@@ -2348,6 +2348,7 @@
     "no-data-yet": "Aún no hay datos",
     "no-default-persona": "Non hai persona predeterminada",
     "no-description-available": "Non hai descrición dispoñible.",
+    "no-dimension-description": "<0>It looks like dimension results haven't been calculated yet.</0><1>Simply run the test case <2>pipeline</2> to start analyzing your data dimensions.</1>",
     "no-domain-assigned-to-entity": "Non hai Dominios asignados a {{entity}}",
     "no-domain-available": "Non hai Dominios dispoñibles para configurar. Fai clic en <0>{{link}}</0> para engadir Dominios",
     "no-entity-activity-message": "Aínda non hai actividade en {{entity}}. Comeza unha conversa facendo clic en",

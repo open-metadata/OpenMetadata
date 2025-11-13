@@ -2348,6 +2348,7 @@
     "no-data-yet": "まだデータがありません",
     "no-default-persona": "デフォルトのペルソナがありません",
     "no-description-available": "説明がありません。",
+    "no-dimension-description": "<0>It looks like dimension results haven't been calculated yet.</0><1>Simply run the test case <2>pipeline</2> to start analyzing your data dimensions.</1>",
     "no-domain-assigned-to-entity": "{{entity}} に割り当てられているドメインはありません",
     "no-domain-available": "設定可能なドメインがありません。<0>{{link}}</0> をクリックしてドメインを追加してください。",
     "no-entity-activity-message": "{{entity}} にアクティビティがまだありません。以下をクリックして会話を開始してください：",

@@ -17,51 +17,78 @@ import {
   MenuItem,
   Select,
   SelectChangeEvent,
+  Skeleton,
   Stack,
   Typography,
   useTheme,
 } from '@mui/material';
 import { ColumnsType } from 'antd/lib/table';
 import { format } from 'date-fns';
-import { toLower } from 'lodash';
+import { isEmpty, split, toLower } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
+import { SIZE } from '../../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
 import {
   getEndOfDayInMillis,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getTestCaseDimensionsDetailPagePath } from '../../../../utils/RouterUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtils';
+import {
+  getEntityDetailsPath,
+  getTestCaseDimensionsDetailPagePath,
+} from '../../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
+import NoDataPlaceholderNew from '../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew';
 import MuiDatePickerMenu from '../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
+import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
 
 const DimensionalityTab = () => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const { testCase } = useTestCaseStore();
   const [dateRange, setDateRange] = useState(DEFAULT_RANGE_DATA);
   const [dimensionData, setDimensionData] = useState<
     DimensionResultWithTimestamp[]
   >([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const dimensionColumnsOptions = useMemo(
-    () => testCase?.dimensionColumns ?? [],
-    [testCase]
-  );
+  const { dimensionColumnsOptions, selectedColumn } = useMemo(() => {
+    const column = split(dimensionKey || '', '=')[0];
 
-  const [selectedDimension, setSelectedDimension] = useState(
-    dimensionColumnsOptions?.[0]
-  );
+    return {
+      dimensionColumnsOptions: testCase?.dimensionColumns ?? [],
+      selectedColumn: column ? column : testCase?.dimensionColumns?.[0],
+    };
+  }, [testCase, dimensionKey]);
+
+  const pipelineLink = useMemo(() => {
+    const tableFqn = getEntityFQN(testCase?.entityLink ?? '');
+
+    return {
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        tableFqn,
+        EntityTabs.PROFILER,
+        ProfilerTabPath.DATA_QUALITY
+      ),
+      search: `?qualityTab=pipeline`,
+    };
+  }, [testCase]);
+
+  const [selectedDimension, setSelectedDimension] = useState(selectedColumn);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     setDateRange({
@@ -207,6 +234,30 @@ const DimensionalityTab = () => {
     },
   ];
 
+  const noDataPlaceholder = useMemo(() => {
+    if (isLoading) {
+      return (
+        <Stack spacing={8}>
+          <Skeleton height={200} variant="rounded" width="100%" />
+          <Skeleton height={200} variant="rounded" width="100%" />
+        </Stack>
+      );
+    }
+
+    return (
+      <NoDataPlaceholderNew size={SIZE.LARGE}>
+        <Trans
+          components={{
+            0: <Typography sx={{ fontSize: '14px' }} />,
+            1: <Typography sx={{ fontSize: '14px' }} />,
+            2: <Link to={pipelineLink} />,
+          }}
+          i18nKey="message.no-dimension-description"
+        />
+      </NoDataPlaceholderNew>
+    );
+  }, [isLoading, pipelineLink]);
+
   return (
     <Stack p={5} spacing={7}>
       <Box alignItems="center" display="flex" flexWrap="nowrap" gap={7.5}>
@@ -267,40 +318,46 @@ const DimensionalityTab = () => {
         </Box>
       </Box>
 
-      <Card
-        sx={{
-          p: 4,
-          boxShadow: 'none',
-          border: `1px solid ${theme.palette.grey[200]}`,
-          borderRadius: '10px',
-        }}>
-        <DimensionalityHeatmap
-          data={dimensionData}
-          endDate={dateRange.endTs}
-          isLoading={isLoading}
-          startDate={dateRange.startTs}
-        />
-      </Card>
-      <Box>
-        <Typography
-          sx={{
-            mb: 2.5,
-            color: theme.palette.grey[900],
-            fontSize: theme.typography.pxToRem(14),
-            fontWeight: 500,
-          }}>
-          {t('label.entity-text-table', {
-            entityText: selectedDimension || '',
-          })}
-        </Typography>
-        <Table
-          bordered
-          columns={tableColumns}
-          dataSource={getLatestResultPerDimension}
-          loading={isLoading}
-          pagination={false}
-        />
-      </Box>
+      {isEmpty(dimensionData) || isLoading ? (
+        noDataPlaceholder
+      ) : (
+        <>
+          <Card
+            sx={{
+              p: 4,
+              boxShadow: 'none',
+              border: `1px solid ${theme.palette.grey[200]}`,
+              borderRadius: '10px',
+            }}>
+            <DimensionalityHeatmap
+              data={dimensionData}
+              endDate={dateRange.endTs}
+              isLoading={isLoading}
+              startDate={dateRange.startTs}
+            />
+          </Card>
+          <Box>
+            <Typography
+              sx={{
+                mb: 2.5,
+                color: theme.palette.grey[900],
+                fontSize: theme.typography.pxToRem(14),
+                fontWeight: 500,
+              }}>
+              {t('label.entity-text-table', {
+                entityText: selectedDimension || '',
+              })}
+            </Typography>
+            <Table
+              bordered
+              columns={tableColumns}
+              dataSource={getLatestResultPerDimension}
+              loading={isLoading}
+              pagination={false}
+            />
+          </Box>
+        </>
+      )}
     </Stack>
   );
 };
