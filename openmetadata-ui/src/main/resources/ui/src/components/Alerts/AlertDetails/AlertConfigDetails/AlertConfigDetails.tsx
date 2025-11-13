@@ -14,7 +14,7 @@
 import { Col, Divider, Form, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
@@ -75,6 +75,11 @@ function AlertConfigDetails({
     }
   }, [isNotificationAlert]);
 
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
+  );
+
   useEffect(() => {
     fetchFunctions();
   }, [Fqn]);
@@ -128,6 +133,20 @@ function AlertConfigDetails({
         <Col span={24}>
           <DestinationFormItem isViewMode />
         </Col>
+        {!isEmpty(extraFormWidgets) && (
+          <>
+            {Object.entries(extraFormWidgets).map(([name, Widget]) => (
+              <Fragment key={name}>
+                <Col>
+                  <Divider dashed type="vertical" />
+                </Col>
+                <Col span={24}>
+                  <Widget alertDetails={modifiedAlertData} formRef={form} />
+                </Col>
+              </Fragment>
+            ))}
+          </>
+        )}
       </Row>
     </Form>
   );
