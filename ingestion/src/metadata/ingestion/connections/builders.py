@@ -195,10 +195,15 @@ def get_connection_url_common(connection) -> str:
     elif hasattr(connection, "databaseSchema"):
         url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
+    elif hasattr(connection, "databaseName"):
+        url += f"/{connection.databaseName}" if connection.databaseName else ""
+
     options = get_connection_options_dict(connection)
     if options:
-        if (hasattr(connection, "database") and not connection.database) or (
-            hasattr(connection, "databaseSchema") and not connection.databaseSchema
+        if (
+            (hasattr(connection, "database") and not connection.database)
+            or (hasattr(connection, "databaseSchema") and not connection.databaseSchema)
+            or (hasattr(connection, "databaseName") and not connection.databaseName)
         ):
             url += "/"
         params = "&".join(
