@@ -3,102 +3,597 @@
     "pipeline": "sample_airflow.dim_address_etl",
     "pipelineStatus": [
       {
-        "timestamp": 1649582444000,
-        "executionStatus": "Failed",
-        "taskStatus": [
-          {
-            "executionStatus": "Failed",
-            "name": "dim_address_task"
-          },
-          {
-            "executionStatus": "Failed",
-            "name": "assert_table_exists"
-          }
-        ]
-      },
-      {
-        "timestamp": 164966958900,
+        "timestamp": 1731456000000,
         "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_100000",
+        "endTime": 1731456300000,
+        "version": "1.2.0",
+        "parameters": {
+          "date": "2025-01-13",
+          "env": "production",
+          "backfill": false
+        },
         "taskStatus": [
           {
+            "name": "dim_address_task",
             "executionStatus": "Successful",
-            "name": "dim_address_task"
+            "startTime": 1731456000000,
+            "endTime": 1731456150000,
+            "logLink": "http://localhost:8080/log?task=dim_address_task&run=airflow_run_20250113_100000",
+            "taskId": "task_instance_12345",
+            "transformationType": "extract",
+            "transformationLogic": "SELECT * FROM raw_address WHERE updated_at > :last_run_time",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
+                "rowCount": 15000,
+                "sizeBytes": 2500000,
+                "columns": ["id", "street", "city", "state", "zip", "country"],
+                "filter": "updated_at > '2025-01-12 10:00:00'"
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_address",
+                "rowCount": 14567,
+                "sizeBytes": 2340000,
+                "mode": "overwrite",
+                "columns": ["address_id", "shop_id", "first_name", "last_name", "address1", "address2", "city", "region", "zip", "country", "phone"]
+              }
+            ],
+            "metrics": {
+              "rowsRead": 15000,
+              "rowsWritten": 14567,
+              "rowsFiltered": 433,
+              "executionTimeMs": 150000
+            }
           },
           {
+            "name": "assert_table_exists",
             "executionStatus": "Successful",
-            "name": "assert_table_exists"
+            "startTime": 1731456150000,
+            "endTime": 1731456151200,
+            "logLink": "http://localhost:8080/log?task=assert_table_exists&run=airflow_run_20250113_100000",
+            "taskId": "task_instance_12346",
+            "transformationType": "custom",
+            "metrics": {
+              "executionTimeMs": 1200
+            }
           }
-        ]
+        ],
+        "inputs": [
+          {
+            "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
+            "rowCount": 15000,
+            "sizeBytes": 2500000
+          }
+        ],
+        "outputs": [
+          {
+            "datasetFQN": "sample_data.ecommerce_db.shopify.dim_address",
+            "rowCount": 14567,
+            "sizeBytes": 2340000,
+            "mode": "overwrite"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 15000,
+          "totalBytesProcessed": 2500000,
+          "cpuTime": 145.5,
+          "memoryUsed": 524288000,
+          "cost": 0.12
+        }
       },
       {
-        "timestamp": 164966939400,
+        "timestamp": 1731369600000,
         "executionStatus": "Failed",
+        "executionId": "airflow_run_20250112_100000",
+        "endTime": 1731369750000,
+        "version": "1.2.0",
+        "parameters": {
+          "date": "2025-01-12",
+          "env": "production",
+          "backfill": false
+        },
         "taskStatus": [
           {
-            "executionStatus": "Successful",
-            "name": "dim_address_task"
+            "name": "dim_address_task",
+            "executionStatus": "Failed",
+            "startTime": 1731369600000,
+            "endTime": 1731369750000,
+            "logLink": "http://localhost:8080/log?task=dim_address_task&run=airflow_run_20250112_100000",
+            "taskId": "task_instance_12347",
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 5432,
+              "rowsWritten": 0,
+              "rowsFiltered": 0,
+              "executionTimeMs": 150000
+            }
           },
           {
-            "executionStatus": "Failed",
-            "name": "assert_table_exists"
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
           }
-        ]
+        ],
+        "inputs": [
+          {
+            "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
+            "rowCount": 5432,
+            "sizeBytes": 890000
+          }
+        ],
+        "outputs": [],
+        "metrics": {
+          "totalRowsProcessed": 5432,
+          "totalBytesProcessed": 890000,
+          "cpuTime": 48.2,
+          "memoryUsed": 256000000,
+          "cost": 0.03
+        },
+        "error": {
+          "errorType": "SQLException",
+          "errorMessage": "Connection timeout: Unable to connect to database host shopify.db.local",
+          "stackTrace": "org.postgresql.util.PSQLException: Connection timeout\n\tat org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:319)\n\tat org.postgresql.Driver.makeConnection(Driver.java:422)",
+          "failedTask": "dim_address_task"
+        }
       },
       {
-        "timestamp": 164966917400,
+        "timestamp": 1731283200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250111_100000",
+        "endTime": 1731283480000,
+        "version": "1.2.0",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1731283200000,
+            "endTime": 1731283350000,
+            "metrics": {
+              "rowsRead": 14200,
+              "rowsWritten": 13890,
+              "rowsFiltered": 310,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731283350000,
+            "endTime": 1731283351100,
+            "metrics": {
+              "executionTimeMs": 1100
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 14200,
+          "totalBytesProcessed": 2380000,
+          "cpuTime": 142.8,
+          "memoryUsed": 498000000,
+          "cost": 0.11
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_user_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731456300000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_100500",
+        "endTime": 1731456720000,
+        "version": "2.0.1",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1731456300000,
+            "endTime": 1731456600000,
+            "transformationType": "aggregate",
+            "transformationLogic": "SELECT user_id, MAX(login_time) as last_login, COUNT(*) as login_count FROM user_events GROUP BY user_id",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_user_events",
+                "rowCount": 45000,
+                "sizeBytes": 5600000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_customer",
+                "rowCount": 8934,
+                "sizeBytes": 1120000,
+                "mode": "append"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 45000,
+              "rowsWritten": 8934,
+              "rowsFiltered": 36066,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731456600000,
+            "endTime": 1731456601400,
+            "metrics": {
+              "executionTimeMs": 1400
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 45000,
+          "totalBytesProcessed": 5600000,
+          "cpuTime": 285.4,
+          "memoryUsed": 786432000,
+          "cost": 0.24
+        }
+      },
+      {
+        "timestamp": 1731369900000,
         "executionStatus": "Failed",
+        "executionId": "airflow_run_20250112_100500",
+        "endTime": 1731370200000,
+        "version": "2.0.1",
         "taskStatus": [
           {
+            "name": "dim_user_task",
             "executionStatus": "Failed",
-            "name": "dim_address_task"
+            "startTime": 1731369900000,
+            "endTime": 1731370200000,
+            "metrics": {
+              "rowsRead": 12000,
+              "rowsWritten": 0,
+              "executionTimeMs": 300000
+            }
           },
           {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 12000,
+          "totalBytesProcessed": 1500000,
+          "cpuTime": 92.1,
+          "memoryUsed": 256000000,
+          "cost": 0.08
+        },
+        "error": {
+          "errorType": "DataValidationError",
+          "errorMessage": "Invalid data format: user_id contains NULL values",
+          "stackTrace": "ValueError: NULL values not allowed in user_id column\n\tat validate_user_data(users.py:145)\n\tat process_user_events(etl_pipeline.py:89)",
+          "failedTask": "dim_user_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_location_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731456600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_101000",
+        "endTime": 1731456840000,
+        "version": "1.5.2",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
             "executionStatus": "Successful",
-            "name": "assert_table_exists"
-          }
-        ]
-      },
-      {
-        "timestamp": 164966927400,
-        "executionStatus": "Pending",
-        "taskStatus": [
-          {
-            "executionStatus": "Pending",
-            "name": "dim_address_task"
+            "startTime": 1731456600000,
+            "endTime": 1731456720000,
+            "transformationType": "join",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
+                "rowCount": 8000,
+                "columns": ["city", "region", "country", "zip"]
+              },
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.geo_data",
+                "rowCount": 50000,
+                "columns": ["zip", "latitude", "longitude", "timezone"]
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_location",
+                "rowCount": 7890,
+                "sizeBytes": 980000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 58000,
+              "rowsWritten": 7890,
+              "executionTimeMs": 120000
+            }
           },
           {
+            "name": "assert_table_exists",
             "executionStatus": "Successful",
-            "name": "assert_table_exists"
+            "startTime": 1731456720000,
+            "endTime": 1731456721300,
+            "metrics": {
+              "executionTimeMs": 1300
+            }
           }
-        ]
-      },
+        ],
+        "metrics": {
+          "totalRowsProcessed": 58000,
+          "totalBytesProcessed": 7200000,
+          "cpuTime": 115.7,
+          "memoryUsed": 612000000,
+          "cost": 0.18
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_product_etl",
+    "pipelineStatus": [
       {
-        "timestamp": 164966937400,
-        "executionStatus": "Pending",
+        "timestamp": 1731456900000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_101500",
+        "endTime": 1731457680000,
+        "version": "3.1.0",
         "taskStatus": [
           {
-            "executionStatus": "Failed",
-            "name": "dim_address_task"
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1731456900000,
+            "endTime": 1731457560000,
+            "transformationType": "extract",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_product",
+                "rowCount": 125000,
+                "sizeBytes": 45000000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_product",
+                "rowCount": 123456,
+                "sizeBytes": 44500000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 125000,
+              "rowsWritten": 123456,
+              "rowsFiltered": 1544,
+              "executionTimeMs": 660000
+            }
           },
           {
-            "executionStatus": "Pending",
-            "name": "assert_table_exists"
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731457560000,
+            "endTime": 1731457562000,
+            "metrics": {
+              "executionTimeMs": 2000
+            }
           }
-        ]
-      },
+        ],
+        "metrics": {
+          "totalRowsProcessed": 125000,
+          "totalBytesProcessed": 45000000,
+          "cpuTime": 625.3,
+          "memoryUsed": 2000000000,
+          "cost": 0.85
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.presto_etl",
+    "pipelineStatus": [
       {
-        "timestamp": 164966947400,
-        "executionStatus": "Pending",
+        "timestamp": 1731457200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_102000",
+        "endTime": 1731457560000,
+        "version": "2.5.0",
         "taskStatus": [
           {
-            "executionStatus": "Pending",
-            "name": "dim_address_task"
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1731457200000,
+            "endTime": 1731457440000,
+            "transformationType": "aggregate",
+            "transformationLogic": "SELECT product_id, SUM(quantity) as total_qty, AVG(price) as avg_price FROM sales GROUP BY product_id",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.fact_sale",
+                "rowCount": 500000,
+                "sizeBytes": 75000000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.product_sales_summary",
+                "rowCount": 25000,
+                "sizeBytes": 3200000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 500000,
+              "rowsWritten": 25000,
+              "executionTimeMs": 240000
+            }
           },
           {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731457440000,
+            "endTime": 1731457441800,
+            "metrics": {
+              "executionTimeMs": 1800
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 500000,
+          "totalBytesProcessed": 75000000,
+          "cpuTime": 230.5,
+          "memoryUsed": 1073741824,
+          "cost": 0.45
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.trino_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731457500000,
+        "executionStatus": "Pending",
+        "executionId": "airflow_run_20250113_102500",
+        "version": "1.0.0",
+        "taskStatus": [
+          {
+            "name": "trino_task",
             "executionStatus": "Pending",
-            "name": "assert_table_exists"
+            "startTime": 1731457500000
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Pending"
           }
         ]
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.hive_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731457800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_103000",
+        "endTime": 1731458340000,
+        "version": "4.2.1",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Successful",
+            "startTime": 1731457800000,
+            "endTime": 1731458220000,
+            "transformationType": "load",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_order",
+                "rowCount": 350000,
+                "sizeBytes": 52500000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.fact_order",
+                "rowCount": 348900,
+                "sizeBytes": 52340000,
+                "mode": "append",
+                "partitions": ["dt=2025-01-13", "country=US"]
+              }
+            ],
+            "metrics": {
+              "rowsRead": 350000,
+              "rowsWritten": 348900,
+              "rowsFiltered": 1100,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731458220000,
+            "endTime": 1731458222100,
+            "metrics": {
+              "executionTimeMs": 2100
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 350000,
+          "totalBytesProcessed": 52500000,
+          "cpuTime": 405.8,
+          "memoryUsed": 1600000000,
+          "cost": 0.68
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.snowflake_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731458100000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250113_103500",
+        "endTime": 1731458520000,
+        "version": "5.0.2",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "MEDIUM",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Successful",
+            "startTime": 1731458100000,
+            "endTime": 1731458400000,
+            "transformationType": "extract",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_customer_activity",
+                "rowCount": 280000,
+                "sizeBytes": 42000000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.customer_metrics",
+                "rowCount": 278500,
+                "sizeBytes": 41750000,
+                "mode": "merge"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 280000,
+              "rowsWritten": 278500,
+              "rowsFiltered": 1500,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731458400000,
+            "endTime": 1731458401900,
+            "metrics": {
+              "executionTimeMs": 1900
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 280000,
+          "totalBytesProcessed": 42000000,
+          "cpuTime": 285.6,
+          "memoryUsed": 1300000000,
+          "cost": 1.25
+        }
       }
     ]
   }

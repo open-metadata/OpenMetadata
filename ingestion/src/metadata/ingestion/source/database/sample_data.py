@@ -153,6 +153,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
@@ -576,6 +577,13 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.table_pipeline_observability = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/pipelines/tablePipelineObservability.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
         self.profiles = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/profiler/tableProfile.json",
@@ -833,6 +841,7 @@ class SampleDataSource(
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
+        yield from self.ingest_table_pipeline_observability()
         yield from self.ingest_mlmodels()
         yield from self.ingest_containers()
         yield from self.ingest_search_indexes()
@@ -1820,6 +1829,57 @@ class SampleDataSource(
                     right=OMetaPipelineStatus(
                         pipeline_fqn=pipeline_fqn,
                         pipeline_status=PipelineStatus(**status),
+                    )
+                )
+
+    def ingest_table_pipeline_observability(self) -> Iterable[Either]:
+        """Ingest table pipeline observability data"""
+
+        for table_data in self.table_pipeline_observability.get("tables", []):
+            table_fqn = table_data["tableFqn"]
+
+            try:
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                if not table:
+                    continue
+
+                pipeline_observability_list = []
+                for obs_data in table_data.get("pipelineObservability", []):
+                    pipeline_fqn = obs_data.get("pipeline")
+                    if isinstance(pipeline_fqn, str):
+                        pipeline = self.metadata.get_by_name(
+                            entity=Pipeline, fqn=pipeline_fqn
+                        )
+                        if pipeline:
+                            pipeline_obs = PipelineObservability(
+                                pipeline=EntityReference(
+                                    id=pipeline.id.root
+                                    if hasattr(pipeline.id, "root")
+                                    else pipeline.id,
+                                    type="pipeline",
+                                    fullyQualifiedName=pipeline.fullyQualifiedName.root
+                                    if hasattr(pipeline.fullyQualifiedName, "root")
+                                    else str(pipeline.fullyQualifiedName),
+                                ),
+                                scheduleInterval=obs_data.get("scheduleInterval"),
+                                startTime=obs_data.get("startTime"),
+                                endTime=obs_data.get("endTime"),
+                                lastRunTime=obs_data.get("lastRunTime"),
+                                lastRunStatus=obs_data.get("lastRunStatus"),
+                            )
+                            pipeline_observability_list.append(pipeline_obs)
+
+                if pipeline_observability_list:
+                    self.metadata.add_pipeline_observability(
+                        table.id, pipeline_observability_list
+                    )
+
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=table_fqn,
+                        error=f"Failed to ingest pipeline observability: {exc}",
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

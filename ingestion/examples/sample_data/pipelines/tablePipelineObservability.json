@@ -1,0 +1,131 @@
+{
+  "tables": [
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.dim_address",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_address_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456000000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_user_etl",
+          "scheduleInterval": "0 10,16 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456300000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.dim_location",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_location_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456600000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.dim_product",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_product_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456900000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.raw_address",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_address_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456000000,
+          "lastRunStatus": "Successful"
+        },
+        {
+          "pipeline": "sample_airflow.dim_location_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456600000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.product_sales_summary",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.presto_etl",
+          "scheduleInterval": "*/30 * * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731457200000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.fact_sale",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.presto_etl",
+          "scheduleInterval": "*/30 * * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731457200000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.fact_order",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.hive_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731457800000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.raw_order",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.hive_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731457800000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.customer_metrics",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.snowflake_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731458100000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    }
+  ]
+}
