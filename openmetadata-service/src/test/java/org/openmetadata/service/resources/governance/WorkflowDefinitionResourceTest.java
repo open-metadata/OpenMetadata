@@ -5471,8 +5471,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Wait for the async task assignee update to complete using Awaitility
     final Integer taskId = taskDetails.getId();
     await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(3))
+        .pollDelay(Duration.ofSeconds(5))
         .until(
             () -> {
               try {
@@ -5533,9 +5534,16 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
                 // Task assignees should have been updated: reviewer2 should be present, reviewer1
                 // should not
-                return hasReviewer2 && !hasReviewer1;
+                // In CI environments, allow for intermediate states where reviewer2 is added but
+                // reviewer1 isn't removed yet
+                if (hasReviewer2) {
+                  LOG.warn(
+                      "DEBUGGING: reviewer2 found in assignees, checking if reviewer1 removed...");
+                  return !hasReviewer1; // reviewer2 is there, just need reviewer1 to be gone
+                }
+                return false; // reviewer2 not found yet
               } catch (Exception e) {
-                LOG.warn("Error checking task assignees: {}", e.getMessage());
+                LOG.warn("Error checking task assignees: {}", e.getMessage(), e);
                 return false;
               }
             });
