@@ -29,6 +29,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
+import org.openmetadata.service.util.TagUsageCleanup;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
@@ -117,6 +118,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("broken_storage_entities", new StepStats());
     entityStats.withAdditionalProperty("broken_mlmodel_entities", new StepStats());
     entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
+    entityStats.withAdditionalProperty("orphaned_tag_usages", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -130,6 +132,10 @@ public class DataRetention extends AbstractNativeApplication {
     // Clean up orphaned relationships and broken service hierarchies
     LOG.info("Starting cleanup for orphaned relationships and broken service hierarchies.");
     cleanOrphanedRelationshipsAndHierarchies();
+
+    // Clean up orphaned tag usages
+    LOG.info("Starting cleanup for orphaned tag usages.");
+    cleanOrphanedTagUsages();
 
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
@@ -227,6 +233,29 @@ public class DataRetention extends AbstractNativeApplication {
 
     } catch (Exception ex) {
       LOG.error("Failed to clean orphaned relationships and hierarchies", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+
+      if (failureDetails == null) {
+        failureDetails = new HashMap<>();
+        failureDetails.put("message", ex.getMessage());
+        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      }
+    }
+  }
+
+  private void cleanOrphanedTagUsages() {
+    LOG.info("Initiating orphaned tag usages cleanup.");
+
+    try {
+      TagUsageCleanup cleanup = new TagUsageCleanup(collectionDAO, false);
+      TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(BATCH_SIZE);
+
+      updateStats("orphaned_tag_usages", result.getTagUsagesDeleted(), 0);
+
+      LOG.info("Tag usage cleanup completed - Deleted: {}", result.getTagUsagesDeleted());
+
+    } catch (Exception ex) {
+      LOG.error("Failed to clean orphaned tag usages", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
       if (failureDetails == null) {
