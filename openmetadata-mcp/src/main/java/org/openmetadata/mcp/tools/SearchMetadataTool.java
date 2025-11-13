@@ -93,7 +93,20 @@ public class SearchMetadataTool implements McpTool {
     LOG.info("Executing searchMetadata with params: {}", params);
     String query = params.containsKey("query") ? (String) params.get("query") : "*";
     String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
+
+    String queryFilter = null;
+    if (params.containsKey("queryFilter")) {
+      queryFilter = (String) params.get("queryFilter");
+      if (entityType == null) {
+        entityType = extractEntityTypeFromQuery(queryFilter);
+        if (entityType != null) {
+          LOG.info("Extracted entityType '{}' from queryFilter", entityType);
+        }
+      }
+    }
+
     String index = entityType == null ? "dataAsset" : mapEntityTypesToIndexNames(entityType);
+    LOG.info("Selected search index: '{}' for entityType: '{}'", index, entityType);
 
     int size = 10;
     if (params.containsKey("size")) {
@@ -139,9 +152,7 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    String queryFilter = null;
-    if (params.containsKey("queryFilter")) {
-      queryFilter = (String) params.get("queryFilter");
+    if (queryFilter != null) {
       JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
 
       if (!queryNode.has("query")) {
@@ -218,6 +229,62 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> params) {
     throw new UnsupportedOperationException(
         "SearchMetadataTool does not support limits enforcement.");
+  }
+
+  private String extractEntityTypeFromQuery(String queryFilter) {
+    if (queryFilter == null || queryFilter.trim().isEmpty()) {
+      return null;
+    }
+
+    try {
+      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
+      return findEntityTypeInNode(queryNode);
+    } catch (Exception e) {
+      LOG.debug("Failed to extract entityType from queryFilter: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  private String findEntityTypeInNode(JsonNode node) {
+    if (node == null) {
+      return null;
+    }
+
+    if (node.has("term") && node.get("term").has("entityType")) {
+      JsonNode entityTypeNode = node.get("term").get("entityType");
+      return entityTypeNode.isTextual() ? entityTypeNode.asText() : null;
+    }
+
+    if (node.has("query")) {
+      String entityType = findEntityTypeInNode(node.get("query"));
+      if (entityType != null) {
+        return entityType;
+      }
+    }
+
+    if (node.has("bool")) {
+      JsonNode boolNode = node.get("bool");
+      for (String clause : List.of("must", "should", "filter")) {
+        if (boolNode.has(clause)) {
+          JsonNode clauseNode = boolNode.get(clause);
+          if (clauseNode.isArray()) {
+            for (JsonNode item : clauseNode) {
+              String entityType = findEntityTypeInNode(item);
+              if (entityType != null) {
+                return entityType;
+              }
+            }
+          } else {
+            String entityType = findEntityTypeInNode(clauseNode);
+            if (entityType != null) {
+              return entityType;
+            }
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   public static Map<String, Object> buildEnhancedSearchResponse(

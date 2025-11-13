@@ -94,4 +94,110 @@ class SearchMetadataToolTest {
     assertNotNull(result);
     assertEquals(java.util.Collections.emptyMap(), result);
   }
+
+  @Test
+  void testSearchWithEntityTypeInQueryFilter_Database() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put(
+        "queryFilter", "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"database\"}}]}}");
+    params.put("size", 10);
+
+    when(searchRepository.getIndexOrAliasName("database"))
+        .thenReturn("database_search_index");
+
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getEntity())
+        .thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":1}}}");
+    when(searchRepository.searchWithDirectQuery(any(), any(SubjectContext.class)))
+        .thenReturn(mockResponse);
+
+    Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+    assertNotNull(result);
+  }
+
+  @Test
+  void testSearchWithEntityTypeInQueryFilter_DatabaseSchema() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put(
+        "queryFilter",
+        "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseSchema\"}}]}}");
+    params.put("size", 10);
+
+    when(searchRepository.getIndexOrAliasName("databaseSchema"))
+        .thenReturn("database_schema_search_index");
+
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getEntity())
+        .thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":5}}}");
+    when(searchRepository.searchWithDirectQuery(any(), any(SubjectContext.class)))
+        .thenReturn(mockResponse);
+
+    Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+    assertNotNull(result);
+  }
+
+  @Test
+  void testSearchWithEntityTypeInQueryFilter_ComplexQuery() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put(
+        "queryFilter",
+        "{\"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}}");
+    params.put("size", 0);
+
+    when(searchRepository.getIndexOrAliasName("databaseService"))
+        .thenReturn("database_service_index");
+
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getEntity())
+        .thenReturn(
+            "{\"hits\":{\"hits\":[],\"total\":{\"value\":3}},\"aggregations\":{\"total_count\":{\"value\":3}}}");
+    when(searchRepository.searchWithDirectQuery(any(), any(SubjectContext.class)))
+        .thenReturn(mockResponse);
+
+    Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+    assertNotNull(result);
+  }
+
+  @Test
+  void testSearchWithEntityTypeParameter_OverridesQueryFilter() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put(
+        "queryFilter", "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"database\"}}]}}");
+    params.put("size", 10);
+
+    when(searchRepository.getIndexOrAliasName("table")).thenReturn("table_search_index");
+
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getEntity())
+        .thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":100}}}");
+    when(searchRepository.searchWithDirectQuery(any(), any(SubjectContext.class)))
+        .thenReturn(mockResponse);
+
+    Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+    assertNotNull(result);
+  }
+
+  @Test
+  void testSearchWithNoEntityType_DefaultsToDataAsset() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "test");
+    params.put("size", 10);
+
+    when(searchRepository.getIndexOrAliasName("dataAsset"))
+        .thenReturn("dataAsset");
+
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getEntity())
+        .thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":1000}}}");
+    when(searchRepository.search(any(), any(SubjectContext.class))).thenReturn(mockResponse);
+
+    Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+    assertNotNull(result);
+  }
 }
