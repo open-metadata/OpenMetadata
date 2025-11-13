@@ -36,6 +36,7 @@ export const DeleteModalMUI = ({
   isDeleting = false,
   onCancel,
   onDelete,
+  additionalStyle,
 }: DeleteModalMUIProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -49,6 +50,7 @@ export const DeleteModalMUI = ({
             borderRadius: 2,
             width: 400,
             maxWidth: '100%',
+            ...additionalStyle,
           },
         },
       }}
@@ -112,6 +114,7 @@ export const DeleteModalMUI = ({
             },
           }}>
           <Button
+            data-testid="cancel-button"
             disabled={isDeleting}
             size="large"
             sx={{
@@ -124,6 +127,7 @@ export const DeleteModalMUI = ({
           </Button>
           <Button
             color="error"
+            data-testid="confirm-button"
             disabled={isDeleting}
             size="large"
             sx={{

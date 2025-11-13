@@ -443,6 +443,10 @@ class DbtSource(DbtServiceSource):
                 ),
                 fetch_multiple_entities=True,
             )
+
+            if not table_entities:
+                return None
+
             logger.debug(
                 f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
             )
@@ -487,7 +491,9 @@ class DbtSource(DbtServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get table entity from OpenMetadata: {exc}")
+            logger.warning(
+                f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}"
+            )
 
         return None
 
@@ -1015,6 +1021,23 @@ class DbtSource(DbtServiceSource):
                     )
                     or []
                 )
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
+                for tag_fqn in dbt_meta_info.openmetadata.tags:
+                    # Parse classification.tag format
+                    tag_parts = tag_fqn.split(fqn.FQN_SEPARATOR)
+                    if len(tag_parts) >= 2:
+                        classification_name = tag_parts[0]
+                        tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
+                        dbt_table_tags_list.extend(
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=[tag_name],
+                                classification_name=classification_name,
+                                include_tags=True,
+                            )
+                            or []
+                        )
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

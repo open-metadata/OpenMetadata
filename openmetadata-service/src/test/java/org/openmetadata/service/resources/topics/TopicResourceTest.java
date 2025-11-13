@@ -47,6 +47,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTopic;
@@ -94,6 +95,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
     supportsSearchIndex = true;
+    supportsBulkAPI = true;
   }
 
   @Test
@@ -624,6 +626,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertFields(expectedField.getChildren(), actualField.getChildren());
   }
 
+  @Order(2)
   @Test
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     // Use existing tags that are already set up in the test environment

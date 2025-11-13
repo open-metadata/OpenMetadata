@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/airbyte/oauthClientAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OAuth 2.0 Client Credentials Authentication",
+  "description": "OAuth 2.0 client credentials authentication for Airbyte Cloud",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.OAuthClientAuth",
+  "properties": {
+    "clientId": {
+      "title": "Client ID",
+      "description": "Client ID for the application registered in Airbyte.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Client Secret for the application registered in Airbyte.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["clientId", "clientSecret"]
+}

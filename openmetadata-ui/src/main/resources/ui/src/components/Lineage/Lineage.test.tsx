@@ -542,21 +542,9 @@ describe('Lineage Component', () => {
 
       expect(LineageControlButtons).toHaveBeenCalledWith(
         {
-          deleted: false,
-          entityType: EntityType.TABLE,
-          hasEditAccess: true,
+          miniMapVisible: true,
+          onToggleMiniMap: expect.any(Function),
         },
-        expect.anything()
-      );
-    });
-
-    it('should pass deleted prop to LineageControlButtons', () => {
-      render(<Lineage {...defaultProps} deleted />);
-
-      expect(LineageControlButtons).toHaveBeenCalledWith(
-        expect.objectContaining({
-          deleted: true,
-        }),
         expect.anything()
       );
     });
@@ -589,30 +577,6 @@ describe('Lineage Component', () => {
         entityType,
         mockEntity,
         undefined
-      );
-    });
-  });
-
-  describe('Edit Access', () => {
-    it('should render with edit access enabled', () => {
-      render(<Lineage {...defaultProps} hasEditAccess />);
-
-      expect(LineageControlButtons).toHaveBeenCalledWith(
-        expect.objectContaining({
-          hasEditAccess: true,
-        }),
-        expect.anything()
-      );
-    });
-
-    it('should render with edit access disabled', () => {
-      render(<Lineage {...defaultProps} hasEditAccess={false} />);
-
-      expect(LineageControlButtons).toHaveBeenCalledWith(
-        expect.objectContaining({
-          hasEditAccess: false,
-        }),
-        expect.anything()
       );
     });
   });
