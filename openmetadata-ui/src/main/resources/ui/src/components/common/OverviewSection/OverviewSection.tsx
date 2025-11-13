@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
@@ -28,28 +27,7 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const visibleEntityInfo = useMemo(() => {
-    if (!entityInfoV1) {
-      return [];
-    }
-
-    return entityInfoV1.filter((info) => {
-      if (EXCLUDED_ITEMS.includes(info.name)) {
-        return false;
-      }
-
-      const isDomain =
-        isDomainVisible && info.name === t('label.domain-plural');
-      const isVisibleInComponent = (info.visible ?? []).includes(componentType);
-
-      return isVisibleInComponent || isDomain;
-    });
-  }, [entityInfoV1, componentType, isDomainVisible]);
-
-  // Hide the entire section (including title) when there's no content
-  const hasContent = entityInfoV1 && visibleEntityInfo.length > 0;
-
-  if (!hasContent) {
+  if (!entityInfoV1 || entityInfoV1.length === 0) {
     return null;
   }
 
@@ -60,7 +38,8 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       onEdit={onEdit}>
       <CommonEntitySummaryInfoV1
         componentType={componentType}
-        entityInfo={visibleEntityInfo}
+        entityInfo={entityInfoV1}
+        excludedItems={EXCLUDED_ITEMS}
         isDomainVisible={isDomainVisible}
       />
     </SectionWithEdit>
