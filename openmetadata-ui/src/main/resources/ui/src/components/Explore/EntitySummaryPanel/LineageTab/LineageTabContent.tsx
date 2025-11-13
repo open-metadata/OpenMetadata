@@ -219,14 +219,17 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     </div>
                     <div className="item-path-container">
                       {item.path &&
-                        getTruncatedPath(item.path, 'breadcrumb-container')}
+                        getTruncatedPath(
+                          item.path,
+                          'condensed-breadcrumb-container'
+                        )}
                     </div>
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <UpstreamIcon />
+                      <UpstreamIcon height={18} width={18} />
                     ) : (
-                      <DownstreamIcon />
+                      <DownstreamIcon height={18} width={18} />
                     )}
                   </div>
                 </div>
@@ -257,7 +260,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     {item.entity.owners && item.entity.owners.length > 0 ? (
                       <OwnerLabel
                         isCompactView
-                        avatarSize={16}
+                        avatarSize={14}
                         className="item-owner-label-text"
                         owners={item.entity.owners}
                         showLabel={false}

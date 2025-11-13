@@ -59,7 +59,7 @@
   border-bottom: 1px dashed @grey-15;
   padding-bottom: 10px;
 }
-.vertical-divider {
+.stat-card-vertical-divider {
   margin-top: 12px !important;
   margin-bottom: 12px !important;
 }
@@ -69,20 +69,25 @@
   .tab-header-container {
     display: flex;
     align-items: center;
-    gap: 6px;
-
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 400;
+    &.active {
+      font-weight: 600;
+    }
     .data-quality-tab-count {
-      border-radius: 6px;
+      border-radius: 4px;
       background-color: @grey-9;
       border: 1px solid @grey-38;
-      color: @grey-700;
-      font-size: 10px;
+      color: @grey-600;
+      font-size: 11px;
       font-weight: 500;
-
+      padding: 0px 4px;
       &.active {
-        background-color: @primary-1;
+        font-weight: 600;
+        background-color: @primary-6;
         border-color: @primary-7;
-        color: @primary-7;
+        color: @primary-6;
       }
     }
   }
@@ -109,16 +114,16 @@
             padding: 10px 0px !important;
 
             &.ant-tabs-tab-active {
-              color: @primary-7;
+              color: @primary-6;
             }
 
             &:hover {
-              color: @primary-7;
+              color: @primary-6;
             }
           }
 
           .ant-tabs-ink-bar {
-            background-color: @primary-7;
+            background-color: @primary-6;
             height: 2px;
           }
         }
@@ -402,33 +407,12 @@
     padding: 32px 16px;
     color: @grey-10;
   }
-
-  .text-success {
-    color: #52c41a;
+  .no-data-placeholder {
+    color: @grey-500 !important;
+    font-size: 13px;
+    font-weight: 500;
   }
-
-  .text-failed {
-    color: #ff4d4f;
+  .searchbar-container {
+    margin-bottom: 4px !important;
   }
-
-  .text-aborted {
-    color: #faad14;
-  }
-
-  .text-lg {
-    font-size: 18px;
-    line-height: 1.2;
-  }
-
-  .font-semibold {
-    font-weight: 600;
-  }
-}
-.no-data-placeholder {
-  color: @grey-500 !important;
-  font-size: 13px;
-  font-weight: 500;
-}
-.searchbar-container {
-  margin-bottom: 4px !important;
 }

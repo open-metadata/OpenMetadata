@@ -654,7 +654,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 </button>
                 <Divider
                   flexItem
-                  className="vertical-divider"
+                  className="stat-card-vertical-divider"
                   orientation="vertical"
                   variant="middle"
                 />
@@ -673,7 +673,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 </button>
                 <Divider
                   flexItem
-                  className="vertical-divider"
+                  className="stat-card-vertical-divider"
                   orientation="vertical"
                   variant="middle"
                 />

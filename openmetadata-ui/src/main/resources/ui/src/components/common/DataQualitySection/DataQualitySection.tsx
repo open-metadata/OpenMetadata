@@ -76,7 +76,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       />
       <Divider
         flexItem
-        className="vertical-divider"
+        className="stat-card-vertical-divider"
         orientation="vertical"
         variant="middle"
       />
@@ -89,7 +89,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       />
       <Divider
         flexItem
-        className="vertical-divider"
+        className="stat-card-vertical-divider"
         orientation="vertical"
         variant="middle"
       />
