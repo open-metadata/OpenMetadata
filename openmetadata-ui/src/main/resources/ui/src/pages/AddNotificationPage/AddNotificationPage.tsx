@@ -24,7 +24,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
@@ -60,10 +60,7 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
-import {
-  getModifiedAlertDataForForm,
-  handleAlertSave,
-} from '../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getNotificationAlertDetailsPath,
@@ -130,7 +127,7 @@ const AddNotificationPage = () => {
 
       const response: EventSubscription = await getAlertsFromName(fqn);
       const modifiedAlertData: ModifiedEventSubscription =
-        getModifiedAlertDataForForm(response);
+        alertsClassBase.getModifiedAlertDataForForm(response);
 
       setInitialData(response);
       setAlert(modifiedAlertData);
@@ -175,7 +172,7 @@ const AddNotificationPage = () => {
       try {
         setIsButtonLoading(true);
 
-        await handleAlertSave({
+        await alertsClassBase.handleAlertSave({
           data,
           fqn,
           initialData,
@@ -211,6 +208,11 @@ const AddNotificationPage = () => {
   const shouldShowFiltersSection = useMemo(
     () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
     [selectedTrigger, supportedFilters]
+  );
+
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
   );
 
   if (loadingCount > 0 || (isEditMode && isEmpty(alert))) {
@@ -314,6 +316,26 @@ const AddNotificationPage = () => {
                           <Col span={24}>
                             <DestinationFormItem />
                           </Col>
+
+                          {!isEmpty(extraFormWidgets) && (
+                            <>
+                              {Object.entries(extraFormWidgets).map(
+                                ([name, Widget]) => (
+                                  <Fragment key={name}>
+                                    <Col>
+                                      <Divider dashed type="vertical" />
+                                    </Col>
+                                    <Col span={24}>
+                                      <Widget
+                                        alertDetails={alert}
+                                        formRef={form}
+                                      />
+                                    </Col>
+                                  </Fragment>
+                                )
+                              )}
+                            </>
+                          )}
                         </Row>
                       </Col>
                       <Form.Item

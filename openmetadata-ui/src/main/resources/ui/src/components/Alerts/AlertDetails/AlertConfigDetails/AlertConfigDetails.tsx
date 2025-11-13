@@ -20,7 +20,7 @@ import { FilterResourceDescriptor } from '../../../../generated/events/filterRes
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
-import { getModifiedAlertDataForForm } from '../../../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -37,7 +37,8 @@ function AlertConfigDetails({
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
-  const modifiedAlertData = getModifiedAlertDataForForm(alertDetails);
+  const modifiedAlertData =
+    alertsClassBase.getModifiedAlertDataForForm(alertDetails);
   const [fetching, setFetching] = useState<number>(0);
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
