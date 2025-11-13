@@ -403,6 +403,12 @@ export interface Pipeline {
      */
     filterCondition?: string;
     /**
+     * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+     * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+     * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+     */
+    parserType?: LineageParserType;
+    /**
      * Configuration to process query cost
      */
     processQueryCostAnalysis?: boolean;
@@ -437,12 +443,6 @@ export interface Pipeline {
      * lineage.
      */
     overrideViewLineage?: boolean;
-    /**
-     * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
-     * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
-     * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
-     */
-    parserType?: LineageParserType;
     /**
      * Configuration to set the timeout for parsing the query in seconds.
      */
