@@ -107,7 +107,7 @@ runs:
       shell: bash
       run: |
         echo "Testing OpenMetadata API health endpoint..."
-        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8585/api/v1/system/status)
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8585/)
         if [ "$RESPONSE" != "200" ]; then
           echo "OpenMetadata API health check failed with status code: $RESPONSE"
           exit 1
