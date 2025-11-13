@@ -79,7 +79,7 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-           npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}

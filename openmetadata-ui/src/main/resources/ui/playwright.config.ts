@@ -76,6 +76,7 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
+      teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
@@ -103,7 +104,6 @@ export default defineConfig({
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
-      // Tests within this project run in parallel
       fullyParallel: true,
     },
     {
@@ -111,7 +111,6 @@ export default defineConfig({
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
-      // Tests within this project run in parallel, but only after DataAssetRulesEnabled completes
       fullyParallel: true,
     },
   ],
