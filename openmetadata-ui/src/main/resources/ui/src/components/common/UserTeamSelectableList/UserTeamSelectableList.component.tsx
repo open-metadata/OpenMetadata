@@ -161,9 +161,31 @@ export const UserTeamSelectableList = ({
     }
   };
 
+  const getOwnerItemBasedOnTab = (updateItems: EntityReference[]) => {
+    const currentTabType =
+      activeTab === 'users' ? EntityType.USER : EntityType.TEAM;
+    const otherTabType =
+      activeTab === 'users' ? EntityType.TEAM : EntityType.USER;
+
+    const itemsFromOtherTab = selectedUsers.filter(
+      (item) => item.type === otherTabType
+    );
+    const itemsFromCurrentTab = updateItems.filter(
+      (item) => item.type === currentTabType
+    );
+
+    return { itemsFromOtherTab, itemsFromCurrentTab };
+  };
+
   const handleUpdate = async (updateItems: EntityReference[]) => {
     let updateData: EntityReference[] = [];
-    if (!isEmpty(updateItems)) {
+
+    if (isMultiUser && isMultiTeam) {
+      const { itemsFromOtherTab, itemsFromCurrentTab } =
+        getOwnerItemBasedOnTab(updateItems);
+
+      updateData = [...itemsFromOtherTab, ...itemsFromCurrentTab];
+    } else if (!isEmpty(updateItems)) {
       updateData = updateItems;
     }
 
@@ -243,7 +265,14 @@ export const UserTeamSelectableList = ({
   };
 
   const handleChange = (selectedItems: EntityReference[]) => {
-    setSelectedUsers(selectedItems);
+    if (isMultiUser && isMultiTeam) {
+      const { itemsFromOtherTab, itemsFromCurrentTab } =
+        getOwnerItemBasedOnTab(selectedItems);
+
+      setSelectedUsers([...itemsFromOtherTab, ...itemsFromCurrentTab]);
+    } else {
+      setSelectedUsers(selectedItems);
+    }
   };
 
   useEffect(() => {
@@ -316,7 +345,7 @@ export const UserTeamSelectableList = ({
                     })}
                     selectedItems={defaultTeams}
                     onCancel={handleCancelSelectableList}
-                    onChange={handleChange}
+                    onChange={isMultiTeam ? handleChange : noop}
                     onUpdate={handleUpdate}
                   />
                 ),
@@ -340,7 +369,7 @@ export const UserTeamSelectableList = ({
                     })}
                     selectedItems={defaultUsers}
                     onCancel={handleCancelSelectableList}
-                    onChange={isMultiUser ? noop : handleChange}
+                    onChange={isMultiUser ? handleChange : noop}
                     onUpdate={handleUpdate}
                   />
                 ),
