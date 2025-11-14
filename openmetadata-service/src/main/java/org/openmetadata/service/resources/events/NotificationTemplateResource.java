@@ -64,6 +64,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
@@ -259,7 +260,6 @@ public class NotificationTemplateResource
                     schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
@@ -287,7 +287,6 @@ public class NotificationTemplateResource
                 "Notification template for instance {id} and version {version} is not found")
       })
   public NotificationTemplate getVersion(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
@@ -633,7 +632,6 @@ public class NotificationTemplateResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response validateTemplate(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid NotificationTemplateValidationRequest request) {
 
@@ -675,9 +673,7 @@ public class NotificationTemplateResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response renderTemplate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid NotificationTemplateRenderRequest request) {
+      @Context SecurityContext securityContext, @Valid NotificationTemplateRenderRequest request) {
 
     List<AuthRequest> authRequests =
         List.of(
@@ -715,9 +711,7 @@ public class NotificationTemplateResource
         @ApiResponse(responseCode = "400", description = "Bad request or validation failure")
       })
   public Response sendTemplate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid NotificationTemplateSendRequest request) {
+      @Context SecurityContext securityContext, @Valid NotificationTemplateSendRequest request) {
 
     List<AuthRequest> authRequests =
         List.of(
@@ -731,5 +725,31 @@ public class NotificationTemplateResource
     NotificationTemplateValidationResponse response = repository.send(request);
 
     return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/helpers")
+  @Operation(
+      operationId = "getHandlebarsHelpers",
+      summary = "Get available Handlebars helpers",
+      description =
+          "Returns a list of all available Handlebars helpers with their usage information. "
+              + "Requires VIEW_BASIC permission for notification templates.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Handlebars helpers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = HandlebarsHelperMetadata.class)))
+      })
+  public List<HandlebarsHelperMetadata> getHandlebarsHelpers(
+      @Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    return repository.getHelperMetadata();
   }
 }

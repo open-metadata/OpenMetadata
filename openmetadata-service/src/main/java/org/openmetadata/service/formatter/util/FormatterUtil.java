@@ -307,6 +307,7 @@ public class FormatterUtil {
                 ? null
                 : entityInterface.getDomains().stream().map(EntityReference::getId).toList())
         .withUserName(updateBy)
+        .withImpersonatedBy(entityInterface.getImpersonatedBy())
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
@@ -396,6 +397,7 @@ public class FormatterUtil {
             .withDomains(thread.getDomains())
             .withEntityType(entityType)
             .withUserName(updateBy)
+            .withImpersonatedBy(thread.getImpersonatedBy())
             .withTimestamp(thread.getUpdatedAt());
 
     // Include changeDescription if present

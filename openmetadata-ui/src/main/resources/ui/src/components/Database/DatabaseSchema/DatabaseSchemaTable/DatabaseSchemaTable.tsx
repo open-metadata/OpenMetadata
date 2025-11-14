@@ -112,6 +112,7 @@ export const DatabaseSchemaTable = ({
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const fetchDatabaseSchema = useCallback(
@@ -148,6 +149,10 @@ export const DatabaseSchemaTable = ({
   ) => {
     setIsLoading(true);
     try {
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       const response = await searchQuery({
         query: '',
         pageNumber,
@@ -182,17 +187,25 @@ export const DatabaseSchemaTable = ({
 
   const handleShowDeletedSchemas = useCallback((value: boolean) => {
     setShowDeletedSchemas(value);
-    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   }, []);
 
   const handleSchemaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
       if (searchValue) {
         searchSchema(searchValue, currentPage);
+        handlePageChange(currentPage);
       } else if (cursorType) {
         fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, fetchDatabaseSchema, searchSchema, searchValue]
   );
@@ -305,6 +318,13 @@ export const DatabaseSchemaTable = ({
 
       return;
     }
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchDatabaseSchema({ [cursorType]: cursorValue });
+
+      return;
+    }
 
     fetchDatabaseSchema();
   }, [
@@ -313,6 +333,7 @@ export const DatabaseSchemaTable = ({
     showDeletedSchemas,
     isDatabaseDeleted,
     isCustomizationPage,
+    pagingCursor,
   ]);
 
   return (
