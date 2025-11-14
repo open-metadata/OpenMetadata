@@ -42,7 +42,10 @@ class CliCommonDB:
                 connector, cls.get_test_type()
             )
             cls.engine = workflow.source.engine
+
             cls.openmetadata = workflow.source.metadata
+            cls.set_ingestion_bot_jwt_token()
+
             cls.config_file_path = str(
                 Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
             )

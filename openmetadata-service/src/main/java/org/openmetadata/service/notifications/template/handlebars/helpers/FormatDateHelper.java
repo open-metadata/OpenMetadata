@@ -4,8 +4,11 @@ import com.github.jknack.handlebars.Handlebars;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,5 +85,18 @@ public class FormatDateHelper implements HandlebarsHelper {
       // Not a timestamp string, return null to fall back to string representation
       return null;
     }
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("formatDate")
+        .withDescription("Format timestamp to readable date")
+        .withCursorOffset(14)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{formatDate }}")
+                    .withExample("{{formatDate entity.updatedAt}}")));
   }
 }

@@ -21,6 +21,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
+import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -42,6 +43,7 @@ const StoredProcedureTab = () => {
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
@@ -70,6 +72,17 @@ const StoredProcedureTab = () => {
     [decodedDatabaseSchemaFQN, pageSize, showDeleted, handlePagingChange]
   );
 
+  const handleShowDeleted = useCallback(
+    (value: boolean) => {
+      setShowDeleted(value);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [handlePageChange, pageSize]
+  );
+
   const storedProcedurePagingHandler = useCallback(
     async ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
@@ -78,8 +91,12 @@ const StoredProcedureTab = () => {
         };
 
         await fetchStoreProcedureDetails(pagingString);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, handlePageChange, fetchStoreProcedureDetails]
   );
@@ -122,8 +139,14 @@ const StoredProcedureTab = () => {
   );
 
   useEffect(() => {
-    fetchStoreProcedureDetails();
-  }, [showDeleted, pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchStoreProcedureDetails({ [cursorType]: cursorValue });
+    } else {
+      fetchStoreProcedureDetails();
+    }
+  }, [showDeleted, pageSize, pagingCursor]);
 
   const paginationProps = useMemo(
     () => ({
@@ -158,7 +181,7 @@ const StoredProcedureTab = () => {
           <Switch
             checked={showDeleted}
             data-testid="show-deleted-stored-procedure"
-            onClick={(checked) => setShowDeleted(checked)}
+            onClick={handleShowDeleted}
           />
           <Typography.Text className="m-l-xs">
             {t('label.deleted')}

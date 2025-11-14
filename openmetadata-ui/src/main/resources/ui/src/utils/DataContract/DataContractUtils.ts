@@ -17,8 +17,12 @@ import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contra
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
-import { SEMANTIC_TAG_OPERATORS } from '../../constants/DataContract.constants';
+import {
+  EDataContractTab,
+  SEMANTIC_TAG_OPERATORS,
+} from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
@@ -134,6 +138,26 @@ export const ContractTestTypeLabelMap = {
   [TestCaseType.all]: i18n.t('label.all'),
   [TestCaseType.table]: i18n.t('label.table'),
   [TestCaseType.column]: i18n.t('label.column'),
+};
+
+export const getContractTabLabel = (tabKey: EDataContractTab): string => {
+  switch (tabKey) {
+    case EDataContractTab.TERMS_OF_SERVICE:
+      return i18n.t('label.terms-of-service');
+    case EDataContractTab.SCHEMA:
+      return i18n.t('label.schema');
+    case EDataContractTab.SEMANTICS:
+      return i18n.t('label.semantic-plural');
+    case EDataContractTab.QUALITY:
+      return i18n.t('label.quality');
+    case EDataContractTab.SECURITY:
+      return i18n.t('label.security');
+    case EDataContractTab.SLA:
+      return i18n.t('label.sla');
+
+    default:
+      return i18n.t('label.contract-detail-plural');
+  }
 };
 
 export const getSematicRuleFields = () => {
@@ -332,4 +356,39 @@ export const generateSelectOptionsFromString = (
     label: t(`label.${value}`),
     value: value, // Use the string value as the actual value (hour, day, week, etc.)
   }));
+};
+
+export const getDataContractTabByEntity = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.QUALITY,
+        EDataContractTab.SLA,
+      ];
+    case EntityType.TOPIC:
+    case EntityType.API_ENDPOINT:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+
+    default:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+  }
 };

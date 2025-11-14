@@ -111,10 +111,5 @@ class CountInSet(StaticMetric):
         Maintains a single running total (not a list). Adds chunk's count
         to the current total and returns the updated sum.
         """
-        try:
-            chunk_count = sum(df[column.name].isin(values))
-            return running_count + chunk_count
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to run countInSet for {column.name}: {exc}")
-            return running_count
+        chunk_count = sum(df[column.name].isin(values))
+        return running_count + chunk_count

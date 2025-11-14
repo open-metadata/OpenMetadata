@@ -58,6 +58,11 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
 
   await createTeamResponse;
 
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   return teamData;
 };
 
@@ -334,15 +339,15 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
   // Search and select the user
   await page
     .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-    .fill(user.getUserName());
+    .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserName()}"]`)
+    .locator(`[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`)
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
     )
   ).toHaveClass(/active/);
 
@@ -417,15 +422,15 @@ export const addUserTeam = async (
   // Search and select the user
   await page
     .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-    .fill(user.getUserName());
+    .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserName()}"]`)
+    .locator(`[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`)
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
     )
   ).toHaveClass(/active/);
 

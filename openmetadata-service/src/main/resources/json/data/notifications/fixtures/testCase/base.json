@@ -1,0 +1,63 @@
+{
+  "id": "1c0b9a8f-7e6d-5c4b-3a2f-1e0d9c8b7a6f",
+  "name": "sample_test_case",
+  "displayName": "Sample Test Case",
+  "fullyQualifiedName": "sample_test_suite.sample_test_case",
+  "description": "Mock test case for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/dataQuality/testCases/1c0b9a8f-7e6d-5c4b-3a2f-1e0d9c8b7a6f",
+  "testSuite": {
+    "id": "0b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+    "type": "testSuite",
+    "name": "sample_test_suite",
+    "fullyQualifiedName": "sample_test_suite",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/dataQuality/testSuites/0b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e"
+  },
+  "entityLink": "<#E::table::sample-service.sample-db.public.sample_table>",
+  "testDefinition": {
+    "id": "9a8f7e6d-5c4b-3a2f-1e0d-9c8b7a6f5e4d",
+    "type": "testDefinition",
+    "name": "columnValuesToBeNotNull",
+    "fullyQualifiedName": "columnValuesToBeNotNull",
+    "deleted": false
+  },
+  "parameterValues": [
+    {
+      "name": "columnName",
+      "value": "id"
+    }
+  ],
+  "testCaseResult": {
+    "timestamp": 1699564800000,
+    "testCaseStatus": "Success",
+    "result": "Test passed successfully"
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "testSuites": [
+    {
+      "id": "0b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+      "type": "testSuite",
+      "name": "sample_test_suite",
+      "fullyQualifiedName": "sample_test_suite"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ]
+}

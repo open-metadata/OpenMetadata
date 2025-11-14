@@ -110,7 +110,7 @@ class ColumnValueLengthsToBeBetweenValidator(
 
                     dimension_aggregates[dimension_value][
                         Metrics.MIN_LENGTH.name
-                    ] = max_impl.update_accumulator(
+                    ] = min_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.MIN_LENGTH.name],
                         group_df,
                     )
@@ -131,9 +131,13 @@ class ColumnValueLengthsToBeBetweenValidator(
                 max_length_value = agg[Metrics.MAX_LENGTH.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not (min_length_value and max_length_value):
+                if min_length_value is None or max_length_value is None:
+                    logger.warning(
+                        "Skipping '%s=%s' dimension since 'min_length' or 'max_length' are 'None'",
+                        dimension_col.name,
+                        dimension_value,
+                    )
                     continue
-
                 failed_count = (
                     total_rows
                     if checker.violates_pandas(
@@ -170,6 +174,8 @@ class ColumnValueLengthsToBeBetweenValidator(
                     agg_functions={
                         Metrics.MIN_LENGTH.name: "min",
                         Metrics.MAX_LENGTH.name: "max",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[
