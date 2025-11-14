@@ -391,7 +391,9 @@ const IncidentManagerDetailPage = ({
   }, [version, testCase?.id, isVersionPage]);
 
   const extraDropdownContent = useMemo(() => {
-    if (!hasEditPermission || isVersionPage) {
+    const isColumn = testCase?.entityLink.includes('::columns::');
+
+    if (!hasEditPermission || isVersionPage || !isColumn) {
       return [];
     }
 
@@ -409,7 +411,7 @@ const IncidentManagerDetailPage = ({
         onClick: () => setIsDimensionEdit(true),
       },
     ];
-  }, [t, hasEditPermission, isVersionPage]);
+  }, [t, hasEditPermission, isVersionPage, testCase?.entityLink]);
 
   if (isLoading || isPermissionLoading) {
     return <Loader />;
@@ -539,7 +541,6 @@ const IncidentManagerDetailPage = ({
       )}
       {testCase && isDimensionEdit && (
         <EditTestCaseModal
-          showOnlyParameter
           testCase={testCase}
           visible={isDimensionEdit}
           onCancel={handleCancelDimension}
