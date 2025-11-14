@@ -63,7 +63,8 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
+    WHERE TRUE {view_filter}
     """
 )
 
@@ -89,6 +90,21 @@ BIGQUERY_FOREIGN_CONSTRAINTS = textwrap.dedent(
     WHERE r.constraint_type = 'FOREIGN KEY';
     """
 )
+
+BIGQUERY_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT
+      c.table_name AS referred_table,
+      r.table_schema as referred_schema,
+      r.constraint_name as name,
+      c.column_name as referred_columns,
+      c.column_name as constrained_columns,
+      r.table_name as table_name,
+      r.constraint_type
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE c 
+    JOIN `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS r ON c.constraint_name = r.constraint_name 
+    WHERE r.constraint_type IN ('FOREIGN KEY') OR c.constraint_name LIKE '%pk$';
+  """)
 
 BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
     """
