@@ -100,6 +100,7 @@ import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
+import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
@@ -231,6 +232,65 @@ const DomainDetails = ({
     );
   };
 
+  const fetchDataProducts = async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
+
+        setDataProductsCount(res.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.data-product-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  };
+
+  const fetchSubDomainsCount = useCallback(async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
+
+        const totalCount = res.hits.total.value ?? 0;
+        setSubDomainsCount(totalCount);
+      } catch (error) {
+        setSubDomainsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.sub-domain-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  }, [isVersionsView, encodedFqn]);
+
   const {
     formDrawer: dataProductDrawer,
     openDrawer: openDataProductDrawer,
@@ -240,6 +300,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -383,6 +446,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       subDomainForm.resetFields();
     },
@@ -463,37 +529,6 @@ const DomainDetails = ({
       : []),
   ];
 
-  const fetchSubDomainsCount = useCallback(async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'parent.fullyQualifiedName.keyword':
-              domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DOMAIN,
-          trackTotalHits: true,
-        });
-
-        const totalCount = res.hits.total.value ?? 0;
-        setSubDomainsCount(totalCount);
-      } catch (error) {
-        setSubDomainsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
-  }, [isVersionsView, encodedFqn]);
-
   const addSubDomain = useCallback(
     async (formData: CreateDomain) => {
       const data = {
@@ -538,34 +573,6 @@ const DomainDetails = ({
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
     navigate(path);
-  };
-
-  const fetchDataProducts = async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DATA_PRODUCT,
-        });
-
-        setDataProductsCount(res.hits.total.value ?? 0);
-      } catch (error) {
-        setDataProductsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.data-product-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
   };
 
   const fetchDomainPermission = async () => {
@@ -823,22 +830,8 @@ const DomainDetails = ({
           gap: 1.5,
         }}>
         <CoverImage
-          imageUrl={
-            (domain.style as Style & { coverImage?: { url?: string } })
-              ?.coverImage?.url
-          }
-          position={
-            (domain.style as Style & { coverImage?: { position?: string } })
-              ?.coverImage?.position
-              ? {
-                  y: (
-                    domain.style as Style & {
-                      coverImage?: { position?: string };
-                    }
-                  ).coverImage!.position!,
-                }
-              : undefined
-          }
+          imageUrl={domain.style?.coverImage?.url}
+          position={{ y: domain.style?.coverImage?.position }}
         />
         <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
           <Box sx={{ flex: 1 }}>

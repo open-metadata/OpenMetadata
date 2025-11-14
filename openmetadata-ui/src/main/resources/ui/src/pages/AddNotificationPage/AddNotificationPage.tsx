@@ -24,7 +24,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
@@ -38,7 +38,10 @@ import RichTextEditor from '../../components/common/RichTextEditor/RichTextEdito
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
@@ -57,10 +60,7 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
-import {
-  getModifiedAlertDataForForm,
-  handleAlertSave,
-} from '../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getNotificationAlertDetailsPath,
@@ -105,6 +105,13 @@ const AddNotificationPage = () => {
         url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
       },
       {
+        name: t('label.alert-plural'),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERTS
+        ),
+      },
+      {
         name: fqn
           ? t('label.edit-entity', { entity: t('label.alert') })
           : t('label.create-entity', { entity: t('label.alert') }),
@@ -120,7 +127,7 @@ const AddNotificationPage = () => {
 
       const response: EventSubscription = await getAlertsFromName(fqn);
       const modifiedAlertData: ModifiedEventSubscription =
-        getModifiedAlertDataForForm(response);
+        alertsClassBase.getModifiedAlertDataForForm(response);
 
       setInitialData(response);
       setAlert(modifiedAlertData);
@@ -165,7 +172,7 @@ const AddNotificationPage = () => {
       try {
         setIsButtonLoading(true);
 
-        await handleAlertSave({
+        await alertsClassBase.handleAlertSave({
           data,
           fqn,
           initialData,
@@ -201,6 +208,11 @@ const AddNotificationPage = () => {
   const shouldShowFiltersSection = useMemo(
     () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
     [selectedTrigger, supportedFilters]
+  );
+
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
   );
 
   if (loadingCount > 0 || (isEditMode && isEmpty(alert))) {
@@ -304,6 +316,26 @@ const AddNotificationPage = () => {
                           <Col span={24}>
                             <DestinationFormItem />
                           </Col>
+
+                          {!isEmpty(extraFormWidgets) && (
+                            <>
+                              {Object.entries(extraFormWidgets).map(
+                                ([name, Widget]) => (
+                                  <Fragment key={name}>
+                                    <Col>
+                                      <Divider dashed type="vertical" />
+                                    </Col>
+                                    <Col span={24}>
+                                      <Widget
+                                        alertDetails={alert}
+                                        formRef={form}
+                                      />
+                                    </Col>
+                                  </Fragment>
+                                )
+                              )}
+                            </>
+                          )}
                         </Row>
                       </Col>
                       <Form.Item
@@ -316,6 +348,7 @@ const AddNotificationPage = () => {
                         initialValue={ProviderType.User}
                         name="provider"
                       />
+                      <Form.Item hidden name="customNotificationTemplateData" />
 
                       {!isUndefined(inlineAlertDetails) && (
                         <Col span={24}>

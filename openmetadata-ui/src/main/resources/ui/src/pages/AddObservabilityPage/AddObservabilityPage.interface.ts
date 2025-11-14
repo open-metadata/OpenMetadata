@@ -30,14 +30,19 @@ export interface ModifiedDestination extends Destination {
   config?: ModifiedWebhookConfig;
 }
 
-export interface ModifiedEventSubscription extends EventSubscription {
+export interface ModifiedEventSubscription
+  extends Omit<EventSubscription, 'notificationTemplate'> {
   destinations: ModifiedDestination[];
+  notificationTemplate?: string | EventSubscription['notificationTemplate'];
   timeout: number;
   readTimeout: number;
 }
 
 export interface ModifiedCreateEventSubscription
-  extends CreateEventSubscription {
+  extends Omit<CreateEventSubscription, 'notificationTemplate'> {
+  notificationTemplate?:
+    | string
+    | CreateEventSubscription['notificationTemplate'];
   destinations: ModifiedDestination[];
   timeout: number;
   readTimeout: number;

@@ -14,7 +14,7 @@
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
@@ -45,10 +45,7 @@ import {
   getResourceFunctions,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
-import {
-  getModifiedAlertDataForForm,
-  handleAlertSave,
-} from '../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -82,7 +79,8 @@ function AddObservabilityPage() {
       setFetching((prev) => prev + 1);
 
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
-      const modifiedAlertData = getModifiedAlertDataForForm(observabilityAlert);
+      const modifiedAlertData =
+        alertsClassBase.getModifiedAlertDataForForm(observabilityAlert);
 
       setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
@@ -141,7 +139,7 @@ function AddObservabilityPage() {
       try {
         setSaving(true);
 
-        await handleAlertSave({
+        await alertsClassBase.handleAlertSave({
           data,
           fqn,
           initialData,
@@ -189,6 +187,11 @@ function AddObservabilityPage() {
   const shouldShowActionsSection = useMemo(
     () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
     [selectedTrigger, supportedTriggers]
+  );
+
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
   );
 
   if (fetching || (isEditMode && isEmpty(alert))) {
@@ -289,6 +292,26 @@ function AddObservabilityPage() {
                         <Col span={24}>
                           <DestinationFormItem />
                         </Col>
+
+                        {!isEmpty(extraFormWidgets) && (
+                          <>
+                            {Object.entries(extraFormWidgets).map(
+                              ([name, Widget]) => (
+                                <Fragment key={name}>
+                                  <Col>
+                                    <Divider dashed type="vertical" />
+                                  </Col>
+                                  <Col span={24}>
+                                    <Widget
+                                      alertDetails={alert}
+                                      formRef={form}
+                                    />
+                                  </Col>
+                                </Fragment>
+                              )
+                            )}
+                          </>
+                        )}
                       </Row>
                     </Col>
                     <Form.Item

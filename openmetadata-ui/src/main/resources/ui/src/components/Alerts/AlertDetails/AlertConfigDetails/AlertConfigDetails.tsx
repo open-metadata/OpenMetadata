@@ -14,13 +14,13 @@
 import { Col, Divider, Form, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
-import { getModifiedAlertDataForForm } from '../../../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -37,7 +37,8 @@ function AlertConfigDetails({
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
-  const modifiedAlertData = getModifiedAlertDataForForm(alertDetails);
+  const modifiedAlertData =
+    alertsClassBase.getModifiedAlertDataForForm(alertDetails);
   const [fetching, setFetching] = useState<number>(0);
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
@@ -73,6 +74,11 @@ function AlertConfigDetails({
       setFetching((prev) => prev - 1);
     }
   }, [isNotificationAlert]);
+
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
+  );
 
   useEffect(() => {
     fetchFunctions();
@@ -127,6 +133,20 @@ function AlertConfigDetails({
         <Col span={24}>
           <DestinationFormItem isViewMode />
         </Col>
+        {!isEmpty(extraFormWidgets) && (
+          <>
+            {Object.entries(extraFormWidgets).map(([name, Widget]) => (
+              <Fragment key={name}>
+                <Col>
+                  <Divider dashed type="vertical" />
+                </Col>
+                <Col span={24}>
+                  <Widget alertDetails={modifiedAlertData} formRef={form} />
+                </Col>
+              </Fragment>
+            ))}
+          </>
+        )}
       </Row>
     </Form>
   );
