@@ -519,7 +519,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // adding the reviewer in glossary  should add the person as assignee to the task - for all
       // draft terms present in glossary
-      if (!original.getReviewers().equals(updated.getReviewers())) {
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {

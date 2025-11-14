@@ -222,8 +222,7 @@
     },
     "entityStatus": {
       "description": "Status of the File.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],
