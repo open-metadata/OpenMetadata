@@ -187,7 +187,7 @@ test.describe(
         const teamName = team.responseData.displayName;
         await addMultiOwner({
           page,
-          ownerNames: [user.getUserName(), user2.getUserName()],
+          ownerNames: [user.getUserDisplayName(), user2.getUserDisplayName()],
           activatorBtnDataTestId: 'edit-owner',
           resultTestId: 'data-assets-header',
           endpoint: entity.endpoint,
@@ -242,8 +242,8 @@ test.describe(
         ).toBeVisible();
 
         for (const name of [
-          user.getUserName(),
-          user2.getUserName(),
+          user.getUserDisplayName(),
+          user2.getUserDisplayName(),
           teamName,
         ]) {
           await expect(

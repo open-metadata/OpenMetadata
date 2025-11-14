@@ -37,7 +37,7 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const remainingCountLabel = `+${remainingCount}`;
 
-  const fontSize = Math.max(8, Math.floor(avatarSize * 0.4));
+  const fontSize = Math.max(8, Math.floor(avatarSize * 0.4)); // Reduced to 40% of avatar size
 
   const handleShowMoreToggle = (event: React.MouseEvent<HTMLElement>) => {
     if (isCompactView) {

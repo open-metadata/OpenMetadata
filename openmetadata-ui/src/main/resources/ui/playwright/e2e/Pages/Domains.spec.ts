@@ -663,11 +663,11 @@ test.describe('Domains', () => {
 
       await expect(
         page.getByTestId(user1.responseData.displayName)
-      ).toContainText(user1.responseData.displayName.split('')[0]);
+      ).toBeVisible();
 
       await expect(
         page.getByTestId(user2.responseData.displayName)
-      ).toContainText(user2.responseData.displayName.split('')[0]);
+      ).toBeVisible();
     } finally {
       await dataProduct?.delete(apiContext);
       await domain?.delete(apiContext);

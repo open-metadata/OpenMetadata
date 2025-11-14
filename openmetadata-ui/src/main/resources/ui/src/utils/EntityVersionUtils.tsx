@@ -669,8 +669,6 @@ export const getOwnerDiff = (
     if (item.name) {
       ownerDisplayName.set(item.name, displayName);
     }
-
-    return displayName;
   });
 
   return {
@@ -1372,8 +1370,6 @@ export const getOwnerVersionLabel = (
       if (item.name) {
         ownerDisplayName.set(item.name, displayName);
       }
-
-      return displayName;
     });
 
     return (
