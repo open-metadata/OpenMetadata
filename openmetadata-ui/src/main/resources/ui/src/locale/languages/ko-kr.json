@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "CSV 파일을 여기에 끌어다 놓거나 <0>{{text}}</0>하세요",
     "drag-to-adjust-position": "위아래로 드래그하여 위치 조정",
     "duration-in-iso-format": "ISO 8601 형식의 기간 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "{{entity}}의 아이콘과 배지 색상을 변경합니다.",
     "edit-glossary-display-name-help": "표시 이름 업데이트",
     "edit-glossary-name-help": "이름을 변경하면 기존 태그가 제거되고 언급된 이름으로 새 태그가 생성됩니다",

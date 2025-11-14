@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "Sleep & neerzetten, of <0>{{text}}</0> CSV-bestand hier",
     "drag-to-adjust-position": "Sleep omhoog of omlaag om positie aan te passen",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "Wijzig het pictogram en de badgekleur voor de {{entity}}.",
     "edit-glossary-display-name-help": "Werk de weergavenaam bij",
     "edit-glossary-name-help": "Het wijzigen van de naam verwijdert het bestaande label en maakt een nieuw label met de vermelde naam aan",

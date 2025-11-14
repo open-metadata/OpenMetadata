@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "ここに CSV ファイルをドラッグ＆ドロップするか、<0>{{text}}</0> をクリックして選択",
     "drag-to-adjust-position": "上下にドラッグして位置を調整",
     "duration-in-iso-format": "ISO 8601形式の期間（例：'PnYnMnDTnHnMnS'）で入力してください",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "{{entity}} のアイコンとバッジカラーを変更します。",
     "edit-glossary-display-name-help": "表示名を更新",
     "edit-glossary-name-help": "名前を変更すると、既存のタグが削除され、新しい名前で新たに作成されます",

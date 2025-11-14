@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "Ziehen und ablegen oder <0>{{text}}</0> CSV-Datei hier auswählen",
     "drag-to-adjust-position": "Nach oben oder unten ziehen, um die Position anzupassen",
     "duration-in-iso-format": "Dauer im ISO-8601-Format verwendet das Muster 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "Ändern Sie das Symbol und die Abzeichenfarbe für {{entity}}.",
     "edit-glossary-display-name-help": "Display-Namen aktualisieren",
     "edit-glossary-name-help": "Die Änderung des Namens entfernt das vorhandene Tag und erstellt ein neues mit dem angegebenen Namen.",

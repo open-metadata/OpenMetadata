@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "גרור ושחרר או <0>{{text}}</0> קובץ CSV לכאן",
     "drag-to-adjust-position": "גרור למעלה או למטה כדי להתאים את המיקום",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "שנה את צבע הסמל והביסוס עבור {{entity}}.",
     "edit-glossary-display-name-help": "עדכן שם תצוגה",
     "edit-glossary-name-help": "שינוי שם יסיר את התג הקיים ויצור תג חדש בשם שצוין",

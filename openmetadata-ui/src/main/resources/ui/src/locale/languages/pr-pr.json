@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "فایل CSV را بکشید و رها کنید یا <0>{{text}}</0> مرور کنید.",
     "drag-to-adjust-position": "Drag up or down to adjust position",
     "duration-in-iso-format": "مدت زمان در قالب ISO 8601 'PnYnMnDTnHnMnS'.",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "آیکون و رنگ نشان برای {{entity}} را تغییر دهید.",
     "edit-glossary-display-name-help": "نام نمایشی را به‌روزرسانی کنید.",
     "edit-glossary-name-help": "تغییر نام برچسب موجود را حذف کرده و برچسب جدیدی با نام ذکرشده ایجاد خواهد کرد.",

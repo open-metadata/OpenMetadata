@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "Перетащите CSV-файл сюда или нажмите <0>{{text}}</0> для выбора",
     "drag-to-adjust-position": "Перетащите вверх или вниз для настройки положения",
     "duration-in-iso-format": "Длительность в формате ISO 8601 — 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "Измените иконку или цветовую схему для объекта «{{entity}}».",
     "edit-glossary-display-name-help": "Обновить отображаемое имя",
     "edit-glossary-name-help": "Изменение имени удалит существующий тег и создаст новый с указанным именем.",

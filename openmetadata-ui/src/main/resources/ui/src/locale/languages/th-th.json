@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "ลาก & วางหรือ <0>{{text}}</0> ไฟล์ CSV ที่นี่",
     "drag-to-adjust-position": "ลากขึ้นหรือลงเพื่อปรับตำแหน่ง",
     "duration-in-iso-format": "ระยะเวลาในรูปแบบ ISO 8601 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "เปลี่ยนไอคอนและสีแบดจ์สำหรับ {{entity}}",
     "edit-glossary-display-name-help": "อัปเดตชื่อแสดง",
     "edit-glossary-name-help": "การเปลี่ยนชื่อจะลบแท็กปัจจุบันและสร้างแท็กใหม่ด้วยชื่อที่ระบุ",

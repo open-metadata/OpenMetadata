@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "फाइल्स ड्रॅग आणि ड्रॉप करा किंवा <0>{{text}}</0> CSV फाइल इथे ब्राउझ करा",
     "drag-to-adjust-position": "स्थिती समायोजित करण्यासाठी वर किंवा खाली ड्रॅग करा",
     "duration-in-iso-format": "ISO 8601 स्वरूपात कालावधी 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "{{entity}} साठी आयकॉन आणि बॅज रंग बदला.",
     "edit-glossary-display-name-help": "प्रदर्शन नाव अद्यतनित करा",
     "edit-glossary-name-help": "नाव बदलल्याने विद्यमान टॅग काढला जाईल आणि नमूद केलेल्या नावासह नवीन तयार केला जाईल",

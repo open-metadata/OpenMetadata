@@ -21,6 +21,7 @@ import { isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { ReactComponent as DimensionIcon } from '../../../assets/svg/data-observability/dimension.svg';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
@@ -29,8 +30,10 @@ import ManageButton from '../../../components/common/EntityPageInfos/ManageButto
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import Loader from '../../../components/common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import EditTestCaseModal from '../../../components/DataQuality/AddDataQualityTest/EditTestCaseModal';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -113,18 +116,24 @@ const IncidentManagerDetailPage = ({
     entityType: EntityType.TEST_CASE,
     versions: [],
   });
+  const [isDimensionEdit, setIsDimensionEdit] = useState<boolean>(false);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { hasViewPermission, editDisplayNamePermission, hasDeletePermission } =
-    useMemo(() => {
-      return {
-        hasViewPermission:
-          testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
-        editDisplayNamePermission:
-          testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
-        hasDeletePermission: testCasePermission?.Delete,
-      };
-    }, [testCasePermission]);
+  const {
+    hasViewPermission,
+    editDisplayNamePermission,
+    hasDeletePermission,
+    hasEditPermission,
+  } = useMemo(() => {
+    return {
+      hasViewPermission:
+        testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
+      editDisplayNamePermission:
+        testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
+      hasDeletePermission: testCasePermission?.Delete,
+      hasEditPermission: testCasePermission?.EditAll,
+    };
+  }, [testCasePermission]);
 
   const isExpandViewSupported = useMemo(
     () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
@@ -309,6 +318,11 @@ const IncidentManagerDetailPage = ({
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
 
+  const handleCancelDimension = useCallback(
+    () => setIsDimensionEdit(false),
+    []
+  );
+
   const onVersionClick = () => {
     navigate(
       isVersionPage
@@ -375,6 +389,27 @@ const IncidentManagerDetailPage = ({
       fetchCurrentVersion(testCase.id);
     }
   }, [version, testCase?.id, isVersionPage]);
+
+  const extraDropdownContent = useMemo(() => {
+    if (!hasEditPermission || isVersionPage) {
+      return [];
+    }
+
+    return [
+      {
+        key: 'edit-dimensions',
+        label: (
+          <ManageButtonItemLabel
+            description={t('message.edit-dimension-description')}
+            icon={DimensionIcon}
+            id="profiler-setting-button"
+            name={t('label.dimension-plural')}
+          />
+        ),
+        onClick: () => setIsDimensionEdit(true),
+      },
+    ];
+  }, [t, hasEditPermission, isVersionPage]);
 
   if (isLoading || isPermissionLoading) {
     return <Loader />;
@@ -455,6 +490,7 @@ const IncidentManagerDetailPage = ({
                     entityId={testCase.id}
                     entityName={testCase.name}
                     entityType={EntityType.TEST_CASE}
+                    extraDropdownContent={extraDropdownContent}
                     onEditDisplayName={handleDisplayNameChange}
                   />
                 )}
@@ -499,6 +535,15 @@ const IncidentManagerDetailPage = ({
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={onVersionClick}
+        />
+      )}
+      {testCase && isDimensionEdit && (
+        <EditTestCaseModal
+          showOnlyParameter
+          testCase={testCase}
+          visible={isDimensionEdit}
+          onCancel={handleCancelDimension}
+          onUpdate={setTestCase}
         />
       )}
     </PageLayoutV1>

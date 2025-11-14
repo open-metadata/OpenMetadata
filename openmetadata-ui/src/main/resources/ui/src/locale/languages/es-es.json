@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "Arrastre y suelte o <0>{{text}}</0> archivo CSV aquí",
     "drag-to-adjust-position": "Arrastra hacia arriba o abajo para ajustar la posición",
     "duration-in-iso-format": "Duración en formato ISO 8601 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "Cambie el icono y el color de la insignia para {{entity}}.",
     "edit-glossary-display-name-help": "Actualizar el nombre de visualización",
     "edit-glossary-name-help": "Cambiar el nombre eliminará la etiqueta existente y creará una nueva con el nombre mencionado.",

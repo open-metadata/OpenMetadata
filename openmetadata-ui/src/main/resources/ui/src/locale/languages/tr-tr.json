@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "CSV dosyasını buraya Sürükleyip Bırakın veya <0>{{text}}</0>",
     "drag-to-adjust-position": "Konumu ayarlamak için yukarı veya aşağı sürükleyin",
     "duration-in-iso-format": "ISO 8601 formatında süre 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "{{entity}} için simge ve rozet rengini değiştirin.",
     "edit-glossary-display-name-help": "Görünen Adı Güncelle",
     "edit-glossary-name-help": "Adı değiştirmek mevcut etiketi kaldıracak ve belirtilen adla yeni bir etiket oluşturacaktır",

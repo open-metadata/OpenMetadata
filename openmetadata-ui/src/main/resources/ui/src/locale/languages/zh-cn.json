@@ -2124,6 +2124,7 @@
     "drag-and-drop-or-browse-csv-files-here": "拖放或者<0>{{text}}</0> CSV 文件到此处",
     "drag-to-adjust-position": "上下拖动以调整位置",
     "duration-in-iso-format": "ISO 8601 格式的持续时间为 'PnYnMnDTnHnMnS'",
+    "edit-dimension-description": "Modify dimension configuration to refine your data quality analysis",
     "edit-entity-style-description": "更改{{entity}}的图标和徽章颜色.",
     "edit-glossary-display-name-help": "更新显示名称",
     "edit-glossary-name-help": "修改名称将会删除现有的标签, 并在新名称下新建标签",
