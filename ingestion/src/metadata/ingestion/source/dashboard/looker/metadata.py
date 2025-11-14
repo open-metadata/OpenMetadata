@@ -214,7 +214,7 @@ class LookerSource(DashboardServiceSource):
         self._repo_credentials: Optional[ReadersCredentials] = None
         self._reader_class: Optional[Type[Reader]] = None
         self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None
-        self._main_lookml_repo: Optional[LookMLRepo] = None
+        self._main_lookml_repos: Optional[List[LookMLRepo]] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
         self._view_data_model: Optional[DashboardDataModel] = None
 
@@ -250,30 +250,42 @@ class LookerSource(DashboardServiceSource):
                 GitlabCredentials,
             ]
         ],
-    ) -> "LookMLRepo":
+    ) -> List["LookMLRepo"]:
+        repos = []
         if isinstance(credentials, LocalRepositoryPath):
             # For local repository path, use the path directly without cloning
             local_path = Path(credentials.root)
             repo_name = local_path.name
-            return LookMLRepo(name=repo_name, path=str(local_path))
+            repos.append(LookMLRepo(name=repo_name, path=str(local_path)))
         elif isinstance(
             credentials, (GitHubCredentials, BitBucketCredentials, GitlabCredentials)
         ):
-            # For remote repositories, clone as before
-            repo_name = (
-                f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
-            )
-            repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.root}"
-            _clone_repo(
-                repo_name,
-                repo_path,
-                credentials,
-                overwrite=True,
-            )
-            return LookMLRepo(name=repo_name, path=repo_path)
+            # Support comma-separated repository names
+            repository_names = [
+                name.strip()
+                for name in credentials.repositoryName.root.split(",")
+                if name.strip()
+            ]
+
+            for repo_name_only in repository_names:
+                repo_name = f"{credentials.repositoryOwner.root}/{repo_name_only}"
+                repo_path = f"{REPO_TMP_LOCAL_PATH}/{repo_name_only}"
+
+                single_repo_creds = copy.deepcopy(credentials)
+                single_repo_creds.repositoryName.root = repo_name_only
+
+                _clone_repo(
+                    repo_name,
+                    repo_path,
+                    single_repo_creds,
+                    overwrite=True,
+                )
+                repos.append(LookMLRepo(name=repo_name, path=repo_path))
         else:
             # For NoGitCredentials or other unsupported types
             raise ValueError(f"Unsupported credential type: {type(credentials)}")
+
+        return repos
 
     def __read_manifest(
         self,
@@ -286,9 +298,10 @@ class LookerSource(DashboardServiceSource):
                 GitlabCredentials,
             ]
         ],
+        repo: LookMLRepo,
         path="manifest.lkml",
     ) -> Optional[LookMLManifest]:
-        file_path = Path(self._main_lookml_repo.path) / path
+        file_path = Path(repo.path) / path
         if not file_path.is_file():
             if isinstance(credentials, LocalRepositoryPath):
                 logger.warning(
@@ -315,7 +328,7 @@ class LookerSource(DashboardServiceSource):
                     url_parsed = giturlparse.parse(remote_git_url)
                     _clone_repo(
                         f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
-                        f"{self._main_lookml_repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
+                        f"{repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
                         credentials,
                     )
 
@@ -324,8 +337,12 @@ class LookerSource(DashboardServiceSource):
     def prepare(self):
         if self.service_connection.gitCredentials:
             credentials = self.service_connection.gitCredentials
-            self._main_lookml_repo = self.__init_repo(credentials)
-            self._main__lookml_manifest = self.__read_manifest(credentials)
+            self._main_lookml_repos = self.__init_repo(credentials)
+            if self._main_lookml_repos:
+                # Read manifest from the first repository (primary repository)
+                self._main__lookml_manifest = self.__read_manifest(
+                    credentials, self._main_lookml_repos[0]
+                )
 
     @property
     def parser(self) -> Optional[Dict[str, BulkLkmlParser]]:
@@ -347,15 +364,27 @@ class LookerSource(DashboardServiceSource):
         and can be accessed with the same token. If we have
         any errors obtaining the git project information, we will default
         to the incoming GitHub Credentials.
+
+        Since BulkLkmlParser uses Singleton pattern, we create ONE parser per project
+        that aggregates views from all repositories.
         """
-        if self.repository_credentials:
+        if self.repository_credentials and self._main_lookml_repos:
             all_projects: Set[str] = {model.project_name for model in all_lookml_models}
-            self._project_parsers: Dict[str, BulkLkmlParser] = {
-                project_name: BulkLkmlParser(
-                    reader=self.reader(Path(self._main_lookml_repo.path))
+            self._project_parsers: Dict[str, BulkLkmlParser] = {}
+
+            # Create readers for all repositories
+            primary_reader = self.reader(Path(self._main_lookml_repos[0].path))
+            additional_readers = [
+                self.reader(Path(repo.path)) for repo in self._main_lookml_repos[1:]
+            ]
+
+            # For each project, create a single parser with all readers
+            for project_name in all_projects:
+                parser = BulkLkmlParser(
+                    reader=primary_reader, additional_readers=additional_readers
                 )
-                for project_name in all_projects
-            }
+                self._project_parsers[project_name] = parser
+
             logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
     def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
