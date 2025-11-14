@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Badge, Button, Col, Dropdown, Row, Tooltip, Typography } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -20,6 +21,8 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/link.svg';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -27,6 +30,7 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -51,16 +55,53 @@ const EntityHeaderTitle = ({
   nameClassName = '',
   displayNameClassName = '',
   isCustomizedView = false,
+  entityId,
+  entityFqn,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
+  const [showCopyDropdown, setShowCopyDropdown] = useState(false);
   const { onCopyToClipBoard } = useClipboard(window.location.href);
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
+  };
+
+  const handleCopyFqnLink = async () => {
+    if (!entityFqn) {
+      return;
+    }
+
+    const fqnUrl = `${window.location.origin}/glossary/${encodeURIComponent(
+      entityFqn
+    )}`;
+
+    try {
+      await navigator.clipboard.writeText(fqnUrl);
+      showSuccessToast(t('message.copied-to-clipboard'));
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+    setShowCopyDropdown(false);
+  };
+
+  const handleCopyPermanentLink = async () => {
+    if (!entityId) {
+      return;
+    }
+
+    const permanentUrl = `${window.location.origin}/glossary/${entityId}`;
+
+    try {
+      await navigator.clipboard.writeText(permanentUrl);
+      showSuccessToast(t('message.copied-to-clipboard'));
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+    setShowCopyDropdown(false);
   };
 
   const isTourRoute = useMemo(
@@ -168,18 +209,68 @@ const EntityHeaderTitle = ({
             </Typography.Text>
           </Tooltip>
 
-          <Tooltip
-            placement="topRight"
-            title={
-              copyTooltip ??
-              t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              className="remove-button-default-styling copy-button flex-center p-xss "
-              icon={<Icon component={ShareIcon} />}
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
+          {entityId && entityFqn ? (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'copy-fqn-link',
+                    label: (
+                      <div
+                        className="d-flex items-center gap-2"
+                        style={{ fontSize: '12px' }}>
+                        <Icon
+                          component={LinkIcon}
+                          style={{ fontSize: '12px' }}
+                        />
+                        <span>{t('label.copy-fqn-link')}</span>
+                      </div>
+                    ),
+                    onClick: handleCopyFqnLink,
+                  },
+                  {
+                    key: 'copy-permanent-link',
+                    label: (
+                      <div
+                        className="d-flex items-center gap-2"
+                        style={{ fontSize: '12px' }}>
+                        <Icon
+                          component={CopyIcon}
+                          style={{ fontSize: '12px' }}
+                        />
+                        <span>{t('label.copy-permanent-link')}</span>
+                      </div>
+                    ),
+                    onClick: handleCopyPermanentLink,
+                  },
+                ] as ItemType[],
+              }}
+              open={showCopyDropdown}
+              overlayStyle={{ minWidth: '180px' }}
+              placement="bottomRight"
+              trigger={['click']}
+              onOpenChange={setShowCopyDropdown}>
+              <Tooltip placement="topRight" title={t('label.copy-link')}>
+                <Button
+                  className="remove-button-default-styling copy-button flex-center p-xss "
+                  icon={<Icon component={ShareIcon} />}
+                />
+              </Tooltip>
+            </Dropdown>
+          ) : (
+            <Tooltip
+              placement="topRight"
+              title={
+                copyTooltip ??
+                t('label.copy-item', { item: t('label.url-uppercase') })
+              }>
+              <Button
+                className="remove-button-default-styling copy-button flex-center p-xss "
+                icon={<Icon component={ShareIcon} />}
+                onClick={handleShareButtonClick}
+              />
+            </Tooltip>
+          )}
           {!excludeEntityService &&
             !deleted &&
             !isCustomizedView &&
