@@ -60,6 +60,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
@@ -155,6 +156,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
 
   const fetchDataContract = async (entityId: string) => {
@@ -726,7 +728,6 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
-                  multiple
                   showDashPlaceholder
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domains={(dataAsset as EntitiesWithDomainField).domains}
@@ -734,6 +735,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
                   hasPermission={editDomainPermission}
+                  multiple={entityRules.canAddMultipleDomains}
                   textClassName="render-domain-lebel-style"
                 />
                 <Divider
@@ -748,6 +750,10 @@ export const DataAssetsHeader = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               maxVisibleOwners={4}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}
             />

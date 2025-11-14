@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@mui/material';
 import { Divider, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -35,6 +36,7 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
   getListTestCaseIncidentByStateId,
@@ -67,6 +69,7 @@ const IncidentManagerPageHeader = ({
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
+  const { entityRules } = useEntityRules(EntityType.TABLE);
   const [activeTask, setActiveTask] = useState<Thread>();
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();
@@ -297,9 +300,7 @@ const IncidentManagerPageHeader = ({
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text
-          className="d-flex flex-col gap-2 text-xs whitespace-nowrap"
-          data-testid="assignee">
+        <Box data-testid="assignee">
           <OwnerLabel
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
@@ -314,7 +315,7 @@ const IncidentManagerPageHeader = ({
             })}
             onUpdate={handleAssigneeUpdate}
           />
-        </Typography.Text>
+        </Box>
         <Divider className="self-center m-x-sm" type="vertical" />
         <Typography.Text className="d-flex flex-col  gap-2 whitespace-nowrap">
           <Severity
@@ -334,6 +335,10 @@ const IncidentManagerPageHeader = ({
       <OwnerLabel
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
+        multiple={{
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        }}
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
         onUpdate={onOwnerUpdate}
