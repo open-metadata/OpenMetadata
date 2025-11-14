@@ -91,21 +91,6 @@ BIGQUERY_FOREIGN_CONSTRAINTS = textwrap.dedent(
     """
 )
 
-BIGQUERY_CONSTRAINTS = textwrap.dedent(
-    """
-    SELECT
-      c.table_name AS referred_table,
-      r.table_schema as referred_schema,
-      r.constraint_name as name,
-      c.column_name as referred_columns,
-      c.column_name as constrained_columns,
-      r.table_name as table_name,
-      r.constraint_type
-    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE c 
-    JOIN `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS r ON c.constraint_name = r.constraint_name 
-    WHERE r.constraint_type IN ('FOREIGN KEY') OR c.constraint_name LIKE '%pk$';
-  """)
-
 BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
     """
 SELECT
