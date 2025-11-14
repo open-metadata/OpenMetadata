@@ -38,10 +38,7 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
-import {
-  convertDomainsToTreeOptions,
-  domainBuildESQuery,
-} from '../../../utils/DomainUtils';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   escapeESReservedCharacters,
@@ -129,13 +126,14 @@ const DomainTreeView = ({
     return Object.values(filters).some((values) => values && values.length > 0);
   }, [filters]);
 
-  const queryFilter = useMemo(() => {
-    if (!hasActiveFilters || !filters) {
-      return undefined;
-    }
+  // TODO: Revert these changes once the backend API for domain search is implemented.
+  // const queryFilter = useMemo(() => {
+  //   if (!hasActiveFilters || !filters) {
+  //     return undefined;
+  //   }
 
-    return domainBuildESQuery(filters);
-  }, [filters, hasActiveFilters]);
+  //   return domainBuildESQuery(filters);
+  // }, [filters, hasActiveFilters]);
 
   useEffect(() => {
     const map: Record<string, Domain> = {};
@@ -211,8 +209,8 @@ const DomainTreeView = ({
         const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
         const results: Domain[] = await searchDomains(
           encodedValue,
-          1,
-          queryFilter
+          1
+          // queryFilter
         );
 
         const updatedTreeData = convertDomainsToTreeOptions(results);
@@ -229,7 +227,7 @@ const DomainTreeView = ({
         setIsHierarchyLoading(false);
       }
     },
-    [queryFilter, t]
+    [t]
   );
 
   const fetchDomainDetails = useCallback(
