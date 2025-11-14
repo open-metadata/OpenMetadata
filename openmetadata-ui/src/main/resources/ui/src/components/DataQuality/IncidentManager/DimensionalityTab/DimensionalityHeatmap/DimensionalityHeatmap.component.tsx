@@ -12,9 +12,10 @@
  */
 
 import { Box, CircularProgress, Tooltip, Typography } from '@mui/material';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
+import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
@@ -22,6 +23,8 @@ import {
   getDateLabel,
   transformDimensionResultsToHeatmapData,
 } from './DimensionalityHeatmap.utils';
+import { HeatmapCellTooltip } from './HeatmapCellTooltip.component';
+import { useScrollIndicator } from './useScrollIndicator.hook';
 
 const DimensionalityHeatmap = ({
   data,
@@ -31,7 +34,6 @@ const DimensionalityHeatmap = ({
 }: DimensionalityHeatmapProps) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
 
   const dateRange = useMemo(
     () => generateDateRange(startDate, endDate),
@@ -43,42 +45,10 @@ const DimensionalityHeatmap = ({
     [data, startDate, endDate]
   );
 
-  const handleScrollRight = () => {
-    if (containerRef.current) {
-      containerRef.current.scrollBy({
-        left: 300,
-        behavior: 'smooth',
-      });
-    }
-  };
-
-  const checkScroll = () => {
-    if (containerRef.current) {
-      const { scrollWidth, clientWidth, scrollLeft } = containerRef.current;
-      const hasHorizontalScroll = scrollWidth > clientWidth;
-      const isNotAtEnd = scrollLeft + clientWidth < scrollWidth - 5;
-      setShowScrollIndicator(hasHorizontalScroll && isNotAtEnd);
-    }
-  };
-
-  useEffect(() => {
-    // Use setTimeout to ensure DOM is fully rendered
-    const timeoutId = setTimeout(checkScroll, 100);
-
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScroll);
-    }
-    window.addEventListener('resize', checkScroll);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (container) {
-        container.removeEventListener('scroll', checkScroll);
-      }
-      window.removeEventListener('resize', checkScroll);
-    };
-  }, [heatmapData]);
+  const { showScrollIndicator, handleScrollRight } = useScrollIndicator(
+    containerRef,
+    [heatmapData]
+  );
 
   if (isLoading) {
     return (
@@ -103,7 +73,7 @@ const DimensionalityHeatmap = ({
           <Box
             className="dimensionality-heatmap__grid"
             sx={{
-              gridTemplateColumns: `150px repeat(${dateRange.length}, 44px)`,
+              gridTemplateColumns: `${HEATMAP_CONSTANTS.DIMENSION_LABEL_WIDTH} repeat(${dateRange.length}, ${HEATMAP_CONSTANTS.CELL_WIDTH})`,
             }}>
             <Box className="dimensionality-heatmap__header-corner" />
             {dateRange.map((date) => (
@@ -113,10 +83,8 @@ const DimensionalityHeatmap = ({
             ))}
 
             {heatmapData.map((row) => (
-              <>
-                <Tooltip
-                  key={`label-${row.dimensionValue}`}
-                  title={row.dimensionValue}>
+              <Fragment key={`row-${row.dimensionValue}`}>
+                <Tooltip title={row.dimensionValue}>
                   <Box className="dimensionality-heatmap__dimension-label">
                     {row.dimensionValue}
                   </Box>
@@ -126,52 +94,22 @@ const DimensionalityHeatmap = ({
                   <Tooltip
                     key={`${cell.dimensionValue}-${cell.date}`}
                     placement="right"
-                    title={
-                      <Box>
-                        <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
-                          {cell.date}
-                        </Typography>
-                        <Typography sx={{ fontSize: 11 }}>
-                          {`${t('label.dimension-value')}: ${
-                            cell.dimensionValue
-                          }`}
-                        </Typography>
-                        <Typography sx={{ fontSize: 11 }}>
-                          {t('label.status')}:{' '}
-                          {cell.status === 'success'
-                            ? t('label.success')
-                            : cell.status === 'failed'
-                            ? t('label.failed')
-                            : cell.status === 'aborted'
-                            ? t('label.aborted')
-                            : t('label.no-data')}
-                        </Typography>
-                        {cell.result && (
-                          <>
-                            {cell.result.passedRows !== undefined && (
-                              <Typography sx={{ fontSize: 11 }}>
-                                {`${t('label.passed-rows')}: ${
-                                  cell.result.passedRows
-                                }`}
-                              </Typography>
-                            )}
-                            {cell.result.failedRows !== undefined && (
-                              <Typography sx={{ fontSize: 11 }}>
-                                {`${t('label.failed-rows')}: ${
-                                  cell.result.failedRows
-                                }`}
-                              </Typography>
-                            )}
-                          </>
-                        )}
-                      </Box>
-                    }>
+                    slotProps={{
+                      tooltip: {
+                        sx: {
+                          backgroundColor: 'transparent',
+                          padding: 0,
+                          boxShadow: 'none',
+                        },
+                      },
+                    }}
+                    title={<HeatmapCellTooltip cell={cell} />}>
                     <Box
                       className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status}`}
                     />
                   </Tooltip>
                 ))}
-              </>
+              </Fragment>
             ))}
           </Box>
         </Box>

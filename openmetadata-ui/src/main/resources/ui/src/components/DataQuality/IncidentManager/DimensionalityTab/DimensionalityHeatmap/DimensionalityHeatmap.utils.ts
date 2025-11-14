@@ -115,3 +115,17 @@ export const getDateLabel = (dateStr: string): string => {
 
   return format(date, 'MMM d');
 };
+
+export const getStatusLabel = (
+  status: HeatmapStatus,
+  t: (key: string) => string
+): string => {
+  const statusMap: Record<HeatmapStatus, string> = {
+    success: t('label.success'),
+    failed: t('label.failed'),
+    aborted: t('label.aborted'),
+    'no-data': t('label.no-data'),
+  };
+
+  return statusMap[status];
+};
