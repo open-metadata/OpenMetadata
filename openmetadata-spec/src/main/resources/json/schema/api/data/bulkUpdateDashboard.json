@@ -1,0 +1,85 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/bulkUpdateDashboard.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkUpdateDashboard",
+  "description": "Schema for bulk updating multiple dashboards with differential updates",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BulkUpdateDashboard",
+  "definitions": {
+    "dashboardUpdate": {
+      "javaType": "org.openmetadata.schema.api.data.DashboardUpdate",
+      "description": "Partial dashboard update - only include fields that have changed",
+      "type": "object",
+      "properties": {
+        "fqn": {
+          "description": "Fully qualified name of the dashboard to update",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "dashboardType": {
+          "description": "Updated dashboard type",
+          "$ref": "../../entity/data/dashboard.json#/definitions/dashboardType"
+        },
+        "sourceUrl": {
+          "description": "Updated source URL",
+          "$ref": "../../type/basic.json#/definitions/sourceUrl"
+        },
+        "charts": {
+          "description": "Updated charts in the dashboard",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/entityReference.json"
+          }
+        },
+        "dataModels": {
+          "description": "Updated data models",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/entityReference.json"
+          }
+        },
+        "project": {
+          "description": "Updated project/workspace",
+          "type": "string"
+        },
+        "description": {
+          "description": "Updated description",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Updated tags",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "owner": {
+          "description": "Updated owner",
+          "$ref": "../../type/entityReference.json"
+        },
+        "extension": {
+          "description": "Updated custom properties",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
+        }
+      },
+      "required": ["fqn"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "updates": {
+      "description": "List of dashboard update requests",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dashboardUpdate"
+      },
+      "minItems": 1
+    },
+    "dryRun": {
+      "description": "If true, validate without persisting",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["updates"],
+  "additionalProperties": false
+}

@@ -9,7 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Examples demonstrating DataFrame validation with OpenMetadata SDK."""
+"""Examples demonstrating DataFrame validation with OpenMetadata SDK.
+
+Installation:
+    For basic DataFrame validation:
+        pip install 'openmetadata-ingestion[pandas]'
+
+    For reading Parquet files:
+        pip install 'openmetadata-ingestion[pandas,pyarrow]'
+
+    For reading from S3 datalakes:
+        pip install 'openmetadata-ingestion[pandas,datalake-s3]'
+"""
 # pyright: reportUnknownVariableType=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
 # pyright: reportUnusedCallResult=false
 # pylint: disable=W5001

@@ -25,7 +25,6 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -36,7 +35,7 @@ import { Directory } from '../../generated/entity/data/directory';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
-import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
@@ -84,8 +83,14 @@ function ServiceVersionPage() {
   }>();
 
   const { fqn: decodedServiceFQN } = useFqn();
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const {
+    paging,
+    pageSize,
+    pagingCursor,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+  } = usePaging();
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -177,9 +182,9 @@ function ServiceVersionPage() {
       );
 
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchTopics = useCallback(
@@ -190,9 +195,9 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchDashboards = useCallback(
@@ -203,9 +208,9 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchPipeLines = useCallback(
@@ -216,9 +221,9 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchMlModal = useCallback(
@@ -229,9 +234,9 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchContainers = useCallback(
@@ -245,9 +250,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchSearchIndexes = useCallback(
@@ -261,9 +266,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchCollections = useCallback(
@@ -275,9 +280,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchDirectories = useCallback(
@@ -289,9 +294,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const getOtherDetails = useCallback(
@@ -349,7 +354,6 @@ function ServiceVersionPage() {
         }
       } catch {
         setData([]);
-        setPaging(pagingObject);
       } finally {
         setIsOtherDataLoading(false);
       }
@@ -415,16 +419,24 @@ function ServiceVersionPage() {
         getOtherDetails({
           [cursorType]: paging[cursorType],
         });
-        setCurrentPage(currentPage);
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
     },
-    [paging, getOtherDetails]
+    [paging, getOtherDetails, handlePageChange]
   );
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs =
-      serviceCategory !== ServiceCategory.METADATA_SERVICES
-        ? [
+      serviceCategory === ServiceCategory.METADATA_SERVICES
+        ? []
+        : [
             {
               name: getCountLabel(serviceCategory),
               key: getCountLabel(serviceCategory).toLowerCase(),
@@ -443,8 +455,7 @@ function ServiceVersionPage() {
                 />
               ),
             },
-          ]
-        : [];
+          ];
 
     return tabs.map((tab) => ({
       label: <TabsLabel count={tab.count} id={tab.key} name={tab.name} />,
@@ -547,9 +558,17 @@ function ServiceVersionPage() {
 
   useEffect(() => {
     if (!isEmpty(currentVersionData)) {
-      getOtherDetails();
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        getOtherDetails({
+          [cursorType]: cursorValue,
+        });
+      } else {
+        getOtherDetails();
+      }
     }
-  }, [currentVersionData]);
+  }, [currentVersionData, pagingCursor]);
 
   return (
     <PageLayoutV1

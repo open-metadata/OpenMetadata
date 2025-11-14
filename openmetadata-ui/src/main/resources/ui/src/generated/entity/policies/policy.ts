@@ -300,6 +300,8 @@ export enum Effect {
  */
 export enum Operation {
     All = "All",
+    BulkCreate = "BulkCreate",
+    BulkUpdate = "BulkUpdate",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",

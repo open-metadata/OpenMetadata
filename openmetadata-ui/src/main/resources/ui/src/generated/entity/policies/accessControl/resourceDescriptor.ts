@@ -30,6 +30,8 @@ export interface ResourceDescriptor {
  */
 export enum Operation {
     All = "All",
+    BulkCreate = "BulkCreate",
+    BulkUpdate = "BulkUpdate",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",
