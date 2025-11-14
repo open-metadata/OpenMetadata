@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.warehouse_queries import (
@@ -408,10 +408,11 @@ class HexQueryFetcher:
 
             # Use LineageParser to extract source tables from the query
             try:
-                lineage_parser = LineageParser(
+                lineage_parser = create_lineage_parser(
                     query=query_text,
                     dialect=dialect,
                     timeout_seconds=10,  # Use a reasonable timeout
+                    parser_type=None,
                 )
 
                 # Get source tables from the parser

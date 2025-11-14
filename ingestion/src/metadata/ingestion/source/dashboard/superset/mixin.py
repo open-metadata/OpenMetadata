@@ -40,7 +40,7 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -219,7 +219,10 @@ class SupersetSourceMixin(DashboardServiceSource):
         # Every SQL query in tables is a SQL statement SELECTING data.
         # To get lineage we 'simulate' INSERT INTO query into dummy table.
         result = []
-        parser = LineageParser(f"INSERT INTO dummy_table {chart_json.sql}")
+        parser = create_lineage_parser(
+            query=f"INSERT INTO dummy_table {chart_json.sql}",
+            parser_type=self.source_config.parserType,
+        )
 
         for table in parser.source_tables:
             table_name = table.raw_name

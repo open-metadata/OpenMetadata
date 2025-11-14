@@ -50,7 +50,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     LINEAGE_MAP,
@@ -282,15 +282,16 @@ class QuicksightSource(DashboardServiceSource):
             return None
 
         try:
-            lineage_parser = LineageParser(
-                sql_query,
-                (
+            lineage_parser = create_lineage_parser(
+                query=sql_query,
+                dialect=(
                     ConnectionTypeDialectMapper.dialect_of(
                         db_service_entity.serviceType.value
                     )
                     if db_service_entity
                     else Dialect.ANSI
                 ),
+                parser_type=self.source_config.parserType,
             )
             lineage_details = LineageDetails(
                 source=LineageSource.DashboardLineage, sqlQuery=sql_query

@@ -38,7 +38,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.mode import client
@@ -171,7 +171,10 @@ class ModeSource(DashboardServiceSource):
                     )
                     continue
 
-                lineage_parser = LineageParser(query.get("raw_query"))
+                lineage_parser = create_lineage_parser(
+                    query=query.get("raw_query"),
+                    parser_type=self.source_config.parserType,
+                )
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = self.check_database_schema_name(

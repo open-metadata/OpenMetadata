@@ -69,7 +69,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^information_schema$"]
+        "excludes": [
+          "^information_schema$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -83,7 +85,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^template1$"]
+        "excludes": [
+          "^template1$"
+        ]
       }
     },
     "sslMode": {
@@ -140,6 +144,12 @@
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,

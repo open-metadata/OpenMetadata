@@ -49,6 +49,10 @@ from metadata.ingestion.lineage.models import (
     QueryParsingFailures,
 )
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
+from metadata.ingestion.lineage.parser_selection import (
+    LineageParserType,
+    create_lineage_parser,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -770,12 +774,17 @@ def get_lineage_by_query(
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
     service_name: Optional[str] = None,  # backward compatibility for python sdk
+    parser_type: Optional[Union[str, LineageParserType]] = None,  # Parser selection
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
 
     Now supports cross-database lineage by accepting a list of service names.
+
+    Args:
+        parser_type: Type of parser to use (sqlglot, sqlfluff, sqlparse, auto).
+                     Defaults to sqlglot if not specified.
     """
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
@@ -788,8 +797,12 @@ def get_lineage_by_query(
         service_names = [service_names]
     try:
         if not lineage_parser:
-            lineage_parser = LineageParser(
-                query, dialect, timeout_seconds=timeout_seconds
+            # Use parser factory to create the appropriate parser
+            lineage_parser = create_lineage_parser(
+                query=query,
+                dialect=dialect,
+                parser_type=parser_type,
+                timeout_seconds=timeout_seconds,
             )
         masked_query = lineage_parser.masked_query
         logger.debug(f"Running lineage with query: {masked_query or query}")

@@ -9,16 +9,20 @@
     "sapHanaType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["SapHana"],
+      "enum": [
+        "SapHana"
+      ],
       "default": "SapHana"
     },
     "sapHanaScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["hana"],
+      "enum": [
+        "hana"
+      ],
       "default": "hana"
     }
-   },
+  },
   "properties": {
     "type": {
       "title": "Service Type",
@@ -53,7 +57,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -91,10 +95,18 @@
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["connection"]
+  "required": [
+    "connection"
+  ]
 }

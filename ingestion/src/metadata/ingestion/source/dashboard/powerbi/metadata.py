@@ -55,7 +55,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -875,8 +875,11 @@ class PowerbiSource(DashboardServiceSource):
             )
 
             try:
-                parser = LineageParser(
-                    parser_query, dialect=Dialect.SNOWFLAKE, timeout_seconds=30
+                parser = create_lineage_parser(
+                    query=parser_query,
+                    dialect=Dialect.SNOWFLAKE,
+                    timeout_seconds=30,
+                    parser_type=self.source_config.parserType,
                 )
             except Exception as parser_exc:
                 logger.debug(f"LineageParser failed with error: {parser_exc}")
