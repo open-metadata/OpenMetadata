@@ -51,6 +51,10 @@ test.beforeAll(async ({ browser }) => {
     apiContext,
     tableResponseData: table2.entityResponseData,
   });
+
+  // set owner name for queryData
+  queryData.owner = user1.getUserDisplayName();
+
   await afterAction();
 });
 
