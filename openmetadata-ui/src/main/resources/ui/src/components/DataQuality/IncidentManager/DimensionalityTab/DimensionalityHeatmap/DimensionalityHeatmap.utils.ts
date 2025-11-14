@@ -13,6 +13,7 @@
 
 import { format } from 'date-fns';
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
+import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 import {
   DimensionResultWithTimestamp,
   HeatmapCellData,
@@ -128,4 +129,25 @@ export const getStatusLabel = (
   };
 
   return statusMap[status];
+};
+
+export const calculatePlaceholderCells = (
+  actualCellCount: number,
+  containerWidth: number
+): number => {
+  if (containerWidth === 0) {
+    return 0;
+  }
+
+  const availableWidth =
+    containerWidth -
+    HEATMAP_CONSTANTS.DIMENSION_LABEL_WIDTH -
+    HEATMAP_CONSTANTS.CONTAINER_PADDING_RIGHT;
+
+  const cellWithGap = HEATMAP_CONSTANTS.CELL_WIDTH + HEATMAP_CONSTANTS.CELL_GAP;
+  const maxCellsInView = Math.floor(availableWidth / cellWithGap);
+
+  const placeholderCount = Math.max(0, maxCellsInView - actualCellCount);
+
+  return placeholderCount;
 };

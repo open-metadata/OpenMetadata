@@ -142,6 +142,24 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
       z-index: 10;
     }
+
+    &--placeholder {
+      border: 1px solid #e5e7eb;
+      background: repeating-linear-gradient(
+        135deg,
+        #e8ecf5,
+        #e8ecf5 2px,
+        #f5f7fb 2px,
+        #f5f7fb 4px
+      );
+      cursor: default;
+      pointer-events: none;
+
+      &:hover {
+        opacity: 1;
+        box-shadow: none;
+      }
+    }
   }
 
   &__legend {
