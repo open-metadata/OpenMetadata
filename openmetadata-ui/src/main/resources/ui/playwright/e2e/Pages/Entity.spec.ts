@@ -174,9 +174,9 @@ entities.forEach((EntityClass) => {
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
+      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+      const OWNER3 = EntityDataClass.user3.getUserDisplayName();
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
@@ -199,7 +199,7 @@ entities.forEach((EntityClass) => {
 
       await addMultiOwner({
         page,
-        ownerNames: [OWNER2.getUserName()],
+        ownerNames: [OWNER2.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: entity.endpoint,
@@ -208,7 +208,7 @@ entities.forEach((EntityClass) => {
 
       await addMultiOwner({
         page,
-        ownerNames: [OWNER1.getUserName()],
+        ownerNames: [OWNER1.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: entity.endpoint,
@@ -218,7 +218,7 @@ entities.forEach((EntityClass) => {
 
       await removeOwnersFromList({
         page,
-        ownerNames: [OWNER1.getUserName()],
+        ownerNames: [OWNER1.getUserDisplayName()],
         endpoint: entity.endpoint,
         dataTestId: 'data-assets-header',
       });
@@ -226,7 +226,7 @@ entities.forEach((EntityClass) => {
       await removeOwner({
         page,
         endpoint: entity.endpoint,
-        ownerName: OWNER2.getUserName(),
+        ownerName: OWNER2.getUserDisplayName(),
         type: 'Users',
         dataTestId: 'data-assets-header',
       });
