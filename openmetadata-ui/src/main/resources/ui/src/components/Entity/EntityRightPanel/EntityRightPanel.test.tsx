@@ -69,6 +69,15 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('EntityRightPanel component test', () => {
   const mockSelectedTags: EntityTags[] = [];
   const mockOnTagSelectionChange = jest.fn();
