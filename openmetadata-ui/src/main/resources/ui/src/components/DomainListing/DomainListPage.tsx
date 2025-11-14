@@ -15,7 +15,7 @@ import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -150,6 +150,12 @@ const DomainListPage = () => {
   });
   const { domainCardTemplate } = useDomainCardTemplates();
 
+  useEffect(() => {
+    if (isTreeView && !isEmpty(domainListing.urlState.filters)) {
+      domainListing.handleFilterChange([]);
+    }
+  }, [isTreeView]);
+
   const { dataTable } = useDataTable({
     listing: domainListing,
     enableSelection: true,
@@ -201,6 +207,7 @@ const DomainListPage = () => {
       return (
         <Box sx={{ px: 6, pb: 6 }}>
           <DomainTreeView
+            filters={domainListing.urlState.filters}
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
@@ -265,12 +272,12 @@ const DomainListPage = () => {
           <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
             {titleAndCount}
             {search}
-            {quickFilters}
+            {!isTreeView && quickFilters}
             <Box ml="auto" />
             {viewToggle}
             {deleteIconButton}
           </Box>
-          {filterSelectionDisplay}
+          {!isTreeView && filterSelectionDisplay}
         </Box>
         {renderContent()}
       </TableContainer>
