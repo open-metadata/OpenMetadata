@@ -34,6 +34,8 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
         # Don't classify binary columns, which might contain misleading or outright invalid strings
         return None
     if isinstance(value, (Sequence, Mapping)):
+        if isinstance(value, Mapping):
+            value = list(value.values())
         converted = [convert_to_str(el) for el in cast(List[Any], value)]
         return [
             item

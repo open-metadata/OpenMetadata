@@ -121,14 +121,6 @@ sample_data = SampleData(
         ],
         rows=[
             [
-                "USR001",
-                "john.smith@example.com",
-                "John Smith",
-                "+1-555-0123",
-                "GB82 WEST 1234 5698 7654 32",
-                datetime.date(year=2024, month=1, day=5),
-            ],
-            [
                 "USR002",
                 "maria.garcia@test.org",
                 "Maria Garcia",
@@ -191,14 +183,6 @@ sample_data = SampleData(
                 "+46 8 123 456 78",
                 "SE45 5000 0000 0583 9825 7466",
                 datetime.date(year=2024, month=1, day=3),
-            ],
-            [
-                "USR010",
-                "emma.wilson@portal.co.uk",
-                "Emma Wilson",
-                "+44 20 7946 0958",
-                "GB82 WEST 1234 5698 7654 32",
-                datetime.date(year=2024, month=1, day=4),
             ],
             [
                 "USR011",

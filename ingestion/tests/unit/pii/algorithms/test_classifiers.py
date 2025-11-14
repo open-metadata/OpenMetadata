@@ -13,6 +13,7 @@ from typing import Iterable, Tuple
 
 from metadata.pii.algorithms.classifiers import ColumnClassifier, HeuristicPIIClassifier
 from metadata.pii.algorithms.tags import PIITag
+from metadata.pii.algorithms.utils import get_top_classes
 
 from .data import pii_samples
 from .data.pii_samples import LabeledData
@@ -37,8 +38,9 @@ def run_test_on_pii_classifier(pii_classifier: ColumnClassifier[PIITag]) -> str:
             column_name=column_data["column_name"],
             column_data_type=column_data["column_data_type"],
         )
-        predicted_classes = set(predicted_scores)
         expected_classes = set(column_data["pii_tags"])
+        selected_classes = get_top_classes(predicted_scores, len(expected_classes), 0.0)
+        predicted_classes = set(selected_classes)
         assert (
             predicted_classes == expected_classes
         ), f"Failed on dataset {name}: {expected_classes} but got {predicted_classes} with scores {predicted_scores}"
