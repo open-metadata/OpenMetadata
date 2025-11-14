@@ -120,14 +120,14 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     async () => {
       await addMultiOwner({
         page,
-        ownerNames: [user1.getUserName()],
+        ownerNames: [user1.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.TestSuites,
         type: 'Users',
       });
       await removeOwnersFromList({
         page,
-        ownerNames: [user1.getUserName()],
+        ownerNames: [user1.getUserDisplayName()],
         endpoint: EntityTypeEndpoint.TestSuites,
       });
       await addMultiOwner({

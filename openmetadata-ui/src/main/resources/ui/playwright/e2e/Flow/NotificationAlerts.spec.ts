@@ -295,7 +295,7 @@ test('Conversation source alert', async ({ page }) => {
     await addFilterWithUsersListInput({
       page,
       filterNumber: 0,
-      updaterName: user1.getUserName(),
+      updaterName: user1.getUserDisplayName(),
       filterTestId: 'Mentioned Users-filter-option',
       exclude: true,
     });
