@@ -404,7 +404,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
         if (hits.size() <= size) {
           Hit<JsonData> lastHit = hits.getLast();
-          List<?> sortValues = lastHit.sort();
+          List<String> sortValues = lastHit.sort();
           if (sortValues != null && !sortValues.isEmpty()) {
             lastDocumentsInBatch = sortValues.stream().map(String::valueOf).toArray(String[]::new);
           }
