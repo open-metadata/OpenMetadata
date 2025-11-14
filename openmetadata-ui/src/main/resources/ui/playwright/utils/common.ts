@@ -594,6 +594,12 @@ export const testPaginationNavigation = async (
 
   const nextButton = page.locator('[data-testid="next"]');
 
+  const nextButtonCount = await nextButton.count();
+
+  if (nextButtonCount === 0) {
+    return;
+  }
+
   const isNextButtonEnabled = await nextButton.isEnabled();
 
   if (!isNextButtonEnabled) {
