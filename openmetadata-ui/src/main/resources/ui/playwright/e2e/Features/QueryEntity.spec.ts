@@ -128,6 +128,11 @@ test('Query Entity', async ({ page }) => {
       state: 'detached',
     });
 
+    await page
+      .locator("[data-testid='select-owner-tabs']")
+      .getByRole('tab', { name: 'Users' })
+      .click();
+
     const searchOwnerResponse = page.waitForResponse('api/v1/search/query?q=*');
     await page.fill(
       '[data-testid="owner-select-users-search-bar"]',
@@ -140,13 +145,13 @@ test('Query Entity', async ({ page }) => {
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await page.getByRole('button', { name: 'Update' }).click({
+      force: true,
+    });
     await updateOwnerResponse;
 
-    await expect(page.getByRole('link', { name: 'admin' })).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: queryData.owner })
-    ).toBeVisible();
+    await expect(page.getByTestId('admin')).toBeVisible();
+    await expect(page.getByTestId(queryData.owner)).toBeVisible();
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
