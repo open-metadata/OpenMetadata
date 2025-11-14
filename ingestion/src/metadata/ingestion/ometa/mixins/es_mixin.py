@@ -66,7 +66,7 @@ class HitsModel(BaseModel):
     ]
     id: Annotated[str, Field(description="Document ID", alias="_id")]
     score: Annotated[
-        Optional[float], Field(description="Score of the document", alias="_score")
+        Optional[float], Field(default=None, description="Score of the document", alias="_score")
     ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
     sort: Annotated[
