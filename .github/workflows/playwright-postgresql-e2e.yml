@@ -120,7 +120,7 @@ jobs:
 
           else
             # Shards 2-6 handle chromium tests (5 workers total)
-            CHROMIUM_SHARD=$((matrix.shardIndex - 1))
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
             if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
               echo "🔹 Running ingestion tests on chromium shard ${CHROMIUM_SHARD}/5"
               npx playwright test \
