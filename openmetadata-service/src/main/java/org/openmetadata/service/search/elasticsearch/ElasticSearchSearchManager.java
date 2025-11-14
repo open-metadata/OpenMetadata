@@ -838,18 +838,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     return stringWriter.toString();
   }
 
-  //  private String serializeFieldValueSearchResponse(Object[] searchResponse) {
-  //    JsonpMapper jsonpMapper = client._transport().jsonpMapper();
-  //    JsonProvider provider = jsonpMapper.jsonProvider();
-  //    StringWriter stringWriter = new StringWriter();
-  //    JsonGenerator generator = provider.createGenerator(stringWriter);
-  //
-  //    searchResponse.serialize(generator, jsonpMapper);
-  //    generator.close();
-  //
-  //    return stringWriter.toString();
-  //  }
-
   public Response doSearch(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
