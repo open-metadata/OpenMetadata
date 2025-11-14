@@ -343,7 +343,8 @@ export const verifyGlossaryDetails = async (
         page
           .getByTestId('glossary-right-panel-owner-link')
           .getByTestId('owner-label')
-      ).toContainText(owner.name);
+          .getByTestId(owner.name)
+      ).toBeVisible();
     }
   }
 

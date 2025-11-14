@@ -15,7 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   clickOutside,
   createNewPage,
   redirectToHomePage,
@@ -35,7 +35,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await table.create(apiContext);
   await domain.create(apiContext);
   await table.visitEntityPage(page);
-  await assignDomain(page, domain.data);
+  await assignSingleSelectDomain(page, domain.data);
   await assignTag(
     page,
     'PersonalData.Personal',
