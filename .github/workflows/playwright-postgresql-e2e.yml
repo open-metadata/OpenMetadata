@@ -100,12 +100,34 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          cache: 'yarn'
+          cache-dependency-path: 'openmetadata-ui/src/main/resources/ui/yarn.lock'
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Get Playwright version
+        id: playwright-version
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: echo "version=$(npx playwright --version | grep -oP '(?<=Version )\S+')" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright@1.51.1 install --with-deps
+
+      - name: Install Playwright Browser Dependencies (if cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright@1.51.1 install-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
