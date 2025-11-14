@@ -111,8 +111,8 @@ const ExpandCollapseHandles = memo(
       return null;
     }
 
-    const hasOutgoers = (paging.entityDownstreamCount ?? 0) > 0;
-    const hasIncomers = (paging.entityUpstreamCount ?? 0) > 0;
+    const hasOutgoers = (paging?.entityDownstreamCount ?? 0) > 0;
+    const hasIncomers = (paging?.entityUpstreamCount ?? 0) > 0;
 
     if (isRootNode) {
       return (

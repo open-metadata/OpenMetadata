@@ -570,6 +570,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           direction,
         });
 
+        // Update nodeDepth for the new nodes
+        Object.keys(res.nodes).forEach((n) => {
+          res.nodes[n].nodeDepth = node.nodeDepth + res.nodes[n].nodeDepth;
+
+          return n;
+        });
+
         const currentNodes: Record<string, NodeData> = {};
         for (const node of entityLineage.nodes ?? []) {
           currentNodes[node.fullyQualifiedName ?? ''] = {

@@ -17,8 +17,6 @@ import { Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-
 import {
   get,
   isEmpty,
@@ -45,6 +43,7 @@ import {
   ReactFlowInstance,
 } from 'reactflow';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
@@ -1165,8 +1164,15 @@ export const getConnectedNodesEdges = (
         (item) => !item.data.isRootNode
       );
 
-      stack.push(...finalChildNodeRemovingRootNode);
-      outgoers.push(...finalChildNodeRemovingRootNode);
+      // avoid any loops from upstream to downstream and vice versa by checking nodeDepth
+      const finalNodes = finalChildNodeRemovingRootNode.filter((node) =>
+        direction === LineageDirection.Downstream
+          ? node.data.nodeDepth > 0
+          : node.data.nodeDepth < 0
+      );
+
+      stack.push(...finalNodes);
+      outgoers.push(...finalNodes);
       connectedEdges.push(...childEdges);
     }
   }
@@ -1540,14 +1546,22 @@ const processPagination = (
 
   eligibleNodes.forEach((node) => {
     // Handle downstream pagination
-    const downstream = handleNodePagination(node, downstreamEdges, true);
+    const downstream = handleNodePagination(
+      node,
+      { ...downstreamEdges, ...upstreamEdges },
+      true
+    );
     if (downstream.newNode && downstream.newEdge) {
       newNodes.push(downstream.newNode);
       newEdges.push(downstream.newEdge);
     }
 
     // Handle upstream pagination
-    const upstream = handleNodePagination(node, upstreamEdges, false);
+    const upstream = handleNodePagination(
+      node,
+      { ...upstreamEdges, ...downstreamEdges },
+      false
+    );
     if (upstream.newNode && upstream.newEdge) {
       newNodes.push(upstream.newNode);
       newEdges.push(upstream.newEdge);
