@@ -1819,18 +1819,61 @@ class SampleDataSource(
             yield Either(right=lineage)
 
     def ingest_pipeline_status(self) -> Iterable[Either[OMetaPipelineStatus]]:
-        """Ingest sample pipeline status"""
-
+        """
+        Ingest sample pipeline status records with timestamps evenly distributed across 15 days.
+        Maintains original execution durations and ensures valid runtime calculations.
+        """
+        all_statuses = []
         for status_data in self.pipeline_status:
             pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
-                status["timestamp"] = time.time_ns() // 1_000_000
-                yield Either(
-                    right=OMetaPipelineStatus(
-                        pipeline_fqn=pipeline_fqn,
-                        pipeline_status=PipelineStatus(**status),
-                    )
+                all_statuses.append(
+                    {
+                        "pipeline_fqn": pipeline_fqn,
+                        "status": status,
+                        "original_timestamp": status.get("timestamp", 0),
+                    }
                 )
+
+        all_statuses.sort(key=lambda x: x["original_timestamp"])
+
+        target_span_ms = 15 * 24 * 60 * 60 * 1000
+        current_time_ms = time.time_ns() // 1_000_000
+        target_start_time = current_time_ms - target_span_ms
+
+        total_records = len(all_statuses)
+        if total_records > 1:
+            interval = target_span_ms / (total_records - 1)
+        else:
+            interval = 0
+
+        for index, status_item in enumerate(all_statuses):
+            status = status_item["status"]
+            pipeline_fqn = status_item["pipeline_fqn"]
+            original_timestamp = status_item["original_timestamp"]
+            original_end_time = status.get("endTime")
+
+            new_timestamp = int(target_start_time + (index * interval))
+            status["timestamp"] = new_timestamp
+
+            if original_end_time is not None and original_timestamp > 0:
+                duration = original_end_time - original_timestamp
+                if duration > 0:
+                    status["endTime"] = new_timestamp + duration
+                else:
+                    status["endTime"] = new_timestamp + 300000
+            elif original_end_time is None and status.get("executionStatus") not in [
+                "Pending",
+                "Skipped",
+            ]:
+                status["endTime"] = new_timestamp + 300000
+
+            yield Either(
+                right=OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn,
+                    pipeline_status=PipelineStatus(**status),
+                )
+            )
 
     def ingest_table_pipeline_observability(self) -> Iterable[Either]:
         """Ingest table pipeline observability data"""

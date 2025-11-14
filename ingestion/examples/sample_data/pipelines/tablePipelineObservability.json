@@ -126,6 +126,85 @@
           "lastRunStatus": "Successful"
         }
       ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.raw_customer_activity",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.snowflake_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731458100000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.geo_data",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_location_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456600000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.raw_user_events",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_user_etl",
+          "scheduleInterval": "0 10,16 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456300000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.raw_product",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_product_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456900000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.fact_session",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.presto_etl",
+          "scheduleInterval": "*/30 * * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731457200000,
+          "lastRunStatus": "Successful"
+        }
+      ]
+    },
+    {
+      "tableFqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "pipelineObservability": [
+        {
+          "pipeline": "sample_airflow.dim_user_etl",
+          "scheduleInterval": "0 10,16 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456300000,
+          "lastRunStatus": "Successful"
+        },
+        {
+          "pipeline": "sample_airflow.dim_address_etl",
+          "scheduleInterval": "0 10 * * *",
+          "startTime": 1704067200000,
+          "lastRunTime": 1731456000000,
+          "lastRunStatus": "Successful"
+        }
+      ]
     }
   ]
 }

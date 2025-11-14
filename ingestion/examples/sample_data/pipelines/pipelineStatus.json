@@ -28,7 +28,14 @@
                 "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
                 "rowCount": 15000,
                 "sizeBytes": 2500000,
-                "columns": ["id", "street", "city", "state", "zip", "country"],
+                "columns": [
+                  "id",
+                  "street",
+                  "city",
+                  "state",
+                  "zip",
+                  "country"
+                ],
                 "filter": "updated_at > '2025-01-12 10:00:00'"
               }
             ],
@@ -38,7 +45,19 @@
                 "rowCount": 14567,
                 "sizeBytes": 2340000,
                 "mode": "overwrite",
-                "columns": ["address_id", "shop_id", "first_name", "last_name", "address1", "address2", "city", "region", "zip", "country", "phone"]
+                "columns": [
+                  "address_id",
+                  "shop_id",
+                  "first_name",
+                  "last_name",
+                  "address1",
+                  "address2",
+                  "city",
+                  "region",
+                  "zip",
+                  "country",
+                  "phone"
+                ]
               }
             ],
             "metrics": {
@@ -295,12 +314,22 @@
               {
                 "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
                 "rowCount": 8000,
-                "columns": ["city", "region", "country", "zip"]
+                "columns": [
+                  "city",
+                  "region",
+                  "country",
+                  "zip"
+                ]
               },
               {
                 "datasetFQN": "sample_data.ecommerce_db.shopify.geo_data",
                 "rowCount": 50000,
-                "columns": ["zip", "latitude", "longitude", "timezone"]
+                "columns": [
+                  "zip",
+                  "latitude",
+                  "longitude",
+                  "timezone"
+                ]
               }
             ],
             "outputs": [
@@ -504,7 +533,10 @@
                 "rowCount": 348900,
                 "sizeBytes": 52340000,
                 "mode": "append",
-                "partitions": ["dt=2025-01-13", "country=US"]
+                "partitions": [
+                  "dt=2025-01-13",
+                  "country=US"
+                ]
               }
             ],
             "metrics": {
@@ -594,6 +626,2972 @@
           "memoryUsed": 1300000000,
           "cost": 1.25
         }
+      },
+      {
+        "timestamp": 1731371700000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250112_103500",
+        "endTime": 1731372120000,
+        "version": "5.0.2",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "MEDIUM",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Failed",
+            "startTime": 1731371700000,
+            "endTime": 1731372120000,
+            "metrics": {
+              "rowsRead": 95000,
+              "rowsWritten": 0,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 95000,
+          "totalBytesProcessed": 14250000,
+          "cpuTime": 405.2,
+          "memoryUsed": 450000000,
+          "cost": 0.68
+        },
+        "error": {
+          "errorType": "SnowflakeAuthenticationError",
+          "errorMessage": "Authentication failed: Invalid credentials for user ADMIN",
+          "stackTrace": "snowflake.connector.errors.DatabaseError: 390114: Authentication failed\n\tat snowflake.connector.network.authenticate(network.py:512)\n\tat snowflake.connector.connection.__open_connection(connection.py:289)",
+          "failedTask": "snowflake_task"
+        }
+      },
+      {
+        "timestamp": 1731285300000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250111_103500",
+        "endTime": 1731285720000,
+        "version": "5.0.1",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "MEDIUM",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Successful",
+            "startTime": 1731285300000,
+            "endTime": 1731285600000,
+            "transformationType": "extract",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_customer_activity",
+                "rowCount": 265000,
+                "sizeBytes": 39750000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.customer_metrics",
+                "rowCount": 263800,
+                "sizeBytes": 39570000,
+                "mode": "merge"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 265000,
+              "rowsWritten": 263800,
+              "rowsFiltered": 1200,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731285600000,
+            "endTime": 1731285601850,
+            "metrics": {
+              "executionTimeMs": 1850
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 265000,
+          "totalBytesProcessed": 39750000,
+          "cpuTime": 282.4,
+          "memoryUsed": 1250000000,
+          "cost": 1.18
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_address_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731542400000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250114_100000",
+        "endTime": 1731542700000,
+        "version": "1.2.0",
+        "parameters": {
+          "date": "2025-01-14",
+          "env": "production",
+          "backfill": false
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1731542400000,
+            "endTime": 1731542550000,
+            "logLink": "http://localhost:8080/log?task=dim_address_task&run=airflow_run_20250114_100000",
+            "taskId": "task_instance_12350",
+            "transformationType": "extract",
+            "transformationLogic": "SELECT * FROM raw_address WHERE updated_at > :last_run_time",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
+                "rowCount": 16200,
+                "sizeBytes": 2700000,
+                "columns": [
+                  "id",
+                  "street",
+                  "city",
+                  "state",
+                  "zip",
+                  "country"
+                ],
+                "filter": "updated_at > '2025-01-13 10:00:00'"
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_address",
+                "rowCount": 15890,
+                "sizeBytes": 2548000,
+                "mode": "overwrite",
+                "columns": [
+                  "address_id",
+                  "shop_id",
+                  "first_name",
+                  "last_name",
+                  "address1",
+                  "address2",
+                  "city",
+                  "region",
+                  "zip",
+                  "country",
+                  "phone"
+                ]
+              }
+            ],
+            "metrics": {
+              "rowsRead": 16200,
+              "rowsWritten": 15890,
+              "rowsFiltered": 310,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731542550000,
+            "endTime": 1731542551300,
+            "logLink": "http://localhost:8080/log?task=assert_table_exists&run=airflow_run_20250114_100000",
+            "taskId": "task_instance_12351",
+            "transformationType": "custom",
+            "metrics": {
+              "executionTimeMs": 1300
+            }
+          }
+        ],
+        "inputs": [
+          {
+            "datasetFQN": "sample_data.ecommerce_db.shopify.raw_address",
+            "rowCount": 16200,
+            "sizeBytes": 2700000
+          }
+        ],
+        "outputs": [
+          {
+            "datasetFQN": "sample_data.ecommerce_db.shopify.dim_address",
+            "rowCount": 15890,
+            "sizeBytes": 2548000,
+            "mode": "overwrite"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 16200,
+          "totalBytesProcessed": 2700000,
+          "cpuTime": 148.2,
+          "memoryUsed": 536870912,
+          "cost": 0.13
+        }
+      },
+      {
+        "timestamp": 1731196800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250110_100000",
+        "endTime": 1731197100000,
+        "version": "1.2.0",
+        "parameters": {
+          "date": "2025-01-10",
+          "env": "production",
+          "backfill": false
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1731196800000,
+            "endTime": 1731196950000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 13800,
+              "rowsWritten": 13520,
+              "rowsFiltered": 280,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731196950000,
+            "endTime": 1731196951200,
+            "metrics": {
+              "executionTimeMs": 1200
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 13800,
+          "totalBytesProcessed": 2300000,
+          "cpuTime": 140.5,
+          "memoryUsed": 490000000,
+          "cost": 0.1
+        }
+      },
+      {
+        "timestamp": 1731110400000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250109_100000",
+        "endTime": 1731110550000,
+        "version": "1.2.0",
+        "parameters": {
+          "date": "2025-01-09",
+          "env": "production",
+          "backfill": false
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Failed",
+            "startTime": 1731110400000,
+            "endTime": 1731110550000,
+            "metrics": {
+              "rowsRead": 3200,
+              "rowsWritten": 0,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 3200,
+          "totalBytesProcessed": 540000,
+          "cpuTime": 28.5,
+          "memoryUsed": 180000000,
+          "cost": 0.02
+        },
+        "error": {
+          "errorType": "OutOfMemoryError",
+          "errorMessage": "Java heap space exceeded during data processing",
+          "stackTrace": "java.lang.OutOfMemoryError: Java heap space\n\tat java.util.Arrays.copyOf(Arrays.java:3332)\n\tat com.etl.processor.DataLoader.loadData(DataLoader.java:234)",
+          "failedTask": "dim_address_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_user_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731542700000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250114_100500",
+        "endTime": 1731543120000,
+        "version": "2.0.1",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1731542700000,
+            "endTime": 1731543000000,
+            "transformationType": "aggregate",
+            "transformationLogic": "SELECT user_id, MAX(login_time) as last_login, COUNT(*) as login_count FROM user_events GROUP BY user_id",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_user_events",
+                "rowCount": 48500,
+                "sizeBytes": 6035000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_customer",
+                "rowCount": 9234,
+                "sizeBytes": 1154250,
+                "mode": "append"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 48500,
+              "rowsWritten": 9234,
+              "rowsFiltered": 39266,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731543000000,
+            "endTime": 1731543001500,
+            "metrics": {
+              "executionTimeMs": 1500
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 48500,
+          "totalBytesProcessed": 6035000,
+          "cpuTime": 292.8,
+          "memoryUsed": 805306368,
+          "cost": 0.26
+        }
+      },
+      {
+        "timestamp": 1731283200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250111_100500",
+        "endTime": 1731283620000,
+        "version": "2.0.1",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1731283200000,
+            "endTime": 1731283500000,
+            "transformationType": "aggregate",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_user_events",
+                "rowCount": 42300,
+                "sizeBytes": 5260000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_customer",
+                "rowCount": 8650,
+                "sizeBytes": 1081250,
+                "mode": "append"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 42300,
+              "rowsWritten": 8650,
+              "rowsFiltered": 33650,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731283500000,
+            "endTime": 1731283501400,
+            "metrics": {
+              "executionTimeMs": 1400
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 42300,
+          "totalBytesProcessed": 5260000,
+          "cpuTime": 278.5,
+          "memoryUsed": 760000000,
+          "cost": 0.23
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_product_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731543300000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250114_101500",
+        "endTime": 1731544080000,
+        "version": "3.1.0",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1731543300000,
+            "endTime": 1731543960000,
+            "transformationType": "extract",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_product",
+                "rowCount": 128500,
+                "sizeBytes": 46260000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_product",
+                "rowCount": 126890,
+                "sizeBytes": 45680000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 128500,
+              "rowsWritten": 126890,
+              "rowsFiltered": 1610,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731543960000,
+            "endTime": 1731543962100,
+            "metrics": {
+              "executionTimeMs": 2100
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 128500,
+          "totalBytesProcessed": 46260000,
+          "cpuTime": 638.2,
+          "memoryUsed": 2050000000,
+          "cost": 0.89
+        }
+      },
+      {
+        "timestamp": 1731370500000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250112_101500",
+        "endTime": 1731371280000,
+        "version": "3.1.0",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Failed",
+            "startTime": 1731370500000,
+            "endTime": 1731371280000,
+            "metrics": {
+              "rowsRead": 58900,
+              "rowsWritten": 12450,
+              "executionTimeMs": 780000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 58900,
+          "totalBytesProcessed": 21200000,
+          "cpuTime": 745.8,
+          "memoryUsed": 950000000,
+          "cost": 0.42
+        },
+        "error": {
+          "errorType": "DiskFullException",
+          "errorMessage": "Insufficient disk space: Only 1.2GB available, required 5.8GB",
+          "stackTrace": "java.io.IOException: No space left on device\n\tat java.io.FileOutputStream.writeBytes(Native Method)\n\tat com.etl.writer.DataWriter.write(DataWriter.java:167)",
+          "failedTask": "dim_product_task"
+        }
+      },
+      {
+        "timestamp": 1731284100000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250111_101500",
+        "endTime": 1731284880000,
+        "version": "3.0.9",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1731284100000,
+            "endTime": 1731284760000,
+            "transformationType": "extract",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_product",
+                "rowCount": 122000,
+                "sizeBytes": 43920000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.dim_product",
+                "rowCount": 120500,
+                "sizeBytes": 43380000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 122000,
+              "rowsWritten": 120500,
+              "rowsFiltered": 1500,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731284760000,
+            "endTime": 1731284762050,
+            "metrics": {
+              "executionTimeMs": 2050
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 122000,
+          "totalBytesProcessed": 43920000,
+          "cpuTime": 615.7,
+          "memoryUsed": 1980000000,
+          "cost": 0.83
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.presto_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731543600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250114_102000",
+        "endTime": 1731543960000,
+        "version": "2.5.0",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1731543600000,
+            "endTime": 1731543840000,
+            "transformationType": "aggregate",
+            "transformationLogic": "SELECT product_id, SUM(quantity) as total_qty, AVG(price) as avg_price FROM sales GROUP BY product_id",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.fact_sale",
+                "rowCount": 525000,
+                "sizeBytes": 78750000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.product_sales_summary",
+                "rowCount": 26500,
+                "sizeBytes": 3392000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 525000,
+              "rowsWritten": 26500,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731543840000,
+            "endTime": 1731543841900,
+            "metrics": {
+              "executionTimeMs": 1900
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 525000,
+          "totalBytesProcessed": 78750000,
+          "cpuTime": 235.8,
+          "memoryUsed": 1100000000,
+          "cost": 0.48
+        }
+      },
+      {
+        "timestamp": 1731370800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250112_102000",
+        "endTime": 1731371160000,
+        "version": "2.5.0",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1731370800000,
+            "endTime": 1731371040000,
+            "transformationType": "aggregate",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.fact_sale",
+                "rowCount": 485000,
+                "sizeBytes": 72750000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.product_sales_summary",
+                "rowCount": 24250,
+                "sizeBytes": 3104000,
+                "mode": "overwrite"
+              }
+            ],
+            "metrics": {
+              "rowsRead": 485000,
+              "rowsWritten": 24250,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731371040000,
+            "endTime": 1731371041750,
+            "metrics": {
+              "executionTimeMs": 1750
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 485000,
+          "totalBytesProcessed": 72750000,
+          "cpuTime": 228.4,
+          "memoryUsed": 1050000000,
+          "cost": 0.44
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.hive_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731544200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250114_103000",
+        "endTime": 1731544740000,
+        "version": "4.2.1",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Successful",
+            "startTime": 1731544200000,
+            "endTime": 1731544620000,
+            "transformationType": "load",
+            "inputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.raw_order",
+                "rowCount": 365000,
+                "sizeBytes": 54750000
+              }
+            ],
+            "outputs": [
+              {
+                "datasetFQN": "sample_data.ecommerce_db.shopify.fact_order",
+                "rowCount": 363200,
+                "sizeBytes": 54480000,
+                "mode": "append",
+                "partitions": [
+                  "dt=2025-01-14",
+                  "country=US"
+                ]
+              }
+            ],
+            "metrics": {
+              "rowsRead": 365000,
+              "rowsWritten": 363200,
+              "rowsFiltered": 1800,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731544620000,
+            "endTime": 1731544622200,
+            "metrics": {
+              "executionTimeMs": 2200
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 365000,
+          "totalBytesProcessed": 54750000,
+          "cpuTime": 412.5,
+          "memoryUsed": 1650000000,
+          "cost": 0.71
+        }
+      },
+      {
+        "timestamp": 1731371400000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250112_103000",
+        "endTime": 1731371940000,
+        "version": "4.2.1",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Failed",
+            "startTime": 1731371400000,
+            "endTime": 1731371940000,
+            "metrics": {
+              "rowsRead": 125000,
+              "rowsWritten": 42300,
+              "executionTimeMs": 540000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped"
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 125000,
+          "totalBytesProcessed": 18750000,
+          "cpuTime": 502.8,
+          "memoryUsed": 580000000,
+          "cost": 0.31
+        },
+        "error": {
+          "errorType": "HiveMetastoreException",
+          "errorMessage": "Unable to commit partition metadata: Metastore connection lost",
+          "stackTrace": "org.apache.hadoop.hive.metastore.api.MetaException: Connection refused\n\tat org.apache.hadoop.hive.metastore.HiveMetaStoreClient.commitTransaction(HiveMetaStoreClient.java:842)\n\tat org.apache.hive.service.cli.operation.HiveCommandOperation.runQuery(HiveCommandOperation.java:234)",
+          "failedTask": "hive_create_table"
+        }
+      },
+      {
+        "timestamp": 1731284400000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250111_103000",
+        "endTime": 1731284940000,
+        "version": "4.2.1",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Successful",
+            "startTime": 1731284400000,
+            "endTime": 1731284820000,
+            "transformationType": "load",
+            "metrics": {
+              "rowsRead": 342000,
+              "rowsWritten": 340500,
+              "rowsFiltered": 1500,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731284820000,
+            "endTime": 1731284822100,
+            "metrics": {
+              "executionTimeMs": 2100
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 342000,
+          "totalBytesProcessed": 51300000,
+          "cpuTime": 398.2,
+          "memoryUsed": 1580000000,
+          "cost": 0.65
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_address_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731024000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250108_100000",
+        "endTime": 1731024300000,
+        "version": "1.1.9",
+        "parameters": {
+          "date": "2025-01-08",
+          "env": "production",
+          "backfill": false
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1731024000000,
+            "endTime": 1731024150000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 12500,
+              "rowsWritten": 12280,
+              "rowsFiltered": 220,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731024150000,
+            "endTime": 1731024151100,
+            "metrics": {
+              "executionTimeMs": 1100
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 12500,
+          "totalBytesProcessed": 2100000,
+          "cpuTime": 138.5,
+          "memoryUsed": 475000000,
+          "cost": 0.09
+        }
+      },
+      {
+        "timestamp": 1730937600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250107_100000",
+        "endTime": 1730937900000,
+        "version": "1.1.9",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1730937600000,
+            "endTime": 1730937750000,
+            "metrics": {
+              "rowsRead": 11800,
+              "rowsWritten": 11620,
+              "rowsFiltered": 180,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730937750000,
+            "endTime": 1730937751050,
+            "metrics": {
+              "executionTimeMs": 1050
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 11800,
+          "totalBytesProcessed": 1950000,
+          "cpuTime": 135.2,
+          "memoryUsed": 460000000,
+          "cost": 0.09
+        }
+      },
+      {
+        "timestamp": 1730678400000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250104_100000",
+        "endTime": 1730678550000,
+        "version": "1.1.8",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Failed",
+            "startTime": 1730678400000,
+            "endTime": 1730678550000,
+            "metrics": {
+              "rowsRead": 2100,
+              "rowsWritten": 0,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 2100,
+          "totalBytesProcessed": 350000,
+          "cpuTime": 22.8,
+          "memoryUsed": 150000000,
+          "cost": 0.02
+        },
+        "error": {
+          "errorType": "NetworkException",
+          "errorMessage": "Connection refused: Database host not reachable",
+          "stackTrace": "java.net.ConnectException: Connection refused\n\tat sun.nio.ch.SocketChannelImpl.checkConnect(SocketChannelImpl.java:715)\n\tat com.database.Driver.connect(Driver.java:145)",
+          "failedTask": "dim_address_task"
+        }
+      },
+      {
+        "timestamp": 1730419200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250101_100000",
+        "endTime": 1730419500000,
+        "version": "1.1.8",
+        "parameters": {
+          "date": "2025-01-01",
+          "env": "production",
+          "backfill": true
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1730419200000,
+            "endTime": 1730419350000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 18500,
+              "rowsWritten": 18200,
+              "rowsFiltered": 300,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730419350000,
+            "endTime": 1730419351400,
+            "metrics": {
+              "executionTimeMs": 1400
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 18500,
+          "totalBytesProcessed": 3100000,
+          "cpuTime": 152.8,
+          "memoryUsed": 550000000,
+          "cost": 0.14
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_user_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731197100000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250110_100500",
+        "endTime": 1731197520000,
+        "version": "2.0.0",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1731197100000,
+            "endTime": 1731197400000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 39800,
+              "rowsWritten": 8150,
+              "rowsFiltered": 31650,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731197400000,
+            "endTime": 1731197401350,
+            "metrics": {
+              "executionTimeMs": 1350
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 39800,
+          "totalBytesProcessed": 4950000,
+          "cpuTime": 268.5,
+          "memoryUsed": 730000000,
+          "cost": 0.21
+        }
+      },
+      {
+        "timestamp": 1730851200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250106_100500",
+        "endTime": 1730851620000,
+        "version": "1.9.8",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1730851200000,
+            "endTime": 1730851500000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 35200,
+              "rowsWritten": 7280,
+              "rowsFiltered": 27920,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730851500000,
+            "endTime": 1730851501280,
+            "metrics": {
+              "executionTimeMs": 1280
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 35200,
+          "totalBytesProcessed": 4380000,
+          "cpuTime": 255.4,
+          "memoryUsed": 695000000,
+          "cost": 0.19
+        }
+      },
+      {
+        "timestamp": 1730332800000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20241231_100500",
+        "endTime": 1730333100000,
+        "version": "1.9.7",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Failed",
+            "startTime": 1730332800000,
+            "endTime": 1730333100000,
+            "metrics": {
+              "rowsRead": 18500,
+              "rowsWritten": 0,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 18500,
+          "totalBytesProcessed": 2310000,
+          "cpuTime": 125.6,
+          "memoryUsed": 380000000,
+          "cost": 0.1
+        },
+        "error": {
+          "errorType": "SchemaEvolutionError",
+          "errorMessage": "Column 'user_status' not found in source table",
+          "stackTrace": "org.apache.spark.sql.AnalysisException: Column 'user_status' not found\n\tat org.apache.spark.sql.catalyst.analysis.CheckAnalysis.failAnalysis(CheckAnalysis.scala:42)\n\tat com.etl.transform.UserTransform.apply(UserTransform.scala:89)",
+          "failedTask": "dim_user_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_product_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731197700000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250110_101500",
+        "endTime": 1731198480000,
+        "version": "3.0.8",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1731197700000,
+            "endTime": 1731198360000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 118000,
+              "rowsWritten": 116650,
+              "rowsFiltered": 1350,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731198360000,
+            "endTime": 1731198361980,
+            "metrics": {
+              "executionTimeMs": 1980
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 118000,
+          "totalBytesProcessed": 42480000,
+          "cpuTime": 598.5,
+          "memoryUsed": 1920000000,
+          "cost": 0.79
+        }
+      },
+      {
+        "timestamp": 1730764800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250105_101500",
+        "endTime": 1730765580000,
+        "version": "3.0.7",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1730764800000,
+            "endTime": 1730765460000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 112500,
+              "rowsWritten": 111200,
+              "rowsFiltered": 1300,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730765460000,
+            "endTime": 1730765461920,
+            "metrics": {
+              "executionTimeMs": 1920
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 112500,
+          "totalBytesProcessed": 40500000,
+          "cpuTime": 582.3,
+          "memoryUsed": 1850000000,
+          "cost": 0.75
+        }
+      },
+      {
+        "timestamp": 1730246400000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20241230_101500",
+        "endTime": 1730247180000,
+        "version": "3.0.6",
+        "parameters": {
+          "date": "2024-12-30",
+          "env": "production",
+          "full_refresh": true
+        },
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1730246400000,
+            "endTime": 1730247060000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 135000,
+              "rowsWritten": 133400,
+              "rowsFiltered": 1600,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730247060000,
+            "endTime": 1730247062100,
+            "metrics": {
+              "executionTimeMs": 2100
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 135000,
+          "totalBytesProcessed": 48600000,
+          "cpuTime": 645.8,
+          "memoryUsed": 2120000000,
+          "cost": 0.92
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.presto_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731111000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250109_102000",
+        "endTime": 1731111360000,
+        "version": "2.4.9",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1731111000000,
+            "endTime": 1731111240000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 465000,
+              "rowsWritten": 23250,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731111240000,
+            "endTime": 1731111241650,
+            "metrics": {
+              "executionTimeMs": 1650
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 465000,
+          "totalBytesProcessed": 69750000,
+          "cpuTime": 225.8,
+          "memoryUsed": 1020000000,
+          "cost": 0.42
+        }
+      },
+      {
+        "timestamp": 1730592000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250103_102000",
+        "endTime": 1730592360000,
+        "version": "2.4.8",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1730592000000,
+            "endTime": 1730592240000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 445000,
+              "rowsWritten": 22250,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730592240000,
+            "endTime": 1730592241580,
+            "metrics": {
+              "executionTimeMs": 1580
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 445000,
+          "totalBytesProcessed": 66750000,
+          "cpuTime": 220.5,
+          "memoryUsed": 980000000,
+          "cost": 0.4
+        }
+      },
+      {
+        "timestamp": 1730160000000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20241229_102000",
+        "endTime": 1730160360000,
+        "version": "2.4.7",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Failed",
+            "startTime": 1730160000000,
+            "endTime": 1730160360000,
+            "metrics": {
+              "rowsRead": 285000,
+              "rowsWritten": 0,
+              "executionTimeMs": 360000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 285000,
+          "totalBytesProcessed": 42750000,
+          "cpuTime": 342.5,
+          "memoryUsed": 650000000,
+          "cost": 0.28
+        },
+        "error": {
+          "errorType": "PrestoQueryException",
+          "errorMessage": "Query exceeded maximum memory limit of 4GB",
+          "stackTrace": "com.facebook.presto.spi.PrestoException: Query exceeded max memory\n\tat com.facebook.presto.memory.QueryContext.checkMemoryLimits(QueryContext.java:421)\n\tat com.facebook.presto.execution.SqlQueryExecution.start(SqlQueryExecution.java:298)",
+          "failedTask": "presto_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.snowflake_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731198300000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250110_103500",
+        "endTime": 1731198720000,
+        "version": "5.0.1",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "MEDIUM",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Successful",
+            "startTime": 1731198300000,
+            "endTime": 1731198600000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 258000,
+              "rowsWritten": 256700,
+              "rowsFiltered": 1300,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731198600000,
+            "endTime": 1731198601820,
+            "metrics": {
+              "executionTimeMs": 1820
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 258000,
+          "totalBytesProcessed": 38700000,
+          "cpuTime": 278.4,
+          "memoryUsed": 1260000000,
+          "cost": 1.15
+        }
+      },
+      {
+        "timestamp": 1730505600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250102_103500",
+        "endTime": 1730506020000,
+        "version": "5.0.0",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "SMALL",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Successful",
+            "startTime": 1730505600000,
+            "endTime": 1730505900000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 245000,
+              "rowsWritten": 243850,
+              "rowsFiltered": 1150,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730505900000,
+            "endTime": 1730505901750,
+            "metrics": {
+              "executionTimeMs": 1750
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 245000,
+          "totalBytesProcessed": 36750000,
+          "cpuTime": 268.5,
+          "memoryUsed": 1180000000,
+          "cost": 0.98
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_location_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731111600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250109_101000",
+        "endTime": 1731111840000,
+        "version": "1.5.1",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
+            "executionStatus": "Successful",
+            "startTime": 1731111600000,
+            "endTime": 1731111720000,
+            "transformationType": "join",
+            "metrics": {
+              "rowsRead": 56500,
+              "rowsWritten": 7650,
+              "executionTimeMs": 120000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1731111720000,
+            "endTime": 1731111721250,
+            "metrics": {
+              "executionTimeMs": 1250
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 56500,
+          "totalBytesProcessed": 7020000,
+          "cpuTime": 112.8,
+          "memoryUsed": 595000000,
+          "cost": 0.17
+        }
+      },
+      {
+        "timestamp": 1730592600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250103_101000",
+        "endTime": 1730592840000,
+        "version": "1.5.0",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
+            "executionStatus": "Successful",
+            "startTime": 1730592600000,
+            "endTime": 1730592720000,
+            "transformationType": "join",
+            "metrics": {
+              "rowsRead": 54200,
+              "rowsWritten": 7380,
+              "executionTimeMs": 120000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730592720000,
+            "endTime": 1730592721180,
+            "metrics": {
+              "executionTimeMs": 1180
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 54200,
+          "totalBytesProcessed": 6730000,
+          "cpuTime": 108.5,
+          "memoryUsed": 575000000,
+          "cost": 0.16
+        }
+      },
+      {
+        "timestamp": 1730073600000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20241228_101000",
+        "endTime": 1730073840000,
+        "version": "1.4.9",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
+            "executionStatus": "Failed",
+            "startTime": 1730073600000,
+            "endTime": 1730073840000,
+            "metrics": {
+              "rowsRead": 32500,
+              "rowsWritten": 0,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 32500,
+          "totalBytesProcessed": 4030000,
+          "cpuTime": 195.6,
+          "memoryUsed": 320000000,
+          "cost": 0.11
+        },
+        "error": {
+          "errorType": "JoinException",
+          "errorMessage": "Join key mismatch: geo_data.postal_code type differs from raw_address.zip",
+          "stackTrace": "org.apache.spark.sql.AnalysisException: Cannot resolve column 'postal_code'\n\tat org.apache.spark.sql.catalyst.analysis.Analyzer.checkAnalysis(Analyzer.scala:145)\n\tat com.etl.joins.LocationJoin.execute(LocationJoin.scala:67)",
+          "failedTask": "dim_location_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.trino_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1731457500000,
+        "executionStatus": "Pending",
+        "executionId": "airflow_run_20250113_102500",
+        "endTime": null,
+        "version": "1.0.0",
+        "taskStatus": [
+          {
+            "name": "trino_task",
+            "executionStatus": "Pending",
+            "startTime": 1731457500000,
+            "endTime": null
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Pending",
+            "startTime": null,
+            "endTime": null
+          }
+        ]
+      },
+      {
+        "timestamp": 1730851800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250106_102500",
+        "endTime": 1730852160000,
+        "version": "1.0.0",
+        "taskStatus": [
+          {
+            "name": "trino_task",
+            "executionStatus": "Successful",
+            "startTime": 1730851800000,
+            "endTime": 1730852040000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 385000,
+              "rowsWritten": 19250,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1730852040000,
+            "endTime": 1730852041520,
+            "metrics": {
+              "executionTimeMs": 1520
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 385000,
+          "totalBytesProcessed": 57750000,
+          "cpuTime": 218.4,
+          "memoryUsed": 920000000,
+          "cost": 0.38
+        }
+      },
+      {
+        "timestamp": 1735704000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250101_102500",
+        "endTime": 1735704360000,
+        "version": "1.0.1",
+        "taskStatus": [
+          {
+            "name": "trino_task",
+            "executionStatus": "Successful",
+            "startTime": 1735704000000,
+            "endTime": 1735704240000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 420000,
+              "rowsWritten": 21000,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1735704240000,
+            "endTime": 1735704241680,
+            "metrics": {
+              "executionTimeMs": 1680
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 420000,
+          "totalBytesProcessed": 63000000,
+          "cpuTime": 228.5,
+          "memoryUsed": 980000000,
+          "cost": 0.42
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_address_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738382400000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_100000",
+        "endTime": 1738382700000,
+        "version": "1.3.0",
+        "parameters": {
+          "date": "2025-02-01",
+          "env": "production",
+          "backfill": false
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1738382400000,
+            "endTime": 1738382550000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 17500,
+              "rowsWritten": 17180,
+              "rowsFiltered": 320,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738382550000,
+            "endTime": 1738382551250,
+            "metrics": {
+              "executionTimeMs": 1250
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 17500,
+          "totalBytesProcessed": 2950000,
+          "cpuTime": 150.2,
+          "memoryUsed": 545000000,
+          "cost": 0.13
+        }
+      },
+      {
+        "timestamp": 1741060800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_100000",
+        "endTime": 1741061100000,
+        "version": "1.3.1",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1741060800000,
+            "endTime": 1741060950000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 19200,
+              "rowsWritten": 18850,
+              "rowsFiltered": 350,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741060950000,
+            "endTime": 1741060951300,
+            "metrics": {
+              "executionTimeMs": 1300
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 19200,
+          "totalBytesProcessed": 3230000,
+          "cpuTime": 153.8,
+          "memoryUsed": 562000000,
+          "cost": 0.14
+        }
+      },
+      {
+        "timestamp": 1743739200000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250401_100000",
+        "endTime": 1743739350000,
+        "version": "1.3.1",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Failed",
+            "startTime": 1743739200000,
+            "endTime": 1743739350000,
+            "metrics": {
+              "rowsRead": 4500,
+              "rowsWritten": 0,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 4500,
+          "totalBytesProcessed": 760000,
+          "cpuTime": 35.2,
+          "memoryUsed": 195000000,
+          "cost": 0.03
+        },
+        "error": {
+          "errorType": "TimeoutException",
+          "errorMessage": "Query execution timeout after 150 seconds",
+          "stackTrace": "java.util.concurrent.TimeoutException: Query timeout\n\tat com.database.QueryExecutor.execute(QueryExecutor.java:289)\n\tat com.etl.processor.AddressProcessor.process(AddressProcessor.java:156)",
+          "failedTask": "dim_address_task"
+        }
+      },
+      {
+        "timestamp": 1746417600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250501_100000",
+        "endTime": 1746417900000,
+        "version": "1.4.0",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1746417600000,
+            "endTime": 1746417750000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 21000,
+              "rowsWritten": 20600,
+              "rowsFiltered": 400,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1746417750000,
+            "endTime": 1746417751400,
+            "metrics": {
+              "executionTimeMs": 1400
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 21000,
+          "totalBytesProcessed": 3530000,
+          "cpuTime": 158.5,
+          "memoryUsed": 585000000,
+          "cost": 0.15
+        }
+      },
+      {
+        "timestamp": 1749096000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250601_100000",
+        "endTime": 1749096300000,
+        "version": "1.4.1",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Successful",
+            "startTime": 1749096000000,
+            "endTime": 1749096150000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 23500,
+              "rowsWritten": 23050,
+              "rowsFiltered": 450,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1749096150000,
+            "endTime": 1749096151500,
+            "metrics": {
+              "executionTimeMs": 1500
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 23500,
+          "totalBytesProcessed": 3950000,
+          "cpuTime": 165.8,
+          "memoryUsed": 615000000,
+          "cost": 0.16
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_user_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738382700000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_100500",
+        "endTime": 1738383120000,
+        "version": "2.1.0",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1738382700000,
+            "endTime": 1738383000000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 52000,
+              "rowsWritten": 10400,
+              "rowsFiltered": 41600,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738383000000,
+            "endTime": 1738383001550,
+            "metrics": {
+              "executionTimeMs": 1550
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 52000,
+          "totalBytesProcessed": 6470000,
+          "cpuTime": 295.8,
+          "memoryUsed": 825000000,
+          "cost": 0.27
+        }
+      },
+      {
+        "timestamp": 1741061100000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_100500",
+        "endTime": 1741061520000,
+        "version": "2.1.1",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1741061100000,
+            "endTime": 1741061400000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 58500,
+              "rowsWritten": 11700,
+              "rowsFiltered": 46800,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741061400000,
+            "endTime": 1741061401620,
+            "metrics": {
+              "executionTimeMs": 1620
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 58500,
+          "totalBytesProcessed": 7280000,
+          "cpuTime": 312.5,
+          "memoryUsed": 870000000,
+          "cost": 0.29
+        }
+      },
+      {
+        "timestamp": 1746418000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250501_100500",
+        "endTime": 1746418420000,
+        "version": "2.2.0",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Successful",
+            "startTime": 1746418000000,
+            "endTime": 1746418300000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 62000,
+              "rowsWritten": 12400,
+              "rowsFiltered": 49600,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1746418300000,
+            "endTime": 1746418301680,
+            "metrics": {
+              "executionTimeMs": 1680
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 62000,
+          "totalBytesProcessed": 7720000,
+          "cpuTime": 325.8,
+          "memoryUsed": 910000000,
+          "cost": 0.31
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_product_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738383300000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_101500",
+        "endTime": 1738384080000,
+        "version": "3.2.0",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1738383300000,
+            "endTime": 1738383960000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 138000,
+              "rowsWritten": 136200,
+              "rowsFiltered": 1800,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738383960000,
+            "endTime": 1738383962150,
+            "metrics": {
+              "executionTimeMs": 2150
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 138000,
+          "totalBytesProcessed": 49680000,
+          "cpuTime": 655.8,
+          "memoryUsed": 1850000000,
+          "cost": 0.94
+        }
+      },
+      {
+        "timestamp": 1741061700000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_101500",
+        "endTime": 1741062480000,
+        "version": "3.2.1",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1741061700000,
+            "endTime": 1741062360000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 145000,
+              "rowsWritten": 143100,
+              "rowsFiltered": 1900,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741062360000,
+            "endTime": 1741062362200,
+            "metrics": {
+              "executionTimeMs": 2200
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 145000,
+          "totalBytesProcessed": 52200000,
+          "cpuTime": 675.5,
+          "memoryUsed": 1850000000,
+          "cost": 0.98
+        }
+      },
+      {
+        "timestamp": 1746418500000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250501_101500",
+        "endTime": 1746419280000,
+        "version": "3.3.0",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Successful",
+            "startTime": 1746418500000,
+            "endTime": 1746419160000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 152000,
+              "rowsWritten": 150000,
+              "rowsFiltered": 2000,
+              "executionTimeMs": 660000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1746419160000,
+            "endTime": 1746419162250,
+            "metrics": {
+              "executionTimeMs": 2250
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 152000,
+          "totalBytesProcessed": 54720000,
+          "cpuTime": 695.2,
+          "memoryUsed": 1950000000,
+          "cost": 1.02
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.presto_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738383600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_102000",
+        "endTime": 1738383960000,
+        "version": "2.6.0",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1738383600000,
+            "endTime": 1738383840000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 545000,
+              "rowsWritten": 27250,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738383840000,
+            "endTime": 1738383841950,
+            "metrics": {
+              "executionTimeMs": 1950
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 545000,
+          "totalBytesProcessed": 81750000,
+          "cpuTime": 242.5,
+          "memoryUsed": 1150000000,
+          "cost": 0.49
+        }
+      },
+      {
+        "timestamp": 1741062000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_102000",
+        "endTime": 1741062360000,
+        "version": "2.6.1",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1741062000000,
+            "endTime": 1741062240000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 580000,
+              "rowsWritten": 29000,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741062240000,
+            "endTime": 1741062242000,
+            "metrics": {
+              "executionTimeMs": 2000
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 580000,
+          "totalBytesProcessed": 87000000,
+          "cpuTime": 252.8,
+          "memoryUsed": 1220000000,
+          "cost": 0.52
+        }
+      },
+      {
+        "timestamp": 1746418800000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250501_102000",
+        "endTime": 1746419160000,
+        "version": "2.7.0",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Successful",
+            "startTime": 1746418800000,
+            "endTime": 1746419040000,
+            "transformationType": "aggregate",
+            "metrics": {
+              "rowsRead": 615000,
+              "rowsWritten": 30750,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1746419040000,
+            "endTime": 1746419042080,
+            "metrics": {
+              "executionTimeMs": 2080
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 615000,
+          "totalBytesProcessed": 92250000,
+          "cpuTime": 265.5,
+          "memoryUsed": 1290000000,
+          "cost": 0.55
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.snowflake_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738384500000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_103500",
+        "endTime": 1738384920000,
+        "version": "5.1.0",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "LARGE",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Successful",
+            "startTime": 1738384500000,
+            "endTime": 1738384800000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 295000,
+              "rowsWritten": 293500,
+              "rowsFiltered": 1500,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738384800000,
+            "endTime": 1738384801950,
+            "metrics": {
+              "executionTimeMs": 1950
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 295000,
+          "totalBytesProcessed": 44250000,
+          "cpuTime": 295.8,
+          "memoryUsed": 1380000000,
+          "cost": 1.42
+        }
+      },
+      {
+        "timestamp": 1741062900000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_103500",
+        "endTime": 1741063320000,
+        "version": "5.1.1",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "LARGE",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Successful",
+            "startTime": 1741062900000,
+            "endTime": 1741063200000,
+            "transformationType": "extract",
+            "metrics": {
+              "rowsRead": 310000,
+              "rowsWritten": 308400,
+              "rowsFiltered": 1600,
+              "executionTimeMs": 300000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741063200000,
+            "endTime": 1741063202000,
+            "metrics": {
+              "executionTimeMs": 2000
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 310000,
+          "totalBytesProcessed": 46500000,
+          "cpuTime": 308.5,
+          "memoryUsed": 1450000000,
+          "cost": 1.52
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.hive_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738384200000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_103000",
+        "endTime": 1738384740000,
+        "version": "4.3.0",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Successful",
+            "startTime": 1738384200000,
+            "endTime": 1738384620000,
+            "transformationType": "load",
+            "metrics": {
+              "rowsRead": 380000,
+              "rowsWritten": 378200,
+              "rowsFiltered": 1800,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738384620000,
+            "endTime": 1738384622300,
+            "metrics": {
+              "executionTimeMs": 2300
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 380000,
+          "totalBytesProcessed": 57000000,
+          "cpuTime": 425.8,
+          "memoryUsed": 1720000000,
+          "cost": 0.74
+        }
+      },
+      {
+        "timestamp": 1741062600000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_103000",
+        "endTime": 1741063140000,
+        "version": "4.3.1",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Successful",
+            "startTime": 1741062600000,
+            "endTime": 1741063020000,
+            "transformationType": "load",
+            "metrics": {
+              "rowsRead": 395000,
+              "rowsWritten": 393100,
+              "rowsFiltered": 1900,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741063020000,
+            "endTime": 1741063022350,
+            "metrics": {
+              "executionTimeMs": 2350
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 395000,
+          "totalBytesProcessed": 59250000,
+          "cpuTime": 438.5,
+          "memoryUsed": 1780000000,
+          "cost": 0.78
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_location_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1738383000000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250201_101000",
+        "endTime": 1738383240000,
+        "version": "1.6.0",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
+            "executionStatus": "Successful",
+            "startTime": 1738383000000,
+            "endTime": 1738383120000,
+            "transformationType": "join",
+            "metrics": {
+              "rowsRead": 61000,
+              "rowsWritten": 8250,
+              "executionTimeMs": 120000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1738383120000,
+            "endTime": 1738383121380,
+            "metrics": {
+              "executionTimeMs": 1380
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 61000,
+          "totalBytesProcessed": 7580000,
+          "cpuTime": 118.5,
+          "memoryUsed": 625000000,
+          "cost": 0.19
+        }
+      },
+      {
+        "timestamp": 1741061400000,
+        "executionStatus": "Successful",
+        "executionId": "airflow_run_20250301_101000",
+        "endTime": 1741061640000,
+        "version": "1.6.1",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
+            "executionStatus": "Successful",
+            "startTime": 1741061400000,
+            "endTime": 1741061520000,
+            "transformationType": "join",
+            "metrics": {
+              "rowsRead": 64500,
+              "rowsWritten": 8720,
+              "executionTimeMs": 120000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Successful",
+            "startTime": 1741061520000,
+            "endTime": 1741061521450,
+            "metrics": {
+              "executionTimeMs": 1450
+            }
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 64500,
+          "totalBytesProcessed": 8010000,
+          "cpuTime": 125.8,
+          "memoryUsed": 660000000,
+          "cost": 0.20
+        }
+      },
+      {
+        "timestamp": 1746418200000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250505_101000",
+        "endTime": 1746418440000,
+        "version": "1.6.2",
+        "taskStatus": [
+          {
+            "name": "dim_location_task",
+            "executionStatus": "Failed",
+            "startTime": 1746418200000,
+            "endTime": 1746418440000,
+            "metrics": {
+              "rowsRead": 45000,
+              "rowsWritten": 0,
+              "executionTimeMs": 240000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 45000,
+          "totalBytesProcessed": 5590000,
+          "cpuTime": 198.5,
+          "memoryUsed": 420000000,
+          "cost": 0.12
+        },
+        "error": {
+          "errorType": "DataCorruptionException",
+          "errorMessage": "Invalid zip code format in geo_data: expected 5 digits, found 'ABCDE'",
+          "stackTrace": "com.etl.validation.DataValidationException: Invalid zip code format\n\tat com.etl.validators.ZipCodeValidator.validate(ZipCodeValidator.java:78)\n\tat com.etl.joins.LocationJoin.validateInputs(LocationJoin.scala:123)",
+          "failedTask": "dim_location_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_user_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1749096300000,
+        "executionStatus": "Pending",
+        "executionId": "airflow_run_20250605_100500",
+        "endTime": null,
+        "version": "2.2.1",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Pending",
+            "startTime": 1749096300000,
+            "endTime": null
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Pending",
+            "startTime": null,
+            "endTime": null
+          }
+        ]
+      },
+      {
+        "timestamp": 1751774700000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250705_100500",
+        "endTime": 1751775120000,
+        "version": "2.2.2",
+        "taskStatus": [
+          {
+            "name": "dim_user_task",
+            "executionStatus": "Failed",
+            "startTime": 1751774700000,
+            "endTime": 1751775120000,
+            "metrics": {
+              "rowsRead": 28500,
+              "rowsWritten": 0,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 28500,
+          "totalBytesProcessed": 3550000,
+          "cpuTime": 385.2,
+          "memoryUsed": 520000000,
+          "cost": 0.18
+        },
+        "error": {
+          "errorType": "DuplicateKeyException",
+          "errorMessage": "Duplicate user_id detected: user_id=12345 appears 3 times in source data",
+          "stackTrace": "org.postgresql.util.PSQLException: ERROR: duplicate key value violates unique constraint\n\tat org.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(QueryExecutorImpl.java:2553)\n\tat com.etl.loaders.UserLoader.insertBatch(UserLoader.java:234)",
+          "failedTask": "dim_user_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_product_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1749096900000,
+        "executionStatus": "Skipped",
+        "executionId": "airflow_run_20250605_101500",
+        "endTime": 1749097680000,
+        "version": "3.3.1",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Skipped",
+            "startTime": 1749096900000,
+            "endTime": 1749097680000,
+            "metrics": {
+              "rowsRead": 89000,
+              "rowsWritten": 45200,
+              "executionTimeMs": 780000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 89000,
+          "totalBytesProcessed": 32040000,
+          "cpuTime": 720.5,
+          "memoryUsed": 1580000000,
+          "cost": 0.58
+        },
+        "error": {
+          "errorType": "ManualCancellation",
+          "errorMessage": "Pipeline manually cancelled by user admin@openmetadata.org",
+          "stackTrace": "org.apache.airflow.exceptions.AirflowTaskTimeout: Task cancelled by user\n\tat org.apache.airflow.executors.LocalExecutor.cancel(LocalExecutor.java:156)",
+          "failedTask": "dim_product_task"
+        }
+      },
+      {
+        "timestamp": 1751775300000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250705_101500",
+        "endTime": 1751776080000,
+        "version": "3.3.2",
+        "taskStatus": [
+          {
+            "name": "dim_product_task",
+            "executionStatus": "Failed",
+            "startTime": 1751775300000,
+            "endTime": 1751776080000,
+            "metrics": {
+              "rowsRead": 156000,
+              "rowsWritten": 92000,
+              "executionTimeMs": 780000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 156000,
+          "totalBytesProcessed": 56160000,
+          "cpuTime": 745.8,
+          "memoryUsed": 1920000000,
+          "cost": 1.08
+        },
+        "error": {
+          "errorType": "ConstraintViolationException",
+          "errorMessage": "Foreign key constraint violation: product_category_id=999 not found in dim_category table",
+          "stackTrace": "org.hibernate.exception.ConstraintViolationException: could not execute statement\n\tat org.hibernate.exception.internal.SQLExceptionTypeDelegate.convert(SQLExceptionTypeDelegate.java:60)\n\tat com.etl.processor.ProductProcessor.processProducts(ProductProcessor.java:289)",
+          "failedTask": "dim_product_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.presto_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1749097200000,
+        "executionStatus": "Pending",
+        "executionId": "airflow_run_20250605_102000",
+        "endTime": null,
+        "version": "2.7.1",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Pending",
+            "startTime": 1749097200000,
+            "endTime": null
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Pending",
+            "startTime": null,
+            "endTime": null
+          }
+        ]
+      },
+      {
+        "timestamp": 1751775600000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250705_102000",
+        "endTime": 1751775960000,
+        "version": "2.7.2",
+        "taskStatus": [
+          {
+            "name": "presto_task",
+            "executionStatus": "Failed",
+            "startTime": 1751775600000,
+            "endTime": 1751775960000,
+            "metrics": {
+              "rowsRead": 425000,
+              "rowsWritten": 0,
+              "executionTimeMs": 360000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 425000,
+          "totalBytesProcessed": 63750000,
+          "cpuTime": 342.8,
+          "memoryUsed": 980000000,
+          "cost": 0.38
+        },
+        "error": {
+          "errorType": "PrestoQueryTimeoutException",
+          "errorMessage": "Query exceeded maximum execution time of 5 minutes",
+          "stackTrace": "com.facebook.presto.spi.PrestoException: Query timeout exceeded\n\tat com.facebook.presto.execution.SqlQueryExecution.timeout(SqlQueryExecution.java:456)\n\tat com.facebook.presto.execution.QueryStateMachine.transitionToFailed(QueryStateMachine.java:512)",
+          "failedTask": "presto_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.snowflake_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1746419100000,
+        "executionStatus": "Skipped",
+        "executionId": "airflow_run_20250505_103500",
+        "endTime": 1746419520000,
+        "version": "5.1.2",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "LARGE",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Skipped",
+            "startTime": 1746419100000,
+            "endTime": 1746419520000,
+            "metrics": {
+              "rowsRead": 185000,
+              "rowsWritten": 92500,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 185000,
+          "totalBytesProcessed": 27750000,
+          "cpuTime": 395.2,
+          "memoryUsed": 850000000,
+          "cost": 1.28
+        },
+        "error": {
+          "errorType": "UserCancellation",
+          "errorMessage": "Task cancelled during warehouse maintenance window",
+          "stackTrace": "snowflake.connector.errors.ProgrammingError: Query execution cancelled\n\tat snowflake.connector.cursor.execute(cursor.py:789)\n\tat com.etl.snowflake.SnowflakeLoader.load(SnowflakeLoader.java:234)",
+          "failedTask": "snowflake_task"
+        }
+      },
+      {
+        "timestamp": 1749097500000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250605_103500",
+        "endTime": 1749097920000,
+        "version": "5.1.3",
+        "parameters": {
+          "warehouse": "COMPUTE_WH",
+          "warehouse_size": "LARGE",
+          "auto_suspend": 300
+        },
+        "taskStatus": [
+          {
+            "name": "snowflake_task",
+            "executionStatus": "Failed",
+            "startTime": 1749097500000,
+            "endTime": 1749097920000,
+            "metrics": {
+              "rowsRead": 145000,
+              "rowsWritten": 0,
+              "executionTimeMs": 420000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 145000,
+          "totalBytesProcessed": 21750000,
+          "cpuTime": 385.6,
+          "memoryUsed": 720000000,
+          "cost": 1.18
+        },
+        "error": {
+          "errorType": "SnowflakeStorageException",
+          "errorMessage": "Insufficient storage quota: Stage area exceeded 100GB limit",
+          "stackTrace": "snowflake.connector.errors.DatabaseError: Storage quota exceeded\n\tat snowflake.connector.network.upload_file(network.py:892)\n\tat com.etl.snowflake.StageManager.uploadData(StageManager.java:156)",
+          "failedTask": "snowflake_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.hive_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1746418800000,
+        "executionStatus": "Pending",
+        "executionId": "airflow_run_20250505_103000",
+        "endTime": null,
+        "version": "4.3.2",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Pending",
+            "startTime": 1746418800000,
+            "endTime": null
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Pending",
+            "startTime": null,
+            "endTime": null
+          }
+        ]
+      },
+      {
+        "timestamp": 1751775900000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250705_103000",
+        "endTime": 1751776440000,
+        "version": "4.3.3",
+        "taskStatus": [
+          {
+            "name": "hive_create_table",
+            "executionStatus": "Failed",
+            "startTime": 1751775900000,
+            "endTime": 1751776440000,
+            "metrics": {
+              "rowsRead": 285000,
+              "rowsWritten": 142500,
+              "executionTimeMs": 540000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 285000,
+          "totalBytesProcessed": 42750000,
+          "cpuTime": 512.8,
+          "memoryUsed": 1250000000,
+          "cost": 0.52
+        },
+        "error": {
+          "errorType": "HivePartitionException",
+          "errorMessage": "Partition already exists: dt=2025-07-05, country=US. Cannot overwrite without DROP PARTITION first",
+          "stackTrace": "org.apache.hadoop.hive.ql.metadata.HiveException: Partition already exists\n\tat org.apache.hadoop.hive.ql.metadata.Hive.createPartition(Hive.java:1234)\n\tat com.etl.hive.PartitionManager.addPartition(PartitionManager.java:189)",
+          "failedTask": "hive_create_table"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.trino_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1749097800000,
+        "executionStatus": "Skipped",
+        "executionId": "airflow_run_20250605_102500",
+        "endTime": 1749098160000,
+        "version": "1.0.2",
+        "taskStatus": [
+          {
+            "name": "trino_task",
+            "executionStatus": "Skipped",
+            "startTime": 1749097800000,
+            "endTime": 1749098160000,
+            "metrics": {
+              "rowsRead": 280000,
+              "rowsWritten": 8750,
+              "executionTimeMs": 360000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 280000,
+          "totalBytesProcessed": 42000000,
+          "cpuTime": 325.4,
+          "memoryUsed": 780000000,
+          "cost": 0.35
+        },
+        "error": {
+          "errorType": "WorkflowCancellation",
+          "errorMessage": "Upstream dependency failed: dim_address_etl execution failed, cancelling downstream tasks",
+          "stackTrace": "org.apache.airflow.exceptions.AirflowSkipException: Task skipped due to upstream failure\n\tat org.apache.airflow.models.TaskInstance.handle_failure(TaskInstance.java:1456)",
+          "failedTask": "trino_task"
+        }
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_airflow.dim_address_etl",
+    "pipelineStatus": [
+      {
+        "timestamp": 1751774400000,
+        "executionStatus": "Failed",
+        "executionId": "airflow_run_20250705_100000",
+        "endTime": 1751774550000,
+        "version": "1.4.2",
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Failed",
+            "startTime": 1751774400000,
+            "endTime": 1751774550000,
+            "metrics": {
+              "rowsRead": 8900,
+              "rowsWritten": 0,
+              "executionTimeMs": 150000
+            }
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Skipped",
+            "startTime": null,
+            "endTime": null
+          }
+        ],
+        "metrics": {
+          "totalRowsProcessed": 8900,
+          "totalBytesProcessed": 1495000,
+          "cpuTime": 142.5,
+          "memoryUsed": 285000000,
+          "cost": 0.05
+        },
+        "error": {
+          "errorType": "PermissionDeniedException",
+          "errorMessage": "Access denied: User 'etl_user' lacks SELECT permission on table 'raw_address'",
+          "stackTrace": "java.sql.SQLException: Permission denied for SELECT on raw_address\n\tat com.database.security.PermissionChecker.checkAccess(PermissionChecker.java:145)\n\tat com.etl.reader.TableReader.readData(TableReader.java:234)",
+          "failedTask": "dim_address_task"
+        }
+      },
+      {
+        "timestamp": 1754452800000,
+        "executionStatus": "Pending",
+        "executionId": "airflow_run_20250806_100000",
+        "endTime": null,
+        "version": "1.5.0",
+        "parameters": {
+          "date": "2025-08-06",
+          "env": "production",
+          "backfill": false
+        },
+        "taskStatus": [
+          {
+            "name": "dim_address_task",
+            "executionStatus": "Pending",
+            "startTime": 1754452800000,
+            "endTime": null
+          },
+          {
+            "name": "assert_table_exists",
+            "executionStatus": "Pending",
+            "startTime": null,
+            "endTime": null
+          }
+        ]
       }
     ]
   }
