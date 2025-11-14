@@ -54,7 +54,11 @@ class BulkLkmlParser(metaclass=Singleton):
     Supports multiple readers to aggregate views from multiple repositories.
     """
 
-    def __init__(self, reader: LocalReader, additional_readers: Optional[List[LocalReader]] = None):
+    def __init__(
+        self,
+        reader: LocalReader,
+        additional_readers: Optional[List[LocalReader]] = None,
+    ):
         self._views_cache: Dict[ViewName, LookMlView] = {}
         self._visited_files: Dict[Includes, List[Includes]] = {}
 

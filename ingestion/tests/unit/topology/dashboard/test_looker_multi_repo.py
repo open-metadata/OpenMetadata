@@ -16,9 +16,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
-    LookerConnection,
-)
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
@@ -113,7 +110,7 @@ view: customers {
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
         # Clear the BulkLkmlParser singleton instance between tests
-        if hasattr(BulkLkmlParser, '_instances'):
+        if hasattr(BulkLkmlParser, "_instances"):
             BulkLkmlParser._instances.clear()
 
     def test_comma_separated_repository_names(self):
@@ -152,7 +149,9 @@ view: customers {
 
         self.assertEqual(parsed, expected)
 
-    @patch("metadata.ingestion.source.dashboard.looker.bulk_parser.BulkLkmlParser.__init__")
+    @patch(
+        "metadata.ingestion.source.dashboard.looker.bulk_parser.BulkLkmlParser.__init__"
+    )
     def test_bulk_parser_multiple_readers(self, mock_init):
         """Test BulkLkmlParser accepts multiple readers"""
         mock_init.return_value = None
@@ -184,9 +183,7 @@ view: customers {
 
         # Verify views from both repositories are cached
         self.assertIn("users", parser._views_cache, "View from repo1 should be cached")
-        self.assertIn(
-            "orders", parser._views_cache, "View from repo2 should be cached"
-        )
+        self.assertIn("orders", parser._views_cache, "View from repo2 should be cached")
         self.assertIn(
             "customers", parser._views_cache, "View from repo2 should be cached"
         )
@@ -262,7 +259,9 @@ view: customers {
 
         # Create mock credentials with single repo
         github_creds = GitHubCredentials(
-            repositoryOwner="test-owner", repositoryName="single-repo", token="test-token"
+            repositoryOwner="test-owner",
+            repositoryName="single-repo",
+            token="test-token",
         )
 
         # Call the static method
