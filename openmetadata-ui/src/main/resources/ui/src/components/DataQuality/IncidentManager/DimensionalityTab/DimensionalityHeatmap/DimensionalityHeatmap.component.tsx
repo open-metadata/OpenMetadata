@@ -12,8 +12,9 @@
  */
 
 import { Box, CircularProgress, Tooltip, Typography } from '@mui/material';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
@@ -29,6 +30,8 @@ const DimensionalityHeatmap = ({
   isLoading = false,
 }: DimensionalityHeatmapProps) => {
   const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
 
   const dateRange = useMemo(
     () => generateDateRange(startDate, endDate),
@@ -39,6 +42,43 @@ const DimensionalityHeatmap = ({
     () => transformDimensionResultsToHeatmapData(data, startDate, endDate),
     [data, startDate, endDate]
   );
+
+  const handleScrollRight = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollBy({
+        left: 300,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const checkScroll = () => {
+    if (containerRef.current) {
+      const { scrollWidth, clientWidth, scrollLeft } = containerRef.current;
+      const hasHorizontalScroll = scrollWidth > clientWidth;
+      const isNotAtEnd = scrollLeft + clientWidth < scrollWidth - 5;
+      setShowScrollIndicator(hasHorizontalScroll && isNotAtEnd);
+    }
+  };
+
+  useEffect(() => {
+    // Use setTimeout to ensure DOM is fully rendered
+    const timeoutId = setTimeout(checkScroll, 100);
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScroll);
+    }
+    window.addEventListener('resize', checkScroll);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (container) {
+        container.removeEventListener('scroll', checkScroll);
+      }
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [heatmapData]);
 
   if (isLoading) {
     return (
@@ -58,81 +98,91 @@ const DimensionalityHeatmap = ({
 
   return (
     <Box className="dimensionality-heatmap">
-      <Box className="dimensionality-heatmap__container">
-        <Box
-          className="dimensionality-heatmap__grid"
-          sx={{
-            gridTemplateColumns: `150px repeat(${dateRange.length}, 44px)`,
-          }}>
-          <Box className="dimensionality-heatmap__header-corner" />
-          {dateRange.map((date) => (
-            <Box className="dimensionality-heatmap__header-cell" key={date}>
-              {getDateLabel(date)}
-            </Box>
-          ))}
+      <Box className="dimensionality-heatmap__wrapper">
+        <Box className="dimensionality-heatmap__container" ref={containerRef}>
+          <Box
+            className="dimensionality-heatmap__grid"
+            sx={{
+              gridTemplateColumns: `150px repeat(${dateRange.length}, 44px)`,
+            }}>
+            <Box className="dimensionality-heatmap__header-corner" />
+            {dateRange.map((date) => (
+              <Box className="dimensionality-heatmap__header-cell" key={date}>
+                {getDateLabel(date)}
+              </Box>
+            ))}
 
-          {heatmapData.map((row) => (
-            <>
-              <Tooltip
-                key={`label-${row.dimensionValue}`}
-                title={row.dimensionValue}>
-                <Box className="dimensionality-heatmap__dimension-label">
-                  {row.dimensionValue}
-                </Box>
-              </Tooltip>
-
-              {row.cells.map((cell) => (
+            {heatmapData.map((row) => (
+              <>
                 <Tooltip
-                  key={`${cell.dimensionValue}-${cell.date}`}
-                  placement="right"
-                  title={
-                    <Box>
-                      <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
-                        {cell.date}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11 }}>
-                        {`${t('label.dimension-value')}: ${
-                          cell.dimensionValue
-                        }`}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11 }}>
-                        {t('label.status')}:{' '}
-                        {cell.status === 'success'
-                          ? t('label.success')
-                          : cell.status === 'failed'
-                          ? t('label.failed')
-                          : cell.status === 'aborted'
-                          ? t('label.aborted')
-                          : t('label.no-data')}
-                      </Typography>
-                      {cell.result && (
-                        <>
-                          {cell.result.passedRows !== undefined && (
-                            <Typography sx={{ fontSize: 11 }}>
-                              {`${t('label.passed-rows')}: ${
-                                cell.result.passedRows
-                              }`}
-                            </Typography>
-                          )}
-                          {cell.result.failedRows !== undefined && (
-                            <Typography sx={{ fontSize: 11 }}>
-                              {`${t('label.failed-rows')}: ${
-                                cell.result.failedRows
-                              }`}
-                            </Typography>
-                          )}
-                        </>
-                      )}
-                    </Box>
-                  }>
-                  <Box
-                    className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status}`}
-                  />
+                  key={`label-${row.dimensionValue}`}
+                  title={row.dimensionValue}>
+                  <Box className="dimensionality-heatmap__dimension-label">
+                    {row.dimensionValue}
+                  </Box>
                 </Tooltip>
-              ))}
-            </>
-          ))}
+
+                {row.cells.map((cell) => (
+                  <Tooltip
+                    key={`${cell.dimensionValue}-${cell.date}`}
+                    placement="right"
+                    title={
+                      <Box>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
+                          {cell.date}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11 }}>
+                          {`${t('label.dimension-value')}: ${
+                            cell.dimensionValue
+                          }`}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11 }}>
+                          {t('label.status')}:{' '}
+                          {cell.status === 'success'
+                            ? t('label.success')
+                            : cell.status === 'failed'
+                            ? t('label.failed')
+                            : cell.status === 'aborted'
+                            ? t('label.aborted')
+                            : t('label.no-data')}
+                        </Typography>
+                        {cell.result && (
+                          <>
+                            {cell.result.passedRows !== undefined && (
+                              <Typography sx={{ fontSize: 11 }}>
+                                {`${t('label.passed-rows')}: ${
+                                  cell.result.passedRows
+                                }`}
+                              </Typography>
+                            )}
+                            {cell.result.failedRows !== undefined && (
+                              <Typography sx={{ fontSize: 11 }}>
+                                {`${t('label.failed-rows')}: ${
+                                  cell.result.failedRows
+                                }`}
+                              </Typography>
+                            )}
+                          </>
+                        )}
+                      </Box>
+                    }>
+                    <Box
+                      className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status}`}
+                    />
+                  </Tooltip>
+                ))}
+              </>
+            ))}
+          </Box>
         </Box>
+
+        {showScrollIndicator && (
+          <Box
+            className="dimensionality-heatmap__scroll-indicator"
+            onClick={handleScrollRight}>
+            <RightArrowIcon />
+          </Box>
+        )}
       </Box>
 
       <Box className="dimensionality-heatmap__legend">

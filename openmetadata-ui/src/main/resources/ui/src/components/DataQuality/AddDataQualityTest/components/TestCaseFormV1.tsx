@@ -965,12 +965,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         setCurrentColumnType(selectedColumnData?.dataType);
       }
     }
+
+    // Reset dimensionColumns when selectedColumn changes
+    form.setFieldValue('dimensionColumns', undefined);
   }, [
     selectedColumn,
     selectedTableData,
     currentColumnType,
     selectedTestLevel,
     fetchTestDefinitions,
+    form,
   ]);
 
   // Check for existing pipelines when table is selected
@@ -1126,7 +1130,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             />
           </Form.Item>
 
-          {selectedTestLevel === TestLevel.COLUMN && selectedTable && (
+          {selectedTestLevel === TestLevel.COLUMN && (
             <Form.Item
               label={t('label.select-entity', {
                 entity: t('label.column'),
@@ -1143,6 +1147,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               <Select
                 allowClear
                 showSearch
+                disabled={!selectedTable}
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
                 id="root/column"
@@ -1154,7 +1159,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               />
             </Form.Item>
           )}
-          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION && selectedTable && (
+          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION && (
             <Form.Item
               label={t('label.select-entity', {
                 entity: t('label.dimension-plural'),
@@ -1163,6 +1168,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               <Select
                 allowClear
                 showSearch
+                disabled={!selectedTable}
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
                 id="root/dimensionColumns"
@@ -1177,7 +1183,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           )}
         </Card>
 
-        <Card className="form-card-section" data-testid="test-type-card">
+        <Card
+          className="form-card-section test-type-card"
+          data-testid="test-type-card">
           <Form.Item className="custom-select-test-type-style m-b-md">
             {selectedTestLevel === TestLevel.TABLE && (
               <div

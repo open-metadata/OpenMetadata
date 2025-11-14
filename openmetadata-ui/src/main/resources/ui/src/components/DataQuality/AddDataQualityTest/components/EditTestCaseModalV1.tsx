@@ -511,7 +511,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                 )}
               </Card>
             )}
-            <Card className="form-card-section">
+            <Card className="form-card-section test-type-card">
               <Form.Item
                 required
                 label={t('label.test-entity', {
