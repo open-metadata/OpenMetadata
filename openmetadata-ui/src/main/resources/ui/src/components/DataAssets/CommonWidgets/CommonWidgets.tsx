@@ -90,7 +90,7 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, onUpdate, permissions, isVersionView } =
+  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
     useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
@@ -281,6 +281,7 @@ export const CommonWidgets = ({
         activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
+        multiple={entityRules.canAddMultipleDataProducts}
         onSave={handleDataProductsSave}
       />
     );
@@ -323,6 +324,7 @@ export const CommonWidgets = ({
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
+        multiSelect={entityRules.canAddMultipleGlossaryTerm}
         permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
         showTaskHandler={showTaskHandler && !isVersionView}
@@ -405,7 +407,12 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <DomainExpertWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 multiple showDomainHeading />;
+      return (
+        <DomainLabelV2
+          showDomainHeading
+          multiple={entityRules.canAddMultipleDomains}
+        />
+      );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

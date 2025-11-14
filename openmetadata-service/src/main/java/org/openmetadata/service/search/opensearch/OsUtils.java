@@ -37,9 +37,6 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
-import os.org.opensearch.common.settings.Settings;
-import os.org.opensearch.common.xcontent.NamedXContentRegistry;
-import os.org.opensearch.search.SearchModule;
 
 @Slf4j
 public class OsUtils {
@@ -55,6 +52,16 @@ public class OsUtils {
     }
   }
 
+  public static JsonData toJsonData(String doc) {
+    Map<String, Object> docMap;
+    try {
+      docMap = mapper.readValue(doc, new TypeReference<>() {});
+    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid JSON input", e);
+    }
+    return JsonData.of(docMap);
+  }
+
   public static String parseJsonQuery(String jsonQuery) throws JsonProcessingException {
     JsonNode rootNode = mapper.readTree(jsonQuery);
     String queryToProcess = jsonQuery;
@@ -68,12 +75,9 @@ public class OsUtils {
     return Base64.getEncoder().encodeToString(queryToProcess.getBytes());
   }
 
-  public static final NamedXContentRegistry osXContentRegistry;
   private static final ObjectMapper mapper;
 
   static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
-    osXContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
     mapper = new ObjectMapper();
   }
 

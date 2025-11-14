@@ -78,6 +78,11 @@ const mockGenericContext = {
     ViewCustomFields: true,
   },
   onUpdate: jest.fn(),
+  entityRules: {
+    canAddMultipleUserOwners: true,
+    canAddMultipleTeamOwner: true,
+    canAddMultipleDataProducts: true,
+  },
 };
 
 describe('CommonWidgets', () => {

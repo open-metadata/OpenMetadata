@@ -60,6 +60,17 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'pathname' })),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 describe('TableVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {

@@ -138,6 +138,17 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getCommonExtraInfoForVersionDetails: jest.fn().mockReturnValue({}),
 }));
 
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 describe('DatabaseVersionPage', () => {
   it('should render all necessary components', async () => {
     await act(async () => {

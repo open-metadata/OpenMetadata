@@ -15,11 +15,12 @@ Validator for column value median to be between test case
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, case, func, select
+from sqlalchemy import Column, String, case, func, literal, select
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_IMPACT_SCORE_KEY,
+    DIMENSION_NULL_LABEL,
     DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
@@ -41,6 +42,13 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+# CTE names for dimensional validation query chain
+CTE_NORMALIZED_DIMENSION = "normalized_dimension"
+CTE_DIMENSION_RAW_METRICS = "dimension_raw_metrics"
+CTE_STATS_WITH_IMPACT = "stats_with_impact"
+CTE_TOP_DIMENSIONS = "top_dimensions"
+CTE_CATEGORIZED = "categorized"
 
 
 class ColumnValueMedianToBeBetweenValidator(
@@ -64,25 +72,22 @@ class ColumnValueMedianToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
     ) -> List[DimensionResult]:
-        """Execute dimensional validation for median using two-pass approach
+        """Execute dimensional validation for median using normalized CTE approach.
 
-        Two-pass query strategy for accurate "Others" median:
+        Strategy:
+        1. Normalize dimension values in CTE (simple column, no CASE in GROUP BY)
+        2. Use Metrics.MEDIAN on CTE columns (automatically handles CTE reference)
+        3. Build dimensional aggregation query with custom CTE chain
+        4. Pass 2: Recompute "Others" median (existing logic, unchanged)
 
-        Pass 1: Compute median for top N dimensions using CTE-based aggregation
-                Returns "Others" row with median=None (cannot aggregate medians)
-
-        Pass 2: Recompute median for "Others" from raw table data
-                Query: SELECT MEDIAN(column) WHERE dimension NOT IN (top_N_values)
-                This mimics Pandas behavior of concatenating "Others" arrays
-
-        This approach ensures mathematical accuracy while maintaining performance
-        for the common case (top N dimensions computed in single query).
+        This approach avoids MySQL ONLY_FULL_GROUP_BY error by ensuring MedianFn's
+        correlated subquery references a simple column that IS in the GROUP BY clause.
 
         Args:
             column: The column being validated
             dimension_col: The dimension column to group by
-            metrics_to_compute: Dict mapping metric names to Metrics enums
-            test_params: Test parameters (min/max bounds)
+            metrics_to_compute: Dict mapping metric names to Metrics enums (unused)
+            test_params: Test parameters (minValue, maxValue)
 
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others" with accurate median
@@ -91,26 +96,53 @@ class ColumnValueMedianToBeBetweenValidator(
 
         try:
             # ==================== PASS 1: Top N Dimensions ====================
+            # Handle both Table and CTE/Alias cases (when partitioning is enabled)
+            if hasattr(self.runner.dataset, "__table__"):
+                table = self.runner.dataset.__table__
+            else:
+                table = self.runner.dataset
+
+            # Step 1: Build normalized dimension expression
+            # Cast dimension column to VARCHAR to ensure compatibility with string literals
+            # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+            dimension_col_as_string = func.cast(dimension_col, String)
+
+            normalized_dimension = case(
+                [
+                    (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                    (
+                        func.upper(dimension_col_as_string) == "NULL",
+                        literal(DIMENSION_NULL_LABEL),
+                    ),
+                ],
+                else_=dimension_col_as_string,
+            )
+
+            # Step 2: Create CTE with normalized dimension as simple column
+            # This avoids GROUP BY on CASE expression which causes correlation issues
+            normalized_dim_cte = (
+                select(
+                    [
+                        normalized_dimension.label("normalized_dim"),
+                        column.label("col_value"),
+                    ]
+                ).select_from(table)
+            ).cte(CTE_NORMALIZED_DIMENSION)
+
+            # Cache frequently accessed columns
+            normalized_dim_col = normalized_dim_cte.c.normalized_dim
+            col_value_col = normalized_dim_cte.c.col_value
+
+            # Step 3: Build metric expressions using CTE columns
+            # Metrics.MEDIAN will extract CTE name and generate correlation on simple column
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                Metrics.MEDIAN.name: add_props(dimension_col=dimension_col.name)(
+                Metrics.MEDIAN.name: add_props(dimension_col="normalized_dim")(
                     Metrics.MEDIAN.value
-                )(column).fn(),
+                )(col_value_col).fn(),
             }
 
-            def build_median_final(cte):
-                """For top N: use pre-computed median. For Others: return None."""
-                return case(
-                    [
-                        (
-                            getattr(cte.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.max(getattr(cte.c, Metrics.MEDIAN.name)),
-                        )
-                    ],
-                    else_=None,
-                )
-
+            # Step 4: Build failed count checker
             failed_count_builder = self._get_validation_checker(
                 test_params
             ).get_sqa_failed_rows_builder(
@@ -118,21 +150,116 @@ class ColumnValueMedianToBeBetweenValidator(
                 DIMENSION_TOTAL_COUNT_KEY,
             )
 
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                failed_count_builder,
-                final_metric_builders={
-                    Metrics.MEDIAN.name: build_median_final,
-                },
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            # Step 5: Build dimensional aggregation query
+            # Operating on normalized CTE, grouping by simple "normalized_dim" column
+
+            # CTE 1: Raw metrics per dimension (from normalized CTE)
+            raw_agg_columns = [normalized_dim_col.label(DIMENSION_VALUE_KEY)]
+            for name, expr in metric_expressions.items():
+                raw_agg_columns.append(expr.label(name))
+
+            raw_aggregates = (
+                select(raw_agg_columns)
+                .select_from(normalized_dim_cte)
+                .group_by(normalized_dim_col)  # Simple column!
+            ).cte(CTE_DIMENSION_RAW_METRICS)
+
+            # CTE 2: Add failed_count and impact_score
+            total_count_col = getattr(raw_aggregates.c, DIMENSION_TOTAL_COUNT_KEY)
+            failed_count_expr = failed_count_builder(raw_aggregates)
+            impact_score_expr = get_impact_score_expression(
+                failed_count_expr, total_count_col
             )
 
-            # ==================== PASS 2: Recompute "Others" Median ====================
-            # Convert immutable RowMapping objects to mutable dicts
-            result_rows = [dict(row) for row in result_rows]
+            stats_with_impact = (
+                select(
+                    [
+                        *[col for col in raw_aggregates.c],
+                        failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY),
+                        impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY),
+                    ]
+                ).select_from(raw_aggregates)
+            ).cte(CTE_STATS_WITH_IMPACT)
 
-            # Separate top N dimensions from "Others" row
+            # CTE 3: Top N dimensions by impact score
+            top_dimensions = (
+                select([getattr(stats_with_impact.c, DIMENSION_VALUE_KEY)])
+                .order_by(
+                    getattr(stats_with_impact.c, DIMENSION_IMPACT_SCORE_KEY).desc()
+                )
+                .limit(DEFAULT_TOP_DIMENSIONS)
+            ).cte(CTE_TOP_DIMENSIONS)
+
+            # CTE 4: Categorize as top N or "Others"
+            categorized = (
+                select(
+                    case(
+                        [
+                            (
+                                getattr(stats_with_impact.c, DIMENSION_VALUE_KEY).in_(
+                                    select(
+                                        [getattr(top_dimensions.c, DIMENSION_VALUE_KEY)]
+                                    )
+                                ),
+                                getattr(stats_with_impact.c, DIMENSION_VALUE_KEY),
+                            )
+                        ],
+                        else_=DIMENSION_OTHERS_LABEL,
+                    ).label(DIMENSION_GROUP_LABEL),
+                    *[
+                        col
+                        for col in stats_with_impact.c
+                        if col.name != DIMENSION_VALUE_KEY
+                    ],
+                ).select_from(stats_with_impact)
+            ).cte(CTE_CATEGORIZED)
+
+            # Step 6: Final aggregation for "Others"
+            # Cache column references for cleaner query building
+            group_label_col = getattr(categorized.c, DIMENSION_GROUP_LABEL)
+            total_count_categorized = getattr(categorized.c, DIMENSION_TOTAL_COUNT_KEY)
+            median_col = getattr(categorized.c, Metrics.MEDIAN.name)
+            failed_count_categorized = getattr(
+                categorized.c, DIMENSION_FAILED_COUNT_KEY
+            )
+            impact_score_categorized = getattr(
+                categorized.c, DIMENSION_IMPACT_SCORE_KEY
+            )
+
+            # Build aggregates
+            summed_total_count = func.sum(total_count_categorized)
+            summed_failed_count = func.sum(failed_count_categorized)
+            max_impact_score = func.max(impact_score_categorized)
+
+            # For "Others": median=None (recomputed in Pass 2)
+            final_query = (
+                select(
+                    [
+                        group_label_col.label(DIMENSION_VALUE_KEY),
+                        summed_total_count.label(DIMENSION_TOTAL_COUNT_KEY),
+                        case(
+                            [
+                                (
+                                    group_label_col != DIMENSION_OTHERS_LABEL,
+                                    func.max(median_col),
+                                )
+                            ],
+                            else_=None,
+                        ).label(Metrics.MEDIAN.name),
+                        summed_failed_count.label(DIMENSION_FAILED_COUNT_KEY),
+                        max_impact_score.label(DIMENSION_IMPACT_SCORE_KEY),
+                    ]
+                )
+                .select_from(categorized)
+                .group_by(group_label_col)
+                .order_by(max_impact_score.desc())
+            )
+
+            # Execute Pass 1
+            result_rows_raw = self.runner.session.execute(final_query).fetchall()
+            result_rows = [dict(row._mapping) for row in result_rows_raw]
+
+            # ==================== PASS 2: Recompute "Others" Median ====================
             top_n_rows = [
                 row
                 for row in result_rows
@@ -141,17 +268,15 @@ class ColumnValueMedianToBeBetweenValidator(
 
             has_others = len(top_n_rows) < len(result_rows)
 
-            # Recompute "Others" only if it existed in Pass 1
-            if has_others:
-                if recomputed_others := self._compute_others_median(
+            if has_others and (
+                recomputed_others := self._compute_others_median(
                     column,
                     dimension_col,
                     failed_count_builder,
                     top_n_rows,
-                ):
-                    result_rows = top_n_rows + [recomputed_others]
-                else:
-                    result_rows = top_n_rows
+                )
+            ):
+                result_rows = top_n_rows + [recomputed_others]
             else:
                 result_rows = top_n_rows
 
@@ -167,10 +292,7 @@ class ColumnValueMedianToBeBetweenValidator(
                     )
                     continue
 
-                metric_values = {
-                    Metrics.MEDIAN.name: median_value,
-                }
-
+                metric_values = {Metrics.MEDIAN.name: median_value}
                 evaluation = self._evaluate_test_condition(metric_values, test_params)
 
                 dimension_result = self._create_dimension_result(
@@ -210,16 +332,27 @@ class ColumnValueMedianToBeBetweenValidator(
         Returns:
             New "Others" row dict with recomputed metrics, or None if computation failed
         """
-        # Extract top N dimension values (result_rows no longer contains "Others")
         top_dimension_values = [row[DIMENSION_VALUE_KEY] for row in result_rows]
 
-        # If no top dimensions to exclude, cannot compute "Others"
         if not top_dimension_values:
             return None
 
         try:
+            # Cast dimension column to VARCHAR and normalize it (same as Pass 1)
+            # This ensures type compatibility when comparing with string top_dimension_values
+            dimension_col_as_string = func.cast(dimension_col, String)
+            normalized_dimension = case(
+                [
+                    (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                    (
+                        func.upper(dimension_col_as_string) == "NULL",
+                        literal(DIMENSION_NULL_LABEL),
+                    ),
+                ],
+                else_=dimension_col_as_string,
+            )
+
             # Compute median directly on base table with WHERE filter
-            # (Cannot use Metrics.MEDIAN on alias due to scalar subquery limitation)
             median_expr = Metrics.MEDIAN(column).fn()
             total_count_expr = func.count()
 
@@ -233,23 +366,25 @@ class ColumnValueMedianToBeBetweenValidator(
                     ]
                 )
                 .select_from(self.runner.dataset)
-                .where(dimension_col.notin_(top_dimension_values))
+                .where(normalized_dimension.notin_(top_dimension_values))
             ).alias("others_stats")
+
+            # Cache column references
+            median_col = getattr(stats_subquery.c, Metrics.MEDIAN.name)
+            total_count_col = getattr(stats_subquery.c, DIMENSION_TOTAL_COUNT_KEY)
 
             # Apply failed_count builder to stats subquery (reused from Pass 1)
             failed_count_expr = failed_count_builder(stats_subquery)
 
             # Calculate impact score in SQL (same expression as Pass 1)
-            total_count_col = getattr(stats_subquery.c, DIMENSION_TOTAL_COUNT_KEY)
             impact_score_expr = get_impact_score_expression(
                 failed_count_expr, total_count_col
             )
 
             # Final query: median, total_count, failed_count, impact_score
-            # All computed in SQL just like Pass 1
             others_query = select(
                 [
-                    getattr(stats_subquery.c, Metrics.MEDIAN.name),
+                    median_col,
                     total_count_col,
                     failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY),
                     impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY),
@@ -269,7 +404,6 @@ class ColumnValueMedianToBeBetweenValidator(
                     impact_score,
                 )
 
-                # Return new "Others" row with SQL-computed values
                 return {
                     DIMENSION_VALUE_KEY: DIMENSION_OTHERS_LABEL,
                     Metrics.MEDIAN.name: others_median,
