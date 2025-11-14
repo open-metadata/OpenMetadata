@@ -107,6 +107,7 @@ export enum Operation {
     EditTests = "EditTests",
     EditTier = "EditTier",
     EditUsage = "EditUsage",
+    EditUserNotificationTemplate = "EditUserNotificationTemplate",
     EditUsers = "EditUsers",
     GenerateToken = "GenerateToken",
     Impersonate = "Impersonate",
