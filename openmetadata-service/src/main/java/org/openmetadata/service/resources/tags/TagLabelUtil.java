@@ -127,22 +127,26 @@ public class TagLabelUtil {
   }
 
   public static void applyTagCommonFields(TagLabel label) {
+    if (label.getSource() == TagSource.CLASSIFICATION) {
+      Tag tag = getTag(label.getTagFQN());
+      label.setName(tag.getName());
+      label.setDisplayName(tag.getDisplayName());
+      label.setDescription(tag.getDescription());
+      label.setStyle(tag.getStyle());
+    } else if (label.getSource() == TagSource.GLOSSARY) {
+      GlossaryTerm glossaryTerm = getGlossaryTerm(label.getTagFQN());
+      label.setName(glossaryTerm.getName());
+      label.setDisplayName(glossaryTerm.getDisplayName());
+      label.setDescription(glossaryTerm.getDescription());
+      label.setStyle(glossaryTerm.getStyle());
+    } else {
+      throw new IllegalArgumentException("Invalid source type " + label.getSource());
+    }
+  }
+
+  public static void applyTagCommonFieldsGracefully(TagLabel label) {
     try {
-      if (label.getSource() == TagSource.CLASSIFICATION) {
-        Tag tag = getTag(label.getTagFQN());
-        label.setName(tag.getName());
-        label.setDisplayName(tag.getDisplayName());
-        label.setDescription(tag.getDescription());
-        label.setStyle(tag.getStyle());
-      } else if (label.getSource() == TagSource.GLOSSARY) {
-        GlossaryTerm glossaryTerm = getGlossaryTerm(label.getTagFQN());
-        label.setName(glossaryTerm.getName());
-        label.setDisplayName(glossaryTerm.getDisplayName());
-        label.setDescription(glossaryTerm.getDescription());
-        label.setStyle(glossaryTerm.getStyle());
-      } else {
-        throw new IllegalArgumentException("Invalid source type " + label.getSource());
-      }
+      applyTagCommonFields(label);
     } catch (Exception ex) {
       LOG.warn(
           "Failed to apply common fields for {} tag '{}'. Tag label will be returned without enrichment. Error: {}",
@@ -170,7 +174,46 @@ public class TagLabelUtil {
     }
   }
 
+  /**
+   * Add derived tags to the given tag labels. This method is used in WRITE operations (create,
+   * update) and will throw an exception if any derived tags cannot be fetched due to missing
+   * entities.
+   *
+   * @param tagLabels the tag labels to add derived tags to
+   * @return the tag labels with derived tags added
+   * @throws RuntimeException if derived tags cannot be fetched
+   */
   public static List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
+    if (nullOrEmpty(tagLabels)) {
+      return tagLabels;
+    }
+
+    List<TagLabel> filteredTags =
+        tagLabels.stream()
+            .filter(Objects::nonNull)
+            .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
+            .toList();
+
+    List<TagLabel> updatedTagLabels = new ArrayList<>();
+    EntityUtil.mergeTags(updatedTagLabels, filteredTags);
+    for (TagLabel tagLabel : tagLabels) {
+      if (tagLabel != null) {
+        EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+      }
+    }
+    updatedTagLabels.sort(compareTagLabel);
+    return updatedTagLabels;
+  }
+
+  /**
+   * Add derived tags to the given tag labels with graceful error handling. This method is used in
+   * READ operations (getByName, list) and will log a warning but continue if any derived tags
+   * cannot be fetched due to missing entities.
+   *
+   * @param tagLabels the tag labels to add derived tags to
+   * @return the tag labels with derived tags added (missing derived tags are skipped)
+   */
+  public static List<TagLabel> addDerivedTagsGracefully(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }

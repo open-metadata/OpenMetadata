@@ -54,6 +54,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
@@ -2957,7 +2958,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Populate Glossary Tags on Read
-    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
+    return addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
@@ -6584,7 +6585,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (fieldTags == null) {
             field.setTags(new ArrayList<>());
           } else {
-            field.setTags(addDerivedTags(fieldTags));
+            field.setTags(addDerivedTagsGracefully(fieldTags));
           }
         }
       }
