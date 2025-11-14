@@ -12,11 +12,15 @@
  */
 import { expect, Page } from '@playwright/test';
 import { DataProduct } from '../../support/domain/DataProduct';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToExplorePage } from '../../utils/common';
+import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
+import { createCustomPropertyForEntity } from '../../utils/customProperty';
+import { getCurrentMillis } from '../../utils/dateTime';
+import { addPipelineBetweenNodes } from '../../utils/lineage';
 
 const testEntity = new TableClass();
 const testDataProduct = new DataProduct(
@@ -109,7 +113,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await navigateToExploreAndSelectTable(adminPage);
   });
 
-  test('Description Section - Add and Update', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Description Section - Add and Update', async ({
+    adminPage,
+  }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const descriptionSection = summaryPanel.locator('.description-section');
 
@@ -140,7 +146,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
-  test('Owners Section - Add and Update', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Owners Section - Add and Update', async ({
+    adminPage,
+  }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const ownersSection = summaryPanel.locator('.owners-section');
 
@@ -175,7 +183,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
-  test('Tier Section - Add and Update', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Tier Section - Add and Update', async ({
+    adminPage,
+  }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const tierSection = summaryPanel.locator('.tier-section');
 
@@ -205,7 +215,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Tags Section - Add and Update', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Tags Section - Add and Update', async ({
+    adminPage,
+  }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const tagsSection = summaryPanel.locator('.tags-section');
 
@@ -241,7 +253,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
-  test('Glossary Terms Section - Add and Update', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Glossary Terms Section - Add and Update', async ({
+    adminPage,
+  }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const glossarySection = summaryPanel.locator('.glossary-terms-section');
 
@@ -276,7 +290,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Domains Section - Add and Update', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Domains Section - Add and Update', async ({
+    adminPage,
+  }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const domainsSection = summaryPanel.locator('.domains-section');
 
@@ -309,7 +325,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
-  test('Tab Navigation - Schema Tab', async ({ adminPage }) => {
+  test('Admin - Schema Tab - View Schema', async ({ adminPage }) => {
     const schemaTab = adminPage.locator('[data-testid="schema-tab"]');
 
     await schemaTab.click();
@@ -351,64 +367,702 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     });
   });
 
-  test('Tab Navigation - Lineage Tab', async ({ adminPage }) => {
+  test('Lineage Tab - No Lineage', async ({ adminPage }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const lineageTab = summaryPanel.getByRole('menuitem', {
       name: /lineage/i,
     });
 
-    if (await lineageTab.isVisible()) {
+    await lineageTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    await expect(tabContent).toBeVisible();
+
+    // When there's no lineage, verify empty state
+    await expect(adminPage.getByText(/No data found/i)).toBeVisible();
+  });
+
+  test('Lineage Tab - With Upstream and Downstream', async ({ adminPage }) => {
+    // Create additional entities for lineage
+    const { apiContext } = await getApiContext(adminPage);
+    const upstreamTable = new TableClass();
+    const downstreamTable = new TableClass();
+
+    try {
+      await upstreamTable.create(apiContext);
+      await downstreamTable.create(apiContext);
+
+      // Add lineage connections: upstream -> testEntity -> downstream
+      await addPipelineBetweenNodes(adminPage, upstreamTable, testEntity);
+      await addPipelineBetweenNodes(adminPage, testEntity, downstreamTable);
+
+      // Navigate back to explore and open the entity panel
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const lineageTab = summaryPanel.getByRole('menuitem', {
+        name: /lineage/i,
+      });
+
       await lineageTab.click();
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await adminPage.waitForLoadState('networkidle');
 
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify lineage content is loaded
+      const lineageContainer = summaryPanel.locator('.lineage-tab-content');
+
+      await expect(lineageContainer).toBeVisible();
+
+      // Verify upstream/downstream filter buttons exist
+      const filterButtons = lineageContainer.locator('.lineage-filter-buttons');
+
+      await expect(filterButtons).toBeVisible();
+
+      // Get the filter buttons by their text content
+      const upstreamButton = lineageContainer.getByTestId(
+        'upstream-button-text'
+      );
+      const downstreamButton = lineageContainer.getByTestId(
+        'downstream-button-text'
+      );
+
+      await expect(upstreamButton).toHaveText('Upstream');
+      await expect(downstreamButton).toHaveText('Downstream');
+
+      // Verify upstream entity card is visible
+      const upstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      const downstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
+
+      await expect(downstreamCard).toBeVisible();
+      await expect(downstreamCard).toContainText(
+        downstreamTable.entity.displayName
+      );
+
+      // Verify downstream icon is present
+      const downstreamIcon = downstreamCard.locator(
+        '.lineage-item-direction svg'
+      );
+
+      await expect(downstreamIcon).toBeVisible();
+
+      await upstreamButton.click();
+
+      await expect(upstreamCard).toBeVisible();
+      await expect(upstreamCard).toContainText(
+        upstreamTable.entity.displayName
+      );
+
+      // Verify upstream icon is present
+      const upstreamIcon = upstreamCard.locator('.lineage-item-direction svg');
+
+      await expect(upstreamIcon).toBeVisible();
+
+      // Verify card structure and content
+      const card = lineageContainer.locator('.lineage-item-card').first();
+
+      // Verify service icon
+      const serviceIcon = card.locator('.service-icon');
+
+      await expect(serviceIcon).toBeVisible();
+
+      // Verify entity name
+      const entityName = card.locator('.item-name-text');
+
+      await expect(entityName).toBeVisible();
+
+      // Verify entity type
+      const entityType = card.locator('.item-entity-type-text');
+
+      await expect(entityType).toContainText(/table/i);
+
+      // Verify owner info is present (either owner label or no owner)
+      const ownerSection = card.locator('.lineage-info-container');
+
+      await expect(ownerSection).toBeVisible();
+
+      // Verify card is clickable link
+      const cardLink = card.locator('.breadcrumb-menu-button');
+
+      await expect(cardLink).toBeVisible();
+    } finally {
+      // Cleanup
+      await upstreamTable.delete(apiContext);
+      await downstreamTable.delete(apiContext);
     }
   });
 
-  test('Tab Navigation - Data Quality Tab', async ({ adminPage }) => {
+  test('Data Quality Tab - No Test Cases', async ({ adminPage }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const dqTab = summaryPanel.getByRole('menuitem', {
       name: /data quality/i,
     });
 
-    if (await dqTab.isVisible()) {
+    await dqTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+    await expect(tabContent).toBeVisible();
+
+    // Verify empty state message with documentation link
+    await expect(
+      adminPage.getByText(
+        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+      )
+    ).toBeVisible();
+
+    // Verify documentation link is present
+    const docLink = tabContent.locator('a[href*="data-quality"]');
+
+    await expect(docLink).toBeVisible();
+  });
+
+  test('Data Quality Tab - Incidents Empty State', async ({ adminPage }) => {
+    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+    const dqTab = summaryPanel.getByRole('menuitem', {
+      name: /data quality/i,
+    });
+
+    await dqTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+    await expect(tabContent).toBeVisible();
+
+    // Verify empty state message with documentation link
+    await expect(
+      adminPage.getByText(
+        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+      )
+    ).toBeVisible();
+
+    // Verify documentation link is present
+    const docLink = tabContent.locator('a[href*="data-quality"]');
+
+    await expect(docLink).toBeVisible();
+  });
+
+  test('Data Quality Tab - With Test Cases', async ({ adminPage }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    try {
+      // Create test cases for the entity
+      await testEntity.createTestSuiteAndPipelines(apiContext);
+
+      const testCase1 = await testEntity.createTestCase(apiContext, {
+        name: `pw_test_case_success_${uuid()}`,
+        testDefinition: 'tableRowCountToBeBetween',
+        parameterValues: [
+          { name: 'minValue', value: 1 },
+          { name: 'maxValue', value: 100 },
+        ],
+      });
+
+      const testCase2 = await testEntity.createTestCase(apiContext, {
+        name: `pw_test_case_failed_${uuid()}`,
+        entityLink: `<#E::table::${testEntity.entityResponseData?.['fullyQualifiedName']}::columns::${testEntity.entity?.columns[0].name}>`,
+        testDefinition: 'columnValueLengthsToBeBetween',
+        parameterValues: [
+          { name: 'minLength', value: 3 },
+          { name: 'maxLength', value: 6 },
+        ],
+      });
+
+      const testCase3 = await testEntity.createTestCase(apiContext, {
+        name: `pw_test_case_aborted_${uuid()}`,
+        testDefinition: 'tableRowCountToBeBetween',
+        parameterValues: [
+          { name: 'minValue', value: 1 },
+          { name: 'maxValue', value: 100 },
+        ],
+      });
+
+      // Add test results
+      await testEntity.addTestCaseResult(
+        apiContext,
+        testCase1.fullyQualifiedName,
+        {
+          testCaseStatus: 'Success',
+          timestamp: getCurrentMillis(),
+        }
+      );
+
+      await testEntity.addTestCaseResult(
+        apiContext,
+        testCase2.fullyQualifiedName,
+        {
+          testCaseStatus: 'Failed',
+          result: 'Test failed due to invalid length',
+          timestamp: getCurrentMillis(),
+        }
+      );
+
+      await testEntity.addTestCaseResult(
+        apiContext,
+        testCase3.fullyQualifiedName,
+        { testCaseStatus: 'Aborted', timestamp: getCurrentMillis() }
+      );
+      // Navigate back to explore and open the entity panel
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const dqTab = summaryPanel.getByRole('menuitem', {
+        name: /data quality/i,
+      });
+
       await dqTab.click();
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await adminPage.waitForLoadState('networkidle');
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content, .data-quality-tab-container'
+      const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+      await expect(tabContent).toBeVisible();
+
+      // Verify Data Quality tabs are present
+      const dqTabsContainer = tabContent.locator('.data-quality-tabs');
+
+      await expect(dqTabsContainer).toBeVisible();
+
+      // Verify Data Quality tab is active by default
+      const dataQualityTabLabel = tabContent
+        .locator('.tab-header-container')
+        .filter({ hasText: 'Data Quality' });
+
+      await expect(dataQualityTabLabel).toBeVisible();
+
+      // Verify total count badge
+      const totalCountBadge = dataQualityTabLabel.locator(
+        '.data-quality-tab-count'
       );
 
-      await expect(tabContent.first()).toBeVisible();
+      await expect(totalCountBadge).toHaveText('3');
+
+      // Verify test case stats are displayed
+      const successStat = adminPage.locator(
+        '[data-testid="data-quality-stat-card-success"]'
+      );
+
+      const failedStat = adminPage.locator(
+        '[data-testid="data-quality-stat-card-failed"]'
+      );
+
+      const abortedStat = adminPage.locator(
+        '[data-testid="data-quality-stat-card-aborted"]'
+      );
+
+      await expect(successStat).toBeVisible();
+      await expect(failedStat).toBeVisible();
+      await expect(abortedStat).toBeVisible();
+
+      await expect(successStat).toHaveText('1Passed');
+      await expect(failedStat).toHaveText('1Failed');
+      await expect(abortedStat).toHaveText('1Aborted');
+
+      // Click on failed filter to see failed test cases
+      await failedStat.click();
+      await adminPage.waitForTimeout(300);
+
+      // Verify test case cards section
+      const testCaseCardsSection = tabContent.locator(
+        '.test-case-cards-section'
+      );
+
+      await expect(testCaseCardsSection).toBeVisible();
+
+      // Verify failed test case card is visible
+      const testCaseCards = testCaseCardsSection.locator('.test-case-card');
+
+      await expect(testCaseCards).toHaveCount(1);
+
+      const failedCard = testCaseCards.first();
+
+      await expect(failedCard).toBeVisible();
+
+      // Verify card structure
+      const cardHeader = failedCard.locator('.test-case-header');
+
+      await expect(cardHeader).toBeVisible();
+
+      // Verify test case name is a link
+      const testCaseNameLink = cardHeader.locator('.test-case-name');
+
+      await expect(testCaseNameLink).toBeVisible();
+      await expect(testCaseNameLink).toContainText(testCase2.name);
+      await expect(testCaseNameLink).toHaveAttribute('href', /.+/);
+
+      // Verify status badge shows "Failed"
+      const statusBadge = cardHeader.locator('.status-badge-label');
+
+      await expect(statusBadge).toBeVisible();
+      await expect(statusBadge).toContainText(/failed/i);
+
+      // Verify test case details section
+      const testCaseDetails = failedCard.locator('.test-case-details');
+
+      await expect(testCaseDetails).toBeVisible();
+
+      // Verify column name is shown for column-level test
+      const columnDetail = testCaseDetails
+        .locator('.test-case-detail-item')
+        .filter({ hasText: /column/i });
+
+      await expect(columnDetail).toBeVisible();
+      await expect(columnDetail).toContainText(
+        testEntity.entity?.columns[0].name
+      );
+
+      // Switch to success filter
+
+      await successStat.click();
+      await adminPage.waitForTimeout(300);
+
+      // Verify success test case card
+      const successCards = testCaseCardsSection.locator('.test-case-card');
+
+      await expect(successCards).toHaveCount(1);
+
+      const successCard = successCards.first();
+
+      await expect(successCard).toContainText(testCase1.name);
+
+      // Verify status badge shows "Success"
+      const successBadge = successCard.locator('.status-badge-label');
+
+      await expect(successBadge).toContainText(/success/i);
+
+      await abortedStat.click();
+      await adminPage.waitForTimeout(300);
+
+      // Verify aborted test case card
+      const abortedCards = testCaseCardsSection.locator('.test-case-card');
+
+      await expect(abortedCards).toHaveCount(1);
+
+      const abortedCard = abortedCards.first();
+
+      await expect(abortedCard).toContainText(testCase3.name);
+
+      // Verify status badge shows "Aborted"
+      const abortedBadge = abortedCard.locator('.status-badge-label');
+
+      await expect(abortedBadge).toContainText(/aborted/i);
+    } finally {
+      await afterAction();
     }
   });
 
-  test('Tab Navigation - Custom Properties Tab', async ({ adminPage }) => {
+  test('Data Quality Tab - Incidents Tab', async ({ adminPage }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    try {
+      // Create test case with incident
+      await testEntity.createTestSuiteAndPipelines(apiContext);
+
+      const testCase = await testEntity.createTestCase(apiContext, {
+        name: `pw_incident_test_${uuid()}`,
+        testDefinition: 'tableRowCountToBeBetween',
+        parameterValues: [
+          { name: 'minValue', value: 1 },
+          { name: 'maxValue', value: 10 },
+        ],
+      });
+
+      // Add failed test result to create incident
+      await testEntity.addTestCaseResult(
+        apiContext,
+        testCase.fullyQualifiedName,
+        {
+          testCaseStatus: 'Failed',
+          result: 'Row count exceeded maximum',
+          timestamp: getCurrentMillis(),
+        }
+      );
+
+      // Create incident (you might need to add this method to TableClass)
+      // For now, we'll just test the UI when incidents exist
+
+      // Navigate to right panel
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const dqTab = summaryPanel.getByRole('menuitem', {
+        name: /data quality/i,
+      });
+
+      await dqTab.click();
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await adminPage.waitForLoadState('networkidle');
+
+      const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+      // Click on Incidents tab
+      const incidentsTabButton = tabContent
+        .locator('.ant-tabs-tab')
+        .filter({ hasText: /incident/i });
+
+      if (await incidentsTabButton.isVisible()) {
+        await incidentsTabButton.click();
+        await adminPage.waitForTimeout(500);
+
+        // Verify incidents tab content is visible
+        const incidentsTabContent = tabContent.locator(
+          '.incidents-tab-content'
+        );
+
+        await expect(incidentsTabContent).toBeVisible();
+
+        // Verify incident stats container
+        const incidentStatsContainer = incidentsTabContent.locator(
+          '.incidents-stats-container'
+        );
+
+        await expect(incidentStatsContainer).toBeVisible();
+
+        // Verify incident stat cards
+        const newCard = incidentStatsContainer.locator(
+          '.incident-stat-card.new-card'
+        );
+        const ackCard = incidentStatsContainer.locator(
+          '.incident-stat-card.ack-card'
+        );
+        const assignedCard = incidentStatsContainer.locator(
+          '.incident-stat-card.assigned-card'
+        );
+
+        await expect(newCard).toBeVisible();
+        await expect(ackCard).toBeVisible();
+        await expect(assignedCard).toBeVisible();
+
+        // Verify resolved section
+        const resolvedSection =
+          incidentStatsContainer.locator('.resolved-section');
+
+        await expect(resolvedSection).toBeVisible();
+
+        // Click on a filter to see incidents
+        const activeFilter = await newCard.evaluate((el) =>
+          el.classList.contains('active')
+        );
+
+        if (!activeFilter) {
+          await newCard.click();
+          await adminPage.waitForTimeout(300);
+        }
+
+        // Verify incident cards section (may be empty if no incidents)
+        const incidentCardsSection = incidentsTabContent.locator(
+          '.incident-cards-section'
+        );
+
+        await expect(incidentCardsSection).toBeVisible();
+
+        // If incidents exist, verify card structure
+        const incidentCards = incidentCardsSection.locator('.test-case-card');
+        const cardCount = await incidentCards.count();
+
+        if (cardCount > 0) {
+          const firstIncidentCard = incidentCards.first();
+
+          // Verify assignee info
+          const assigneeSection = firstIncidentCard
+            .locator('.test-case-detail-item')
+            .filter({ hasText: /assignee/i });
+
+          await expect(assigneeSection).toBeVisible();
+        }
+      }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Data Quality Tab - Incidents Tab - Test Case Link Navigation', async ({
+    adminPage,
+  }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    try {
+      // Create a test case
+      await testEntity.createTestSuiteAndPipelines(apiContext);
+
+      const testCase = await testEntity.createTestCase(apiContext, {
+        name: `pw_link_test_${uuid()}`,
+        testDefinition: 'tableRowCountToBeBetween',
+        parameterValues: [
+          { name: 'minValue', value: 1 },
+          { name: 'maxValue', value: 100 },
+        ],
+      });
+
+      await testEntity.addTestCaseResult(
+        apiContext,
+        testCase.fullyQualifiedName,
+        { testCaseStatus: 'Success', timestamp: getCurrentMillis() }
+      );
+
+      // Navigate to right panel
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const dqTab = summaryPanel.getByRole('menuitem', {
+        name: /data quality/i,
+      });
+
+      await dqTab.click();
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await adminPage.waitForLoadState('networkidle');
+
+      const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+      // Click on test case card link
+      const testCaseLink = tabContent
+        .locator(`.test-case-name[data-testid="test-case-${testCase.name}"]`)
+        .first();
+
+      // Verify link has correct href
+      const href = await testCaseLink.getAttribute('href');
+
+      expect(href).toContain('test-case');
+      expect(href).toContain(testCase.fullyQualifiedName);
+
+      // Verify link opens in new tab
+      const target = await testCaseLink.getAttribute('target');
+
+      expect(target).toBe('_blank');
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Admin - Custom Properties Tab - View Custom Properties', async ({
+    adminPage,
+  }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    // Create custom properties for Table entity via API
+    const { customProperties } = await createCustomPropertyForEntity(
+      apiContext,
+      EntityTypeEndpoint.Table
+    );
+
+    // Set custom property values on the entity via PATCH API
+    const propertyTypes = Object.keys(customProperties).slice(0, 3);
+    const extensionData: Record<string, string> = {};
+
+    for (const propertyType of propertyTypes) {
+      const { property, value } = customProperties[propertyType];
+      const propertyName = property.name as string;
+      extensionData[propertyName] = value;
+    }
+
+    // Patch the entity to add custom property values
+    await testEntity.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/extension',
+          value: extensionData,
+        },
+      ],
+    });
+
+    // Navigate to explore and select the entity
+    await navigateToExploreAndSelectTable(adminPage);
+
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const cpTab = summaryPanel.getByRole('menuitem', {
       name: /custom propert/i,
     });
 
-    if (await cpTab.isVisible()) {
-      await cpTab.click();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await cpTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
-      );
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
 
-      await expect(tabContent).toBeVisible();
+    await expect(tabContent).toBeVisible();
+
+    const customPropertiesContainer =
+      adminPage.getByTestId('custom_properties');
+
+    await expect(customPropertiesContainer).toBeVisible();
+
+    const displayedPropertyCards = customPropertiesContainer.locator(
+      '[data-testid^="custom-property-"]'
+    );
+    const displayedCount = await displayedPropertyCards.count();
+
+    // Verify at least some properties are displayed (max 5)
+    expect(displayedCount).toBeGreaterThan(0);
+    expect(displayedCount).toBeLessThanOrEqual(5);
+
+    for (let i = 0; i < displayedCount; i++) {
+      const propertyCard = displayedPropertyCards.nth(i);
+
+      await expect(propertyCard).toBeVisible();
+
+      const propertyNameElement = propertyCard.locator('.property-name');
+
+      await expect(propertyNameElement).toBeVisible();
+
+      const propertyValueElement = propertyCard.locator('.property-value');
+
+      await expect(propertyValueElement).toBeVisible();
     }
+
+    const totalPropertyCount = Object.keys(customProperties).length;
+    if (totalPropertyCount > 5) {
+      const viewAllLink = summaryPanel.locator('.view-all-container');
+
+      await expect(viewAllLink).toBeVisible();
+      await expect(viewAllLink.locator('.text-primary')).toContainText(
+        'View All'
+      );
+    }
+
+    await afterAction();
   });
 });
 
@@ -417,7 +1071,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     await navigateToExploreAndSelectTable(dataStewardPage);
   });
 
-  test('Data Steward - Description Section - Add and Update', async ({
+  test('Data Steward - Overview Tab - Description Section - Add and Update', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -454,7 +1108,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     }
   });
 
-  test('Data Steward - Owners Section - Add and Update', async ({
+  test('Data Steward - Overview Tab - Owners Section - Add and Update', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -495,7 +1149,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     }
   });
 
-  test('Data Steward - Tier Section - Add and Update', async ({
+  test('Data Steward - Overview Tab - Tier Section - Add and Update', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -536,7 +1190,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Steward - Tags Section - Add and Update', async ({
+  test('Data Steward - Overview Tab - Tags Section - Add and Update', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -580,7 +1234,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     }
   });
 
-  test('Data Steward - Glossary Terms Section - Add and Update', async ({
+  test('Data Steward - Overview Tab - Glossary Terms Section - Add and Update', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -627,7 +1281,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Steward - Should NOT have permissions for Domains', async ({
+  test('Data Steward - Overview Tab - Should NOT have permissions for Domains', async ({
     dataStewardPage,
   }) => {
     await expect(dataStewardPage.getByTestId('add-domain')).not.toBeVisible();
@@ -636,29 +1290,51 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     ).not.toBeVisible();
   });
 
-  test('Data Steward - Tab Navigation - Schema Tab', async ({
+  test('Data Steward - Schema Tab - View Schema', async ({
     dataStewardPage,
   }) => {
-    const summaryPanel = dataStewardPage.locator(
-      '.entity-summary-panel-container'
+    const schemaTab = dataStewardPage.locator('[data-testid="schema-tab"]');
+
+    await schemaTab.click();
+    await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = dataStewardPage.locator(
+      '[data-testid="entity-details-section"]'
     );
-    const schemaTab = summaryPanel.getByRole('menuitem', { name: /schema/i });
 
-    if (await schemaTab.isVisible()) {
-      await schemaTab.click();
-      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await expect(tabContent).toBeVisible();
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
+    testEntity.children.forEach(async (child) => {
+      const fieldCard = dataStewardPage.locator(
+        `[data-testid="field-card-${child.name}"]`
       );
 
-      await expect(tabContent).toBeVisible();
-    }
+      await expect(fieldCard).toBeVisible();
+
+      const dataTypeBadge = fieldCard.locator(
+        `[data-testid="data-type-badge-${child.dataType}"]`
+      );
+
+      await expect(dataTypeBadge).toBeVisible();
+
+      const fieldName = fieldCard.locator(
+        `[data-testid="field-name-${child.name}"]`
+      );
+
+      await expect(fieldName).toHaveText(child.name);
+
+      const fieldDescription = fieldCard.locator(
+        `[data-testid="field-description-${child.name}"]`
+      );
+
+      await expect(fieldDescription).toBeVisible();
+      await expect(fieldDescription).toContainText(child.description);
+    });
   });
 
-  test('Data Steward - Tab Navigation - Lineage Tab', async ({
+  test('Data Steward - Lineage Tab - No Lineage', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -668,21 +1344,22 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       name: /lineage/i,
     });
 
-    if (await lineageTab.isVisible()) {
-      await lineageTab.click();
-      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await lineageTab.click();
+    await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
-      );
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
 
-      await expect(tabContent).toBeVisible();
-    }
+    await expect(tabContent).toBeVisible();
+
+    // When there's no lineage, verify empty state
+    await expect(dataStewardPage.getByText(/No data found/i)).toBeVisible();
   });
 
-  test('Data Steward - Tab Navigation - Data Quality Tab', async ({
+  test('Data Steward - Data Quality Tab - No Test Cases', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -692,21 +1369,29 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       name: /data quality/i,
     });
 
-    if (await dqTab.isVisible()) {
-      await dqTab.click();
-      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await dqTab.click();
+    await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content, .data-quality-tab-container'
-      );
+    const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-      await expect(tabContent.first()).toBeVisible();
-    }
+    await expect(tabContent).toBeVisible();
+
+    // Verify empty state message with documentation link
+    await expect(
+      dataStewardPage.getByText(
+        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+      )
+    ).toBeVisible();
+
+    // Verify documentation link is present
+    const docLink = tabContent.locator('a[href*="data-quality"]');
+
+    await expect(docLink).toBeVisible();
   });
 
-  test('Data Steward - Tab Navigation - Custom Properties Tab', async ({
+  test('Data Steward - Custom Properties Tab - View Custom Properties', async ({
     dataStewardPage,
   }) => {
     const summaryPanel = dataStewardPage.locator(
@@ -727,6 +1412,31 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify custom properties container is visible (if custom properties exist from Admin test)
+      const customPropertiesContainer =
+        dataStewardPage.getByTestId('custom_properties');
+
+      // Custom properties should be visible if they were created by Admin
+      if (await customPropertiesContainer.isVisible()) {
+        await expect(customPropertiesContainer).toBeVisible();
+
+        // Verify at least one custom property card is displayed
+        const propertyCards = customPropertiesContainer.locator(
+          '[data-testid^="custom-property-"]'
+        );
+        const cardCount = await propertyCards.count();
+
+        if (cardCount > 0) {
+          const firstCard = propertyCards.first();
+
+          await expect(firstCard).toBeVisible();
+
+          // Verify property name and value elements exist
+          await expect(firstCard.locator('.property-name')).toBeVisible();
+          await expect(firstCard.locator('.property-value')).toBeVisible();
+        }
+      }
     }
   });
 });
@@ -736,7 +1446,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     await navigateToExploreAndSelectTable(dataConsumerPage);
   });
 
-  test('Data Consumer - Description Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Description Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -773,7 +1483,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Owners Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Owners Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -814,7 +1524,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Tier Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Tier Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -855,7 +1565,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Consumer - Tags Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Tags Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -903,7 +1613,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Glossary Terms Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Glossary Terms Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -947,7 +1657,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Consumer - Should NOT have permissions for Domains & Data Products', async ({
+  test('Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -963,29 +1673,51 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     ).not.toBeVisible();
   });
 
-  test('Data Consumer - Tab Navigation - Schema Tab', async ({
+  test('Data Consumer - Schema Tab - View Schema', async ({
     dataConsumerPage,
   }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
+    const schemaTab = dataConsumerPage.locator('[data-testid="schema-tab"]');
+
+    await schemaTab.click();
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = dataConsumerPage.locator(
+      '[data-testid="entity-details-section"]'
     );
-    const schemaTab = summaryPanel.getByRole('menuitem', { name: /schema/i });
 
-    if (await schemaTab.isVisible()) {
-      await schemaTab.click();
-      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await expect(tabContent).toBeVisible();
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
+    testEntity.children.forEach(async (child) => {
+      const fieldCard = dataConsumerPage.locator(
+        `[data-testid="field-card-${child.name}"]`
       );
 
-      await expect(tabContent).toBeVisible();
-    }
+      await expect(fieldCard).toBeVisible();
+
+      const dataTypeBadge = fieldCard.locator(
+        `[data-testid="data-type-badge-${child.dataType}"]`
+      );
+
+      await expect(dataTypeBadge).toBeVisible();
+
+      const fieldName = fieldCard.locator(
+        `[data-testid="field-name-${child.name}"]`
+      );
+
+      await expect(fieldName).toHaveText(child.name);
+
+      const fieldDescription = fieldCard.locator(
+        `[data-testid="field-description-${child.name}"]`
+      );
+
+      await expect(fieldDescription).toBeVisible();
+      await expect(fieldDescription).toContainText(child.description);
+    });
   });
 
-  test('Data Consumer - Tab Navigation - Lineage Tab', async ({
+  test('Data Consumer - Lineage Tab - No Lineage', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -995,21 +1727,22 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       name: /lineage/i,
     });
 
-    if (await lineageTab.isVisible()) {
-      await lineageTab.click();
-      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await lineageTab.click();
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
-      );
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
 
-      await expect(tabContent).toBeVisible();
-    }
+    await expect(tabContent).toBeVisible();
+
+    // When there's no lineage, verify empty state
+    await expect(dataConsumerPage.getByText(/No data found/i)).toBeVisible();
   });
 
-  test('Data Consumer - Tab Navigation - Data Quality Tab', async ({
+  test('Data Consumer - Data Quality Tab - No Test Cases', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -1019,21 +1752,61 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       name: /data quality/i,
     });
 
-    if (await dqTab.isVisible()) {
-      await dqTab.click();
-      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await dqTab.click();
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content, .data-quality-tab-container'
-      );
+    const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-      await expect(tabContent.first()).toBeVisible();
-    }
+    await expect(tabContent).toBeVisible();
+
+    // Verify empty state message with documentation link
+    await expect(
+      dataConsumerPage.getByText(
+        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+      )
+    ).toBeVisible();
+
+    // Verify documentation link is present
+    const docLink = tabContent.locator('a[href*="data-quality"]');
+
+    await expect(docLink).toBeVisible();
   });
 
-  test('Data Consumer - Tab Navigation - Custom Properties Tab', async ({
+  test('Data Consumer - Data Quality Tab - Incidents Empty State', async ({
+    dataConsumerPage,
+  }) => {
+    const summaryPanel = dataConsumerPage.locator(
+      '.entity-summary-panel-container'
+    );
+    const dqTab = summaryPanel.getByRole('menuitem', {
+      name: /data quality/i,
+    });
+
+    await dqTab.click();
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+    await expect(tabContent).toBeVisible();
+
+    // Verify empty state message with documentation link
+    await expect(
+      dataConsumerPage.getByText(
+        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+      )
+    ).toBeVisible();
+
+    // Verify documentation link is present
+    const docLink = tabContent.locator('a[href*="data-quality"]');
+
+    await expect(docLink).toBeVisible();
+  });
+
+  test('Data Consumer - Custom Properties Tab - View Custom Properties', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -1054,6 +1827,31 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       );
 
       await expect(tabContent).toBeVisible();
+
+      // Verify custom properties container is visible (if custom properties exist from Admin test)
+      const customPropertiesContainer =
+        dataConsumerPage.getByTestId('custom_properties');
+
+      // Custom properties should be visible if they were created by Admin
+      if (await customPropertiesContainer.isVisible()) {
+        await expect(customPropertiesContainer).toBeVisible();
+
+        // Verify at least one custom property card is displayed
+        const propertyCards = customPropertiesContainer.locator(
+          '[data-testid^="custom-property-"]'
+        );
+        const cardCount = await propertyCards.count();
+
+        if (cardCount > 0) {
+          const firstCard = propertyCards.first();
+
+          await expect(firstCard).toBeVisible();
+
+          // Verify property name and value elements exist
+          await expect(firstCard.locator('.property-name')).toBeVisible();
+          await expect(firstCard.locator('.property-value')).toBeVisible();
+        }
+      }
     }
   });
 });

@@ -158,14 +158,19 @@ const CustomPropertiesSection = ({
           </Link>
         </div>
       )}
-      <div className="p-x-md">
+      <div className="p-x-md" data-testid="custom_properties">
         <div className="custom-properties-list">
           {customProperties.slice(0, 5).map((property: CustomProperty) => {
             const value = extensionData[property.name];
 
             return (
-              <div className="custom-property-item" key={property.name}>
-                <Typography.Text className="property-name">
+              <div
+                className="custom-property-item"
+                data-testid={`custom-property-${property.name}-card`}
+                key={property.name}>
+                <Typography.Text
+                  className="property-name"
+                  data-testid={`property-${property.name}-name`}>
                   {property.displayName || property.name}
                 </Typography.Text>
                 <Typography.Text className="property-value">
