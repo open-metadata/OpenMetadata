@@ -360,6 +360,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
+      Object[] lastDocumentsInBatch = null;
 
       if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
         List<Hit<JsonData>> hits = response.hits().hits();
@@ -381,6 +382,18 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             lastHitSortValues = lastHit.sort().toArray();
           }
         }
+
+        if (hits.size() <= size) {
+          Hit<JsonData> lastHit = hits.getLast();
+
+          List<FieldValue> sortValues = lastHit.sort();
+          if (sortValues != null && !sortValues.isEmpty()) {
+            lastDocumentsInBatch =
+                sortValues.stream()
+                    .map(v -> v == null ? null : String.valueOf(v._get()))
+                    .toArray(String[]::new);
+          }
+        }
       }
 
       long totalHits = 0;
@@ -388,7 +401,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         totalHits = response.hits().total().value();
       }
 
-      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+      return new SearchResultListMapper(
+          results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
@@ -823,6 +837,18 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     return stringWriter.toString();
   }
+
+  //  private String serializeFieldValueSearchResponse(Object[] searchResponse) {
+  //    JsonpMapper jsonpMapper = client._transport().jsonpMapper();
+  //    JsonProvider provider = jsonpMapper.jsonProvider();
+  //    StringWriter stringWriter = new StringWriter();
+  //    JsonGenerator generator = provider.createGenerator(stringWriter);
+  //
+  //    searchResponse.serialize(generator, jsonpMapper);
+  //    generator.close();
+  //
+  //    return stringWriter.toString();
+  //  }
 
   public Response doSearch(
       org.openmetadata.schema.search.SearchRequest request,
