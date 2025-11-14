@@ -73,7 +73,7 @@ public class OmAppJobListener implements JobListener {
         appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
 
-      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp, false);
       JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
       // Cache appId to avoid repeated repository lookups during status updates
       dataMap.put(APP_ID, jobApp.getId());
