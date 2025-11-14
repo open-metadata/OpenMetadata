@@ -246,7 +246,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       async () => {
         await removeOwnersFromList({
           page,
-          ownerNames: [user2.getUserName()],
+          ownerNames: [user2.getUserDisplayName()],
           endpoint: EntityTypeEndpoint.Table,
           dataTestId: 'data-assets-header',
         });
@@ -363,7 +363,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       async () => {
         await removeOwnersFromList({
           page,
-          ownerNames: [user2.getUserName()],
+          ownerNames: [user2.getUserDisplayName()],
           endpoint: EntityTypeEndpoint.Table,
           dataTestId: 'data-assets-header',
         });
@@ -478,7 +478,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       async () => {
         await removeOwnersFromList({
           page,
-          ownerNames: [user2.getUserName()],
+          ownerNames: [user2.getUserDisplayName()],
           endpoint: EntityTypeEndpoint.Table,
           dataTestId: 'data-assets-header',
         });

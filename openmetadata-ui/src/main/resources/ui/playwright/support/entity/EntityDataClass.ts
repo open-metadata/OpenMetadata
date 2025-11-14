@@ -63,19 +63,19 @@ export class EntityDataClass {
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
   static readonly user1 = new UserClass({
     email: `pw.user.one-${randomUUID}@example.com`,
-    firstName: 'PW%User',
+    firstName: 'PW.User.',
     lastName: `One-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly user2 = new UserClass({
     email: `pw.user.two-${randomUUID}@example.com`,
-    firstName: 'PW%User',
+    firstName: 'PW.User.',
     lastName: `Two-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly user3 = new UserClass({
     email: `pw.user.three-${randomUUID}@example.com`,
-    firstName: 'PW%User',
+    firstName: 'PW.User.',
     lastName: `Three-${randomUUID}`,
     password: 'User@OMD123',
   });

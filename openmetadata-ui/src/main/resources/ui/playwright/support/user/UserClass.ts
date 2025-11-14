@@ -194,7 +194,7 @@ export class UserClass {
   }
 
   getUserName() {
-    return this.responseData.name;;
+    return this.responseData.name;
   }
 
   getUserDisplayName() {
