@@ -105,6 +105,7 @@ export interface LineageEntityReference extends EntityReference {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;
   };
+  nodeDepth?: number;
   pagination_data?: {
     index?: number;
     parentId?: string;

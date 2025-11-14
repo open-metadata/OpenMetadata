@@ -65,7 +65,6 @@ import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.in
 import {
   EdgeDetails,
   EntityLineageResponse,
-  LineageData,
   LineageEntityReference,
   NodeData,
 } from '../../components/Lineage/Lineage.interface';
@@ -99,6 +98,7 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import {
   exportLineageAsync,
   getDataQualityLineage,
@@ -119,7 +119,6 @@ import {
   getClassifiedEdge,
   getConnectedNodesEdges,
   getEdgeDataFromEdge,
-  getELKLayoutedElements,
   getEntityTypeFromPlatformView,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -141,6 +140,7 @@ import {
   updateNodeType,
 } from '../../utils/EntityUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getELKLayoutedElementsV1 } from '../../utils/LineageLayoutUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
@@ -161,37 +161,41 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
-  const [reactFlowInstance, setReactFlowInstance] =
-    useState<ReactFlowInstance>();
+
+  const {
+    isEditMode,
+    setIsEditMode,
+    selectedNode,
+    setSelectedNode,
+    reactFlowInstance,
+    setReactFlowInstance,
+    activeLayer,
+    setActiveLayer,
+    activeNode,
+    setActiveNode,
+    entityLineage,
+    setEntityLineage,
+    lineageData,
+    setLineageData,
+    dataQualityLineage,
+    setDataQualityLineage,
+  } = useLineageStore();
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<SourceType>(
-    {} as SourceType
-  );
-  const [activeLayer, setActiveLayer] = useState<LineageLayer[]>([]);
 
   // Added this ref to compare the previous active layer with the current active layer.
   // We need to redraw the lineage if the column level lineage is added or removed.
   const prevActiveLayerRef = useRef<LineageLayer[]>([]);
 
-  const [activeNode, setActiveNode] = useState<Node>();
   const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge>();
-  const [entityLineage, setEntityLineage] = useState<EntityLineageResponse>({
-    nodes: [],
-    edges: [],
-    entity: {} as EntityReference,
-  });
-  const [lineageData, setLineageData] = useState<LineageData>();
   const [platformView, setPlatformView] = useState<LineagePlatformView>(
     LineagePlatformView.None
   );
   const [entity, setEntity] = useState<SourceType>();
   const navigate = useNavigate();
-  const [dataQualityLineage, setDataQualityLineage] =
-    useState<EntityLineageResponse>();
   const [updatedEntityLineage, setUpdatedEntityLineage] =
     useState<EntityLineageResponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -1509,7 +1513,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       const isColView = activeLayer.includes(LineageLayer.ColumnLevelLineage);
       const { nodes: layoutedNodes, edges: layoutedEdges } =
-        await getELKLayoutedElements(
+        await getELKLayoutedElementsV1(
           nodes,
           edges,
           isColView,
@@ -1700,17 +1704,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       isEditMode,
       nodes,
       edges,
-      reactFlowInstance,
-      entityLineage,
       lineageConfig,
-      selectedNode,
       selectedColumn,
       zoomValue,
       status,
       tracedNodes,
       tracedColumns,
       init,
-      activeLayer,
       columnsHavingLineage,
       expandAllColumns,
       platformView,
@@ -1751,23 +1751,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       dqHighlightedEdges,
     };
   }, [
-    dataQualityLineage,
     isDrawerOpen,
     loading,
-    isEditMode,
     nodes,
     edges,
-    entityLineage,
-    reactFlowInstance,
     lineageConfig,
-    selectedNode,
     selectedColumn,
     zoomValue,
     status,
     tracedNodes,
     tracedColumns,
     init,
-    activeLayer,
     columnsHavingLineage,
     expandAllColumns,
     isPlatformLineage,

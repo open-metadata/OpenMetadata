@@ -24,7 +24,6 @@ import {
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
-import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -43,8 +42,6 @@ export enum LineagePlatformView {
 }
 
 export interface LineageContextType {
-  reactFlowInstance?: ReactFlowInstance;
-  dataQualityLineage?: EntityLineageResponse;
   nodes: Node[];
   edges: Edge[];
   tracedNodes: string[];
@@ -57,10 +54,7 @@ export interface LineageContextType {
   init: boolean;
   status: LoadingState;
   isEditMode: boolean;
-  entityLineage: EntityLineageResponse;
-  selectedNode: SourceType;
   selectedColumn: string;
-  activeLayer: LineageLayer[];
   platformView: LineagePlatformView;
   expandAllColumns: boolean;
   isPlatformLineage: boolean;
