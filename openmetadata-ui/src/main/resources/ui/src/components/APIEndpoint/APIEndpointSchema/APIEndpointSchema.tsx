@@ -418,7 +418,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }
           key={viewType}
           pagination={false}
-          rowKey="id"
+          rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
