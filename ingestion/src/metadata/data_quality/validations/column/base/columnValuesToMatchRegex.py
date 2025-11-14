@@ -160,7 +160,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
             )
         match_regex_count = metric_values[Metrics.REGEX_COUNT.name]
         count = metric_values[Metrics.COUNT.name]
-        total_rows = metric_values[Metrics.ROW_COUNT.name]
+        total_rows = metric_values.get(Metrics.ROW_COUNT.name)
 
         matched = count == match_regex_count
         failed_count = count - match_regex_count
