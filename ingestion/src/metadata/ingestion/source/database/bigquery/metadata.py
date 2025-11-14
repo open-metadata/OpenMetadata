@@ -83,10 +83,8 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
     BIGQUERY_GET_SCHEMA_NAMES,
     BIGQUERY_GET_STORED_PROCEDURES,
-    BIGQUERY_GET_VIEW_NAMES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
@@ -384,9 +382,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         logic on how to handle table types, e.g., external, foreign,...
         """
         view_filter = (
-         "AND table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')"
-         if not self.source_config.includeViews
-         else ""
+            "AND table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')"
+            if not self.source_config.includeViews
+            else ""
         )
 
         table_names_and_types = (
