@@ -126,6 +126,11 @@
       "type": "boolean",
       "default": true
     },
+    "allowConcurrentExecution": {
+      "description": "If true, multiple instances of this app can run concurrently. This is useful for apps like QueryRunner that support parallel executions with different configurations.",
+      "type": "boolean",
+      "default": false
+    },
     "appConfiguration": {
       "description": "Application Configuration object.",
       "$ref": "../configuration/applicationConfig.json#/definitions/appConfig"
