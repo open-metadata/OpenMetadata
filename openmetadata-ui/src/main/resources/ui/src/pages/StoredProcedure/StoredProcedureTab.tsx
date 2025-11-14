@@ -87,7 +87,7 @@ const StoredProcedureTab = () => {
           pageNumber,
           pageSize: PAGE_SIZE,
           queryFilter: buildSchemaQueryFilter(
-            'databaseSchema.fullyQualifiedName',
+            'databaseSchema.fullyQualifiedName.keyword',
             decodedDatabaseSchemaFQN,
             searchValue
           ),

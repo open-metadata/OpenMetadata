@@ -148,7 +148,7 @@ function SchemaTablesTab({
           pageNumber,
           pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
-            'databaseSchema.fullyQualifiedName',
+            'databaseSchema.fullyQualifiedName.keyword',
             decodedDatabaseSchemaFQN,
             searchValue
           ),

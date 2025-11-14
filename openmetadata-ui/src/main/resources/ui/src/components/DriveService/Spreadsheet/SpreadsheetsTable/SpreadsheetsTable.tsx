@@ -88,7 +88,7 @@ function SpreadsheetsTable({
           pageNumber,
           pageSize: PAGE_SIZE,
           queryFilter: buildSchemaQueryFilter(
-            'service.fullyQualifiedName',
+            'service.fullyQualifiedName.keyword',
             serviceFqn,
             searchValue
           ),

@@ -259,7 +259,7 @@ function ServiceMainTabContent({
           searchIndex: index,
           query: '',
           queryFilter: buildSchemaQueryFilter(
-            'service.fullyQualifiedName',
+            'service.fullyQualifiedName.keyword',
             serviceDetails.fullyQualifiedName || '',
             searchValue
           ),

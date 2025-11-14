@@ -107,7 +107,7 @@ const DataModelTable = ({
           pageNumber,
           pageSize: PAGE_SIZE,
           queryFilter: buildSchemaQueryFilter(
-            'service.fullyQualifiedName',
+            'service.fullyQualifiedName.keyword',
             fqn,
             searchValue
           ),
