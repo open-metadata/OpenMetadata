@@ -98,6 +98,7 @@ public class DatabaseSchemaResourceTest
         "databaseSchemas",
         DatabaseSchemaResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsBulkAPI = true;
   }
 
   @Test
