@@ -348,6 +348,7 @@ const AddNotificationPage = () => {
                         initialValue={ProviderType.User}
                         name="provider"
                       />
+                      <Form.Item hidden name="customNotificationTemplateData" />
 
                       {!isUndefined(inlineAlertDetails) && (
                         <Col span={24}>

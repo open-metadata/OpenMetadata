@@ -12,9 +12,8 @@
  */
 import { FormInstance } from 'antd';
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
-import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { EntityType } from '../enums/entity.enum';
 import { User } from '../generated/entity/teams/user';
@@ -34,6 +33,7 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtil';
+import { HandleAlertSaveProps } from './AlertsClassBase.interface';
 import { getEntityName } from './EntityUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
@@ -141,7 +141,7 @@ class AlertsClassBase {
     };
   }
 
-  public handleAlertSave = async ({
+  public async handleAlertSave({
     data,
     fqn,
     initialData,
@@ -150,23 +150,7 @@ class AlertsClassBase {
     afterSaveAction,
     setInlineAlertDetails,
     currentUser,
-  }: {
-    initialData?: EventSubscription;
-    data: ModifiedCreateEventSubscription;
-    createAlertAPI: (
-      alert: CreateEventSubscription
-    ) => Promise<EventSubscription>;
-    updateAlertAPI: (
-      id: string,
-      data: Operation[]
-    ) => Promise<EventSubscription>;
-    afterSaveAction: (fqn: string) => Promise<void>;
-    setInlineAlertDetails: (
-      alertDetails?: InlineAlertProps | undefined
-    ) => void;
-    fqn?: string;
-    currentUser?: User;
-  }) => {
+  }: HandleAlertSaveProps) {
     try {
       let alertDetails;
 
@@ -209,7 +193,7 @@ class AlertsClassBase {
         defaultErrorType: 'create',
       });
     }
-  };
+  }
 
   public getModifiedAlertDataForForm(
     alertData: EventSubscription
