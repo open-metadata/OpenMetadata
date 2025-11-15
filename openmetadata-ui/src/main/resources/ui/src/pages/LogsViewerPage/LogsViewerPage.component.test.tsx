@@ -121,7 +121,12 @@ jest.mock(
 jest.mock('@mui/system/useThemeWithoutDefault', () => ({
   __esModule: true,
   default: () => ({
-    palette: { mode: 'light' },
+    palette: {
+      mode: 'light',
+      grey: {
+        500: '#9E9E9E',
+      },
+    },
     spacing: (value: number) => `${value * 8}px`,
   }),
 }));

@@ -21,10 +21,39 @@ import {
   HeatmapStatus,
 } from './DimensionalityHeatmap.interface';
 
+/**
+ * Generates an array of dates in reverse chronological order (newest first)
+ * Used to create the horizontal axis of the heatmap
+ *
+ * @param startTs - Start timestamp in milliseconds
+ * @param endTs - End timestamp in milliseconds
+ * @returns Array of date strings in 'yyyy-MM-dd' format, reversed (newest first)
+ * @throws {Error} If startTs is greater than endTs or if either timestamp is invalid
+ */
 export const generateDateRange = (startTs: number, endTs: number): string[] => {
+  // Validate timestamps
+  if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
+    throw new Error('Invalid timestamp: timestamps must be finite numbers');
+  }
+
+  if (startTs > endTs) {
+    throw new Error(
+      `Invalid date range: start date (${new Date(
+        startTs
+      ).toISOString()}) must be before or equal to end date (${new Date(
+        endTs
+      ).toISOString()})`
+    );
+  }
+
   const dates: string[] = [];
   const startDate = new Date(startTs);
   const endDate = new Date(endTs);
+
+  // Validate that dates are valid
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error('Invalid timestamp: unable to create valid dates');
+  }
 
   const currentDate = new Date(startDate);
 
@@ -33,6 +62,7 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
+  // Reverse to show newest dates first (right to left)
   return dates.reverse();
 };
 
@@ -52,6 +82,15 @@ export const mapStatusToHeatmapStatus = (
   }
 };
 
+/**
+ * Transforms dimension results into heatmap data structure
+ * Optimized with O(n) pre-indexing to avoid nested loops
+ *
+ * @param results - Array of dimension test results with timestamps
+ * @param startTs - Start timestamp for date range
+ * @param endTs - End timestamp for date range
+ * @returns Array of heatmap rows, each containing dimension value and cells for each date
+ */
 export const transformDimensionResultsToHeatmapData = (
   results: DimensionResultWithTimestamp[],
   startTs: number,
@@ -59,54 +98,48 @@ export const transformDimensionResultsToHeatmapData = (
 ): HeatmapRowData[] => {
   const dateRange = generateDateRange(startTs, endTs);
 
-  const dimensionValueMap = new Map<string, Set<string>>();
+  // Pre-index results by dimension-date key for O(1) lookup
+  // Key format: "dimensionValue|yyyy-MM-dd"
+  const resultMap = new Map<string, DimensionResultWithTimestamp>();
+  const dimensionValues = new Set<string>();
 
   results.forEach((result) => {
     const dimensionValue = result.dimensionValues
       .map((dv) => dv.value)
       .join(', ');
 
-    if (!dimensionValueMap.has(dimensionValue)) {
-      dimensionValueMap.set(dimensionValue, new Set());
+    dimensionValues.add(dimensionValue);
+
+    if (result.timestamp) {
+      const resultDate = format(new Date(result.timestamp), 'yyyy-MM-dd');
+      const key = `${dimensionValue}|${resultDate}`;
+      resultMap.set(key, result);
     }
   });
 
-  const heatmapData: HeatmapRowData[] = Array.from(
-    dimensionValueMap.keys()
-  ).map((dimensionValue) => {
-    const cells: HeatmapCellData[] = dateRange.map((date) => {
-      const resultForDate = results.find((result) => {
-        const resultDimensionValue = result.dimensionValues
-          .map((dv) => dv.value)
-          .join(', ');
+  // Build heatmap data using indexed lookups
+  const heatmapData: HeatmapRowData[] = Array.from(dimensionValues).map(
+    (dimensionValue) => {
+      const cells: HeatmapCellData[] = dateRange.map((date) => {
+        const key = `${dimensionValue}|${date}`;
+        const resultForDate = resultMap.get(key);
 
-        const matchesDimension = resultDimensionValue === dimensionValue;
-
-        if (!matchesDimension || !result.timestamp) {
-          return false;
-        }
-
-        const resultDate = format(new Date(result.timestamp), 'yyyy-MM-dd');
-        const matchesDate = resultDate === date;
-
-        return matchesDimension && matchesDate;
+        return {
+          date,
+          status: resultForDate
+            ? mapStatusToHeatmapStatus(resultForDate.testCaseStatus)
+            : 'no-data',
+          dimensionValue,
+          result: resultForDate,
+        };
       });
 
       return {
-        date,
-        status: resultForDate
-          ? mapStatusToHeatmapStatus(resultForDate.testCaseStatus)
-          : 'no-data',
         dimensionValue,
-        result: resultForDate,
+        cells,
       };
-    });
-
-    return {
-      dimensionValue,
-      cells,
-    };
-  });
+    }
+  );
 
   return heatmapData;
 };
@@ -131,6 +164,14 @@ export const getStatusLabel = (
   return statusMap[status];
 };
 
+/**
+ * Calculates how many placeholder cells are needed to fill the visible area
+ * This ensures the heatmap always fills the container width when data is sparse
+ *
+ * @param actualCellCount - Number of actual data cells (date columns)
+ * @param containerWidth - Total width of the container in pixels
+ * @returns Number of placeholder cells to add (0 if container is full or not yet measured)
+ */
 export const calculatePlaceholderCells = (
   actualCellCount: number,
   containerWidth: number
@@ -139,14 +180,17 @@ export const calculatePlaceholderCells = (
     return 0;
   }
 
+  // Calculate available width for cells (excluding label column and padding)
   const availableWidth =
     containerWidth -
     HEATMAP_CONSTANTS.DIMENSION_LABEL_WIDTH -
     HEATMAP_CONSTANTS.CONTAINER_PADDING_RIGHT;
 
+  // Each cell occupies its width plus the gap to the next cell
   const cellWithGap = HEATMAP_CONSTANTS.CELL_WIDTH + HEATMAP_CONSTANTS.CELL_GAP;
   const maxCellsInView = Math.floor(availableWidth / cellWithGap);
 
+  // Only add placeholders if we have fewer cells than can fit in the view
   const placeholderCount = Math.max(0, maxCellsInView - actualCellCount);
 
   return placeholderCount;
