@@ -33,15 +33,15 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.3",
+    "pandas": "pandas~=2.1.1",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
-    "pyodbc": "pyodbc>=4.0.35,<5",
+    "pyodbc": "pyodbc>=5.0.0,<6",
     "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "scikit-learn": "scikit-learn~=1.3",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -321,7 +321,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
+    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},  # oracledb is recommended for Python 3.12+
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
