@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
@@ -213,7 +214,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
       for (Pipeline pipeline : pipelines) {
         pipeline.setTags(
-            addDerivedTags(
+            addDerivedTagsGracefully(
                 tagsMap.getOrDefault(pipeline.getFullyQualifiedName(), Collections.emptyList())));
       }
     }
