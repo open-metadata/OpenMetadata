@@ -40,11 +40,16 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
@@ -226,17 +231,24 @@ function ServiceMainTabContent({
   } = useMemo(
     () => ({
       editTagsPermission:
-        (servicePermission.EditTags || servicePermission.EditAll) &&
+        getPrioritizedEditPermission(servicePermission, Operation.EditTags) &&
         !serviceDetails.deleted,
       editGlossaryTermsPermission:
-        (servicePermission.EditGlossaryTerms || servicePermission.EditAll) &&
-        !serviceDetails.deleted,
+        getPrioritizedEditPermission(
+          servicePermission,
+          Operation.EditGlossaryTerms
+        ) && !serviceDetails.deleted,
       editDescriptionPermission:
-        (servicePermission.EditDescription || servicePermission.EditAll) &&
-        !serviceDetails.deleted,
+        getPrioritizedEditPermission(
+          servicePermission,
+          Operation.EditDescription
+        ) && !serviceDetails.deleted,
       editDataProductPermission:
         servicePermission.EditAll && !serviceDetails.deleted,
-      viewCustomPropertiesPermission: servicePermission.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        servicePermission,
+        Operation.ViewCustomFields
+      ),
     }),
     [servicePermission, serviceDetails]
   );

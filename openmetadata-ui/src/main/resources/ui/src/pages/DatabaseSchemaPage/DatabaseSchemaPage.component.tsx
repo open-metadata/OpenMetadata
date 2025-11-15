@@ -443,9 +443,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
-      viewCustomPropertiesPermission: databaseSchemaPermission.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-
     [databaseSchemaPermission, databaseSchema]
   );
 

@@ -207,7 +207,10 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           Operation.ViewSampleData
         ) && !deleted,
       viewAllPermission: metricPermissions.ViewAll,
-      viewCustomPropertiesPermission: metricPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        metricPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [metricPermissions, deleted]
   );

@@ -408,9 +408,12 @@ const APICollectionPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !apiCollection.deleted,
       viewAllPermission: apiCollectionPermission.ViewAll,
-      viewCustomPropertiesPermission: apiCollectionPermission.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        apiCollectionPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-    [apiCollectionPermission, apiCollection, getPrioritizedEditPermission]
+    [apiCollectionPermission, apiCollection]
   );
 
   const handleAPICollectionUpdate = async (updatedData: APICollection) => {

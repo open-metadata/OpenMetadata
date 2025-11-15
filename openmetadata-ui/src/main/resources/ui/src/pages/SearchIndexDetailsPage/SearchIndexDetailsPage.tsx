@@ -192,7 +192,10 @@ function SearchIndexDetailsPage() {
         Operation.ViewSampleData
       ),
       viewAllPermission: searchIndexPermissions.ViewAll,
-      viewCustomPropertiesPermission: searchIndexPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        searchIndexPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [
       searchIndexPermissions,

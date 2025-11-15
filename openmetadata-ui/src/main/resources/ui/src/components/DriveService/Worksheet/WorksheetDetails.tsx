@@ -47,7 +47,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -288,7 +291,10 @@ function WorksheetDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: worksheetPermissions.ViewAll,
-      viewCustomPropertiesPermission: worksheetPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        worksheetPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [worksheetPermissions, deleted]
   );

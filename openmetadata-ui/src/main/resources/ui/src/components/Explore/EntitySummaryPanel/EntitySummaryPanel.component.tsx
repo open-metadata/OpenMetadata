@@ -26,6 +26,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
@@ -47,7 +48,10 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -689,9 +693,10 @@ export default function EntitySummaryPanel({
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
               isEntityDataLoading={isEntityDataLoading}
-              viewCustomPropertiesPermission={
-                entityPermissions.ViewCustomFields
-              }
+              viewCustomPropertiesPermission={getPrioritizedViewPermission(
+                entityPermissions,
+                Operation.ViewCustomFields
+              )}
             />
           </>
         );

@@ -134,6 +134,15 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -322,12 +331,17 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             isVersionView
             entityType={EntityType.MLMODEL}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewCustomFields}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, mlFeaturesData, currentVersionData, entityPermissions]
+    [
+      description,
+      mlFeaturesData,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+    ]
   );
 
   return (

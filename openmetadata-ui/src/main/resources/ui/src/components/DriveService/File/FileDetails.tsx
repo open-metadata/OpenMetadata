@@ -48,7 +48,10 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
 import fileClassBase from '../../../utils/FileClassBase';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -278,7 +281,10 @@ function FileDetails({
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
       viewAllPermission: filePermissions.ViewAll,
-      viewCustomPropertiesPermission: filePermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        filePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [filePermissions, deleted]
   );

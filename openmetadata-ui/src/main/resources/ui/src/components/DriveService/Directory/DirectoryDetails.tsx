@@ -49,7 +49,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -306,7 +309,10 @@ function DirectoryDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: directoryPermissions.ViewAll,
-      viewCustomPropertiesPermission: directoryPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        directoryPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [directoryPermissions, deleted]
   );

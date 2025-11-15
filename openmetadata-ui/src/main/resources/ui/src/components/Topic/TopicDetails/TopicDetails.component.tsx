@@ -293,7 +293,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         Operation.ViewSampleData
       ),
       viewAllPermission: topicPermissions.ViewAll,
-      viewCustomPropertiesPermission: topicPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        topicPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [topicPermissions, deleted]
   );

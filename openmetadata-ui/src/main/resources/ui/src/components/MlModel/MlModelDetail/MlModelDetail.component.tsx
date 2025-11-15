@@ -26,6 +26,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -41,7 +42,11 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -312,21 +317,28 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   } = useMemo(
     () => ({
       editTagsPermission:
-        (mlModelPermissions.EditTags || mlModelPermissions.EditAll) && !deleted,
-      editGlossaryTermsPermission:
-        (mlModelPermissions.EditGlossaryTerms || mlModelPermissions.EditAll) &&
+        getPrioritizedEditPermission(mlModelPermissions, Operation.EditTags) &&
         !deleted,
       editDescriptionPermission:
-        (mlModelPermissions.EditDescription || mlModelPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          mlModelPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          mlModelPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (mlModelPermissions.EditAll || mlModelPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          mlModelPermissions,
+          Operation.EditLineage
+        ) && !deleted,
       viewAllPermission: mlModelPermissions.ViewAll,
-      viewCustomPropertiesPermission: mlModelPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        mlModelPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [mlModelPermissions, deleted]
   );
