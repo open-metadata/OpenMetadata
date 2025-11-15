@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
@@ -27,14 +28,23 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   entityInfo,
   componentType,
   isDomainVisible = false,
+  excludedItems = [],
 }) => {
   const { t } = useTranslation();
 
-  const isItemVisible = (item: EntityInfoItemV1) => {
-    const isDomain = isDomainVisible && item.name === t('label.domain-plural');
+  const visibleEntityInfo = useMemo(() => {
+    return entityInfo.filter((info) => {
+      if (excludedItems.includes(info.name)) {
+        return false;
+      }
 
-    return (item.visible || []).includes(componentType) || isDomain;
-  };
+      const isDomain =
+        isDomainVisible && info.name === t('label.domain-plural');
+      const isVisibleInComponent = (info.visible ?? []).includes(componentType);
+
+      return isVisibleInComponent || isDomain;
+    });
+  }, [entityInfo, componentType, isDomainVisible, excludedItems]);
 
   const renderInfoValue = (info: EntityInfoItemV1) => {
     if (!info.isLink) {
@@ -64,7 +74,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <div className="overview-section">
-      {entityInfo.filter(isItemVisible).map((info) => (
+      {visibleEntityInfo.map((info) => (
         <div className="overview-row" key={info.name}>
           <span
             className={classNames('overview-label')}
