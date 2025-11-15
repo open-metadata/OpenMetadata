@@ -126,6 +126,7 @@ export const addAssetsToTag = async (
         .fill(visibleName);
       await searchRes;
 
+      // this is failing
       await expect(page.getByText(visibleName)).not.toBeVisible();
     }
   }

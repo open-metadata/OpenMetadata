@@ -144,10 +144,6 @@ const ExpandCollapseHandles = memo(
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
-  const [isChildrenListExpanded, setIsChildrenListExpanded] = useState(false);
-  const toggleColumnsList = useCallback(() => {
-    setIsChildrenListExpanded((prev) => !prev);
-  }, []);
 
   const {
     isEditMode,
@@ -188,6 +184,21 @@ const CustomNodeV1 = (props: NodeProps) => {
       dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === id),
     [activeLayer, dataQualityLineage, id]
   );
+
+  const isColumnLayerEnabled = useMemo(
+    () => activeLayer.includes(LineageLayer.ColumnLevelLineage),
+    [activeLayer]
+  );
+
+  const [isChildrenListExpanded, setIsChildrenListExpanded] =
+    useState(isColumnLayerEnabled);
+  const toggleColumnsList = useCallback(() => {
+    setIsChildrenListExpanded((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    setIsChildrenListExpanded(isColumnLayerEnabled);
+  }, [isColumnLayerEnabled]);
 
   const containerClass = getNodeClassNames({
     isSelected,

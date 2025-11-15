@@ -163,6 +163,7 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  await page.waitForTimeout(1000);
   const destinationElement = await page.waitForSelector(destinationSelector);
   await page.hover(originSelector);
   await page.mouse.down();
