@@ -1226,7 +1226,8 @@ describe('parseLineageData', () => {
         (node) => node.fullyQualifiedName === mockRootFqn
       );
 
-      expect(rootNode?.isCollapsed).toBe(false);
+      expect(rootNode?.upstreamExpandPerformed).toBe(true);
+      expect(rootNode?.downstreamExpandPerformed).toBe(true);
     });
 
     it('should preserve paging information in nodes', () => {
