@@ -11,9 +11,31 @@
  *  limitations under the License.
  */
 
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import { HeatmapCellData } from './DimensionalityHeatmap.interface';
 import { HeatmapCellTooltip } from './HeatmapCellTooltip.component';
+
+const mockThemeColors: ThemeColors = {
+  white: '#FFFFFF',
+  gray: {
+    300: '#D1D5DB',
+    700: '#374151',
+    900: '#111827',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: mockThemeColors,
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
 
 jest.mock('./DimensionalityHeatmap.utils', () => ({
   getStatusLabel: jest.fn((status) => `Status: ${status}`),
@@ -37,41 +59,41 @@ describe('HeatmapCellTooltip', () => {
   };
 
   it('should render cell date as header', () => {
-    render(<HeatmapCellTooltip cell={mockCell} />);
+    render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
     expect(screen.getByText('2025-01-15')).toBeInTheDocument();
   });
 
   it('should render dimension value', () => {
-    render(<HeatmapCellTooltip cell={mockCell} />);
+    render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
     expect(screen.getByText('label.dimension-value')).toBeInTheDocument();
     expect(screen.getByText('Region: US')).toBeInTheDocument();
   });
 
   it('should render status with translated label', () => {
-    render(<HeatmapCellTooltip cell={mockCell} />);
+    render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
     expect(screen.getByText('label.status')).toBeInTheDocument();
     expect(screen.getByText('Status: success')).toBeInTheDocument();
   });
 
   it('should render passed rows when available', () => {
-    render(<HeatmapCellTooltip cell={mockCell} />);
+    render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
     expect(screen.getByText('label.passed-rows')).toBeInTheDocument();
     expect(screen.getByText('100')).toBeInTheDocument();
   });
 
   it('should render failed rows when available', () => {
-    render(<HeatmapCellTooltip cell={mockCell} />);
+    render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
     expect(screen.getByText('label.failed-rows')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
   it('should render test result values when available', () => {
-    render(<HeatmapCellTooltip cell={mockCell} />);
+    render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
     expect(screen.getByText('Row Count')).toBeInTheDocument();
     expect(screen.getByText('105')).toBeInTheDocument();
@@ -82,13 +104,17 @@ describe('HeatmapCellTooltip', () => {
   it('should not render passed rows when undefined', () => {
     const cellWithoutPassedRows: HeatmapCellData = {
       ...mockCell,
-      result: {
-        ...mockCell.result!,
-        passedRows: undefined,
-      },
+      result: mockCell.result
+        ? {
+            ...mockCell.result,
+            passedRows: undefined,
+          }
+        : undefined,
     };
 
-    render(<HeatmapCellTooltip cell={cellWithoutPassedRows} />);
+    render(<HeatmapCellTooltip cell={cellWithoutPassedRows} />, {
+      wrapper: Wrapper,
+    });
 
     expect(screen.queryByText('label.passed-rows')).not.toBeInTheDocument();
   });
@@ -96,13 +122,17 @@ describe('HeatmapCellTooltip', () => {
   it('should not render failed rows when undefined', () => {
     const cellWithoutFailedRows: HeatmapCellData = {
       ...mockCell,
-      result: {
-        ...mockCell.result!,
-        failedRows: undefined,
-      },
+      result: mockCell.result
+        ? {
+            ...mockCell.result,
+            failedRows: undefined,
+          }
+        : undefined,
     };
 
-    render(<HeatmapCellTooltip cell={cellWithoutFailedRows} />);
+    render(<HeatmapCellTooltip cell={cellWithoutFailedRows} />, {
+      wrapper: Wrapper,
+    });
 
     expect(screen.queryByText('label.failed-rows')).not.toBeInTheDocument();
   });
@@ -110,13 +140,17 @@ describe('HeatmapCellTooltip', () => {
   it('should not render test result values when empty', () => {
     const cellWithoutResults: HeatmapCellData = {
       ...mockCell,
-      result: {
-        ...mockCell.result!,
-        testResultValue: [],
-      },
+      result: mockCell.result
+        ? {
+            ...mockCell.result,
+            testResultValue: [],
+          }
+        : undefined,
     };
 
-    render(<HeatmapCellTooltip cell={cellWithoutResults} />);
+    render(<HeatmapCellTooltip cell={cellWithoutResults} />, {
+      wrapper: Wrapper,
+    });
 
     expect(screen.queryByText('Row Count')).not.toBeInTheDocument();
   });
@@ -128,7 +162,9 @@ describe('HeatmapCellTooltip', () => {
       dimensionValue: 'Region: EU',
     };
 
-    render(<HeatmapCellTooltip cell={cellWithoutResult} />);
+    render(<HeatmapCellTooltip cell={cellWithoutResult} />, {
+      wrapper: Wrapper,
+    });
 
     expect(screen.getByText('2025-01-15')).toBeInTheDocument();
     expect(screen.getByText('Region: EU')).toBeInTheDocument();
@@ -139,13 +175,17 @@ describe('HeatmapCellTooltip', () => {
   it('should use fallback label for test result value without name', () => {
     const cellWithUnnamedValue: HeatmapCellData = {
       ...mockCell,
-      result: {
-        ...mockCell.result!,
-        testResultValue: [{ value: '123' }],
-      },
+      result: mockCell.result
+        ? {
+            ...mockCell.result,
+            testResultValue: [{ value: '123' }],
+          }
+        : undefined,
     };
 
-    render(<HeatmapCellTooltip cell={cellWithUnnamedValue} />);
+    render(<HeatmapCellTooltip cell={cellWithUnnamedValue} />, {
+      wrapper: Wrapper,
+    });
 
     expect(screen.getByText('label.value')).toBeInTheDocument();
     expect(screen.getByText('123')).toBeInTheDocument();
@@ -154,13 +194,17 @@ describe('HeatmapCellTooltip', () => {
   it('should display dash for test result value without value', () => {
     const cellWithEmptyValue: HeatmapCellData = {
       ...mockCell,
-      result: {
-        ...mockCell.result!,
-        testResultValue: [{ name: 'Empty Field' }],
-      },
+      result: mockCell.result
+        ? {
+            ...mockCell.result,
+            testResultValue: [{ name: 'Empty Field' }],
+          }
+        : undefined,
     };
 
-    render(<HeatmapCellTooltip cell={cellWithEmptyValue} />);
+    render(<HeatmapCellTooltip cell={cellWithEmptyValue} />, {
+      wrapper: Wrapper,
+    });
 
     expect(screen.getByText('Empty Field')).toBeInTheDocument();
     expect(screen.getByText('-')).toBeInTheDocument();
