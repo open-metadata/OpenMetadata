@@ -747,6 +747,10 @@ export interface StepSummary {
      */
     name: string;
     /**
+     * Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)
+     */
+    progress?: { [key: string]: Progress };
+    /**
      * Number of successfully processed records.
      */
     records?: number;
@@ -776,6 +780,22 @@ export interface StackTraceError {
      * Exception stack trace
      */
     stackTrace?: string;
+}
+
+export interface Progress {
+    /**
+     * Estimated remaining time in seconds for this entity type
+     */
+    estimatedRemainingSeconds?: number;
+    /**
+     * Number of entities processed
+     */
+    processed?: number;
+    /**
+     * Total number of entities discovered
+     */
+    total?: number;
+    [property: string]: any;
 }
 
 /**
@@ -4666,6 +4686,10 @@ export interface ConfigObject {
      */
     bucketNames?: string[];
     /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?: FilterPattern;
@@ -6226,6 +6250,10 @@ export interface S3Connection {
     bucketNames?:         string[];
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
     /**
      * Regex to only fetch containers that matches the pattern.
      */

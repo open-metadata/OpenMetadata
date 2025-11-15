@@ -26,6 +26,8 @@ import java.util.Optional;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to group change events by merging adds/deletes into updates where applicable.
@@ -213,4 +215,18 @@ public class GroupEventChangesHelper implements HandlebarsHelper {
    */
   public record ChangeGroups(
       List<FieldChange> updates, List<FieldChange> adds, List<FieldChange> deletes) {}
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("groupEventChanges")
+        .withDescription("Group change event fields by category")
+        .withCursorOffset(20)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{groupEventChanges }}")
+                    .withExample(
+                        "{{#with (groupEventChanges event.changeDescription) as |grouped|}}{{#if grouped.updates}}Updates: {{grouped.updates}}{{/if}}{{/with}}")));
+  }
 }

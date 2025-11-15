@@ -167,15 +167,6 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
               }
             });
 
-    String driverClassName = getDriverClass();
-    if (driverClassName != null) {
-      if (driverClassName.contains("postgresql")) {
-        configurePostgreSQL(config);
-      } else if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
-        configureMySQL(config);
-      }
-    }
-
     Properties dataSourceProperties = new Properties();
     if (getProperties() != null) {
       dataSourceProperties.putAll(getProperties());
@@ -190,6 +181,15 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
     if (!dataSourceProperties.isEmpty()) {
       config.setDataSourceProperties(dataSourceProperties);
+    }
+
+    String driverClassName = getDriverClass();
+    if (driverClassName != null) {
+      if (driverClassName.contains("postgresql")) {
+        configurePostgreSQL(config);
+      } else if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
+        configureMySQL(config);
+      }
     }
 
     return config;
@@ -232,6 +232,14 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       if (properties.containsKey("targetServerType")) {
         props.put("targetServerType", properties.get("targetServerType"));
       }
+      if (properties.containsKey("postgresqlConnectTimeout")) {
+        props.put("connectTimeout", properties.get("postgresqlConnectTimeout"));
+        props.remove("postgresqlConnectTimeout");
+      }
+      if (properties.containsKey("postgresqlSocketTimeout")) {
+        props.put("socketTimeout", properties.get("postgresqlSocketTimeout"));
+        props.remove("postgresqlSocketTimeout");
+      }
     }
   }
 
@@ -259,8 +267,18 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("socketTimeout", "0");
 
     Map<String, String> properties = getProperties();
-    if (properties != null && properties.containsKey("rewriteBatchedStatements")) {
-      props.put("rewriteBatchedStatements", properties.get("rewriteBatchedStatements"));
+    if (properties != null) {
+      if (properties.containsKey("rewriteBatchedStatements")) {
+        props.put("rewriteBatchedStatements", properties.get("rewriteBatchedStatements"));
+      }
+      if (properties.containsKey("mysqlConnectTimeout")) {
+        props.put("connectTimeout", properties.get("mysqlConnectTimeout"));
+        props.remove("mysqlConnectTimeout");
+      }
+      if (properties.containsKey("mysqlSocketTimeout")) {
+        props.put("socketTimeout", properties.get("mysqlSocketTimeout"));
+        props.remove("mysqlSocketTimeout");
+      }
     }
   }
 

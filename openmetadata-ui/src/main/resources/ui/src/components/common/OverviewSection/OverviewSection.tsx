@@ -16,6 +16,8 @@ import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { OverviewSectionProps } from './OverviewSection.interface';
 import './OverviewSection.less';
 
+const EXCLUDED_ITEMS = ['Owners', 'Tier'];
+
 const OverviewSection: React.FC<OverviewSectionProps> = ({
   onEdit,
   showEditButton = false,
@@ -53,13 +55,12 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       showEditButton={showEditButton}
       title={t('label.overview')}
       onEdit={onEdit}>
-      {entityInfoV1 && (
-        <CommonEntitySummaryInfoV1
-          componentType={componentType}
-          entityInfo={entityInfoV1}
-          isDomainVisible={isDomainVisible}
-        />
-      )}
+      <CommonEntitySummaryInfoV1
+        componentType={componentType}
+        entityInfo={entityInfoV1}
+        excludedItems={EXCLUDED_ITEMS}
+        isDomainVisible={isDomainVisible}
+      />
     </SectionWithEdit>
   );
 };
