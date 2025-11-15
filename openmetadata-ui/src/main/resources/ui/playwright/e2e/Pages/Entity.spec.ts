@@ -37,13 +37,13 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeDomain,
+  removeSingleSelectDomain,
   verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
@@ -152,7 +152,10 @@ entities.forEach((EntityClass) => {
           false
         );
 
-        await assignDomain(page, EntityDataClass.domain1.responseData);
+        await assignSingleSelectDomain(
+          page,
+          EntityDataClass.domain1.responseData
+        );
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
@@ -167,7 +170,10 @@ entities.forEach((EntityClass) => {
           },
           false
         );
-        await removeDomain(page, EntityDataClass.domain1.responseData);
+        await removeSingleSelectDomain(
+          page,
+          EntityDataClass.domain1.responseData
+        );
       }
     });
 
