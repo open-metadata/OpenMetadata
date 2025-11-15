@@ -369,6 +369,7 @@ public final class Entity {
     initializedRepositories = false;
     collectionDAO = null;
     jobDAO = null;
+    jdbi = null;
     searchRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
   }
