@@ -26,4 +26,5 @@ export interface CommonEntitySummaryInfoV1Props {
   entityInfo: EntityInfoItemV1[];
   componentType: string;
   isDomainVisible?: boolean;
+  excludedItems?: string[];
 }
