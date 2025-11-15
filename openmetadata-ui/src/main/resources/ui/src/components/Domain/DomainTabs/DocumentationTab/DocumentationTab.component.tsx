@@ -61,7 +61,6 @@ const DocumentationTab = ({
   const {
     editDescriptionPermission,
     editCustomAttributePermission,
-    viewAllPermission,
     editTagsPermission,
     viewCustomPropertiesPermission,
     editGlossaryTermsPermission,

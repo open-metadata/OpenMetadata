@@ -45,7 +45,10 @@ import {
 } from './EntityReferenceUtils';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-import { getPrioritizedEditPermission } from './PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from './PermissionsUtils';
 
 export interface DataProductDetailPageTabProps {
   dataProduct: DataProduct;
@@ -225,7 +228,10 @@ export const getDataProductDetailTabs = ({
               Operation.EditCustomFields
             ) && !isVersionsView
           }
-          hasPermission={dataProductPermission.ViewCustomFields}
+          hasPermission={getPrioritizedViewPermission(
+            dataProductPermission,
+            Operation.ViewCustomFields
+          )}
           isVersionView={isVersionsView}
         />
       ),

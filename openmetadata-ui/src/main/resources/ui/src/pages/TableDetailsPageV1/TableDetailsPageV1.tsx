@@ -522,7 +522,10 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions,
         Operation.ViewBasic
       ),
-      viewCustomPropertiesPermission: tablePermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [tablePermissions, deleted]
   );

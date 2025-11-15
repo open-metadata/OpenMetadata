@@ -410,7 +410,10 @@ const DatabaseDetails: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !database.deleted,
       viewAllPermission: databasePermission.ViewAll,
-      viewCustomPropertiesPermission: databasePermission.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        databasePermission,
+        PermissionOperation.ViewCustomFields
+      ),
       hasViewBasicPermission: getPrioritizedViewPermission(
         databasePermission,
         PermissionOperation.ViewBasic

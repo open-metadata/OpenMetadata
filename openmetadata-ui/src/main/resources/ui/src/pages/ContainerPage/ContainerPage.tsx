@@ -243,7 +243,10 @@ const ContainerPage = () => {
         Operation.ViewBasic
       ),
       viewAllPermission: containerPermissions.ViewAll,
-      viewCustomPropertiesPermission: containerPermissions.ViewCustomFields,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        containerPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [containerPermissions, deleted]
   );

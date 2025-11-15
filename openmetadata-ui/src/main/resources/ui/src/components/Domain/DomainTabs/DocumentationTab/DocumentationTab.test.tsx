@@ -225,7 +225,7 @@ describe('DocumentationTab', () => {
         data: MOCK_DOMAIN,
         onUpdate: mockOnUpdate,
         permissions: {
-          ViewAll: true,
+          ViewBasic: true,
           EditAll: true,
         },
       });

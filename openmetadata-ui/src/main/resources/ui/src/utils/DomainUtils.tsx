@@ -58,7 +58,10 @@ import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
-import { getPrioritizedEditPermission } from './PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -541,7 +544,10 @@ export const getDomainDetailTabs = ({
                   domainPermission,
                   Operation.EditCustomFields
                 )}
-                hasPermission={domainPermission.ViewCustomFields}
+                hasPermission={getPrioritizedViewPermission(
+                  domainPermission,
+                  Operation.ViewCustomFields
+                )}
               />
             ),
           },
