@@ -142,6 +142,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         try:
             raw_position_data = dashboard_details.position_json
+
+            # For Superset 5.0.0+, position_json may be missing from list endpoint
+            # In this case, fetch individual dashboard details
+            if not raw_position_data and hasattr(self, "client"):
+                dashboard_response = self.client.fetch_dashboard(dashboard_details.id)
+                if dashboard_response and dashboard_response.result:
+                    raw_position_data = dashboard_response.result.position_json
+
             if raw_position_data:
                 position_data = json.loads(raw_position_data)
                 return [
