@@ -156,7 +156,6 @@ GET_DASHBOARD_FIELDS = [
     "title",
     "dashboard_elements",
     "dashboard_filters",
-    "view_count",
     "description",
     "folder",
     "user_id",  # Use as owner
@@ -990,9 +989,10 @@ class LookerSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.dashboard(
-            dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
-        )
+        fields = GET_DASHBOARD_FIELDS.copy()
+        if self.source_config.includeUsage:
+            fields.append("view_count")
+        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
     def get_owner_ref(
         self, dashboard_details: LookerDashboard
@@ -1446,6 +1446,8 @@ class LookerSource(DashboardServiceSource):
         :param dashboard_details: Looker Dashboard
         :return: UsageRequest, if not computed
         """
+        if not self.source_config.includeUsage:
+            return
 
         dashboard_name = self.context.get().dashboard
 
