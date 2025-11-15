@@ -138,6 +138,14 @@ describe('EditTestCaseModal Component', () => {
   it('should call onUpdate function, on click of submit button', async () => {
     render(<EditTestCaseModal {...mockProps} />);
 
+    const displayNameInput = await screen.findByLabelText('label.display-name');
+
+    await act(async () => {
+      fireEvent.change(displayNameInput, {
+        target: { value: 'Updated Display Name' },
+      });
+    });
+
     await act(async () => {
       userEvent.click(await screen.findByText('label.save'));
     });

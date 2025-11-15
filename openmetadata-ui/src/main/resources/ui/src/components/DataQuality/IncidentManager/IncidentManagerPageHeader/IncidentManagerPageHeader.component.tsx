@@ -76,7 +76,8 @@ const IncidentManagerPageHeader = ({
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn: decodedFqn } = useRequiredParams<{ fqn: string }>();
+  const { fqn: decodedFqn, dimensionKey } =
+    useRequiredParams<{ fqn: string; dimensionKey?: string }>();
   const {
     setActiveThread,
     entityThread,
@@ -364,6 +365,19 @@ const IncidentManagerPageHeader = ({
               {getNameFromFQN(tableFqn)}
               <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
+          </Typography.Text>
+        </>
+      )}
+      {dimensionKey && (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <span className="text-blue text-sm font-medium">
+              {t('label.dimension')}
+            </span>
+            <span className="font-medium" data-testid="dimension-key">
+              {dimensionKey}
+            </span>
           </Typography.Text>
         </>
       )}

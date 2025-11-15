@@ -27,6 +27,35 @@ When creating column-level tests, select the specific column you want to test. T
 $$
 
 $$section
+### Dimension Columns $(id="dimensionColumns")
+
+When creating dimension-level tests, select one or more columns that will serve as dimensions for grouping test results. Dimensions allow you to:
+- **Analyze data quality across different segments**: Test results are computed separately for each unique combination of dimension values
+- **Identify problematic subsets**: Pinpoint specific dimension values that are causing quality issues
+- **Track quality trends**: Monitor how data quality varies across different categories, regions, time periods, or other dimensions
+- **Enable granular monitoring**: Get detailed insights into which specific segments of your data are passing or failing quality checks
+
+**Important Notes**:
+- The selected column (the column being tested) cannot be used as a dimension
+- Multiple dimension columns can be selected to create multi-dimensional analysis
+- Dimension columns are typically categorical or low-cardinality columns (e.g., region, product_category, status)
+- Each unique combination of dimension values will have its own test result
+
+**Use Cases**:
+- Testing sales amounts by region and product category
+- Validating order counts by status and payment method
+- Checking customer data quality segmented by country and account type
+- Monitoring sensor readings grouped by location and device type
+
+**Example**:
+If you're testing the `amount` column with dimensions `region` and `product_type`, you'll see separate test results for each combination like:
+- North America / Electronics
+- North America / Clothing
+- Europe / Electronics
+- Europe / Clothing
+$$
+
+$$section
 ### Test Type $(id="testType")
 
 Choose the type of test to apply based on your data quality requirements. Available test types depend on whether you selected table-level or column-level testing. Each test type has specific parameters and validation rules designed to check different aspects of data quality.
