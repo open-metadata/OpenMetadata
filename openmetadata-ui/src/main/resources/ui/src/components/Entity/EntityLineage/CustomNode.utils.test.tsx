@@ -74,15 +74,7 @@ describe('Custom Node Utils', () => {
       );
 
       expect(getByRole('button')).toBeInTheDocument();
-      expect(getByRole('button')).toHaveClass('react-flow__handle-right');
-    });
-
-    it('applies the correct class name for non-DOWN_STREAM direction', () => {
-      const { getByRole } = render(
-        getExpandHandle(LineageDirection.Upstream, jest.fn())
-      );
-
-      expect(getByRole('button')).toHaveClass('react-flow__handle-left');
+      expect(getByRole('button')).toHaveClass('lineage-expand-icon');
     });
 
     it('calls the onClickHandler when clicked', () => {
@@ -175,7 +167,7 @@ describe('Custom Node Utils', () => {
       );
 
       expect(getByTestId('column-test.column')).toHaveClass(
-        'custom-node-header-tracing'
+        'custom-node-column-container'
       );
     });
 

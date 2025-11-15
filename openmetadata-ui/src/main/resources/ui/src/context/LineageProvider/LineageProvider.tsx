@@ -555,14 +555,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const loadChildNodesHandler = useCallback(
-    async (node: SourceType, direction: LineageDirection) => {
+    async (node: SourceType, direction: LineageDirection, depth = 1) => {
       try {
         const res = await getLineageDataByFQN({
           fqn: node.fullyQualifiedName ?? '',
           entityType: node.entityType ?? '',
           config: {
-            upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
-            downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
+            upstreamDepth: direction === LineageDirection.Upstream ? depth : 0,
+            downstreamDepth:
+              direction === LineageDirection.Downstream ? depth : 0,
             nodesPerLayer: lineageConfig.nodesPerLayer,
             pipelineViewMode: lineageConfig.pipelineViewMode,
           }, // load only one level of child nodes

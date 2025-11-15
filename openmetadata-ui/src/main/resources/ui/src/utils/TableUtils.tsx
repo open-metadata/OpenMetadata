@@ -500,6 +500,10 @@ export const getEntityIcon = (
   return Icon ? <Icon className={className} style={style} /> : null;
 };
 
+export const getEntityTypeIcon = (entityType?: string) => {
+  return searchClassBase.getEntityIcon(entityType ?? '');
+};
+
 export const getServiceIcon = (source: SourceType) => {
   const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
     source.entityType as EntityType
