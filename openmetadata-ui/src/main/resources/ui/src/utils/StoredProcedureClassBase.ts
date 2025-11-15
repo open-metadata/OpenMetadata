@@ -46,6 +46,7 @@ export interface StoredProcedureDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   labelMap?: Record<EntityTabs, string>;
   onExtensionUpdate: (value: StoredProcedure) => Promise<void>;
   getEntityFeedCount: () => void;

@@ -412,4 +412,69 @@ describe('FileVersion', () => {
       screen.getByTestId('data-assets-version-header')
     ).toBeInTheDocument();
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties tab when ViewCustomFields is true', () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderFileVersion({
+        entityPermissions: permissionsWithViewCustomFields,
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is false', () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderFileVersion({
+        entityPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is undefined', () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderFileVersion({
+        entityPermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+    });
+  });
 });

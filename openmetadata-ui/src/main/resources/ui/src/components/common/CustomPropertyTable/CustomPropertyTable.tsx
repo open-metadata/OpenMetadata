@@ -212,7 +212,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (!hasPermission) {
     return (
-      <div className="flex-center">
+      <div className="items-center d-block align-items-center text-center">
         <ErrorPlaceHolder
           className="border-none"
           permissionValue={t('label.view-entity', {

@@ -26,6 +26,7 @@ import {
   Column,
   ColumnJoins,
 } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
@@ -41,6 +42,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -242,6 +244,13 @@ const TableVersion: React.FC<TableVersionProp> = ({
     [changeDescription]
   );
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -318,7 +327,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
             isVersionView
             entityType={EntityType.TABLE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -335,7 +344,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
       addedColumnConstraintDiffs,
       addedTableConstraintDiffs,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
     ]
   );
 

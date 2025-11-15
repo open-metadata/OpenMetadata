@@ -223,4 +223,97 @@ describe('DashboardVersion tests', () => {
       '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
     );
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    const mockCustomPropertyTable = jest.requireMock(
+      '../../common/CustomPropertyTable/CustomPropertyTable'
+    ).CustomPropertyTable;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is true', async () => {
+      await act(async () => {
+        render(
+          <DashboardVersion
+            {...dashboardVersionProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: true,
+            }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: true,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is false', async () => {
+      await act(async () => {
+        render(
+          <DashboardVersion
+            {...dashboardVersionProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: false,
+            }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: false,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should render custom properties tab regardless of ViewCustomFields value', async () => {
+      await act(async () => {
+        render(
+          <DashboardVersion
+            {...dashboardVersionProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: false,
+            }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
+  });
 });

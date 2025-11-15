@@ -21,6 +21,7 @@ import { CustomizeEntityType } from '../../../../constants/Customize.constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ChangeDescription } from '../../../../generated/entity/data/file';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -28,6 +29,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
@@ -120,6 +122,13 @@ const FileVersion = ({
     [changeDescription]
   );
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -178,7 +187,7 @@ const FileVersion = ({
             isVersionView
             entityType={EntityType.FILE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -187,7 +196,7 @@ const FileVersion = ({
       description,
       entityFqn,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
     ]
