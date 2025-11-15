@@ -27,6 +27,7 @@ import {
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
+  TABLE_ENTITY_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -693,6 +694,7 @@ const SchemaTable = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
+      pageSizeOptions: TABLE_ENTITY_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,
