@@ -63,7 +63,8 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
+    WHERE TRUE {view_filter}
     """
 )
 

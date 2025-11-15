@@ -6721,7 +6721,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   private PutResponse<T> bulkCreateOrUpdateEntity(UriInfo uriInfo, T updated, String userName) {
-    T original = findByNameOrNull(updated.getFullyQualifiedName(), NON_DELETED);
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) {
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
