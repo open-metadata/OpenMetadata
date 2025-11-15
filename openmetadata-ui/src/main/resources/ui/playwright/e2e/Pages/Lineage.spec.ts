@@ -135,7 +135,7 @@ for (const EntityClass of entities) {
           );
           await page
             .locator(
-              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
+              `[data-testid="lineage-node-${toNodeFqn}"] .entity-service-icon`
             )
             .click();
 

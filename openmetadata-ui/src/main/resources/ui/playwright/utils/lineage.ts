@@ -239,15 +239,16 @@ export const connectEdgeBetweenNodes = async (
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.name');
+  const name = get(node, 'entityResponseData.displayName');
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
   await expect(lineageNode).toBeVisible();
 
   const entityHeaderName = lineageNode.locator(
-    '[data-testid="entity-header-name"]'
+    '[data-testid="entity-header-display-name"]'
   );
 
+  // this is failing
   await expect(entityHeaderName).toHaveText(name);
 };
 
