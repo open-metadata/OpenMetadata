@@ -201,8 +201,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     // Update Search Criteria here
     searchCriteria = {
       'owners.displayName.keyword': [
-        EntityDataClass.user1.getUserName(),
-        EntityDataClass.user2.getUserName(),
+        EntityDataClass.user1.getUserDisplayName(),
+        EntityDataClass.user2.getUserDisplayName(),
       ],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
       'tier.tagFQN': [

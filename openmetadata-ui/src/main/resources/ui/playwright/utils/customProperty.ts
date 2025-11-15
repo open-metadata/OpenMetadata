@@ -448,7 +448,7 @@ export const createCustomPropertyForEntity = async (
 
   // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
   const userNames = users.reduce((acc, user, index) => {
-    acc[`user${index + 1}`] = user.getUserName();
+    acc[`user${index + 1}`] = user.getUserDisplayName();
 
     return acc;
   }, {} as Record<string, string>);

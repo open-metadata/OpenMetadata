@@ -16,7 +16,7 @@ Validator for column values to be unique test case
 import logging
 from typing import Dict, List, Optional
 
-from sqlalchemy import Column, case, func, literal, literal_column, select
+from sqlalchemy import Column, String, case, func, literal, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql.selectable import CTE
@@ -153,19 +153,27 @@ class ColumnValuesToBeUniqueValidator(
 
         try:
             # ==================== PASS 1: Top N Dimensions ====================
-            table = self.runner.dataset.__table__
+            # Handle both Table and CTE/Alias cases (when partitioning is enabled)
+            if hasattr(self.runner.dataset, "__table__"):
+                table = self.runner.dataset.__table__
+            else:
+                table = self.runner.dataset
             dialect = self.runner._session.bind.dialect.name
+
+            # Cast dimension column to VARCHAR to ensure compatibility with string literals
+            # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+            dimension_col_as_string = func.cast(dimension_col, String)
 
             # Normalize dimension column for NULL handling
             normalized_dimension = case(
                 [
                     (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
                     (
-                        func.upper(dimension_col) == "NULL",
+                        func.upper(dimension_col_as_string) == "NULL",
                         literal(DIMENSION_NULL_LABEL),
                     ),
                 ],
-                else_=dimension_col,
+                else_=dimension_col_as_string,
             )
 
             # Build dialect-specific value_counts CTE for dimensional unique count

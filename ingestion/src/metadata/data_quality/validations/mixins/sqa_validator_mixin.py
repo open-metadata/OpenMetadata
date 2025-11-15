@@ -15,7 +15,7 @@ Validator Mixin for SQA tests cases
 
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, Table, case, func, inspect, literal, select, text
+from sqlalchemy import Column, String, Table, case, func, inspect, literal, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
@@ -220,13 +220,20 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_FAILED_COUNT_KEY}' key"
             )
 
+        # Cast dimension column to VARCHAR to ensure compatibility with string literals
+        # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+        dimension_col_as_string = func.cast(dimension_col, String)
+
         # Normalize dimension column null valures
         normalized_dimension = case(
             [
                 (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
-                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+                (
+                    func.upper(dimension_col_as_string) == "NULL",
+                    literal(DIMENSION_NULL_LABEL),
+                ),
             ],
-            else_=dimension_col,
+            else_=dimension_col_as_string,
         )
 
         # Build expressions using dictionary iteration
@@ -419,13 +426,20 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}'"
             )
 
+        # Cast dimension column to VARCHAR to ensure compatibility with string literals
+        # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+        dimension_col_as_string = func.cast(dimension_col, String)
+
         # Normalize dimension column null valures
         normalized_dimension = case(
             [
                 (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
-                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+                (
+                    func.upper(dimension_col_as_string) == "NULL",
+                    literal(DIMENSION_NULL_LABEL),
+                ),
             ],
-            else_=dimension_col,
+            else_=dimension_col_as_string,
         )
 
         final_metric_builders = final_metric_builders or {}

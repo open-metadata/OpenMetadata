@@ -142,7 +142,7 @@ test.describe('Glossary Bulk Import Export', () => {
         // Update Reviewer
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'Add',
           resultTestId: 'glossary-reviewer-name',
           endpoint: EntityTypeEndpoint.Glossary,

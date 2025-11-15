@@ -275,7 +275,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Verify Owner Add Delete', async ({ adminPage }) => {
     await tag1.visitPage(adminPage);
-    const OWNER1 = user1.getUserName();
+    const OWNER1 = user1.getUserDisplayName();
 
     await addMultiOwner({
       page: adminPage,

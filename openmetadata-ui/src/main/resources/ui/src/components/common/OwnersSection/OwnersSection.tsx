@@ -161,12 +161,12 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     () => (
       <div className="owners-display">
         <OwnerLabel
-          avatarSize={24}
           className="owner-label-section"
           hasPermission={hasPermission}
           isCompactView={false}
           maxVisibleOwners={4}
           owners={displayOwners}
+          placement="vertical"
           showLabel={false}
         />
       </div>

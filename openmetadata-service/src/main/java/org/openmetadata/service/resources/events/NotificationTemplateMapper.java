@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.events;
 
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.mapper.EntityMapper;
 
 public class NotificationTemplateMapper
@@ -12,7 +11,6 @@ public class NotificationTemplateMapper
   public NotificationTemplate createToEntity(CreateNotificationTemplate create, String user) {
     return copy(new NotificationTemplate(), create, user)
         .withTemplateSubject(create.getTemplateSubject())
-        .withTemplateBody(create.getTemplateBody())
-        .withProvider(ProviderType.USER);
+        .withTemplateBody(create.getTemplateBody());
   }
 }

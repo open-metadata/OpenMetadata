@@ -79,6 +79,17 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 JSON.parse = jest.fn().mockReturnValue([]);
 
 describe('DashboardVersion tests', () => {

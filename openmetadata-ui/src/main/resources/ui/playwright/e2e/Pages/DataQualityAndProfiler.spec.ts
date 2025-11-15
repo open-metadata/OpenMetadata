@@ -21,7 +21,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   clickOutside,
   descriptionBox,
   getApiContext,
@@ -893,7 +893,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   // Add domain to table
   await filterTable1.visitEntityPage(page);
-  await assignDomain(page, domain.responseData);
+  await assignSingleSelectDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,
     `pw_second_table_column_count_to_be_between_${uuid()}`,

@@ -225,9 +225,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     </span>
                     {item.entity.owners && item.entity.owners.length > 0 ? (
                       <OwnerLabel
-                        isCompactView
                         avatarSize={16}
                         className="item-owner-label-text"
+                        isCompactView={false}
                         owners={item.entity.owners}
                         showLabel={false}
                       />

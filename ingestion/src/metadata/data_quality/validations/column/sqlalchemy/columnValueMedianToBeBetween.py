@@ -15,7 +15,7 @@ Validator for column value median to be between test case
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, case, func, literal, select
+from sqlalchemy import Column, String, case, func, literal, select
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
@@ -96,18 +96,26 @@ class ColumnValueMedianToBeBetweenValidator(
 
         try:
             # ==================== PASS 1: Top N Dimensions ====================
-            table = self.runner.dataset.__table__
+            # Handle both Table and CTE/Alias cases (when partitioning is enabled)
+            if hasattr(self.runner.dataset, "__table__"):
+                table = self.runner.dataset.__table__
+            else:
+                table = self.runner.dataset
 
             # Step 1: Build normalized dimension expression
+            # Cast dimension column to VARCHAR to ensure compatibility with string literals
+            # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+            dimension_col_as_string = func.cast(dimension_col, String)
+
             normalized_dimension = case(
                 [
                     (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
                     (
-                        func.upper(dimension_col) == "NULL",
+                        func.upper(dimension_col_as_string) == "NULL",
                         literal(DIMENSION_NULL_LABEL),
                     ),
                 ],
-                else_=dimension_col,
+                else_=dimension_col_as_string,
             )
 
             # Step 2: Create CTE with normalized dimension as simple column
@@ -330,6 +338,20 @@ class ColumnValueMedianToBeBetweenValidator(
             return None
 
         try:
+            # Cast dimension column to VARCHAR and normalize it (same as Pass 1)
+            # This ensures type compatibility when comparing with string top_dimension_values
+            dimension_col_as_string = func.cast(dimension_col, String)
+            normalized_dimension = case(
+                [
+                    (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                    (
+                        func.upper(dimension_col_as_string) == "NULL",
+                        literal(DIMENSION_NULL_LABEL),
+                    ),
+                ],
+                else_=dimension_col_as_string,
+            )
+
             # Compute median directly on base table with WHERE filter
             median_expr = Metrics.MEDIAN(column).fn()
             total_count_expr = func.count()
@@ -344,7 +366,7 @@ class ColumnValueMedianToBeBetweenValidator(
                     ]
                 )
                 .select_from(self.runner.dataset)
-                .where(dimension_col.notin_(top_dimension_values))
+                .where(normalized_dimension.notin_(top_dimension_values))
             ).alias("others_stats")
 
             # Cache column references

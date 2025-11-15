@@ -224,7 +224,7 @@ export const editSingleFilterAlert = async ({
     category: 'Users',
     type: 'Email',
     typeId: 'User-select',
-    searchText: user1.getUserName(),
+    searchText: user1.getUserDisplayName(),
   });
 };
 

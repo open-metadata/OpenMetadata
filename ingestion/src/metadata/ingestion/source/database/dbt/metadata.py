@@ -346,6 +346,9 @@ class DbtSource(DbtServiceSource):
                         )
                     )
             try:
+                # Deduplicate tags before building FQNs
+                dbt_tags_list = list(set(dbt_tags_list)) if dbt_tags_list else []
+
                 # Create all the tags added
                 dbt_tag_labels = [
                     fqn.build(
@@ -950,6 +953,9 @@ class DbtSource(DbtServiceSource):
     def create_dbt_exposures_lineage(
         self, exposure_spec: dict
     ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to process dbt exposure lineage
+        """
         to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
         upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
         manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]

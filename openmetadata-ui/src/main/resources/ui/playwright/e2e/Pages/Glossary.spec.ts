@@ -270,7 +270,7 @@ test.describe('Glossary tests', () => {
         // Update Owners
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -281,7 +281,7 @@ test.describe('Glossary tests', () => {
         // Update Reviewer
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'Add',
           resultTestId: 'glossary-reviewer-name',
           endpoint: EntityTypeEndpoint.Glossary,

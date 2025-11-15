@@ -25,6 +25,7 @@ import {
   getListTestCaseIncidentByStateId,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
+import '../../../../test/unit/mocks/mui.mock';
 import IncidentManagerPageHeader from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
@@ -169,6 +170,26 @@ jest.mock(
     useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
   })
 );
+
+jest.mock(
+  '../../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
 
 describe('Incident Manager Page Header component', () => {
   it('getFeedData should be call on mount', async () => {

@@ -165,7 +165,7 @@ test.describe('Teams Page', () => {
 
       await addMultiOwner({
         page,
-        ownerNames: [user.getUserName()],
+        ownerNames: [user.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.Teams,
         type: 'Users',
@@ -193,7 +193,7 @@ test.describe('Teams Page', () => {
       // Select the user to remove
       await page
         .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
         )
         .click();
 
@@ -649,17 +649,17 @@ test.describe('Teams Page', () => {
     // Search and select the user
     await page
       .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-      .fill(user.getUserName());
+      .fill(user.getUserDisplayName());
 
     await page
       .locator(
-        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
       )
       .click();
 
     await expect(
       page.locator(
-        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
       )
     ).toHaveClass(/active/);
 

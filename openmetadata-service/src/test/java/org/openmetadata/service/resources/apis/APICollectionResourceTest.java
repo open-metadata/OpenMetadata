@@ -1,27 +1,37 @@
 package org.openmetadata.service.resources.apis;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class APICollectionResourceTest
@@ -168,5 +178,91 @@ public class APICollectionResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateAPICollection botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    APICollection entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    CreateAPICollection userUpdate =
+        createRequest(test.getDisplayName()).withDescription("User updated description");
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget,
+            List.of(userUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APICollection updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Bot initial description",
+        updated.getDescription(),
+        "Bot should not be able to override non-empty user-edited description");
+
+    List<TagLabel> expectedTags = List.of(USER_ADDRESS_TAG_LABEL);
+    assertTrue(
+        updated.getTags().containsAll(expectedTags), "Tags should be preserved from bot creation");
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    CreateAPICollection initialCreate =
+        createRequest(test.getDisplayName()).withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    APICollection entity = createEntity(initialCreate, ADMIN_AUTH_HEADERS);
+    assertEquals(1, entity.getTags().size());
+    assertTrue(entity.getTags().contains(USER_ADDRESS_TAG_LABEL));
+
+    CreateAPICollection updateWithNewTag =
+        createRequest(test.getDisplayName()).withTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget,
+            List.of(updateWithNewTag),
+            BulkOperationResult.class,
+            OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APICollection updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(2, updated.getTags().size(), "Tags should be merged, not replaced");
+    assertTrue(
+        updated.getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toSet())
+            .containsAll(
+                List.of(USER_ADDRESS_TAG_LABEL.getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN())),
+        "Both old and new tags should be present");
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateAPICollection initialCreate =
+        createRequest(test.getDisplayName()).withDescription("Initial description");
+    APICollection entity = createEntity(initialCreate, ADMIN_AUTH_HEADERS);
+
+    CreateAPICollection adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin updated description");
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APICollection updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Admin updated description",
+        updated.getDescription(),
+        "Admin should be able to update description via bulk API");
   }
 }
