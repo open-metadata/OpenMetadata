@@ -80,16 +80,14 @@ export interface NodeHandlesProps {
 
 export interface ExpandCollapseHandlesProps {
   isEditMode: boolean;
+  hasOutgoers: boolean;
+  hasIncomers: boolean;
   isDownstreamNode: boolean;
   isUpstreamNode: boolean;
   isRootNode: boolean;
+  upstreamExpandPerformed: boolean;
+  downstreamExpandPerformed: boolean;
   upstreamLineageLength: number;
   onCollapse: (direction?: LineageDirection) => void;
   onExpand: (direction: LineageDirection) => void;
-  paging: {
-    entityDownstreamCount: number;
-    entityUpstreamCount: number;
-  };
-  nodeDepth: number;
-  isCollapsed: boolean;
 }

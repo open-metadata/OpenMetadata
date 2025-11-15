@@ -828,14 +828,14 @@ export const createNodes = (
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
-  //   const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
-  //     edgesData ?? [],
-  //     uniqueNodesData,
-  //     entityFqn
-  //   );
+  const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
+    edgesData ?? [],
+    uniqueNodesData,
+    entityFqn
+  );
 
-  //   const upstreamNodeIds = new Set(upstreamNodes.map((node) => node.id));
-  //   const downstreamNodeIds = new Set(downstreamNodes.map((node) => node.id));
+  const upstreamNodeIds = new Set(upstreamNodes.map((node) => node.id));
+  const downstreamNodeIds = new Set(downstreamNodes.map((node) => node.id));
 
   return uniqueNodesData.map((node) => {
     // Mark deleted nodes
@@ -860,8 +860,10 @@ export const createNodes = (
         node,
         nodeDepth: node.nodeDepth,
         isRootNode: entityFqn === node.fullyQualifiedName,
-        isUpstreamNode: (node.nodeDepth ?? 0) < 0,
-        isDownstreamNode: (node.nodeDepth ?? 0) > 0,
+        hasIncomers: incomingMap.has(node.id),
+        hasOutgoers: outgoingMap.has(node.id),
+        isUpstreamNode: upstreamNodeIds.has(node.id),
+        isDownstreamNode: downstreamNodeIds.has(node.id),
       },
       width: NODE_WIDTH,
       height: nodeHeight,
@@ -1376,7 +1378,6 @@ const createLoadMoreNode = (
     type: EntityLineageNodeType.LOAD_MORE,
     name: `load_more_${uniqueNodeId}_${parentNode.id}`,
     displayName: 'Load More',
-    isCollapsed: false,
     fullyQualifiedName: `load_more_${uniqueNodeId}_${parentNode.id}`,
     pagination_data: {
       index: currentCount,
@@ -1445,7 +1446,8 @@ const handleNodePagination = (
 };
 
 const processNodeArray = (
-  nodes: Record<string, NodeData>
+  nodes: Record<string, NodeData>,
+  entityFqn: string
 ): LineageEntityReference[] => {
   return Object.values(nodes)
     .map((node: NodeData) => ({
@@ -1455,9 +1457,16 @@ const processNodeArray = (
         entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
       },
       nodeDepth: node.nodeDepth,
-
-      // Initially expand state for all the nodes
-      isCollapsed: (node.entity as LineageEntityReference).isCollapsed ?? false,
+      upstreamExpandPerformed:
+        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
+      downstreamExpandPerformed:
+        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
 };
@@ -1540,22 +1549,14 @@ const processPagination = (
 
   eligibleNodes.forEach((node) => {
     // Handle downstream pagination
-    const downstream = handleNodePagination(
-      node,
-      { ...downstreamEdges, ...upstreamEdges },
-      true
-    );
+    const downstream = handleNodePagination(node, downstreamEdges, true);
     if (downstream.newNode && downstream.newEdge) {
       newNodes.push(downstream.newNode);
       newEdges.push(downstream.newEdge);
     }
 
     // Handle upstream pagination
-    const upstream = handleNodePagination(
-      node,
-      { ...upstreamEdges, ...downstreamEdges },
-      false
-    );
+    const upstream = handleNodePagination(node, upstreamEdges, false);
     if (upstream.newNode && upstream.newEdge) {
       newNodes.push(upstream.newNode);
       newEdges.push(upstream.newEdge);
@@ -1578,7 +1579,7 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = uniqWith(processNodeArray(nodes), isEqual);
+  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
 
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 

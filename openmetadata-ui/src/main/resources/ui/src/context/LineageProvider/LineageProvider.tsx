@@ -182,7 +182,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [entityLineage, setEntityLineage] = useState<EntityLineageResponse>({
     nodes: [],
     edges: [],
-    entity: {} as LineageEntityReference,
+    entity: {} as EntityReference,
   });
   const [lineageData, setLineageData] = useState<LineageData>();
   const [platformView, setPlatformView] = useState<LineagePlatformView>(
@@ -570,13 +570,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           direction,
         });
 
-        // Update nodeDepth for the new nodes
-        Object.keys(res.nodes).forEach((n) => {
-          res.nodes[n].nodeDepth = node.nodeDepth + res.nodes[n].nodeDepth;
-
-          return n;
-        });
-
         const currentNodes: Record<string, NodeData> = {};
         for (const node of entityLineage.nodes ?? []) {
           currentNodes[node.fullyQualifiedName ?? ''] = {
@@ -645,7 +638,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
 
         if (currentNode) {
-          (currentNode as LineageEntityReference).isCollapsed = false;
+          if (direction === LineageDirection.Upstream) {
+            (currentNode as LineageEntityReference).upstreamExpandPerformed =
+              true;
+          } else {
+            (currentNode as LineageEntityReference).downstreamExpandPerformed =
+              true;
+          }
         }
 
         updateLineageData(updatedEntityLineage, {
@@ -1198,9 +1197,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             const allNodes = uniqWith(
               [
                 ...(entityLineage.nodes ?? []),
-                sourceNode?.data.node,
-                targetNode?.data.node,
-              ] as LineageEntityReference[],
+                sourceNode?.data.node as EntityReference,
+                targetNode?.data.node as EntityReference,
+              ],
               isEqual
             );
 
@@ -1465,7 +1464,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const currentNodeId = (node as Node).id;
       const nodeToUpdate = updatedNodes.find((n) => n.id === currentNodeId);
       if (nodeToUpdate) {
-        (nodeToUpdate as LineageEntityReference).isCollapsed = true;
+        if (direction === LineageDirection.Upstream) {
+          (nodeToUpdate as LineageEntityReference).upstreamExpandPerformed =
+            false;
+        } else {
+          (nodeToUpdate as LineageEntityReference).downstreamExpandPerformed =
+            false;
+        }
       }
 
       // remove the nodes and edges from the lineageData
@@ -1637,7 +1642,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setEntityLineage({
         ...updatedEntityLineage,
-        nodes: updatedNodes,
+        nodes: updatedNodes as EntityReference[],
       });
     }
   }, [isEditMode, updatedEntityLineage, entityFqn]);

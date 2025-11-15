@@ -111,7 +111,8 @@ export interface LineageEntityReference extends EntityReference {
     childrenLength?: number;
   };
   nodeDepth?: number;
-  isCollapsed: boolean;
+  upstreamExpandPerformed?: boolean;
+  downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
   serviceType?: FormattedDatabaseServiceType;
 }

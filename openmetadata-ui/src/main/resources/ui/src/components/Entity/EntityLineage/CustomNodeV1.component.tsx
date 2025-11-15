@@ -98,12 +98,14 @@ const NodeHandles = memo(
 const ExpandCollapseHandles = memo(
   ({
     isEditMode,
+    hasOutgoers,
+    hasIncomers,
     isDownstreamNode,
     isUpstreamNode,
     isRootNode,
-    isCollapsed,
+    upstreamExpandPerformed,
+    downstreamExpandPerformed,
     upstreamLineageLength,
-    paging,
     onCollapse,
     onExpand,
   }: ExpandCollapseHandlesProps) => {
@@ -111,56 +113,32 @@ const ExpandCollapseHandles = memo(
       return null;
     }
 
-    const hasOutgoers = (paging?.entityDownstreamCount ?? 0) > 0;
-    const hasIncomers = (paging?.entityUpstreamCount ?? 0) > 0;
+    return (
+      <>
+        {hasOutgoers &&
+          (isDownstreamNode || isRootNode) &&
+          getCollapseHandle(LineageDirection.Downstream, onCollapse)}
 
-    if (isRootNode) {
-      return (
-        <>
-          {hasOutgoers &&
-            getCollapseHandle(LineageDirection.Downstream, onCollapse)}
+        {!hasOutgoers &&
+          !downstreamExpandPerformed &&
+          getExpandHandle(LineageDirection.Downstream, () =>
+            onExpand(LineageDirection.Downstream)
+          )}
 
-          {hasIncomers &&
-            getCollapseHandle(LineageDirection.Upstream, () =>
-              onCollapse(LineageDirection.Upstream)
-            )}
-        </>
-      );
-    } else if (isDownstreamNode) {
-      if (hasOutgoers) {
-        return (
-          <>
-            {getCollapseHandle(LineageDirection.Downstream, onCollapse)}
-            {isCollapsed &&
-              getExpandHandle(LineageDirection.Downstream, () =>
-                onExpand(LineageDirection.Downstream)
-              )}
-          </>
-        );
-      }
-    } else if (isUpstreamNode) {
-      if (hasIncomers) {
-        return (
-          <>
-            {getCollapseHandle(LineageDirection.Upstream, () =>
-              onCollapse(LineageDirection.Upstream)
-            )}
-          </>
-        );
-      }
+        {hasIncomers &&
+          (isUpstreamNode || isRootNode) &&
+          getCollapseHandle(LineageDirection.Upstream, () =>
+            onCollapse(LineageDirection.Upstream)
+          )}
 
-      return (
-        <>
-          {!isCollapsed &&
-            upstreamLineageLength > 0 &&
-            getExpandHandle(LineageDirection.Upstream, () =>
-              onExpand(LineageDirection.Upstream)
-            )}
-        </>
-      );
-    }
-
-    return null;
+        {!hasIncomers &&
+          !upstreamExpandPerformed &&
+          upstreamLineageLength > 0 &&
+          getExpandHandle(LineageDirection.Upstream, () =>
+            onExpand(LineageDirection.Upstream)
+          )}
+      </>
+    );
   }
 );
 
@@ -183,13 +161,21 @@ const CustomNodeV1 = (props: NodeProps) => {
     isNewNode,
     node = {},
     isRootNode,
+    hasOutgoers = false,
+    hasIncomers = false,
     isUpstreamNode = false,
     isDownstreamNode = false,
   } = data;
 
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
-  const { id, fullyQualifiedName, upstreamLineage = [], isCollapsed } = node;
+  const {
+    id,
+    fullyQualifiedName,
+    upstreamLineage = [],
+    upstreamExpandPerformed = false,
+    downstreamExpandPerformed = false,
+  } = node;
   const [isTraced, setIsTraced] = useState(false);
 
   const showDqTracing = useMemo(
@@ -237,18 +223,23 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
     () => ({
+      upstreamExpandPerformed,
+      downstreamExpandPerformed,
+      hasIncomers,
+      hasOutgoers,
       isDownstreamNode,
       isEditMode,
       isRootNode,
       isUpstreamNode,
-      nodeDepth: node.nodeDepth || 0,
-      paging: node.paging,
-      isCollapsed,
       upstreamLineageLength: upstreamLineage.length,
       onCollapse,
       onExpand,
     }),
     [
+      upstreamExpandPerformed,
+      downstreamExpandPerformed,
+      hasIncomers,
+      hasOutgoers,
       isDownstreamNode,
       isEditMode,
       isRootNode,
@@ -256,9 +247,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       upstreamLineage.length,
       onCollapse,
       onExpand,
-      isCollapsed,
-      node.paging,
-      node.nodeDepth,
     ]
   );
 
