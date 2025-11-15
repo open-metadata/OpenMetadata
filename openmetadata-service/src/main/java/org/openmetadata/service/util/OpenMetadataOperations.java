@@ -150,9 +150,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', 'cleanup-flowable-history'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
+    LOG.info(
+        "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000 --cleanup-all' for Flowable cleanup with custom options");
     return 0;
   }
 
@@ -1650,6 +1652,65 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "cleanup-flowable-history",
+      description =
+          "Cleans up old workflow deployments and history. "
+              + "For Periodic Batch workflows: cleans up both deployments and history. "
+              + "For Event Based workflows: cleans up only history. "
+              + "By default, runs in dry-run mode to only analyze what would be cleaned.")
+  public Integer cleanupFlowableHistory(
+      @Option(
+              names = {"--delete"},
+              defaultValue = "false",
+              description =
+                  "Actually perform the cleanup. Without this flag, the command only analyzes what would be cleaned (dry-run mode).")
+          boolean delete,
+      @Option(
+              names = {"--runtime-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for runtime instance cleanup.")
+          int runtimeBatchSize,
+      @Option(
+              names = {"--history-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for history instance cleanup.")
+          int historyBatchSize,
+      @Option(
+              names = {"--cleanup-all"},
+              defaultValue = "false",
+              description =
+                  "Clean up all workflows regardless of trigger type. By default, only Periodic Batch workflows are fully cleaned.")
+          boolean cleanupAll) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info(
+          "Running Flowable workflow cleanup. Dry run: {}, Cleanup all: {}", dryRun, cleanupAll);
+
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      WorkflowHandler.initialize(config);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      FlowableCleanup cleanup = new FlowableCleanup(workflowHandler, dryRun);
+      FlowableCleanup.FlowableCleanupResult result =
+          cleanup.performCleanup(historyBatchSize, runtimeBatchSize, cleanupAll);
+
+      if (dryRun && !result.getCleanedWorkflows().isEmpty()) {
+        LOG.info("Dry run completed. To actually perform the cleanup, run with --delete");
+        return 1;
+      }
+
+      LOG.info("Flowable cleanup completed successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup Flowable history due to ", e);
+      return 1;
+    }
+  }
+
   private void analyzeEntityTable(String entity) {
     try {
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
@@ -1693,7 +1754,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private void parseConfig() throws Exception {
+  public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();
