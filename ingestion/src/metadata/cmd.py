@@ -27,6 +27,7 @@ from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
 from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
+from metadata.cli.pipeline_profiler import run_pipeline_profiler
 from metadata.cli.profile import run_profiler
 from metadata.cli.usage import run_usage
 from metadata.utils.logger import cli_logger, set_loggers_level
@@ -44,6 +45,7 @@ class MetadataCommands(Enum):
     LINEAGE = "lineage"
     APP = "app"
     AUTO_CLASSIFICATION = "classify"
+    PIPELINE_PROFILER = "pipeline-profiler"
 
 
 RUN_PATH_METHODS = {
@@ -55,6 +57,7 @@ RUN_PATH_METHODS = {
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
     MetadataCommands.AUTO_CLASSIFICATION.value: run_classification,
+    MetadataCommands.PIPELINE_PROFILER.value: run_pipeline_profiler,
 }
 
 
@@ -153,6 +156,12 @@ def get_parser(args: Optional[List[str]] = None):
         sub_parser.add_parser(
             MetadataCommands.AUTO_CLASSIFICATION.value,
             help="Workflow for running auto classification",
+        )
+    )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.PIPELINE_PROFILER.value,
+            help="Workflow for ingesting pipeline observability data",
         )
     )
     webhook_args(

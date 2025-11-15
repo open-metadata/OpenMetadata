@@ -208,13 +208,31 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      SearchRequest searchRequest = searchRequestBuilder.build();
+      LOG.info(
+          "Generic Aggregation - Index: {}, Query: {}, Aggregations count: {}",
+          indexName,
+          query,
+          aggregations.size());
+      LOG.debug("Generic Aggregation - Full aggregations: {}", aggregations);
+
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
 
       String response = serializeSearchResponse(searchResponse);
+      LOG.info(
+          "Generic Aggregation - Response hits total: {}",
+          searchResponse.hits().total() != null ? searchResponse.hits().total().value() : 0);
+      LOG.debug("Generic Aggregation - Full response: {}", response);
+
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+      LOG.info(
+          "Generic Aggregation - Aggregation results present: {}", aggregationResults.isPresent());
+      if (aggregationResults.isPresent()) {
+        LOG.info("Generic Aggregation - Aggregation results: {}", aggregationResults.get());
+      }
+
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());
     } catch (Exception e) {
