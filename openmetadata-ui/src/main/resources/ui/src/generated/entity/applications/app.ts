@@ -196,6 +196,8 @@ export interface App {
  */
 export enum AgentType {
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 

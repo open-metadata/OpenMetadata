@@ -97,6 +97,8 @@
       "type": "string",
       "enum": [
         "CollateAI",
+        "CollateAITierAgent",
+        "CollateAIQualityAgent",
         "Metadata"
       ],
       "javaEnums": [

@@ -134,6 +134,8 @@ export interface CreateAppMarketPlaceDefinitionReq {
  */
 export enum AgentType {
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 

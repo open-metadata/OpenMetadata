@@ -342,7 +342,9 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
     .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`)
+    .locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
     .click();
 
   await expect(
@@ -425,7 +427,9 @@ export const addUserTeam = async (
     .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`)
+    .locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
     .click();
 
   await expect(
