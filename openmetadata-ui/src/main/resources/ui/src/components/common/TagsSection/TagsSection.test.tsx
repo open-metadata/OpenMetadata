@@ -457,7 +457,11 @@ describe('TagsSection', () => {
     it('should render no data found message when no tags', () => {
       render(<TagsSection {...defaultProps} tags={[]} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
+        )
+      ).toBeInTheDocument();
     });
 
     it('should render with correct CSS classes when no tags', () => {
@@ -790,13 +794,21 @@ describe('TagsSection', () => {
     it('should handle empty tags array', () => {
       render(<TagsSection {...defaultProps} tags={[]} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
+        )
+      ).toBeInTheDocument();
     });
 
     it('should handle undefined tags', () => {
       render(<TagsSection {...defaultProps} tags={undefined} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
+        )
+      ).toBeInTheDocument();
     });
 
     it('should handle tags with missing properties', () => {

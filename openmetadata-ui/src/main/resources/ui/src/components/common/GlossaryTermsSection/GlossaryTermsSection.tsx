@@ -175,7 +175,11 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     }
 
     return (
-      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+      <span className="no-data-placeholder">
+        {t('label.no-entity-assigned', {
+          entity: t('label.glossary-term-plural'),
+        })}
+      </span>
     );
   }, [isLoading, isEditing, loadingState, editingState, t]);
 

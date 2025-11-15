@@ -74,7 +74,8 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <div className="overview-section">
-      {visibleEntityInfo.map((info) => (
+      {visibleEntityInfo.length > 0 ? (
+        visibleEntityInfo.map((info) => (
         <div className="overview-row" key={info.name}>
           <span
             className={classNames('overview-label')}
@@ -87,7 +88,11 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
             {renderInfoValue(info)}
           </span>
         </div>
-      ))}
+      )) : (
+        <span className="no-data-placeholder">
+          {t('label.no-overview-available')}
+        </span>
+      )}
     </div>
   );
 };

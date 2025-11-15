@@ -87,7 +87,11 @@ describe('DescriptionSection', () => {
       const { container } = render(<DescriptionSection />);
 
       expect(screen.getByText('label.description')).toBeInTheDocument();
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-added - {"entity":"label.description-lowercase"}'
+        )
+      ).toBeInTheDocument();
       expect(
         container.querySelector('.description-section')
       ).toBeInTheDocument();
@@ -158,7 +162,11 @@ describe('DescriptionSection', () => {
       fireEvent.click(cancelBtn);
 
       expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-added - {"entity":"label.description-lowercase"}'
+        )
+      ).toBeInTheDocument();
     });
 
     it('saves edited description and closes modal', async () => {

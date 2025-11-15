@@ -410,7 +410,7 @@ export const DataAssetSummaryPanelV1 = ({
             {isTestCaseLoading ? (
               <Loader size="small" />
             ) : (
-              statusCounts.total > 0 && (
+              entityType === EntityType.TABLE && (
                 <DataQualitySection
                   tests={[
                     { type: 'success', count: statusCounts.success },

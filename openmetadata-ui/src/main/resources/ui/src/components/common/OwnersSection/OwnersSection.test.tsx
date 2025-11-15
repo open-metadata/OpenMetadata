@@ -169,7 +169,11 @@ describe('OwnersSection', () => {
     it('should render no data found message when no owners', () => {
       render(<OwnersSection {...defaultProps} owners={[]} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.owner-plural"}'
+        )
+      ).toBeInTheDocument();
     });
 
     it('should enter edit mode when no owners', () => {

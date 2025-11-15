@@ -172,7 +172,9 @@ const TierSection: React.FC<TierSectionProps> = ({
           </div>
         ) : (
           <span className="no-data-placeholder">
-            {t('label.no-data-found')}
+            {t('label.no-entity-assigned', {
+              entity: t('label.tier'),
+            })}
           </span>
         )}
       </div>
