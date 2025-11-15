@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PagingWithoutTotal } from 'Models';
+import { Dispatch, SetStateAction } from 'react';
 import { Spreadsheet } from '../../../../generated/entity/data/spreadsheet';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -21,4 +23,8 @@ export interface SpreadsheetsTableProps {
   handlePageChange: (data: PagingHandlerParams) => void;
   spreadsheets: Spreadsheet[];
   isLoading: boolean;
+  setSpreadsheets: Dispatch<SetStateAction<Spreadsheet[]>>;
+  setIsLoading: Dispatch<SetStateAction<boolean>>;
+  serviceFqn: string;
+  fetchSpreadsheets: (paging?: PagingWithoutTotal) => void;
 }
