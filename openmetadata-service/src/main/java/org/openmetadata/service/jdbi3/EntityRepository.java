@@ -119,7 +119,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -1171,9 +1175,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (updatedBy != null) {
       entity.setUpdatedBy(updatedBy);
     }
-    if (impersonatedBy != null) {
-      entity.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to clear it when null (regular user operations)
+    entity.setImpersonatedBy(impersonatedBy);
 
     return createNewEntity(entity);
   }
@@ -1440,9 +1443,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
-      if (impersonatedBy != null) {
-        updated.setImpersonatedBy(impersonatedBy);
-      }
+      // Always set impersonatedBy to clear it when null (regular user operations)
+      updated.setImpersonatedBy(impersonatedBy);
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
@@ -1459,9 +1461,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
-      if (impersonatedBy != null) {
-        updated.setImpersonatedBy(impersonatedBy);
-      }
+      // Always set impersonatedBy to clear it when null (regular user operations)
+      updated.setImpersonatedBy(impersonatedBy);
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
@@ -1600,9 +1601,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
-    if (impersonatedBy != null) {
-      updated.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to clear it when null (regular user operations)
+    updated.setImpersonatedBy(impersonatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1633,9 +1633,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
-    if (impersonatedBy != null) {
-      updated.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to clear it when null (regular user operations)
+    updated.setImpersonatedBy(impersonatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1805,10 +1804,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setDomains(validatedDomains);
     restorePatchAttributes(original, updated);
 
-    // Set impersonatedBy after all attribute restoration to prevent it from being overwritten
-    if (impersonatedBy != null) {
-      updated.setImpersonatedBy(impersonatedBy);
-    }
+    // Always set impersonatedBy to the passed value (which can be null)
+    // This ensures that when regular users make changes (impersonatedBy=null),
+    // any existing impersonatedBy value is cleared, preventing it from persisting
+    updated.setImpersonatedBy(impersonatedBy);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
@@ -5808,10 +5807,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
-    boolean validColumn =
-        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
-    if (!validColumn && !columnName.equalsIgnoreCase("all")) {
-      throw new IllegalArgumentException("Invalid column name " + columnName);
+    validateColumn(table, columnName, Boolean.TRUE);
+  }
+
+  // Validate if a given column exists in the table with optional case sensitivity
+  public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
+    if (Boolean.FALSE.equals(caseSensitive)) {
+      boolean validColumn =
+          table.getColumns().stream().anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
+      if (!validColumn && !columnName.equalsIgnoreCase("all")) {
+        throw new IllegalArgumentException("Invalid column name " + columnName);
+      }
+    } else {
+      boolean validColumn =
+          table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+      if (!validColumn && !columnName.equalsIgnoreCase("all")) {
+        throw new IllegalArgumentException("Invalid column name " + columnName);
+      }
     }
   }
 
@@ -6596,5 +6608,180 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public boolean isUpdateForImport(T entity) {
     return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
+  }
+
+  private static final ExecutorService BULK_PROCESSING_EXECUTOR =
+      Executors.newVirtualThreadPerTaskExecutor();
+
+  private static final ExecutorService BOUNDED_BULK_EXECUTOR =
+      Executors.newFixedThreadPool(20, Thread.ofVirtual().factory());
+
+  private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =
+      new ConcurrentHashMap<>();
+
+  public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
+      UriInfo uriInfo, List<T> entities, String userName) {
+
+    String jobId = UUID.randomUUID().toString();
+    LOG.info(
+        "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
+
+    CompletableFuture<BulkOperationResult> job =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName);
+              } catch (Exception e) {
+                LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
+                BulkOperationResult errorResult = new BulkOperationResult();
+                errorResult.setStatus(ApiStatus.FAILURE);
+                errorResult.setNumberOfRowsFailed(entities.size());
+                errorResult.setNumberOfRowsPassed(0);
+                return errorResult;
+              }
+            },
+            BULK_PROCESSING_EXECUTOR);
+
+    BULK_JOBS.put(jobId, job);
+
+    job.whenComplete(
+        (result, throwable) -> {
+          CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
+              .execute(() -> BULK_JOBS.remove(jobId));
+        });
+
+    return job;
+  }
+
+  private BulkOperationResult bulkCreateOrUpdateEntitiesSequential(
+      UriInfo uriInfo, List<T> entities, String userName) {
+
+    BulkOperationResult result = new BulkOperationResult();
+    result.setStatus(ApiStatus.SUCCESS);
+
+    List<BulkResponse> successRequests = new ArrayList<>();
+    List<BulkResponse> failedRequests = new ArrayList<>();
+
+    for (T entity : entities) {
+      try {
+        createOrUpdate(uriInfo, entity, userName);
+        successRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.OK.getStatusCode()));
+      } catch (Exception e) {
+        LOG.warn("Failed to process entity in bulk operation", e);
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.BAD_REQUEST.getStatusCode())
+                .withMessage(e.getMessage()));
+      }
+    }
+
+    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsPassed(successRequests.size());
+    result.setNumberOfRowsFailed(failedRequests.size());
+    result.setSuccessRequest(successRequests);
+    result.setFailedRequest(failedRequests);
+
+    if (failedRequests.size() > 0) {
+      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    }
+
+    LOG.info(
+        "Async bulk operation completed: {} succeeded, {} failed out of {} total",
+        successRequests.size(),
+        failedRequests.size(),
+        entities.size());
+
+    return result;
+  }
+
+  public Optional<BulkOperationResult> getBulkJobStatus(String jobId) {
+    CompletableFuture<BulkOperationResult> job = BULK_JOBS.get(jobId);
+    if (job == null) {
+      return Optional.empty();
+    }
+
+    if (job.isDone() && !job.isCompletedExceptionally()) {
+      try {
+        return Optional.of(job.get());
+      } catch (ExecutionException | InterruptedException e) {
+        LOG.error("Error retrieving job status for jobId: {}", jobId, e);
+        Thread.currentThread().interrupt();
+        return Optional.empty();
+      }
+    }
+
+    BulkOperationResult inProgress = new BulkOperationResult();
+    inProgress.setStatus(ApiStatus.RUNNING);
+    return Optional.of(inProgress);
+  }
+
+  @Transaction
+  private PutResponse<T> bulkCreateOrUpdateEntity(UriInfo uriInfo, T updated, String userName) {
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), NON_DELETED);
+    if (original == null) {
+      return new PutResponse<>(
+          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+    }
+    return update(uriInfo, original, updated, userName, null);
+  }
+
+  public BulkOperationResult bulkCreateOrUpdateEntities(
+      UriInfo uriInfo, List<T> entities, String userName) {
+
+    BulkOperationResult result = new BulkOperationResult();
+    result.setStatus(ApiStatus.SUCCESS);
+
+    List<BulkResponse> successRequests = Collections.synchronizedList(new ArrayList<>());
+    List<BulkResponse> failedRequests = Collections.synchronizedList(new ArrayList<>());
+
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+    for (T entity : entities) {
+      CompletableFuture<Void> future =
+          CompletableFuture.runAsync(
+              () -> {
+                try {
+                  bulkCreateOrUpdateEntity(uriInfo, entity, userName);
+                  successRequests.add(
+                      new BulkResponse()
+                          .withRequest(entity.getFullyQualifiedName())
+                          .withStatus(Status.OK.getStatusCode()));
+                } catch (Exception e) {
+                  LOG.warn("Failed to process entity in bulk operation", e);
+                  failedRequests.add(
+                      new BulkResponse()
+                          .withRequest(entity.getFullyQualifiedName())
+                          .withStatus(Status.BAD_REQUEST.getStatusCode())
+                          .withMessage(e.getMessage()));
+                }
+              },
+              BOUNDED_BULK_EXECUTOR);
+
+      futures.add(future);
+    }
+
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsPassed(successRequests.size());
+    result.setNumberOfRowsFailed(failedRequests.size());
+    result.setSuccessRequest(successRequests);
+    result.setFailedRequest(failedRequests);
+
+    if (failedRequests.size() > 0) {
+      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    }
+
+    LOG.info(
+        "Bulk operation completed: {} succeeded, {} failed out of {} total",
+        successRequests.size(),
+        failedRequests.size(),
+        entities.size());
+
+    return result;
   }
 }

@@ -1,7 +1,10 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to check if one value is greater than another.
@@ -40,5 +43,19 @@ public class GtHelper implements HandlebarsHelper {
       return number.doubleValue();
     }
     return Double.parseDouble(value.toString());
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("gt")
+        .withDescription("Check if first value is greater than second")
+        .withCursorOffset(5)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{gt }}")
+                    .withExample(
+                        "{{#if (gt entity.summary.total 0)}}Total: {{entity.summary.total}}{{/if}}")));
   }
 }

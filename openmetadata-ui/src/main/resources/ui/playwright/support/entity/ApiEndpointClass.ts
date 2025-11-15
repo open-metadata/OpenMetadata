@@ -71,6 +71,7 @@ export class ApiEndpointClass extends EntityClass {
   entity: {
     name: string;
     displayName: string;
+    description: string;
     apiCollection: string;
     endpointURL: string;
     requestSchema: {
@@ -166,6 +167,7 @@ export class ApiEndpointClass extends EntityClass {
       displayName: this.apiEndpointName,
       apiCollection: `${this.service.name}.${this.apiCollection.name}`,
       endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
+      description: `Description for ${this.apiEndpointName}`,
       requestSchema: {
         schemaType: 'JSON',
         schemaFields: this.children,

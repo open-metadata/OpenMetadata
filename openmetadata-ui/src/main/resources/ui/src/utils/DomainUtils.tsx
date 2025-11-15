@@ -64,7 +64,7 @@ import { getDomainPath } from './RouterUtils';
 export const getOwner = (
   hasPermission: boolean,
   owners: EntityReference[],
-  ownerDisplayNames: ReactNode[]
+  ownerDisplayNames: Map<string, ReactNode>
 ) => {
   if (!isEmpty(owners)) {
     return <OwnerLabel ownerDisplayName={ownerDisplayNames} owners={owners} />;

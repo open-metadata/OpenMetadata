@@ -41,5 +41,6 @@ export enum Status {
     Aborted = "aborted",
     Failure = "failure",
     PartialSuccess = "partialSuccess",
+    Running = "running",
     Success = "success",
 }
