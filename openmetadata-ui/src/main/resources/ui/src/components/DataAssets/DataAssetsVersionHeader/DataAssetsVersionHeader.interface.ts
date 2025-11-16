@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { Database } from '../../../generated/entity/data/database';
@@ -34,7 +35,7 @@ export interface DataAssetsVersionHeaderProps {
     | DatabaseSchema
     | APICollection
     | TestCase;
-  ownerDisplayName: React.ReactNode[];
+  ownerDisplayName: Map<string, ReactNode>;
   domainDisplayName?: React.ReactNode;
   tierDisplayName: React.ReactNode;
   ownerRef?: EntityReference[];

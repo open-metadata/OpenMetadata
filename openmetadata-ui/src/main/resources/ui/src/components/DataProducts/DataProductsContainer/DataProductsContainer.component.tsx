@@ -39,6 +39,7 @@ interface DataProductsContainerProps {
   activeDomains?: EntityReference[];
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
   newLook?: boolean;
+  multiple?: boolean;
 }
 
 const DataProductsContainer = ({
@@ -48,6 +49,7 @@ const DataProductsContainer = ({
   activeDomains,
   onSave,
   newLook = false,
+  multiple = true,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -107,7 +109,7 @@ const DataProductsContainer = ({
           (item) => item.fullyQualifiedName ?? ''
         )}
         fetchOptions={fetchAPI}
-        mode="multiple"
+        mode={multiple ? 'multiple' : undefined}
         placeholder={t('label.data-product-plural')}
         onCancel={handleCancel}
         onSubmit={handleSave}
