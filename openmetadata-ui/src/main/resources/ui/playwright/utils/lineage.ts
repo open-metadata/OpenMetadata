@@ -249,7 +249,6 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
     '[data-testid="entity-header-display-name"]'
   );
 
-  // this is failing
   await expect(entityHeaderName).toHaveText(name);
 };
 

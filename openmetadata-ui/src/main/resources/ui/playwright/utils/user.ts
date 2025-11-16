@@ -634,7 +634,6 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  // this is failing
   await expect(
     page
       .getByRole('cell', { name: 'user_id' })

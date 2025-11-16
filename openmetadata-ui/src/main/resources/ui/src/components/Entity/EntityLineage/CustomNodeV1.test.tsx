@@ -80,6 +80,7 @@ const mockNodeDataProps2 = {
 
 const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
+let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
@@ -100,11 +101,12 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     },
     columnsHavingLineage: [],
     activeLayer: [
-      LineageLayer.ColumnLevelLineage,
+      ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
       ...(isDataObservabilityLayerActive
         ? [LineageLayer.DataObservability]
         : []),
     ],
+    expandAllColumns: true,
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
     loadChildNodesHandler: loadChildNodesHandlerMock,
@@ -122,7 +124,13 @@ jest.mock('../../../rest/testAPI', () => ({
 }));
 
 describe('CustomNodeV1', () => {
+  beforeEach(() => {
+    isColumnLayerActive = false;
+    isDataObservabilityLayerActive = false;
+  });
+
   it('renders node correctly', () => {
+    isColumnLayerActive = true;
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
@@ -144,6 +152,7 @@ describe('CustomNodeV1', () => {
   });
 
   it('should render children dropdown button', () => {
+    isColumnLayerActive = true;
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
@@ -183,19 +192,22 @@ describe('CustomNodeV1', () => {
   });
 
   it('should have expand and expand all buttons', () => {
+    isColumnLayerActive = true;
+    isDataObservabilityLayerActive = true;
+
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
       </ReactFlowProvider>
     );
 
-    const expandBtn = screen.getByTestId('lineage-expand-btn');
+    const expandBtn = screen.getByTestId('plus-icon');
 
     expect(expandBtn).toBeInTheDocument();
 
     fireEvent.mouseOver(expandBtn);
 
-    expect(screen.getByTestId('lineage-expand-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('plus-icon')).toBeInTheDocument();
   });
 
   it('should expand all when expand all button is clicked', () => {
@@ -205,7 +217,7 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    const expandBtn = screen.getByTestId('lineage-expand-btn');
+    const expandBtn = screen.getByTestId('plus-icon');
 
     fireEvent.click(expandBtn);
 
