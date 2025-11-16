@@ -10,33 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { FileClass } from '../../support/entity/FileClass';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, testTableSearch } from '../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  testTableSearch,
+} from '../../utils/common';
 import { test } from '../fixtures/pages';
-
-let apiContext: APIRequestContext;
-let afterAction: () => Promise<void>;
-
-test.beforeAll(async ({ browser }) => {
-  const result = await performAdminLogin(browser);
-  apiContext = result.apiContext;
-  afterAction = result.afterAction;
-});
-
-test.afterAll(async () => {
-  await afterAction();
-});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -44,36 +33,27 @@ test.beforeEach(async ({ page }) => {
 
 test.describe.serial('Table Search', () => {
   test.describe('Services page', () => {
-    const service1 = new DatabaseServiceClass();
-    const service2 = new DatabaseServiceClass();
-
-    test.beforeAll(async () => {
-      await service1.create(apiContext);
-      await service2.create(apiContext);
-    });
-
-    test.afterAll(async () => {
-      await service1.delete(apiContext);
-      await service2.delete(apiContext);
-    });
-
     test('Services page should have search functionality', async ({ page }) => {
+      const service1 = EntityDataClass.databaseService.get();
+      const service2 = EntityDataClass.storedProcedure1.get().service;
+
       await page.goto('/settings/services/databases');
       await testTableSearch(
         page,
         'database_service_search_index',
-        service1.entity.name,
-        service2.entity.name
+        service1.name,
+        service2.name
       );
     });
   });
 
   test.describe('API Collection page', () => {
-    const apiEndpoint1 = new ApiEndpointClass();
-    const apiEndpoint2 = new ApiEndpointClass();
-
-    test.beforeAll(async () => {
-      await apiEndpoint1.create(apiContext);
+    test('API Collection page should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const apiEndpoint1 = EntityDataClass.apiEndpoint1.get();
+      const apiEndpoint2 = new ApiEndpointClass();
 
       apiEndpoint2.service.name = apiEndpoint1.service.name;
       apiEndpoint2.apiCollection.name = apiEndpoint1.apiCollection.name;
@@ -87,22 +67,9 @@ test.describe.serial('Table Search', () => {
         }
       );
       apiEndpoint2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.API_ENDPOINT}/name/${encodeURIComponent(
-          apiEndpoint2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await apiEndpoint1.delete(apiContext);
-    });
-
-    test('API Collection page should have search functionality', async ({
-      page,
-    }) => {
       await page.goto(
-        `/apiCollection/${apiEndpoint1.apiCollectionResponseData.fullyQualifiedName}`
+        `/apiCollection/${apiEndpoint1.apiCollection.fullyQualifiedName}`
       );
       await testTableSearch(
         page,
@@ -110,22 +77,25 @@ test.describe.serial('Table Search', () => {
         apiEndpoint1.entity.name,
         apiEndpoint2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Database Schema Tables tab', () => {
-    const table1 = new TableClass();
-    const table2 = new TableClass();
-
-    test.beforeAll(async () => {
-      await table1.create(apiContext);
+    test('Database Schema Tables tab should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const table1 = EntityDataClass.table1.get();
+      const table2 = new TableClass();
 
       table2.service.name = table1.service.name;
       table2.database.name = table1.database.name;
       table2.database.service = table1.service.name;
       table2.schema.name = table1.schema.name;
       table2.schema.database = `${table1.service.name}.${table1.database.name}`;
-      table2.entity.databaseSchema = table1.entity.databaseSchema;
+      table2.entity.databaseSchema = table1.schema.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.Table}`,
@@ -134,42 +104,29 @@ test.describe.serial('Table Search', () => {
         }
       );
       table2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.Table}/name/${encodeURIComponent(
-          table2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await table1.delete(apiContext);
-    });
-
-    test('Database Schema Tables tab should have search functionality', async ({
-      page,
-    }) => {
-      await page.goto(
-        `/databaseSchema/${table1.schemaResponseData.fullyQualifiedName}`
-      );
+      await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`);
       await testTableSearch(
         page,
         'table_search_index',
         table1.entity.name,
         table2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Data Models Table', () => {
-    const dataModel1 = new DashboardDataModelClass();
-    const dataModel2 = new DashboardDataModelClass();
-
-    test.beforeAll(async () => {
-      await dataModel1.create(apiContext);
+    test('Data Models Table should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const dataModel1 = EntityDataClass.dashboardDataModel1.get();
+      const dataModel2 = new DashboardDataModelClass();
 
       dataModel2.service.name = dataModel1.service.name;
-      dataModel2.entity.service =
-        dataModel1.serviceResponseData.fullyQualifiedName;
+      dataModel2.entity.service = dataModel1.service.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.DataModel}`,
@@ -178,22 +135,9 @@ test.describe.serial('Table Search', () => {
         }
       );
       dataModel2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.DataModel}/name/${encodeURIComponent(
-          dataModel2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await dataModel1.delete(apiContext);
-    });
-
-    test('Data Models Table should have search functionality', async ({
-      page,
-    }) => {
       await page.goto(
-        `/service/dashboardServices/${dataModel1.serviceResponseData.name}/data-model`
+        `/service/dashboardServices/${dataModel1.service.name}/data-model`
       );
       await testTableSearch(
         page,
@@ -201,15 +145,18 @@ test.describe.serial('Table Search', () => {
         dataModel1.entity.name,
         dataModel2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Stored Procedure Table', () => {
-    const storedProcedure1 = new StoredProcedureClass();
-    const storedProcedure2 = new StoredProcedureClass();
-
-    test.beforeAll(async () => {
-      await storedProcedure1.create(apiContext);
+    test('Stored Procedure Table should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const storedProcedure1 = EntityDataClass.storedProcedure1.get();
+      const storedProcedure2 = new StoredProcedureClass();
 
       storedProcedure2.service.name = storedProcedure1.service.name;
       storedProcedure2.database.name = storedProcedure1.database.name;
@@ -217,7 +164,7 @@ test.describe.serial('Table Search', () => {
       storedProcedure2.schema.name = storedProcedure1.schema.name;
       storedProcedure2.schema.database = `${storedProcedure1.service.name}.${storedProcedure1.database.name}`;
       storedProcedure2.entity.databaseSchema =
-        storedProcedure1.entity.databaseSchema;
+        storedProcedure1.schema.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.StoreProcedure}`,
@@ -226,22 +173,9 @@ test.describe.serial('Table Search', () => {
         }
       );
       storedProcedure2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.StoreProcedure}/name/${encodeURIComponent(
-          storedProcedure2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await storedProcedure1.delete(apiContext);
-    });
-
-    test('Stored Procedure Table should have search functionality', async ({
-      page,
-    }) => {
       await page.goto(
-        `/databaseSchema/${storedProcedure1.schemaResponseData.fullyQualifiedName}/stored_procedure`
+        `/databaseSchema/${storedProcedure1.schema.fullyQualifiedName}/stored_procedure`
       );
       await testTableSearch(
         page,
@@ -249,18 +183,19 @@ test.describe.serial('Table Search', () => {
         storedProcedure1.entity.name,
         storedProcedure2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Topics Table', () => {
-    const topic1 = new TopicClass();
-    const topic2 = new TopicClass();
-
-    test.beforeAll(async () => {
-      await topic1.create(apiContext);
+    test('Topics Table should have search functionality', async ({ page }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const topic1 = EntityDataClass.topic1.get();
+      const topic2 = new TopicClass();
 
       topic2.service.name = topic1.service.name;
-      topic2.entity.service = topic1.serviceResponseData.fullyQualifiedName;
+      topic2.entity.service = topic1.service.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.Topic}`,
@@ -269,20 +204,9 @@ test.describe.serial('Table Search', () => {
         }
       );
       topic2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.Topic}/name/${encodeURIComponent(
-          topic2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await topic1.delete(apiContext);
-    });
-
-    test('Topics Table should have search functionality', async ({ page }) => {
       await page.goto(
-        `/service/messagingServices/${topic1.serviceResponseData.name}/topics`
+        `/service/messagingServices/${topic1.service.name}/topics`
       );
       await testTableSearch(
         page,
@@ -290,19 +214,21 @@ test.describe.serial('Table Search', () => {
         topic1.entity.name,
         topic2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Drives Service Directories Table', () => {
-    const directory1 = new DirectoryClass();
-    const directory2 = new DirectoryClass();
-
-    test.beforeAll(async () => {
-      await directory1.create(apiContext);
+    test('Drives Service Directories Table should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const directory1 = EntityDataClass.directory1.get();
+      const directory2 = new DirectoryClass();
 
       directory2.service.name = directory1.service.name;
-      directory2.entity.service =
-        directory1.serviceResponseData.fullyQualifiedName;
+      directory2.entity.service = directory1.service.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.Directory}`,
@@ -315,22 +241,9 @@ test.describe.serial('Table Search', () => {
         }
       );
       directory2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.Directory}/name/${encodeURIComponent(
-          directory2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await directory1.delete(apiContext);
-    });
-
-    test('Drives Service Directories Table should have search functionality', async ({
-      page,
-    }) => {
       await page.goto(
-        `/service/driveServices/${directory1.serviceResponseData.name}/directories`
+        `/service/driveServices/${directory1.service.name}/directories`
       );
       await testTableSearch(
         page,
@@ -338,18 +251,21 @@ test.describe.serial('Table Search', () => {
         directory1.entity.name,
         directory2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Drives Service Files Table', () => {
-    const file1 = new FileClass();
-    const file2 = new FileClass();
-
-    test.beforeAll(async () => {
-      await file1.create(apiContext);
+    test('Drives Service Files Table should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const file1 = EntityDataClass.file1.get();
+      const file2 = new FileClass();
 
       file2.service.name = file1.service.name;
-      file2.entity.service = file1.serviceResponseData.fullyQualifiedName;
+      file2.entity.service = file1.service.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.File}`,
@@ -362,42 +278,29 @@ test.describe.serial('Table Search', () => {
         }
       );
       file2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.File}/name/${encodeURIComponent(
-          file2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await file1.delete(apiContext);
-    });
-
-    test('Drives Service Files Table should have search functionality', async ({
-      page,
-    }) => {
-      await page.goto(
-        `/service/driveServices/${file1.serviceResponseData.name}/files`
-      );
+      await page.goto(`/service/driveServices/${file1.service.name}/files`);
       await testTableSearch(
         page,
         'file_search_index',
         file1.entity.name,
         file2.entity.name
       );
+
+      await afterAction();
     });
   });
 
   test.describe('Drives Service Spreadsheets Table', () => {
-    const spreadsheet1 = new SpreadsheetClass();
-    const spreadsheet2 = new SpreadsheetClass();
-
-    test.beforeAll(async () => {
-      await spreadsheet1.create(apiContext);
+    test('Drives Service Spreadsheets Table should have search functionality', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const spreadsheet1 = EntityDataClass.spreadsheet1.get();
+      const spreadsheet2 = new SpreadsheetClass();
 
       spreadsheet2.service.name = spreadsheet1.service.name;
-      spreadsheet2.entity.service =
-        spreadsheet1.serviceResponseData.fullyQualifiedName;
+      spreadsheet2.entity.service = spreadsheet1.service.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.Spreadsheet}`,
@@ -410,22 +313,9 @@ test.describe.serial('Table Search', () => {
         }
       );
       spreadsheet2.entityResponseData = await response.json();
-    });
 
-    test.afterAll(async () => {
-      await apiContext.delete(
-        `/api/v1/${EntityTypeEndpoint.Spreadsheet}/name/${encodeURIComponent(
-          spreadsheet2.entityResponseData?.['fullyQualifiedName']
-        )}?recursive=true&hardDelete=true`
-      );
-      await spreadsheet1.delete(apiContext);
-    });
-
-    test('Drives Service Spreadsheets Table should have search functionality', async ({
-      page,
-    }) => {
       await page.goto(
-        `/service/driveServices/${spreadsheet1.serviceResponseData.name}/spreadsheets`
+        `/service/driveServices/${spreadsheet1.service.name}/spreadsheets`
       );
       await testTableSearch(
         page,
@@ -433,6 +323,8 @@ test.describe.serial('Table Search', () => {
         spreadsheet1.entity.name,
         spreadsheet2.entity.name
       );
+
+      await afterAction();
     });
   });
 });
