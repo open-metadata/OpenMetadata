@@ -65,11 +65,11 @@ runs:
       shell: bash
 
     - name: Install Python Dependencies
-      env:
-        # Pin to Airflow's constraints to stop pip backtracking forever on 3.12.
-        PIP_CONSTRAINT: ingestion/airflow-constraints-2.10.5.txt
       run: |
         source env/bin/activate
+        if [[ "${{ inputs.python-version }}" == '3.12' ]]; then
+          export PIP_CONSTRAINT=".github/workflows/py312-pip-constraints.txt"
+        fi
         make install_all install_test
       shell: bash
     # ------------------------------------------------------------------------------
