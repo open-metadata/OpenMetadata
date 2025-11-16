@@ -27,27 +27,8 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // Compute visible rows when using entityInfoV1
-  const visibleEntityInfo = entityInfoV1
-    ? entityInfoV1.filter((info) => {
-        const isDomain =
-          isDomainVisible && info.name === t('label.domain-plural');
-
-        return (info.visible || []).includes(componentType) || isDomain;
-      })
-    : [];
-
-  // Hide the entire section (including title) when there's no content
-  const hasContent = entityInfoV1 && visibleEntityInfo.length > 0;
-
-  if (!hasContent) {
-    return (
-      <div className="overview-section">
-        <span className="no-data-placeholder">
-          {t('label.no-overview-available')}
-        </span>
-      </div>
-    );
+  if (!entityInfoV1 || entityInfoV1.length === 0) {
+    return null;
   }
 
   return (
