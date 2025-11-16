@@ -400,7 +400,7 @@ export const editObservabilityAlert = async ({
   await addOwnerFilter({
     page,
     filterNumber: 0,
-    ownerName: user.getUserName(),
+    ownerName: user.getUserDisplayName(),
     selectId: 'Owner Name',
   });
 
