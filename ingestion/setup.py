@@ -29,7 +29,7 @@ VERSIONS = {
     "google-cloud-storage": "google-cloud-storage>=2.10.0",
     "gcsfs": "gcsfs>=2023.12.0",
     "great-expectations": "great-expectations~=0.18.0",
-    "great-expectations-1xx": "great-expectations==1.0.4",
+    "great-expectations-1xx": "great-expectations>=1.4",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
