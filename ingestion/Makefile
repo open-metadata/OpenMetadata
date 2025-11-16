@@ -25,11 +25,19 @@ install_dev:  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
+ifdef PIP_CONSTRAINT
+	python -m pip install --constraint "$(PIP_CONSTRAINT)" "$(INGESTION_DIR)[test]/"
+else
 	python -m pip install "$(INGESTION_DIR)[test]/"
+endif
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
+ifdef PIP_CONSTRAINT
+	python -m pip install --constraint "$(PIP_CONSTRAINT)" "$(INGESTION_DIR)[all]/"
+else
 	python -m pip install "$(INGESTION_DIR)[all]/"
+endif
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
