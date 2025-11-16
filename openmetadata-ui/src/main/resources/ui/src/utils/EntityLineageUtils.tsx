@@ -242,11 +242,12 @@ export const getLayoutedElements = (
 
 // Layout options for the elk graph https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-mrtree.html
 const layoutOptions = {
-  'elk.algorithm': 'mrtree',
+  'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '100',
+  'elk.spacing.nodeNode': 100,
+  'elk.layered.spacing.nodeNodeBetweenLayers': 50,
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
+  'elk.partitioning.activate': 'true',
 };
 
 const elk = new ELK();
@@ -265,6 +266,7 @@ export const getELKLayoutedElements = async (
       columnsHavingLineage
     );
     const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
+    const nodeDepth = node.data?.nodeDepth;
 
     return {
       ...node,
@@ -272,6 +274,11 @@ export const getELKLayoutedElements = async (
       sourcePosition: 'right',
       width: NODE_WIDTH,
       height: nodeHeight,
+      ...(nodeDepth !== undefined && {
+        layoutOptions: {
+          'elk.partitioning.partition': String(nodeDepth),
+        },
+      }),
     };
   });
 
@@ -810,15 +817,15 @@ export const createNodes = (
   isExpanded = false,
   hidden?: boolean
 ) => {
-  const uniqueNodesMap = new Map<string, LineageEntityReference>();
-  nodesData.forEach((node) => {
-    if (node?.fullyQualifiedName) {
-      uniqueNodesMap.set(node.fullyQualifiedName, node);
-    }
-  });
+  //   const uniqueNodesMap = new Map<string, LineageEntityReference>();
+  //   nodesData.forEach((node) => {
+  //     if (node?.fullyQualifiedName) {
+  //       uniqueNodesMap.set(node.fullyQualifiedName, node);
+  //     }
+  //   });
 
   // Convert to array and sort once
-  const uniqueNodesData = Array.from(uniqueNodesMap.values()).sort((a, b) =>
+  const uniqueNodesData = nodesData.sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
@@ -852,6 +859,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
+        nodeDepth: node.nodeDepth,
         isRootNode: entityFqn === node.fullyQualifiedName,
         hasIncomers: incomingMap.has(node.id),
         hasOutgoers: outgoingMap.has(node.id),
@@ -1441,25 +1449,24 @@ const processNodeArray = (
   nodes: Record<string, NodeData>,
   entityFqn: string
 ): LineageEntityReference[] => {
-  return Object.values(nodes)
-    .map((node: NodeData) => ({
-      ...node.entity,
-      paging: {
-        entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
-        entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
-      },
-      upstreamExpandPerformed:
-        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
-        undefined
-          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
-          : node.entity.fullyQualifiedName === entityFqn,
-      downstreamExpandPerformed:
-        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
-        undefined
-          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
-          : node.entity.fullyQualifiedName === entityFqn,
-    }))
-    .flat();
+  return Object.values(nodes).map((node: NodeData) => ({
+    ...node.entity,
+    paging: {
+      entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
+      entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
+    },
+    nodeDepth: node.nodeDepth,
+    upstreamExpandPerformed:
+      (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+      undefined
+        ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+        : node.entity.fullyQualifiedName === entityFqn,
+    downstreamExpandPerformed:
+      (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+      undefined
+        ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+        : node.entity.fullyQualifiedName === entityFqn,
+  }));
 };
 
 const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
@@ -1570,9 +1577,7 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
-
-  const processedNodes: LineageEntityReference[] = [...nodesArray];
+  const nodesArray = processNodeArray(nodes, rootFqn);
 
   // Process edges
   const allEdges = [
@@ -1592,7 +1597,7 @@ export const parseLineageData = (
   );
 
   // Combine all nodes and edges
-  const finalNodes = [...processedNodes, ...newNodes];
+  const finalNodes = [...nodesArray, ...newNodes];
   const finalEdges = [
     ...(processedEdges as unknown as EdgeDetails[]),
     ...newEdges,

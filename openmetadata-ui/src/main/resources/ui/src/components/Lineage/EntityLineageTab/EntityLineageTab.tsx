@@ -45,7 +45,7 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
     () => (
       <Lineage
         deleted={deleted}
-        entity={entity}
+        entity={entity as SourceType}
         entityType={entityType}
         hasEditAccess={hasEditAccess}
       />
