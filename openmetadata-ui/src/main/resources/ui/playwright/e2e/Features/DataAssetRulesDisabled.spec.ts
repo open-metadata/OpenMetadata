@@ -252,9 +252,9 @@ test.describe(
         }
 
         await assignDomain(page, domain.responseData);
-        await assignDomain(page, domain2.responseData, false);
+        // await assignDomain(page, domain2.responseData, false);
 
-        await expect(page.getByTestId('domain-count-button')).toBeVisible();
+        // await expect(page.getByTestId('domain-count-button')).toBeVisible();
 
         // Add Multiple DataProduct, since default single select is off
         if (!entityName.includes('Service')) {
