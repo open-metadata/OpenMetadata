@@ -27,7 +27,7 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignDomain,
+  assignSingleSelectDomain,
   redirectToHomePage,
 } from '../../utils/common';
 import { softDeleteEntity } from '../../utils/entity';
@@ -96,16 +96,14 @@ entities.forEach((EntityClass) => {
         )
         .click();
       // assign domain
-      await assignDomain(page, domain.responseData);
+      await assignSingleSelectDomain(page, domain.responseData);
 
       await redirectToHomePage(page);
 
       await entity.visitEntityPage(page);
-      await assignDataProduct(
-        page,
-        domain.responseData,
-        dataProduct.responseData
-      );
+      await assignDataProduct(page, domain.responseData, [
+        dataProduct.responseData,
+      ]);
 
       // This will delete and restore and ensure both operation are successful
       await softDeleteEntity(
