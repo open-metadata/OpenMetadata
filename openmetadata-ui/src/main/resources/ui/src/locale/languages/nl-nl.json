@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "Afbeeldingsafmetingen overschrijden het maximaal toegestane {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Afbeelding moet hoger zijn dan 103px om te herpositioneren",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "impact-score-helper": "De Impact Score kwantificeert het potentiële effect van datakwaliteitsproblemen op downstream processen, berekend op basis van mislukte rijen en hun kriticaliteit.",
     "import-data-in-progress": "Import is bezig.",
     "import-entity-help": "Bespaar tijd en moeite door een CSV-bestand te uploaden met verschillende {{entity}} in één keer.",
     "in-this-database": "In deze database",

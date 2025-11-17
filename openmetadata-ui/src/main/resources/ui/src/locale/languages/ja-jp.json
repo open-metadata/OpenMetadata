@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "画像のサイズが許可された最大{{maxWidth}}×{{maxHeight}}pxを超えています",
     "image-too-small-to-reposition": "位置変更するには画像の高さが103pxより大きい必要があります",
     "image-upload-error": "画像のアップロードはサポートされていません。画像の表示には URL を使った Markdown 記法をご利用ください。",
+    "impact-score-helper": "インパクトスコアは、失敗した行とその重要度に基づいて計算され、データ品質の問題が下流プロセスに与える潜在的な影響を定量化します。",
     "import-data-in-progress": "インポート中です",
     "import-entity-help": "複数の {{entity}} を含んだ CSV ファイルをアップロードして、時間と労力を節約しましょう。",
     "in-this-database": "このデータベース内",

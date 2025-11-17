@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "圖片尺寸超過允許的最大值 {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "圖片高度必須大於103px才能重新定位",
     "image-upload-error": "不支援圖片上傳。請對可透過 URL 取得的圖片使用 Markdown 語法。",
+    "impact-score-helper": "影響分數基於失敗列數及其嚴重程度計算,量化資料品質問題對下游流程的潛在影響。",
     "import-data-in-progress": "正在匯入。",
     "import-entity-help": "透過一次上傳包含多個 {{entity}} 的 CSV 檔案，節省時間和精力。",
     "in-this-database": "在此資料庫中",

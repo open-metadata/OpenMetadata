@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "图片尺寸超过允许的最大值 {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "图片高度必须大于103px才能重新定位",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "impact-score-helper": "影响分数基于失败行数及其严重程度计算,量化数据质量问题对下游流程的潜在影响。",
     "import-data-in-progress": "导入正在进行中。",
     "import-entity-help": "通过上传 CSV 文件批量维护术语, 节约时间并提高效率。",
     "in-this-database": "在此数据库中",

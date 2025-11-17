@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "מידות התמונה עולות על המקסימום המותר {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "התמונה חייבת להיות גבוהה יותר מ-103px כדי לשנות מיקום",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "impact-score-helper": "ציון ההשפעה מכמת את ההשפעה הפוטנציאלית של בעיות איכות נתונים על תהליכים במורד הזרם, מחושב על בסיס שורות כושלות והקריטיות שלהן.",
     "import-data-in-progress": "ייבוא בתהליך.",
     "import-entity-help": "חסוך זמן ומאמץ על ידי העלאת קובץ CSV עם מספר {{entity}} בפעם אחת.",
     "in-this-database": "במסד נתונים זה",

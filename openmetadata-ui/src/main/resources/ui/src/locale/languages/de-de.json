@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "Bildabmessungen überschreiten das zulässige Maximum von {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Das Bild muss höher als 103px sein, um neu positioniert zu werden",
     "image-upload-error": "Das Hochladen von Bildern wird nicht unterstützt. Bitte verwenden Sie die Markdown-Syntax für Bilder, die über eine URL verfügbar sind.",
+    "impact-score-helper": "Der Impact Score quantifiziert die potenziellen Auswirkungen von Datenqualitätsproblemen auf nachgelagerte Prozesse, berechnet auf Basis fehlgeschlagener Zeilen und deren Kritikalität.",
     "import-data-in-progress": "Import läuft.",
     "import-entity-help": "Sparen Sie Zeit und Aufwand, indem Sie eine CSV-Datei mit mehreren {{entity}} in einem Durchgang hochladen.",
     "in-this-database": "In dieser Datenbank",

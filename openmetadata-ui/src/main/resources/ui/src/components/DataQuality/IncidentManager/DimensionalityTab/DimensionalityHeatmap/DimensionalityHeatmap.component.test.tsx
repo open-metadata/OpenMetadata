@@ -40,7 +40,9 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 
 jest.mock('./useScrollIndicator.hook', () => ({
   useScrollIndicator: jest.fn(() => ({
-    showScrollIndicator: false,
+    showLeftIndicator: false,
+    showRightIndicator: false,
+    handleScrollLeft: jest.fn(),
     handleScrollRight: jest.fn(),
   })),
 }));
@@ -254,8 +256,8 @@ describe('DimensionalityHeatmap Component', () => {
     });
   });
 
-  describe('Scroll Indicator', () => {
-    it('should not render scroll indicator when showScrollIndicator is false', () => {
+  describe('Scroll Indicators', () => {
+    it('should not render scroll indicators when both are false', () => {
       const { container } = render(
         <DimensionalityHeatmap
           data={mockData}
@@ -266,18 +268,27 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(
-        container.querySelector('.dimensionality-heatmap__scroll-indicator')
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--left'
+        )
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--right'
+        )
       ).not.toBeInTheDocument();
     });
 
-    it('should render scroll indicator when showScrollIndicator is true', () => {
+    it('should render right scroll indicator when showRightIndicator is true', () => {
       const mockUseScrollIndicator =
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         require('./useScrollIndicator.hook').useScrollIndicator;
       const mockHandleScrollRight = jest.fn();
 
       mockUseScrollIndicator.mockReturnValue({
-        showScrollIndicator: true,
+        showLeftIndicator: false,
+        showRightIndicator: true,
+        handleScrollLeft: jest.fn(),
         handleScrollRight: mockHandleScrollRight,
       });
 
@@ -291,18 +302,61 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(
-        container.querySelector('.dimensionality-heatmap__scroll-indicator')
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--right'
+        )
       ).toBeInTheDocument();
+      expect(
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--left'
+        )
+      ).not.toBeInTheDocument();
     });
 
-    it('should call handleScrollRight when scroll indicator is clicked', () => {
+    it('should render left scroll indicator when showLeftIndicator is true', () => {
+      const mockUseScrollIndicator =
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('./useScrollIndicator.hook').useScrollIndicator;
+      const mockHandleScrollLeft = jest.fn();
+
+      mockUseScrollIndicator.mockReturnValue({
+        showLeftIndicator: true,
+        showRightIndicator: false,
+        handleScrollLeft: mockHandleScrollLeft,
+        handleScrollRight: jest.fn(),
+      });
+
+      const { container } = render(
+        <DimensionalityHeatmap
+          data={mockData}
+          endDate={endDate}
+          startDate={startDate}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      expect(
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--left'
+        )
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--right'
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should call handleScrollRight when right scroll indicator is clicked', () => {
       const mockUseScrollIndicator =
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         require('./useScrollIndicator.hook').useScrollIndicator;
       const mockHandleScrollRight = jest.fn();
 
       mockUseScrollIndicator.mockReturnValue({
-        showScrollIndicator: true,
+        showLeftIndicator: false,
+        showRightIndicator: true,
+        handleScrollLeft: jest.fn(),
         handleScrollRight: mockHandleScrollRight,
       });
 
@@ -316,13 +370,78 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       const scrollIndicator = container.querySelector(
-        '.dimensionality-heatmap__scroll-indicator'
+        '.dimensionality-heatmap__scroll-indicator--right'
       );
       if (scrollIndicator) {
         fireEvent.click(scrollIndicator);
       }
 
       expect(mockHandleScrollRight).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call handleScrollLeft when left scroll indicator is clicked', () => {
+      const mockUseScrollIndicator =
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('./useScrollIndicator.hook').useScrollIndicator;
+      const mockHandleScrollLeft = jest.fn();
+
+      mockUseScrollIndicator.mockReturnValue({
+        showLeftIndicator: true,
+        showRightIndicator: false,
+        handleScrollLeft: mockHandleScrollLeft,
+        handleScrollRight: jest.fn(),
+      });
+
+      const { container } = render(
+        <DimensionalityHeatmap
+          data={mockData}
+          endDate={endDate}
+          startDate={startDate}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      const scrollIndicator = container.querySelector(
+        '.dimensionality-heatmap__scroll-indicator--left'
+      );
+      if (scrollIndicator) {
+        fireEvent.click(scrollIndicator);
+      }
+
+      expect(mockHandleScrollLeft).toHaveBeenCalledTimes(1);
+    });
+
+    it('should render both indicators when both are true', () => {
+      const mockUseScrollIndicator =
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('./useScrollIndicator.hook').useScrollIndicator;
+
+      mockUseScrollIndicator.mockReturnValue({
+        showLeftIndicator: true,
+        showRightIndicator: true,
+        handleScrollLeft: jest.fn(),
+        handleScrollRight: jest.fn(),
+      });
+
+      const { container } = render(
+        <DimensionalityHeatmap
+          data={mockData}
+          endDate={endDate}
+          startDate={startDate}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      expect(
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--left'
+        )
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector(
+          '.dimensionality-heatmap__scroll-indicator--right'
+        )
+      ).toBeInTheDocument();
     });
   });
 

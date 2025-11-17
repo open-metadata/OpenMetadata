@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "이미지 크기가 허용된 최대 {{maxWidth}}×{{maxHeight}}px를 초과합니다",
     "image-too-small-to-reposition": "위치를 변경하려면 이미지 높이가 103px보다 커야 합니다",
     "image-upload-error": "이미지 업로드가 지원되지 않습니다. URL을 통해 사용 가능한 이미지에 대해 Markdown 구문을 사용하세요.",
+    "impact-score-helper": "임팩트 스코어는 실패한 행과 그 중요도를 기반으로 계산되어 데이터 품질 문제가 다운스트림 프로세스에 미치는 잠재적 영향을 정량화합니다.",
     "import-data-in-progress": "가져오기가 진행 중입니다.",
     "import-entity-help": "CSV 파일을 업로드하여 한 번에 여러 {{entity}}을(를) 추가하여 시간과 노력을 절약하세요.",
     "in-this-database": "이 데이터베이스에서",

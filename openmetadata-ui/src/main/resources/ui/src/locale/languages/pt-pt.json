@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "As dimensões da imagem excedem o máximo permitido de {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "A imagem deve ter mais de 103px de altura para reposicionar",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "impact-score-helper": "O Impact Score quantifica o efeito potencial de problemas de qualidade de dados em processos a jusante, calculado com base em linhas com falha e a sua criticidade.",
     "import-data-in-progress": "A importação está em andamento.",
     "import-entity-help": "Economize tempo e esforço fazendo upload de um arquivo CSV com vários {{entity}} de uma só vez.",
     "in-this-database": "Neste Banco de Dados",

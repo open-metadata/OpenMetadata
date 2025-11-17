@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { KeyboardArrowDown } from '@mui/icons-material';
+import { HelpOutline, KeyboardArrowDown } from '@mui/icons-material';
 import {
   Box,
   Card,
@@ -19,6 +19,7 @@ import {
   SelectChangeEvent,
   Skeleton,
   Stack,
+  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -115,6 +116,7 @@ const DimensionalityTab = () => {
           endTs: dateRange.endTs,
         }
       );
+
       setDimensionData(response.data);
     } catch (error) {
       setDimensionData([]);
@@ -160,13 +162,18 @@ const DimensionalityTab = () => {
       }
     });
 
-    return Array.from(dimensionMap.entries()).map(
-      ([dimensionValue, result]) => ({
+    return Array.from(dimensionMap.entries())
+      .map(([dimensionValue, result]) => ({
         key: `${dimensionValue}-${result.timestamp}`,
         dimensionValue,
         result,
-      })
-    );
+      }))
+      .sort((a, b) => {
+        const impactScoreA = a.result.impactScore ?? 0;
+        const impactScoreB = b.result.impactScore ?? 0;
+
+        return impactScoreB - impactScoreA;
+      });
   }, [dimensionData]);
 
   const tableColumns: ColumnsType<{
@@ -192,7 +199,20 @@ const DimensionalityTab = () => {
       },
     },
     {
-      title: t('label.impact-score'),
+      title: (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {t('label.impact-score')}
+          <Tooltip
+            placement="top"
+            title={
+              <Typography sx={{ fontSize: 12 }}>
+                {t('message.impact-score-helper')}
+              </Typography>
+            }>
+            <HelpOutline sx={{ fontSize: 16 }} />
+          </Tooltip>
+        </Box>
+      ),
       dataIndex: 'result',
       key: 'impactScore',
       width: 120,

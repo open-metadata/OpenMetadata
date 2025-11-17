@@ -42,14 +42,15 @@ describe('useScrollIndicator', () => {
     jest.useRealTimers();
   });
 
-  it('should initialize with showScrollIndicator as false', () => {
+  it('should initialize with showLeftIndicator and showRightIndicator as false', () => {
     const containerRef = { current: null };
     const { result } = renderHook(() => useScrollIndicator(containerRef, []));
 
-    expect(result.current.showScrollIndicator).toBe(false);
+    expect(result.current.showLeftIndicator).toBe(false);
+    expect(result.current.showRightIndicator).toBe(false);
   });
 
-  it('should show scroll indicator when content is scrollable and not at end', () => {
+  it('should show right indicator when content is scrollable and at start', () => {
     const containerRef = { current: mockContainer };
     const { result } = renderHook(() => useScrollIndicator(containerRef, []));
 
@@ -57,10 +58,11 @@ describe('useScrollIndicator', () => {
       jest.runAllTimers();
     });
 
-    expect(result.current.showScrollIndicator).toBe(true);
+    expect(result.current.showLeftIndicator).toBe(false);
+    expect(result.current.showRightIndicator).toBe(true);
   });
 
-  it('should hide scroll indicator when content is not scrollable', () => {
+  it('should hide both indicators when content is not scrollable', () => {
     Object.defineProperty(mockContainer, 'scrollWidth', { value: 500 });
     Object.defineProperty(mockContainer, 'clientWidth', { value: 500 });
 
@@ -71,10 +73,11 @@ describe('useScrollIndicator', () => {
       jest.runAllTimers();
     });
 
-    expect(result.current.showScrollIndicator).toBe(false);
+    expect(result.current.showLeftIndicator).toBe(false);
+    expect(result.current.showRightIndicator).toBe(false);
   });
 
-  it('should hide scroll indicator when at end of scroll', () => {
+  it('should hide right indicator when at end of scroll', () => {
     Object.defineProperty(mockContainer, 'scrollLeft', { value: 495 });
 
     const containerRef = { current: mockContainer };
@@ -84,7 +87,8 @@ describe('useScrollIndicator', () => {
       jest.runAllTimers();
     });
 
-    expect(result.current.showScrollIndicator).toBe(false);
+    expect(result.current.showLeftIndicator).toBe(true);
+    expect(result.current.showRightIndicator).toBe(false);
   });
 
   it('should call scrollBy with correct parameters when handleScrollRight is called', () => {
@@ -101,6 +105,20 @@ describe('useScrollIndicator', () => {
     });
   });
 
+  it('should call scrollBy with correct parameters when handleScrollLeft is called', () => {
+    const containerRef = { current: mockContainer };
+    const { result } = renderHook(() => useScrollIndicator(containerRef, []));
+
+    act(() => {
+      result.current.handleScrollLeft();
+    });
+
+    expect(mockContainer.scrollBy).toHaveBeenCalledWith({
+      left: -300,
+      behavior: 'smooth',
+    });
+  });
+
   it('should not throw error when handleScrollRight is called with null ref', () => {
     const containerRef = { current: null };
     const { result } = renderHook(() => useScrollIndicator(containerRef, []));
@@ -110,6 +128,47 @@ describe('useScrollIndicator', () => {
         result.current.handleScrollRight();
       });
     }).not.toThrow();
+  });
+
+  it('should not throw error when handleScrollLeft is called with null ref', () => {
+    const containerRef = { current: null };
+    const { result } = renderHook(() => useScrollIndicator(containerRef, []));
+
+    expect(() => {
+      act(() => {
+        result.current.handleScrollLeft();
+      });
+    }).not.toThrow();
+  });
+
+  it('should add and remove is-scrolling class on scroll', () => {
+    const containerRef = { current: mockContainer };
+    renderHook(() => useScrollIndicator(containerRef, []));
+
+    const scrollEvent = new Event('scroll');
+    mockContainer.dispatchEvent(scrollEvent);
+
+    expect(mockContainer.classList.contains('is-scrolling')).toBe(true);
+
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(mockContainer.classList.contains('is-scrolling')).toBe(false);
+  });
+
+  it('should remove is-scrolling class on unmount', () => {
+    const containerRef = { current: mockContainer };
+    const { unmount } = renderHook(() => useScrollIndicator(containerRef, []));
+
+    const scrollEvent = new Event('scroll');
+    mockContainer.dispatchEvent(scrollEvent);
+
+    expect(mockContainer.classList.contains('is-scrolling')).toBe(true);
+
+    unmount();
+
+    expect(mockContainer.classList.contains('is-scrolling')).toBe(false);
   });
 
   it('should update when dependencies change', () => {
@@ -123,7 +182,7 @@ describe('useScrollIndicator', () => {
       jest.runAllTimers();
     });
 
-    expect(result.current.showScrollIndicator).toBe(true);
+    expect(result.current.showRightIndicator).toBe(true);
 
     Object.defineProperty(mockContainer, 'scrollWidth', { value: 500 });
     Object.defineProperty(mockContainer, 'clientWidth', { value: 500 });
@@ -134,7 +193,8 @@ describe('useScrollIndicator', () => {
       jest.runAllTimers();
     });
 
-    expect(result.current.showScrollIndicator).toBe(false);
+    expect(result.current.showLeftIndicator).toBe(false);
+    expect(result.current.showRightIndicator).toBe(false);
   });
 
   it('should cleanup event listeners on unmount', () => {

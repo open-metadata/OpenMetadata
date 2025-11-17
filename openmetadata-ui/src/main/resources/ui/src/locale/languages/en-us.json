@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "Image dimensions exceed maximum allowed {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Image must be taller than 103px to reposition",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "impact-score-helper": "Ranks dimension by data quality impact. This score answers: \"Where's the real problem?\" by weighing failure rates against data volume.",
     "import-data-in-progress": "Import is in progress.",
     "import-entity-help": "Save time & effort by uploading a CSV file with several {{entity}} in one go.",
     "in-this-database": "In this Database",

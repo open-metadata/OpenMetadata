@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "As dimensións da imaxe exceden o máximo permitido de {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "A imaxe debe ter máis de 103px de altura para reposicionar",
     "image-upload-error": "A carga de imaxes non está soportada. Usa a sintaxe Markdown para imaxes dispoñibles a través de URL.",
+    "impact-score-helper": "O Impact Score cuantifica o efecto potencial dos problemas de calidade de datos nos procesos posteriores, calculado en función das filas fallidas e a súa criticidade.",
     "import-data-in-progress": "L'importazione è in corso.",
     "import-entity-help": "Aforra tempo e esforzo cargando un ficheiro CSV con varios {{entity}} á vez.",
     "in-this-database": "Nesta base de datos",

@@ -2251,6 +2251,7 @@
     "image-dimensions-exceeded": "Les dimensions de l'image dépassent le maximum autorisé de {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "L'image doit mesurer plus de 103px de hauteur pour être repositionnée",
     "image-upload-error": "Le téléchargement d'images n'est pas pris en charge. Veuillez utiliser la syntaxe Markdown pour les images disponibles via URL.",
+    "impact-score-helper": "L'Impact Score quantifie l'effet potentiel des problèmes de qualité des données sur les processus en aval, calculé en fonction des lignes échouées et de leur criticité.",
     "import-data-in-progress": "L'importation est en cours.",
     "import-entity-help": "Gagnez du temps et de l'effort en téléchargeant un fichier CSV contenant plusieurs {{entityPlural}} en une seule fois.",
     "in-this-database": "Dans cette base de données",
