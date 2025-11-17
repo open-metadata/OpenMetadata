@@ -31,8 +31,6 @@ from typing import (
     Union,
 )
 
-from pydantic import TypeAdapter
-from pydantic.type_adapter import TypeAdapter
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from metadata.generated.schema.api.createBot import CreateBot
@@ -42,13 +40,16 @@ from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPi
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult, Response
+from metadata.generated.schema.type.bulkOperationResult import (
+    BulkOperationResult,
+    Response,
+)
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -672,9 +673,12 @@ class OpenMetadata(
             grouped[entity_class].append(entity)
 
         sorted_grouped = OrderedDict(
-            sorted(grouped.items(), key=lambda item: get_entity_hierarchy_depth(
-                self.get_entity_from_create(item[0])
-            ))
+            sorted(
+                grouped.items(),
+                key=lambda item: get_entity_hierarchy_depth(
+                    self.get_entity_from_create(item[0])
+                ),
+            )
         )
 
         return sorted_grouped
@@ -692,7 +696,10 @@ class OpenMetadata(
             BulkOperationResult: Result containing success/failure details
         """
         type_ = type(entities[0])
-        data: list[str] = [entity.model_dump(mode="json", exclude_unset=True, exclude_none=True) for entity in entities]
+        data: list[str] = [
+            entity.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+            for entity in entities
+        ]
         url = f"{self.get_suffix(type_)}/bulk"
         url += f"?async={str(use_async).lower()}"
         try:
@@ -728,27 +735,50 @@ class OpenMetadata(
         """
         bulk_ops_results: list[BulkOperationResult] = []
         if not entities:
-            return BulkOperationResult(numberOfRowsProcessed=0, numberOfRowsFailed=0, successRequest=[], failedRequest=[])
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=0,
+                successRequest=[],
+                failedRequest=[],
+            )
 
         type_idx = OrderedDict.fromkeys(map(type, entities))
         if len(type_idx) > 1:
             grouped = self._group_entities_by_type(entities)
             for _, entities in grouped.items():
                 try:
-                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+                    bulk_ops_results.append(
+                        self._execute_bulk_operation(entities, use_async)
+                    )
                 except Exception as exc:
                     logger.debug("Failed to execute bulk operation: %s", exc)
                     logger.debug(traceback.format_exc())
         else:
             bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
-        
+
         failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
         return BulkOperationResult(
             status=basic.Status.success if not failed_rows else basic.Status.failure,
-            numberOfRowsProcessed=sum(result.numberOfRowsProcessed.root for result in bulk_ops_results),
-            numberOfRowsFailed=sum(result.numberOfRowsFailed.root for result in bulk_ops_results),
-            successRequest=list(chain.from_iterable(result.successRequest for result in bulk_ops_results if result.successRequest is not None)),
-            failedRequest=list(chain.from_iterable(result.failedRequest for result in bulk_ops_results if result.failedRequest is not None)),
+            numberOfRowsProcessed=sum(
+                result.numberOfRowsProcessed.root for result in bulk_ops_results
+            ),
+            numberOfRowsFailed=sum(
+                result.numberOfRowsFailed.root for result in bulk_ops_results
+            ),
+            successRequest=list(
+                chain.from_iterable(
+                    result.successRequest
+                    for result in bulk_ops_results
+                    if result.successRequest is not None
+                )
+            ),
+            failedRequest=list(
+                chain.from_iterable(
+                    result.failedRequest
+                    for result in bulk_ops_results
+                    if result.failedRequest is not None
+                )
+            ),
         )
 
     def health_check(self) -> bool:

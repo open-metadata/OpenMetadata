@@ -34,16 +34,16 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.headers import render_query_header
+from metadata.ingestion.models.topology import (
+    get_entity_hierarchy,
+    get_entity_hierarchy_depth,
+)
 from metadata.ingestion.ometa.utils import (
     build_entity_reference,
     decode_jwt_token,
     format_name,
     get_entity_type,
     model_str,
-)
-from metadata.ingestion.models.topology import (
-    get_entity_hierarchy,
-    get_entity_hierarchy_depth,
 )
 from metadata.utils.constants import ENTITY_REFERENCE_CLASS_MAP
 
@@ -318,7 +318,9 @@ class OMetaUtilsTest(TestCase):
             "Database should come before DatabaseSchema in hierarchy",
         )
         self.assertLess(
-            schema_depth, table_depth, "DatabaseSchema should come before Table in hierarchy"
+            schema_depth,
+            table_depth,
+            "DatabaseSchema should come before Table in hierarchy",
         )
 
     def test_get_entity_hierarchy_messaging_service_order(self):
@@ -369,7 +371,9 @@ class OMetaUtilsTest(TestCase):
 
         for entity_type, depth in hierarchy.items():
             with self.subTest(entity_type=entity_type.__name__):
-                self.assertIsInstance(depth, int, f"{entity_type.__name__} depth should be an integer")
+                self.assertIsInstance(
+                    depth, int, f"{entity_type.__name__} depth should be an integer"
+                )
                 self.assertGreaterEqual(
                     depth, 0, f"{entity_type.__name__} depth should be non-negative"
                 )

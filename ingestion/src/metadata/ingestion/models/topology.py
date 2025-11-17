@@ -13,7 +13,7 @@ Defines the topology for ingesting sources
 """
 import queue
 import threading
-from functools import singledispatchmethod, cache
+from functools import cache, singledispatchmethod
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
@@ -449,9 +449,7 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
     from metadata.ingestion.source.security.security_service import (
         SecurityServiceTopology,
     )
-    from metadata.ingestion.source.storage.storage_service import (
-        StorageServiceTopology,
-    )
+    from metadata.ingestion.source.storage.storage_service import StorageServiceTopology
 
     all_topologies = [
         DatabaseServiceTopology(),
