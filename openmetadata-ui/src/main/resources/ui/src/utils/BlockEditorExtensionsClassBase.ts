@@ -20,7 +20,10 @@ import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import { Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { DROP_CURSOR_COLOR } from '../constants/BlockEditor.constants';
+import {
+  ExtensionOptions,
+  FileType,
+} from '../components/BlockEditor/BlockEditor.interface';
 import BlockAndDragDrop from '../components/BlockEditor/Extensions/BlockAndDragDrop/BlockAndDragDrop';
 import { Callout } from '../components/BlockEditor/Extensions/Callout/Callout';
 import DiffView from '../components/BlockEditor/Extensions/diff-view';
@@ -37,7 +40,7 @@ import { getSuggestionItems } from '../components/BlockEditor/Extensions/slash-c
 import renderItems from '../components/BlockEditor/Extensions/slash-command/renderItems';
 import TextHighlightView from '../components/BlockEditor/Extensions/text-highlight-view';
 import { TrailingNode } from '../components/BlockEditor/Extensions/trailing-node';
-import { FileType } from '../components/BlockEditor/BlockEditor.interface';
+import { DROP_CURSOR_COLOR } from '../constants/BlockEditor.constants';
 
 /**
  * Base class for BlockEditor extensions configuration
@@ -131,8 +134,10 @@ export class BlockEditorExtensionsClassBase {
   /**
    * Get additional extensions specific to handlebars functionality
    * Override this in subclasses to add handlebars support
+   * @param options - Extension configuration options
    */
-  protected getHandlebarsExtensions(): Extensions {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected getHandlebarsExtensions(options?: ExtensionOptions): Extensions {
     // Base class returns empty array - no handlebars support by default
     return [];
   }
@@ -206,11 +211,12 @@ export class BlockEditorExtensionsClassBase {
   /**
    * Get all extensions combined
    * This is the main method that should be called to get the full extension list
+   * @param options - Configuration options for enabling/disabling specific extensions
    */
-  public getExtensions(): Extensions {
+  public getExtensions(options?: ExtensionOptions): Extensions {
     return [
       ...this.getCoreExtensions(),
-      ...this.getHandlebarsExtensions(),
+      ...this.getHandlebarsExtensions(options),
       ...this.getUtilityExtensions(),
       ...this.getTableExtensions(),
       ...this.getAdvancedContentExtensions(),

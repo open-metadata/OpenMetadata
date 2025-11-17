@@ -47,6 +47,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       placeholder,
       onChange,
       showInlineAlert = true,
+      extensionOptions,
     },
     ref
   ) => {
@@ -64,7 +65,8 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
-      extensions: blockEditorExtensionsClassBase.getExtensions(),
+      extensions:
+        blockEditorExtensionsClassBase.getExtensions(extensionOptions),
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
         const htmlContent = editor.getHTML();
