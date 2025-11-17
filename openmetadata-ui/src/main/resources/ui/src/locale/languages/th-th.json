@@ -847,6 +847,7 @@
     "impact": "ผลกระทบ",
     "impact-analysis": "การวิเคราะห์ผลกระทบ",
     "impact-on-area": "ผลกระทบต่อ: <0>{{area}}</0>",
+    "impact-score": "คะแนนผลกระทบ",
     "impacted": "ได้รับผลกระทบ",
     "impacted-column-plural": "คอลัมน์ที่ได้รับผลกระทบ",
     "import": "นำเข้า",

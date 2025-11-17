@@ -18,16 +18,30 @@ export const useScrollIndicator = (
   containerRef: RefObject<HTMLDivElement>,
   dependencies: unknown[]
 ) => {
-  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [showLeftIndicator, setShowLeftIndicator] = useState(false);
+  const [showRightIndicator, setShowRightIndicator] = useState(false);
 
   const checkScroll = useCallback(() => {
     if (containerRef.current) {
       const { scrollWidth, clientWidth, scrollLeft } = containerRef.current;
       const hasHorizontalScroll = scrollWidth > clientWidth;
+
+      const isNotAtStart = scrollLeft > HEATMAP_CONSTANTS.SCROLL_THRESHOLD;
       const isNotAtEnd =
         scrollLeft + clientWidth <
         scrollWidth - HEATMAP_CONSTANTS.SCROLL_THRESHOLD;
-      setShowScrollIndicator(hasHorizontalScroll && isNotAtEnd);
+
+      setShowLeftIndicator(hasHorizontalScroll && isNotAtStart);
+      setShowRightIndicator(hasHorizontalScroll && isNotAtEnd);
+    }
+  }, [containerRef]);
+
+  const handleScrollLeft = useCallback(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollBy({
+        left: -HEATMAP_CONSTANTS.SCROLL_STEP,
+        behavior: 'smooth',
+      });
     }
   }, [containerRef]);
 
@@ -61,5 +75,10 @@ export const useScrollIndicator = (
     };
   }, dependencies);
 
-  return { showScrollIndicator, handleScrollRight };
+  return {
+    showLeftIndicator,
+    showRightIndicator,
+    handleScrollLeft,
+    handleScrollRight,
+  };
 };

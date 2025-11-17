@@ -55,8 +55,8 @@ export const TOOLTIP_STYLES = {
   STACK_SPACING: 1,
 
   /** Font size for tooltip header (date) */
-  HEADER_FONT_SIZE: 12,
+  HEADER_FONT_SIZE: 13,
 
   /** Font size for tooltip content (metrics) */
-  CONTENT_FONT_SIZE: 11,
+  CONTENT_FONT_SIZE: 12,
 } as const;

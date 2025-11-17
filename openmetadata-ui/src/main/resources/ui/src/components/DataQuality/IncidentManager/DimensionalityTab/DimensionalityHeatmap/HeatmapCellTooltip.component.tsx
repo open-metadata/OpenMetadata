@@ -12,8 +12,11 @@
  */
 
 import { Box, Card, Divider, Stack, Typography } from '@mui/material';
-import { FC, ReactNode } from 'react';
+import { isUndefined } from 'lodash';
+import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import StatusBadge from '../../../../common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../../../common/StatusBadge/StatusBadge.interface';
 import { TOOLTIP_STYLES } from './DimensionalityHeatmap.constants';
 import { HeatmapCellData } from './DimensionalityHeatmap.interface';
 import { getStatusLabel } from './DimensionalityHeatmap.utils';
@@ -25,7 +28,7 @@ interface TooltipRowProps {
 
 const TooltipRow: FC<TooltipRowProps> = ({ label, value }) => {
   return (
-    <Box className="d-flex items-center justify-between gap-6">
+    <Box className="d-flex items-center justify-between " gap={20}>
       <Typography
         sx={(theme) => ({
           color: theme.palette.allShades.gray[700],
@@ -52,6 +55,43 @@ interface HeatmapCellTooltipProps {
 export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
   const { t } = useTranslation();
 
+  const rows = useMemo(
+    () => [
+      {
+        key: 'dimensionValue',
+        label: t('label.dimension-value'),
+        value: cell.dimensionValue,
+      },
+      {
+        key: 'status',
+        label: t('label.status'),
+        value: (
+          <StatusBadge
+            dataTestId="status-badge"
+            label={getStatusLabel(cell.status, t)}
+            status={cell.status as StatusType}
+          />
+        ),
+      },
+      {
+        key: 'passedRows',
+        label: t('label.passed-rows'),
+        value: cell.result?.passedRows,
+      },
+      {
+        key: 'failedRows',
+        label: t('label.failed-rows'),
+        value: cell.result?.failedRows,
+      },
+      {
+        key: 'impactScore',
+        label: t('label.impact-score'),
+        value: cell.result?.impactScore?.toFixed(2),
+      },
+    ],
+    [cell, t]
+  );
+
   return (
     <Card
       sx={(theme) => ({
@@ -74,25 +114,11 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
         })}
       />
       <Stack spacing={TOOLTIP_STYLES.STACK_SPACING}>
-        <TooltipRow
-          label={t('label.dimension-value')}
-          value={cell.dimensionValue}
-        />
-        <TooltipRow
-          label={t('label.status')}
-          value={getStatusLabel(cell.status, t)}
-        />
-        {cell.result?.passedRows !== undefined && (
-          <TooltipRow
-            label={t('label.passed-rows')}
-            value={cell.result.passedRows}
-          />
-        )}
-        {cell.result?.failedRows !== undefined && (
-          <TooltipRow
-            label={t('label.failed-rows')}
-            value={cell.result.failedRows}
-          />
+        {rows.map(
+          (row) =>
+            !isUndefined(row.value) && (
+              <TooltipRow key={row.key} label={row.label} value={row.value} />
+            )
         )}
         {cell.result?.testResultValue &&
           cell.result.testResultValue.length > 0 &&

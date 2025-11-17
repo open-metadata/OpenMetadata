@@ -12,10 +12,9 @@
  */
 
 import { Box, CircularProgress, Tooltip, Typography } from '@mui/material';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
-import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
@@ -54,12 +53,12 @@ const DimensionalityHeatmap = ({
     [dateRange.length, containerWidth]
   );
 
-  const totalColumns = dateRange.length + placeholderCount;
-
-  const { showScrollIndicator, handleScrollRight } = useScrollIndicator(
-    containerRef,
-    [heatmapData]
-  );
+  const {
+    showLeftIndicator,
+    showRightIndicator,
+    handleScrollLeft,
+    handleScrollRight,
+  } = useScrollIndicator(containerRef, [heatmapData]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -101,49 +100,61 @@ const DimensionalityHeatmap = ({
       aria-label={t('label.dimensionality')}
       className="dimensionality-heatmap"
       role="region">
-      <Box className="dimensionality-heatmap__wrapper" ref={wrapperRef}>
-        <Box
-          aria-label={t('label.dimensionality')}
-          className="dimensionality-heatmap__container"
-          ref={containerRef}
-          role="table">
-          <Box
-            className="dimensionality-heatmap__grid"
-            sx={{
-              gridTemplateColumns: `${HEATMAP_CONSTANTS.DIMENSION_LABEL_WIDTH_PX} repeat(${totalColumns}, ${HEATMAP_CONSTANTS.CELL_WIDTH_PX})`,
-            }}>
-            <Box
-              className="dimensionality-heatmap__header-corner"
-              role="columnheader"
-            />
-            {dateRange.map((date) => (
-              <Box
-                aria-label={getDateLabel(date)}
-                className="dimensionality-heatmap__header-cell"
-                key={date}
-                role="columnheader">
-                {getDateLabel(date)}
+      <Box className="dimensionality-heatmap__layout" ref={wrapperRef}>
+        <Box className="dimensionality-heatmap__labels-column">
+          <Box className="dimensionality-heatmap__header-corner" />
+          {heatmapData.map((row) => (
+            <Tooltip key={row.dimensionValue} title={row.dimensionValue}>
+              <Box className="dimensionality-heatmap__dimension-label">
+                {row.dimensionValue}
               </Box>
-            ))}
-            {Array.from({ length: placeholderCount }).map((_, index) => (
-              <Box
-                aria-hidden="true"
-                className="dimensionality-heatmap__header-cell dimensionality-heatmap__header-cell--placeholder"
-                key={`placeholder-header-${index}`}
-                role="columnheader"
-              />
-            ))}
+            </Tooltip>
+          ))}
+        </Box>
+
+        <Box className="dimensionality-heatmap__scroll-wrapper">
+          {showLeftIndicator && (
+            <Box
+              aria-label={`${t('label.scroll')} ${t('label.left')}`}
+              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left"
+              role="button"
+              tabIndex={0}
+              onClick={handleScrollLeft}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleScrollLeft();
+                }
+              }}>
+              <RightArrowIcon />
+            </Box>
+          )}
+
+          <Box
+            className="dimensionality-heatmap__scroll-container"
+            ref={containerRef}>
+            <Box className="dimensionality-heatmap__header-row">
+              {dateRange.map((date) => (
+                <Box
+                  aria-label={getDateLabel(date)}
+                  className="dimensionality-heatmap__header-cell"
+                  key={date}>
+                  {getDateLabel(date)}
+                </Box>
+              ))}
+              {Array.from({ length: placeholderCount }).map((_, index) => (
+                <Box
+                  aria-hidden="true"
+                  className="dimensionality-heatmap__header-cell dimensionality-heatmap__header-cell--placeholder"
+                  key={`placeholder-header-${index}`}
+                />
+              ))}
+            </Box>
 
             {heatmapData.map((row) => (
-              <Fragment key={`row-${row.dimensionValue}`}>
-                <Tooltip title={row.dimensionValue}>
-                  <Box
-                    className="dimensionality-heatmap__dimension-label"
-                    role="rowheader">
-                    {row.dimensionValue}
-                  </Box>
-                </Tooltip>
-
+              <Box
+                className="dimensionality-heatmap__data-row"
+                key={`row-${row.dimensionValue}`}>
                 {row.cells.map((cell) => (
                   <Tooltip
                     key={`${cell.dimensionValue}-${cell.date}`}
@@ -163,7 +174,6 @@ const DimensionalityHeatmap = ({
                         cell.date
                       )}: ${getStatusLabel(cell.status, t)}`}
                       className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status}`}
-                      role="cell"
                     />
                   </Tooltip>
                 ))}
@@ -173,30 +183,29 @@ const DimensionalityHeatmap = ({
                     aria-hidden="true"
                     className="dimensionality-heatmap__cell dimensionality-heatmap__cell--placeholder"
                     key={`placeholder-${row.dimensionValue}-${index}`}
-                    role="cell"
                   />
                 ))}
-              </Fragment>
+              </Box>
             ))}
           </Box>
-        </Box>
 
-        {showScrollIndicator && (
-          <Box
-            aria-label={`${t('label.view')} ${t('label.more')}`}
-            className="dimensionality-heatmap__scroll-indicator"
-            role="button"
-            tabIndex={0}
-            onClick={handleScrollRight}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleScrollRight();
-              }
-            }}>
-            <RightArrowIcon />
-          </Box>
-        )}
+          {showRightIndicator && (
+            <Box
+              aria-label={`${t('label.view')} ${t('label.more')}`}
+              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right"
+              role="button"
+              tabIndex={0}
+              onClick={handleScrollRight}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleScrollRight();
+                }
+              }}>
+              <RightArrowIcon />
+            </Box>
+          )}
+        </Box>
       </Box>
 
       <Box className="dimensionality-heatmap__legend">

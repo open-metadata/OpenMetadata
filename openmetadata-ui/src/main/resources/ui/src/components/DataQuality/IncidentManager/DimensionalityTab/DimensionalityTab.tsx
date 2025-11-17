@@ -192,6 +192,19 @@ const DimensionalityTab = () => {
       },
     },
     {
+      title: t('label.impact-score'),
+      dataIndex: 'result',
+      key: 'impactScore',
+      width: 120,
+      render: (result: DimensionResultWithTimestamp) => {
+        return (
+          <Typography sx={{ fontSize: 14 }}>
+            {result?.impactScore ?? '--'}
+          </Typography>
+        );
+      },
+    },
+    {
       title: t('label.dimension'),
       dataIndex: 'dimensionValue',
       key: 'dimensionValue',
@@ -273,6 +286,22 @@ const DimensionalityTab = () => {
           </Typography>
           <Select
             IconComponent={KeyboardArrowDown}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  width: 'max-content',
+                  '& .MuiMenuItem-root': {
+                    '&.Mui-selected': {
+                      backgroundColor: theme.palette.primary.main,
+                      color: theme.palette.primary.contrastText,
+                      '&:hover': {
+                        backgroundColor: theme.palette.primary.dark,
+                      },
+                    },
+                  },
+                },
+              },
+            }}
             size="small"
             sx={{
               minWidth: 150,
@@ -294,7 +323,12 @@ const DimensionalityTab = () => {
             value={selectedDimension}
             onChange={handleDimensionChange}>
             {dimensionColumnsOptions.map((column) => (
-              <MenuItem key={column} value={column}>
+              <MenuItem
+                key={column}
+                sx={{
+                  fontWeight: 500,
+                }}
+                value={column}>
                 {column}
               </MenuItem>
             ))}

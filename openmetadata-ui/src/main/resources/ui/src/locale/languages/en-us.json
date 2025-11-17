@@ -847,6 +847,7 @@
     "impact": "Impact",
     "impact-analysis": "Impact Analysis",
     "impact-on-area": "Impact On: <0>{{area}}</0>",
+    "impact-score": "Impact Score",
     "impacted": "Impacted",
     "impacted-column-plural": "Impacted Columns",
     "import": "Import",

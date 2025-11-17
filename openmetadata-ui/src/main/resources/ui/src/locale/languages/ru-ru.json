@@ -847,6 +847,7 @@
     "impact": "Влияние",
     "impact-analysis": "Анализ воздействия",
     "impact-on-area": "Влияние на: <0>{{area}}</0>",
+    "impact-score": "Оценка Влияния",
     "impacted": "Затронутый",
     "impacted-column-plural": "Затронутые столбцы",
     "import": "Импорт",

@@ -847,6 +847,7 @@
     "impact": "영향",
     "impact-analysis": "영향 분석",
     "impact-on-area": "영향 범위: <0>{{area}}</0>",
+    "impact-score": "영향 점수",
     "impacted": "영향받은",
     "impacted-column-plural": "영향받은 열",
     "import": "가져오기",
