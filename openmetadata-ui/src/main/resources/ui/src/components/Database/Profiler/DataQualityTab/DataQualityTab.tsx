@@ -215,7 +215,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (result: TestCaseResult, record: TestCase) => {
           return result?.result &&
             record.testCaseStatus !== TestCaseStatus.Success ? (
-            <Tooltip arrow placement="top" title={result.result}>
+            <Tooltip
+              arrow
+              placement="top"
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    maxWidth: 400,
+                    wordBreak: 'break-word',
+                  },
+                },
+              }}
+              title={result.result}>
               <MuiTypography
                 data-testid={`reason-text-${record.name}`}
                 sx={{
@@ -226,6 +237,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
                   fontSize: '14px',
+                  cursor: 'pointer',
                 }}>
                 {result.result}
               </MuiTypography>
