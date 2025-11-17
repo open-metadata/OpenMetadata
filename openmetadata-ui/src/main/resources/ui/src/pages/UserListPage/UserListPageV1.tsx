@@ -187,9 +187,7 @@ const UserListPageV1 = () => {
 
     userQuerySearch(value, pageNumber, isAdminPage, isDeleted).then(
       (resUsers) => {
-        if (resUsers.length > 0) {
-          setUserList(resUsers);
-        }
+        setUserList(resUsers);
         setIsDataLoading(false);
       }
     );
