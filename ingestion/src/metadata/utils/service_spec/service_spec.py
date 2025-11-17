@@ -62,7 +62,6 @@ class BaseSpec(BaseModel):
     metadata_source_class: str
     lineage_source_class: Optional[str] = None
     usage_source_class: Optional[str] = None
-    profiler_source_class: Optional[str] = None
     sampler_class: Optional[str] = None
     data_diff: Optional[str] = None
     connection_class: Optional[str] = None

@@ -56,9 +56,6 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
     PipelineServiceMetadataPipeline,
 )
-from metadata.generated.schema.metadataIngestion.pipelineServiceProfilerPipeline import (
-    PipelineServiceProfilerPipeline,
-)
 from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
     SearchServiceMetadataPipeline,
 )
@@ -97,7 +94,6 @@ SOURCE_CONFIG_TYPE_INGESTION = {
     DashboardServiceMetadataPipeline.__name__: PipelineType.metadata,
     MessagingServiceMetadataPipeline.__name__: PipelineType.metadata,
     PipelineServiceMetadataPipeline.__name__: PipelineType.metadata,
-    PipelineServiceProfilerPipeline.__name__: PipelineType.profiler,
     MlModelServiceMetadataPipeline.__name__: PipelineType.metadata,
     StorageServiceMetadataPipeline.__name__: PipelineType.metadata,
     SearchServiceMetadataPipeline.__name__: PipelineType.metadata,
