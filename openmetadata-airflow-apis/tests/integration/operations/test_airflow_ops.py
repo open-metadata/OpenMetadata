@@ -54,12 +54,22 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 if "AIRFLOW_HOME" not in os.environ:
     os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
 if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS" not in os.environ:
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
+    os.environ[
+        "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"
+    ] = "/tmp/airflow"
 if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE" not in os.environ:
-    template_path = Path(__file__).parent.parent.parent.parent / "openmetadata_managed_apis/resources/dag_runner.j2"
+    template_path = (
+        Path(__file__).parent.parent.parent.parent
+        / "openmetadata_managed_apis/resources/dag_runner.j2"
+    )
     if not template_path.exists():
-        template_path = Path(__file__).parent.parent.parent.parent / "src/plugins/dag_templates/dag_runner.j2"
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(template_path.absolute())
+        template_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "src/plugins/dag_templates/dag_runner.j2"
+        )
+    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
+        template_path.absolute()
+    )
 
 from airflow import DAG
 from airflow.models import DagBag, DagModel
@@ -88,9 +98,7 @@ class TestAirflowOps(TestCase):
     dag: DAG
 
     conn = OpenMetadataConnection(
-        hostPort=os.getenv(
-            "OPENMETADATA_HOST_PORT", "http://localhost:8585/api"
-        ),
+        hostPort=os.getenv("OPENMETADATA_HOST_PORT", "http://localhost:8585/api"),
         authProvider="openmetadata",
         securityConfig=OpenMetadataJWTClientConfig(
             jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
@@ -104,7 +112,6 @@ class TestAirflowOps(TestCase):
         Prepare ingredients
         """
         # Initialize Airflow database if it doesn't exist
-        from airflow import settings
         from airflow.utils.db import initdb
 
         try:
@@ -124,7 +131,7 @@ class TestAirflowOps(TestCase):
                 bash_command="date",
             )
 
-        if hasattr(cls.dag, 'sync_to_db'):
+        if hasattr(cls.dag, "sync_to_db"):
             cls.dag.sync_to_db()
         else:
             from airflow.models.dag import DagModel
@@ -133,7 +140,11 @@ class TestAirflowOps(TestCase):
             with create_session() as session:
                 from airflow.models.dagbundle import DagBundleModel
 
-                bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
+                bundle = (
+                    session.query(DagBundleModel)
+                    .filter(DagBundleModel.name == "")
+                    .first()
+                )
                 if not bundle:
                     bundle = DagBundleModel(name="", version=None)
                     session.add(bundle)
@@ -170,7 +181,7 @@ class TestAirflowOps(TestCase):
         except Exception:
             pass
 
-        if hasattr(cls, '_temp_dag_file') and cls._temp_dag_file.exists():
+        if hasattr(cls, "_temp_dag_file") and cls._temp_dag_file.exists():
             cls._temp_dag_file.unlink()
 
         if os.path.exists("/tmp/airflow"):
@@ -309,6 +320,7 @@ class TestAirflowOps(TestCase):
         )
 
         from airflow.configuration import conf as airflow_conf
+
         dags_folder = airflow_conf.get("core", "DAGS_FOLDER")
         dag_file = Path(dags_folder) / "my_new_dag.py"
         self.assertTrue(dag_file.is_file())
