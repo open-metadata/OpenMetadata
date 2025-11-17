@@ -608,7 +608,7 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     });
 
     it('should handle empty extension data', () => {

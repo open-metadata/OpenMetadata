@@ -85,8 +85,10 @@ const CustomPropertiesSection = ({
   }
   if (customProperties.length === 0) {
     return (
-      <div className="entity-summary-panel-tab-content">
-        <div className="p-x-md p-t-md text-justify text-grey-muted">
+      <div
+        className="entity-summary-panel-tab-content"
+        data-testid="no-data-placeholder">
+        <div className="p-x-md p-t-md text-justify no-data-placeholder">
           <Transi18next
             i18nKey="message.no-custom-properties-entity"
             renderElement={
