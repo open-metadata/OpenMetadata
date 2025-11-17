@@ -27,7 +27,7 @@ import {
   validateNotificationTemplate,
 } from './notificationtemplateAPI';
 
-jest.mock('../src/rest/index');
+jest.mock('./index');
 
 describe('notificationtemplateAPI', () => {
   const mockAPIClient = APIClient as jest.Mocked<typeof APIClient>;
