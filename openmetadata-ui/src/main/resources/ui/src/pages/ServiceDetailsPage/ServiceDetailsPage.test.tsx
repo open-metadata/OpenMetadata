@@ -97,6 +97,15 @@ jest.mock('../../rest/serviceAPI', () => ({
     .mockImplementation(() => Promise.resolve({ version: 2 })),
 }));
 
+jest.mock(
+  '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: jest.fn().mockReturnValue([]) },
+    }),
+  })
+);
+
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
     Promise.resolve({
