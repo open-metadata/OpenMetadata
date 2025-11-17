@@ -937,10 +937,11 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
       .click();
 
+    const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
     await adminPage
       .locator('[data-testid="user-profile-default-persona-edit-save"]')
       .click();
-    await adminPage.waitForResponse('/api/v1/users/*');
+    await removePersonaResponse;
 
     // Verify NO notification appears when removing default persona
     await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
@@ -1124,12 +1125,13 @@ test.describe('User Profile Persona Interactions', () => {
       await defaultPersonaOptionTestId.click();
 
       // Save the changes
+      const savePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
       await adminPage
         .locator('[data-testid="user-profile-default-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and default persona to appear
-      await adminPage.waitForResponse('/api/v1/users/*');
+      await savePersonaResponse;
 
       // Check that success notification appears with correct message
       await toastNotification(
