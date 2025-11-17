@@ -169,6 +169,7 @@ function AlertConfigDetails({
                 </Col>
                 <Col span={24}>
                   <Widget
+                    isViewMode
                     alertDetails={modifiedAlertData}
                     formRef={form}
                     templates={templates}

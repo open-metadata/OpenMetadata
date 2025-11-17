@@ -45,6 +45,7 @@ export interface AddAlertFormWidgetProps {
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];
   loading?: boolean;
+  isViewMode?: boolean;
 }
 
 class AlertsClassBase {
