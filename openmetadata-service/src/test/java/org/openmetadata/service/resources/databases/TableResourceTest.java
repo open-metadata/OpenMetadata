@@ -50,6 +50,9 @@ import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -5954,5 +5957,109 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Cleanup
     deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_generatesChangeEvents(TestInfo test) throws IOException {
+    int tableCount = 3;
+    List<CreateTable> createRequests = new ArrayList<>();
+
+    for (int i = 0; i < tableCount; i++) {
+      String tableName = getEntityName(test, i);
+      CreateTable create =
+          createRequest(tableName).withDescription("Table " + i + " for bulk creation test");
+      createRequests.add(create);
+    }
+
+    WebTarget target = getResource("tables/bulk");
+    BulkOperationResult result =
+        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(tableCount, result.getNumberOfRowsProcessed());
+    assertEquals(tableCount, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    ResultList<ChangeEvent> changeEvents =
+        getChangeEvents(TABLE, null, null, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(changeEvents);
+    assertNotNull(changeEvents.getData());
+
+    long bulkCreatedEventCount =
+        changeEvents.getData().stream()
+            .filter(
+                event ->
+                    event.getEntityType().equals(TABLE)
+                        && event.getEventType().equals(ENTITY_CREATED)
+                        && event.getUserName().equals("admin"))
+            .count();
+
+    assertTrue(
+        bulkCreatedEventCount >= tableCount,
+        "Expected at least "
+            + tableCount
+            + " change events for bulk created tables, but found "
+            + bulkCreatedEventCount);
+
+    for (CreateTable createRequest : createRequests) {
+      Optional<ChangeEvent> tableEvent =
+          changeEvents.getData().stream()
+              .filter(
+                  event ->
+                      event.getEntityType().equals(TABLE)
+                          && event.getEntity() != null
+                          && ((Table) event.getEntity())
+                              .getFullyQualifiedName()
+                              .contains(createRequest.getName()))
+              .findFirst();
+
+      assertTrue(
+          tableEvent.isPresent(), "Change event not found for table: " + createRequest.getName());
+      assertEquals(ENTITY_CREATED, tableEvent.get().getEventType());
+      assertEquals("admin", tableEvent.get().getUserName());
+    }
+
+    List<Table> createdTables = new ArrayList<>();
+    for (CreateTable createRequest : createRequests) {
+      Table table = getEntityByName(createRequest.getName(), "", ADMIN_AUTH_HEADERS);
+      assertNotNull(table);
+      createdTables.add(table);
+    }
+
+    for (int i = 0; i < createdTables.size(); i++) {
+      Table table = createdTables.get(i);
+      table.setDescription("Updated description for table " + i);
+      createRequests.set(i, createRequest(table.getName()).withDescription(table.getDescription()));
+    }
+
+    target = getResource("tables/bulk");
+    result =
+        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(tableCount, result.getNumberOfRowsProcessed());
+    assertEquals(tableCount, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    changeEvents = getChangeEvents(null, TABLE, null, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(changeEvents);
+    assertNotNull(changeEvents.getData());
+
+    long bulkUpdatedEventCount =
+        changeEvents.getData().stream()
+            .filter(
+                event ->
+                    event.getEntityType().equals(TABLE)
+                        && (event.getEventType().equals(ENTITY_UPDATED)
+                            || event.getEventType().equals(ENTITY_FIELDS_CHANGED))
+                        && event.getUserName().equals("admin"))
+            .count();
+
+    assertTrue(
+        bulkUpdatedEventCount >= tableCount,
+        "Expected at least "
+            + tableCount
+            + " change events for bulk updated tables, but found "
+            + bulkUpdatedEventCount);
   }
 }
