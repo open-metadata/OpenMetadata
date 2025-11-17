@@ -1454,8 +1454,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         (item) => !nodeFqn.includes(item.fullyQualifiedName ?? '')
       );
       const updatedEdges = (entityLineage.edges ?? []).filter((val) => {
-        return !connectedEdges.some(
-          (connectedEdge) => connectedEdge.data.edge === val
+        return !connectedEdges.some((connectedEdge) =>
+          isEqual(connectedEdge.data.edge, val)
         );
       });
 

@@ -293,7 +293,7 @@ public class OSLineageGraphBuilder {
             .withDownstreamEdges(new HashMap<>());
 
     // First, fetch and add the root entity with proper paging counts
-    addRootEntityWithPagingCounts(lineageRequest, result);
+    addRootEntityWithPagingCounts(lineageRequest, result, false);
 
     // Then fetch upstream lineage if upstreamDepth > 0
     if (lineageRequest.getUpstreamDepth() > 0) {
@@ -347,7 +347,7 @@ public class OSLineageGraphBuilder {
             .withDownstreamEdges(new HashMap<>());
 
     // First, fetch and add the root entity with proper paging counts
-    addRootEntityWithPagingCounts(lineageRequest, result);
+    addRootEntityWithPagingCounts(lineageRequest, result, true);
 
     // Based on direction, fetch only the requested lineage direction
     if (lineageRequest.getDirection() == null
@@ -393,7 +393,8 @@ public class OSLineageGraphBuilder {
   }
 
   private void addRootEntityWithPagingCounts(
-      SearchLineageRequest lineageRequest, SearchLineageResult result) throws IOException {
+      SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
+      throws IOException {
     Map<String, Object> rootEntityMap =
         OsUtils.searchEntityByKey(
             null,
@@ -406,10 +407,18 @@ public class OSLineageGraphBuilder {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
       List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(rootEntityMap);
 
-      int downstreamCount = countDownstreamEntities(lineageRequest.getFqn(), lineageRequest);
+      Integer upstreamCount = null;
+      if (isDirectionBased && lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
+        upstreamCount = upstreamEntities.size();
+      }
+
+      Integer downstreamCount = null;
+      if (isDirectionBased && lineageRequest.getDirection().equals(LineageDirection.DOWNSTREAM)) {
+        downstreamCount = countDownstreamEntities(lineageRequest.getFqn(), lineageRequest);
+      }
 
       NodeInformation rootNode =
-          getNodeInformation(rootEntityMap, downstreamCount, upstreamEntities.size(), 0);
+          getNodeInformation(rootEntityMap, downstreamCount, upstreamCount, 0);
 
       result.getNodes().put(rootFqn, rootNode);
     }
@@ -555,7 +564,8 @@ public class OSLineageGraphBuilder {
             .withIncludeDeleted(request.getIncludeDeleted())
             .withIsConnectedVia(request.getIsConnectedVia())
             .withIncludeSourceFields(request.getIncludeSourceFields()),
-        result);
+        result,
+        false);
     // If nodeDepth is specifically 0, return just root entity
     if (request.getNodeDepth() != null && request.getNodeDepth() == 0) {
       return result;

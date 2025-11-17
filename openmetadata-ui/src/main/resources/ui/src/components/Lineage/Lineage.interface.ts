@@ -31,8 +31,8 @@ export interface LineageProps {
 }
 
 export interface EntityLineageResponse {
-  entity: EntityReference;
-  nodes?: EntityReference[];
+  entity: LineageEntityReference;
+  nodes?: LineageEntityReference[];
   edges?: EdgeDetails[];
   downstreamEdges?: EdgeDetails[];
   upstreamEdges?: EdgeDetails[];
@@ -108,6 +108,7 @@ export interface LineageEntityReference extends EntityReference {
     parentId?: string;
     childrenLength?: number;
   };
+  nodeDepth?: number;
   upstreamExpandPerformed?: boolean;
   downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
