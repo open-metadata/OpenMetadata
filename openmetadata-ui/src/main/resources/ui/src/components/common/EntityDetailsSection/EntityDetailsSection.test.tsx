@@ -18,6 +18,30 @@ import {
 } from '../../SearchedData/SearchedData.interface';
 import EntityDetailsSection from './EntityDetailsSection';
 
+// Mock react-i18next
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
+// Mock SearchBarComponent
+jest.mock('../SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ onSearch, placeholder, searchValue }) => (
+      <div data-testid="search-bar">
+        <input
+          data-testid="search-input"
+          placeholder={placeholder}
+          value={searchValue}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
+    )),
+}));
+
 // Mock getEntityChildDetailsV1 to control rendering output and inspect params
 jest.mock('../../../utils/EntitySummaryPanelUtilsV1', () => ({
   getEntityChildDetailsV1: jest
@@ -67,7 +91,8 @@ describe('EntityDetailsSection', () => {
       EntityType.TABLE,
       {},
       undefined,
-      false
+      false,
+      ''
     );
   });
 
@@ -84,7 +109,8 @@ describe('EntityDetailsSection', () => {
       EntityType.TABLE,
       baseDataAsset,
       baseHighlights,
-      false
+      false,
+      ''
     );
     expect(
       container.querySelector('.entity-details-section')
@@ -116,7 +142,23 @@ describe('EntityDetailsSection', () => {
       EntityType.DASHBOARD,
       { id: '2', name: 'asset2' },
       { field: ['hit2'] },
-      false
+      false,
+      ''
+    );
+  });
+
+  it('should render search bar with correct placeholder', () => {
+    render(
+      <EntityDetailsSection
+        dataAsset={baseDataAsset}
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('search-input')).toHaveAttribute(
+      'placeholder',
+      'label.search-for-type'
     );
   });
 });
