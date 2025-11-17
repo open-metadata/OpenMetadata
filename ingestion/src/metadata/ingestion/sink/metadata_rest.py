@@ -839,7 +839,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
             if updated_table:
-                logger.info(
+                logger.debug(
                     f"Successfully added {len(record.observability_data)} pipeline "
                     f"observability records for {record.table.fullyQualifiedName.root}"
                 )
