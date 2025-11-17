@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { RefObject, useCallback, useEffect, useState } from 'react';
+import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 
 export const useScrollIndicator = (
@@ -20,6 +20,7 @@ export const useScrollIndicator = (
 ) => {
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
 
   const checkScroll = useCallback(() => {
     if (containerRef.current) {
@@ -61,15 +62,37 @@ export const useScrollIndicator = (
     );
 
     const container = containerRef.current;
+
+    const handleScroll = () => {
+      if (container) {
+        container.classList.add('is-scrolling');
+      }
+      checkScroll();
+
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (container) {
+          container.classList.remove('is-scrolling');
+        }
+      }, 200);
+    };
+
     if (container) {
-      container.addEventListener('scroll', checkScroll);
+      container.addEventListener('scroll', handleScroll);
     }
     window.addEventListener('resize', checkScroll);
 
     return () => {
       clearTimeout(timeoutId);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
       if (container) {
-        container.removeEventListener('scroll', checkScroll);
+        container.removeEventListener('scroll', handleScroll);
+        container.classList.remove('is-scrolling');
       }
       window.removeEventListener('resize', checkScroll);
     };

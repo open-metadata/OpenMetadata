@@ -302,6 +302,7 @@ const DimensionalityTab = () => {
                 },
               },
             }}
+            data-testid="dimension-select"
             size="small"
             sx={{
               minWidth: 150,

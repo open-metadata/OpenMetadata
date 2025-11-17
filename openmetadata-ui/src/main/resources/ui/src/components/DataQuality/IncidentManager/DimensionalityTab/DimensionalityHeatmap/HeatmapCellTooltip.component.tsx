@@ -33,6 +33,7 @@ const TooltipRow: FC<TooltipRowProps> = ({ label, value }) => {
         sx={(theme) => ({
           color: theme.palette.allShades.gray[700],
           fontSize: theme.typography.pxToRem(TOOLTIP_STYLES.CONTENT_FONT_SIZE),
+          whiteSpace: 'nowrap',
         })}>
         {label}
       </Typography>
