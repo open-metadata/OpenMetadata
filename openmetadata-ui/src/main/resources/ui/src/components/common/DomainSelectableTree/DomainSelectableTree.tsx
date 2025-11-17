@@ -426,7 +426,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     } else {
       const selected = checked.checked
         .map((item) => domainMapper[item as string])
-        .filter((domain): domain is Domain => domain !== undefined);
+        .filter(Boolean);
 
       setSelectedDomains(selected);
     }
