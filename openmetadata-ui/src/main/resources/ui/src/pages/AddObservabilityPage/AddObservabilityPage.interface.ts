@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   Destination,
@@ -43,6 +44,7 @@ export interface ModifiedCreateEventSubscription
   notificationTemplate?:
     | string
     | CreateEventSubscription['notificationTemplate'];
+  customNotificationTemplateData?: NotificationTemplate;
   destinations: ModifiedDestination[];
   timeout: number;
   readTimeout: number;

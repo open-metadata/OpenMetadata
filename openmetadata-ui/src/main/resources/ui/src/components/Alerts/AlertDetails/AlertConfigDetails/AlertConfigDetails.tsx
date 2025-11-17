@@ -16,9 +16,12 @@ import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { NotificationTemplate } from '../../../../generated/entity/events/notificationTemplate';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
+import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
@@ -40,6 +43,7 @@ function AlertConfigDetails({
   const modifiedAlertData =
     alertsClassBase.getModifiedAlertDataForForm(alertDetails);
   const [fetching, setFetching] = useState<number>(0);
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
   >([]);
@@ -79,6 +83,29 @@ function AlertConfigDetails({
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
     []
   );
+
+  const fetchTemplates = useCallback(async () => {
+    setFetching((count) => count + 1);
+    try {
+      const { data } = await getAllNotificationTemplates({
+        limit: PAGE_SIZE_LARGE,
+      });
+
+      setTemplates(data);
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.template-plural') })
+      );
+    } finally {
+      setFetching((count) => count - 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isEmpty(extraFormWidgets)) {
+      fetchTemplates();
+    }
+  }, [extraFormWidgets]);
 
   useEffect(() => {
     fetchFunctions();
@@ -141,7 +168,11 @@ function AlertConfigDetails({
                   <Divider dashed type="vertical" />
                 </Col>
                 <Col span={24}>
-                  <Widget alertDetails={modifiedAlertData} formRef={form} />
+                  <Widget
+                    alertDetails={modifiedAlertData}
+                    formRef={form}
+                    templates={templates}
+                  />
                 </Col>
               </Fragment>
             ))}

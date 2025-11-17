@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { EntityType } from '../enums/entity.enum';
+import { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
 import { User } from '../generated/entity/teams/user';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
@@ -42,6 +43,8 @@ import { showSuccessToast } from './ToastUtils';
 export interface AddAlertFormWidgetProps {
   formRef: FormInstance<ModifiedCreateEventSubscription>;
   alertDetails?: ModifiedEventSubscription;
+  templates?: NotificationTemplate[];
+  loading?: boolean;
 }
 
 class AlertsClassBase {
@@ -53,13 +56,19 @@ class AlertsClassBase {
 
     return widgets;
   }
+  public getAddAlertFormExtraButtons() {
+    const buttons: Record<
+      string,
+      React.ComponentType<AddAlertFormWidgetProps>
+    > = {};
 
-  public getCommonAlertFieldsData(
+    return buttons;
+  }
+
+  public formatDestinations(
     data: ModifiedCreateEventSubscription,
     initialData?: EventSubscription
   ) {
-    const alertName = trim(initialData?.name ?? getRandomizedAlertName());
-    const alertDisplayName = trim(getEntityName(data));
     const destinations = data.destinations?.map((d) => {
       const initialDestination = initialData?.destinations?.find(
         (destination) => destination.type === d.type
@@ -82,6 +91,17 @@ class AlertsClassBase {
         downstreamDepth: d.downstreamDepth,
       };
     });
+
+    return destinations;
+  }
+
+  public getCommonAlertFieldsData(
+    data: ModifiedCreateEventSubscription,
+    initialData?: EventSubscription
+  ) {
+    const alertName = trim(initialData?.name ?? getRandomizedAlertName());
+    const alertDisplayName = trim(getEntityName(data));
+    const destinations = this.formatDestinations(data, initialData);
 
     return { alertName, alertDisplayName, destinations };
   }

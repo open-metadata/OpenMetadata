@@ -11,8 +11,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Grid } from '@mui/material';
 import {
-  Button,
   Card,
   Col,
   Divider,
@@ -36,7 +36,11 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import {
+  PAGE_SIZE_LARGE,
+  ROUTES,
+  VALIDATION_MESSAGES,
+} from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import {
   GlobalSettingOptions,
@@ -44,6 +48,7 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -60,6 +65,7 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
+import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -88,6 +94,7 @@ const AddNotificationPage = () => {
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
 
   const isSystemProvider = useMemo(
     () => alert?.provider === ProviderType.System,
@@ -215,6 +222,34 @@ const AddNotificationPage = () => {
     []
   );
 
+  const extraFormButtons = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraButtons(),
+    []
+  );
+
+  const fetchTemplates = useCallback(async () => {
+    setLoadingCount((count) => count + 1);
+    try {
+      const { data } = await getAllNotificationTemplates({
+        limit: PAGE_SIZE_LARGE,
+      });
+
+      setTemplates(data);
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.template-plural') })
+      );
+    } finally {
+      setLoadingCount((count) => count - 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isEmpty(extraFormWidgets)) {
+      fetchTemplates();
+    }
+  }, [extraFormWidgets]);
+
   if (loadingCount > 0 || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
@@ -329,6 +364,8 @@ const AddNotificationPage = () => {
                                       <Widget
                                         alertDetails={alert}
                                         formRef={form}
+                                        loading={loadingCount > 0}
+                                        templates={templates}
                                       />
                                     </Col>
                                   </Fragment>
@@ -356,22 +393,35 @@ const AddNotificationPage = () => {
                         </Col>
                       )}
 
-                      <Col flex="auto" />
-                      <Col flex="300px" pull="right">
-                        <Button
-                          className="m-l-sm float-right"
-                          data-testid="save-button"
-                          htmlType="submit"
-                          loading={isButtonLoading}
-                          type="primary">
-                          {t('label.save')}
-                        </Button>
-                        <Button
-                          className="float-right"
-                          data-testid="cancel-button"
-                          onClick={() => navigate(-1)}>
-                          {t('label.cancel')}
-                        </Button>
+                      <Col span={24}>
+                        <Grid container justifyContent="end" spacing={2}>
+                          <Button
+                            className="float-right"
+                            data-testid="cancel-button"
+                            variant="text"
+                            onClick={() => navigate(-1)}>
+                            {t('label.cancel')}
+                          </Button>
+
+                          {Object.entries(extraFormButtons).map(
+                            ([name, ButtonComponent]) => (
+                              <ButtonComponent
+                                alertDetails={alert}
+                                formRef={form}
+                                key={name}
+                                templates={templates}
+                              />
+                            )
+                          )}
+                          <Button
+                            className="float-right"
+                            data-testid="save-button"
+                            loading={isButtonLoading}
+                            type="submit"
+                            variant="contained">
+                            {t('label.save')}
+                          </Button>
+                        </Grid>
                       </Col>
                     </Row>
                   )}

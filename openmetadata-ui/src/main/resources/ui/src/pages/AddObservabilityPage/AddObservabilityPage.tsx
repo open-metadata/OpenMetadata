@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Grid } from '@mui/material';
+import { Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,9 +27,14 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import {
+  PAGE_SIZE_LARGE,
+  ROUTES,
+  VALIDATION_MESSAGES,
+} from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -39,6 +45,7 @@ import { FilterResourceDescriptor } from '../../generated/events/filterResourceD
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
@@ -70,6 +77,7 @@ function AddObservabilityPage() {
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [fetching, setFetching] = useState<number>(0);
   const [saving, setSaving] = useState<boolean>(false);
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
   const { getResourceLimit } = useLimitStore();
@@ -193,6 +201,34 @@ function AddObservabilityPage() {
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
     []
   );
+
+  const extraFormButtons = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraButtons(),
+    []
+  );
+
+  const fetchTemplates = useCallback(async () => {
+    setFetching((count) => count + 1);
+    try {
+      const { data } = await getAllNotificationTemplates({
+        limit: PAGE_SIZE_LARGE,
+      });
+
+      setTemplates(data);
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.template-plural') })
+      );
+    } finally {
+      setFetching((count) => count - 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isEmpty(extraFormWidgets)) {
+      fetchTemplates();
+    }
+  }, [extraFormWidgets]);
 
   if (fetching || (isEditMode && isEmpty(alert))) {
     return <Loader />;
@@ -331,22 +367,35 @@ function AddObservabilityPage() {
                       </Col>
                     )}
 
-                    <Col flex="auto" />
-                    <Col flex="300px" pull="right">
-                      <Button
-                        className="m-l-sm float-right"
-                        data-testid="save-button"
-                        htmlType="submit"
-                        loading={saving}
-                        type="primary">
-                        {t('label.save')}
-                      </Button>
-                      <Button
-                        className="float-right"
-                        data-testid="cancel-button"
-                        onClick={() => navigate(-1)}>
-                        {t('label.cancel')}
-                      </Button>
+                    <Col span={24}>
+                      <Grid container justifyContent="end" spacing={2}>
+                        <Button
+                          className="float-right"
+                          data-testid="cancel-button"
+                          variant="text"
+                          onClick={() => navigate(-1)}>
+                          {t('label.cancel')}
+                        </Button>
+
+                        {Object.entries(extraFormButtons).map(
+                          ([name, ButtonComponent]) => (
+                            <ButtonComponent
+                              alertDetails={alert}
+                              formRef={form}
+                              key={name}
+                              templates={templates}
+                            />
+                          )
+                        )}
+                        <Button
+                          className="float-right"
+                          data-testid="save-button"
+                          loading={saving}
+                          type="submit"
+                          variant="contained">
+                          {t('label.save')}
+                        </Button>
+                      </Grid>
                     </Col>
                   </Row>
                 </Form>
