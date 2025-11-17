@@ -52,6 +52,7 @@
         "EditKnowledgePanel",
         "EditPage",
         "EditIngestionPipelineStatus",
+        "EditUserNotificationTemplate",
         "DeleteTestCaseFailedRowsSample",
         "Deploy",
         "Trigger",

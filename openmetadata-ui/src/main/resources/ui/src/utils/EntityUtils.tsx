@@ -284,7 +284,14 @@ const getCommonOverview = (
       ? [
           {
             name: i18next.t('label.owner-plural'),
-            value: <OwnerLabel hasPermission={false} owners={owners} />,
+            value: (
+              <OwnerLabel
+                hasPermission={false}
+                isCompactView={false}
+                owners={owners}
+                showLabel={false}
+              />
+            ),
             visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
           },
         ]
