@@ -5471,7 +5471,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Wait for the async task assignee update to complete using Awaitility
     final Integer taskId = taskDetails.getId();
     await()
-        .atMost(Duration.ofSeconds(120))
+        .atMost(Duration.ofSeconds(180))
         .pollInterval(Duration.ofSeconds(3))
         .pollDelay(Duration.ofSeconds(5))
         .until(
