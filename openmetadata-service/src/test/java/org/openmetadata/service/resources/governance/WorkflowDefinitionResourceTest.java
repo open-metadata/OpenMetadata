@@ -4821,6 +4821,25 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     verifyEntityDescriptionsUpdated(
         dataContract.getId(), tag.getId(), dataProduct.getId(), metric.getId(), testCase.getId());
 
+    // Step 11: Delete the unified workflow to prevent interference with other tests
+    try {
+      Response deleteResponse =
+          SecurityUtil.addHeaders(
+                  getResource("governance/workflowDefinitions/name/UnifiedApprovalWorkflow"),
+                  ADMIN_AUTH_HEADERS)
+              .delete();
+
+      if (deleteResponse.getStatus() == Response.Status.OK.getStatusCode()
+          || deleteResponse.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
+        LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
+      } else {
+        LOG.warn(
+            "Failed to delete UnifiedApprovalWorkflow. Status: {}", deleteResponse.getStatus());
+      }
+    } catch (Exception e) {
+      LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
+    }
+
     LOG.info("test_CustomApprovalWorkflowForNewEntities completed successfully");
   }
 
@@ -5577,6 +5596,24 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertFalse(
         updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId())),
         "reviewer1 should no longer be an assignee after reviewer update");
+
+    // Step 11: Delete the unified workflow to prevent interference with other tests
+    try {
+      Response deleteResponse =
+          SecurityUtil.addHeaders(
+                  getResource("governance/workflowDefinitions/name/tagApprovalWorkflow"),
+                  ADMIN_AUTH_HEADERS)
+              .delete();
+
+      if (deleteResponse.getStatus() == Response.Status.OK.getStatusCode()
+          || deleteResponse.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
+        LOG.debug("Successfully deleted tagApprovalWorkflow");
+      } else {
+        LOG.warn("Failed to delete tagApprovalWorkflow. Status: {}", deleteResponse.getStatus());
+      }
+    } catch (Exception e) {
+      LOG.warn("Error while deleting tagApprovalWorkflow: {}", e.getMessage());
+    }
 
     LOG.info(
         "test_reviewerChangeUpdatesApprovalTasks completed successfully - task assignee successfully changed from reviewer1 to reviewer2");
