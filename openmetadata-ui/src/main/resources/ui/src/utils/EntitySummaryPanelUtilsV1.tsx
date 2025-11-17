@@ -32,7 +32,11 @@ import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
-import { getTableColumnsByFQN, getTableList } from '../rest/tableAPI';
+import {
+  getTableColumnsByFQN,
+  getTableList,
+  searchTableColumnsByFQN,
+} from '../rest/tableAPI';
 import { t } from './i18next/LocalUtil';
 
 const { Text } = Typography;
@@ -41,7 +45,8 @@ export const getEntityChildDetailsV1 = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
   highlights?: SearchedDataProps['data'][number]['highlight'],
-  loading?: boolean
+  loading?: boolean,
+  searchText?: string
 ) => {
   // kept for potential future use; remove unused to satisfy linter
   switch (entityType) {
@@ -53,6 +58,7 @@ export const getEntityChildDetailsV1 = (
           entityType={entityType}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -148,7 +154,8 @@ const SchemaFieldCardsV1: React.FC<{
   entityType: EntityType;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, entityType, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, entityType, highlights, loading, searchText }) => {
   const [columnsPaging, setColumnsPaging] = useState<Paging>({
     offset: 0,
     total: 0,
@@ -161,19 +168,39 @@ const SchemaFieldCardsV1: React.FC<{
   const fqn = entityInfo.fullyQualifiedName ?? '';
 
   const fetchPaginatedColumns = useCallback(
-    async (page = 1) => {
+    async (page = 1, search?: string) => {
       setIsLoading(true);
       try {
-        const api =
-          entityType === EntityType.TABLE
-            ? getTableColumnsByFQN
-            : getDataModelColumnsByFQN;
         const offset = (page - 1) * (columnsPaging.limit ?? PAGE_SIZE_LARGE);
-        const { data, paging } = await api(fqn, {
+        const params = {
           offset,
           limit: columnsPaging.limit,
-          fields: 'tags,customMetrics,glossaryTerms,description',
-        });
+          fields: 'tags,customMetrics,description',
+          ...(search && { q: search }),
+        };
+
+        let data: Column[] = [];
+        let paging: Paging = {
+          offset: 0,
+          total: 0,
+          limit: PAGE_SIZE_LARGE,
+        };
+
+        if (entityType === EntityType.TABLE) {
+          if (search) {
+            const response = await searchTableColumnsByFQN(fqn, params);
+            data = response.data;
+            paging = response.paging;
+          } else {
+            const response = await getTableColumnsByFQN(fqn, params);
+            data = response.data;
+            paging = response.paging;
+          }
+        } else {
+          const response = await getDataModelColumnsByFQN(fqn, params);
+          data = response.data;
+          paging = response.paging;
+        }
 
         // For the first page, replace the columns. For subsequent pages, append.
         if (page === 1) {
@@ -203,14 +230,15 @@ const SchemaFieldCardsV1: React.FC<{
   const handleLoadMore = useCallback(() => {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    fetchPaginatedColumns(nextPage);
-  }, [currentPage, fetchPaginatedColumns]);
+    fetchPaginatedColumns(nextPage, searchText);
+  }, [currentPage, fetchPaginatedColumns, searchText]);
 
   useEffect(() => {
     if (
       [EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(entityType)
     ) {
-      fetchPaginatedColumns();
+      setCurrentPage(1);
+      fetchPaginatedColumns(1, searchText);
     }
 
     return () => {
@@ -223,7 +251,7 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [entityType, fqn]);
+  }, [entityType, fqn, searchText]);
 
   const loadMoreBtn = useMemo(() => {
     if (columns.length === columnsPaging.total) {
@@ -268,6 +296,19 @@ const SchemaFieldCardsV1: React.FC<{
     return (
       <div className="flex-center p-lg">
         <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(columns) && searchText && hasInitialized) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">
+          {t('message.no-entity-found-for-name', {
+            entity: t('label.column-plural'),
+            name: searchText,
+          })}
+        </Text>
       </div>
     );
   }
