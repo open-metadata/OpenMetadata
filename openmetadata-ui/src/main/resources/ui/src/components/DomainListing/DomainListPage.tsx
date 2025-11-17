@@ -202,7 +202,7 @@ const DomainListPage = () => {
     },
   });
 
-  const renderContent = () => {
+  const content = useMemo(() => {
     if (isTreeView) {
       return (
         <Box sx={{ px: 6, pb: 6 }}>
@@ -251,7 +251,22 @@ const DomainListPage = () => {
         {paginationControls}
       </>
     );
-  };
+  }, [
+    isTreeView,
+    domainListing.loading,
+    domainListing.entities,
+    domainListing.urlState.filters,
+    domainListing.urlState.searchQuery,
+    view,
+    dataTable,
+    cardView,
+    paginationControls,
+    treeRefreshToken,
+    openDrawer,
+    refreshAllDomains,
+    t,
+    permissions.domain?.Create,
+  ]);
 
   return (
     <>
@@ -279,7 +294,7 @@ const DomainListPage = () => {
           </Box>
           {!isTreeView && filterSelectionDisplay}
         </Box>
-        {renderContent()}
+        {content}
       </TableContainer>
       {deleteModal}
       {formDrawer}

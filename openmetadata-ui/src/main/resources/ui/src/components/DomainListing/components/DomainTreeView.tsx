@@ -840,7 +840,7 @@ const DomainTreeView = ({
     ]
   );
 
-  const renderDomainSection = () => {
+  const domainSection = useMemo(() => {
     if (isDomainLoading) {
       return <Loader />;
     }
@@ -869,9 +869,21 @@ const DomainTreeView = ({
         })}
       </Typography>
     );
-  };
+  }, [
+    isDomainLoading,
+    selectedDomain,
+    activeTab,
+    handleFollowingToggle,
+    isFollowing,
+    isFollowingLoading,
+    refreshAll,
+    handleDomainDelete,
+    handleNavigate,
+    handleDomainUpdate,
+    t,
+  ]);
 
-  const renderHierarchySection = () => {
+  const hierarchySection = useMemo(() => {
     if (isHierarchyLoading) {
       return <Loader />;
     }
@@ -1007,7 +1019,19 @@ const DomainTreeView = ({
         )}
       </>
     );
-  };
+  }, [
+    isHierarchyLoading,
+    hierarchy,
+    expandedItems,
+    selectedFqn,
+    theme.palette.allShades?.gray,
+    theme.palette.allShades?.blue,
+    handleExpandedChange,
+    handleSelectionChange,
+    renderTreeItems,
+    isLoadingMore,
+    t,
+  ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
     return (
       <ErrorPlaceHolder
@@ -1046,7 +1070,7 @@ const DomainTreeView = ({
           maxHeight: 'calc(80vh - 160px)',
         }}
         onScroll={handleScroll}>
-        {renderHierarchySection()}
+        {hierarchySection}
       </Box>
 
       <Box
@@ -1056,7 +1080,7 @@ const DomainTreeView = ({
           maxHeight: 'calc(80vh - 160px)',
           pt: 3,
         }}>
-        {renderDomainSection()}
+        {domainSection}
       </Box>
     </Box>
   );

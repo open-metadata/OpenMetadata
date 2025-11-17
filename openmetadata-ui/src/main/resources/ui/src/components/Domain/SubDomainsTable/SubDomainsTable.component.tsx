@@ -123,7 +123,7 @@ const SubDomainsTable = ({
     }
   }, [subDomainsCount]);
 
-  const renderContent = () => {
+  const content = useMemo(() => {
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
       return (
         <ErrorPlaceHolder
@@ -156,7 +156,17 @@ const SubDomainsTable = ({
         {paginationControls}
       </>
     );
-  };
+  }, [
+    subdomainListing.loading,
+    subdomainListing.entities,
+    view,
+    dataTable,
+    cardView,
+    paginationControls,
+    permissions.Create,
+    onAddSubDomain,
+    t,
+  ]);
 
   return (
     <>
@@ -181,7 +191,7 @@ const SubDomainsTable = ({
           </Box>
           {filterSelectionDisplay}
         </Box>
-        {renderContent()}
+        {content}
       </TableContainer>
       {deleteModal}
     </>
