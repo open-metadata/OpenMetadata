@@ -270,6 +270,7 @@ export interface ConfigObject {
     supportsMetadataExtraction?: boolean;
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
+    supportsQueryRunner?:        boolean;
     supportsSystemProfile?:      boolean;
     /**
      * Supports Usage Extraction.

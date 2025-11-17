@@ -747,6 +747,10 @@ export interface StepSummary {
      */
     name: string;
     /**
+     * Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)
+     */
+    progress?: { [key: string]: Progress };
+    /**
      * Number of successfully processed records.
      */
     records?: number;
@@ -776,6 +780,22 @@ export interface StackTraceError {
      * Exception stack trace
      */
     stackTrace?: string;
+}
+
+export interface Progress {
+    /**
+     * Estimated remaining time in seconds for this entity type
+     */
+    estimatedRemainingSeconds?: number;
+    /**
+     * Number of entities processed
+     */
+    processed?: number;
+    /**
+     * Total number of entities discovered
+     */
+    total?: number;
+    [property: string]: any;
 }
 
 /**
@@ -3826,6 +3846,7 @@ export interface ConfigObject {
     supportsLineageExtraction?: boolean;
     supportsProfiler?:          boolean;
     supportsQueryComment?:      boolean;
+    supportsQueryRunner?:       boolean;
     supportsSystemProfile?:     boolean;
     /**
      * Supports Usage Extraction.

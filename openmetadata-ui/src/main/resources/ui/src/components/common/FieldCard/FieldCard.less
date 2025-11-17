@@ -60,11 +60,61 @@
 
   .field-card-content {
     .field-description {
-      color: #364254;
-      font-size: 13px;
+      color: @grey-700;
+      font-size: 13px !important;
       font-weight: 400;
       .no-description-text {
         color: @grey-700;
+      }
+      .block-editor-wrapper .tiptap.ProseMirror {
+        font-size: 13px !important;
+      }
+
+      .description-display {
+        .description-text {
+          &.expanded {
+            display: block;
+            line-height: 1.4;
+          }
+
+          &.collapsed {
+            .rich-text-editor-container {
+              .markdown-parser {
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 13px;
+                word-wrap: break-word;
+                word-break: break-word;
+                white-space: normal;
+              }
+            }
+          }
+        }
+
+        .show-more-button {
+          background: none;
+          border: none;
+          color: @primary-color;
+          cursor: pointer;
+          font-size: 12px;
+          padding: 0;
+          padding-top: 4px;
+          text-decoration: none;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: @primary-6;
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+            color: @primary-6;
+          }
+        }
       }
     }
 
