@@ -2,6 +2,52 @@
 
 In this section, we provide guides and references to use the Lightdash connector.
 
+## Requirements
+
+### API Key
+
+To extract metadata from Lightdash, you need an API key with appropriate permissions. The API key is used to authenticate all requests to the Lightdash REST API.
+
+#### Generating an API Key
+
+1. Log into your Lightdash instance
+2. Navigate to **Settings** → **Personal Access Tokens** or **API Tokens**
+3. Generate a new API token with the following permissions:
+   - **Read access** to projects
+   - **Read access** to spaces
+   - **Read access** to dashboards and charts
+
+#### Required Permissions
+
+The API key needs the following capabilities:
+
+```
+- GET /api/v1/projects - List all projects
+- GET /api/v1/projects/{projectUuid} - Get project details
+- GET /api/v1/projects/{projectUuid}/spaces - List spaces in a project
+- GET /api/v1/spaces/{spaceUuid}/dashboards - List dashboards in a space
+- GET /api/v1/dashboards/{dashboardUuid} - Get dashboard details
+- GET /api/v1/saved/{savedChartUuid} - Get chart details
+```
+
+$$note
+The API key should have at minimum **Viewer** role permissions on the projects and spaces you want to extract metadata from. **Editor** or **Admin** roles are not required for metadata extraction.
+$$
+
+### Network Access
+
+Ensure that the Lightdash instance is network accessible from where OpenMetadata ingestion runs:
+
+- The `hostPort` URL must be reachable
+- Firewall rules should allow HTTPS/HTTP traffic
+- If using a proxy, configure proxy authentication settings
+
+### Project and Space UUIDs
+
+While optional, specifying Project UUID and Space UUID can help scope metadata extraction to specific projects or spaces. This is useful if you want to restrict extraction to a subset of your Lightdash content.
+
+You can find further information on the Lightdash connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/lightdash" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section
