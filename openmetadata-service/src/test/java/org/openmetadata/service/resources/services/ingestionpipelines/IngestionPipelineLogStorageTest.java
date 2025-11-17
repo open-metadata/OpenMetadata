@@ -216,14 +216,15 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     String runId = UUID.randomUUID().toString();
 
     WebTarget streamTarget =
-        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/stream");
+        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
 
     String logData = "Stream endpoint test log\n";
+    Map<String, Object> logPayload = Map.of("logs", logData);
     Response streamResponse =
         streamTarget
-            .request(MediaType.TEXT_PLAIN)
+            .request(MediaType.APPLICATION_JSON)
             .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
-            .post(Entity.text(logData));
+            .post(Entity.json(logPayload));
 
     assertEquals(Response.Status.OK.getStatusCode(), streamResponse.getStatus());
 
