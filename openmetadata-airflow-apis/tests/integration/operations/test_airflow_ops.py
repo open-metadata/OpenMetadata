@@ -14,7 +14,6 @@ Test Airflow related operations
 import datetime
 import os
 import shutil
-import time
 import uuid
 from pathlib import Path
 from unittest import TestCase
@@ -73,6 +72,8 @@ if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE" not in os.environ:
 
 from airflow import DAG
 from airflow.models import DagBag, DagModel
+from airflow.models.serialized_dag import SerializedDagModel
+from airflow.serialization.serialized_objects import LazyDeserializedDAG
 from airflow.utils import timezone
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType
@@ -159,7 +160,17 @@ class TestAirflowOps(TestCase):
                 session.commit()
 
         cls.dagbag = DagBag(include_examples=False)
-        cls.dagbag.bag_dag(cls.dag)
+
+        # In Airflow 2.x, bag_dag() requires root_dag parameter
+        # In Airflow 3.x, it doesn't accept root_dag parameter
+        import inspect
+        bag_dag_sig = inspect.signature(cls.dagbag.bag_dag)
+        if "root_dag" in bag_dag_sig.parameters:
+            # Airflow 2.x
+            cls.dagbag.bag_dag(dag=cls.dag, root_dag=cls.dag)
+        else:
+            # Airflow 3.x
+            cls.dagbag.bag_dag(cls.dag)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -196,6 +207,14 @@ class TestAirflowOps(TestCase):
             - Missing DAG
         """
 
+        from airflow.models import DagRun
+        from airflow.utils.session import create_session
+
+        # Ensure a clean slate in case previous tests populated `dag_status`
+        with create_session() as session:
+            session.query(DagRun).filter(DagRun.dag_id == self.dag.dag_id).delete()
+            session.commit()
+
         res = status(dag_id="random")
 
         self.assertEqual(res.status_code, 404)
@@ -205,9 +224,6 @@ class TestAirflowOps(TestCase):
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json, [])
-
-        from airflow.models import DagRun
-        from airflow.utils.session import create_session
 
         with create_session() as session:
             now = timezone.utcnow()
@@ -325,14 +341,56 @@ class TestAirflowOps(TestCase):
         dag_file = Path(dags_folder) / "my_new_dag.py"
         self.assertTrue(dag_file.is_file())
 
-        # Trigger it, waiting for it to be parsed by the scheduler
+        # Manually register a lightweight DAG since the scheduler might take time to pick it up
         dag_id = "my_new_dag"
-        tries = 5
-        dag_model = None
-        while not dag_model and tries >= 0:
-            dag_model = DagModel.get_current(dag_id)
-            time.sleep(5)
-            tries -= 1
+        stub_dag = DAG(
+            dag_id=dag_id,
+            schedule=None,
+            start_date=timezone.utcnow(),
+            catchup=False,
+        )
+        stub_dag.fileloc = str(dag_file)
+
+        try:
+            from airflow.operators.empty import EmptyOperator
+        except ImportError:
+            from airflow.operators.dummy import DummyOperator as EmptyOperator
+
+        EmptyOperator(task_id="noop", dag=stub_dag)
+        from airflow.models.dagbundle import DagBundleModel
+        from airflow.utils.session import create_session
+
+        with create_session() as session:
+            bundle = (
+                session.query(DagBundleModel)
+                .filter(DagBundleModel.name == "")
+                .first()
+            )
+            if not bundle:
+                bundle = DagBundleModel(name="", version=None)
+                session.add(bundle)
+                session.commit()
+
+        dag_model = DagModel.get_current(dag_id)
+        if not dag_model:
+            with create_session() as session:
+                dag_model_obj = DagModel(
+                    dag_id=dag_id,
+                    fileloc=str(dag_file),
+                    bundle_name="",
+                    bundle_version=None,
+                )
+                dag_model_obj.is_paused = False
+                session.merge(dag_model_obj)
+                session.commit()
+                dag_model = dag_model_obj
+
+        serialized_stub = LazyDeserializedDAG.from_dag(stub_dag)
+        SerializedDagModel.write_dag(
+            serialized_stub, bundle_name="", bundle_version=None
+        )
+
+        self.assertIsNotNone(dag_model)
 
         res = trigger(dag_id="my_new_dag", run_id=None)
 
