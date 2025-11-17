@@ -20,6 +20,7 @@ export interface EntityInfoItemV1 {
   isLink?: boolean;
   isExternal?: boolean;
   visible?: string[];
+  excludedItems?: string[];
 }
 
 export interface CommonEntitySummaryInfoV1Props {
