@@ -122,12 +122,12 @@ public class FlowableCleanup {
                   java.util.stream.Collectors.groupingBy(
                       org.flowable.engine.repository.ProcessDefinition::getKey));
 
-      LOG.info("Grouping {} process definitions by key:", allProcessDefinitions.size());
+      LOG.debug("Grouping {} process definitions by key:", allProcessDefinitions.size());
       for (Map.Entry<String, List<org.flowable.engine.repository.ProcessDefinition>> entry :
           byKey.entrySet()) {
-        LOG.info("  - Key '{}': {} versions", entry.getKey(), entry.getValue().size());
+        LOG.debug("  - Key '{}': {} versions", entry.getKey(), entry.getValue().size());
         for (org.flowable.engine.repository.ProcessDefinition pd : entry.getValue()) {
-          LOG.info("    - Version {}: id={}", pd.getVersion(), pd.getId());
+          LOG.debug("    - Version {}: id={}", pd.getVersion(), pd.getId());
         }
       }
 
