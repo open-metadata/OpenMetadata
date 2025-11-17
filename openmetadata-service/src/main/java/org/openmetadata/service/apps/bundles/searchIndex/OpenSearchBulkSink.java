@@ -205,6 +205,9 @@ public class OpenSearchBulkSink implements BulkSink {
       }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
     }
   }
 
@@ -224,6 +227,9 @@ public class OpenSearchBulkSink implements BulkSink {
       bulkProcessor.add(operation);
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
     }
   }
 
