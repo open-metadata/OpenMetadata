@@ -252,7 +252,11 @@ describe('DataProductsSection', () => {
     it('renders no-data state when no data products', () => {
       render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.data-product-plural"}'
+        )
+      ).toBeInTheDocument();
     });
   });
 
