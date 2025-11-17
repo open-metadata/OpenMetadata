@@ -241,6 +241,9 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('confirm-button').click();
 
     await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(page.getByTestId('deleted-badge')).toBeVisible();
 
