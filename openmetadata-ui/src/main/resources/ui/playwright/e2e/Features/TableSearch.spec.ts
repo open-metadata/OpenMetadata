@@ -31,7 +31,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test.describe.serial('Table Search', () => {
+test.describe('Table Search', () => {
   test.describe('Services page', () => {
     test('Services page should have search functionality', async ({ page }) => {
       const service1 = EntityDataClass.databaseService.get();

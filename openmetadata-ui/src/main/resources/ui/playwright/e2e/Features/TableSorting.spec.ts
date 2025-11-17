@@ -31,7 +31,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test.describe.serial('Table Sorting', () => {
+test.describe('Table Sorting', () => {
   test.describe('Database Schema page', () => {
     test('Database Schema page should have sorting on name column', async ({
       page,
