@@ -234,6 +234,7 @@ const ChartDetails = ({
       EntityTabs.DETAILS
     );
   }, [
+    customizedPage,
     feedCount.totalCount,
     activeTab,
     chartDetails,

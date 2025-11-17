@@ -618,7 +618,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // Validate that the referenced column actually exists in the table
       if (entityLink.getArrayFieldName() != null) {
         Table table = Entity.getEntity(entityLink, "columns", ALL);
-        validateColumn(table, entityLink.getArrayFieldName());
+        validateColumn(table, entityLink.getArrayFieldName(), Boolean.FALSE);
       }
     }
   }
@@ -630,7 +630,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
       // Validate each dimension column exists in the table
       for (String dimensionColumn : test.getDimensionColumns()) {
-        validateColumn(table, dimensionColumn);
+        validateColumn(table, dimensionColumn, Boolean.FALSE);
       }
     }
   }
@@ -918,7 +918,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate all the columns
     if (validateColumns) {
       for (String columnName : tableData.getColumns()) {
-        validateColumn(table, columnName);
+        validateColumn(table, columnName, Boolean.FALSE);
       }
     }
     // Make sure each row has number values for all the columns

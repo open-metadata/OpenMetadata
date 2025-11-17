@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
@@ -185,7 +186,8 @@ export const visitOwnProfilePage = async (page: Page) => {
 
 export const assignDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  checkSelectedDomain = true
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -214,6 +216,44 @@ export const assignDomain = async (
     .getByTestId('domain-selectable-tree')
     .getByTestId('saveAssociatedTag')
     .click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  if (checkSelectedDomain) {
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domain.displayName
+    );
+  }
+};
+
+export const assignSingleSelectDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+
+  await searchDomain;
+
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await tagSelector.click();
+
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -291,14 +331,36 @@ export const removeDomain = async (
   );
 };
 
+export const removeSingleSelectDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
+};
+
 export const assignDataProduct = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  dataProduct: {
+  dataProducts: {
     name: string;
     displayName: string;
     fullyQualifiedName?: string;
-  },
+  }[],
   action: 'Add' | 'Edit' = 'Add',
   parentId = 'KnowledgePanel.DataProducts'
 ) => {
@@ -308,15 +370,17 @@ export const assignDataProduct = async (
     .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
     .click();
 
-  const searchDataProduct = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  for (const dataProduct of dataProducts) {
+    const searchDataProduct = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    );
 
-  await page
-    .locator('[data-testid="data-product-selector"] input')
-    .fill(dataProduct.displayName);
-  await searchDataProduct;
-  await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+    await page
+      .locator('[data-testid="data-product-selector"] input')
+      .fill(dataProduct.displayName);
+    await searchDataProduct;
+    await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+  }
 
   await expect(
     page
@@ -334,12 +398,14 @@ export const assignDataProduct = async (
     .click();
   await patchReq;
 
-  await expect(
-    page
-      .getByTestId(parentId)
-      .getByTestId('data-products-list')
-      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
-  ).toBeVisible();
+  for (const dataProduct of dataProducts) {
+    await expect(
+      page
+        .getByTestId(parentId)
+        .getByTestId('data-products-list')
+        .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+    ).toBeVisible();
+  }
 };
 
 export const removeDataProduct = async (
@@ -577,4 +643,68 @@ export const readElementInListWithScroll = async (
 
     retryCount++;
   }
+};
+
+export const testPaginationNavigation = async (
+  page: Page,
+  waitForLoadSelector?: string
+) => {
+  await page.waitForLoadState('networkidle');
+
+  if (waitForLoadSelector) {
+    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  const nextButton = page.locator('[data-testid="next"]');
+
+  const nextButtonCount = await nextButton.count();
+
+  if (nextButtonCount === 0) {
+    return;
+  }
+
+  const isNextButtonEnabled = await nextButton.isEnabled();
+
+  if (!isNextButtonEnabled) {
+    return;
+  }
+
+  await nextButton.click();
+
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  const currentUrl = page.url();
+  const urlObj = new URL(currentUrl);
+  const searchParams = urlObj.searchParams;
+
+  expect(searchParams.get('currentPage')).toBe('2');
+  expect(searchParams.get('cursorType')).toBe('after');
+
+  const afterValue = searchParams.get('cursorValue');
+
+  expect(afterValue).toBeTruthy();
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  if (waitForLoadSelector) {
+    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  const reloadedUrl = page.url();
+
+  expect(reloadedUrl).toBe(currentUrl);
+
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+
+  await expect(paginationText).toBeVisible();
+
+  const paginationTextContent = await paginationText.textContent();
+
+  expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };

@@ -21,6 +21,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants'
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -34,6 +35,7 @@ import {
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -164,8 +166,10 @@ const DataModelDetails = ({
   const { editLineagePermission } = useMemo(() => {
     return {
       editLineagePermission:
-        (dataModelPermissions.EditAll || dataModelPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          dataModelPermissions,
+          Operation.EditLineage
+        ) && !deleted,
     };
   }, [dataModelPermissions, deleted]);
 

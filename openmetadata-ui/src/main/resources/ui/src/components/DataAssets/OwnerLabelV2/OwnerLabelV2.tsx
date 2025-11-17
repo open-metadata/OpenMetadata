@@ -47,7 +47,8 @@ export const OwnerLabelV2 = <
   props: OwnerLabelV2Props
 ) => {
   const { dataTestId = 'glossary-right-panel-owner-link' } = props;
-  const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
+  const { data, onUpdate, permissions, isVersionView, entityRules } =
+    useGenericContext<T>();
   const { t } = useTranslation();
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedEntity = { ...data };
@@ -70,7 +71,10 @@ export const OwnerLabelV2 = <
           <UserTeamSelectableList
             hasPermission={hasPermission}
             listHeight={200}
-            multiple={{ user: true, team: false }}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
             owner={data.owners}
             onUpdate={handleUpdatedOwner}>
             {isEmpty(data.owners) ? (
@@ -95,7 +99,7 @@ export const OwnerLabelV2 = <
         )}
       </div>
     ),
-    [data, hasPermission, handleUpdatedOwner, isVersionView]
+    [data, hasPermission, handleUpdatedOwner, isVersionView, entityRules]
   );
 
   return (
