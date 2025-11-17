@@ -40,7 +40,13 @@ try:
 except Exception:
     # Fallback: Try the alternate section (Airflow 2.x vs 3.x)
     alternate_section = "webserver" if section == "api" else "api"
-    AIRFLOW_WEBSERVER_BASE_URL = conf.get(alternate_section, key)
+    try:
+        AIRFLOW_WEBSERVER_BASE_URL = conf.get(alternate_section, key)
+    except Exception:
+        # If base_url is not configured in either section, use environment variable or default
+        AIRFLOW_WEBSERVER_BASE_URL = os.getenv(
+            "AIRFLOW_WEBSERVER_BASE_URL", "http://localhost:8080"
+        )
 AIRFLOW_DAGS_FOLDER = conf.get("core", "DAGS_FOLDER")
 # Path to store the JSON configurations we receive via REST
 DAG_GENERATED_CONFIGS = conf.get(
