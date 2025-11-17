@@ -103,6 +103,15 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
+        # Initialize Airflow database if it doesn't exist
+        from airflow import settings
+        from airflow.utils.db import initdb
+
+        try:
+            initdb()
+        except Exception:
+            # Database might already be initialized
+            pass
 
         with DAG(
             "dag_status",
