@@ -38,7 +38,6 @@ import {
 } from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
-import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -262,20 +261,31 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   );
 
   useEffect(() => {
-    const map: Record<string, Domain> = {};
-
     const buildIndex = (domainList: Domain[]) => {
+      const map: Record<string, Domain> = {};
       for (const d of domainList) {
         map[d.fullyQualifiedName as string] = d;
 
         if (d.children?.length) {
-          buildIndex(d.children as unknown as Domain[]);
+          const childMap = buildIndex(d.children as unknown as Domain[]);
+          Object.assign(map, childMap);
         }
       }
+
+      return map;
     };
 
-    buildIndex(domains);
-    setDomainMapper(map);
+    const newMap = buildIndex(domains);
+
+    setDomainMapper((prev) => {
+      const merged = { ...prev, ...newMap };
+
+      if (JSON.stringify(prev) === JSON.stringify(merged)) {
+        return prev;
+      }
+
+      return merged;
+    });
 
     if (domains.length > 0 && !searchTerm) {
       const baseTreeData = convertDomainsToTreeOptions(domains, 0, isMultiple);
@@ -286,15 +296,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
       setTreeData(treeDataWithLoadMore);
     }
-  }, [
-    domains,
-    searchTerm,
-    isMultiple,
-    childPaging,
-    loadingChildren,
-    addLoadMoreNodes,
-    loadChildDomains,
-  ]);
+  }, [domains, searchTerm, isMultiple, addLoadMoreNodes, loadChildDomains]);
 
   const handleMyDomainsClick = async () => {
     await onSubmit([]);
@@ -397,9 +399,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     if (!isMultiple) {
       const selectedData = [];
       for (const item of selectedKeys) {
-        selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
-        );
+        const domain = domainMapper[item as string];
+        if (domain) {
+          selectedData.push(domain);
+        }
       }
 
       setSelectedDomains(selectedData);
@@ -413,16 +416,17 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     if (Array.isArray(checked)) {
       const selectedData = [];
       for (const item of checked) {
-        selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
-        );
+        const domain = domainMapper[item as string];
+        if (domain) {
+          selectedData.push(domain);
+        }
       }
 
       setSelectedDomains(selectedData);
     } else {
-      const selected = checked.checked.map(
-        (item) => findItemByFqn(domains, item as string, false) as Domain
-      );
+      const selected = checked.checked
+        .map((item) => domainMapper[item as string])
+        .filter((domain): domain is Domain => domain !== undefined);
 
       setSelectedDomains(selected);
     }
