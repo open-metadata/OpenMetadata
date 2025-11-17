@@ -216,7 +216,7 @@ class RedshiftSource(
         result = self.connection.execute(
             sql.text(
                 REDSHIFT_GET_ALL_RELATION_INFO.format(
-                    view_filter="AND c.relkind IN ('v', 'm')"
+                    view_filter="c.relkind IN ('v', 'm')"
                     if self.source_config.includeViews
                     else "TRUE"
                 )
