@@ -316,6 +316,45 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return create(uriInfo, securityContext, dashboard);
   }
 
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateDashboards",
+      summary = "Bulk create or update dashboards",
+      description =
+          "Create or update multiple dashboards in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each dashboard.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateDashboard> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
