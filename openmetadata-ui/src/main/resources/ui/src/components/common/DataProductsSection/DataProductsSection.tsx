@@ -198,14 +198,18 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
     if (!displayActiveDomains || displayActiveDomains.length === 0) {
       return (
-        <Typography.Text className="text-sm text-grey-muted">
+        <Typography.Text className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
         </Typography.Text>
       );
     }
 
     return (
-      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+      <span className="no-data-placeholder">
+        {t('label.no-entity-assigned', {
+          entity: t('label.data-product-plural'),
+        })}
+      </span>
     );
   }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
 
