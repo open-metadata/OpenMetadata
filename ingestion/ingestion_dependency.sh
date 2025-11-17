@@ -31,43 +31,31 @@ DB_CONN=`echo -n "${DB_SCHEME}://${DB_USER_VAR}:${DB_PASSWORD_VAR}@${DB_HOST}:${
 export AIRFLOW__API__AUTH_BACKENDS=${AIRFLOW__API__AUTH_BACKENDS:-"airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"}
 export AIRFLOW__API__BASE_URL=${AIRFLOW__API__BASE_URL:-"http://localhost:8080"}
 
-# Check if FAB provider is installed
-if pip list 2>/dev/null | grep -q "apache-airflow-providers-fab"; then
-    echo "FAB provider detected, will use FAB authentication"
-    export AIRFLOW__CORE__AUTH_MANAGER=${AIRFLOW__CORE__AUTH_MANAGER:-"airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"}
-else
-    echo "SimpleAuthManager will be used (default in Airflow 3.x)"
-    export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS="${AIRFLOW_ADMIN_USER}:admin"
+# Enable CSRF for API endpoints (required for production security)
+export AIRFLOW__API__ENABLE_CSRF=${AIRFLOW__API__ENABLE_CSRF:-"True"}
 
-    AIRFLOW_HOME=${AIRFLOW_HOME:-/opt/airflow}
-    export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE="${AIRFLOW_HOME}/simple_auth_manager_passwords.json"
-fi
+# Configure SimpleAuthManager
+echo "Configuring SimpleAuthManager (default in Airflow 3.x)"
+export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS="${AIRFLOW_ADMIN_USER}:admin"
+
+AIRFLOW_HOME=${AIRFLOW_HOME:-/opt/airflow}
+export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE="${AIRFLOW_HOME}/simple_auth_manager_passwords.json"
 
 # Airflow 3.x uses [database] section for SQL Alchemy connection
 export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-$DB_CONN}
 
 airflow db migrate
 
-# Create users based on auth manager
-if pip list 2>/dev/null | grep -q "apache-airflow-providers-fab"; then
-    echo "Creating Airflow user in database..."
-    airflow users create \
-        --username ${AIRFLOW_ADMIN_USER} \
-        --firstname Peter \
-        --lastname Parker \
-        --role Admin \
-        --email spiderman@superhero.org \
-        --password ${AIRFLOW_ADMIN_PASSWORD} || true
-else
-    echo "SimpleAuthManager configured - user: ${AIRFLOW_ADMIN_USER}:admin"
+# Create users for SimpleAuthManager
+echo "SimpleAuthManager configured - user: ${AIRFLOW_ADMIN_USER}:admin"
 
-    AIRFLOW_HOME=${AIRFLOW_HOME:-/opt/airflow}
-    PASSWORD_FILE="${AIRFLOW_HOME}/simple_auth_manager_passwords.json"
+AIRFLOW_HOME=${AIRFLOW_HOME:-/opt/airflow}
+PASSWORD_FILE="${AIRFLOW_HOME}/simple_auth_manager_passwords.json"
 
-    echo "Setting password for ${AIRFLOW_ADMIN_USER} in ${PASSWORD_FILE}..."
-    mkdir -p "${AIRFLOW_HOME}"
+echo "Setting password for ${AIRFLOW_ADMIN_USER} in ${PASSWORD_FILE}..."
+mkdir -p "${AIRFLOW_HOME}"
 
-    python3 -c "
+python3 -c "
 import json
 import os
 from pathlib import Path
@@ -90,8 +78,7 @@ with open(password_file, 'w') as f:
 print(f'Password set for ${AIRFLOW_ADMIN_USER}')
 "
 
-    echo "SimpleAuthManager user created with custom password"
-fi
+echo "SimpleAuthManager user created with custom password"
 
 rm -f /opt/airflow/airflow-webserver-monitor.pid
 
