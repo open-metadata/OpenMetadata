@@ -104,7 +104,7 @@ T = TypeVar("T", bound=BaseModel)
 
 class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
-    bulk_sink_batch_size: int = 5
+    bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
 
