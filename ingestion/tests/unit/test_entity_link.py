@@ -117,44 +117,94 @@ class TestEntityLink(TestCase):
             # Test ENTITY_TYPE keywords as column names
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::topic>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "topic"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "topic",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::user>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "user"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "user",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::database>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "database"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "database",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::role>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "role"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "role",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::chart>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "chart"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "chart",
+                ],
             ),
             # Test ENTITY_FIELD keywords as column names
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::description>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "description"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "description",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::owner>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "owner"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "owner",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::tags>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "tags"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "tags",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::name>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "name"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "name",
+                ],
             ),
             EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::tests>",
-                ["table", "bigquery_gcp.shopify.raw_product_catalog", "columns", "tests"],
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog",
+                    "columns",
+                    "tests",
+                ],
             ),
         ]
         for x in xs:
