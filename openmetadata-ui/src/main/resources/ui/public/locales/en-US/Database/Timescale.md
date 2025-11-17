@@ -2,6 +2,69 @@
 
 In this section, we provide guides and references to use the Timescale connector.
 
+## Requirements
+
+$$note
+TimescaleDB is built on PostgreSQL. We support TimescaleDB running on officially supported PostgreSQL versions. You can check the PostgreSQL version list <a href="https://www.postgresql.org/support/versioning/" target="_blank">here</a>.
+$$
+
+### Core Metadata Extraction
+
+To extract metadata, the user needs basic read privileges on PostgreSQL system tables. By default, users can see only the rows in system tables that correspond to objects for which the user has the proper access privileges.
+
+```sql
+-- Create user
+CREATE USER openmetadata_user WITH PASSWORD 'password';
+
+-- Grant CONNECT privilege on database
+GRANT CONNECT ON DATABASE your_database TO openmetadata_user;
+
+-- Grant USAGE privilege on schema
+GRANT USAGE ON SCHEMA your_schema TO openmetadata_user;
+
+-- Grant SELECT privilege on tables and views
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO openmetadata_user;
+```
+
+### Usage & Lineage
+
+When extracting lineage and usage information from TimescaleDB, we rely on the `pg_stat_statements` extension. You can find more information about it in the official <a href="https://www.postgresql.org/docs/current/pgstatstatements.html" target="_blank">PostgreSQL docs</a>.
+
+The `pg_stat_statements` extension needs to be installed and enabled:
+
+```sql
+-- Install extension (requires superuser or appropriate privileges)
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+-- Grant pg_read_all_stats to user for accessing pg_stat_statements
+GRANT pg_read_all_stats TO openmetadata_user;
+```
+
+$$note
+The `pg_stat_statements` table has no time data embedded in it and shows all queries from the last reset. When extracting usage and lineage data, the query log duration will have no impact, only the query limit.
+$$
+
+### Policy Tags (Optional)
+
+If you want to extract policy tags from PostgreSQL Row-Level Security policies, the user needs access to the following system tables:
+
+```sql
+-- Grant SELECT on policy-related system tables
+GRANT SELECT ON pg_catalog.pg_policy TO openmetadata_user;
+GRANT SELECT ON pg_catalog.pg_class TO openmetadata_user;
+GRANT SELECT ON pg_catalog.pg_namespace TO openmetadata_user;
+```
+
+### TimescaleDB Hypertables
+
+TimescaleDB hypertables are regular PostgreSQL tables with additional time-series capabilities. The permissions granted above for tables will also apply to hypertables. No additional permissions are required for hypertable metadata extraction.
+
+### Profiler & Data Quality
+
+Executing the profiler workflow or data quality tests requires the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+
+You can find further information on the TimescaleDB connector in the <a href="https://docs.open-metadata.org/connectors/database/timescale" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section
