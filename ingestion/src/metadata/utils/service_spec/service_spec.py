@@ -124,7 +124,7 @@ def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
     source_class_type = source_type.split(TYPE_SEPARATOR)[-1]
-    if source_class_type in ["usage", "lineage", "profiler"]:
+    if source_class_type in ["usage", "lineage"]:
         field = f"{source_class_type}_source_class"
     else:
         field = "metadata_source_class"
