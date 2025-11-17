@@ -156,7 +156,11 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
                     )}
                     key={item.name}
                     title={item.name}
-                    onClick={item.command}>
+                    onMouseDown={(e) => {
+                      // To prevent losing focus from editor
+                      e.preventDefault();
+                      item.command();
+                    }}>
                     <img
                       alt={item.name}
                       className="bar-menu-wrapper--format--button--icon"

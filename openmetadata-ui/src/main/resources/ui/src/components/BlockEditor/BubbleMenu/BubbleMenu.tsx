@@ -141,7 +141,11 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
                 'is-format-active': isActive(),
               })}
               type="text"
-              onClick={command}>
+              onMouseDown={(e) => {
+                // To prevent losing focus from editor
+                e.preventDefault();
+                command();
+              }}>
               {isString(Icon) ? (
                 <Typography>{Icon}</Typography>
               ) : (
