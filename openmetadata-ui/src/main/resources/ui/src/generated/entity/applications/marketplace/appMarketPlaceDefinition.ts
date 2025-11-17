@@ -19,6 +19,11 @@ export interface AppMarketPlaceDefinition {
      */
     agentType?: AgentType;
     /**
+     * If true, multiple instances of this app can run concurrently. This is useful for apps
+     * like QueryRunner that support parallel executions with different configurations.
+     */
+    allowConcurrentExecution?: boolean;
+    /**
      * Allow users to configure the app from the UI. If `false`, the `configure` step will be
      * hidden.
      */
@@ -177,6 +182,8 @@ export interface AppMarketPlaceDefinition {
  */
 export enum AgentType {
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 
