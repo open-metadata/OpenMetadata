@@ -87,6 +87,20 @@ export const getWorkflowById = async (
   return response.data;
 };
 
+export const getWorkflowByName = async (
+  workflowName: string,
+  apiCancelSignal: AbortSignal
+) => {
+  const response = await APIClient.get<Workflow>(
+    `automations/workflows/name/${workflowName}`,
+    {
+      signal: apiCancelSignal,
+    }
+  );
+
+  return response.data;
+};
+
 export const deleteWorkflowById = async (
   workflowId: string,
   hardDelete = false

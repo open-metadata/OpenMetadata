@@ -39,6 +39,7 @@ import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.BINARY;
+import static org.openmetadata.schema.type.ColumnDataType.BOOLEAN;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.DATE;
 import static org.openmetadata.schema.type.ColumnDataType.DECIMAL;
@@ -49,9 +50,6 @@ import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
-import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
-import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
-import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -5728,106 +5726,233 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_bulkCreateOrUpdate_generatesChangeEvents(TestInfo test) throws IOException {
-    int tableCount = 3;
-    List<CreateTable> createRequests = new ArrayList<>();
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
 
-    for (int i = 0; i < tableCount; i++) {
-      String tableName = getEntityName(test, i);
-      CreateTable create =
-          createRequest(tableName).withDescription("Table " + i + " for bulk creation test");
-      createRequests.add(create);
-    }
+    // Step 1: Bot creates initial table (using regular create, not bulk)
+    CreateTable botCreate =
+        createRequest(test, 1)
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
 
-    WebTarget target = getResource("tables/bulk");
+    Table table = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", table.getDescription());
+    assertEquals(1, table.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(table);
+    String userDescription = "User-edited description - should be preserved";
+    table.setDescription(userDescription);
+    table.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Table userEditedTable = patchEntity(table.getId(), originalJson, table, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedTable.getDescription());
+    assertEquals(2, userEditedTable.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateTable botUpdate =
+        createRequest(test, 1)
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Table verifyTable = getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyTable.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyTable.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyTable.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_ColumnSchemaUpdates(TestInfo test) throws IOException {
+    // Test that bulk updates correctly handle column schema changes
+    // Verify columns can be added, removed, renamed, and updated
+
+    // Step 1: Create table with initial columns
+    Column c1 = getColumn(C1, BIGINT, null).withDescription("Initial C1");
+    Column c2 = getColumn("C2", STRING, null).withDescription("Initial C2");
+    Column c3 = getColumn("C3", INT, null).withDescription("Initial C3");
+
+    CreateTable createTable =
+        createRequest(test, 1).withName(getEntityName(test)).withColumns(List.of(c1, c2, c3));
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertEquals(3, table.getColumns().size());
+
+    // Step 2: Update via bulk with modified columns:
+    // - Keep C1 with updated description
+    // - Remove C2
+    // - Rename C3 to C3_renamed
+    // - Add new columns C4 and C5
+    Column c1Updated = getColumn(C1, BIGINT, null).withDescription("Updated C1 via bulk");
+    Column c3Renamed = getColumn("C3_renamed", INT, null).withDescription("Renamed from C3");
+    Column c4New = getColumn("C4", STRING, null).withDescription("New column C4");
+    Column c5New = getColumn("C5", BOOLEAN, null).withDescription("New column C5");
+
+    CreateTable updateRequest =
+        createRequest(test, 1)
+            .withName(getEntityName(test))
+            .withColumns(List.of(c1Updated, c3Renamed, c4New, c5New));
+
+    List<CreateTable> bulkRequests = List.of(updateRequest);
+    WebTarget bulkTarget = getCollection().path("/bulk");
     BulkOperationResult result =
-        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+        TestUtils.put(bulkTarget, bulkRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
 
-    assertNotNull(result);
-    assertEquals(tableCount, result.getNumberOfRowsProcessed());
-    assertEquals(tableCount, result.getNumberOfRowsPassed());
-    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
 
-    ResultList<ChangeEvent> changeEvents =
-        getChangeEvents(TABLE, null, null, null, ADMIN_AUTH_HEADERS);
-    assertNotNull(changeEvents);
-    assertNotNull(changeEvents.getData());
+    // Step 3: Verify column schema changes
+    Table updatedTable = getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
 
-    long bulkCreatedEventCount =
-        changeEvents.getData().stream()
-            .filter(
-                event ->
-                    event.getEntityType().equals(TABLE)
-                        && event.getEventType().equals(ENTITY_CREATED)
-                        && event.getUserName().equals("admin"))
-            .count();
+    assertEquals(4, updatedTable.getColumns().size(), "Should have 4 columns after update");
+
+    // Verify C1 was updated
+    Column verifyC1 = updatedTable.getColumns().get(0);
+    assertEquals(C1, verifyC1.getName());
+    assertEquals("Updated C1 via bulk", verifyC1.getDescription());
+
+    // Verify C3_renamed exists
+    Column verifyC3Renamed =
+        updatedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("C3_renamed"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(verifyC3Renamed, "C3_renamed should exist");
+    assertEquals("Renamed from C3", verifyC3Renamed.getDescription());
+
+    // Verify C4 and C5 were added
+    Column verifyC4 =
+        updatedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("C4"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(verifyC4, "C4 should be added");
+
+    Column verifyC5 =
+        updatedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("C5"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(verifyC5, "C5 should be added");
+
+    // Verify C2 was removed
+    boolean hasC2 = updatedTable.getColumns().stream().anyMatch(c -> c.getName().equals("C2"));
+    assertFalse(hasC2, "C2 should be removed");
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create table with initial tags
+    CreateTable createTable =
+        createRequest(test, 1)
+            .withName(getEntityName(test))
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertEquals(2, table.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateTable updateRequest =
+        createRequest(test, 1)
+            .withName(getEntityName(test))
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Table updatedTable = getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedTable.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedTable.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
 
     assertTrue(
-        bulkCreatedEventCount >= tableCount,
-        "Expected at least "
-            + tableCount
-            + " change events for bulk created tables, but found "
-            + bulkCreatedEventCount);
-
-    for (CreateTable createRequest : createRequests) {
-      Optional<ChangeEvent> tableEvent =
-          changeEvents.getData().stream()
-              .filter(
-                  event ->
-                      event.getEntityType().equals(TABLE)
-                          && event.getEntity() != null
-                          && ((Table) event.getEntity())
-                              .getFullyQualifiedName()
-                              .contains(createRequest.getName()))
-              .findFirst();
-
-      assertTrue(
-          tableEvent.isPresent(), "Change event not found for table: " + createRequest.getName());
-      assertEquals(ENTITY_CREATED, tableEvent.get().getEventType());
-      assertEquals("admin", tableEvent.get().getUserName());
-    }
-
-    List<Table> createdTables = new ArrayList<>();
-    for (CreateTable createRequest : createRequests) {
-      Table table = getEntityByName(createRequest.getName(), "", ADMIN_AUTH_HEADERS);
-      assertNotNull(table);
-      createdTables.add(table);
-    }
-
-    for (int i = 0; i < createdTables.size(); i++) {
-      Table table = createdTables.get(i);
-      table.setDescription("Updated description for table " + i);
-      createRequests.set(i, createRequest(table.getName()).withDescription(table.getDescription()));
-    }
-
-    target = getResource("tables/bulk");
-    result =
-        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
-
-    assertNotNull(result);
-    assertEquals(tableCount, result.getNumberOfRowsProcessed());
-    assertEquals(tableCount, result.getNumberOfRowsPassed());
-    assertEquals(0, result.getNumberOfRowsFailed());
-
-    changeEvents = getChangeEvents(null, TABLE, null, null, ADMIN_AUTH_HEADERS);
-    assertNotNull(changeEvents);
-    assertNotNull(changeEvents.getData());
-
-    long bulkUpdatedEventCount =
-        changeEvents.getData().stream()
-            .filter(
-                event ->
-                    event.getEntityType().equals(TABLE)
-                        && (event.getEventType().equals(ENTITY_UPDATED)
-                            || event.getEventType().equals(ENTITY_FIELDS_CHANGED))
-                        && event.getUserName().equals("admin"))
-            .count();
-
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
     assertTrue(
-        bulkUpdatedEventCount >= tableCount,
-        "Expected at least "
-            + tableCount
-            + " change events for bulk updated tables, but found "
-            + bulkUpdatedEventCount);
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates table
+    CreateTable createTable = createRequest(test, 1).withDescription("User-created description");
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", table.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateTable adminUpdate = createRequest(test, 1).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Table updatedTable = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedTable.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

@@ -5808,10 +5808,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
-    boolean validColumn =
-        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
-    if (!validColumn && !columnName.equalsIgnoreCase("all")) {
-      throw new IllegalArgumentException("Invalid column name " + columnName);
+    validateColumn(table, columnName, Boolean.TRUE);
+  }
+
+  // Validate if a given column exists in the table with optional case sensitivity
+  public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
+    if (Boolean.FALSE.equals(caseSensitive)) {
+      boolean validColumn =
+          table.getColumns().stream().anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
+      if (!validColumn && !columnName.equalsIgnoreCase("all")) {
+        throw new IllegalArgumentException("Invalid column name " + columnName);
+      }
+    } else {
+      boolean validColumn =
+          table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+      if (!validColumn && !columnName.equalsIgnoreCase("all")) {
+        throw new IllegalArgumentException("Invalid column name " + columnName);
+      }
     }
   }
 
