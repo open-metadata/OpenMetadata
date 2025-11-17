@@ -622,18 +622,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private void validateDimensionColumns(TestCase test, EntityLink entityLink) {
-    if (test.getDimensionColumns() != null && !test.getDimensionColumns().isEmpty()) {
-      // Get the table referenced by the entityLink to validate dimension columns exist
-      Table table = Entity.getEntity(entityLink, "columns", ALL);
-
-      // Validate each dimension column exists in the table
-      for (String dimensionColumn : test.getDimensionColumns()) {
-        validateColumn(table, dimensionColumn, Boolean.FALSE);
-      }
-    }
-  }
-
   @Override
   public void storeEntity(TestCase test, boolean update) {
     EntityReference testSuite = test.getTestSuite();
