@@ -58,4 +58,4 @@ SET json = JSON_SET(
     '$.runTimeCleanUpConfiguration.batchSize',
     500
 )
-WHERE config_type = 'workflowSettings';
+WHERE configType = 'workflowSettings';

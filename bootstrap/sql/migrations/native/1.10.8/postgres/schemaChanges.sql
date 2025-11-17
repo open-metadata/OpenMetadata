@@ -62,4 +62,4 @@ SET json = jsonb_set(
     '500',
     true
 )
-WHERE config_type = 'workflowSettings';
+WHERE configtype = 'workflowSettings';
