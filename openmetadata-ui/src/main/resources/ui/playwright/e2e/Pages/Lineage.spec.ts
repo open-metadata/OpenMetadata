@@ -89,7 +89,7 @@ for (const EntityClass of entities) {
     browser,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
-    test.setTimeout(300_000);
+    test.setTimeout(300_002);
 
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(

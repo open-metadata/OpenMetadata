@@ -269,7 +269,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         isConnectable={isConnectable}
         nodeType={nodeType}
       />
-      <div className="lineage-node-content">
+      <div className="lineage-node-content lineage-node-content-mirror-main-for-checks">
         <div className="label-container bg-white">{nodeLabel}</div>
         <NodeChildren isConnectable={isConnectable} node={node} />
       </div>
