@@ -202,6 +202,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     this.environment = environment;
 
+    OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
+
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
