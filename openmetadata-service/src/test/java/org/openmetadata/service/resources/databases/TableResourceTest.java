@@ -6007,10 +6007,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               .filter(
                   event ->
                       event.getEntityType().equals(TABLE)
-                          && event.getEntity() != null
-                          && ((Table) event.getEntity())
-                              .getFullyQualifiedName()
-                              .contains(createRequest.getName()))
+                          && event.getEntityFullyQualifiedName() != null
+                          && event.getEntityFullyQualifiedName().contains(createRequest.getName()))
               .findFirst();
 
       assertTrue(
