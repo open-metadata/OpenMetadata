@@ -8,6 +8,7 @@ $$section
 Select the level at which you want to apply the test case. Choose between:
 - **Table Level**: Tests that validate entire table properties such as row count, freshness, or custom SQL queries
 - **Column Level**: Tests that validate specific column properties such as values, uniqueness, or data types
+- **Dimension Level**: Tests that validate column properties segmented by one or more dimension columns, enabling granular quality analysis across different data segments
 
 The test level determines which test types will be available for selection.
 $$
