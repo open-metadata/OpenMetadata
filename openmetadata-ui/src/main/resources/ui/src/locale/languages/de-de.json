@@ -1402,6 +1402,7 @@
     "requirement-plural": "Anforderungen",
     "reset": "Zurücksetzen",
     "reset-default-layout": "Standard Layout zurücksetzen",
+    "reset-entity": "{{entity}} zurücksetzen",
     "reset-position": "Auf Mitte zurücksetzen",
     "reset-your-password": "Ihr Passwort zurücksetzen",
     "resolution": "Auflösung",

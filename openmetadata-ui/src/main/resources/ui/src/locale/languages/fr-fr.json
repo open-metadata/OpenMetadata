@@ -1402,6 +1402,7 @@
     "requirement-plural": "Critères",
     "reset": "Réinitialiser",
     "reset-default-layout": "Réinitialiser la Disposition par Défaut",
+    "reset-entity": "Réinitialiser {{entity}}",
     "reset-position": "Réinitialiser au centre",
     "reset-your-password": "Réinitialiser le Mot de Passe",
     "resolution": "Résolution",

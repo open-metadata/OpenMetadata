@@ -1402,6 +1402,7 @@
     "requirement-plural": "Gereksinimler",
     "reset": "Sıfırla",
     "reset-default-layout": "Varsayılan Düzeni Sıfırla",
+    "reset-entity": "{{entity}} Sıfırla",
     "reset-position": "Merkeze sıfırla",
     "reset-your-password": "Şifrenizi Sıfırlayın",
     "resolution": "Çözünürlük",

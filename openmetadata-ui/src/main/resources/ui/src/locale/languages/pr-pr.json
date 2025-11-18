@@ -1402,6 +1402,7 @@
     "requirement-plural": "نیازمندی‌ها",
     "reset": "بازنشانی",
     "reset-default-layout": "بازنشانی طرح‌بندی پیش‌فرض",
+    "reset-entity": "بازنشانی {{entity}}",
     "reset-position": "Reset to Center",
     "reset-your-password": "بازنشانی رمز عبور خود",
     "resolution": "دقت",

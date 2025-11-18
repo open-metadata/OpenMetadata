@@ -1402,6 +1402,7 @@
     "requirement-plural": "요구사항들",
     "reset": "초기화",
     "reset-default-layout": "기본 레이아웃 초기화",
+    "reset-entity": "{{entity}} 초기화",
     "reset-position": "중앙으로 재설정",
     "reset-your-password": "비밀번호 재설정",
     "resolution": "해결",

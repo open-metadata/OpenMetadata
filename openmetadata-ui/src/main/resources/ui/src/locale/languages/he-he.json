@@ -1402,6 +1402,7 @@
     "requirement-plural": "דרישות",
     "reset": "איפוס",
     "reset-default-layout": "איפוס פריסת ברירת מחדל",
+    "reset-entity": "איפוס {{entity}}",
     "reset-position": "אפס למרכז",
     "reset-your-password": "איפוס הסיסמה שלך",
     "resolution": "רזולוציה",

@@ -1402,6 +1402,7 @@
     "requirement-plural": "Требования",
     "reset": "Сбросить",
     "reset-default-layout": "Сбросить стандартный макет",
+    "reset-entity": "Сбросить {{entity}}",
     "reset-position": "Сбросить в центр",
     "reset-your-password": "Сбросить пароль",
     "resolution": "Разрешение",

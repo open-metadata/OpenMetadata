@@ -1402,6 +1402,7 @@
     "requirement-plural": "Requisitos",
     "reset": "Restablecer",
     "reset-default-layout": "Restablecer el panel por defecto",
+    "reset-entity": "Restablecer {{entity}}",
     "reset-position": "Restablecer al centro",
     "reset-your-password": "Restablezca su contraseña",
     "resolution": "Resolución",

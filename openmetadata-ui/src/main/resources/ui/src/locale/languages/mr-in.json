@@ -1402,6 +1402,7 @@
     "requirement-plural": "आवश्यकता",
     "reset": "रीसेट",
     "reset-default-layout": "मूलभूत लेआउट रीसेट करा",
+    "reset-entity": "{{entity}} रीसेट करा",
     "reset-position": "मध्यभागी रीसेट करा",
     "reset-your-password": "तुमचा पासवर्ड रीसेट करा",
     "resolution": "ठराव",

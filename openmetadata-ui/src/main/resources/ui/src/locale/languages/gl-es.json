@@ -1402,6 +1402,7 @@
     "requirement-plural": "Requisitos",
     "reset": "Restablecer",
     "reset-default-layout": "Restablecer deseño predeterminado",
+    "reset-entity": "Restablecer {{entity}}",
     "reset-position": "Restablecer ao centro",
     "reset-your-password": "Restablecer o teu contrasinal",
     "resolution": "Resolución",

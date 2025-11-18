@@ -1402,6 +1402,7 @@
     "requirement-plural": "Requisitos",
     "reset": "Redefinir",
     "reset-default-layout": "Redefinir Layout Padrão",
+    "reset-entity": "Redefinir {{entity}}",
     "reset-position": "Redefinir para o centro",
     "reset-your-password": "Redefina sua Senha",
     "resolution": "Resolução",

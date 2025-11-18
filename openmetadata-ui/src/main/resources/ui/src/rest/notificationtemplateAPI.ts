@@ -98,3 +98,12 @@ export const sendTestNotificationTemplate = async (
 
   return response.data;
 };
+
+export const resetSystemTemplateByFQN = async (fqn: string) => {
+  const response = await APIClient.put<
+    null,
+    AxiosResponse<NotificationTemplate>
+  >(`${BASE_URL}/name/${fqn}/reset`);
+
+  return response.data;
+};

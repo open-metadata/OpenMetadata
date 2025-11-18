@@ -1402,6 +1402,7 @@
     "requirement-plural": "要件",
     "reset": "リセット",
     "reset-default-layout": "レイアウトをデフォルトにリセット",
+    "reset-entity": "{{entity}}をリセット",
     "reset-position": "中央にリセット",
     "reset-your-password": "パスワードをリセット",
     "resolution": "解決",

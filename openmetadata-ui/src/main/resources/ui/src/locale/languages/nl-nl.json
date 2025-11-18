@@ -1402,6 +1402,7 @@
     "requirement-plural": "Vereisten",
     "reset": "Herstellen",
     "reset-default-layout": "Standaardindeling herstellen",
+    "reset-entity": "{{entity}} herstellen",
     "reset-position": "Resetten naar midden",
     "reset-your-password": "Herstel je wachtwoord",
     "resolution": "Resolutie",

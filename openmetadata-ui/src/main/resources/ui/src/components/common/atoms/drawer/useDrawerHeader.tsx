@@ -12,6 +12,7 @@
  */
 
 import { Box, IconButton, SxProps, Typography } from '@mui/material';
+import { defaultColors } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 
@@ -88,7 +89,8 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
           {showCloseButton && onClose && (
             <IconButton
               data-testid="drawer-close-icon"
-              size="small"
+              size="medium"
+              sx={{ color: defaultColors.gray[700] }}
               onClick={onClose}>
               <XClose />
             </IconButton>

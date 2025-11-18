@@ -1402,6 +1402,7 @@
     "requirement-plural": "需求",
     "reset": "重設",
     "reset-default-layout": "重設預設版面配置",
+    "reset-entity": "重設{{entity}}",
     "reset-position": "重置到中心",
     "reset-your-password": "重設您的密碼",
     "resolution": "解決方案",

@@ -1402,6 +1402,7 @@
     "requirement-plural": "ข้อกำหนด",
     "reset": "รีเซ็ต",
     "reset-default-layout": "รีเซ็ตเลย์เอาต์เริ่มต้น",
+    "reset-entity": "รีเซ็ต{{entity}}",
     "reset-position": "รีเซ็ตไปที่ตรงกลาง",
     "reset-your-password": "รีเซ็ตรหัสผ่านของคุณ",
     "resolution": "การแก้ไข",
