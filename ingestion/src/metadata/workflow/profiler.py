@@ -50,7 +50,9 @@ class ProfilerWorkflow(IngestionWorkflow):
         # We are forcing the secret evaluation to "ignore" null secrets down the line
         # Remove this when the issue above is fixed and empty secrets migrated
         source_config_class = type(self.config.source.serviceConnection.root.config)
-        dumped_config = self.config.source.serviceConnection.root.config.model_dump()
+        dumped_config = self.config.source.serviceConnection.root.config.model_dump(
+            exclude_unset=True
+        )
         self.config.source.serviceConnection.root.config = (
             source_config_class.model_validate(dumped_config)
         )
@@ -59,7 +61,9 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.test_connection()
 
         source_class = self._get_source_class()
-        self.source = source_class.create(self.config.model_dump(), self.metadata)
+        self.source = source_class.create(
+            self.config.model_dump(exclude_unset=True), self.metadata
+        )
 
         profiler_processor = self._get_profiler_processor()
         sink = self._get_sink()
@@ -79,11 +83,13 @@ class ProfilerWorkflow(IngestionWorkflow):
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
-        sink_config = self.config.sink.model_dump().get("config", {})
+        sink_config = self.config.sink.model_dump(exclude_unset=True).get("config", {})
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(self.config.model_dump(), self.metadata)
+        return ProfilerProcessor.create(
+            self.config.model_dump(exclude_unset=True), self.metadata
+        )

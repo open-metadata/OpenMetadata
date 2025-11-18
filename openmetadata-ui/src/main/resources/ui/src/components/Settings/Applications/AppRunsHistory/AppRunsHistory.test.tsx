@@ -118,6 +118,8 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
     // Return a consistent formatted duration for all cases
     return '02:30:15';
   }),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
