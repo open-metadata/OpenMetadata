@@ -164,6 +164,7 @@ class TestAirflowOps(TestCase):
         # In Airflow 2.x, bag_dag() requires root_dag parameter
         # In Airflow 3.x, it doesn't accept root_dag parameter
         import inspect
+
         bag_dag_sig = inspect.signature(cls.dagbag.bag_dag)
         if "root_dag" in bag_dag_sig.parameters:
             # Airflow 2.x
@@ -362,9 +363,7 @@ class TestAirflowOps(TestCase):
 
         with create_session() as session:
             bundle = (
-                session.query(DagBundleModel)
-                .filter(DagBundleModel.name == "")
-                .first()
+                session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
             )
             if not bundle:
                 bundle = DagBundleModel(name="", version=None)
