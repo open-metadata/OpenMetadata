@@ -56,6 +56,9 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
 )
+
+# Special marker file used for CDC metadata tracking
+CDC_METADATA_MARKER_FILE = "ONLY_FOR_CDC_METADATA"
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.file.base import ReadException
@@ -255,10 +258,14 @@ class DatalakeSource(DatabaseServiceSource):
                 file_extension = get_file_format_type(
                     key_name=key_name, metadata_entry=metadata_entry
                 )
-
-                if table_name.endswith("/") or not file_extension:
+                if not file_extension:
                     logger.debug(
-                        f"Object filtered due to unsupported file type: {key_name}"
+                        f"Object opted out due to file extension={file_extension} is not supported in file={key_name}"
+                    )
+                    continue
+                if key_name.endswith("/"):
+                    logger.debug(
+                        f"Object opted out due to key_name ends with slash(/): {key_name}"
                     )
                     continue
 
