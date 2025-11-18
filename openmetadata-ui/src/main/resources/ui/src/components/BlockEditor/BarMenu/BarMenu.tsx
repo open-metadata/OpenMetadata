@@ -158,6 +158,8 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
                     title={item.name}
                     onMouseDown={(e) => {
                       // To prevent losing focus from editor
+                      // The mouseDown event fires before the click event and before focus changes,
+                      // so we can intercept it and prevent the default focus behavior.
                       e.preventDefault();
                       item.command();
                     }}>
