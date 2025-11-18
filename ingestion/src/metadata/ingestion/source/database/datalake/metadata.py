@@ -56,9 +56,6 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
 )
-
-# Special marker file used for CDC metadata tracking
-CDC_METADATA_MARKER_FILE = "ONLY_FOR_CDC_METADATA"
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.file.base import ReadException
