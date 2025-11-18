@@ -219,7 +219,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
 
     String logData = "Stream endpoint test log\n";
-    Map<String, Object> logPayload = Map.of("logs", logData);
+    Map<String, String> logPayload = Map.of("logs", logData);
     Response streamResponse =
         streamTarget
             .request(MediaType.APPLICATION_JSON)
