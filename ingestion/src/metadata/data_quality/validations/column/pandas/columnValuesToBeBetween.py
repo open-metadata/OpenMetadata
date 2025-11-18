@@ -99,6 +99,7 @@ class ColumnValuesToBeBetweenValidator(
                     Metrics.MIN.name: min_impl.create_accumulator(),
                     Metrics.MAX.name: max_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: row_count_impl.create_accumulator(),
+                    DIMENSION_FAILED_COUNT_KEY: 0,
                 }
             )
 
@@ -131,6 +132,13 @@ class ColumnValuesToBeBetweenValidator(
                         group_df,
                     )
 
+                    # Count row-level violations using checker's unified logic
+                    col_values = group_df[column.name]
+                    violations_mask = checker.get_violations_mask(col_values)
+                    dimension_aggregates[dimension_value][
+                        DIMENSION_FAILED_COUNT_KEY
+                    ] += violations_mask.sum()
+
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 min_value = min_impl.aggregate_accumulator(agg[Metrics.MIN.name])
@@ -138,6 +146,7 @@ class ColumnValuesToBeBetweenValidator(
                 total_rows = row_count_impl.aggregate_accumulator(
                     agg[DIMENSION_TOTAL_COUNT_KEY]
                 )
+                failed_count = agg[DIMENSION_FAILED_COUNT_KEY]
 
                 if min_value is None or max_value is None:
                     logger.warning(
@@ -150,17 +159,6 @@ class ColumnValuesToBeBetweenValidator(
                 # Normalize values (convert date to datetime if needed)
                 min_value = self._normalize_metric_value(min_value, is_min=True)
                 max_value = self._normalize_metric_value(max_value, is_min=False)
-
-                failed_count = (
-                    total_rows
-                    if checker.violates_pandas(
-                        {
-                            Metrics.MIN.name: min_value,
-                            Metrics.MAX.name: max_value,
-                        }
-                    )
-                    else 0
-                )
 
                 results_data.append(
                     {

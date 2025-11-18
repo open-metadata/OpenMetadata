@@ -18,6 +18,7 @@ from typing import List, Optional
 from sqlalchemy import Column, func
 
 from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValueLengthsToBeBetween import (
@@ -103,10 +104,15 @@ class ColumnValueLengthsToBeBetweenValidator(
         dimension_results = []
 
         try:
+            checker = self._get_validation_checker(test_params)
+
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: func.count(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
                 Metrics.MIN_LENGTH.name: Metrics.MIN_LENGTH(column).fn(),
                 Metrics.MAX_LENGTH.name: Metrics.MAX_LENGTH(column).fn(),
+                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
+                    LenFn(column)
+                ),
             }
 
             def build_min_len_final(cte):
@@ -118,13 +124,7 @@ class ColumnValueLengthsToBeBetweenValidator(
             result_rows = self._execute_with_others_aggregation_statistical(
                 dimension_col,
                 metric_expressions,
-                self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
-                    {
-                        Metrics.MIN_LENGTH.name: Metrics.MIN_LENGTH.name,
-                        Metrics.MAX_LENGTH.name: Metrics.MAX_LENGTH.name,
-                    },
-                    DIMENSION_TOTAL_COUNT_KEY,
-                ),
+                None,  # Use row-level count from metric_expressions
                 final_metric_builders={
                     Metrics.MIN_LENGTH.name: build_min_len_final,
                     Metrics.MAX_LENGTH.name: build_max_len_final,
@@ -142,6 +142,8 @@ class ColumnValueLengthsToBeBetweenValidator(
                 metric_values = {
                     Metrics.MIN_LENGTH.name: min_len_value,
                     Metrics.MAX_LENGTH.name: max_len_value,
+                    DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
+                    DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
                 }
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)

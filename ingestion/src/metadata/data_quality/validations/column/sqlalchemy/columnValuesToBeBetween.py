@@ -76,10 +76,15 @@ class ColumnValuesToBeBetweenValidator(
         dimension_results = []
 
         try:
+            checker = self._get_validation_checker(test_params)
+
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
                 Metrics.MIN.name: Metrics.MIN(column).fn(),
                 Metrics.MAX.name: Metrics.MAX(column).fn(),
+                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
+                    column
+                ),
             }
 
             def build_min_final(cte):
@@ -93,13 +98,7 @@ class ColumnValuesToBeBetweenValidator(
             result_rows = self._execute_with_others_aggregation_statistical(
                 dimension_col,
                 metric_expressions,
-                self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
-                    {
-                        Metrics.MIN.name: Metrics.MIN.name,
-                        Metrics.MAX.name: Metrics.MAX.name,
-                    },
-                    DIMENSION_TOTAL_COUNT_KEY,
-                ),
+                None,  # Use row-level count from metric_expressions
                 final_metric_builders={
                     Metrics.MIN.name: build_min_final,
                     Metrics.MAX.name: build_max_final,
