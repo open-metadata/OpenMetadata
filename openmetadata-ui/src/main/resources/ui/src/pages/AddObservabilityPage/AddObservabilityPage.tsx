@@ -56,6 +56,7 @@ import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -75,7 +76,12 @@ function AddObservabilityPage() {
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
-  const [fetching, setFetching] = useState<number>(0);
+
+  const [loadingState, setLoadingState] = useState<AddAlertPageLoadingState>({
+    alerts: false,
+    functions: false,
+    templates: false,
+  });
   const [saving, setSaving] = useState<boolean>(false);
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
 
@@ -84,7 +90,7 @@ function AddObservabilityPage() {
 
   const fetchAlert = async () => {
     try {
-      setFetching((prev) => prev + 1);
+      setLoadingState((state) => ({ ...state, alerts: true }));
 
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
       const modifiedAlertData =
@@ -95,13 +101,13 @@ function AddObservabilityPage() {
     } catch (error) {
       // Error handling
     } finally {
-      setFetching((prev) => prev - 1);
+      setLoadingState((state) => ({ ...state, alerts: false }));
     }
   };
 
   const fetchFunctions = async () => {
     try {
-      setFetching((prev) => prev + 1);
+      setLoadingState((state) => ({ ...state, functions: true }));
       const filterResources = await getResourceFunctions();
 
       setFilterResources(filterResources.data);
@@ -110,7 +116,7 @@ function AddObservabilityPage() {
         t('server.entity-fetch-error', { entity: t('label.config') })
       );
     } finally {
-      setFetching((prev) => prev - 1);
+      setLoadingState((state) => ({ ...state, functions: false }));
     }
   };
 
@@ -208,7 +214,7 @@ function AddObservabilityPage() {
   );
 
   const fetchTemplates = useCallback(async () => {
-    setFetching((count) => count + 1);
+    setLoadingState((state) => ({ ...state, templates: true }));
     try {
       const { data } = await getAllNotificationTemplates({
         limit: PAGE_SIZE_LARGE,
@@ -220,7 +226,7 @@ function AddObservabilityPage() {
         t('server.entity-fetch-error', { entity: t('label.template-plural') })
       );
     } finally {
-      setFetching((count) => count - 1);
+      setLoadingState((state) => ({ ...state, templates: false }));
     }
   }, []);
 
@@ -230,7 +236,12 @@ function AddObservabilityPage() {
     }
   }, [extraFormWidgets]);
 
-  if (fetching || (isEditMode && isEmpty(alert))) {
+  const isLoading = useMemo(
+    () => Object.values(loadingState).some((val) => val),
+    [loadingState]
+  );
+
+  if (isLoading || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
 
@@ -341,6 +352,8 @@ function AddObservabilityPage() {
                                     <Widget
                                       alertDetails={alert}
                                       formRef={form}
+                                      loading={isLoading}
+                                      templates={templates}
                                     />
                                   </Col>
                                 </Fragment>

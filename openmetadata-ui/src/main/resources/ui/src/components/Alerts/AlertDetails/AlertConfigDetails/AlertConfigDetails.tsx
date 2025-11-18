@@ -32,7 +32,10 @@ import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.c
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './alert-config-details.less';
-import { AlertConfigDetailsProps } from './AlertConfigDetails.interface';
+import {
+  AlertConfigDetailsProps,
+  AlertConfigLoadingState,
+} from './AlertConfigDetails.interface';
 
 function AlertConfigDetails({
   alertDetails,
@@ -42,7 +45,10 @@ function AlertConfigDetails({
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const modifiedAlertData =
     alertsClassBase.getModifiedAlertDataForForm(alertDetails);
-  const [fetching, setFetching] = useState<number>(0);
+  const [loadingState, setLoadingState] = useState<AlertConfigLoadingState>({
+    templates: false,
+    functions: false,
+  });
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
@@ -64,7 +70,7 @@ function AlertConfigDetails({
 
   const fetchFunctions = useCallback(async () => {
     try {
-      setFetching((prev) => prev + 1);
+      setLoadingState((prev) => ({ ...prev, functions: true }));
       const filterResources = await (isNotificationAlert
         ? getNotificationResourceFunctions()
         : getResourceFunctions());
@@ -75,7 +81,7 @@ function AlertConfigDetails({
         t('server.entity-fetch-error', { entity: t('label.config') })
       );
     } finally {
-      setFetching((prev) => prev - 1);
+      setLoadingState((prev) => ({ ...prev, functions: false }));
     }
   }, [isNotificationAlert]);
 
@@ -85,7 +91,7 @@ function AlertConfigDetails({
   );
 
   const fetchTemplates = useCallback(async () => {
-    setFetching((count) => count + 1);
+    setLoadingState((prev) => ({ ...prev, templates: true }));
     try {
       const { data } = await getAllNotificationTemplates({
         limit: PAGE_SIZE_LARGE,
@@ -97,7 +103,7 @@ function AlertConfigDetails({
         t('server.entity-fetch-error', { entity: t('label.template-plural') })
       );
     } finally {
-      setFetching((count) => count - 1);
+      setLoadingState((prev) => ({ ...prev, templates: false }));
     }
   }, []);
 
@@ -111,7 +117,12 @@ function AlertConfigDetails({
     fetchFunctions();
   }, [Fqn]);
 
-  if (fetching) {
+  const isLoading = useMemo(
+    () => Object.values(loadingState).some((val) => val),
+    [loadingState]
+  );
+
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -172,6 +183,7 @@ function AlertConfigDetails({
                     isViewMode
                     alertDetails={modifiedAlertData}
                     formRef={form}
+                    loading={isLoading}
                     templates={templates}
                   />
                 </Col>

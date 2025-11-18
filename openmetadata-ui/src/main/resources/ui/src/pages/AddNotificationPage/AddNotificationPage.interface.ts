@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import { EventSubscription } from '../../../../generated/events/eventSubscription';
-
-export interface AlertConfigDetailsProps {
-  alertDetails: EventSubscription;
-  isNotificationAlert?: boolean;
-}
-
-export interface AlertConfigLoadingState {
-  templates: boolean;
+export interface AddAlertPageLoadingState {
+  alerts: boolean;
   functions: boolean;
+  templates: boolean;
 }

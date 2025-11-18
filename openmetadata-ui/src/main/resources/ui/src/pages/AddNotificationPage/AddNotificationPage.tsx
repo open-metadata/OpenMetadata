@@ -77,6 +77,7 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
+import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
@@ -87,7 +88,11 @@ const AddNotificationPage = () => {
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
 
-  const [loadingCount, setLoadingCount] = useState(0);
+  const [loadingState, setLoadingState] = useState<AddAlertPageLoadingState>({
+    alerts: false,
+    functions: false,
+    templates: false,
+  });
   const [entityFunctions, setEntityFunctions] = useState<
     FilterResourceDescriptor[]
   >([]);
@@ -130,7 +135,7 @@ const AddNotificationPage = () => {
 
   const fetchAlert = async () => {
     try {
-      setLoadingCount((count) => count + 1);
+      setLoadingState((state) => ({ ...state, alerts: true }));
 
       const response: EventSubscription = await getAlertsFromName(fqn);
       const modifiedAlertData: ModifiedEventSubscription =
@@ -144,13 +149,13 @@ const AddNotificationPage = () => {
         fqn
       );
     } finally {
-      setLoadingCount((count) => count - 1);
+      setLoadingState((state) => ({ ...state, alerts: false }));
     }
   };
 
   const fetchFunctions = async () => {
     try {
-      setLoadingCount((count) => count + 1);
+      setLoadingState((state) => ({ ...state, functions: true }));
 
       const entityFunctions = await getResourceFunctions();
 
@@ -160,7 +165,7 @@ const AddNotificationPage = () => {
         t('server.entity-fetch-error', { entity: t('label.config') })
       );
     } finally {
-      setLoadingCount((count) => count - 1);
+      setLoadingState((state) => ({ ...state, functions: false }));
     }
   };
 
@@ -228,7 +233,7 @@ const AddNotificationPage = () => {
   );
 
   const fetchTemplates = useCallback(async () => {
-    setLoadingCount((count) => count + 1);
+    setLoadingState((state) => ({ ...state, templates: true }));
     try {
       const { data } = await getAllNotificationTemplates({
         limit: PAGE_SIZE_LARGE,
@@ -240,7 +245,7 @@ const AddNotificationPage = () => {
         t('server.entity-fetch-error', { entity: t('label.template-plural') })
       );
     } finally {
-      setLoadingCount((count) => count - 1);
+      setLoadingState((state) => ({ ...state, templates: false }));
     }
   }, []);
 
@@ -250,7 +255,12 @@ const AddNotificationPage = () => {
     }
   }, [extraFormWidgets]);
 
-  if (loadingCount > 0 || (isEditMode && isEmpty(alert))) {
+  const isLoading = useMemo(
+    () => Object.values(loadingState).some((val) => val),
+    [loadingState]
+  );
+
+  if (isLoading || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
 
@@ -301,7 +311,7 @@ const AddNotificationPage = () => {
                   }}
                   validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
-                  {loadingCount > 0 ? (
+                  {isLoading ? (
                     <Skeleton title paragraph={{ rows: 8 }} />
                   ) : (
                     <Row gutter={[20, 20]}>
@@ -364,7 +374,7 @@ const AddNotificationPage = () => {
                                       <Widget
                                         alertDetails={alert}
                                         formRef={form}
-                                        loading={loadingCount > 0}
+                                        loading={isLoading}
                                         templates={templates}
                                       />
                                     </Col>
