@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
-import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
@@ -89,28 +88,19 @@ export const useDataFetching = <T extends { id: string }>(
 
       // Add filters to the must array
       Object.entries(filters).forEach(([filterKey, values]) => {
-        // TODO : Explicit type casting, need to revisit once backend has
-        // two separate fields for glossary and tags
-        const filterUpdatedKey = [
-          EntityFields.GLOSSARY_TERMS,
-          EntityFields.CLASSIFICATION_TAGS,
-        ].includes(filterKey as EntityFields)
-          ? EntityFields.TAG
-          : filterKey;
-
         if (values && values.length > 0) {
           if (values.length === 1) {
             // Single value - use term query
             query.query.bool.must.push({
               term: {
-                [filterUpdatedKey]: values[0],
+                [filterKey]: values[0],
               },
             });
           } else {
             // Multiple values - use terms query
             query.query.bool.must.push({
               terms: {
-                [filterUpdatedKey]: values,
+                [filterKey]: values,
               },
             });
           }
