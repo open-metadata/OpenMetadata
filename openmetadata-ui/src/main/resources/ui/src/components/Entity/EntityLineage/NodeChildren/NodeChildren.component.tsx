@@ -35,6 +35,70 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getColumnContent } from '../CustomNode.utils';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { IconButton, Pagination, Stack, Typography } from '@mui/material';
+import React from 'react';
+
+interface CustomPaginatedListProps {
+  items: React.ReactNode[];
+}
+
+const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
+  const ITEMS_PER_PAGE = 5;
+  const [page, setPage] = useState(1);
+  const { t } = useTranslation();
+
+  const count = Math.ceil(items.length / ITEMS_PER_PAGE);
+  const start = (page - 1) * ITEMS_PER_PAGE;
+  const paginatedItems = items.slice(start, start + ITEMS_PER_PAGE);
+
+  const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setPage((p) => Math.max(p - 1, 1));
+  };
+  const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setPage((p) => Math.min(p + 1, count));
+  };
+
+  return (
+    <>
+      <Stack spacing={1}>
+        {paginatedItems.map((item, i) => (
+          <div key={i}>{item}</div>
+        ))}
+      </Stack>
+
+      <Stack
+        alignItems="center"
+        direction="row"
+        justifyContent="center"
+        mt={2}
+        spacing={1}>
+        <IconButton disabled={page === 1} size="small" onClick={handlePrev}>
+          <ChevronLeftIcon />
+        </IconButton>
+
+        <Typography variant="body2">
+          {page} {t('label.slash-symbol')} {count}
+        </Typography>
+
+        <IconButton disabled={page === count} size="small" onClick={handleNext}>
+          <ChevronRightIcon />
+        </IconButton>
+      </Stack>
+
+      <Pagination
+        count={count}
+        page={page}
+        sx={{ display: 'none' }}
+        onChange={(_e, value) => setPage(value)}
+      />
+    </>
+  );
+};
+
 const NodeChildren = ({
   node,
   isConnectable,
@@ -324,7 +388,8 @@ const NodeChildren = ({
             {isChildrenListExpanded && !isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
-                  {renderedColumns}
+                  <CustomPaginatedList items={renderedColumns} />
+                  {/* {renderedColumns} */}
                 </div>
               </section>
             )}
