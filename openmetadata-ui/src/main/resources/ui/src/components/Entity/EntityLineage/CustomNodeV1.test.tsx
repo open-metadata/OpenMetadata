@@ -191,6 +191,41 @@ describe('CustomNodeV1', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should render NodeChildren when column layer is applied and there are no columns', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('column-container')).toBeInTheDocument();
+  });
+
+  it('should not render NodeChildren when column layer is applied but there are no columns', () => {
+    isColumnLayerActive = true;
+
+    const mockNodeDataPropsNoChildren = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          columns: [],
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
+      </ReactFlowProvider>
+    );
+    screen.debug(undefined, Infinity);
+
+    expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+  });
+
   it('should toggle columns list when children dropdown button is clicked', () => {
     render(
       <ReactFlowProvider>
