@@ -15,6 +15,8 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +40,7 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -45,19 +48,26 @@ import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   getTableList,
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityBulkEditPath,
+  highlightSearchText,
+} from '../../utils/EntityUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
 import {
   dataProductTableObject,
   domainTableObject,
@@ -86,6 +96,7 @@ function SchemaTablesTab({
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
+  const { showDeletedTables: showDeletedSchemas } = tableFilters;
 
   const {
     paging,
@@ -105,6 +116,15 @@ function SchemaTablesTab({
     );
   }, [permissions, isVersionView]);
 
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.schema as string | undefined;
+  }, [location.search]);
+
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
       viewDatabaseSchemaPermission: getPrioritizedViewPermission(
@@ -113,6 +133,40 @@ function SchemaTablesTab({
       ),
     }),
     [databaseSchemaPermission]
+  );
+
+  const searchSchema = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setTableDataLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: pageSize,
+          queryFilter: buildSchemaQueryFilter(
+            'databaseSchema.fullyQualifiedName.keyword',
+            decodedDatabaseSchemaFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.TABLE,
+          includeDeleted: showDeletedSchemas,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setTableData(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setTableDataLoading(false);
+      }
+    },
+    [decodedDatabaseSchemaFQN, showDeletedSchemas, handlePagingChange]
   );
 
   const handleDisplayNameUpdate = useCallback(
@@ -156,9 +210,7 @@ function SchemaTablesTab({
           fields: commonTableFields,
           databaseSchema: decodedDatabaseSchemaFQN,
           limit: pageSize,
-          include: tableFilters.showDeletedTables
-            ? Include.Deleted
-            : Include.NonDeleted,
+          include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res.data);
         handlePagingChange(res.paging);
@@ -168,13 +220,30 @@ function SchemaTablesTab({
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
+    [decodedDatabaseSchemaFQN, showDeletedSchemas, pageSize]
+  );
+
+  const onSchemaSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchSchema(value);
+      } else {
+        getSchemaTables();
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
+    },
+    [setFilters, searchSchema, getSchemaTables]
   );
 
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType && paging[cursorType]) {
+      if (searchValue) {
+        searchSchema(searchValue, currentPage);
+      } else if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+      }
+      if (cursorType && paging[cursorType]) {
         handlePageChange(
           currentPage,
           {
@@ -195,10 +264,13 @@ function SchemaTablesTab({
         dataIndex: 'name',
         key: 'name',
         width: 300,
+        sorter: getColumnSorter<Table, 'name'>('name'),
         render: (_, record: Table) => {
           return (
             <DisplayName
-              displayName={record.displayName}
+              displayName={stringToHTML(
+                highlightSearchText(record.displayName, searchValue)
+              )}
               hasEditPermission={allowEditDisplayNamePermission}
               id={record.id}
               key={record.id}
@@ -206,7 +278,7 @@ function SchemaTablesTab({
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}
-              name={record.name}
+              name={stringToHTML(highlightSearchText(record.name, searchValue))}
               onEditDisplayName={handleDisplayNameUpdate}
             />
           );
@@ -260,7 +332,7 @@ function SchemaTablesTab({
       }
     }
   }, [
-    tableFilters.showDeletedTables,
+    showDeletedSchemas,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     pageSize,
@@ -269,10 +341,20 @@ function SchemaTablesTab({
 
   useEffect(() => {
     setFilters({
-      showDeletedTables:
-        tableFilters.showDeletedTables ?? databaseSchemaDetails.deleted,
+      showDeletedTables: showDeletedSchemas ?? databaseSchemaDetails.deleted,
     });
-  }, [databaseSchemaDetails.deleted, tableFilters.showDeletedTables]);
+  }, [databaseSchemaDetails.deleted, showDeletedSchemas]);
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.table'),
+      }),
+      typingInterval: 500,
+      onSearch: onSchemaSearch,
+    }),
+    [t, onSchemaSearch]
+  );
 
   return (
     <TableAntd
@@ -283,6 +365,7 @@ function SchemaTablesTab({
         isLoading: tableDataLoading,
         pageSize,
         paging,
+        isNumberBased: Boolean(searchValue),
         pagingHandler: tablePaginationHandler,
         onShowSizeChange: handlePageSizeChange,
       }}
@@ -294,7 +377,7 @@ function SchemaTablesTab({
           <>
             <span>
               <Switch
-                checked={tableFilters.showDeletedTables}
+                checked={showDeletedSchemas}
                 data-testid="show-deleted"
                 onClick={handleShowDeletedTables}
               />
@@ -322,6 +405,7 @@ function SchemaTablesTab({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
