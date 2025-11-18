@@ -534,7 +534,7 @@ setup(
             {"airflow", "db2", "great-expectations", "pymssql"}
         ),
         # enf-of-fixme
-        "all": filter_requirements({"airflow", "db2", "great-expectations","pydoris"}),
+        "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
