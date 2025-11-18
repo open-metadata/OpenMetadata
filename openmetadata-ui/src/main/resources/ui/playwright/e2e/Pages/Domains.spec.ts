@@ -807,6 +807,45 @@ test.describe('Domains', () => {
     }
   });
 
+  test('Verify redirect path on data product delete', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
+
+    await page.reload();
+    await redirectToHomePage(page);
+
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.data);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button-title').click();
+
+    await page.getByTestId('confirmation-text-input').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+    const dpListRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=data_product_search_index*'
+    );
+    const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+
+    await page.getByTestId('confirm-button').click();
+
+    await deleteRes;
+    await dpListRes;
+
+    await expect(
+      page.getByText(`"Data Product" deleted successfully!`)
+    ).toBeVisible();
+
+    await expect(page.getByTestId('add-entity-button')).toBeVisible();
+
+    await afterAction();
+  });
+
   test('Verify duplicate domain creation', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();

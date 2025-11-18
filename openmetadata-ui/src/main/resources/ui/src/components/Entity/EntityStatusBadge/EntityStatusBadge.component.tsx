@@ -24,6 +24,11 @@ export const EntityStatusBadge = ({
   status,
   showDivider = true,
 }: EntityStatusBadgeProps) => {
+  // Do not show badge for 'Unprocessed' status
+  if (status === EntityStatus.Unprocessed) {
+    return null;
+  }
+
   return (
     <Space>
       {showDivider && <Divider className="m-x-xs h-6" type="vertical" />}
