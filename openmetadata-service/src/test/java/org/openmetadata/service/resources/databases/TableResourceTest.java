@@ -268,6 +268,32 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_tableCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new table
+    long beforeCreation = System.currentTimeMillis();
+
+    CreateTable create = createRequest(test);
+    Table table = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(table.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        table.getCreationTime() >= beforeCreation,
+        "creationTime should be >= time before creation");
+    assertTrue(
+        table.getCreationTime() <= afterCreation, "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(table.getUpdatedAt());
+    long timeDiff = Math.abs(table.getUpdatedAt() - table.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
+
+  @Test
   void post_tableInvalidPrecisionScale_400(TestInfo test) {
     // No precision set but only column
     final List<Column> columns = singletonList(getColumn(C1, DECIMAL, null).withScale(1));

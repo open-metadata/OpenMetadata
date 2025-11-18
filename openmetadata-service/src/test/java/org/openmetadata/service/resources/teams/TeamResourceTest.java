@@ -1555,4 +1555,29 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
   }
+
+  @Test
+  void test_teamCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new team
+    long beforeCreation = System.currentTimeMillis();
+
+    CreateTeam create = createRequest(test);
+    Team team = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(team.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        team.getCreationTime() >= beforeCreation, "creationTime should be >= time before creation");
+    assertTrue(
+        team.getCreationTime() <= afterCreation, "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(team.getUpdatedAt());
+    long timeDiff = Math.abs(team.getUpdatedAt() - team.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
 }

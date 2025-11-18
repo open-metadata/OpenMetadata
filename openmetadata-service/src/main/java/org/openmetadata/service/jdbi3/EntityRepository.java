@@ -650,7 +650,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     LOG.debug("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
     entity.setUpdatedBy(ADMIN_USER_NAME);
-    entity.setUpdatedAt(System.currentTimeMillis());
+    long currentTime = System.currentTimeMillis();
+    entity.setUpdatedAt(currentTime);
+    entity.setCreationTime(currentTime);
     entity.setId(UUID.randomUUID());
     create(null, entity);
     LOG.debug("Created a new {} {}", entityType, entity.getFullyQualifiedName());
@@ -671,7 +673,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setLifeCycle(request.getLifeCycle());
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
+    long currentTime = System.currentTimeMillis();
+    entity.setUpdatedAt(currentTime);
+    entity.setCreationTime(currentTime);
     entity.setReviewers(request.getReviewers());
 
     RuleEngine.getInstance().evaluate(entity);
@@ -1187,6 +1191,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     setDefaultStatus(entity, update);
+
+    // Set creation time for new entities (not updates)
+    if (!update && entity.getCreationTime() == null) {
+      entity.setCreationTime(System.currentTimeMillis());
+    }
     // Domain is already validated
   }
 

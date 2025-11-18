@@ -2711,4 +2711,29 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
   }
+
+  @Test
+  void test_userCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new user
+    long beforeCreation = System.currentTimeMillis();
+
+    CreateUser create = createRequest(test);
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(user.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        user.getCreationTime() >= beforeCreation, "creationTime should be >= time before creation");
+    assertTrue(
+        user.getCreationTime() <= afterCreation, "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(user.getUpdatedAt());
+    long timeDiff = Math.abs(user.getUpdatedAt() - user.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
 }

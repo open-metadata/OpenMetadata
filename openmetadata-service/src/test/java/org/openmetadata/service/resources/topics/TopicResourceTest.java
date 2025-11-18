@@ -894,4 +894,30 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Cleanup
     deleteEntity(topic.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_topicCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new topic
+    long beforeCreation = System.currentTimeMillis();
+
+    CreateTopic create = createRequest(test);
+    Topic topic = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(topic.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        topic.getCreationTime() >= beforeCreation,
+        "creationTime should be >= time before creation");
+    assertTrue(
+        topic.getCreationTime() <= afterCreation, "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(topic.getUpdatedAt());
+    long timeDiff = Math.abs(topic.getUpdatedAt() - topic.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
 }
