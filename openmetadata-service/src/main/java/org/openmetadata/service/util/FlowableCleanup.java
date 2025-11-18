@@ -76,12 +76,10 @@ public class FlowableCleanup {
     private Map<String, Integer> cleanupByTriggerType;
   }
 
-  public FlowableCleanupResult performCleanup(
-      int historyBatchSize, int runtimeBatchSize, boolean cleanupAll) {
+  public FlowableCleanupResult performCleanup(int historyBatchSize, int runtimeBatchSize) {
     LOG.info(
-        "Starting Flowable cleanup. Dry run: {}, Cleanup all: {}, History batch: {}, Runtime batch: {}",
+        "Starting Flowable cleanup. Dry run: {}, History batch: {}, Runtime batch: {}",
         dryRun,
-        cleanupAll,
         historyBatchSize,
         runtimeBatchSize);
 
@@ -157,13 +155,13 @@ public class FlowableCleanup {
         for (org.flowable.engine.repository.ProcessDefinition pd : defsForKey) {
           if (latest == null || !pd.getId().equals(latest.getId())) {
             definitionsToCleanup.add(pd);
-            LOG.info(
+            LOG.debug(
                 "  - Adding to OLD cleanup: {} v{} (id={})",
                 pd.getKey(),
                 pd.getVersion(),
                 pd.getId());
           } else {
-            LOG.info(
+            LOG.debug(
                 "  - LATEST version: {} v{} (id={})", pd.getKey(), pd.getVersion(), pd.getId());
           }
         }
@@ -176,8 +174,7 @@ public class FlowableCleanup {
 
       // Process old deployments (non-latest versions) for full cleanup
       for (org.flowable.engine.repository.ProcessDefinition pd : definitionsToCleanup) {
-        WorkflowCleanupInfo cleanupInfo =
-            analyzeWorkflowForCleanup(pd, workflowTriggerTypes, cleanupAll);
+        WorkflowCleanupInfo cleanupInfo = analyzeWorkflowForCleanup(pd, workflowTriggerTypes);
 
         if (cleanupInfo != null) {
           result.getCleanedWorkflows().add(cleanupInfo);
@@ -194,8 +191,7 @@ public class FlowableCleanup {
       // Process latest deployments for history-only cleanup
       for (org.flowable.engine.repository.ProcessDefinition pd :
           latestDefinitionsForHistoryCleanup) {
-        WorkflowCleanupInfo cleanupInfo =
-            analyzeWorkflowForCleanup(pd, workflowTriggerTypes, cleanupAll);
+        WorkflowCleanupInfo cleanupInfo = analyzeWorkflowForCleanup(pd, workflowTriggerTypes);
 
         if (cleanupInfo != null) {
           // Override settings for latest deployments - never cleanup runtime instances or
@@ -268,8 +264,7 @@ public class FlowableCleanup {
 
   private WorkflowCleanupInfo analyzeWorkflowForCleanup(
       org.flowable.engine.repository.ProcessDefinition pd,
-      Map<String, String> workflowTriggerTypes,
-      boolean cleanupAll) {
+      Map<String, String> workflowTriggerTypes) {
 
     String processKey = pd.getKey();
     String baseWorkflowName = extractBaseWorkflowName(processKey);

@@ -664,8 +664,7 @@ public class OpenMetadataOperationsTest extends OpenMetadataApplicationTest {
         FlowableCleanup.FlowableCleanupResult result =
             flowableCleanup.performCleanup(
                 1000, // historyBatchSize
-                1000, // runtimeBatchSize
-                false // cleanupAll - set to false to only clean old instances
+                1000 // runtimeBatchSize
                 );
 
         if (dryRun) {
@@ -811,7 +810,7 @@ public class OpenMetadataOperationsTest extends OpenMetadataApplicationTest {
 
       if (instancesAfter < instancesBefore) {
         LOG.info(
-            "✅ Automatic cleanup detected! Instances reduced from {} to {}",
+            "Automatic cleanup detected! Instances reduced from {} to {}",
             instancesBefore,
             instancesAfter);
         automaticCleanupTriggered = true;
@@ -832,12 +831,12 @@ public class OpenMetadataOperationsTest extends OpenMetadataApplicationTest {
     // Verify that automatic cleanup worked
     if (automaticCleanupTriggered || instancesAfter <= instancesBefore) {
       LOG.info(
-          "✅ Automatic Flowable cleanup timer working! Instance count: {} -> {}",
+          "Automatic Flowable cleanup timer working! Instance count: {} -> {}",
           instancesBefore,
           instancesAfter);
     } else {
       LOG.info(
-          "ℹ️  Automatic cleanup timer may need more time. Count: {} -> {}",
+          "Automatic cleanup timer may need more time. Count: {} -> {}",
           instancesBefore,
           instancesAfter);
     }

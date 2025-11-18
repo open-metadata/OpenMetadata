@@ -154,7 +154,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
-        "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000 --cleanup-all' for Flowable cleanup with custom options");
+        "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     return 0;
   }
 
@@ -1675,17 +1675,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
               names = {"--history-batch-size"},
               defaultValue = "1000",
               description = "Batch size for history instance cleanup.")
-          int historyBatchSize,
-      @Option(
-              names = {"--cleanup-all"},
-              defaultValue = "false",
-              description =
-                  "Clean up all workflows regardless of trigger type. By default, only Periodic Batch workflows are fully cleaned.")
-          boolean cleanupAll) {
+          int historyBatchSize) {
     try {
       boolean dryRun = !delete;
-      LOG.info(
-          "Running Flowable workflow cleanup. Dry run: {}, Cleanup all: {}", dryRun, cleanupAll);
+      LOG.info("Running Flowable workflow cleanup. Dry run: {}", dryRun);
 
       parseConfig();
       initializeCollectionRegistry();
@@ -1696,7 +1689,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       FlowableCleanup cleanup = new FlowableCleanup(workflowHandler, dryRun);
       FlowableCleanup.FlowableCleanupResult result =
-          cleanup.performCleanup(historyBatchSize, runtimeBatchSize, cleanupAll);
+          cleanup.performCleanup(historyBatchSize, runtimeBatchSize);
 
       if (dryRun && !result.getCleanedWorkflows().isEmpty()) {
         LOG.info("Dry run completed. To actually perform the cleanup, run with --delete");
