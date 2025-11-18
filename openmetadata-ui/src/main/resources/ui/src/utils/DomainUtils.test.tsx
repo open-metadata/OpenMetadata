@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../enums/entity.enum';
 import { Domain, DomainType } from '../generated/entity/domains/domain';
-import { getDomainOptions, isDomainExist } from '../utils/DomainUtils';
+import {
+  getDomainOptions,
+  getQueryFilterToIncludeDomain,
+  isDomainExist,
+} from '../utils/DomainUtils';
 
 describe('getDomainOptions function', () => {
   const domains = [
@@ -145,5 +150,127 @@ describe('isDomainExist', () => {
     } as unknown as Domain;
 
     expect(isDomainExist(domain, 'parent.child.grandchild')).toBe(true);
+  });
+
+  describe('getQueryFilterToIncludeDomain', () => {
+    it('should return correct query filter structure with domain and data product fqns', () => {
+      const domainFqn = 'testDomain';
+      const dataProductFqn = 'testDataProduct';
+
+      const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'domains.fullyQualifiedName': domainFqn,
+                },
+              },
+              {
+                bool: {
+                  must_not: [
+                    {
+                      term: {
+                        'dataProducts.fullyQualifiedName': dataProductFqn,
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                bool: {
+                  must_not: [
+                    {
+                      terms: {
+                        entityType: [
+                          EntityType.DATA_PRODUCT,
+                          EntityType.TEST_SUITE,
+                          EntityType.QUERY,
+                          EntityType.TEST_CASE,
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should create filter with nested domain fqn', () => {
+      const domainFqn = 'parent.child.grandchild';
+      const dataProductFqn = 'product.subproduct';
+
+      const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
+
+      const firstMust = result.query.bool.must[0] as {
+        term: { 'domains.fullyQualifiedName': string };
+      };
+
+      expect(firstMust.term['domains.fullyQualifiedName']).toBe(domainFqn);
+
+      const secondMust = result.query.bool.must[1] as {
+        bool: {
+          must_not: Array<{
+            term: { 'dataProducts.fullyQualifiedName': string };
+          }>;
+        };
+      };
+
+      expect(
+        secondMust.bool.must_not[0].term['dataProducts.fullyQualifiedName']
+      ).toBe(dataProductFqn);
+    });
+
+    it('should exclude specific entity types', () => {
+      const domainFqn = 'testDomain';
+      const dataProductFqn = 'testDataProduct';
+
+      const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
+
+      const thirdMust = result.query.bool.must[2] as {
+        bool: {
+          must_not: Array<{
+            terms: { entityType: EntityType[] };
+          }>;
+        };
+      };
+      const excludedEntityTypes = thirdMust.bool.must_not[0].terms.entityType;
+
+      expect(excludedEntityTypes).toContain(EntityType.DATA_PRODUCT);
+      expect(excludedEntityTypes).toContain(EntityType.TEST_SUITE);
+      expect(excludedEntityTypes).toContain(EntityType.QUERY);
+      expect(excludedEntityTypes).toContain(EntityType.TEST_CASE);
+      expect(excludedEntityTypes).toHaveLength(4);
+    });
+
+    it('should handle empty string parameters', () => {
+      const domainFqn = '';
+      const dataProductFqn = '';
+
+      const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
+
+      const firstMust = result.query.bool.must[0] as {
+        term: { 'domains.fullyQualifiedName': string };
+      };
+
+      expect(firstMust.term['domains.fullyQualifiedName']).toBe('');
+
+      const secondMust = result.query.bool.must[1] as {
+        bool: {
+          must_not: Array<{
+            term: { 'dataProducts.fullyQualifiedName': string };
+          }>;
+        };
+      };
+
+      expect(
+        secondMust.bool.must_not[0].term['dataProducts.fullyQualifiedName']
+      ).toBe('');
+    });
   });
 });
