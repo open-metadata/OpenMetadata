@@ -24,7 +24,11 @@ export interface Dashboard {
     /**
      * All the charts included in this Dashboard.
      */
-    charts?:        EntityReference[];
+    charts?: EntityReference[];
+    /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?:  number;
     dashboardType?: DashboardType;
     /**
      * List of data models used by this dashboard or the charts contained on it.

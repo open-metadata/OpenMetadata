@@ -23,6 +23,10 @@ export interface Query {
      */
     checksum?: string;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * Description of a query.
      */
     description?: string;

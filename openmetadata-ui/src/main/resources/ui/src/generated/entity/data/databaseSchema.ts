@@ -21,6 +21,10 @@ export interface DatabaseSchema {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * Reference to Database that contains this table.
      */
     database: EntityReference;

@@ -32,6 +32,10 @@ export interface Team {
      */
     childrenCount?: number;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * Default roles of a team. These roles will be inherited by all the users that are part of
      * this team.
      */

@@ -25,6 +25,10 @@ export interface Topic {
      */
     cleanupPolicies?: CleanupPolicy[];
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];

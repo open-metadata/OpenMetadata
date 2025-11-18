@@ -29,6 +29,10 @@ export interface Role {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;

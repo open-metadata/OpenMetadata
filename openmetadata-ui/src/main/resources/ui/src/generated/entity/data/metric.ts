@@ -23,6 +23,10 @@ export interface Metric {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * Custom unit of measurement when unitOfMeasurement is OTHER.
      */
     customUnitOfMeasurement?: string;

@@ -23,7 +23,11 @@ export interface DashboardDataModel {
     /**
      * Columns from the data model.
      */
-    columns:       Column[];
+    columns: Column[];
+    /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
     dataModelType: DataModelType;
     /**
      * List of data products this entity is part of.
