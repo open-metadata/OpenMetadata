@@ -58,7 +58,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await expect(page.getByText('Suggested Descriptions/Tags')).toBeVisible();
+      await expect(page.getByText('Suggested Descriptions')).toBeVisible();
 
       const allAvatarSuggestion = page
         .getByTestId('asset-description-container')
