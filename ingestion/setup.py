@@ -63,7 +63,7 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
-    "pydoris": "pydoris>=1.0.2,<1.5",
+    "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
@@ -534,7 +534,7 @@ setup(
             {"airflow", "db2", "great-expectations", "pymssql"}
         ),
         # enf-of-fixme
-        "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "all": filter_requirements({"airflow", "db2", "great-expectations","pydoris"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
