@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -19,6 +20,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
+
+const theme = createTheme();
 
 const mockTestCaseData = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
@@ -163,11 +166,32 @@ jest.mock(
 jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),
+  getCurrentMillis: jest.fn().mockReturnValue(1711583974000),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+}));
+jest.mock('@mui/material', () => ({
+  ...jest.requireActual('@mui/material'),
+  Box: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+}));
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <MemoryRouter>
+    <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  </MemoryRouter>
+);
 
 describe('IncidentManagerDetailPage', () => {
   it('should render component', async () => {
     await act(async () => {
-      render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
 
     expect(
@@ -183,7 +207,7 @@ describe('IncidentManagerDetailPage', () => {
 
   it('onClick of same tab, should not call navigate', async () => {
     await act(async () => {
-      render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
 
     const testCaseResult = await screen.findByTestId('test-case-result');
@@ -197,7 +221,7 @@ describe('IncidentManagerDetailPage', () => {
   it("should render no permission message if user doesn't have permission", async () => {
     mockUseTestCase.testCasePermission = DEFAULT_ENTITY_PERMISSION;
     await act(async () => {
-      render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
 
     expect(
@@ -214,7 +238,7 @@ describe('IncidentManagerDetailPage', () => {
     );
 
     await act(async () => {
-      render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
 
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
