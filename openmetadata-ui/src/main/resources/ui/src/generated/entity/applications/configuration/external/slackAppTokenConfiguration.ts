@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 /**
- * This schema defines the Slack App Information
+ * This schema defines the Slack App Token Configuration
  */
-export interface SlackAppConfiguration {
+export interface SlackAppTokenConfiguration {
     /**
-     * Client Id of the Application
+     * Bot Token
      */
-    clientId: string;
+    botToken: string;
     /**
-     * Client Secret of the Application.
+     * User Token
      */
-    clientSecret: string;
-    /**
-     * Signing Secret of the Application. Confirm that each request comes from Slack by
-     * verifying its unique signature.
-     */
-    signingSecret: string;
+    userToken: string;
 }
