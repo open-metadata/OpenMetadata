@@ -146,8 +146,9 @@ public class OktaAuthValidator {
   }
 
   private FieldError validatePublicClientId(String oktaDomain, String clientId) {
+    String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
     return validateClientIdViaIntrospection(
-        oktaDomain, clientId, "okta-public-client-id", "public");
+        discoveryUri, clientId, "okta-public-client-id", "public");
   }
 
   private String getIntrospectUrl(String discoveryUri) {
@@ -193,9 +194,9 @@ public class OktaAuthValidator {
   }
 
   private FieldError validateClientIdViaIntrospection(
-      String oktaDomain, String clientId, String componentName, String clientType) {
+      String discoveryUri, String clientId, String componentName, String clientType) {
     try {
-      String introspectUrl = oktaDomain + "/v1/introspect";
+      String introspectUrl = getIntrospectUrl(discoveryUri);
       String requestBody =
           "token=dummy_invalid_token&token_type_hint=access_token&client_id=" + clientId;
 
