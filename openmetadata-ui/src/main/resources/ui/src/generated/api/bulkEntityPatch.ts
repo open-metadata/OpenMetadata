@@ -11,15 +11,29 @@
  *  limitations under the License.
  */
 /**
- * This schema defines the Slack App Token Configuration
+ * Schema for bulk patching multiple entities with JsonPatch operations
  */
-export interface SlackAppTokenConfiguration {
+export interface BulkEntityPatch {
     /**
-     * Bot Token
+     * If true, validate patches without persisting changes
      */
-    botToken: string;
+    dryRun?: boolean;
     /**
-     * User Token
+     * List of entity patch operations
      */
-    userToken: string;
+    patches: EntityPatch[];
+}
+
+/**
+ * JsonPatch operation for a single entity
+ */
+export interface EntityPatch {
+    /**
+     * Fully qualified name of the entity to patch
+     */
+    fqn: string;
+    /**
+     * JsonPatch document with operations to apply
+     */
+    patch: any[];
 }

@@ -270,7 +270,7 @@ test.describe('Glossary tests', () => {
         // Update Owners
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -281,7 +281,7 @@ test.describe('Glossary tests', () => {
         // Update Reviewer
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'Add',
           resultTestId: 'glossary-reviewer-name',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -506,7 +506,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
         await page.waitForSelector(
-          'text=Adding a new Asset is easy, just give it a spin!'
+          "text=Looks like you haven't added any data assets yet."
         );
 
         await dashboardEntity.visitEntityPage(page);

@@ -891,7 +891,7 @@ export interface FilterPattern {
  *
  * Configuration for the Automator External Application.
  *
- * This schema defines the Slack App Token Configuration
+ * This schema defines the Slack App Information
  *
  * Configuration for the Collate AI Quality Agent.
  *
@@ -934,6 +934,19 @@ export interface CollateAIAppConfig {
      * Bot Token
      */
     botToken?: string;
+    /**
+     * Client Id of the Application
+     */
+    clientId?: string;
+    /**
+     * Client Secret of the Application.
+     */
+    clientSecret?: string;
+    /**
+     * Signing Secret of the Application. Confirm that each request comes from Slack by
+     * verifying its unique signature.
+     */
+    signingSecret?: string;
     /**
      * User Token
      */
@@ -3311,6 +3324,7 @@ export interface ConfigObject {
     supportsLineageExtraction?: boolean;
     supportsProfiler?:          boolean;
     supportsQueryComment?:      boolean;
+    supportsQueryRunner?:       boolean;
     supportsSystemProfile?:     boolean;
     /**
      * Supports Usage Extraction.
