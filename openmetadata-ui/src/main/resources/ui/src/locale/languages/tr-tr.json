@@ -1661,6 +1661,7 @@
     "suggested-by": "Öneren",
     "suggested-description": "Önerilen Açıklama",
     "suggested-description-plural": "Önerilen Açıklamalar",
+    "suggested-description-tag-plural": "Önerilen Açıklamalar/Etiketler",
     "suggestion": "Öneri",
     "suggestion-lowercase-plural": "öneriler",
     "suggestion-pending": "Bekleyen Öneriler",

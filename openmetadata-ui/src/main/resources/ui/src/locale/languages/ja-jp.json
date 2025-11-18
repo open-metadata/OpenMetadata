@@ -1661,6 +1661,7 @@
     "suggested-by": "提案者",
     "suggested-description": "提案された説明",
     "suggested-description-plural": "提案された説明",
+    "suggested-description-tag-plural": "提案された説明/タグ",
     "suggestion": "提案",
     "suggestion-lowercase-plural": "提案",
     "suggestion-pending": "保留中の提案",

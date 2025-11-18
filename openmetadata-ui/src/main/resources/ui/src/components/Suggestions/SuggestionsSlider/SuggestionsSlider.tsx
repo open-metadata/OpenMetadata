@@ -35,7 +35,7 @@ const SuggestionsSlider = () => {
   return (
     <div className="d-flex items-center gap-2 m-r-md">
       <Typography.Text className="right-panel-label">
-        {t('label.suggested-description-plural')}
+        {t('label.suggested-description-tag-plural')}
       </Typography.Text>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
