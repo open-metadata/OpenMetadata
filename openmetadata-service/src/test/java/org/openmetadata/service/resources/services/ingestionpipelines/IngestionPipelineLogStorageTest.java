@@ -19,9 +19,7 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
-import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -44,7 +42,6 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.logstorage.S3LogStorage;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
@@ -220,13 +217,8 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
 
     String logData = "Stream endpoint test log\n";
     Map<String, String> logPayload = Map.of("logs", logData);
-    Response streamResponse =
-        streamTarget
-            .request(MediaType.APPLICATION_JSON)
-            .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
-            .post(Entity.json(logPayload));
-
-    assertEquals(Response.Status.OK.getStatusCode(), streamResponse.getStatus());
+    TestUtils.post(
+        streamTarget, logPayload, Response.Status.OK.getStatusCode(), ADMIN_AUTH_HEADERS);
 
     // Give time for async processing
     TestUtils.simulateWork(2000);
@@ -234,16 +226,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     // Read logs back through REST endpoint
     WebTarget getTarget =
         getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
-    Response getResponse =
-        getTarget
-            .request(MediaType.APPLICATION_JSON)
-            .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
-            .get();
-
-    assertEquals(Response.Status.OK.getStatusCode(), getResponse.getStatus());
-
-    Map<String, Object> result =
-        JsonUtils.readValue(getResponse.readEntity(String.class), Map.class);
+    Map<String, Object> result = TestUtils.get(getTarget, Map.class, ADMIN_AUTH_HEADERS);
     assertNotNull(result.get("logs"));
     assertTrue(result.get("logs").toString().contains("Stream endpoint test log"));
   }
@@ -597,13 +580,14 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     Map<String, Object> logData = Map.of("logs", "Test log content for close stream");
     WebTarget writeTarget =
         getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
-    TestUtils.post(writeTarget, logData, ADMIN_AUTH_HEADERS);
+    TestUtils.post(writeTarget, logData, Response.Status.OK.getStatusCode(), ADMIN_AUTH_HEADERS);
 
     // Now close the stream
     WebTarget closeTarget =
         getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
     Map<String, Object> closeResponse =
-        TestUtils.post(closeTarget, "", Map.class, ADMIN_AUTH_HEADERS);
+        TestUtils.post(
+            closeTarget, "", Map.class, Response.Status.OK.getStatusCode(), ADMIN_AUTH_HEADERS);
 
     // Verify the response indicates success
     assertTrue(closeResponse.containsKey("message"));
