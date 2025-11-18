@@ -380,14 +380,12 @@ const CustomControls: FC<{
     };
 
     return (
-      <>
-        <StyledIconButton
-          data-testid="lineage-config"
-          size="large"
-          onClick={handleSettingsClick}>
-          <SettingsOutlined />
-        </StyledIconButton>
-      </>
+      <StyledIconButton
+        data-testid="lineage-config"
+        size="large"
+        onClick={handleSettingsClick}>
+        <SettingsOutlined />
+      </StyledIconButton>
     );
   }, []);
 
