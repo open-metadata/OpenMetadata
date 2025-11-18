@@ -234,7 +234,7 @@ export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
     },
   ];
 
-  domains.forEach((domain) => {
+  for (const domain of domains) {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',
@@ -254,7 +254,7 @@ export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
         />
       ),
     });
-  });
+  }
 
   return domainOptions;
 };
@@ -318,6 +318,9 @@ export const convertDomainsToTreeOptions = (
 ): TreeListItem[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
+    const domainOption = option as unknown as Domain;
+    const hasChildrenCount =
+      'childrenCount' in domainOption && (domainOption.childrenCount ?? 0) > 0;
 
     return {
       id: option.id,
@@ -325,6 +328,10 @@ export const convertDomainsToTreeOptions = (
       name: option.name,
       label: option.name,
       key: option.fullyQualifiedName,
+      displayName: option.displayName,
+      childrenCount:
+        domainOption.childrenCount || domainOption.children?.length || 0,
+      fullyQualifiedName: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
           {level === 0 ? (
@@ -347,11 +354,11 @@ export const convertDomainsToTreeOptions = (
         </div>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
-      isLeaf: !hasChildren,
+      isLeaf: !hasChildren && !hasChildrenCount,
       selectable: !multiple,
       children: hasChildren
         ? convertDomainsToTreeOptions(
-            (option as unknown as Domain)?.children as EntityReference[],
+            domainOption?.children as EntityReference[],
             level + 1,
             multiple
           )
@@ -405,6 +412,7 @@ export const getDomainDetailTabs = ({
   setShowAddSubDomainModal,
   feedCount,
   onFeedUpdate,
+  onDeleteSubDomain,
 }: DomainDetailPageTabProps) => {
   return [
     {
@@ -417,8 +425,9 @@ export const getDomainDetailTabs = ({
       key: EntityTabs.DOCUMENTATION,
       children: <GenericTab type={PageType.Domain} />,
     },
-    ...(!isVersionsView
-      ? [
+    ...(isVersionsView
+      ? []
+      : [
           {
             label: (
               <TabsLabel
@@ -433,7 +442,9 @@ export const getDomainDetailTabs = ({
               <SubDomainsTable
                 domainFqn={domain.fullyQualifiedName ?? ''}
                 permissions={domainPermission}
+                subDomainsCount={subDomainsCount}
                 onAddSubDomain={() => setShowAddSubDomainModal(true)}
+                onDeleteSubDomain={onDeleteSubDomain}
               />
             ),
           },
@@ -449,6 +460,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.DATA_PRODUCTS,
             children: (
               <DataProductsTab
+                domainFqn={domain.fullyQualifiedName}
                 permissions={domainPermission}
                 ref={dataProductsTabRef}
                 onAddDataProduct={onAddDataProduct}
@@ -539,6 +551,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
               <CustomPropertyTable<EntityType.DOMAIN>
+                className="p-lg"
                 entityType={EntityType.DOMAIN}
                 hasEditAccess={getPrioritizedEditPermission(
                   domainPermission,
@@ -551,8 +564,7 @@ export const getDomainDetailTabs = ({
               />
             ),
           },
-        ]
-      : []),
+        ]),
   ];
 };
 
@@ -613,4 +625,53 @@ export const DomainListItemRenderer = (props: EntityReference) => {
       </div>
     </div>
   );
+};
+
+export const domainBuildESQuery = (
+  filters: Record<string, string[]>,
+  baseFilter?: string
+): Record<string, unknown> => {
+  let query = baseFilter ? JSON.parse(baseFilter) : null;
+
+  if (!query) {
+    query = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+  }
+
+  if (!query.query) {
+    query.query = { bool: { must: [] } };
+  }
+  if (!query.query.bool) {
+    query.query.bool = { must: [] };
+  }
+  if (!query.query.bool.must) {
+    query.query.bool.must = [];
+  }
+
+  for (const [filterKey, values] of Object.entries(filters)) {
+    if (!values || values.length === 0) {
+      continue;
+    }
+
+    if (values.length === 1) {
+      query.query.bool.must.push({
+        term: {
+          [filterKey]: values[0],
+        },
+      });
+    } else {
+      query.query.bool.must.push({
+        terms: {
+          [filterKey]: values,
+        },
+      });
+    }
+  }
+
+  return query;
 };

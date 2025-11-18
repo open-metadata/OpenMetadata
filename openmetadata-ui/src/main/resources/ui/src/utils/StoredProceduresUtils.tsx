@@ -57,7 +57,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         <TabsLabel
           data-testid={EntityTabs.CODE}
           id={EntityTabs.CODE}
-          name={t('label.code')}
+          name={get(labelMap, EntityTabs.CODE, t('label.code'))}
         />
       ),
       key: EntityTabs.CODE,
@@ -69,7 +69,11 @@ export const getStoredProcedureDetailsPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
+            t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -88,7 +92,12 @@ export const getStoredProcedureDetailsPageTabs = ({
       ),
     },
     {
-      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, t('label.lineage'))}
+        />
+      ),
       key: EntityTabs.LINEAGE,
       children: (
         <Suspense fallback={<Loader />}>
@@ -104,9 +113,7 @@ export const getStoredProcedureDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -117,7 +124,11 @@ export const getStoredProcedureDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,

@@ -18,6 +18,7 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as CustomPropertyEmpty } from '../../../assets/svg/custom-property-empty.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -214,7 +215,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return (
       <div className="items-center d-block align-items-center text-center">
         <ErrorPlaceHolder
-          className="border-none"
+          className="border-none p-lg"
           permissionValue={t('label.view-entity', {
             entity: t('label.custom-property-plural'),
           })}
@@ -233,25 +234,26 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return (
       <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={classNames(className)}
-          placeholderText={
-            <Transi18next
-              i18nKey="message.no-custom-properties-entity"
-              renderElement={
-                <a
-                  href={CUSTOM_PROPERTIES_DOCS}
-                  rel="noreferrer"
-                  target="_blank"
-                  title="Custom properties documentation"
-                />
-              }
-              values={{
-                docs: t('label.doc-plural-lowercase'),
-                entity: startCase(entityType),
-              }}
-            />
-          }
-        />
+          className="border-none"
+          contentMaxWidth="24rem"
+          icon={<CustomPropertyEmpty />}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          <Transi18next
+            i18nKey="message.no-custom-properties-entity"
+            renderElement={
+              <a
+                href={CUSTOM_PROPERTIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Custom properties documentation"
+              />
+            }
+            values={{
+              docs: t('label.doc-plural-lowercase'),
+              entity: startCase(entityType),
+            }}
+          />
+        </ErrorPlaceHolder>
       </div>
     );
   }
@@ -308,7 +310,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     );
   }
 
-  return !isEmpty(entityTypeDetail.customProperties) ? (
+  if (isEmpty(entityTypeDetail.customProperties)) {
+    return null;
+  }
+
+  return (
     <div className="custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
@@ -330,5 +336,5 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         ))}
       </Row>
     </div>
-  ) : null;
+  );
 };
