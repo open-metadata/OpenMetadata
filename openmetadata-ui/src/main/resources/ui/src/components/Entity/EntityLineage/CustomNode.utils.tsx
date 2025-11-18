@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dataflow01, Plus } from '@untitledui/icons';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import { Fragment } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
@@ -67,29 +67,74 @@ export const getColumnHandle = (
   }
 };
 
-export const getExpandHandle = (
-  direction: LineageDirection,
-  onClickHandler: () => void
-) => {
+const ExpandHandle = ({
+  direction,
+  onClickHandler,
+}: {
+  direction: LineageDirection;
+  onClickHandler: (depth: number) => void;
+}) => {
+  const [showExpandAll, setShowExpandAll] = useState(false);
+
+  const handleLineageNodeHandleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleLineageNodeHandleMouseOver = useCallback(() => {
+    setShowExpandAll(true);
+  }, []);
+
+  const handleLineageNodeHandleMouseOut = useCallback(() => {
+    setShowExpandAll(false);
+  }, []);
+
+  const handleLineageExpandIconClick = useCallback(() => {
+    onClickHandler(1);
+  }, [onClickHandler]);
+
+  const handleLineageExpandAllIconClick = useCallback(() => {
+    onClickHandler(50);
+  }, [onClickHandler]);
+
   return (
-    <Button
+    <div
       className={classNames(
-        'absolute lineage-node-handle flex-center',
+        'absolute lineage-node-handle-expand-all flex-center',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      icon={
-        <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
-      }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClickHandler();
-      }}
-    />
+      onClick={handleLineageNodeHandleClick}
+      onMouseOut={handleLineageNodeHandleMouseOut}
+      onMouseOver={handleLineageNodeHandleMouseOver}>
+      <Plus
+        aria-hidden="false"
+        aria-label="expand"
+        className="lineage-expand-icon"
+        data-testid="plus-icon"
+        role="button"
+        tabIndex={0}
+        onClick={handleLineageExpandIconClick}
+      />
+      {showExpandAll && (
+        <>
+          <div className="lineage-expand-icons-separator" />
+          <Dataflow01
+            className="lineage-expand-icon"
+            data-testid="lineage-expand-all-btn"
+            onClick={handleLineageExpandAllIconClick}
+          />
+        </>
+      )}
+    </div>
   );
+};
+
+export const getExpandHandle = (
+  direction: LineageDirection,
+  onClickHandler: (depth: number) => void
+) => {
+  return <ExpandHandle direction={direction} onClickHandler={onClickHandler} />;
 };
 
 export const getCollapseHandle = (
@@ -164,7 +209,7 @@ export const getColumnContent = (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced && 'custom-node-header-tracing'
+        isColumnTraced && 'custom-node-header-column-tracing'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
@@ -214,11 +259,13 @@ export function getNodeClassNames({
   showDqTracing,
   isTraced,
   isBaseNode,
+  isChildrenListExpanded,
 }: {
   isSelected: boolean;
   showDqTracing: boolean;
   isTraced: boolean;
   isBaseNode: boolean;
+  isChildrenListExpanded: boolean;
 }) {
   return classNames(
     'lineage-node p-0',
@@ -227,6 +274,7 @@ export function getNodeClassNames({
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
+      'columns-expanded': isChildrenListExpanded,
     }
   );
 }

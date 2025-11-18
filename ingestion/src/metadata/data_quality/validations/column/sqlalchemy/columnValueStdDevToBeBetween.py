@@ -15,7 +15,7 @@ Validator for column value stddev to be between test case
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, case, func, select
+from sqlalchemy import Column, String, case, func, literal, select
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
@@ -213,6 +213,17 @@ class ColumnValueStdDevToBeBetweenValidator(
             return None
 
         try:
+            # Cast dimension column to VARCHAR and normalize it (same as Pass 1)
+            # This ensures type compatibility when comparing with string top_dimension_values
+            dimension_col_as_string = func.cast(dimension_col, String)
+            normalized_dimension = case(
+                [
+                    (dimension_col.is_(None), literal("NULL")),
+                    (func.upper(dimension_col_as_string) == "NULL", literal("NULL")),
+                ],
+                else_=dimension_col_as_string,
+            )
+
             # Compute stddev directly on base table with WHERE filter
             stddev_expr = Metrics.STDDEV(column).fn()
             total_count_expr = Metrics.ROW_COUNT().fn()
@@ -231,7 +242,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                     ]
                 )
                 .select_from(self.runner.dataset)
-                .where(dimension_col.notin_(top_dimension_value_list))
+                .where(normalized_dimension.notin_(top_dimension_value_list))
             ).alias("others_stats")
 
             # Apply failed_count builder to stats subquery (reused from Pass 1)

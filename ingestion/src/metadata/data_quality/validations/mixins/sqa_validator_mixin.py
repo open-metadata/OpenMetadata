@@ -15,7 +15,7 @@ Validator Mixin for SQA tests cases
 
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, Table, case, func, inspect, literal, select, text
+from sqlalchemy import Column, String, Table, case, func, inspect, literal, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
@@ -220,13 +220,20 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_FAILED_COUNT_KEY}' key"
             )
 
+        # Cast dimension column to VARCHAR to ensure compatibility with string literals
+        # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+        dimension_col_as_string = func.cast(dimension_col, String)
+
         # Normalize dimension column null valures
         normalized_dimension = case(
             [
                 (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
-                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+                (
+                    func.upper(dimension_col_as_string) == "NULL",
+                    literal(DIMENSION_NULL_LABEL),
+                ),
             ],
-            else_=dimension_col,
+            else_=dimension_col_as_string,
         )
 
         # Build expressions using dictionary iteration
@@ -339,7 +346,7 @@ class SQAValidatorMixin:
         self,
         dimension_col: Column,
         metric_expressions: Dict[str, ClauseElement],
-        failed_count_builder: FailedCountBuilderSQA,
+        failed_count_builder: Optional[FailedCountBuilderSQA] = None,
         final_metric_builders: Optional[Dict[str, Any]] = None,
         exclude_from_results: Optional[List[str]] = None,
         top_dimensions_count: int = DEFAULT_TOP_DIMENSIONS,
@@ -419,13 +426,34 @@ class SQAValidatorMixin:
                 f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}'"
             )
 
+        # Validate failed_count_builder and DIMENSION_FAILED_COUNT_KEY relationship
+        if failed_count_builder is None:
+            if DIMENSION_FAILED_COUNT_KEY not in metric_expressions:
+                raise ValueError(
+                    f"When failed_count_builder is None, metric_expressions must contain "
+                    f"'{DIMENSION_FAILED_COUNT_KEY}' key"
+                )
+        else:
+            if DIMENSION_FAILED_COUNT_KEY in metric_expressions:
+                raise ValueError(
+                    f"When failed_count_builder is provided, metric_expressions should NOT contain "
+                    f"'{DIMENSION_FAILED_COUNT_KEY}' key (it will be computed by the builder)"
+                )
+
+        # Cast dimension column to VARCHAR to ensure compatibility with string literals
+        # This prevents type mismatch errors when mixing numeric columns with 'NULL'/'Others' labels
+        dimension_col_as_string = func.cast(dimension_col, String)
+
         # Normalize dimension column null valures
         normalized_dimension = case(
             [
                 (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
-                (func.upper(dimension_col) == "NULL", literal(DIMENSION_NULL_LABEL)),
+                (
+                    func.upper(dimension_col_as_string) == "NULL",
+                    literal(DIMENSION_NULL_LABEL),
+                ),
             ],
-            else_=dimension_col,
+            else_=dimension_col_as_string,
         )
 
         final_metric_builders = final_metric_builders or {}
@@ -445,26 +473,36 @@ class SQAValidatorMixin:
 
         # ---- CTE 2: Add failed_count and impact_score
         total_count_col = getattr(raw_aggregates.c, DIMENSION_TOTAL_COUNT_KEY)
-        failed_count_expr = failed_count_builder(raw_aggregates)
+
+        if failed_count_builder is None:
+            # Failed count already in raw_aggregates from metric_expressions
+            failed_count_expr = getattr(raw_aggregates.c, DIMENSION_FAILED_COUNT_KEY)
+        else:
+            # Compute failed count using builder
+            failed_count_expr = failed_count_builder(raw_aggregates)
 
         impact_score_expr = get_impact_score_expression(
             failed_count_expr, total_count_col
         )
 
-        stats_with_impact_columns = [col for col in raw_aggregates.c]
-        stats_with_impact_columns.append(
-            failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY)
-        )
-        stats_with_impact_columns.append(
+        # Build CTE2 columns - only label failed_count if not already labeled
+        stats_with_impact_select = [col for col in raw_aggregates.c]
+
+        if failed_count_builder is None:
+            # failed_count_expr already has the label from raw_aggregates
+            pass  # It's already in raw_aggregates.c columns
+        else:
+            # failed_count_expr needs to be labeled
+            stats_with_impact_select.append(
+                failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY)
+            )
+
+        stats_with_impact_select.append(
             impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY)
         )
 
         stats_with_impact = (
-            select(
-                *[col for col in raw_aggregates.c],
-                failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY),
-                impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY),
-            )
+            select(stats_with_impact_select)
             .select_from(raw_aggregates)
             .cte(CTE_DIMENSION_WITH_IMPACT)
         )
@@ -512,9 +550,12 @@ class SQAValidatorMixin:
                 return final_metric_builders[metric_name](categorized)
             return func.sum(getattr(categorized.c, metric_name))
 
+        # Add metrics from metric_expressions (skip DIMENSION_FAILED_COUNT_KEY - handled separately)
         for metric_name in metric_expressions.keys():
-            final_columns.append(build_final_metric(metric_name).label(metric_name))
+            if metric_name != DIMENSION_FAILED_COUNT_KEY:
+                final_columns.append(build_final_metric(metric_name).label(metric_name))
 
+        # Always sum failed_count for Others aggregation
         final_failed_count = func.sum(
             getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)
         ).label(DIMENSION_FAILED_COUNT_KEY)
@@ -536,25 +577,37 @@ class SQAValidatorMixin:
             ):
                 result_columns.append(col)
 
-        failed_count_expr = failed_count_builder(final_cte)
+        if failed_count_builder is None:
+            # Failed count is summed row-level count, use directly (already labeled)
+            result_failed_count = getattr(final_cte.c, DIMENSION_FAILED_COUNT_KEY)
+        else:
+            # Re-compute for Others using builder (statistical validators)
+            failed_count_expr = failed_count_builder(final_cte)
+            result_failed_count = case(
+                (
+                    getattr(final_cte.c, DIMENSION_VALUE_KEY) != DIMENSION_OTHERS_LABEL,
+                    getattr(final_cte.c, DIMENSION_FAILED_COUNT_KEY),
+                ),
+                else_=failed_count_expr,
+            ).label(DIMENSION_FAILED_COUNT_KEY)
 
-        result_failed_count = case(
-            (
-                getattr(final_cte.c, DIMENSION_VALUE_KEY) != DIMENSION_OTHERS_LABEL,
-                getattr(final_cte.c, DIMENSION_FAILED_COUNT_KEY),
-            ),
-            else_=failed_count_expr,
-        ).label(DIMENSION_FAILED_COUNT_KEY)
         result_columns.append(result_failed_count)
 
         # Impact score: preserve for top N, recompute for "Others" automatically
+        if failed_count_builder is None:
+            # Use result_failed_count which references final_cte
+            impact_failed_count_expr = result_failed_count
+        else:
+            # Use failed_count_expr from builder
+            impact_failed_count_expr = failed_count_expr
+
         result_impact = case(
             (
                 getattr(final_cte.c, DIMENSION_VALUE_KEY) != DIMENSION_OTHERS_LABEL,
                 getattr(final_cte.c, DIMENSION_IMPACT_SCORE_KEY),
             ),
             else_=get_impact_score_expression(
-                failed_count_expr,
+                impact_failed_count_expr,
                 getattr(final_cte.c, DIMENSION_TOTAL_COUNT_KEY),
             ),
         ).label(DIMENSION_IMPACT_SCORE_KEY)

@@ -163,6 +163,7 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  await page.waitForTimeout(1000);
   const destinationElement = await page.waitForSelector(destinationSelector);
   await page.hover(originSelector);
   await page.mouse.down();
@@ -239,13 +240,13 @@ export const connectEdgeBetweenNodes = async (
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.name');
+  const name = get(node, 'entityResponseData.displayName');
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
   await expect(lineageNode).toBeVisible();
 
   const entityHeaderName = lineageNode.locator(
-    '[data-testid="entity-header-name"]'
+    '[data-testid="entity-header-display-name"]'
   );
 
   await expect(entityHeaderName).toHaveText(name);

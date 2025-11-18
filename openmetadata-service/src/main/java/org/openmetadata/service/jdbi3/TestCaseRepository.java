@@ -24,6 +24,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.gson.Gson;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -88,6 +89,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
@@ -618,7 +620,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // Validate that the referenced column actually exists in the table
       if (entityLink.getArrayFieldName() != null) {
         Table table = Entity.getEntity(entityLink, "columns", ALL);
-        validateColumn(table, entityLink.getArrayFieldName());
+        validateColumn(table, entityLink.getArrayFieldName(), Boolean.FALSE);
       }
     }
   }
@@ -630,7 +632,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
       // Validate each dimension column exists in the table
       for (String dimensionColumn : test.getDimensionColumns()) {
-        validateColumn(table, dimensionColumn);
+        validateColumn(table, dimensionColumn, Boolean.FALSE);
       }
     }
   }
@@ -918,7 +920,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate all the columns
     if (validateColumns) {
       for (String columnName : tableData.getColumns()) {
-        validateColumn(table, columnName);
+        validateColumn(table, columnName, Boolean.FALSE);
       }
     }
     // Make sure each row has number values for all the columns
@@ -1103,6 +1105,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public class TestUpdater extends EntityUpdater {
     public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      // adding the reviewer should add the person as assignee to the task
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
     }
 
     @Override
@@ -1321,6 +1334,36 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
     } catch (EntityNotFoundException ex) {
       LOG.info("No approval task found for test case {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  protected void updateTaskWithNewReviewers(TestCase testCase) {
+    try {
+      MessageParser.EntityLink about =
+          new MessageParser.EntityLink(TEST_CASE, testCase.getFullyQualifiedName());
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      testCase =
+          Entity.getEntityByName(
+              Entity.TEST_CASE,
+              testCase.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
+
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(testCase.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for test case {}",
+          TaskType.RequestApproval,
+          testCase.getFullyQualifiedName());
     }
   }
 

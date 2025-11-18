@@ -35,7 +35,7 @@ import {
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -285,6 +285,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
+        sorter: getColumnSorter<Field, 'name'>('name'),
         render: renderSchemaName,
       },
       {
@@ -417,7 +418,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }
           key={viewType}
           pagination={false}
-          rowKey="name"
+          rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
