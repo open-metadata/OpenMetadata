@@ -43,7 +43,11 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+  highlightSearchText,
+} from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getAddServicePath,
@@ -327,6 +331,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       dataIndex: TABLE_COLUMNS_KEYS.NAME,
       key: TABLE_COLUMNS_KEYS.NAME,
       width: 200,
+      sorter: getColumnSorter<ServicesType, 'name'>('name'),
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
           {getServiceLogo(record.serviceType || '', 'w-4')}
