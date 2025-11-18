@@ -62,7 +62,7 @@
         },
         "timeCycleConfig": {
           "type": "string",
-          "default": "0 0 1 * * ?",
+          "default": "0 0 0 ? * 0",
           "description": "Cron expression used by Flowable's history cleaning job (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 * * ? * *' runs every minute (testing only)."
         }
       },
