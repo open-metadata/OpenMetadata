@@ -2764,6 +2764,8 @@
     "re-indexing-error": "خطا در دوباره ایندکس کردن!",
     "re-indexing-started": "دوباره ایندکس کردن شروع شد.",
     "re-indexing-stopped": "دوباره ایندکس کردن متوقف شد.",
+    "reset-entity-error": "خطا هنگام بازنشانی {{entity}}!",
+    "reset-entity-success": "{{entity}} با موفقیت بازنشانی شد.",
     "reset-password-success": "رمز عبور با موفقیت بازنشانی شد!",
     "restore-entity-success": "{{entity}} با موفقیت بازیابی شد.",
     "stop-re-indexing-error": "خطا در تلاش برای متوقف کردن دوباره ایندکس کردن!",

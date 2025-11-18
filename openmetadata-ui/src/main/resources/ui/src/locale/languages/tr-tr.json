@@ -2764,6 +2764,8 @@
     "re-indexing-error": "Yeniden dizinleme sırasında hata oluştu!",
     "re-indexing-started": "Yeniden dizinleme başlatıldı",
     "re-indexing-stopped": "Yeniden dizinleme durduruldu",
+    "reset-entity-error": "{{entity}} sıfırlanırken hata oluştu!",
+    "reset-entity-success": "{{entity}} başarıyla sıfırlandı.",
     "reset-password-success": "Şifre başarıyla sıfırlandı!",
     "restore-entity-success": "{{entity}} başarıyla geri yüklendi.",
     "stop-re-indexing-error": "Yeniden dizinlemeyi durdurmaya çalışırken bir hata oluştu!",

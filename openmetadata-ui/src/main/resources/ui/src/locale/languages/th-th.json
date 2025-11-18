@@ -2764,6 +2764,8 @@
     "re-indexing-error": "เกิดข้อผิดพลาดขณะสร้างดัชนีใหม่!",
     "re-indexing-started": "เริ่มต้นการสร้างดัชนีใหม่",
     "re-indexing-stopped": "หยุดการสร้างดัชนีใหม่",
+    "reset-entity-error": "เกิดข้อผิดพลาดขณะรีเซ็ต {{entity}}!",
+    "reset-entity-success": "รีเซ็ต {{entity}} สำเร็จ",
     "reset-password-success": "รีเซ็ตรหัสผ่านสำเร็จ!",
     "restore-entity-success": "{{entity}} กู้คืนสำเร็จ",
     "stop-re-indexing-error": "เกิดข้อผิดพลาดขณะพยายามหยุดการสร้างดัชนีใหม่!",

@@ -2764,6 +2764,8 @@
     "re-indexing-error": "שגיאה במהלך אינדקוס מחדש!",
     "re-indexing-started": "האינדקוס מחדש התחיל",
     "re-indexing-stopped": "האינדקוס מחדש נעצר",
+    "reset-entity-error": "שגיאה באיפוס {{entity}}!",
+    "reset-entity-success": "{{entity}} אופס בהצלחה.",
     "reset-password-success": "איפוס הסיסמה הצליח בהצלחה!",
     "restore-entity-success": "{{entity}} נשחזר בהצלחה.",
     "stop-re-indexing-error": "שגיאה במהלך ניסיון לעצור את האינדקוס מחדש!",

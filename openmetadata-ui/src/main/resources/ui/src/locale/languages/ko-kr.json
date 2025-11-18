@@ -2764,6 +2764,8 @@
     "re-indexing-error": "재색인 중 오류가 발생했습니다!",
     "re-indexing-started": "재색인이 시작되었습니다",
     "re-indexing-stopped": "재색인이 중지되었습니다",
+    "reset-entity-error": "{{entity}} 재설정 중 오류가 발생했습니다!",
+    "reset-entity-success": "{{entity}}가 성공적으로 재설정되었습니다.",
     "reset-password-success": "비밀번호가 성공적으로 재설정되었습니다!",
     "restore-entity-success": "{{entity}}가 성공적으로 복원되었습니다.",
     "stop-re-indexing-error": "재색인 중지 시도 중 오류가 발생했습니다!",

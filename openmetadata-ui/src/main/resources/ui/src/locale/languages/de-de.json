@@ -2764,6 +2764,8 @@
     "re-indexing-error": "Fehler beim Re-Indexieren!",
     "re-indexing-started": "Re-Indexierung gestartet",
     "re-indexing-stopped": "Re-Indexierung gestoppt",
+    "reset-entity-error": "Fehler beim Zurücksetzen von {{entity}}!",
+    "reset-entity-success": "{{entity}} erfolgreich zurückgesetzt.",
     "reset-password-success": "Passwort erfolgreich zurückgesetzt!",
     "restore-entity-success": "{{entity}} erfolgreich wiederhergestellt.",
     "stop-re-indexing-error": "Beim Versuch, die Re-Indexierung zu stoppen, ist ein Fehler aufgetreten!",

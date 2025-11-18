@@ -2764,6 +2764,8 @@
     "re-indexing-error": "Fout bij het herindexeren!",
     "re-indexing-started": "Herindexeren gestart",
     "re-indexing-stopped": "Herindexeren gestopt",
+    "reset-entity-error": "Fout bij het resetten van {{entity}}!",
+    "reset-entity-success": "{{entity}} succesvol gereset.",
     "reset-password-success": "Wachtwoord succesvol gereset!",
     "restore-entity-success": "{{entity}} succesvol hersteld.",
     "stop-re-indexing-error": "Er is een fout opgetreden bij het proberen te stoppen met herindexeren!",

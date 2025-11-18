@@ -2764,6 +2764,8 @@
     "re-indexing-error": "在重新索引时发生错误！",
     "re-indexing-started": "重新索引已开始",
     "re-indexing-stopped": "重新索引已停止",
+    "reset-entity-error": "重置 {{entity}} 时出错！",
+    "reset-entity-success": "{{entity}} 重置成功。",
     "reset-password-success": "密码重置成功！",
     "restore-entity-success": "{{entity}}已成功恢复",
     "stop-re-indexing-error": "在尝试中止重新索引时发生错误！",

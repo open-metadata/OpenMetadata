@@ -2764,6 +2764,8 @@
     "re-indexing-error": "री इंडेक्स करताना त्रुटी!",
     "re-indexing-started": "री-इंडेक्सिंग सुरू झाली",
     "re-indexing-stopped": "री-इंडेक्सिंग थांबली",
+    "reset-entity-error": "{{entity}} रीसेट करताना त्रुटी!",
+    "reset-entity-success": "{{entity}} यशस्वीरित्या रीसेट केले.",
     "reset-password-success": "पासवर्ड यशस्वीरित्या रीसेट केला!",
     "restore-entity-success": "{{entity}} यशस्वीरित्या वापरले गेले.",
     "stop-re-indexing-error": "री-इंडेक्सिंग थांबवताना त्रुटी आली!",

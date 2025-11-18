@@ -2764,6 +2764,8 @@
     "re-indexing-error": "再インデックス中にエラーが発生しました！",
     "re-indexing-started": "再インデックスを開始しました",
     "re-indexing-stopped": "再インデックスが停止されました",
+    "reset-entity-error": "{{entity}} のリセット中にエラーが発生しました！",
+    "reset-entity-success": "{{entity}} が正常にリセットされました。",
     "reset-password-success": "パスワードのリセットに成功しました！",
     "restore-entity-success": "{{entity}}は正常に復元されました。",
     "stop-re-indexing-error": "再インデックスの停止中にエラーが発生しました！",

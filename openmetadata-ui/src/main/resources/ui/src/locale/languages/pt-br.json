@@ -2764,6 +2764,8 @@
     "re-indexing-error": "Erro durante a reindexação!",
     "re-indexing-started": "Reindexação iniciada",
     "re-indexing-stopped": "Reindexação interrompida",
+    "reset-entity-error": "Erro ao redefinir {{entity}}!",
+    "reset-entity-success": "{{entity}} redefinido com sucesso.",
     "reset-password-success": "Redefinição de senha com sucesso!",
     "restore-entity-success": "{{entity}} restaurado com sucesso.",
     "stop-re-indexing-error": "Ocorreu um erro ao tentar interromper a reindexação!",

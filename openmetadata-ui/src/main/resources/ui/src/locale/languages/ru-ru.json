@@ -2764,6 +2764,8 @@
     "re-indexing-error": "Ошибка при переиндексации!",
     "re-indexing-started": "Переиндексация началась",
     "re-indexing-stopped": "Переиндексация остановлена",
+    "reset-entity-error": "Ошибка при сбросе {{entity}}!",
+    "reset-entity-success": "{{entity}} успешно сброшен.",
     "reset-password-success": "Пароль сброшен!",
     "restore-entity-success": "Объект «{{entity}}» восстановлен.",
     "stop-re-indexing-error": "Произошла ошибка при попытке остановить переиндексацию!",
