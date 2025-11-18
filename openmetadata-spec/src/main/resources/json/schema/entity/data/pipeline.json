@@ -513,8 +513,7 @@
     },
     "entityStatus": {
       "description": "Status of the Pipeline.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

@@ -29,6 +29,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
+import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,6 +72,8 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
+import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -403,6 +406,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       super(original, updated, operation);
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      // adding the reviewer should add the person as assignee to the task
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -583,6 +597,35 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
     } catch (EntityNotFoundException ex) {
       LOG.info("No approval task found for data product {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  protected void updateTaskWithNewReviewers(DataProduct dataProduct) {
+    try {
+      EntityLink about = new EntityLink(DATA_PRODUCT, dataProduct.getFullyQualifiedName());
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      dataProduct =
+          Entity.getEntityByName(
+              Entity.DATA_PRODUCT,
+              dataProduct.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
+
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(dataProduct.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for data product {}",
+          TaskType.RequestApproval,
+          dataProduct.getFullyQualifiedName());
     }
   }
 }

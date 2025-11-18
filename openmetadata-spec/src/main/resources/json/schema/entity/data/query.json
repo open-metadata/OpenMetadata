@@ -135,8 +135,7 @@
     },
     "entityStatus": {
       "description": "Status of the Query.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "query", "service"],

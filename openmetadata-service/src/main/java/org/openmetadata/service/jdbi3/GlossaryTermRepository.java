@@ -1074,7 +1074,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       super.updateReviewers();
       // adding the reviewer should add the person as assignee to the task
 
-      if (!original.getReviewers().equals(updated.getReviewers())) {
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
 
         List<GlossaryTerm> childTerms = getNestedTerms(updated);
         childTerms.add(updated);
