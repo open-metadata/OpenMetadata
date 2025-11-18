@@ -170,13 +170,13 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
               .withServiceType(CreateDatabaseService.DatabaseServiceType.BigQuery)
               .withConnection(new DatabaseConnection().withConfig(new BigQueryConnection()));
 
-      WebTarget target = getResource("v1/services/databaseServices");
+      WebTarget target = getResource("services/databaseServices");
       databaseService =
           TestUtils.post(target, createService, DatabaseService.class, ADMIN_AUTH_HEADERS);
     } catch (Exception e) {
       // If service already exists, fetch it
       if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-        WebTarget target = getResource("v1/services/databaseServices/name/test-db-service-logs");
+        WebTarget target = getResource("services/databaseServices/name/test-db-service-logs");
         databaseService = TestUtils.get(target, DatabaseService.class, ADMIN_AUTH_HEADERS);
       } else {
         throw e;
@@ -216,7 +216,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     String runId = UUID.randomUUID().toString();
 
     WebTarget streamTarget =
-        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
 
     String logData = "Stream endpoint test log\n";
     Map<String, Object> logPayload = Map.of("logs", logData);
@@ -233,7 +233,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
 
     // Read logs back through REST endpoint
     WebTarget getTarget =
-        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
     Response getResponse =
         getTarget
             .request(MediaType.APPLICATION_JSON)
@@ -327,7 +327,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     // Clean up test pipeline first (before deleting the service it depends on)
     if (testPipeline != null) {
       try {
-        WebTarget target = getResource("v1/services/ingestionPipelines/" + testPipeline.getId());
+        WebTarget target = getResource("services/ingestionPipelines/" + testPipeline.getId());
         TestUtils.delete(target, ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         LOG.warn("Failed to delete test pipeline: {}", e.getMessage());
@@ -337,7 +337,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     // Clean up database service after pipeline is deleted
     if (databaseService != null) {
       try {
-        WebTarget target = getResource("v1/services/databaseServices/" + databaseService.getId());
+        WebTarget target = getResource("services/databaseServices/" + databaseService.getId());
         TestUtils.delete(target, ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         LOG.warn("Failed to delete database service: {}", e.getMessage());
@@ -596,12 +596,12 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     // First, write some logs to create an active stream
     Map<String, Object> logData = Map.of("logs", "Test log content for close stream");
     WebTarget writeTarget =
-        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
     TestUtils.post(writeTarget, logData, ADMIN_AUTH_HEADERS);
 
     // Now close the stream
     WebTarget closeTarget =
-        getResource("v1/services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
     Map<String, Object> closeResponse =
         TestUtils.post(closeTarget, "", Map.class, ADMIN_AUTH_HEADERS);
 
@@ -633,13 +633,13 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
                       .withRetries(3)
                       .withRetryDelay(300));
 
-      WebTarget target = getResource("v1/services/ingestionPipelines");
+      WebTarget target = getResource("services/ingestionPipelines");
       return TestUtils.post(target, createRequest, IngestionPipeline.class, ADMIN_AUTH_HEADERS);
     } catch (Exception e) {
       // If pipeline already exists, fetch it
       if (e.getMessage() != null && e.getMessage().contains("already exists")) {
         String fqn = databaseService.getFullyQualifiedName() + ".test-pipeline-logs";
-        WebTarget target = getResource("v1/services/ingestionPipelines/name/" + fqn);
+        WebTarget target = getResource("services/ingestionPipelines/name/" + fqn);
         return TestUtils.get(target, IngestionPipeline.class, ADMIN_AUTH_HEADERS);
       } else {
         throw new IOException("Failed to create test pipeline", e);
