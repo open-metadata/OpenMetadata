@@ -81,7 +81,9 @@
     },
     "assets": {
       "description": "Data assets collection that is part of this domain.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/domains/{id}/assets API endpoint for paginated access to domain assets"
     },
     "tags": {
       "description": "Tags associated with the Domain.",
