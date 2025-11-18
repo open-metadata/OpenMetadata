@@ -33,6 +33,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
@@ -159,47 +160,64 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   private void addEntity(
       EntityInterface entity, String indexName, boolean recreateIndex, boolean embeddingsEnabled) {
-    String entityType = Entity.getEntityTypeFromObject(entity);
-    Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
-    String json = JsonUtils.pojoToJson(searchIndexDoc);
-    String docId = entity.getId().toString();
+    try {
 
-    BulkOperation operation;
-    if (recreateIndex) {
-      operation =
-          BulkOperation.of(
-              op ->
-                  op.index(
-                      idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
-    } else {
-      operation =
-          BulkOperation.of(
-              op ->
-                  op.update(
-                      upd ->
-                          upd.index(indexName)
-                              .id(docId)
-                              .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
-    }
-    bulkProcessor.add(operation);
+      String entityType = Entity.getEntityTypeFromObject(entity);
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      String json = JsonUtils.pojoToJson(searchIndexDoc);
+      String docId = entity.getId().toString();
 
-    if (embeddingsEnabled) {
-      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
+      BulkOperation operation;
+      if (recreateIndex) {
+        operation =
+            BulkOperation.of(
+                op ->
+                    op.index(
+                        idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
+      } else {
+        operation =
+            BulkOperation.of(
+                op ->
+                    op.update(
+                        upd ->
+                            upd.index(indexName)
+                                .id(docId)
+                                .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
+      }
+      bulkProcessor.add(operation);
+
+      if (embeddingsEnabled) {
+        addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
+      }
+
+    } catch (EntityNotFoundException e) {
+      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
     }
   }
 
   private void addTimeSeriesEntity(
       EntityTimeSeriesInterface entity, String indexName, String entityType) {
-    Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
-    String json = JsonUtils.pojoToJson(searchIndexDoc);
-    String docId = entity.getId().toString();
+    try {
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      String json = JsonUtils.pojoToJson(searchIndexDoc);
+      String docId = entity.getId().toString();
 
-    BulkOperation operation =
-        BulkOperation.of(
-            op ->
-                op.index(idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
+      BulkOperation operation =
+          BulkOperation.of(
+              op ->
+                  op.index(
+                      idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
 
-    bulkProcessor.add(operation);
+      bulkProcessor.add(operation);
+    } catch (EntityNotFoundException e) {
+      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+    }
   }
 
   private void updateStats() {
