@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapDatasphere/sapDatasphereOAuthConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapDatasphereOAuthConnection",
+  "description": "SAP Datasphere OAuth 2.0 Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.sapDatasphere.SapDatasphereOAuthConnection",
+  "properties": {
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and Port of the SAP Datasphere tenant instance (e.g., https://tenant.eu10.hcs.cloud.sap).",
+      "type": "string",
+      "format": "uri"
+    },
+    "clientId": {
+      "title": "OAuth Client ID",
+      "description": "OAuth 2.0 Client ID for authenticating with SAP Datasphere. Create this in System > Administration > App Integration.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "OAuth Client Secret",
+      "description": "OAuth 2.0 Client Secret for authenticating with SAP Datasphere.",
+      "type": "string",
+      "format": "password"
+    },
+    "tokenEndpoint": {
+      "title": "Token Endpoint",
+      "description": "OAuth 2.0 Token Endpoint URL for obtaining access tokens. Usually in the format: https://tenant.authentication.eu10.hana.ondemand.com/oauth/token",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "clientId", "clientSecret"]
+}

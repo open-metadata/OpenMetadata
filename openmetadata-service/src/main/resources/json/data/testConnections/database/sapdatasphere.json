@@ -1,0 +1,19 @@
+{
+  "name": "SapDatasphere",
+  "displayName": "SAP Datasphere Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of spaces and assets.",
+  "steps": [
+    {
+      "name": "GetSpaces",
+      "description": "Validate that we can fetch the list of spaces from the API",
+      "errorMessage": "Failed to fetch spaces, please validate if the API key is correct and has enough privilege to fetch spaces.",
+      "mandatory": true
+    },
+    {
+      "name": "GetAssets",
+      "description": "Validate that we can fetch the list of assets from the API",
+      "errorMessage": "Failed to fetch assets, please validate if the API key is correct and has enough privilege to fetch assets.",
+      "mandatory": false
+    }
+  ]
+}

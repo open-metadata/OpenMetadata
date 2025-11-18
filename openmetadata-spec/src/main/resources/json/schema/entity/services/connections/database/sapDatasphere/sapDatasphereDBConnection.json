@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapDatasphere/sapDatasphereDBConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapDatasphereDBConnection",
+  "description": "SAP Datasphere Database User Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.sapDatasphere.SapDatasphereDBConnection",
+  "properties": {
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and Port of the SAP Datasphere HANA Cloud database. Format: hostname:port (e.g., abc123-hana.hanacloud.ondemand.com:443)",
+      "type": "string"
+    },
+    "username": {
+      "title": "Database Username",
+      "description": "Database username for SAP Datasphere. Create a Database User in Space Management > Database Access > Database Users. Format: SpaceName#SuffixName (e.g., MYSPACE#OPENMETADATA)",
+      "type": "string"
+    },
+    "password": {
+      "title": "Database Password",
+      "description": "Password for the database user. This is provided when you create the database user in SAP Datasphere.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema (Space) of the data source. This is optional. When left blank, OpenMetadata will attempt to scan all accessible spaces.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database name. This is optional, defaults to 'SYSTEMDB' for SAP Datasphere.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["username", "password", "hostPort"]
+}
