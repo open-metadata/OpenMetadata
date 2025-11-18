@@ -214,12 +214,12 @@ public class OktaAuthValidator {
           return null; // Success - Okta client ID validated
         } else {
           return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
               "Unexpected introspection response format - missing 'active' field");
         }
       } else {
         return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
             "Client ID validation failed. HTTP response: " + response.getStatusCode());
       }
 
