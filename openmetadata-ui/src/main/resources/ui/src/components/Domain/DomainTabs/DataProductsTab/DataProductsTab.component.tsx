@@ -22,6 +22,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -42,9 +43,9 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
-  ({ permissions, onAddDataProduct }: DataProductsTabProps, ref) => {
+  ({ permissions, onAddDataProduct, domainFqn }: DataProductsTabProps, ref) => {
     const { t } = useTranslation();
-    const { fqn: domainFqn } = useFqn();
+    const { fqn: urlDomainFqn } = useFqn();
     const [dataProducts, setDataProducts] = useState<
       PagingResponse<DataProduct[]>
     >({
@@ -63,7 +64,7 @@ const DataProductsTab = forwardRef(
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domainFqn ?? '',
+            'domains.fullyQualifiedName': urlDomainFqn || domainFqn || '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
@@ -99,7 +100,7 @@ const DataProductsTab = forwardRef(
 
     useEffect(() => {
       fetchDataProducts();
-    }, [domainFqn]);
+    }, [urlDomainFqn]);
 
     if (loading) {
       return <Loader />;
@@ -108,12 +109,16 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
-          heading={t('label.data-product')}
-          permission={permissions.Create}
-          permissionValue={t('label.create-entity', {
+          buttonId="data-product-add-button"
+          buttonTitle={t('label.add-entity', {
             entity: t('label.data-product'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          heading={t('message.no-data-message', {
+            entity: t('label.data-product-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
           onClick={onAddDataProduct}
         />
       );

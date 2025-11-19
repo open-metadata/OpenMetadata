@@ -230,6 +230,8 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1234567890),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1234567890),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';

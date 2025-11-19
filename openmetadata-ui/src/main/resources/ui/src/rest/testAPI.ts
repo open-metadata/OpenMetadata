@@ -21,6 +21,7 @@ import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
   TestCase,
+  TestCaseDimensionResult,
   TestCaseResult,
   TestCaseStatus,
 } from '../generated/tests/testCase';
@@ -113,6 +114,13 @@ export type DataQualityReportParamsType = {
   q?: string;
   aggregationQuery: string;
   index: string;
+};
+
+export type TestCaseDimensionResultParams = {
+  dimensionalityKey?: string;
+  startTs?: number;
+  endTs?: number;
+  dimensionName?: string;
 };
 
 const testCaseUrl = '/dataQuality/testCases';
@@ -226,6 +234,20 @@ export const getTestCaseVersionDetails = async (
   const url = `${testCaseUrl}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);
+
+  return response.data;
+};
+
+// Test case dimensionality results
+export const getTestCaseDimensionResultsByFqn = async (
+  fqn: string,
+  params?: TestCaseDimensionResultParams
+) => {
+  const response = await APIClient.get<
+    PagingResponse<TestCaseDimensionResult[]>
+  >(`${testCaseUrl}/dimensionResults/${getEncodedFqn(fqn)}`, {
+    params,
+  });
 
   return response.data;
 };

@@ -359,4 +359,27 @@ public class S3LogStorageTest {
     verify(mockS3Client).close();
     verify(mockS3AsyncClient).close();
   }
+
+  @Test
+  void testCloseStream() throws IOException {
+    // Mock async multipart upload operations
+    when(mockS3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
+
+    when(mockS3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(CompleteMultipartUploadResponse.builder().build()));
+
+    // Append some logs to create an active stream
+    String logContent = "Test log content for closeStream";
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, logContent);
+
+    // Test closing the specific stream
+    assertDoesNotThrow(() -> s3LogStorage.closeStream(testPipelineFQN, testRunId));
+
+    // Verify that the multipart upload was completed
+    verify(mockS3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+  }
 }

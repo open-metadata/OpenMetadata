@@ -112,9 +112,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
