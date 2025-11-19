@@ -1,5 +1,4 @@
 import sys
-import time
 
 import pytest
 from sqlalchemy import create_engine
@@ -59,7 +58,6 @@ def test_ingest_metadata(
     prepare_cockroach,
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
-    time.sleep(1)  # wait for the metadata to be processed in bulk
 
     table = metadata.get_by_name(
         entity=Table, fqn=table_fqn.format(service=db_service.fullyQualifiedName.root)

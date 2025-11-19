@@ -15,7 +15,6 @@ to the OM API.
 """
 import threading
 import traceback
-from _thread import LockType
 from functools import singledispatchmethod
 from typing import Any, Dict, Optional, TypeVar, Union
 
@@ -25,6 +24,10 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.data.createDataContract import (
+    CreateDataContractRequest,
+)
+from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -88,6 +91,7 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.routes import CreateContainerRequest
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
@@ -129,26 +133,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
-        self._thread_local = threading.local()
-        self._all_buffers_lock: LockType = threading.Lock()
-        self._all_buffers: list[list[BaseModel]] = []
+        self._buffer_lock = threading.Lock()
+        self.buffer: list[BaseModel] = []
         self._lifecycle_lock = threading.Lock()
         self.deferred_lifecycle_records: list[OMetaLifeCycleData] = []
         self.deferred_lifecycle_processed = False
-
-    @property
-    def buffer(self) -> list[BaseModel]:
-        """Thread-local buffer for batching entities"""
-        if not hasattr(self._thread_local, "buffer"):
-            self._thread_local.buffer = []
-            with self._all_buffers_lock:
-                self._all_buffers.append(self._thread_local.buffer)
-        return self._thread_local.buffer
-
-    @buffer.setter
-    def buffer(self, value: list[BaseModel]) -> None:
-        """Set thread-local buffer"""
-        self._thread_local.buffer = value
 
     @classmethod
     def create(
@@ -201,25 +190,40 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             # If the limit has been reached, we don't need to try to ingest the entity
             # Note: We use PatchRequest to update the entity, so updating is not affected by the limit
             return Either(right=None)
-        if "ServiceRequest" in type(entity_request).__name__:
-            return self.write_create_service(entity_request)
 
-        self.buffer.append(entity_request)
-        try:
-            if len(self.buffer) >= self.config.bulk_sink_batch_size:
-                return self._flush_buffer()
-            return Either(right=None)
-        except LimitsException as _:
-            self.limit_reached.add(type(entity_request).__name__)
-            return Either(
-                left=StackTraceError(
-                    name=type(entity_request).__name__,
-                    error=f"Limit reached for {type(entity_request).__name__}",
-                    stackTrace=None,
-                )
+        if (
+            "ServiceRequest" in entity_request.__class__.__name__
+            # These are CreateRequest that either do not have a `/bulk`
+            # endpoint or are processed sequentially within the topology itself
+            or isinstance(
+                entity_request,
+                (
+                    CreateDomainRequest,
+                    CreateDataContractRequest,
+                    CreateTeamRequest,
+                    CreateContainerRequest,
+                ),
             )
+        ):
+            return self.write_create_single_request(entity_request)
 
-    def write_create_service(self, entity_request) -> Either[Entity]:
+        with self._buffer_lock:
+            self.buffer.append(entity_request)
+            try:
+                if len(self.buffer) >= self.config.bulk_sink_batch_size:
+                    return self._flush_buffer()
+                return Either(right=None)
+            except LimitsException as _:
+                self.limit_reached.add(type(entity_request).__name__)
+                return Either(
+                    left=StackTraceError(
+                        name=type(entity_request).__name__,
+                        error=f"Limit reached for {type(entity_request).__name__}",
+                        stackTrace=None,
+                    )
+                )
+
+    def write_create_single_request(self, entity_request) -> Either[Entity]:
         try:
             created = self.metadata.create_or_update(entity_request)
             if created:
@@ -242,7 +246,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
     def _flush_buffer(self) -> Either[Entity]:
-        """Flush buffered to the bulk API worker queue"""
+        """Flush buffered to the bulk API worker queue, caller must hold the buffer lock"""
         if not self.buffer:
             return Either(
                 right=None,
@@ -887,20 +891,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Flush any remaining buffered tables and stop worker threads
         """
         # Flush all thread-local buffers
-        with self._all_buffers_lock:
-            for thread_buffer in self._all_buffers:
-                if thread_buffer:
-                    logger.info(
-                        f"Flushing {len(thread_buffer)} remaining entities on close"
-                    )
-                    try:
-                        result = self.metadata.bulk_create_or_update(
-                            entities=thread_buffer, use_async=False
-                        )
-                        thread_buffer.clear()
-                    except Exception as exc:
-                        logger.error(f"Failed to flush entities on close: {exc}")
-                        logger.debug(traceback.format_exc())
+        with self._buffer_lock:
+            if self.buffer:
+                logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
+                self._flush_buffer()
 
         # Process deferred lifecycle data now that all tables exist
         self._process_deferred_lifecycle_data()
