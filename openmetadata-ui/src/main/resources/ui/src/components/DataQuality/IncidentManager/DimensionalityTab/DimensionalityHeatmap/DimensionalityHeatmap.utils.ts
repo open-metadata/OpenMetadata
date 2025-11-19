@@ -22,12 +22,12 @@ import {
 } from './DimensionalityHeatmap.interface';
 
 /**
- * Generates an array of dates in reverse chronological order (newest first)
+ * Generates an array of dates in chronological order (oldest first, newest last)
  * Used to create the horizontal axis of the heatmap
  *
  * @param startTs - Start timestamp in milliseconds
  * @param endTs - End timestamp in milliseconds
- * @returns Array of date strings in 'yyyy-MM-dd' format, reversed (newest first)
+ * @returns Array of date strings in 'yyyy-MM-dd' format, chronological order (oldest to newest)
  * @throws {Error} If startTs is greater than endTs or if either timestamp is invalid
  */
 export const generateDateRange = (startTs: number, endTs: number): string[] => {
@@ -62,8 +62,7 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Reverse to show newest dates first (right to left)
-  return dates.reverse();
+  return dates;
 };
 
 export const mapStatusToHeatmapStatus = (

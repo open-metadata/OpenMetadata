@@ -154,8 +154,8 @@ describe('DimensionalityHeatmap Component', () => {
         '.dimensionality-heatmap__header-cell:not(.dimensionality-heatmap__header-cell--placeholder)'
       );
 
-      expect(headers[0]).toHaveTextContent('Jan 3');
-      expect(headers[2]).toHaveTextContent('Jan 1');
+      expect(headers[2]).toHaveTextContent('Jan 3');
+      expect(headers[0]).toHaveTextContent('Jan 1');
     });
   });
 

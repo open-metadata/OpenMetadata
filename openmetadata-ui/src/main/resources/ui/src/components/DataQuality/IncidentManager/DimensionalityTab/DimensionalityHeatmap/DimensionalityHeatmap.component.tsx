@@ -158,13 +158,50 @@ const DimensionalityHeatmap = ({
                 {row.cells.map((cell) => (
                   <Tooltip
                     key={`${cell.dimensionValue}-${cell.date}`}
-                    placement="right"
+                    placement="top"
                     slotProps={{
+                      popper: {
+                        disablePortal: false,
+                        popperOptions: {
+                          strategy: 'fixed',
+                        },
+                        modifiers: [
+                          {
+                            name: 'offset',
+                            options: {
+                              offset: [0, 8],
+                            },
+                          },
+                          {
+                            name: 'preventOverflow',
+                            enabled: true,
+                            options: {
+                              boundary: 'viewport',
+                              padding: 16,
+                              altAxis: true,
+                            },
+                          },
+                          {
+                            name: 'flip',
+                            enabled: true,
+                            options: {
+                              fallbackPlacements: [
+                                'bottom',
+                                'left',
+                                'right',
+                                'top-start',
+                                'bottom-start',
+                              ],
+                            },
+                          },
+                        ],
+                      },
                       tooltip: {
                         sx: {
                           backgroundColor: 'transparent',
                           padding: 0,
                           boxShadow: 'none',
+                          maxWidth: 'none',
                         },
                       },
                     }}

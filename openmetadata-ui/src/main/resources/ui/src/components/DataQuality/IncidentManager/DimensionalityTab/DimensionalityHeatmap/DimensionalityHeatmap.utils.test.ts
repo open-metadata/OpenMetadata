@@ -30,7 +30,7 @@ describe('DimensionalityHeatmap.utils', () => {
 
       const result = generateDateRange(startTs, endTs);
 
-      expect(result).toEqual(['2025-01-03', '2025-01-02', '2025-01-01']);
+      expect(result).toEqual(['2025-01-01', '2025-01-02', '2025-01-03']);
     });
 
     it('should handle single day range', () => {
@@ -49,8 +49,8 @@ describe('DimensionalityHeatmap.utils', () => {
       const result = generateDateRange(startTs, endTs);
 
       expect(result).toHaveLength(7);
-      expect(result[0]).toBe('2025-01-07');
-      expect(result[6]).toBe('2025-01-01');
+      expect(result[0]).toBe('2025-01-01');
+      expect(result[6]).toBe('2025-01-07');
     });
 
     it('should throw error when start date is after end date', () => {
@@ -163,9 +163,9 @@ describe('DimensionalityHeatmap.utils', () => {
       );
 
       expect(heatmapData[0].cells).toHaveLength(3);
-      expect(heatmapData[0].cells[2].status).toBe('success'); // 2025-01-01 (reversed)
+      expect(heatmapData[0].cells[0].status).toBe('success'); // 2025-01-03
       expect(heatmapData[0].cells[1].status).toBe('no-data'); // 2025-01-02
-      expect(heatmapData[0].cells[0].status).toBe('no-data'); // 2025-01-03
+      expect(heatmapData[0].cells[2].status).toBe('no-data'); // 2025-01-01
     });
 
     it('should handle results without timestamp', () => {
