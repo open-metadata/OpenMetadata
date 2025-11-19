@@ -6017,17 +6017,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertEquals("admin", tableEvent.get().getUserName());
     }
 
-    List<Table> createdTables = new ArrayList<>();
-    for (CreateTable createRequest : createRequests) {
-      Table table = getEntityByName(createRequest.getName(), "", ADMIN_AUTH_HEADERS);
-      assertNotNull(table);
-      createdTables.add(table);
-    }
-
-    for (int i = 0; i < createdTables.size(); i++) {
-      Table table = createdTables.get(i);
-      table.setDescription("Updated description for table " + i);
-      createRequests.set(i, createRequest(table.getName()).withDescription(table.getDescription()));
+    // Update the descriptions for bulk update test
+    for (int i = 0; i < createRequests.size(); i++) {
+      CreateTable request = createRequests.get(i);
+      createRequests.set(
+          i,
+          createRequest(request.getName()).withDescription("Updated description for table " + i));
     }
 
     target = getResource("tables/bulk");
