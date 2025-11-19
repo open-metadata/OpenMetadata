@@ -744,8 +744,8 @@ export const verifyColumnLineageInCSV = async (
 };
 
 export const verifyLineageConfig = async (page: Page) => {
-  await page.click('[data-testid="lineage-config"]');
-  await page.getByRole('menuitem', { name: 'Node Depth' }).click();
+  await page.getByTestId('lineage-config').click();
+
   await page.waitForSelector('.ant-modal-content', {
     state: 'visible',
   });
