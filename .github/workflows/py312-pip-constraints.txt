@@ -27,7 +27,8 @@ msal==1.34.0
 
 # SQLAlchemy database adapters - prevent backtracking
 sqlalchemy-hana==3.0.3
-pyexasol==1.2.2
+# pyexasol pinned to 0.26.x for compatibility with sqlalchemy-exasol 5.x (requires pyexasol<1)
+pyexasol>=0.26.0,<1
 
 # Authentication and JWT packages - prevent massive backtracking
 PyJWT==2.10.1
