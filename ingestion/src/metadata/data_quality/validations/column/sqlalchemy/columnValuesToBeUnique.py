@@ -82,6 +82,12 @@ class ColumnValuesToBeUniqueValidator(
             column: column
         """
         count = Metrics.COUNT.value(column).fn()
+        grouped_cte = (
+            select(count.label(column.name))
+            .select_from(self.runner.dataset)
+            .group_by(column)
+            .cte("grouped_cte")
+        )
         unique_count = Metrics.UNIQUE_COUNT.value(column).query(
             sample=self.runner.dataset,
             session=self.runner._session,  # pylint: disable=protected-access
@@ -94,11 +100,12 @@ class ColumnValuesToBeUniqueValidator(
                 query_group_by_ = None
 
             self.value = dict(
-                self.runner.dispatch_query_select_first(
-                    count,
-                    unique_count.scalar_subquery().label("uniqueCount"),
+                self.runner._select_from_dataset(
+                    grouped_cte,
+                    func.sum(grouped_cte.c[column.name]).label(Metrics.COUNT.name),
+                    unique_count.label(Metrics.UNIQUE_COUNT.name),
                     query_group_by_=query_group_by_,
-                )
+                ).first()
             )  # type: ignore
             res = self.value.get(Metrics.COUNT.name)
         except Exception as exc:
