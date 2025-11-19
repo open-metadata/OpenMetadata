@@ -197,3 +197,32 @@ jest.mock('@mui/styled-engine', () => {
     internal_serializeStyles: jest.fn(),
   };
 });
+
+/**
+ * Mock @mui/material components for consistent testing
+ */
+jest.mock('@mui/material', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require('react');
+
+  const styled = (component) => () => component;
+
+  return {
+    ...jest.requireActual('@mui/material'),
+    Button: React.forwardRef(({ children, onClick, ...props }, ref) =>
+      React.createElement(
+        'button',
+        { ...props, onClick, ref, 'data-testid': props['data-testid'] },
+        children
+      )
+    ),
+    Grid: React.forwardRef(({ children, ...props }, ref) =>
+      React.createElement(
+        'div',
+        { ...props, ref, 'data-testid': props['data-testid'] },
+        children
+      )
+    ),
+    styled,
+  };
+});
