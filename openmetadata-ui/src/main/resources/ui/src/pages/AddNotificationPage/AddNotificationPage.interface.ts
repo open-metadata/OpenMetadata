@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,35 +11,8 @@
  *  limitations under the License.
  */
 
-.advanced-search-modal {
-  .group.rule_group {
-    border: none !important;
-    padding: 0;
-
-    .group--children {
-      padding-top: 0;
-      padding-bottom: 0;
-      margin: 0;
-    }
-  }
-
-  .group--field {
-    width: 180px;
-
-    .ant-select {
-      width: 100% !important;
-    }
-
-    label {
-      font-weight: normal;
-      margin-bottom: 6px;
-    }
-  }
-
-  .rule_group {
-    .group--field {
-      margin: 0 !important;
-      align-self: flex-start !important;
-    }
-  }
+export interface AddAlertPageLoadingState {
+  alerts: boolean;
+  functions: boolean;
+  templates: boolean;
 }
