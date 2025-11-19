@@ -21,7 +21,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   clickOutside,
   descriptionBox,
   getApiContext,
@@ -137,7 +137,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
     await page.click('[id="root\\/testType"]');
     await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
-    await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
+    await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
     await page.fill(
       '#testCaseFormV1_params_columnName',
       NEW_TABLE_TEST_CASE.field
@@ -158,7 +158,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
     // Add glossary terms to test case
     await page.click('[data-testid="glossary-terms-selector"] input');
     const glossarySearchResponse = page.waitForResponse(
@@ -173,7 +173,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
     const ingestionPipelines = page.waitForResponse(
       '/api/v1/services/ingestionPipelines'
     );
@@ -218,7 +218,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
 
     // Remove existing glossary term and add new one
     await page.click(
@@ -237,7 +237,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
@@ -330,7 +330,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
 
     // Add glossary terms to column test case
     await page.click('[data-testid="glossary-terms-selector"] input');
@@ -346,7 +346,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
     await page.click('[data-testid="create-btn"]');
     await toastNotification(page, 'Test case created successfully.');
@@ -381,7 +381,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
 
     // Remove existing glossary term and add new one for column test case
     await page.click(
@@ -400,7 +400,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
@@ -893,7 +893,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   // Add domain to table
   await filterTable1.visitEntityPage(page);
-  await assignDomain(page, domain.responseData);
+  await assignSingleSelectDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,
     `pw_second_table_column_count_to_be_between_${uuid()}`,
