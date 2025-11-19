@@ -13,9 +13,10 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Any, Callable, Iterable, List, Optional, Type, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, Set, Type, Union, cast
 
 import spacy
+from dateutil import parser
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
@@ -28,12 +29,18 @@ from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 from presidio_analyzer.predefined_recognizers import (
     AuTfnRecognizer,
     CreditCardRecognizer,
+    DateRecognizer,
+    NhsRecognizer,
     UsLicenseRecognizer,
 )
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
 from metadata.pii.algorithms import patterns
-from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
+from metadata.pii.constants import (
+    PRESIDIO_LOGGER,
+    SPACY_MULTILANGUAGE_MODEL,
+    SUPPORTED_LANG,
+)
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
@@ -41,7 +48,8 @@ logger = pii_logger()
 
 
 def load_nlp_engine(
-    model_name: str = SPACY_EN_MODEL, supported_language: str = SUPPORTED_LANG
+    model_name: str = SPACY_MULTILANGUAGE_MODEL,
+    supported_language: str = SUPPORTED_LANG,
 ) -> SpacyNlpEngine:
     _load_spacy_model(model_name)
     model = {
@@ -52,7 +60,7 @@ def load_nlp_engine(
 
 
 def build_analyzer_engine(
-    model_name: str = SPACY_EN_MODEL,
+    model_name: str = SPACY_MULTILANGUAGE_MODEL,
 ) -> AnalyzerEngine:
     """
     Build a Presidio analyzer engine for the model_name and tailored to our use case.
@@ -151,6 +159,99 @@ def au_tfn_factory(**kwargs: Any) -> AuTfnRecognizer:
         patterns=patterns.au_tfn_number,
         **kwargs,
     )
+
+
+class ContextAwareNhsRecognizer(NhsRecognizer):
+    TIMESTAMP_KEYWORDS: Set[str] = {
+        "time",
+        "timestamp",
+        "date",
+        "created",
+        "updated",
+        "modified",
+        "deleted",
+        "at",
+        "on",
+        "when",
+        "epoch",
+        "unix",
+        "millis",
+        "seconds",
+        "utc",
+        "gmt",
+        "datetime",
+        "expired",
+        "expires",
+        "transaction",
+        "logged",
+        "recorded",
+        "started",
+        "ended",
+        "finished",
+    }
+
+    def enhance_using_context(
+        self,
+        text: str,
+        raw_recognizer_results: List[RecognizerResult],
+        other_raw_recognizer_results: List[RecognizerResult],
+        nlp_artifacts: NlpArtifacts,
+        context: Optional[List[str]] = None,
+    ) -> List[RecognizerResult]:
+        """Enhance confidence score using context of the entity.
+
+        Filter out NHS number false positives when context suggests
+        the column contains timestamp data.
+
+        :param text: The actual text that was analyzed
+        :param raw_recognizer_results: This recognizer's results, to be updated
+        based on recognizer specific context.
+        :param other_raw_recognizer_results: Other recognizer results matched in
+        the given text to allow related entity context enhancement
+        :param nlp_artifacts: The nlp artifacts contains elements
+                              such as lemmatized tokens for better
+                              accuracy of the context enhancement process
+        :param context: list of context words
+        """
+        if context is None:
+            return raw_recognizer_results
+
+        if self._is_timestamp_context(context):
+            return []
+
+        return raw_recognizer_results
+
+    def _is_timestamp_context(self, context: List[str]) -> bool:
+        """Check if the context contains timestamp-related keywords."""
+        context_lower = {word.lower() for word in context}
+        return bool(context_lower & self.TIMESTAMP_KEYWORDS)
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    NhsRecognizer
+)
+def nhs_recognizer(**kwargs: Any) -> NhsRecognizer:
+    return ContextAwareNhsRecognizer(**kwargs)
+
+
+class ValidatedDateRecognizer(DateRecognizer):
+    def validate_result(self, pattern_text: str) -> Optional[bool]:
+        try:
+            _ = parser.parse(pattern_text)
+        except Exception as e:
+            logger.debug(f"Failed to parse {pattern_text}: {e}")
+            # Return None so score isn't modified, relying on Regex score
+            return None
+
+        # Return True so score is boosted to 1.0
+        return True
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    DateRecognizer
+)
+def date_recognizer(**kwargs: Any) -> ValidatedDateRecognizer:
+    return ValidatedDateRecognizer(**kwargs)
 
 
 def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
