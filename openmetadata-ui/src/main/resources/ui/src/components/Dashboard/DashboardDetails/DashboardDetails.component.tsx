@@ -37,6 +37,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -305,9 +306,7 @@ const DashboardDetails = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.dashboard'),
-      })}
+      pageTitle={getEntityName(dashboardDetails)}
       title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>
