@@ -50,7 +50,7 @@ SET json = JSON_SET(
                 1000
             ),
             '$.historyCleanUpConfiguration.timeCycleConfig',
-            '0 0 0 ? * 0'
+            '0 0 0 ? * 1'
         ),
         '$.runTimeCleanUpConfiguration',
         JSON_OBJECT()

@@ -51,7 +51,7 @@ SET json = jsonb_set(
                 true
             ),
             '{historyCleanUpConfiguration,timeCycleConfig}',
-            '"0 0 0 ? * 0"',
+            '"0 0 0 ? * 1"',
             true
         ),
         '{runTimeCleanUpConfiguration}',
