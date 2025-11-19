@@ -211,6 +211,7 @@ class LookerSource(DashboardServiceSource):
         self.today = datetime.now().strftime("%Y-%m-%d")
 
         self._explores_cache = {}
+        self._views_cache = {}
         self._repo_credentials: Optional[ReadersCredentials] = None
         self._reader_class: Optional[Type[Reader]] = None
         self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None
@@ -679,6 +680,7 @@ class LookerSource(DashboardServiceSource):
                 )
                 yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(datamodel_view_name)
+                self._views_cache[view.name] = self._view_data_model
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
@@ -889,6 +891,25 @@ class LookerSource(DashboardServiceSource):
                     f"Could not find model for explore [{explore.model_name}: {explore.name}] in the cache"
                     " while processing view lineage."
                 )
+
+            # Handle view-to-view lineage via extends
+            if view.extends__all:
+                for extended_views_list in view.extends__all:
+                    for extended_view_name in extended_views_list:
+                        extended_view_model = self._views_cache.get(extended_view_name)
+                        if extended_view_model:
+                            logger.debug(
+                                f"Building lineage from extended view {extended_view_name} to view {self._view_data_model.name}"
+                            )
+                            yield self._get_add_lineage_request(
+                                from_entity=extended_view_model,
+                                to_entity=self._view_data_model,
+                                column_lineage=[],
+                            )
+                        else:
+                            logger.debug(
+                                f"Extended view [{extended_view_name}] not found in cache for view [{view.name}]"
+                            )
 
             db_service_prefixes = self.get_db_service_prefixes()
 
