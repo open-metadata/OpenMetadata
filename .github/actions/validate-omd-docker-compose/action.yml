@@ -26,16 +26,23 @@ runs:
   using: composite
   steps:
     - name: Free disk space
-      shell: bash
-      run: |
-        echo "Disk space before cleanup:"
-        df -h
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf "/usr/local/share/boost"
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-        echo "Disk space after cleanup:"
-        df -h
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        dotnet: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+      # shell: bash
+      # run: |
+      #   echo "Disk space before cleanup:"
+      #   df -h
+      #   sudo rm -rf /usr/share/dotnet
+      #   sudo rm -rf /opt/ghc
+      #   sudo rm -rf "/usr/local/share/boost"
+      #   sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      #   echo "Disk space after cleanup:"
+      #   df -h
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
