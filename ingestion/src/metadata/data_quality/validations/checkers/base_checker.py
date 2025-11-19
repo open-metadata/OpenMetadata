@@ -45,13 +45,3 @@ class BaseValidationChecker(ABC):
             [(self.build_violation_sqa(metric_expressions), row_count_expr)],
             else_=literal(0),
         )
-
-        # def build(cte):
-        #     cols = {
-        #         k: getattr(cte.c, col_name) for k, col_name in metric_col_names.items()
-        #     }
-        #     total_count = getattr(cte.c, total_count_col_name)
-        #     violation = self.build_violation_sqa(cols)
-        #     return case((violation, total_count), else_=literal(0))
-
-        # return build
