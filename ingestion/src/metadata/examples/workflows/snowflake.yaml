@@ -12,8 +12,8 @@ source:
       database: database_name
       queryTag: openmetadata
       accountUsageSchema: SNOWFLAKE.ACCOUNT_USAGE
-      privateKey: private_key (only used when password is not given)
-      snowflakePrivatekeyPassphrase: private_key_passphrase (only used when password is not given)
+      privateKey: private_key # only used when password is not given
+      snowflakePrivatekeyPassphrase: private_key_passphrase # only used when password is not given
       includeTransientTables: true
       includeStreams: false
       clientSessionKeepAlive: false
