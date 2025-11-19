@@ -151,7 +151,7 @@ describe('CustomNodeV1', () => {
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
   });
 
-  it('should render children dropdown button', () => {
+  it('should render footer only when there are children', () => {
     isColumnLayerActive = true;
     render(
       <ReactFlowProvider>
@@ -165,6 +165,65 @@ describe('CustomNodeV1', () => {
     expect(
       screen.getByTestId('children-info-dropdown-btn')
     ).toBeInTheDocument();
+  });
+
+  it('should not render footer when there are no children', () => {
+    isColumnLayerActive = true;
+
+    const mockNodeDataPropsNoChildren = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          columns: [],
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
+      </ReactFlowProvider>
+    );
+
+    expect(
+      screen.queryByTestId('children-info-dropdown-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render NodeChildren when column layer is applied and there are no columns', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('column-container')).toBeInTheDocument();
+  });
+
+  it('should not render NodeChildren when column layer is applied but there are no columns', () => {
+    isColumnLayerActive = true;
+
+    const mockNodeDataPropsNoChildren = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          columns: [],
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
+      </ReactFlowProvider>
+    );
+    screen.debug(undefined, Infinity);
+
+    expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
   });
 
   it('should toggle columns list when children dropdown button is clicked', () => {
