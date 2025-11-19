@@ -173,7 +173,6 @@ export class EntityDataClass {
       this.certificationTag2.create(apiContext),
       this.tierTag1.create(apiContext),
       this.classification1.create(apiContext),
-      this.tag1.create(apiContext),
       this.table1.create(apiContext),
       this.table2.create(apiContext),
       this.topic1.create(apiContext),
@@ -229,6 +228,7 @@ export class EntityDataClass {
       this.dataProduct1.create(apiContext),
       this.dataProduct2.create(apiContext),
       this.dataProduct3.create(apiContext),
+      this.tag1.create(apiContext),
     ];
 
     await Promise.allSettled(dependentEntityCreationPromises);
