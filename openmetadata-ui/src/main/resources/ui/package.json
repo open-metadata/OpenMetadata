@@ -244,6 +244,7 @@
     "prosemirror-transform": "1.7.0",
     "prosemirror-view": "1.28.2",
     "ws": "8.17.1",
+    "axios": "1.12.0",
     "micromatch": "4.0.8",
     "minimatch": "3.0.5",
     "semver": "7.5.2",
