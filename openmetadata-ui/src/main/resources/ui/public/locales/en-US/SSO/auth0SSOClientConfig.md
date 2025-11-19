@@ -197,10 +197,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 
 ### <span data-id="serverUrl">OIDC Server URL</span>
 
-- **Definition:** Base URL for Auth0 authentication server.
-- **Example:** https://dev-abc123.us.auth0.com
-- **Why it matters:** Specifies the Auth0 endpoint to use.
-- **Note:** Usually the standard Auth0 endpoint
+- **Definition:** Base URL for Collate server.
+- **Example:** https://yourapp.company.com
+- **Why it matters:** Specifies Collate endpoint
+- **Note:** Usually your collate API server
 
 ### <span data-id="callbackUrl">OIDC Callback URL</span>
 

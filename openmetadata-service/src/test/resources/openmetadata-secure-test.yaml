@@ -234,6 +234,9 @@ pipelineServiceClientConfiguration:
   verifySSL: "no-ssl"
   authProvider: "openmetadata"
 
+  logStorageConfiguration:
+    type: "default"
+
   parameters:
     username: admin
     password: admin
