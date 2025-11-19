@@ -77,7 +77,6 @@
     .label-container {
       .custom-node-label-container {
         width: 100%;
-        min-height: 84px;
         .lineage-breadcrumb {
           .lineage-breadcrumb-item {
             white-space: nowrap;
@@ -104,7 +103,7 @@
             width: 28px;
           }
 
-          &::after {
+          &.with-footer::after {
             display: block;
             width: 100%;
             height: 1px;
@@ -530,7 +529,7 @@
     border-radius: 4px !important;
     border-color: @lineage-border !important;
     background: @white !important;
-    top: 60px !important;
+    top: min(58px, 50%) !important;
     left: 100%;
     transform: translate(-50%, -50%);
 
@@ -574,6 +573,7 @@
   border-color: @lineage-border !important;
   background: @white !important;
   top: 60px !important; // Need to show handles on top half
+  top: min(58px, 50%) !important;
 
   svg {
     color: @text-grey-muted;
