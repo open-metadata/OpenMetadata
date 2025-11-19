@@ -12,14 +12,13 @@
  */
 
 import { Box, CircularProgress, Tooltip, Typography } from '@mui/material';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
 import { HEATMAP_TOOLTIP_SLOT_PROPS } from './DimensionalityHeatmap.constants';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
-  calculatePlaceholderCells,
   generateDateRange,
   getDateLabel,
   getStatusLabel,
@@ -36,8 +35,6 @@ const DimensionalityHeatmap = ({
 }: DimensionalityHeatmapProps) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
 
   const dateRange = useMemo(
     () => generateDateRange(startDate, endDate),
@@ -49,11 +46,6 @@ const DimensionalityHeatmap = ({
     [data, startDate, endDate]
   );
 
-  const placeholderCount = useMemo(
-    () => calculatePlaceholderCells(dateRange.length, containerWidth),
-    [dateRange.length, containerWidth]
-  );
-
   const {
     showLeftIndicator,
     showRightIndicator,
@@ -62,23 +54,10 @@ const DimensionalityHeatmap = ({
   } = useScrollIndicator(containerRef, [heatmapData]);
 
   useEffect(() => {
-    const updateWidth = () => {
-      if (wrapperRef.current) {
-        setContainerWidth(wrapperRef.current.clientWidth);
-      }
-    };
-
-    updateWidth();
-
-    const resizeObserver = new ResizeObserver(updateWidth);
-    if (wrapperRef.current) {
-      resizeObserver.observe(wrapperRef.current);
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
     }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
+  }, [startDate, endDate]);
 
   if (isLoading) {
     return (
@@ -100,7 +79,7 @@ const DimensionalityHeatmap = ({
     <Box
       aria-label={t('label.dimensionality')}
       className="dimensionality-heatmap">
-      <Box className="dimensionality-heatmap__layout" ref={wrapperRef}>
+      <Box className="dimensionality-heatmap__layout">
         <Box className="dimensionality-heatmap__labels-column">
           <Box className="dimensionality-heatmap__header-corner" />
           {heatmapData.map((row) => (
@@ -141,13 +120,6 @@ const DimensionalityHeatmap = ({
                   {getDateLabel(date)}
                 </Box>
               ))}
-              {Array.from({ length: placeholderCount }).map((_, index) => (
-                <Box
-                  aria-hidden="true"
-                  className="dimensionality-heatmap__header-cell dimensionality-heatmap__header-cell--placeholder"
-                  key={`placeholder-header-${index}`}
-                />
-              ))}
             </Box>
 
             {heatmapData.map((row) => (
@@ -167,14 +139,6 @@ const DimensionalityHeatmap = ({
                       className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status}`}
                     />
                   </Tooltip>
-                ))}
-
-                {Array.from({ length: placeholderCount }).map((_, index) => (
-                  <Box
-                    aria-hidden="true"
-                    className="dimensionality-heatmap__cell dimensionality-heatmap__cell--placeholder"
-                    key={`placeholder-${row.dimensionValue}-${index}`}
-                  />
                 ))}
               </Box>
             ))}

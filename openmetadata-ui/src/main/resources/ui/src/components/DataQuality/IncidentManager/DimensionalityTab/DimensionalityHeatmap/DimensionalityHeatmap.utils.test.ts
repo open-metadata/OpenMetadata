@@ -14,7 +14,6 @@
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap.interface';
 import {
-  calculatePlaceholderCells,
   generateDateRange,
   getDateLabel,
   getStatusLabel,
@@ -267,46 +266,6 @@ describe('DimensionalityHeatmap.utils', () => {
 
       expect(result).toBe('No Data');
       expect(mockT).toHaveBeenCalledWith('label.no-data');
-    });
-  });
-
-  describe('calculatePlaceholderCells', () => {
-    it('should return 0 when container width is 0', () => {
-      expect(calculatePlaceholderCells(10, 0)).toBe(0);
-    });
-
-    it('should return 0 when all cells fit exactly in view', () => {
-      const actualCells = 12;
-      const containerWidth = 800;
-
-      expect(calculatePlaceholderCells(actualCells, containerWidth)).toBe(0);
-    });
-
-    it('should calculate placeholders when data is sparse', () => {
-      const actualCells = 5;
-      const containerWidth = 1000;
-
-      const result = calculatePlaceholderCells(actualCells, containerWidth);
-
-      expect(result).toBeGreaterThan(0);
-    });
-
-    it('should account for label width and padding', () => {
-      const actualCells = 0;
-      const containerWidth = 1000;
-
-      const result = calculatePlaceholderCells(actualCells, containerWidth);
-
-      expect(result).toBeGreaterThan(10);
-    });
-
-    it('should never return negative placeholders', () => {
-      const actualCells = 100;
-      const containerWidth = 500;
-
-      const result = calculatePlaceholderCells(actualCells, containerWidth);
-
-      expect(result).toBeGreaterThanOrEqual(0);
     });
   });
 });

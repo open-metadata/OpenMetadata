@@ -13,7 +13,6 @@
 
 import { format } from 'date-fns';
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
-import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 import {
   DimensionResultWithTimestamp,
   HeatmapCellData,
@@ -161,36 +160,4 @@ export const getStatusLabel = (
   };
 
   return statusMap[status];
-};
-
-/**
- * Calculates how many placeholder cells are needed to fill the visible area
- * This ensures the heatmap always fills the container width when data is sparse
- *
- * @param actualCellCount - Number of actual data cells (date columns)
- * @param containerWidth - Total width of the container in pixels
- * @returns Number of placeholder cells to add (0 if container is full or not yet measured)
- */
-export const calculatePlaceholderCells = (
-  actualCellCount: number,
-  containerWidth: number
-): number => {
-  if (containerWidth === 0) {
-    return 0;
-  }
-
-  // Calculate available width for cells (excluding label column and padding)
-  const availableWidth =
-    containerWidth -
-    HEATMAP_CONSTANTS.DIMENSION_LABEL_WIDTH -
-    HEATMAP_CONSTANTS.CONTAINER_PADDING_RIGHT;
-
-  // Each cell occupies its width plus the gap to the next cell
-  const cellWithGap = HEATMAP_CONSTANTS.CELL_WIDTH + HEATMAP_CONSTANTS.CELL_GAP;
-  const maxCellsInView = Math.floor(availableWidth / cellWithGap);
-
-  // Only add placeholders if we have fewer cells than can fit in the view
-  const placeholderCount = Math.max(0, maxCellsInView - actualCellCount);
-
-  return placeholderCount;
 };
