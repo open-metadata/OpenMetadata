@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.lineage-node {
-  .entity-button-icon svg {
-    height: 28px;
-    width: 28px;
-  }
 
-  .custom-node-label-container {
-    width: 19rem;
-    min-height: 84px;
-    display: flex;
-    align-items: center;
+import drawerHeaderBg from '../assets/img/drawer-header-bg.png';
 
-    .lineage-breadcrumb {
-      .lineage-breadcrumb-item {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-    }
-  }
-}
+export const DRAWER_HEADER_STYLING = {
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundImage: `url(${drawerHeaderBg})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    opacity: 0.3,
+    zIndex: 0,
+  },
+};

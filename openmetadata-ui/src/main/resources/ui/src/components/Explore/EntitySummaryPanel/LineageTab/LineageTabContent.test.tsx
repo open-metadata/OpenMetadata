@@ -35,6 +35,23 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
+// Mock SearchBarComponent
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ onSearch, placeholder, searchValue }) => (
+      <div data-testid="search-bar">
+        <input
+          data-testid="search-input"
+          placeholder={placeholder}
+          value={searchValue}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
+    )),
+}));
+
 // Mock antd components
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
@@ -487,7 +504,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
       expect(screen.getByTestId('no-data-icon')).toBeInTheDocument();
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
     });
 
     it('should render no data found message with correct structure', () => {
@@ -502,7 +519,7 @@ describe('LineageTabContent', () => {
 
       expect(paragraph).toBeInTheDocument();
       expect(paragraph).toHaveClass('text-center');
-      expect(paragraph).toHaveClass('text-grey-muted');
+      expect(paragraph).toHaveClass('no-data-placeholder');
     });
   });
 
@@ -869,7 +886,7 @@ describe('LineageTabContent', () => {
         />
       );
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
     });
 
     it('should handle missing edges in lineage data', () => {
@@ -891,7 +908,7 @@ describe('LineageTabContent', () => {
         />
       );
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
     });
   });
 });

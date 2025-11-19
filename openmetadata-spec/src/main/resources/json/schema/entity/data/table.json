@@ -1294,7 +1294,7 @@
       "default": false
     },
     "queries": {
-      "description": "List of queries that are used to create this table.", 
+      "description": "List of queries that are used to create this table.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
@@ -1311,8 +1311,7 @@
     },
     "entityStatus": {
       "description": "Status of the Table.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

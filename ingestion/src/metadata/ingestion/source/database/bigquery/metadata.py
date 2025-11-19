@@ -83,10 +83,8 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
     BIGQUERY_GET_SCHEMA_NAMES,
     BIGQUERY_GET_STORED_PROCEDURES,
-    BIGQUERY_GET_VIEW_NAMES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
@@ -120,6 +118,8 @@ from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
     "EXTERNAL": TableType.External,
+    "MATERIALIZED VIEW": TableType.MaterializedView,
+    "VIEW": TableType.View,
 }
 
 
@@ -381,10 +381,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
+        view_filter = (
+            "AND table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')"
+            if not self.source_config.includeViews
+            else ""
+        )
+
         table_names_and_types = (
             self.engine.execute(
                 BIGQUERY_TABLE_AND_TYPE.format(
-                    project_id=self.context.get().database, schema_name=schema_name
+                    project_id=self.context.get().database,
+                    schema_name=schema_name,
+                    view_filter=view_filter,
                 )
             )
             or []
@@ -417,41 +425,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., material views,...
         """
-
-        table_name_and_types = []
-        for table_type, query in {
-            TableType.View: BIGQUERY_GET_VIEW_NAMES,
-            TableType.MaterializedView: BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
-        }.items():
-            view_names = list(
-                map(
-                    lambda x: x[0],
-                    (
-                        self.engine.execute(
-                            query.format(
-                                project=self.context.get().database, dataset=schema_name
-                            )
-                        )
-                        or []
-                    ),
-                )
-            )
-            if self.incremental.enabled:
-                view_names = [
-                    view_name
-                    for view_name in view_names
-                    if view_name
-                    in self.incremental_table_processor.get_not_deleted(schema_name)
-                ]
-
-            table_name_and_types.extend(
-                [
-                    TableNameAndType(name=view_name, type_=table_type)
-                    for view_name in view_names
-                ]
-            )
-
-        return table_name_and_types
+        return []
 
     # pylint: disable=arguments-differ
     @calculate_execution_time()
