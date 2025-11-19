@@ -138,7 +138,10 @@ const NotificationListPage = () => {
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.NOTIFICATIONS,
+        t('label.alert-plural')
+      ),
     []
   );
 
