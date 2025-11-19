@@ -132,8 +132,7 @@ export default function EntitySummaryPanel({
       let entityPromise: Promise<any> | null = null;
 
       // Fields needed for the right panel to reflect latest state
-      const commonFields =
-        'owners,domains,tags,dataProducts,description,extension';
+      const commonFields = 'owners,domains,tags,dataProducts,extension';
 
       switch (entityType) {
         case EntityType.TABLE:
