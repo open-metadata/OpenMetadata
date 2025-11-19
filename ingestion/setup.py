@@ -327,7 +327,7 @@ plugins: Dict[str, Set[str]] = {
         DATA_DIFF["oracle"],
     },  # oracledb is recommended for Python 3.12+
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
-    "pinotdb": {"pinotdb~=5.0"},
+    "pinotdb": {"pinotdb~=5.0;python_version<'3.12'"},  # Excluded from Python 3.12 due to httpx compatibility issues
     "postgres": {*COMMONS["postgres"]},
     "powerbi": {
         VERSIONS["msal"],

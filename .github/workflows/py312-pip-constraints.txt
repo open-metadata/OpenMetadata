@@ -7,11 +7,13 @@ google-cloud-storage==2.10.0
 kubernetes==29.0.0
 exasol-integration-test-docker-environment==3.4.0
 
-# IMPORTANT: grpcio pinned to 1.64.x for Dagster compatibility (requires grpcio-health-checking<1.65.0)
-grpcio>=1.64.0,<1.65.0
-grpcio-status>=1.64.0,<1.65.0
-grpcio-tools>=1.64.0,<1.65.0
-grpcio-health-checking>=1.64.0,<1.65.0
+# IMPORTANT: grpcio pinned to 1.62.x for Dagster 1.8.9 compatibility (requires protobuf<5)
+# grpcio-tools 1.62.x supports protobuf>=4.21.6,<5.0dev which is compatible with dagster 1.8.9
+grpcio>=1.62.0,<1.63.0
+grpcio-status>=1.62.0,<1.63.0
+grpcio-tools>=1.62.0,<1.63.0
+grpcio-health-checking>=1.62.0,<1.63.0
+protobuf>=4.21.6,<5.0
 
 # Snowflake connector - causes backtracking through many patch versions
 snowflake-connector-python==3.17.4
