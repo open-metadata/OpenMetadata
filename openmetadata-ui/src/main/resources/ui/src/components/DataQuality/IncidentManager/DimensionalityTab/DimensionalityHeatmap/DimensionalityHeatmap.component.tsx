@@ -15,6 +15,7 @@ import { Box, CircularProgress, Tooltip, Typography } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
+import { HEATMAP_TOOLTIP_SLOT_PROPS } from './DimensionalityHeatmap.constants';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
@@ -159,52 +160,7 @@ const DimensionalityHeatmap = ({
                   <Tooltip
                     key={`${cell.dimensionValue}-${cell.date}`}
                     placement="top"
-                    slotProps={{
-                      popper: {
-                        disablePortal: false,
-                        popperOptions: {
-                          strategy: 'fixed',
-                        },
-                        modifiers: [
-                          {
-                            name: 'offset',
-                            options: {
-                              offset: [0, 8],
-                            },
-                          },
-                          {
-                            name: 'preventOverflow',
-                            enabled: true,
-                            options: {
-                              boundary: 'viewport',
-                              padding: 16,
-                              altAxis: true,
-                            },
-                          },
-                          {
-                            name: 'flip',
-                            enabled: true,
-                            options: {
-                              fallbackPlacements: [
-                                'bottom',
-                                'left',
-                                'right',
-                                'top-start',
-                                'bottom-start',
-                              ],
-                            },
-                          },
-                        ],
-                      },
-                      tooltip: {
-                        sx: {
-                          backgroundColor: 'transparent',
-                          padding: 0,
-                          boxShadow: 'none',
-                          maxWidth: 'none',
-                        },
-                      },
-                    }}
+                    slotProps={HEATMAP_TOOLTIP_SLOT_PROPS}
                     title={<HeatmapCellTooltip cell={cell} />}>
                     <Box
                       aria-label={`${cell.dimensionValue}, ${getDateLabel(
