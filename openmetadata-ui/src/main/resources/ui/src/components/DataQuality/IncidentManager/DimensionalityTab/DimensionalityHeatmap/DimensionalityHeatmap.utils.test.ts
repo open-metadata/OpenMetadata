@@ -14,7 +14,6 @@
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap.interface';
 import {
-  calculatePlaceholderCells,
   generateDateRange,
   getDateLabel,
   getStatusLabel,
@@ -30,7 +29,7 @@ describe('DimensionalityHeatmap.utils', () => {
 
       const result = generateDateRange(startTs, endTs);
 
-      expect(result).toEqual(['2025-01-03', '2025-01-02', '2025-01-01']);
+      expect(result).toEqual(['2025-01-01', '2025-01-02', '2025-01-03']);
     });
 
     it('should handle single day range', () => {
@@ -49,8 +48,8 @@ describe('DimensionalityHeatmap.utils', () => {
       const result = generateDateRange(startTs, endTs);
 
       expect(result).toHaveLength(7);
-      expect(result[0]).toBe('2025-01-07');
-      expect(result[6]).toBe('2025-01-01');
+      expect(result[0]).toBe('2025-01-01');
+      expect(result[6]).toBe('2025-01-07');
     });
 
     it('should throw error when start date is after end date', () => {
@@ -163,9 +162,9 @@ describe('DimensionalityHeatmap.utils', () => {
       );
 
       expect(heatmapData[0].cells).toHaveLength(3);
-      expect(heatmapData[0].cells[2].status).toBe('success'); // 2025-01-01 (reversed)
+      expect(heatmapData[0].cells[0].status).toBe('success'); // 2025-01-03
       expect(heatmapData[0].cells[1].status).toBe('no-data'); // 2025-01-02
-      expect(heatmapData[0].cells[0].status).toBe('no-data'); // 2025-01-03
+      expect(heatmapData[0].cells[2].status).toBe('no-data'); // 2025-01-01
     });
 
     it('should handle results without timestamp', () => {
@@ -267,46 +266,6 @@ describe('DimensionalityHeatmap.utils', () => {
 
       expect(result).toBe('No Data');
       expect(mockT).toHaveBeenCalledWith('label.no-data');
-    });
-  });
-
-  describe('calculatePlaceholderCells', () => {
-    it('should return 0 when container width is 0', () => {
-      expect(calculatePlaceholderCells(10, 0)).toBe(0);
-    });
-
-    it('should return 0 when all cells fit exactly in view', () => {
-      const actualCells = 12;
-      const containerWidth = 800;
-
-      expect(calculatePlaceholderCells(actualCells, containerWidth)).toBe(0);
-    });
-
-    it('should calculate placeholders when data is sparse', () => {
-      const actualCells = 5;
-      const containerWidth = 1000;
-
-      const result = calculatePlaceholderCells(actualCells, containerWidth);
-
-      expect(result).toBeGreaterThan(0);
-    });
-
-    it('should account for label width and padding', () => {
-      const actualCells = 0;
-      const containerWidth = 1000;
-
-      const result = calculatePlaceholderCells(actualCells, containerWidth);
-
-      expect(result).toBeGreaterThan(10);
-    });
-
-    it('should never return negative placeholders', () => {
-      const actualCells = 100;
-      const containerWidth = 500;
-
-      const result = calculatePlaceholderCells(actualCells, containerWidth);
-
-      expect(result).toBeGreaterThanOrEqual(0);
     });
   });
 });

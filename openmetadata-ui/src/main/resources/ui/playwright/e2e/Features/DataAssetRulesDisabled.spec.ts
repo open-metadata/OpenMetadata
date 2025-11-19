@@ -51,10 +51,7 @@ import {
   assignDomain,
   redirectToHomePage,
 } from '../../utils/common';
-import {
-  DATA_ASSET_RULES,
-  DEFAULT_DATA_ASSET_RULES,
-} from '../../utils/dataAssetRules';
+import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import { addMultiOwner, assignGlossaryTerm } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -132,24 +129,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
           ...item,
           enabled: false,
         })),
-      },
-    },
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  await afterAction();
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  // Reset Rules to Default
-  await apiContext.put(`/api/v1/system/settings`, {
-    data: {
-      config_type: 'entityRulesSettings',
-      config_value: {
-        entitySemantics: DEFAULT_DATA_ASSET_RULES,
       },
     },
     headers: {
