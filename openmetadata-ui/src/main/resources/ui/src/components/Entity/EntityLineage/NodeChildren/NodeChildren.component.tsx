@@ -53,10 +53,12 @@ const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
   const start = (page - 1) * ITEMS_PER_PAGE;
   const paginatedItemsMapped = items.map((item, i) => (
     <div
-      key={i}
-      style={{
-        display: i >= start && i < start + ITEMS_PER_PAGE ? 'block' : 'none',
-      }}>
+      className={
+        i >= start && i < start + ITEMS_PER_PAGE
+          ? 'inside-current-page'
+          : 'outside-current-page'
+      }
+      key={i}>
       {item}
     </div>
   ));
