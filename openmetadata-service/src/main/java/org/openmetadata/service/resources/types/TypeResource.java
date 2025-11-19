@@ -68,6 +68,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.SchemaFieldExtractor;
@@ -253,6 +254,18 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    // For custom property requests on entity types, use entity-specific authorization- Authorize on
+    // the entity type (e.g., "table"), not on "Type"
+    Fields fields = getFields(fieldsParam);
+    if (fields.getFieldList().contains("customProperties")) {
+      Entity.getEntityRepository(name);
+
+      OperationContext operationContext =
+          new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
+      ResourceContext<?> resourceContext = new ResourceContext<>(name);
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+      return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+    }
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
