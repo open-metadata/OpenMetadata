@@ -107,7 +107,7 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
   );
 
   const compositeDrawer = useMemo(() => {
-    const DrawerComponent = baseDrawer.drawer as any;
+    const DrawerComponent = baseDrawer.drawer;
     const Component = DrawerComponent.type;
 
     return <Component {...DrawerComponent.props} children={drawerContent} />;
