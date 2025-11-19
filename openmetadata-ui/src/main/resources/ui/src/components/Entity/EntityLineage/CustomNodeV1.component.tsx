@@ -298,18 +298,18 @@ const CustomNodeV1 = (props: NodeProps) => {
       )}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
+        <NodeHandles
+          expandCollapseHandles={handlesElement}
+          id={id}
+          isConnectable={isConnectable}
+          nodeType={nodeType}
+        />
         <NodeChildren
           isChildrenListExpanded={isChildrenListExpanded}
           isConnectable={isConnectable}
           node={node}
         />
       </div>
-      <NodeHandles
-        expandCollapseHandles={handlesElement}
-        id={id}
-        isConnectable={isConnectable}
-        nodeType={nodeType}
-      />
     </div>
   );
 };
