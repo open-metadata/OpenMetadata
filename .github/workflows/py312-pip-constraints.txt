@@ -17,7 +17,8 @@ protobuf>=4.21.6,<5.0
 
 # Snowflake connector - causes backtracking through many patch versions
 snowflake-connector-python==3.17.4
-cryptography==46.0.2
+# cryptography pinned to <43 due to pyOpenSSL 24.1.0 requirement (used by databricks)
+cryptography>=42.0.0,<43
 pynacl==1.6.0
 
 # Azure packages - prevent backtracking through many versions
