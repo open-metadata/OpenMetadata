@@ -1666,6 +1666,8 @@
     "suggested-by": "제안자",
     "suggested-description": "제안된 설명",
     "suggested-description-plural": "제안된 설명들",
+    "suggested-description-tag-plural": "제안된 설명 & 태그",
+    "suggested-tag-plural": "제안된 태그",
     "suggestion": "제안",
     "suggestion-lowercase-plural": "제안들",
     "suggestion-pending": "대기 중인 제안",
