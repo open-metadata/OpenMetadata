@@ -16,6 +16,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { useSnackbar } from 'notistack';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
@@ -69,6 +70,9 @@ const DataProductListPage = () => {
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       form.resetFields();
     },

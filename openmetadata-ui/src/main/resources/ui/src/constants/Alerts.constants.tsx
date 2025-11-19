@@ -93,3 +93,5 @@ export const DATA_CONTRACT_STATUS_OPTIONS = [
   { label: i18next.t('label.running'), value: 'Running' },
   { label: i18next.t('label.aborted'), value: 'Aborted' },
 ];
+
+export const CUSTOM_TEMPLATE_VALUE = 'CUSTOM_TEMPLATE';
