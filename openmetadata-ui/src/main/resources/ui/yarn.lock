@@ -8764,10 +8764,10 @@ js-yaml@^3.13.1:
     argparse "^1.0.7"
     esprima "^4.0.0"
 
-js-yaml@^4.1.0:
-  version "4.1.0"
-  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.1.0.tgz#c1fb65f8f5017901cdd2c951864ba18458a10602"
-  integrity sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==
+js-yaml@^4.1.1, js-yaml@^4.1.0:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.1.1.tgz#854c292467705b699476e1a2decc0c8a3458806b"
+  integrity sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==
   dependencies:
     argparse "^2.0.1"
 
@@ -9075,7 +9075,7 @@ lit-html@^3.3.0:
   dependencies:
     "@types/trusted-types" "^2.0.2"
 
-lit@^3.2.0:
+lit@^3.2.1:
   version "3.3.1"
   resolved "https://registry.yarnpkg.com/lit/-/lit-3.3.1.tgz#9dc79be626bc9a3b824de98b107dd662cabdeda6"
   integrity sha512-Ksr/8L3PTapbdXJCk+EJVB78jDodUMaP54gD24W186zGRARvwrsPfS60wae/SSCTCNZVPd1chXqio1qHQmu4NA==
@@ -10594,15 +10594,15 @@ randomfill@^1.0.4:
     randombytes "^2.0.5"
     safe-buffer "^5.1.0"
 
-rapidoc@9.3.7:
-  version "9.3.7"
-  resolved "https://registry.yarnpkg.com/rapidoc/-/rapidoc-9.3.7.tgz#9bc1fe7ea7e94495f4e9382e4b714343225b2a24"
-  integrity sha512-Rw4QxaMm5m6xQ2k0vq/SxJgLJpEFJb9bJv0tZWRuzNe3smtiM5ATC/7Jic94xz8LwoX69oaMwtOXiV31XLovnw==
+rapidoc@^9.3.8:
+  version "9.3.8"
+  resolved "https://registry.yarnpkg.com/rapidoc/-/rapidoc-9.3.8.tgz#8e1f447a8e78f13149e108929f0c4c41d81637d6"
+  integrity sha512-eCYEbr1Xr8OJZvVCw8SXl9zBCRoLJbhNGuG5IZTHq/RWAOq/O4MafUCuFEyZHsrhLrlUcGZMa64pyhpib8fQKQ==
   dependencies:
     "@apitools/openapi-parser" "0.0.33"
     base64-arraybuffer "^1.0.2"
     buffer "^6.0.3"
-    lit "^3.2.0"
+    lit "^3.2.1"
     marked "4.3.0"
     prismjs "^1.29.0"
     randexp "^0.5.3"
