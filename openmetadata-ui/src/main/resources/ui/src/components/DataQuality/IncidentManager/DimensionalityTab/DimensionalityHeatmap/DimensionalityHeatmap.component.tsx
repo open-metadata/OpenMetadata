@@ -99,8 +99,7 @@ const DimensionalityHeatmap = ({
   return (
     <Box
       aria-label={t('label.dimensionality')}
-      className="dimensionality-heatmap"
-      role="region">
+      className="dimensionality-heatmap">
       <Box className="dimensionality-heatmap__layout" ref={wrapperRef}>
         <Box className="dimensionality-heatmap__labels-column">
           <Box className="dimensionality-heatmap__header-corner" />
@@ -118,7 +117,6 @@ const DimensionalityHeatmap = ({
             <Box
               aria-label={`${t('label.scroll')} ${t('label.left')}`}
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left"
-              role="button"
               tabIndex={0}
               onClick={handleScrollLeft}
               onKeyDown={(e) => {
@@ -186,7 +184,6 @@ const DimensionalityHeatmap = ({
             <Box
               aria-label={`${t('label.view')} ${t('label.more')}`}
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right"
-              role="button"
               tabIndex={0}
               onClick={handleScrollRight}
               onKeyDown={(e) => {

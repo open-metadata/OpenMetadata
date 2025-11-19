@@ -33,11 +33,11 @@ import {
 export const generateDateRange = (startTs: number, endTs: number): string[] => {
   // Validate timestamps
   if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
-    throw new Error('Invalid timestamp: timestamps must be finite numbers');
+    throw new TypeError('Invalid timestamp: timestamps must be finite numbers');
   }
 
   if (startTs > endTs) {
-    throw new Error(
+    throw new TypeError(
       `Invalid date range: start date (${new Date(
         startTs
       ).toISOString()}) must be before or equal to end date (${new Date(
@@ -52,7 +52,7 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
 
   // Validate that dates are valid
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    throw new Error('Invalid timestamp: unable to create valid dates');
+    throw new TypeError('Invalid timestamp: unable to create valid dates');
   }
 
   const currentDate = new Date(startDate);
