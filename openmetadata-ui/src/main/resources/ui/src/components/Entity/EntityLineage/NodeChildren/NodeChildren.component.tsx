@@ -51,7 +51,15 @@ const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
 
   const count = Math.ceil(items.length / ITEMS_PER_PAGE);
   const start = (page - 1) * ITEMS_PER_PAGE;
-  const paginatedItems = items.slice(start, start + ITEMS_PER_PAGE);
+  const paginatedItemsMapped = items.map((item, i) => (
+    <div
+      key={i}
+      style={{
+        display: i >= start && i < start + ITEMS_PER_PAGE ? 'block' : 'none',
+      }}>
+      {item}
+    </div>
+  ));
 
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -64,11 +72,7 @@ const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
 
   return (
     <>
-      <Stack spacing={1}>
-        {paginatedItems.map((item, i) => (
-          <div key={i}>{item}</div>
-        ))}
-      </Stack>
+      <Stack spacing={1}>{paginatedItemsMapped}</Stack>
 
       <Stack
         alignItems="center"
