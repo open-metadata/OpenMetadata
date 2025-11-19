@@ -1,0 +1,107 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/microsoftAccessConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftAccessConnection",
+  "description": "Microsoft Access Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection",
+  "definitions": {
+    "microsoftAccessType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["MicrosoftAccess"],
+      "default": "MicrosoftAccess"
+    },
+    "microsoftAccessScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["access+pyodbc"],
+      "default": "access+pyodbc"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/microsoftAccessType",
+      "default": "MicrosoftAccess"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/microsoftAccessScheme",
+      "default": "access+pyodbc"
+    },
+    "databaseFilePath": {
+      "title": "Database File Path",
+      "description": "Full path to the Microsoft Access database file (.mdb or .accdb). Example: C:\\path\\to\\database.accdb",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Microsoft Access database. Optional for databases without security.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Microsoft Access database. Optional for databases without security.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use the filename as the database name.",
+      "type": "string"
+    },
+    "odbcDriver": {
+      "title": "ODBC Driver",
+      "description": "ODBC driver name for Microsoft Access. Default is 'Microsoft Access Driver (*.mdb, *.accdb)'.",
+      "type": "string",
+      "default": "Microsoft Access Driver (*.mdb, *.accdb)"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "description": "Additional ODBC connection options as key-value pairs.",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "description": "Additional SQLAlchemy connection arguments.",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsViewLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["databaseFilePath"]
+}
