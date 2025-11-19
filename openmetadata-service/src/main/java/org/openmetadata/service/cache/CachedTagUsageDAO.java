@@ -451,4 +451,39 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     // This is an internal method that delegates directly to the database
     delegate.deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
   }
+
+  @Override
+  public long getTotalTagUsageCount() {
+    return delegate.getTotalTagUsageCount();
+  }
+
+  @Override
+  public List<CollectionDAO.TagUsageObject> getAllTagUsagesPaginated(long offset, int limit) {
+    return delegate.getAllTagUsagesPaginated(offset, limit);
+  }
+
+  @Override
+  public int deleteTagUsage(int source, String tagFQNHash, String targetFQNHash) {
+    try {
+      int deletedCount = delegate.deleteTagUsage(source, tagFQNHash, targetFQNHash);
+      if (deletedCount > 0 && RelationshipCache.isAvailable()) {
+        invalidateTagCaches(targetFQNHash);
+        LOG.debug(
+            "Deleted tag usage for source {}, tagFQNHash {}, targetFQNHash {} and invalidated cache",
+            source,
+            tagFQNHash,
+            targetFQNHash);
+      }
+      return deletedCount;
+    } catch (Exception e) {
+      LOG.error(
+          "Error deleting tag usage for source {}, tagFQNHash {}, targetFQNHash {}: {}",
+          source,
+          tagFQNHash,
+          targetFQNHash,
+          e.getMessage(),
+          e);
+      throw e;
+    }
+  }
 }
