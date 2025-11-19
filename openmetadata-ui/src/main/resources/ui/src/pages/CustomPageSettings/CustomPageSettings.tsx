@@ -63,6 +63,7 @@ export const CustomPageSettings = () => {
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -94,8 +95,14 @@ export const CustomPageSettings = () => {
   };
 
   useEffect(() => {
-    fetchPersonas();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchPersonas({ [cursorType]: cursorValue });
+    } else {
+      fetchPersonas();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
@@ -109,9 +116,13 @@ export const CustomPageSettings = () => {
     currentPage,
     cursorType,
   }) => {
-    handlePageChange(currentPage);
     if (cursorType) {
       fetchPersonas({ [cursorType]: paging[cursorType] });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 

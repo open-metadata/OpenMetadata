@@ -34,6 +34,7 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -562,7 +563,18 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await page.click('[data-testid="lineage"]');
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId('lineage-config').click();
+
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).not.toBeVisible();
+
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Cancel' })
+    .click();
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -615,7 +627,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await page.waitForLoadState('networkidle');
 
   // Check if the edit tier button is visible
-  await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
+  await expect(page.locator('[data-testid="edit-icon-tier"]')).toBeVisible();
 };
 
 export const checkStewardPermissions = async (page: Page) => {
@@ -656,9 +668,14 @@ export const checkStewardPermissions = async (page: Page) => {
 
   // Click on lineage item
   await page.click('[data-testid="lineage"]');
+  await waitForAllLoadersToDisappear(page);
 
-  // Check if edit lineage button is enabled
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeEnabled();
+  // Check if edit lineage option is available
+  await page.getByTestId('lineage-config').click();
+
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).toBeVisible();
 };
 
 export const addUser = async (

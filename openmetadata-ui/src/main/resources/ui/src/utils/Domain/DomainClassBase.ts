@@ -26,6 +26,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Tab } from '../../generated/system/ui/uiCustomization';
+import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
 import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
@@ -41,6 +42,7 @@ export interface DomainDetailPageTabProps {
   activeTab: EntityTabs;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
+  onDeleteSubDomain: () => void;
   queryFilter?: string | Record<string, unknown>;
   assetTabRef: React.RefObject<AssetsTabRef>;
   dataProductsTabRef: React.RefObject<DataProductsTabRef>;
@@ -52,6 +54,8 @@ export interface DomainDetailPageTabProps {
   handleAssetSave: () => void;
   setShowAddSubDomainModal: (visible: boolean) => void;
   labelMap?: Record<EntityTabs, string>;
+  feedCount?: FeedCounts;
+  onFeedUpdate?: () => void;
 }
 
 type DomainWidgetKeys =
@@ -89,6 +93,7 @@ class DomainClassBase {
       EntityTabs.DOCUMENTATION,
       EntityTabs.SUBDOMAINS,
       EntityTabs.DATA_PRODUCTS,
+      EntityTabs.ACTIVITY_FEED,
       EntityTabs.ASSETS,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({

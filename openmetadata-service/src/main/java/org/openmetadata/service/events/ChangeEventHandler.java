@@ -95,6 +95,7 @@ public class ChangeEventHandler implements EventHandler {
         .withEntityId(changeEvent.getEntityId())
         .withEntityType(changeEvent.getEntityType())
         .withUserName(changeEvent.getUserName())
+        .withImpersonatedBy(changeEvent.getImpersonatedBy())
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());

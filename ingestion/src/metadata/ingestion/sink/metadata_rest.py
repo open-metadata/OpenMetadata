@@ -23,6 +23,8 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.data.bulkCreateTable import BulkCreateTable
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -54,6 +56,7 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
     TestCaseResolutionStatus,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
@@ -101,6 +104,9 @@ T = TypeVar("T", bound=BaseModel)
 
 class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
+    bulk_sink_batch_size: int = 100
+    enable_async_pipeline: bool = True
+    async_pipeline_workers: int = 2
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -123,6 +129,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
+        self.table_buffer: list[CreateTableRequest] = []
+        self.deferred_lifecycle_records: list[OMetaLifeCycleData] = []
+        self.deferred_lifecycle_processed = False
 
     @classmethod
     def create(
@@ -171,10 +180,17 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Send to OM the request creation received as is.
         :param entity_request: Create Entity request
         """
+        # Special handling for CreateTableRequest - buffer for bulk processing
+        if isinstance(entity_request, CreateTableRequest):
+            self.table_buffer.append(entity_request)
+            if len(self.table_buffer) >= self.config.bulk_sink_batch_size:
+                return self._flush_table_buffer()
+            return Either(right=None)  # Buffered, not yet sent
+
         if type(entity_request).__name__ in self.limit_reached:
             # If the limit has been reached, we don't need to try to ingest the entity
             # Note: We use PatchRequest to update the entity, so updating is not affected by the limit
-            return None
+            return Either(right=None)
         try:
             created = self.metadata.create_or_update(entity_request)
             if created:
@@ -195,6 +211,46 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     stackTrace=None,
                 )
             )
+
+    def _flush_table_buffer(self) -> Either[Entity]:
+        """Flush buffered tables to the bulk API worker queue"""
+        if not self.table_buffer:
+            return Either(
+                right=None,
+                left=StackTraceError(
+                    name="Table Buffer",
+                    error="No tables to flush, yet _flush_table_buffer was called",
+                    stackTrace=None,
+                ),
+            )
+        bulk_request = BulkCreateTable(tables=self.table_buffer, dryRun=False)
+        try:
+            result = self.metadata.bulk_create_or_update_tables(
+                bulk_request, use_async=False
+            )
+        except Exception as exc:
+            logger.error(f"Failed to flush tables to bulk API: {exc}")
+            logger.debug(traceback.format_exc())
+            return Either(
+                left=StackTraceError(
+                    name="Table Buffer",
+                    error=f"Failed to flush tables to bulk API: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+        self.table_buffer = []
+        if result.status == basic.Status.success:
+            return Either(right=result, left=None)
+        return Either(
+            right=None,
+            left=StackTraceError(
+                name="Table Buffer",
+                error=f"Failed to flush tables to bulk API: {result.failedRequest}",
+                stackTrace=None,
+            ),
+        )
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -599,7 +655,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
+        # In bulk mode - defer ALL lifecycle data until tables are created
+        if record.entity is Table:
+            self.deferred_lifecycle_records.append(record)
+            return Either(right=None)  # Success - will process at end
 
+        # Normal mode - process immediately
         entity = self.metadata.get_by_name(entity=record.entity, fqn=record.entity_fqn)
 
         if entity:
@@ -748,7 +809,71 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
         return Either(right=pipeline_usage.pipeline)
 
+    def _process_deferred_lifecycle_data(self):
+        """Process all deferred lifecycle records - called after all tables exist"""
+        if self.deferred_lifecycle_processed:
+            logger.debug("Deferred lifecycle processing already completed, skipping")
+            return
+
+        if not self.deferred_lifecycle_records:
+            return
+
+        logger.info(
+            f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
+        )
+
+        success_count = 0
+        error_count = 0
+
+        for record in self.deferred_lifecycle_records:
+            try:
+                entity = self.metadata.get_by_name(
+                    entity=record.entity, fqn=record.entity_fqn
+                )
+                if entity:
+                    self.metadata.patch_life_cycle(
+                        entity=entity, life_cycle=record.life_cycle
+                    )
+                    success_count += 1
+                else:
+                    logger.warning(
+                        f"Table {record.entity_fqn} not found even after bulk processing"
+                    )
+                    error_count += 1
+                    self.status.failed(
+                        StackTraceError(
+                            name=record.entity_fqn,
+                            error=f"Entity not found: {record.entity_fqn}",
+                        )
+                    )
+            except Exception as exc:
+                logger.error(
+                    f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
+                error_count += 1
+                self.status.failed(
+                    StackTraceError(
+                        name=record.entity_fqn,
+                        error=f"Lifecycle processing error: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+        logger.info(
+            f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
+        )
+
+        self.deferred_lifecycle_processed = True
+
     def close(self):
         """
-        We don't have anything to close since we are using the given metadata client
+        Flush any remaining buffered tables and stop worker threads
         """
+        # Flush any remaining tables in buffer
+        if self.table_buffer:
+            logger.info(f"Flushing {len(self.table_buffer)} remaining tables on close")
+            self._flush_table_buffer()
+
+        # Process deferred lifecycle data now that all tables exist
+        self._process_deferred_lifecycle_data()

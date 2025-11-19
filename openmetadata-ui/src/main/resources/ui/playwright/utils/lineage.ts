@@ -25,10 +25,12 @@ import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import {
+  clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
   toastNotification,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
 
 type LineageCSVRecord = {
@@ -79,20 +81,35 @@ export type LineageEdge = {
 };
 
 export const verifyColumnLayerInactive = async (page: Page) => {
-  await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
+  await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
   await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"]:not(.active)'
+    '[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)'
   );
-  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
+  await clickOutside(page); // close Layer popover
 };
 
 export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]');
   await page.click('[data-testid="lineage-layer-column-btn"]');
+  await clickOutside(page);
+};
+
+export const editLineageClick = async (page: Page) => {
+  await page.getByTestId('lineage-config').click();
+
+  await expect(
+    page.getByRole('menuitem', { name: 'Edit Lineage' })
+  ).toBeVisible({
+    timeout: 10000,
+  });
+
+  await page.getByRole('menuitem', { name: 'Edit Lineage' }).click();
+  await page.waitForTimeout(1); // wait for the edit mode to activate
+  await clickOutside(page);
 };
 
 export const editLineage = async (page: Page) => {
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await expect(
     page.getByTestId('table_search_index-draggable-icon')
@@ -103,7 +120,8 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 10 })) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for (const _index of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
@@ -145,10 +163,11 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  await page.waitForTimeout(1000);
   const destinationElement = await page.waitForSelector(destinationSelector);
   await page.hover(originSelector);
   await page.mouse.down();
-  const box = (await destinationElement.boundingBox())!;
+  const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y, { steps: 20 });
@@ -177,7 +196,8 @@ export const dragConnection = async (
 };
 
 export const rearrangeNodes = async (page: Page) => {
-  await page.getByTestId('rearrange').click();
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -216,6 +236,20 @@ export const connectEdgeBetweenNodes = async (
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
+};
+
+export const verifyNodePresent = async (page: Page, node: EntityClass) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const name = get(node, 'entityResponseData.displayName');
+  const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
+
+  await expect(lineageNode).toBeVisible();
+
+  const entityHeaderName = lineageNode.locator(
+    '[data-testid="entity-header-display-name"]'
+  );
+
+  await expect(entityHeaderName).toHaveText(name);
 };
 
 export const performExpand = async (
@@ -262,19 +296,6 @@ export const performCollapse = async (
 
     await expect(hiddenNode).not.toBeVisible();
   }
-};
-export const verifyNodePresent = async (page: Page, node: EntityClass) => {
-  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.name');
-  const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
-
-  await expect(lineageNode).toBeVisible();
-
-  const entityHeaderName = lineageNode.locator(
-    '[data-testid="entity-header-name"]'
-  );
-
-  await expect(entityHeaderName).toHaveText(name);
 };
 
 export const setupEntitiesForLineage = async (
@@ -452,7 +473,7 @@ export const addColumnLineage = async (
   await lineageRes;
 
   if (exitEditMode) {
-    await page.click('[data-testid="edit-lineage"]');
+    await editLineageClick(page);
   }
 
   await expect(
@@ -485,7 +506,7 @@ export const removeColumnLineage = async (
     .dispatchEvent('click');
   await deleteRes;
 
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await expect(
     page.locator(
@@ -494,6 +515,14 @@ export const removeColumnLineage = async (
       )}"]`
     )
   ).not.toBeVisible();
+};
+
+export const visitLineageTab = async (page: Page) => {
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.click('[data-testid="lineage"]');
+  await lineageRes;
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addPipelineBetweenNodes = async (
@@ -517,7 +546,7 @@ export const addPipelineBetweenNodes = async (
       targetEntity,
       pipelineItem
     );
-    await page.click('[data-testid="edit-lineage"]');
+    await editLineageClick(page);
     await verifyPipelineDataInDrawer(
       page,
       sourceEntity,
@@ -526,13 +555,6 @@ export const addPipelineBetweenNodes = async (
       bVerifyPipeline
     );
   }
-};
-
-export const visitLineageTab = async (page: Page) => {
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-  await page.click('[data-testid="lineage"]');
-  await lineageRes;
-  await page.waitForLoadState('networkidle');
 };
 
 export const fillLineageConfigForm = async (
@@ -557,8 +579,10 @@ export const fillLineageConfigForm = async (
 
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
-  await page.waitForSelector('[data-testid="lineage-layer-column-btn"].active');
-  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
+  await page.waitForSelector(
+    '[data-testid="lineage-layer-column-btn"].Mui-selected'
+  );
+  await clickOutside(page); // Close Layer popover
 };
 
 export const verifyCSVHeaders = async (headers: string[]) => {
@@ -568,13 +592,9 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 };
 
 export const getLineageCSVData = async (page: Page) => {
-  await page.waitForSelector('[data-testid="lineage-export"]', {
-    state: 'visible',
-  });
+  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
 
-  await expect(page.getByTestId('lineage-export')).toBeEnabled();
-
-  await page.getByTestId('lineage-export').click();
+  await page.getByRole('button', { name: 'Export' }).click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -669,13 +689,9 @@ export const verifyExportLineagePNG = async (
   page: Page,
   isPNGSelected?: boolean
 ) => {
-  await page.waitForSelector('[data-testid="lineage-export"]', {
-    state: 'visible',
-  });
+  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
 
-  await expect(page.getByTestId('lineage-export')).toBeEnabled();
-
-  await page.getByTestId('lineage-export').click();
+  await page.getByRole('button', { name: 'Export' }).click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -736,6 +752,7 @@ export const verifyColumnLineageInCSV = async (
 
 export const verifyLineageConfig = async (page: Page) => {
   await page.click('[data-testid="lineage-config"]');
+  await page.getByRole('menuitem', { name: 'Node Depth' }).click();
   await page.waitForSelector('.ant-modal-content', {
     state: 'visible',
   });

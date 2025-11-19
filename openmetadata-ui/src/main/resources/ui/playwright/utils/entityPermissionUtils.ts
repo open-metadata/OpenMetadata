@@ -280,10 +280,7 @@ export const testProfilerTabPermission = async (
   effect: 'allow' | 'deny',
   expectedErrorMessage?: string
 ) => {
-  await testUserPage
-    .locator('[data-testid="profiler-tab-left-panel"]')
-    .getByText(tabName)
-    .click();
+  await testUserPage.getByRole('tab', { name: tabName }).click();
 
   if (effect === 'deny') {
     await expect(
@@ -394,9 +391,22 @@ export const testPipelineSpecificOperations = async (
   });
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await testUserPage.getByTestId('lineage-config').click();
+
+    await expect(
+      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await testUserPage.getByTestId('lineage-config').click();
+
+    await expect(
+      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).not.toBeVisible();
+
+    await testUserPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
   }
 };
 
@@ -449,9 +459,22 @@ export const testDashboardDataModelSpecificOperations = async (
   });
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await testUserPage.getByTestId('lineage-config').click();
+
+    await expect(
+      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await testUserPage.getByTestId('lineage-config').click();
+
+    await expect(
+      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
+    ).not.toBeVisible();
+
+    await testUserPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
   }
 };
 

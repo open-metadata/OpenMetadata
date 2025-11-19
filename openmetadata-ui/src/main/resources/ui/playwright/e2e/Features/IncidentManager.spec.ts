@@ -110,7 +110,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const testCaseName = testCase?.['name'];
     const assignee = {
       name: user1.data.email.split('@')[0],
-      displayName: user1.getUserName(),
+      displayName: user1.getUserDisplayName(),
     };
 
     await test.step('Claim ownership of table', async () => {
@@ -157,7 +157,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Re-assign incident to user', async () => {
       const assignee1 = {
         name: user2.data.email.split('@')[0],
-        displayName: user2.getUserName(),
+        displayName: user2.getUserDisplayName(),
       };
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
@@ -235,7 +235,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       async () => {
         const assignee2 = {
           name: user3.data.email.split('@')[0],
-          displayName: user3.getUserName(),
+          displayName: user3.getUserDisplayName(),
         };
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/name/*?fields=*'
@@ -311,10 +311,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(
@@ -334,21 +331,18 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="test-case-${testCaseName}"]`)
       ).toBeVisible();
 
-      await page.click(
-        `[data-testid="${testCaseName}-status"] [data-testid="edit-resolution-icon"]`
-      );
-      await page.click(`[data-testid="test-case-resolution-status-type"]`);
-      await page.click(`[title="Resolved"]`);
-      await page.click(
-        '#testCaseResolutionStatusDetails_testCaseFailureReason'
-      );
-      await page.click('[title="Missing Data"]');
-      await page.click(descriptionBox);
-      await page.fill(descriptionBox, 'test');
+      await page.click(`[data-testid="${testCaseName}-status"]`);
+      await page.getByRole('menuitem', { name: 'Resolved' }).click();
+      await page.click('[data-testid="reason-chip-MissingData"]');
+      await page.getByTestId('resolved-comment-textarea').click();
+      await page
+        .locator('[data-testid="resolved-comment-textarea"] textarea')
+        .first()
+        .fill('test');
       const updateTestCaseIncidentStatus = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.click('.ant-modal-footer >> text=Save');
+      await page.getByTestId('submit-resolved-popover-button').click();
       await updateTestCaseIncidentStatus;
     });
 
@@ -357,10 +351,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(
@@ -412,7 +403,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const pipeline = table1.testSuitePipelineResponseData[0];
     const assignee = {
       name: user1.data.email.split('@')[0],
-      displayName: user1.getUserName(),
+      displayName: user1.getUserDisplayName(),
     };
     const { apiContext } = await getApiContext(page);
 
@@ -453,10 +444,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(
@@ -476,10 +464,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
-    await page
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Incidents')
-      .click();
+    await page.getByRole('tab', { name: 'Incidents' }).click();
     await incidentListResponse;
 
     for (const testCase of testCases) {
@@ -522,7 +507,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test("Verify filters in Incident Manager's page", async ({ page }) => {
     const assigneeTestCase = {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
-      userDisplayName: user1.getUserName(),
+      userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
@@ -586,13 +571,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="test-case-select"]');
     const testCaseResponse = page.waitForResponse(
-      `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+      `/api/v1/search/query?q=*index=test_case_search_index*`
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;
 
     const testCaseFilterRes = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*`
     );
     await page.click(`[title="${testCase1}"]`);
     await testCaseFilterRes;

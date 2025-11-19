@@ -36,6 +36,8 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
         with patch.object(DatabrickspipelineSource, "__init__", lambda x, y, z: None):
             self.source = DatabrickspipelineSource(None, None)
             self.source.metadata = self.mock_metadata
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_find_topic_simple_name(self):
         """Test finding topic with simple name (no dots)"""
@@ -74,7 +76,7 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
                 "hits": [
                     {
                         "_source": {
-                            "fullyQualifiedName": 'Confluent Kafka."dev.ern.cashout.moneyRequest_v1"'
+                            "fullyQualifiedName": 'Confluent Kafka."dev.example.transactions.customerEvent_v1"'
                         }
                     }
                 ]
@@ -83,20 +85,22 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
 
         mock_topic = MagicMock(spec=Topic)
         mock_topic.fullyQualifiedName = FullyQualifiedEntityName(
-            'Confluent Kafka."dev.ern.cashout.moneyRequest_v1"'
+            'Confluent Kafka."dev.example.transactions.customerEvent_v1"'
         )
 
         self.mock_metadata.client.get.return_value = es_response
         self.mock_metadata.get_by_name.return_value = mock_topic
 
         # Test
-        result = self.source._find_kafka_topic("dev.ern.cashout.moneyRequest_v1")
+        result = self.source._find_kafka_topic(
+            "dev.example.transactions.customerEvent_v1"
+        )
 
         # Verify
         self.assertIsNotNone(result)
         call_args = self.mock_metadata.client.get.call_args[0][0]
         # Should quote the topic name when it has dots
-        self.assertIn('*."dev.ern.cashout.moneyRequest_v1"', call_args)
+        self.assertIn('*."dev.example.transactions.customerEvent_v1"', call_args)
 
     def test_find_topic_not_found(self):
         """Test topic not found returns None"""
@@ -136,6 +140,8 @@ class TestDatabricksServiceCaching(unittest.TestCase):
             self.source.metadata = self.mock_metadata
             self.source._databricks_services_cached = False
             self.source._databricks_services = []
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_get_databricks_services_caches_result(self):
         """Test that databricks services are cached"""
@@ -211,13 +217,15 @@ class TestDLTTableDiscovery(unittest.TestCase):
             self.source.metadata = self.mock_metadata
             self.source._databricks_services_cached = True
             self.source._databricks_services = ["databricks-prod", "databricks-dev"]
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_find_dlt_table_exact_match(self):
         """Test finding table with exact case match"""
         # Mock table entity
         mock_table = MagicMock(spec=Table)
         mock_table.fullyQualifiedName = FullyQualifiedEntityName(
-            "databricks-prod.datamesh_dev.cashout.moneyRequest"
+            "databricks-prod.datamesh_dev.transactions.customerEvent"
         )
 
         # Configure the mock - first service returns None, second returns table
@@ -226,7 +234,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
 
         # Test
         result = self.source._find_dlt_table(
-            table_name="moneyRequest", catalog="datamesh_dev", schema="cashout"
+            table_name="customerEvent", catalog="datamesh_dev", schema="transactions"
         )
 
         # Verify
@@ -238,7 +246,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
         # Mock - exact case fails, lowercase succeeds
         mock_table = MagicMock(spec=Table)
         mock_table.fullyQualifiedName = FullyQualifiedEntityName(
-            "databricks-prod.datamesh_dev.cashout.moneyrequest"
+            "databricks-prod.datamesh_dev.transactions.customerevent"
         )
 
         # First 4 calls fail (2 services x 2 exact case tries), then lowercase succeeds
@@ -251,7 +259,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
 
         # Test
         result = self.source._find_dlt_table(
-            table_name="moneyRequest", catalog="datamesh_dev", schema="cashout"
+            table_name="customerEvent", catalog="datamesh_dev", schema="transactions"
         )
 
         # Verify
@@ -327,6 +335,8 @@ class TestKafkaLineageIntegration(unittest.TestCase):
             self.source.client = self.mock_client
             self.source._databricks_services_cached = True
             self.source._databricks_services = ["databricks-prod"]
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_lineage_creation_flow(self):
         """Test complete flow: parse notebook -> find topic -> find table -> create lineage"""
@@ -344,7 +354,7 @@ class TestKafkaLineageIntegration(unittest.TestCase):
         pipeline_config = {
             "spec": {
                 "catalog": "datamesh_dev",
-                "target": "cashout",
+                "target": "transactions",
                 "libraries": [{"notebook": {"path": "/notebooks/dlt_pipeline"}}],
             }
         }
@@ -354,10 +364,10 @@ class TestKafkaLineageIntegration(unittest.TestCase):
         notebook_source = """
         import dlt
 
-        topic_name = "dev.ern.cashout.moneyRequest_v1"
-        entity_name = "moneyRequest"
+        topic_name = "dev.example.transactions.customerEvent_v1"
+        entity_name = "customerEvent"
 
-        @dlt.table(name="moneyRequest")
+        @dlt.table(name="customerEvent")
         def event_log():
             return spark.readStream.format("kafka").option("subscribe", topic_name).load()
         """
@@ -367,7 +377,7 @@ class TestKafkaLineageIntegration(unittest.TestCase):
         mock_topic = MagicMock(spec=Topic)
         mock_topic.id = "a1b2c3d4-e5f6-4a5b-8c7d-9e8f7a6b5c4d"
         mock_topic.fullyQualifiedName = FullyQualifiedEntityName(
-            'Confluent Kafka."dev.ern.cashout.moneyRequest_v1"'
+            'Confluent Kafka."dev.example.transactions.customerEvent_v1"'
         )
 
         # Mock table found
@@ -375,7 +385,7 @@ class TestKafkaLineageIntegration(unittest.TestCase):
         mock_table.id = MagicMock()
         mock_table.id.root = "b2c3d4e5-f6a7-5b6c-9d8e-0f9a8b7c6d5e"
         mock_table.fullyQualifiedName = FullyQualifiedEntityName(
-            "databricks-prod.datamesh_dev.cashout.moneyrequest"
+            "databricks-prod.datamesh_dev.transactions.customerevent"
         )
 
         # Setup mocks
@@ -384,7 +394,7 @@ class TestKafkaLineageIntegration(unittest.TestCase):
                 "hits": [
                     {
                         "_source": {
-                            "fullyQualifiedName": 'Confluent Kafka."dev.ern.cashout.moneyRequest_v1"'
+                            "fullyQualifiedName": 'Confluent Kafka."dev.example.transactions.customerEvent_v1"'
                         }
                     }
                 ]

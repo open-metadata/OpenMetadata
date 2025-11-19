@@ -623,7 +623,7 @@ export const addMultipleFilters = async ({
   await addOwnerFilter({
     page,
     filterNumber: 0,
-    ownerName: user1.getUserName(),
+    ownerName: user1.getUserDisplayName(),
   });
 
   // Add entityFQN filter
@@ -650,7 +650,7 @@ export const addMultipleFilters = async ({
     page,
     filterTestId: 'Updater Name-filter-option',
     filterNumber: 3,
-    updaterName: user2.getUserName(),
+    updaterName: user2.getUserDisplayName(),
     exclude: true,
   });
 
@@ -777,7 +777,7 @@ export const createAlert = async ({
   await addOwnerFilter({
     page,
     filterNumber: 0,
-    ownerName: user.getUserName(),
+    ownerName: user.getUserDisplayName(),
     selectId,
   });
 
