@@ -161,13 +161,14 @@ export const CustomEdge = ({
     const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
     let opacity = 1;
     if (isColumnLineage) {
-      opacity =
-        tracedNodes.length === 0 &&
-        (tracedColumns.length === 0 || isColumnHighlighted)
-          ? 1
-          : 0.25;
+      // opacity =
+      //   tracedNodes.length === 0 &&
+      //   (tracedColumns.length === 0 || isColumnHighlighted)
+      //     ? 1
+      //     : 0;
+      opacity = isColumnHighlighted ? 1 : 0;
     } else {
-      opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
+      opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0;
     }
 
     let stroke = isStrokeNeeded ? theme.primaryColor : undefined;
