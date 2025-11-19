@@ -1474,6 +1474,9 @@ public class IngestionPipelineResource
           @DefaultValue("1000")
           int limit) {
     try {
+      // Validate that the pipeline exists first
+      getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+
       // Authorize the request
       OperationContext operationContext =
           new OperationContext(entityType, MetadataOperation.VIEW_ALL);
@@ -1520,6 +1523,10 @@ public class IngestionPipelineResource
           @DefaultValue("10")
           int limit) {
     try {
+      // Validate that the pipeline exists first
+      IngestionPipeline pipeline =
+          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+
       // Authorize the request
       OperationContext operationContext =
           new OperationContext(entityType, MetadataOperation.VIEW_ALL);
@@ -1563,6 +1570,10 @@ public class IngestionPipelineResource
       @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
           UUID runId) {
     try {
+      // Validate that the pipeline exists first
+      IngestionPipeline pipeline =
+          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+
       // Authorize the request
       OperationContext operationContext =
           new OperationContext(entityType, MetadataOperation.VIEW_ALL);
