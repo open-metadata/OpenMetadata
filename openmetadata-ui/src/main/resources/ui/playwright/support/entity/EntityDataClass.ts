@@ -173,11 +173,6 @@ export class EntityDataClass {
       this.certificationTag2.create(apiContext),
       this.tierTag1.create(apiContext),
       this.classification1.create(apiContext),
-      this.glossaryTerm1.create(apiContext),
-      this.glossaryTerm2.create(apiContext),
-      this.dataProduct1.create(apiContext),
-      this.dataProduct2.create(apiContext),
-      this.dataProduct3.create(apiContext),
       this.tag1.create(apiContext),
       this.table1.create(apiContext),
       this.table2.create(apiContext),
@@ -225,6 +220,18 @@ export class EntityDataClass {
     ];
 
     await Promise.allSettled(promises);
+
+    // Keeping these creations separate as they depend on
+    // Entity creation above
+    const dependentEntityCreationPromises = [
+      this.glossaryTerm1.create(apiContext),
+      this.glossaryTerm2.create(apiContext),
+      this.dataProduct1.create(apiContext),
+      this.dataProduct2.create(apiContext),
+      this.dataProduct3.create(apiContext),
+    ];
+
+    await Promise.allSettled(dependentEntityCreationPromises);
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {
