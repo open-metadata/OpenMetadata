@@ -45,4 +45,5 @@ dagster==1.8.9
 dagster-graphql==1.8.9
 dagster-webserver==1.8.9
 dagster-pipes==1.8.9
-universal-pathlib==0.3.5
+# universal-pathlib pinned to 0.2.6 for fsspec 2023.x compatibility (pyiceberg 0.5.1 requires fsspec<2024.1.0)
+universal-pathlib==0.2.6
