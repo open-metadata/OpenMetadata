@@ -177,7 +177,7 @@ jest.mock('@mui/material/styles', () => {
  */
 jest.mock('@mui/styled-engine', () => {
   const actual = jest.requireActual('@mui/styled-engine');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const React = require('react');
 
   const styled = (component) => () => {
@@ -202,7 +202,7 @@ jest.mock('@mui/styled-engine', () => {
  * Mock @mui/material components for consistent testing
  */
 jest.mock('@mui/material', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const React = require('react');
 
   const styled = (component) => () => component;

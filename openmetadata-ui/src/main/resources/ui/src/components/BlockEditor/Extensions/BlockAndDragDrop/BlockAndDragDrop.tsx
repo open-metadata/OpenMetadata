@@ -24,7 +24,7 @@ export interface BlockAndDragHandleOptions {
   blockHandleWidth: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+ 
 interface DragAndDropOptions {}
 
 const DragAndDrop = Extension.create<DragAndDropOptions>({

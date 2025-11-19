@@ -167,7 +167,7 @@ const APICollectionPage: FunctionComponent = () => {
     try {
       setIsAPICollectionLoading(true);
       const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
-        // eslint-disable-next-line max-len
+         
         fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
