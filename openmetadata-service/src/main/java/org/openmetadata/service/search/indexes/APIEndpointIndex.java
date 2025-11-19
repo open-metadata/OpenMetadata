@@ -79,6 +79,8 @@ public class APIEndpointIndex implements SearchIndex {
     Map<String, Object> commonAttributes = getCommonAttributesMap(apiEndpoint, Entity.API_ENDPOINT);
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("upstreamLineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
     doc.put(
         "requestSchema",

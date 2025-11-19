@@ -71,6 +71,7 @@ import {
   followEntity,
   replyAnnouncement,
   unFollowEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   settingClick,
@@ -224,6 +225,15 @@ test.describe('Domains', () => {
 
     await test.step('Create DataProducts', async () => {
       await createDataProduct(page, dataProduct1.data);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${dataProduct1.data.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
       await createDataProduct(page, dataProduct2.data);
     });
 
@@ -663,11 +673,11 @@ test.describe('Domains', () => {
 
       await expect(
         page.getByTestId(user1.responseData.displayName)
-      ).toContainText(user1.responseData.displayName);
+      ).toBeVisible();
 
       await expect(
         page.getByTestId(user2.responseData.displayName)
-      ).toContainText(user2.responseData.displayName);
+      ).toBeVisible();
     } finally {
       await dataProduct?.delete(apiContext);
       await domain?.delete(apiContext);
@@ -800,6 +810,45 @@ test.describe('Domains', () => {
       await domain.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Verify redirect path on data product delete', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
+
+    await page.reload();
+    await redirectToHomePage(page);
+
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.data);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button-title').click();
+
+    await page.getByTestId('confirmation-text-input').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+    const dpListRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=data_product_search_index*'
+    );
+    const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+
+    await page.getByTestId('confirm-button').click();
+
+    await deleteRes;
+    await dpListRes;
+
+    await expect(
+      page.getByText(`"Data Product" deleted successfully!`)
+    ).toBeVisible();
+
+    await expect(page.getByTestId('add-entity-button')).toBeVisible();
+
+    await afterAction();
   });
 
   test('Verify duplicate domain creation', async ({ page }) => {
@@ -1400,5 +1449,120 @@ test.describe('Domain Access with noDomain() Rule', () => {
     );
 
     await userAfterAction();
+  });
+});
+
+test.describe('Domain Tree View Functionality', () => {
+  const domain = new Domain();
+  let subDomain: SubDomain;
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.create(apiContext);
+    subDomain = new SubDomain(domain);
+    await subDomain.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await subDomain.delete(apiContext);
+    await domain.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should render the domain tree view with correct details', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByRole('button', { name: 'tree' }).click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByRole('treeitem', { name: domain.data.displayName })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+
+    await page
+      .getByRole('treeitem', { name: domain.data.displayName })
+      .locator('div')
+      .nth(2)
+      .click();
+
+    await expect(
+      page
+        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('listitem')
+        .filter({ hasText: domain.data.fullyQualifiedName })
+        .getByTestId('breadcrumb-link')
+    ).toBeVisible();
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      domain.data.displayName
+    );
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      domain.data.name
+    );
+    await expect(
+      page.getByTestId('documentation').getByText('Documentation')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('subdomains').getByText('Sub Domains')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('data_products').getByText('Data Products')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('activity_feed').getByText('Activity Feeds & Tasks')
+    ).toBeVisible();
+    await expect(page.getByTestId('assets').getByText('Assets')).toBeVisible();
+    await expect(
+      page.getByTestId('custom_properties').getByText('Custom Properties')
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('asset-description-container')
+        .getByText(domain.data.description)
+    ).toBeVisible();
+    await expect(page.getByTestId('domain-details-add-button')).toBeVisible();
+
+    await page.getByTestId('data_products').getByText('Data Products').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page.getByTestId('no-data-placeholder').getByRole('paragraph')
+    ).toContainText("Looks like you haven't added any data products yet.");
+    await expect(page.getByTestId('data-product-add-button')).toBeVisible();
+
+    await expect(
+      page.getByTestId('subdomains').getByTestId('count')
+    ).toContainText('1');
+
+    await page.getByTestId('subdomains').getByText('Sub Domains').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId(subDomain.data.name)
+        .getByText(subDomain.data.displayName)
+    ).toBeVisible();
   });
 });
