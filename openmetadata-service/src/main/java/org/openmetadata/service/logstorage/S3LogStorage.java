@@ -309,6 +309,10 @@ public class S3LogStorage implements LogStorageInterface {
 
   @Override
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) throws IOException {
+    if (nullOrEmpty(logContent)) {
+      return;
+    }
+
     Timer.Sample sample = null;
     if (metrics != null) {
       sample = metrics.startLogShipment();
@@ -1048,6 +1052,11 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
+  @Override
+  public void closeStream(String pipelineFQN, UUID runId) throws IOException {
+    flush(pipelineFQN, runId);
+  }
+
   /**
    * Update metrics for all active streams. This provides visibility into:
    * - Number of active multipart uploads
@@ -1540,6 +1549,9 @@ public class S3LogStorage implements LogStorageInterface {
     }
 
     synchronized void append(String logContent) {
+      if (logContent == null || logContent.isEmpty()) {
+        return;
+      }
       String[] newLines = logContent.split("\n");
       for (String line : newLines) {
         // Truncate individual lines to prevent memory exhaustion
