@@ -20,7 +20,11 @@ import {
   createNewPage,
   redirectToHomePage,
 } from '../../utils/common';
-import { assignTag } from '../../utils/entity';
+import {
+  assignTag,
+  assignTier,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -31,6 +35,8 @@ const domain = new Domain();
 const table = new TableClass();
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow();
+
   const { page, apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await domain.create(apiContext);
@@ -43,6 +49,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
     table.endpoint,
     'KnowledgePanel.Tags'
   );
+  await assignTier(page, 'Tier5', table.endpoint);
   await afterAction();
 });
 
@@ -97,6 +104,40 @@ test('should search for empty or null filters', async ({ page }) => {
 
   for (const filter of items) {
     await selectNullOption(page, filter);
+  }
+});
+
+test('should show correct count for initial options', async ({ page }) => {
+  const items = [{ label: 'Tier', key: 'tier.tagFQN' }];
+
+  for (const filter of items) {
+    const aggregateAPI = page.waitForResponse(
+      '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+    );
+    await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+
+    const res = await aggregateAPI;
+    const data = await res.json();
+    const buckets = data.aggregations['sterms#tier.tagFQN'].buckets;
+
+    await waitForAllLoadersToDisappear(page);
+
+    for (const bucket of buckets) {
+      const normalizedKey = bucket.key
+        .split('.')
+        .map((seg: string) =>
+          seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : seg
+        )
+        .join('.');
+
+      expect(
+        page
+          .locator(`[data-menu-id$="-${normalizedKey}"]`)
+          .getByTestId('filter-count')
+      ).toHaveText(bucket.doc_count.toString());
+    }
+
+    await clickOutside(page);
   }
 });
 
