@@ -196,6 +196,12 @@ public class LogStorageTest {
   }
 
   @Test
+  void testDefaultLogStorageCloseStreamNoOp() throws IOException {
+    // Test that close stream operation doesn't throw exceptions (it's a no-op)
+    assertDoesNotThrow(() -> defaultLogStorage.closeStream(testPipelineFQN, testRunId));
+  }
+
+  @Test
   void testLogStorageFactoryCreateDefault() throws IOException {
     LogStorageInterface storage = LogStorageFactory.create(null, mockPipelineServiceClient, null);
 
