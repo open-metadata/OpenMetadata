@@ -37,6 +37,7 @@ import {
   deleteEdge,
   deleteNode,
   editLineage,
+  editLineageClick,
   performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
@@ -115,13 +116,14 @@ for (const EntityClass of entities) {
 
         await page.reload();
         await page.waitForLoadState('networkidle');
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
         await page.getByTestId('fit-screen').click();
+        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
 
         // Check the Entity Drawer
         await performZoomOut(page);
@@ -133,7 +135,7 @@ for (const EntityClass of entities) {
           );
           await page
             .locator(
-              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
+              `[data-testid="lineage-node-${toNodeFqn}"] .entity-service-icon`
             )
             .click();
 
@@ -153,6 +155,8 @@ for (const EntityClass of entities) {
       await test.step('Should create pipeline between entities', async () => {
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
+        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+        await page.waitForTimeout(500); // wait for the nodes to settle
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
@@ -160,7 +164,7 @@ for (const EntityClass of entities) {
       });
 
       await test.step('Verify Lineage Export CSV', async () => {
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
@@ -181,7 +185,7 @@ for (const EntityClass of entities) {
       );
 
       await test.step('Verify Lineage Config', async () => {
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
         await verifyLineageConfig(page);
       });
     } finally {
@@ -215,10 +219,10 @@ test('Verify column lineage between tables', async ({ browser }) => {
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, table2);
   await table1.delete(apiContext);
@@ -267,7 +271,6 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="lineage-export"]');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
@@ -286,10 +289,10 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await activateColumnLayer(page);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, topic);
   await table.delete(apiContext);
@@ -323,10 +326,10 @@ test('Verify column lineage between topic and api endpoint', async ({
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, apiEndpoint);
   await topic.delete(apiContext);
@@ -359,9 +362,9 @@ test('Verify column lineage between table and api endpoint', async ({
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, apiEndpoint);
   await table.delete(apiContext);
@@ -565,7 +568,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
 
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await page.getByTestId('fit-screen').click();
+    await performZoomOut(page);
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
@@ -661,7 +664,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await expect(
       page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).not.toBeVisible();
+    ).toBeVisible();
   } finally {
     await Promise.all([
       table.delete(apiContext),

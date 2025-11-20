@@ -80,6 +80,10 @@ export const addExternalDestination = async ({
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
 
+  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    state: 'visible',
+  });
+
   // Select external tab
   await page.click(`[data-testid="tab-label-external"]:visible`);
 
@@ -396,7 +400,7 @@ export const editObservabilityAlert = async ({
   await addOwnerFilter({
     page,
     filterNumber: 0,
-    ownerName: user.getUserName(),
+    ownerName: user.getUserDisplayName(),
     selectId: 'Owner Name',
   });
 

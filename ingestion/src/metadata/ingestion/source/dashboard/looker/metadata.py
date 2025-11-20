@@ -69,6 +69,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
 )
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LocalRepositoryPath,
     LookerConnection,
     NoGitCredentials,
 )
@@ -210,10 +211,11 @@ class LookerSource(DashboardServiceSource):
         self.today = datetime.now().strftime("%Y-%m-%d")
 
         self._explores_cache = {}
+        self._views_cache = {}
         self._repo_credentials: Optional[ReadersCredentials] = None
         self._reader_class: Optional[Type[Reader]] = None
         self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None
-        self._main_lookml_repo: Optional[LookMLRepo] = None
+        self._main_lookml_repos: Optional[List[LookMLRepo]] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
         self._view_data_model: Optional[DashboardDataModel] = None
 
@@ -243,59 +245,105 @@ class LookerSource(DashboardServiceSource):
         credentials: Optional[
             Union[
                 NoGitCredentials,
+                LocalRepositoryPath,
                 GitHubCredentials,
                 BitBucketCredentials,
                 GitlabCredentials,
             ]
         ],
-    ) -> "LookMLRepo":
-        repo_name = (
-            f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
-        )
-        repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.root}"
-        _clone_repo(
-            repo_name,
-            repo_path,
-            credentials,
-            overwrite=True,
-        )
-        return LookMLRepo(name=repo_name, path=repo_path)
+    ) -> List["LookMLRepo"]:
+        repos = []
+        if isinstance(credentials, LocalRepositoryPath):
+            # For local repository path, use the path directly without cloning
+            local_path = Path(credentials.root)
+            repo_name = local_path.name
+            repos.append(LookMLRepo(name=repo_name, path=str(local_path)))
+        elif isinstance(
+            credentials, (GitHubCredentials, BitBucketCredentials, GitlabCredentials)
+        ):
+            # Support comma-separated repository names
+            repository_names = [
+                name.strip()
+                for name in credentials.repositoryName.root.split(",")
+                if name.strip()
+            ]
+
+            for repo_name_only in repository_names:
+                repo_name = f"{credentials.repositoryOwner.root}/{repo_name_only}"
+                repo_path = f"{REPO_TMP_LOCAL_PATH}/{repo_name_only}"
+
+                single_repo_creds = copy.deepcopy(credentials)
+                single_repo_creds.repositoryName.root = repo_name_only
+
+                _clone_repo(
+                    repo_name,
+                    repo_path,
+                    single_repo_creds,
+                    overwrite=True,
+                )
+                repos.append(LookMLRepo(name=repo_name, path=repo_path))
+        else:
+            # For NoGitCredentials or other unsupported types
+            raise ValueError(f"Unsupported credential type: {type(credentials)}")
+
+        return repos
 
     def __read_manifest(
         self,
         credentials: Optional[
             Union[
                 NoGitCredentials,
+                LocalRepositoryPath,
                 GitHubCredentials,
                 BitBucketCredentials,
                 GitlabCredentials,
             ]
         ],
+        repo: LookMLRepo,
         path="manifest.lkml",
     ) -> Optional[LookMLManifest]:
-        file_path = f"{self._main_lookml_repo.path}/{path}"
-        if not os.path.isfile(file_path):
+        file_path = Path(repo.path) / path
+        if not file_path.is_file():
+            if isinstance(credentials, LocalRepositoryPath):
+                logger.warning(
+                    f"Manifest file '{path}' not found in local repository at {file_path}. "
+                    f"Ensure the manifest file exists in your local LookML repository."
+                )
             return None
+
         with open(file_path, "r", encoding="utf-8") as fle:
             manifest = LookMLManifest.model_validate(lkml.load(fle))
             if manifest and manifest.remote_dependency:
                 remote_name = manifest.remote_dependency["name"]
                 remote_git_url = manifest.remote_dependency["url"]
 
-                url_parsed = giturlparse.parse(remote_git_url)
-                _clone_repo(
-                    f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
-                    f"{self._main_lookml_repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
-                    credentials,
-                )
+                if isinstance(credentials, LocalRepositoryPath):
+                    # For local repository path, warn about remote dependencies
+                    logger.warning(
+                        f"Remote dependency '{remote_name}' found in manifest. "
+                        f"When using localRepositoryPath, remote dependencies are not automatically fetched. "
+                        f"If needed, manually place the dependency in the '{IMPORTED_PROJECTS_DIR}/{remote_name}' directory within your local repository."
+                    )
+                else:
+                    # For remote repositories, clone the dependency as before
+                    url_parsed = giturlparse.parse(remote_git_url)
+                    _clone_repo(
+                        f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
+                        f"{repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
+                        credentials,
+                    )
 
             return manifest
 
     def prepare(self):
         if self.service_connection.gitCredentials:
             credentials = self.service_connection.gitCredentials
-            self._main_lookml_repo = self.__init_repo(credentials)
-            self._main__lookml_manifest = self.__read_manifest(credentials)
+            self._main_lookml_repos = self.__init_repo(credentials)
+            if self._main_lookml_repos:
+                # Read manifest from the first repository (primary repository)
+                self._main__lookml_manifest = self.__read_manifest(
+                    credentials, self._main_lookml_repos[0]
+                )
 
     @property
     def parser(self) -> Optional[Dict[str, BulkLkmlParser]]:
@@ -317,15 +365,27 @@ class LookerSource(DashboardServiceSource):
         and can be accessed with the same token. If we have
         any errors obtaining the git project information, we will default
         to the incoming GitHub Credentials.
+
+        Since BulkLkmlParser uses Singleton pattern, we create ONE parser per project
+        that aggregates views from all repositories.
         """
-        if self.repository_credentials:
+        if self.repository_credentials and self._main_lookml_repos:
             all_projects: Set[str] = {model.project_name for model in all_lookml_models}
-            self._project_parsers: Dict[str, BulkLkmlParser] = {
-                project_name: BulkLkmlParser(
-                    reader=self.reader(Path(self._main_lookml_repo.path))
+            self._project_parsers: Dict[str, BulkLkmlParser] = {}
+
+            # Create readers for all repositories
+            primary_reader = self.reader(Path(self._main_lookml_repos[0].path))
+            additional_readers = [
+                self.reader(Path(repo.path)) for repo in self._main_lookml_repos[1:]
+            ]
+
+            # For each project, create a single parser with all readers
+            for project_name in all_projects:
+                parser = BulkLkmlParser(
+                    reader=primary_reader, additional_readers=additional_readers
                 )
-                for project_name in all_projects
-            }
+                self._project_parsers[project_name] = parser
+
             logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
     def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
@@ -362,8 +422,13 @@ class LookerSource(DashboardServiceSource):
         We either get GitHubCredentials or `NoGitHubCredentials`
         """
         if not self._repo_credentials:
-            if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, get_args(ReadersCredentials)
+            if self.service_connection.gitCredentials and (
+                isinstance(
+                    self.service_connection.gitCredentials, get_args(ReadersCredentials)
+                )
+                or isinstance(
+                    self.service_connection.gitCredentials, LocalRepositoryPath
+                )
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
@@ -504,6 +569,13 @@ class LookerSource(DashboardServiceSource):
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
                 if self.repository_credentials:
+                    logger.info(
+                        f"Repository credentials are present, processing views of explore model {datamodel_name}"
+                    )
+                    if model.joins:
+                        logger.info(
+                            f"Joins are present, processing views of explore model {datamodel_name}"
+                        )
                     for view in model.joins:
                         if filter_by_datamodel(
                             self.source_config.dataModelFilterPattern, view.name
@@ -517,6 +589,9 @@ class LookerSource(DashboardServiceSource):
                             view_name=ViewName(view_name), explore=model
                         )
                     if model.view_name:
+                        logger.info(
+                            f"View name is present, processing view {model.view_name} of explore model {datamodel_name}"
+                        )
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )
@@ -605,6 +680,7 @@ class LookerSource(DashboardServiceSource):
                 )
                 yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(datamodel_view_name)
+                self._views_cache[view.name] = self._view_data_model
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
@@ -816,6 +892,25 @@ class LookerSource(DashboardServiceSource):
                     " while processing view lineage."
                 )
 
+            # Handle view-to-view lineage via extends
+            if view.extends__all:
+                for extended_views_list in view.extends__all:
+                    for extended_view_name in extended_views_list:
+                        extended_view_model = self._views_cache.get(extended_view_name)
+                        if extended_view_model:
+                            logger.debug(
+                                f"Building lineage from extended view {extended_view_name} to view {self._view_data_model.name}"
+                            )
+                            yield self._get_add_lineage_request(
+                                from_entity=extended_view_model,
+                                to_entity=self._view_data_model,
+                                column_lineage=[],
+                            )
+                        else:
+                            logger.debug(
+                                f"Extended view [{extended_view_name}] not found in cache for view [{view.name}]"
+                            )
+
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
@@ -922,6 +1017,8 @@ class LookerSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         try:
             return list(
                 self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS))
@@ -963,6 +1060,8 @@ class LookerSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
                 if dashboard_owner.email:

@@ -13,6 +13,7 @@
       "enum": [
         "All",
         "Create",
+        "BulkCreate",
         "CreateIngestionPipelineAutomator",
         "Delete",
         "ViewAll",
@@ -25,6 +26,7 @@
         "ViewSampleData",
         "ViewTestCaseFailedRowsSample",
         "EditAll",
+        "BulkUpdate",
         "EditCustomFields",
         "EditDataProfile",
         "EditDescription",
@@ -50,6 +52,7 @@
         "EditKnowledgePanel",
         "EditPage",
         "EditIngestionPipelineStatus",
+        "EditUserNotificationTemplate",
         "DeleteTestCaseFailedRowsSample",
         "Deploy",
         "Trigger",
@@ -58,7 +61,8 @@
         "EditScim",
         "CreateScim",
         "DeleteScim",
-        "ViewScim"
+        "ViewScim",
+        "Impersonate"
       ]
     }
   },

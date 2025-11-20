@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
@@ -22,6 +23,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -36,6 +38,7 @@ import { exportDatabaseSchemaDetailsInCSV } from '../rest/databaseAPI';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { getTermQuery } from './SearchUtils';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
@@ -105,6 +108,16 @@ export const getDataBaseSchemaPageBaseTabs = ({
           onUpdateFeedCount={handleFeedCount}
         />
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -203,3 +216,23 @@ export const getDatabaseSchemaWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     />
   );
 };
+
+export function buildSchemaQueryFilter(
+  field: string,
+  fieldValue: string,
+  searchValue?: string
+) {
+  return getTermQuery(
+    { [field]: fieldValue },
+    'must',
+    undefined,
+    searchValue
+      ? {
+          wildcardShouldQueries: {
+            'name.keyword': `*${searchValue}*`,
+            'description.keyword': `*${searchValue}*`,
+          },
+        }
+      : undefined
+  );
+}

@@ -33,7 +33,7 @@ test.describe('Login flow should work properly', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     const response = await page.request.get(
-      `/api/v1/users/name/${user.getUserName()}`
+      `/api/v1/users/name/${user.getUserDisplayName()}`
     );
 
     // reset token expiry to 4 hours
@@ -97,7 +97,7 @@ test.describe('Login flow should work properly', () => {
     // Login with the created user
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', CREDENTIALS.password);
-    const loginResponse = page.waitForResponse(`/api/v1/users/login`);
+    const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
     await loginResponse;
     await page.waitForLoadState('networkidle');
@@ -118,7 +118,7 @@ test.describe('Login flow should work properly', () => {
     // Login with invalid email
     await page.fill('#email', invalidEmail);
     await page.fill('#password', CREDENTIALS.password);
-    const loginResponse = page.waitForResponse(`/api/v1/users/login`);
+    const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
     await loginResponse;
 
@@ -129,7 +129,7 @@ test.describe('Login flow should work properly', () => {
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', invalidPassword);
-    const loginResponse2 = page.waitForResponse(`/api/v1/users/login`);
+    const loginResponse2 = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
     await loginResponse2;
 

@@ -77,6 +77,11 @@ const mockGenericContext = {
     ViewAll: true,
   },
   onUpdate: jest.fn(),
+  entityRules: {
+    canAddMultipleUserOwners: true,
+    canAddMultipleTeamOwner: true,
+    canAddMultipleDataProducts: true,
+  },
 };
 
 describe('CommonWidgets', () => {
@@ -233,7 +238,7 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('owner-label-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-expert-name')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {

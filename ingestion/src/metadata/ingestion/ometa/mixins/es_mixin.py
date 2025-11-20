@@ -39,6 +39,7 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
 from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
 from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import ometa_logger
@@ -65,12 +66,16 @@ class HitsModel(BaseModel):
     ]
     id: Annotated[str, Field(description="Document ID", alias="_id")]
     score: Annotated[
-        Optional[float], Field(description="Score of the document", alias="_score")
+        Optional[float],
+        Field(default=None, description="Score of the document", alias="_score"),
     ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
     sort: Annotated[
-        List[str],
-        Field(description="Sort field. Used internally to get the next page FQN"),
+        Optional[List[str]],
+        Field(
+            default=None,
+            description="Sort field. Used internally to get the next page FQN",
+        ),
     ]
 
 
@@ -521,10 +526,13 @@ class ESMixin(Generic[T]):
         fetch table from es when with/without `db_service_name`
         """
         try:
+            prepended_fqn = fqn.prefix_entity_for_wildcard_search(
+                entity_type=entity_type, fqn=fqn_search_string
+            )
             entity_result = get_entity_from_es_result(
                 entity_list=self.es_search_from_fqn(
                     entity_type=entity_type,
-                    fqn_search_string=fqn_search_string,
+                    fqn_search_string=prepended_fqn,
                 ),
                 fetch_multiple_entities=fetch_multiple_entities,
             )

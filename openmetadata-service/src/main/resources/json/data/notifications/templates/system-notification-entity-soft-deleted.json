@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-entity-soft-deleted",
+  "fullyQualifiedName": "system-notification-entity-soft-deleted",
+  "displayName": "Entity Soft Deleted Notification",
+  "description": "System default template for entity soft deletion notifications",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> soft deleted {{camelCaseToTitle event.entityType}} <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
+}

@@ -55,6 +55,7 @@ import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityRules } from '../../hooks/useEntityRules';
 import { useFqn } from '../../hooks/useFqn';
 import {
   DataQualityPageTabs,
@@ -79,6 +80,7 @@ import './test-suite-details-page.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
+  const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const navigate = useNavigate();
@@ -380,8 +382,16 @@ const TestSuiteDetailsPage = () => {
     [currentPage, paging, pageSize, handlePageSizeChange, handleTestCasePaging]
   );
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const removeFromTestSuite = testSuite
+      ? {
+          testSuite,
+          isAllowed:
+            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+        }
+      : undefined;
+
+    return [
       {
         label: (
           <TabsLabel
@@ -398,7 +408,7 @@ const TestSuiteDetailsPage = () => {
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
-            removeFromTestSuite={testSuite ? { testSuite } : undefined}
+            removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
@@ -419,21 +429,21 @@ const TestSuiteDetailsPage = () => {
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
         ),
       },
-    ],
-    [
-      testSuite,
-      incidentUrlState,
-      isLoading,
-      isTestCaseLoading,
-      pagingData,
-      showPagination,
-      testCaseResult,
-      handleTestSuiteUpdate,
-      handleSortTestCase,
-      fetchTestCases,
-      ingestionPipelineCount,
-    ]
-  );
+    ];
+  }, [
+    testSuite,
+    incidentUrlState,
+    isLoading,
+    isTestCaseLoading,
+    pagingData,
+    showPagination,
+    testCaseResult,
+    handleTestSuiteUpdate,
+    handleSortTestCase,
+    fetchTestCases,
+    ingestionPipelineCount,
+    testSuitePermissions,
+  ]);
 
   const selectedTestCases = useMemo(() => {
     return testCaseResult.map((test) => test.name);
@@ -524,6 +534,10 @@ const TestSuiteDetailsPage = () => {
                 <Divider className="self-center" type="vertical" />
                 <OwnerLabel
                   hasPermission={permissions.hasEditOwnerPermission}
+                  multiple={{
+                    user: entityRules.canAddMultipleUserOwners,
+                    team: entityRules.canAddMultipleTeamOwner,
+                  }}
                   owners={testOwners}
                   onUpdate={onUpdateOwner}
                 />

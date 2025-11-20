@@ -44,6 +44,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
@@ -82,11 +83,15 @@ function FollowingWidget({
       const sortField = getSortField(selectedEntityFilter);
       const sortOrder = getSortOrder(selectedEntityFilter);
 
+      const queryFilterObj = getTermQuery(
+        { followers: currentUser.id },
+        'must'
+      );
+
       const res = await searchQuery({
         pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
+        queryFilter: queryFilterObj,
         sortField,
         sortOrder,
       });
@@ -268,7 +273,6 @@ function FollowingWidget({
         sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleEntityFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))

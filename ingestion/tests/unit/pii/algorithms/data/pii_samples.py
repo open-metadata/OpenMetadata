@@ -184,10 +184,7 @@ es_nif_data: LabeledData = {
     "column_name": None,  # Otherwise it will be confused with a phone number
     "column_data_type": DataType.STRING,
     "sample_data": ["48347544A", "08163649Y", "85738706L", "01922869T", "44729355J"],
-    "pii_tags": [
-        PIITag.ES_NIF,
-        PIITag.US_DRIVER_LICENSE,  # low score
-    ],
+    "pii_tags": [PIITag.ES_NIF],
     "pii_sensitivity": True,
 }
 

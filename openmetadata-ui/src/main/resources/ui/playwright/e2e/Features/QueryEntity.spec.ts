@@ -33,7 +33,7 @@ const entityData = [table1, table2, table3, user1, user2];
 const queryData = {
   query: `select * from table ${table1.entity.name}`,
   description: 'select all the field from table',
-  owner: user1.getUserName(),
+  owner: user1.getUserDisplayName(),
   tagFqn: 'PersonalData.Personal',
   tagName: 'Personal',
   queryUsedIn: {
@@ -51,6 +51,10 @@ test.beforeAll(async ({ browser }) => {
     apiContext,
     tableResponseData: table2.entityResponseData,
   });
+
+  // set owner name for queryData
+  queryData.owner = user1.getUserDisplayName();
+
   await afterAction();
 });
 
@@ -66,7 +70,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="table_queries"]`);
     const tableResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index*'
+      '/api/v1/search/query?q=&index=table_search_index&from=0&size=*'
     );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);
@@ -110,7 +114,7 @@ test('Query Entity', async ({ page }) => {
 
   await test.step('Update owner, description and tag', async () => {
     const ownerListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page
       .getByTestId(
@@ -124,6 +128,11 @@ test('Query Entity', async ({ page }) => {
       state: 'detached',
     });
 
+    await page
+      .locator("[data-testid='select-owner-tabs']")
+      .getByRole('tab', { name: 'Users' })
+      .click();
+
     const searchOwnerResponse = page.waitForResponse('api/v1/search/query?q=*');
     await page.fill(
       '[data-testid="owner-select-users-search-bar"]',
@@ -136,13 +145,13 @@ test('Query Entity', async ({ page }) => {
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await page.getByRole('button', { name: 'Update' }).click({
+      force: true,
+    });
     await updateOwnerResponse;
 
-    await expect(page.getByRole('link', { name: 'admin' })).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: queryData.owner })
-    ).toBeVisible();
+    await expect(page.getByTestId('admin')).toBeVisible();
+    await expect(page.getByTestId(queryData.owner)).toBeVisible();
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
@@ -200,7 +209,7 @@ test('Query Entity', async ({ page }) => {
   });
 
   await test.step('Verify query filter', async () => {
-    const userName = user2.getUserName();
+    const userName = user2.getUserDisplayName();
     await queryFilters({
       filter: userName,
       apiKey: `/api/v1/search/query?*${encodeURI(

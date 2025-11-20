@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,6 +49,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
+  showSelectedCounts = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -94,7 +95,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           '',
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -106,7 +108,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
           const bucketItem = buckets.find(
-            (item) => item.key === option.fullyQualifiedName
+            (item) => toLower(item.key) === toLower(option.fullyQualifiedName)
           );
 
           return {
@@ -159,7 +161,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           value,
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         );
 
         const buckets = res.data.aggregations[`sterms#${key}`].buckets;
@@ -212,6 +215,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
+            showSelectedCounts={showSelectedCounts}
             triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });

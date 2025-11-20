@@ -23,18 +23,22 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Directory } from '../../../generated/entity/data/directory';
+import { File } from '../../../generated/entity/data/file';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { DriveService } from '../../../generated/entity/services/driveService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { MetadataService } from '../../../generated/entity/services/metadataService';
 import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
@@ -71,7 +75,12 @@ export type DataAssetsType =
   | APICollection
   | APIEndpoint
   | Metric
-  | Chart;
+  | Chart
+  | DriveService
+  | Directory
+  | File
+  | Spreadsheet
+  | Worksheet;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -83,7 +92,8 @@ export type DataAssetsWithoutServiceField =
   | StorageService
   | SearchService
   | APIService
-  | Metric;
+  | Metric
+  | DriveService;
 
 export type DataAssetsWithFollowersField =
   | Table
@@ -97,7 +107,8 @@ export type DataAssetsWithFollowersField =
   | StoredProcedure
   | APIEndpoint
   | Metric
-  | Chart;
+  | Chart
+  | Directory;
 
 export type DataAssetsWithServiceField =
   | Table
@@ -113,14 +124,14 @@ export type DataAssetsWithServiceField =
   | DatabaseSchema
   | APICollection
   | APIEndpoint
-  | Chart;
+  | Chart
+  | Directory;
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>
   | GlossaryTerm;
 
 export type DataAssetsHeaderProps = {
-  dataContract?: DataContract;
   permissions: OperationPermission;
   openTaskCount?: number;
   allowSoftDelete?: boolean;
@@ -146,6 +157,7 @@ export type DataAssetsHeaderProps = {
   afterTriggerAction?: VoidFunction;
   isAutoPilotWorkflowStatusLoading?: boolean;
   onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
+  disableRunAgentsButtonMessage?: string;
 } & (
   | DataAssetTable
   | DataAssetTopic
@@ -168,10 +180,15 @@ export type DataAssetsHeaderProps = {
   | DataAssetSearchService
   | DataAssetApiService
   | DataAssetSecurityService
+  | DataAssetDriveService
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
   | DataAssetMetric
   | DataAssetChart
+  | DataAssetDirectory
+  | DataAssetFile
+  | DataAssetSpreadsheet
+  | DataAssetWorksheet
 );
 
 export interface DataAssetTable {
@@ -289,7 +306,30 @@ export interface DataAssetSecurityService {
   dataAsset: ServicesType;
   entityType: EntityType.SECURITY_SERVICE;
 }
+export interface DataAssetDriveService {
+  dataAsset: ServicesType;
+  entityType: EntityType.DRIVE_SERVICE;
+}
 
+export interface DataAssetDirectory {
+  dataAsset: Directory;
+  entityType: EntityType.DIRECTORY;
+}
+
+export interface DataAssetFile {
+  dataAsset: File;
+  entityType: EntityType.FILE;
+}
+
+export interface DataAssetSpreadsheet {
+  dataAsset: Spreadsheet;
+  entityType: EntityType.SPREADSHEET;
+}
+
+export interface DataAssetWorksheet {
+  dataAsset: Worksheet;
+  entityType: EntityType.WORKSHEET;
+}
 export interface DataAssetHeaderInfo {
   extraInfo: ReactNode;
   breadcrumbs: TitleBreadcrumbProps['titleLinks'];

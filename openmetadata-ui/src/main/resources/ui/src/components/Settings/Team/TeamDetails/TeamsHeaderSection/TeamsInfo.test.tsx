@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TeamType } from '../../../../../generated/entity/teams/team';
-import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsInfo from './TeamsInfo.component';
 
@@ -45,10 +44,6 @@ const mockTeam = {
   version: 1,
 };
 
-jest.mock('../../../../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
-}));
-
 jest.mock('../../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
@@ -71,6 +66,26 @@ jest.mock('../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { id: 'test-user' },
   }),
+}));
+
+jest.mock(
+  '../../../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 const mockEntityPermissions = { ...ENTITY_PERMISSIONS };
@@ -161,8 +176,6 @@ describe('TeamsInfo', () => {
   });
 
   it('should not show edit button if user does not have permission', () => {
-    (useAuth as jest.Mock).mockReturnValue({ isAdminUser: false });
-
     mockEntityPermissions.EditAll = false;
     const { queryByTestId } = render(<TeamsInfo {...teamProps} />);
     const ownerLabel = queryByTestId('edit-email');

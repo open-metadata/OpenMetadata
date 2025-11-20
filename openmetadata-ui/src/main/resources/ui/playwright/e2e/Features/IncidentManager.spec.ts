@@ -10,36 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { addMentionCommentInFeed } from '../../utils/activityFeed';
+import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
-  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
+import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
   assignIncident,
   triggerTestSuitePipelineAndWaitForSuccess,
   visitProfilerTab,
 } from '../../utils/incidentManager';
+import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
 const user3 = new UserClass();
 const users = [user1, user2, user3];
 const table1 = new TableClass();
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.configure({ mode: 'serial' });
 
@@ -48,7 +50,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     // since we need to poll for the pipeline status, we need to increase the timeout
     test.slow();
 
-    const { afterAction, apiContext, page } = await createNewPage(browser);
+    const { afterAction, apiContext, page } = await performAdminLogin(browser);
 
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
@@ -68,9 +70,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testDefinition: 'tableColumnCountToBeBetween',
       });
     }
-    await apiContext.post(
-      `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-    );
+
+    await makeRetryRequest({
+      page,
+      fn: () =>
+        apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+        ),
+    });
+
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,
       pipeline,
@@ -81,7 +89,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     for (const entity of [...users, table1]) {
       await entity.delete(apiContext);
     }
@@ -94,13 +102,41 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await redirectToHomePage(page);
   });
 
-  test('Basic Scenario', async ({ page }) => {
+  test('Complete Incident lifecycle with table owner', async ({
+    page: adminPage,
+    ownerPage: page,
+  }) => {
     const testCase = table1.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
     const assignee = {
       name: user1.data.email.split('@')[0],
-      displayName: user1.getUserName(),
+      displayName: user1.getUserDisplayName(),
     };
+
+    await test.step('Claim ownership of table', async () => {
+      const loggedInUserRequest = page.waitForResponse(
+        `/api/v1/users/loggedInUser*`
+      );
+      await redirectToHomePage(page);
+      const loggedInUserResponse = await loggedInUserRequest;
+      const loggedInUser = await loggedInUserResponse.json();
+
+      await redirectToHomePage(adminPage);
+
+      await table1.visitEntityPage(adminPage);
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await addOwner({
+        page: adminPage,
+        owner: loggedInUser.displayName,
+        type: 'Users',
+        endpoint: EntityTypeEndpoint.Table,
+        dataTestId: 'data-assets-header',
+      });
+    });
 
     await test.step("Acknowledge table test case's failure", async () => {
       await acknowledgeTask({
@@ -121,7 +157,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Re-assign incident to user', async () => {
       const assignee1 = {
         name: user2.data.email.split('@')[0],
-        displayName: user2.getUserName(),
+        displayName: user2.getUserDisplayName(),
       };
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
@@ -174,11 +210,32 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     });
 
     await test.step(
+      'Verify that notifications correctly display mentions for the incident manager',
+      async () => {
+        const testcaseName = await page
+          .getByTestId('entity-header-name')
+          .innerText();
+        await addMentionCommentInFeed(page, 'admin', true);
+
+        await adminPage.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(adminPage);
+        await adminPage.getByRole('button', { name: 'Notifications' }).click();
+        await adminPage.getByText('Mentions').click();
+        await adminPage.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(adminPage);
+
+        await expect(adminPage.getByLabel('Mentions')).toContainText(
+          `mentioned you on the testCase ${testcaseName}`
+        );
+      }
+    );
+
+    await test.step(
       "Re-assign incident from test case page's header",
       async () => {
         const assignee2 = {
           name: user3.data.email.split('@')[0],
-          displayName: user3.getUserName(),
+          displayName: user3.getUserDisplayName(),
         };
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/name/*?fields=*'
@@ -254,10 +311,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(
@@ -277,21 +331,18 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="test-case-${testCaseName}"]`)
       ).toBeVisible();
 
-      await page.click(
-        `[data-testid="${testCaseName}-status"] [data-testid="edit-resolution-icon"]`
-      );
-      await page.click(`[data-testid="test-case-resolution-status-type"]`);
-      await page.click(`[title="Resolved"]`);
-      await page.click(
-        '#testCaseResolutionStatusDetails_testCaseFailureReason'
-      );
-      await page.click('[title="Missing Data"]');
-      await page.click(descriptionBox);
-      await page.fill(descriptionBox, 'test');
+      await page.click(`[data-testid="${testCaseName}-status"]`);
+      await page.getByRole('menuitem', { name: 'Resolved' }).click();
+      await page.click('[data-testid="reason-chip-MissingData"]');
+      await page.getByTestId('resolved-comment-textarea').click();
+      await page
+        .locator('[data-testid="resolved-comment-textarea"] textarea')
+        .first()
+        .fill('test');
       const updateTestCaseIncidentStatus = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.click('.ant-modal-footer >> text=Save');
+      await page.getByTestId('submit-resolved-popover-button').click();
       await updateTestCaseIncidentStatus;
     });
 
@@ -300,10 +351,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(
@@ -355,7 +403,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const pipeline = table1.testSuitePipelineResponseData[0];
     const assignee = {
       name: user1.data.email.split('@')[0],
-      displayName: user1.getUserName(),
+      displayName: user1.getUserDisplayName(),
     };
     const { apiContext } = await getApiContext(page);
 
@@ -396,10 +444,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(
@@ -419,10 +464,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
-    await page
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Incidents')
-      .click();
+    await page.getByRole('tab', { name: 'Incidents' }).click();
     await incidentListResponse;
 
     for (const testCase of testCases) {
@@ -465,7 +507,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test("Verify filters in Incident Manager's page", async ({ page }) => {
     const assigneeTestCase = {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
-      userDisplayName: user1.getUserName(),
+      userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
@@ -529,13 +571,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="test-case-select"]');
     const testCaseResponse = page.waitForResponse(
-      `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+      `/api/v1/search/query?q=*index=test_case_search_index*`
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;
 
     const testCaseFilterRes = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*`
     );
     await page.click(`[title="${testCase1}"]`);
     await testCaseFilterRes;

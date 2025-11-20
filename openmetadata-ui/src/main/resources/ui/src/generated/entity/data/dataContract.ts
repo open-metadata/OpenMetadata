@@ -23,6 +23,15 @@ export interface DataContract {
      */
     contractUpdates?: ContractUpdate[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when the data contract was
+     * created.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created the data contract.
+     */
+    createdBy?: string;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -66,6 +75,10 @@ export interface DataContract {
      * Unique identifier of this data contract instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Incremental change description of the entity.
      */
@@ -209,6 +222,10 @@ export interface ContractUpdate {
      */
     changeDescription?: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Timestamp when the contract was updated.
      */
     timestamp: number;
@@ -294,6 +311,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -430,6 +448,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -674,6 +693,11 @@ export interface ColumnProfile {
  */
 export interface CardinalityDistribution {
     /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
      * List of category names including 'Others'.
      */
     categories?: string[];
@@ -741,6 +765,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -795,9 +823,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -807,20 +857,20 @@ export interface Style {
  */
 export interface ContractSecurity {
     /**
-     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
-     */
-    consumers?: DataConsumers[];
-    /**
      * Expected data classification (e.g. Confidential, PII, etc.)
      */
     dataClassification?: string;
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    policies?: Policy[];
     [property: string]: any;
 }
 
 /**
  * Intended consumers of the data (e.g. internal teams, external partners, etc.)
  */
-export interface DataConsumers {
+export interface Policy {
     /**
      * Reference to an access policy ID or name that should govern this data
      */
@@ -909,6 +959,10 @@ export interface ContractSLA {
      */
     availabilityTime?: string;
     /**
+     * Column that represents the refresh time of the data (if applicable)
+     */
+    columnName?: string;
+    /**
      * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
      */
     maxLatency?: MaximumLatency;
@@ -920,6 +974,10 @@ export interface ContractSLA {
      * How long the data is retained (if relevant)
      */
     retention?: DataRetentionPeriod;
+    /**
+     * Timezone for the availability time. UTC by default.
+     */
+    timezone?: Timezone;
     [property: string]: any;
 }
 
@@ -969,4 +1027,46 @@ export enum RetentionUnit {
     Month = "month",
     Week = "week",
     Year = "year",
+}
+
+/**
+ * Timezone for the availability time. UTC by default.
+ */
+export enum Timezone {
+    GMT0000EuropeLondon = "GMT+00:00 (Europe/London)",
+    GMT0100AtlanticAzores = "GMT-01:00 (Atlantic/Azores)",
+    GMT0100EuropeParis = "GMT+01:00 (Europe/Paris)",
+    GMT0200AtlanticSouthGeorgia = "GMT-02:00 (Atlantic/South_Georgia)",
+    GMT0200EuropeAthens = "GMT+02:00 (Europe/Athens)",
+    GMT0230AtlanticNewfoundland = "GMT-02:30 (Atlantic/Newfoundland)",
+    GMT0300AmericaSaoPaulo = "GMT-03:00 (America/Sao Paulo)",
+    GMT0300AsiaIran = "GMT+03:00 (Asia/Iran)",
+    GMT0300EuropeMoscow = "GMT+03:00 (Europe/Moscow)",
+    GMT0400AmericaSantiago = "GMT-04:00 (America/Santiago)",
+    GMT0400AsiaDubai = "GMT+04:00 (Asia/Dubai)",
+    GMT0430AsiaAfghanistan = "GMT+04:30 (Asia/Afghanistan)",
+    GMT0500AmericaNewYork = "GMT-05:00 (America/New York)",
+    GMT0500AsiaKarachi = "GMT+05:00 (Asia/Karachi)",
+    GMT0530AsiaKolkata = "GMT+05:30 (Asia/Kolkata)",
+    GMT0545AsiaNepal = "GMT+05:45 (Asia/Nepal)",
+    GMT0600AmericaChicago = "GMT-06:00 (America/Chicago)",
+    GMT0600AsiaDhaka = "GMT+06:00 (Asia/Dhaka)",
+    GMT0600AsiaMyanmar = "GMT+06:00 (Asia/Myanmar)",
+    GMT0700AmericaDenver = "GMT-07:00 (America/Denver)",
+    GMT0700AsiaBangkok = "GMT+07:00 (Asia/Bangkok)",
+    GMT0800AmericaLosAngeles = "GMT-08:00 (America/Los Angeles)",
+    GMT0800AsiaShanghai = "GMT+08:00 (Asia/Shanghai)",
+    GMT0845AustraliaAustralianCentralWesternStandardTime = "GMT+08:45 (Australia/Australian Central Western Standard Time)",
+    GMT0900AmericaAnchorage = "GMT-09:00 (America/Anchorage)",
+    GMT0900AsiaTokyo = "GMT+09:00 (Asia/Tokyo)",
+    GMT0900AustraliaAdelaide = "GMT+09:00 (Australia/Adelaide)",
+    GMT0930PacificMarquesas = "GMT-09:30 (Pacific/Marquesas)",
+    GMT1000AustraliaSydney = "GMT+10:00 (Australia/Sydney)",
+    GMT1000PacificHonolulu = "GMT-10:00 (Pacific/Honolulu)",
+    GMT1030AustraliaLordHowe = "GMT+10:30 (Australia/Lord Howe)",
+    GMT1100PacificNiue = "GMT-11:00 (Pacific/Niue)",
+    GMT1100PacificNorfolk = "GMT+11:00 (Pacific/Norfolk)",
+    GMT1200PacificAuckland = "GMT+12:00 (Pacific/Auckland)",
+    GMT1300PacificTongatapu = "GMT+13:00 (Pacific/Tongatapu)",
+    GMT1400PacificKiritimati = "GMT+14:00 (Pacific/Kiritimati)",
 }

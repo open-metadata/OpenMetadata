@@ -15,7 +15,19 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
-from typing import Any, Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from collections.abc import Generator
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +45,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
 )
@@ -56,12 +69,14 @@ from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.tag_glossary_mixin import OMetaTagGlossaryMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
+from metadata.ingestion.ometa.sse_client import SSEClient
 from metadata.ingestion.ometa.utils import (
     decode_jwt_token,
     get_entity_type,
@@ -110,6 +125,7 @@ class OpenMetadataSettings(BaseSettings):
 
 
 class OpenMetadata(
+    CSVMixin,
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
@@ -133,6 +149,7 @@ class OpenMetadata(
     OMetaSuggestionsMixin,
     OMetaDomainMixin,
     OMetaProfileMixin,
+    OMetaTagGlossaryMixin,
     Generic[T, C],
 ):
     """
@@ -144,6 +161,7 @@ class OpenMetadata(
     """
 
     client: REST
+    sse_client: SSEClient
     _auth_provider: OpenMetadataAuthenticationProvider
     config: OpenMetadataConnection
 
@@ -186,6 +204,7 @@ class OpenMetadata(
         )
 
         self.client = REST(client_config)
+        self.sse_client = SSEClient(client_config)
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
@@ -243,6 +262,9 @@ class OpenMetadata(
         if issubclass(entity, CreateBot):
             # Bots schemas don't live inside any subdirectory
             return None
+        if "events.api" in entity.__module__:
+            # EventSubscription entities are in events module, not entity.api
+            return "events"
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
@@ -296,13 +318,18 @@ class OpenMetadata(
             .replace("ingestionpipeline", "ingestionPipeline")
             .replace("dataproduct", "dataProduct")
             .replace("datacontract", "dataContract")
+            .replace("chatconversation", "chatConversation")
+            .replace("eventsubscription", "eventSubscription")
         )
         class_path = ".".join(
             filter(
                 None,
                 [
                     self.class_root,
-                    self.entity_path if not file_name.startswith("test") else None,
+                    self.entity_path
+                    if not file_name.startswith("test")
+                    and not file_name.startswith("eventSubscription")
+                    else None,
                     self.get_module_path(create),
                     self.update_file_name(create, file_name),
                 ],
@@ -572,6 +599,14 @@ class OpenMetadata(
             return resp
 
         return [entity(**p) for p in resp["data"]]
+
+    def stream(
+        self, method: str, path: str, data: None | dict[str, Any] = None
+    ) -> Generator[Any, Any, None]:
+        """
+        Stream an SSE response
+        """
+        yield from self.sse_client.stream(method, path, data)
 
     def delete(
         self,

@@ -17,7 +17,11 @@ export interface BitbucketCredentials {
     /**
      * Main production branch of the repository. E.g., `main`
      */
-    branch:          string;
+    branch: string;
+    /**
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     */
+    gitHostURL?:     string;
     repositoryName:  string;
     repositoryOwner: string;
     token?:          string;

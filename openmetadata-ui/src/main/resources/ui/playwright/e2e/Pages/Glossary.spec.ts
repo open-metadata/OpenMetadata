@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
@@ -24,6 +25,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  descriptionBox,
   getRandomLastName,
   redirectToHomePage,
   toastNotification,
@@ -87,6 +89,7 @@ const user2 = new UserClass();
 const team = new TeamClass();
 const user3 = new UserClass();
 const user4 = new UserClass();
+const adminUser = new UserClass();
 
 test.describe('Glossary tests', () => {
   test.beforeAll(async ({ browser }) => {
@@ -95,6 +98,8 @@ test.describe('Glossary tests', () => {
     await user1.create(apiContext);
     await user3.create(apiContext);
     await user4.create(apiContext);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
     team.data.users = [user2.responseData.id];
     await team.create(apiContext);
     await afterAction();
@@ -265,7 +270,7 @@ test.describe('Glossary tests', () => {
         // Update Owners
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -276,7 +281,7 @@ test.describe('Glossary tests', () => {
         // Update Reviewer
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'Add',
           resultTestId: 'glossary-reviewer-name',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -501,7 +506,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
         await page.waitForSelector(
-          'text=Adding a new Asset is easy, just give it a spin!'
+          "text=Looks like you haven't added any data assets yet."
         );
 
         await dashboardEntity.visitEntityPage(page);
@@ -747,10 +752,14 @@ test.describe('Glossary tests', () => {
 
         await page.click('[data-testid="overview"]');
         const queryRes = page.waitForResponse(
-          '/api/v1/search/query?q=*&index=all&from=0&size=15'
+          '/api/v1/search/query?q=*&index=all&from=0&*'
         );
         await page.getByTestId('assets').click();
         await queryRes;
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
         await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
 
         await expect(
@@ -771,7 +780,7 @@ test.describe('Glossary tests', () => {
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await page.click('[data-testid="overview"]');
         const queryRes = page.waitForResponse(
-          '/api/v1/search/query?q=*&index=all&from=0&size=15'
+          '/api/v1/search/query?q=*&index=all&from=0&*'
         );
         await page.getByTestId('assets').click();
         await queryRes;
@@ -1227,6 +1236,11 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await performExpandAll(page);
 
@@ -1463,6 +1477,12 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
 
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await createGlossaryTerm(
         page,
         glossary2.data.terms[0].data,
@@ -1692,6 +1712,79 @@ test.describe('Glossary tests', () => {
       await glossaryTerm.delete(apiContext);
       await afterAction();
       await reviewerAfterAction();
+    }
+  });
+
+  test('Glossary creation with domain selection', async ({ browser }) => {
+    test.slow(true);
+
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, adminUser);
+    const domain = new Domain();
+    const glossary = new Glossary();
+
+    try {
+      await test.step('Create domain', async () => {
+        await domain.create(apiContext);
+      });
+
+      await test.step('Navigate to Glossary page', async () => {
+        await redirectToHomePage(page1);
+        await sidebarClick(page1, SidebarItem.GLOSSARY);
+
+        await page1.getByTestId('domain-dropdown').click();
+
+        const searchDomain = page1.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent(domain.data.name)}*`
+        );
+        await page1
+          .getByTestId('domain-selectable-tree')
+          .getByTestId('searchbar')
+          .fill(domain.data.name);
+        await searchDomain;
+
+        await page1.getByTestId(`tag-"${domain.data.name}"`).click();
+
+        await page1.waitForLoadState('networkidle');
+        await page1.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+      });
+
+      await test.step('Open Add Glossary form', async () => {
+        await page1.click('[data-testid="add-glossary"]');
+        await page1.waitForSelector('[data-testid="form-heading"]');
+
+        await expect(page1.locator('[data-testid="form-heading"]')).toHaveText(
+          'Add Glossary'
+        );
+
+        await page1.fill('[data-testid="name"]', glossary.data.name);
+        await page1.locator(descriptionBox).fill(glossary.data.description);
+      });
+
+      await test.step(
+        'Save glossary and verify creation with domain',
+        async () => {
+          const glossaryResponse = page1.waitForResponse('/api/v1/glossaries');
+          await page1.click('[data-testid="save-glossary"]');
+          await glossaryResponse;
+
+          await expect(page1).toHaveURL(/\/glossary\//);
+
+          await expect(
+            page1.locator('[data-testid="entity-header-name"]')
+          ).toContainText(glossary.data.name);
+
+          await expect(
+            page1.locator('[data-testid="domain-link"]')
+          ).toContainText(domain.data.displayName);
+        }
+      );
+    } finally {
+      await afterAction();
+      await afterActionUser1();
     }
   });
 

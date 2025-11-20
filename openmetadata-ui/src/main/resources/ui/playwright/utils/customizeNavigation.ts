@@ -32,10 +32,14 @@ const NAV_ITEMS = [
 export const checkDefaultStateForNavigationTree = async (page: Page) => {
   for (const item of NAV_ITEMS) {
     await expect(
-      page.getByTestId('page-layout-v1').getByText(item)
+      page.getByTestId('page-layout-v1').getByText(item).first()
     ).toBeVisible();
     await expect(
-      page.getByTestId('page-layout-v1').getByText(item).getByRole('switch')
+      page
+        .getByTestId('page-layout-v1')
+        .getByText(item)
+        .first()
+        .getByRole('switch')
     ).toBeChecked();
   }
 };
@@ -46,7 +50,11 @@ export const validateLeftSidebarWithHiddenItems = async (
 ) => {
   for (const item of Object.values(SidebarItem)) {
     // Dropdown items are handled differently
-    if (item === SidebarItem.OBSERVABILITY || item === SidebarItem.GOVERNANCE) {
+    if (
+      item === SidebarItem.OBSERVABILITY ||
+      item === SidebarItem.GOVERNANCE ||
+      item === SidebarItem.DOMAINS
+    ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {
       const items = SIDEBAR_LIST_ITEMS[item as keyof typeof SIDEBAR_LIST_ITEMS];
