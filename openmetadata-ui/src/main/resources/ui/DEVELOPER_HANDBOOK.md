@@ -11,7 +11,7 @@
 │       ├── index.tsx
 │       ├── [ComponentName].tsx
 │       ├── [ComponentName].test.tsx
-│       ├── [ComponentName].module.less
+│       ├── [ComponentName].style.less
 │       └── [ComponentName].types.ts   # (if needed, see below)
 ├── constants/             # App-wide constants and enums
 ├── context/               # React context providers
@@ -22,7 +22,7 @@
 │       ├── index.tsx
 │       ├── [PageName].tsx
 │       ├── [PageName].test.tsx
-│       ├── [PageName].module.less
+│       ├── [PageName].style.less
 │       └── [PageName].types.ts   # (if needed)
 ├── routes/                # Route definitions and helpers
 ├── store/                 # State management (Redux, Zustand, etc.)
@@ -40,7 +40,7 @@
 - Use camelCase for hooks and utility functions: `useFetchData.ts`, `formatDate.ts`
 - Use UPPER_CASE for constants: `API_URL`
 - Test files: `[ComponentName].test.tsx` or `[util].test.ts`
-- Styles: `[ComponentName].module.less` for component-scoped styles
+- Styles: `[ComponentName].style.less` for component-scoped styles
 - Types: `[ComponentName].types.ts` for component-specific types (see below)
 
 ## 3. Component Structure
@@ -48,7 +48,7 @@
 Each component/page should have its own folder containing:
 - Main component file (`.tsx`)
 - Test file (`.test.tsx`)
-- Styles (`.module.less`)
+- Styles (`.style.less`)
 - Index file for clean imports
 - Types file (`.types.ts`) if types are complex or reused
 
@@ -58,7 +58,7 @@ components/
   Button/
     Button.tsx
     Button.test.tsx
-    Button.module.less
+    Button.style.less
     Button.types.ts
     index.ts
 ```
@@ -115,7 +115,7 @@ components/
 
 ## 12. Styles
 
-- Use LESS modules for component styles (`.module.less`)
+- Use LESS style for component styles (`.style.less`)
 - Place global styles, variables, and mixins in `@src/styles/` as `.less` files
 
 ## 13. UI Library (MUI) and Icons (@untitledui/icons)
@@ -133,10 +133,10 @@ Recommended project layout for MUI and icons:
   - Prefer MUI components for common primitives (Button, TextField, Menu, Dialog).
   - Create small app-specific wrappers in @src/components/ui/ for commonly used variants:
     - e.g., @src/components/ui/Button/ (wrap MUI Button to apply project defaults)
-- Styling with LESS modules and MUI:
+- Styling with LESS styles and MUI:
   - Prefer MUI theming and the `sx` prop for dynamic styling (colors, spacing).
-  - Use `.module.less` for component-specific static styles and layout that are easier in LESS.
-  - Avoid conflicting global CSS rules; favour scoped className+module.less together with `sx` for theme-aware overrides.
+  - Use `.style.less` for component-specific static styles and layout that are easier in LESS.
+  - Avoid conflicting global CSS rules; favour scoped className+style.less together with `sx` for theme-aware overrides.
   - For global MUI component overrides, use the theme `components` key in createTheme (not global CSS).
 - Icons:
   - Import icons directly to keep bundle size small. Example:
