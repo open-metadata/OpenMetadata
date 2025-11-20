@@ -41,12 +41,14 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.DOMAINS_ID;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
 import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
 import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.SearchConstants.HITS;
 import static org.openmetadata.service.search.SearchConstants.ID;
 import static org.openmetadata.service.search.SearchConstants.PARENT;
+import static org.openmetadata.service.search.SearchConstants.PARENT_ID;
 import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
 import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
@@ -773,7 +775,6 @@ public class SearchRepository {
 
   private String resolveParentFieldName(
       String entityType, Pair<String, Map<String, Object>> updates) {
-    // For service entities, use SERVICE_ID when propagating domains or displayName
     if (!updates.getValue().isEmpty()
         && (updates.getValue().keySet().stream()
                 .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
@@ -790,11 +791,11 @@ public class SearchRepository {
       throws IOException {
     searchClient.updateChildren(
         List.of(indexMapping.getIndexName(clusterAlias)),
-        new ImmutablePair<>("parent.id", domainId),
+        new ImmutablePair<>(PARENT_ID, domainId),
         updates);
     searchClient.updateChildren(
         List.of(entityIndexMap.get(Entity.DATA_PRODUCT).getIndexName(clusterAlias)),
-        new ImmutablePair<>("domains.id", domainId),
+        new ImmutablePair<>(DOMAINS_ID, domainId),
         updates);
   }
 
