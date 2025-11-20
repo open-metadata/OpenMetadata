@@ -391,22 +391,9 @@ export const testPipelineSpecificOperations = async (
   });
 
   if (effect === 'allow') {
-    await testUserPage.getByTestId('lineage-config').click();
-
-    await expect(
-      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await testUserPage.getByTestId('lineage-config').click();
-
-    await expect(
-      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).not.toBeVisible();
-
-    await testUserPage
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Cancel' })
-      .click();
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
 
@@ -459,22 +446,9 @@ export const testDashboardDataModelSpecificOperations = async (
   });
 
   if (effect === 'allow') {
-    await testUserPage.getByTestId('lineage-config').click();
-
-    await expect(
-      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await testUserPage.getByTestId('lineage-config').click();
-
-    await expect(
-      testUserPage.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).not.toBeVisible();
-
-    await testUserPage
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Cancel' })
-      .click();
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
 

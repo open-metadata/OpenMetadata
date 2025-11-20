@@ -159,6 +159,7 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -191,6 +192,10 @@ function SearchIndexDetailsPage() {
         Operation.ViewSampleData
       ),
       viewAllPermission: searchIndexPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        searchIndexPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [
       searchIndexPermissions,
@@ -331,6 +336,7 @@ function SearchIndexDetailsPage() {
     const allTabs = searchIndexClassBase.getSearchIndexDetailPageTabs({
       searchIndexDetails: searchIndexDetails ?? ({} as SearchIndex),
       viewAllPermission,
+      viewCustomPropertiesPermission,
       feedCount,
       activeTab,
       getEntityFeedCount,
@@ -362,6 +368,7 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     searchIndexDetails,
     searchIndexDetails?.extension,
     onDescriptionUpdate,

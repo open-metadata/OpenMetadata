@@ -41,6 +41,7 @@ export interface TableDetailPageTabProps {
   feedCount: FeedCounts;
   isViewTableType: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   viewQueriesPermission: boolean;
   editLineagePermission: boolean;
   viewProfilerPermission: boolean;
