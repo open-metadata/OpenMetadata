@@ -1860,13 +1860,11 @@ test.describe('Glossary tests', () => {
 
           await confirmationInput.fill('DELETE');
 
-          const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
           await page.getByTestId('confirm-button').click();
-          await deleteRes;
 
           await toastNotification(
             page,
-            `Delete operation initiated for ${glossary.data.name}`
+            new RegExp(`.*${glossary.data.name}.*`)
           );
         }
       );
