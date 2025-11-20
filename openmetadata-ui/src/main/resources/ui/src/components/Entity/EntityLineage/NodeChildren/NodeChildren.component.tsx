@@ -64,6 +64,14 @@ const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
     </div>
   ));
 
+  const insideCurrentPageItems = paginatedItemsMapped.filter(
+    (_item, i) => i >= start && i < start + ITEMS_PER_PAGE
+  );
+
+  const outsideCurrentPageItems = paginatedItemsMapped.filter(
+    (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
+  );
+
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setPage((p) => Math.max(p - 1, 1));
@@ -75,7 +83,12 @@ const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
 
   return (
     <>
-      <Stack spacing={1}>{paginatedItemsMapped}</Stack>
+      <Stack className="inside-current-page-items" spacing={1}>
+        {insideCurrentPageItems}
+      </Stack>
+      <Stack className="outside-current-page-items" spacing={1}>
+        {outsideCurrentPageItems}
+      </Stack>
 
       <Stack
         alignItems="center"
@@ -416,7 +429,6 @@ const NodeChildren = ({
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList items={renderedColumns} />
-                  {/* {renderedColumns} */}
                 </div>
               </section>
             )}
