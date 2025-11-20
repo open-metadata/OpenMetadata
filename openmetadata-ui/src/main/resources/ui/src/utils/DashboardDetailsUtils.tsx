@@ -78,6 +78,7 @@ export const getDashboardDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,
   activeTab,
@@ -153,7 +154,7 @@ export const getDashboardDetailPageTabs = ({
         <CustomPropertyTable<EntityType.DASHBOARD>
           entityType={EntityType.DASHBOARD}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
