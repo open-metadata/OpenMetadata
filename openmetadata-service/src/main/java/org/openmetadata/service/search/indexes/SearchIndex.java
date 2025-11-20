@@ -125,11 +125,8 @@ public interface SearchIndex {
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
     TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
-    Optional.ofNullable(tierTag)
-        .filter(tier -> tier.getTagFQN() != null && !tier.getTagFQN().isEmpty())
-        .ifPresent(tier -> map.put("tier", tier));
-    Optional.ofNullable(entity.getCertification())
-        .ifPresent(assetCertification -> map.put("certification", assetCertification));
+    map.put("tier", tierTag);
+    map.put("certification", entity.getCertification());
     return map;
   }
 

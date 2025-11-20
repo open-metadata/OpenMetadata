@@ -306,10 +306,12 @@ const NodeChildren = ({
     (isColumnLayerEnabled || showDataObservability || isChildrenListExpanded)
   ) {
     return (
-      (isColumnLayerEnabled || isChildrenListExpanded) && (
-        <div className="column-container">
+      (isColumnLayerEnabled || isChildrenListExpanded) &&
+      !isEmpty(children) && (
+        <div className="column-container" data-testid="column-container">
           <div className="search-box">
             <Input
+              data-testid="search-column-input"
               placeholder={t('label.search-entity', {
                 entity: childrenHeading,
               })}

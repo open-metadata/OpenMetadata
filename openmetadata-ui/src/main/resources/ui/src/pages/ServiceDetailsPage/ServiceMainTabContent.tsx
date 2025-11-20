@@ -49,6 +49,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -56,6 +57,10 @@ import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
@@ -332,22 +337,31 @@ function ServiceMainTabContent({
 
   const {
     editTagsPermission,
+    viewCustomPropertiesPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editDataProductPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
-        (servicePermission.EditTags || servicePermission.EditAll) &&
+        getPrioritizedEditPermission(servicePermission, Operation.EditTags) &&
         !serviceDetails.deleted,
       editGlossaryTermsPermission:
-        (servicePermission.EditGlossaryTerms || servicePermission.EditAll) &&
-        !serviceDetails.deleted,
+        getPrioritizedEditPermission(
+          servicePermission,
+          Operation.EditGlossaryTerms
+        ) && !serviceDetails.deleted,
       editDescriptionPermission:
-        (servicePermission.EditDescription || servicePermission.EditAll) &&
-        !serviceDetails.deleted,
+        getPrioritizedEditPermission(
+          servicePermission,
+          Operation.EditDescription
+        ) && !serviceDetails.deleted,
       editDataProductPermission:
         servicePermission.EditAll && !serviceDetails.deleted,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        servicePermission,
+        Operation.ViewCustomFields
+      ),
     }),
     [servicePermission, serviceDetails]
   );
@@ -455,6 +469,9 @@ function ServiceMainTabContent({
                       entityType !== EntityType.METADATA_SERVICE
                     }
                     showTaskHandler={false}
+                    viewCustomPropertiesPermission={
+                      viewCustomPropertiesPermission
+                    }
                     onDataProductUpdate={onDataProductUpdate}
                     onTagSelectionChange={handleTagSelection}
                   />

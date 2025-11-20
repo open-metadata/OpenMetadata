@@ -179,7 +179,7 @@ export const visitOwnProfilePage = async (page: Page) => {
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByTestId('user-name').click();
+  await page.getByRole('link', { name: 'View Profile' }).click();
   await userResponse;
   await clickOutside(page);
 };
