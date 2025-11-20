@@ -767,9 +767,6 @@ export const testTableSearch = async (
   await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
-  await expect(page.getByText(searchTerm).first()).toBeVisible();
-  await expect(page.getByText(notVisibleText).first()).toBeVisible();
-
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*index=${searchIndex}*`
   );

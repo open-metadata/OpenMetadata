@@ -38,6 +38,7 @@ import {
   checkStewardServicesPermissions,
   generateToken,
   hardDeleteUserProfilePage,
+  performUserLogin,
   permanentDeleteUser,
   resetPassword,
   restoreUser,
@@ -70,6 +71,7 @@ const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
 const user = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 const tableEntity = new TableClass();
 const tableEntity2 = new TableClass();
 const policy = new PolicyClass();
@@ -114,6 +116,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataStewardUser.setDataStewardRole(apiContext);
   await user.create(apiContext);
   await user2.create(apiContext);
+  await user3.create(apiContext);
+  await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
   await tableEntity2.create(apiContext);
   await policy.create(apiContext, DATA_STEWARD_RULES);
@@ -469,24 +473,22 @@ test.describe('User with Data Steward Roles', () => {
 
 test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
-    adminPage,
+    browser,
   }) => {
     test.slow(true);
 
-    await redirectToHomePage(adminPage);
-    const feedResponse = adminPage.waitForResponse(
-      '/api/v1/feed?type=Conversation'
-    );
+    const { page, afterAction } = await performUserLogin(browser, user3);
 
-    await visitOwnProfilePage(adminPage);
+    await redirectToHomePage(page);
+    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
+
+    await visitOwnProfilePage(page);
     await feedResponse;
 
-    await adminPage.waitForSelector('[data-testid="message-container"]');
-    const userDetailsResponse = adminPage.waitForResponse(
-      '/api/v1/users/name/*'
-    );
+    await page.waitForSelector('[data-testid="message-container"]');
+    const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
 
-    const userFeedResponse = adminPage.waitForResponse(
+    const userFeedResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/feed') &&
         response.url().includes('type=Conversation') &&
@@ -494,20 +496,20 @@ test.describe('User Profile Feed Interactions', () => {
         response.url().includes('userId=')
     );
 
-    const avatar = adminPage
+    const avatar = page
       .locator('#feedData [data-testid="message-container"]')
       .first()
       .locator('[data-testid="profile-avatar"]')
       .first();
 
     await avatar.hover();
-    await adminPage.waitForSelector('.ant-popover-card');
+    await page.waitForSelector('.ant-popover-card');
 
     // Ensure popover is stable and visible before clicking
-    await adminPage.waitForTimeout(500); // Give popover time to stabilize
+    await page.waitForTimeout(500); // Give popover time to stabilize
 
     // Get the user name element and ensure it's ready for interaction
-    const userNameElement = adminPage.getByTestId('user-name').nth(1);
+    const userNameElement = page.getByTestId('user-name').nth(1);
 
     // Click with force to handle pointer event interception
     await userNameElement.click({ force: true });
@@ -524,9 +526,11 @@ test.describe('User Profile Feed Interactions', () => {
     // The UI shows displayName if available, otherwise falls back to name
     const expectedText = displayName ?? name;
 
-    await expect(
-      adminPage.locator('[data-testid="user-display-name"]')
-    ).toHaveText(expectedText);
+    await expect(page.locator('[data-testid="user-display-name"]')).toHaveText(
+      expectedText
+    );
+
+    await afterAction();
   });
 
   test('Close the profile dropdown after redirecting to user profile page', async ({
