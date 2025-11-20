@@ -1544,24 +1544,11 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
-    await page.getByTestId('lineage-config').click();
-
     await expect(
-      page.getByRole('menuitem', { name: 'Edit Lineage' })
+      page.locator('[data-testid="edit-lineage"]')
     ).not.toBeVisible();
-
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Cancel' })
-      .click();
   } else {
-    await page.getByTestId('lineage-config').click();
-
-    await expect(
-      page.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).toBeVisible();
-
-    await clickOutside(page);
+    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
   }
 };
 

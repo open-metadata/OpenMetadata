@@ -191,6 +191,36 @@ describe('CustomNodeV1', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should render searchbar when column layer is applied and node has children', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('search-column-input')).toBeInTheDocument();
+  });
+
+  it('should not remove searchbar from node when no columns are matched while searching', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const searchInput = screen.getByTestId(
+      'search-column-input'
+    ) as HTMLInputElement;
+
+    fireEvent.change(searchInput, { target: { value: 'nonExistingColumn' } });
+
+    expect(screen.getByTestId('search-column-input')).toBeInTheDocument();
+  });
+
   it('should render NodeChildren when column layer is applied and there are no columns', () => {
     isColumnLayerActive = true;
 

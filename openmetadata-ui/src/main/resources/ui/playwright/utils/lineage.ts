@@ -95,17 +95,10 @@ export const activateColumnLayer = async (page: Page) => {
 };
 
 export const editLineageClick = async (page: Page) => {
-  await page.getByTestId('lineage-config').click();
+  await expect(page.getByTestId('edit-lineage')).toBeVisible();
 
-  await expect(
-    page.getByRole('menuitem', { name: 'Edit Lineage' })
-  ).toBeVisible({
-    timeout: 10000,
-  });
-
-  await page.getByRole('menuitem', { name: 'Edit Lineage' }).click();
+  await page.getByTestId('edit-lineage').click();
   await page.waitForTimeout(1); // wait for the edit mode to activate
-  await clickOutside(page);
 };
 
 export const editLineage = async (page: Page) => {
@@ -751,8 +744,8 @@ export const verifyColumnLineageInCSV = async (
 };
 
 export const verifyLineageConfig = async (page: Page) => {
-  await page.click('[data-testid="lineage-config"]');
-  await page.getByRole('menuitem', { name: 'Node Depth' }).click();
+  await page.getByTestId('lineage-config').click();
+
   await page.waitForSelector('.ant-modal-content', {
     state: 'visible',
   });
