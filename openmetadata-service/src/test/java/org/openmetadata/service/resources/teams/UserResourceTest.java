@@ -2769,4 +2769,58 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
               "Deleted domain should be automatically removed during version consolidation");
         });
   }
+
+  @Test
+  void test_versionConsolidationWithDeletedTeams(TestInfo test) throws IOException {
+    // Test the fix for version consolidation issue when team is deleted between user updates
+    // Reproduces the scenario: user created with team -> team deleted -> user updated within 10
+    // mins
+
+    // Step 1: Create a test team
+    CreateTeam createTeam = TEAM_TEST.createRequest(getEntityName(test) + "_team");
+    Team testTeam = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    assertNotNull(testTeam);
+
+    // Step 2: Create a user with the test team
+    CreateUser createUser = createRequest(getEntityName(test)).withTeams(List.of(testTeam.getId()));
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    // Organization team plus our test team
+    assertTrue(user.getTeams().size() >= 1);
+    assertTrue(user.getTeams().stream().anyMatch(team -> team.getId().equals(testTeam.getId())));
+
+    // Step 3: Make an initial update to create version history (simulate displayName edit)
+    String originalName = user.getDisplayName();
+    String json = JsonUtils.pojoToJson(user);
+    user.setDisplayName(originalName + " Updated");
+    User updatedUser = patchEntity(user.getId(), json, user, ADMIN_AUTH_HEADERS);
+    assertEquals(originalName + " Updated", updatedUser.getDisplayName());
+
+    // Step 4: Delete the team (simulates team deletion while user still references it)
+    TEAM_TEST.deleteEntity(testTeam.getId(), ADMIN_AUTH_HEADERS);
+
+    // Step 5: Update user again within consolidation window (< 10 minutes)
+    // This should trigger version consolidation which will try to load previous version
+    // containing the deleted team reference
+    String finalJson = JsonUtils.pojoToJson(updatedUser);
+    final String expectedDisplayName = originalName + " Updated Again";
+    updatedUser.setDisplayName(expectedDisplayName);
+    final User userToUpdate = updatedUser;
+
+    // Before our fix: This would throw EntityNotFoundException during consolidation
+    // After our fix: This should succeed by filtering out the deleted team
+    assertDoesNotThrow(
+        () -> {
+          User finalUser =
+              patchEntity(userToUpdate.getId(), finalJson, userToUpdate, ADMIN_AUTH_HEADERS);
+          assertEquals(expectedDisplayName, finalUser.getDisplayName());
+
+          // Verify teams are cleaned up during consolidation
+          User userWithTeams = getEntity(finalUser.getId(), "teams", ADMIN_AUTH_HEADERS);
+          // Deleted team should be automatically removed
+          assertFalse(
+              userWithTeams.getTeams().stream()
+                  .anyMatch(team -> team.getId().equals(testTeam.getId())),
+              "Deleted team should be automatically removed during version consolidation");
+        });
+  }
 }

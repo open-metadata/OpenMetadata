@@ -1111,6 +1111,35 @@ public class UserRepository extends EntityRepository<User> {
       return EntityUtil.populateEntityReferences(validDomains);
     }
 
+    /**
+     * Filter team references to remove deleted teams, then populate valid ones.
+     * This prevents EntityNotFoundException when teams are deleted between updates.
+     */
+    private List<EntityReference> filterValidTeams(List<EntityReference> teams) {
+      if (teams == null || teams.isEmpty()) {
+        return teams;
+      }
+
+      // First filter out deleted teams, then populate valid references
+      List<EntityReference> validTeams =
+          teams.stream()
+              .filter(
+                  team -> {
+                    try {
+                      Entity.getEntityReference(team, ALL);
+                      return true;
+                    } catch (EntityNotFoundException e) {
+                      LOG.warn(
+                          "Removing deleted team {} from user update",
+                          team.getFullyQualifiedName());
+                      return false;
+                    }
+                  })
+              .collect(Collectors.toList());
+
+      return EntityUtil.populateEntityReferences(validTeams);
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -1202,8 +1231,8 @@ public class UserRepository extends EntityRepository<User> {
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
       assignTeams(updated, updated.getTeams());
 
-      List<EntityReference> origTeams = listOrEmpty(original.getTeams());
-      List<EntityReference> updatedTeams = listOrEmpty(updated.getTeams());
+      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);
