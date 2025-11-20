@@ -2399,7 +2399,7 @@ export const getEntityBreadcrumbs = (
           url:
             (entity as EventSubscription).alertType === AlertType.Observability
               ? ROUTES.OBSERVABILITY_ALERTS
-              : ROUTES.NOTIFICATION_ALERTS,
+              : ROUTES.NOTIFICATION_ALERT_LIST,
         },
         {
           name: entity.name,

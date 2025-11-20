@@ -648,6 +648,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
+  public void closeStream(String pipelineFQN, UUID runId) {
+    try {
+      if (isLogStorageEnabled()) {
+        logStorage.closeStream(pipelineFQN, runId);
+      } else {
+        throw new IllegalStateException("Log storage is not configured");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to close stream for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new RuntimeException("Failed to close stream", e);
+    }
+  }
+
   public Map<String, Object> getLogs(
       String pipelineFQN, UUID runId, String afterCursor, int limit) {
     try {
