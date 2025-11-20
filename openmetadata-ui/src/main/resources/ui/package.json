@@ -2,7 +2,6 @@
   "name": "open-metadata",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "engines": {
     "node": ">=22.0.0",
     "yarn": "^1.22.0"
@@ -24,8 +23,8 @@
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
     "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters json-summary",
-    "lint": "eslint \"./**/*.{js,jsx,ts,tsx,json}\"",
-    "lint:fix": "eslint './**/*.{js,jsx,ts,tsx,json}' --fix",
+    "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx,json}\"",
+    "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx,json}' --fix",
     "pretty": "prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore'  --write",
     "build-check": "yarn run js-antlr && yarn run parse-schema",
     "commit-check": "yarn run pretty && yarn run build",
