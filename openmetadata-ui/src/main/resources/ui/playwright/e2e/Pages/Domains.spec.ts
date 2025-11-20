@@ -273,6 +273,37 @@ test.describe('Domains', () => {
       ).not.toContainText(dataProduct1.data.displayName);
     });
 
+    await test.step(
+      'Verify empty assets message and Add Asset button',
+      async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await page.getByTestId('assets').getByText('Assets').click();
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('no-data-placeholder')).toContainText(
+          "Looks like you haven't added any data assets yet."
+        );
+
+        await page.getByTestId('data-assets-add-button').click();
+
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('form-heading')).toContainText(
+          'Add Assets'
+        );
+
+        await expect(page.getByTestId('cancel-btn')).toBeVisible();
+        await expect(page.getByTestId('save-btn')).toBeDisabled();
+      }
+    );
+
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -290,6 +321,7 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
       await page.reload();
+      await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
       await checkAssetsCount(page, 0);
     });

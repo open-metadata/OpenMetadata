@@ -36,7 +36,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addOwner } from './entity';
+import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 const waitForAssetModalInitialLoad = async (page: Page) => {
@@ -482,6 +482,7 @@ export const addAssetsToDomain = async (
   await searchRes;
 
   await page.reload();
+  await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
