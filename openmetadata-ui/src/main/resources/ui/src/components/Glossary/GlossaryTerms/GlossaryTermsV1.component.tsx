@@ -28,6 +28,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
@@ -42,6 +43,7 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
@@ -173,6 +175,11 @@ const GlossaryTermsV1 = ({
     }
   };
 
+  const viewCustomPropertiesPermission = useMemo(
+    () => getPrioritizedViewPermission(permissions, Operation.ViewCustomFields),
+    [permissions]
+  );
+
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -276,7 +283,7 @@ const GlossaryTermsV1 = ({
                     !isVersionView &&
                     (permissions.EditAll || permissions.EditCustomFields)
                   }
-                  hasPermission={permissions.ViewAll}
+                  hasPermission={viewCustomPropertiesPermission}
                   isVersionView={isVersionView}
                 />
               ),
@@ -294,7 +301,7 @@ const GlossaryTermsV1 = ({
   }, [
     customizedPage?.tabs,
     glossaryTerm,
-    permissions,
+    viewCustomPropertiesPermission,
     activeTab,
     assetCount,
     feedCount.conversationCount,

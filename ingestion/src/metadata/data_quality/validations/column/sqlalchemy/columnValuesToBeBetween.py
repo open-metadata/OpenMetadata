@@ -15,7 +15,7 @@ Validator for column values to be between test case
 import math
 from typing import List, Optional
 
-from sqlalchemy import Column, func
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
@@ -25,7 +25,6 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeBetween import (
     BaseColumnValuesToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -87,23 +86,14 @@ class ColumnValuesToBeBetweenValidator(
                 ),
             }
 
-            def build_min_final(cte):
-                """Aggregate MIN values: take minimum of all mins"""
-                return func.min(getattr(cte.c, Metrics.MIN.name))
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
 
-            def build_max_final(cte):
-                """Aggregate MAX values: take maximum of all maxes"""
-                return func.max(getattr(cte.c, Metrics.MAX.name))
-
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                None,  # Use row-level count from metric_expressions
-                final_metric_builders={
-                    Metrics.MIN.name: build_min_final,
-                    Metrics.MAX.name: build_max_final,
-                },
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
             )
 
             for row in result_rows:

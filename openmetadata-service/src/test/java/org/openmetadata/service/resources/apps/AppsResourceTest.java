@@ -384,7 +384,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Test
-  void list_app_runs_returns_oldest_run_first() throws IOException {
+  void list_app_runs_returns_newest_run_first() throws IOException {
     String appName = "AppRunOrderingTest" + System.currentTimeMillis();
     App app = createAndCheckEntity(createRequest(appName), ADMIN_AUTH_HEADERS);
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
@@ -415,8 +415,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     ResultList<AppRunRecord> runList = listAppRuns(appName, ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(2, runList.getData().size());
-    Assertions.assertEquals(olderRun.getStartTime(), runList.getData().get(0).getStartTime());
-    Assertions.assertEquals(newerRun.getStartTime(), runList.getData().get(1).getStartTime());
+    Assertions.assertEquals(newerRun.getStartTime(), runList.getData().get(0).getStartTime());
+    Assertions.assertEquals(olderRun.getStartTime(), runList.getData().get(1).getStartTime());
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
