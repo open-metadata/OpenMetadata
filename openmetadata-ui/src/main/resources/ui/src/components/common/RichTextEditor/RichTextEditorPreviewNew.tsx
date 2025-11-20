@@ -46,6 +46,8 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
             WebkitBoxOrient: 'vertical',
             WebkitLineClamp: Number(maxLineLength),
             overflow: 'hidden',
+            maxHeight: `${Number(maxLineLength) * 2}em`,
+            transition: 'max-height 0.3s ease',
           },
     [readMore, maxLineLength]
   );
