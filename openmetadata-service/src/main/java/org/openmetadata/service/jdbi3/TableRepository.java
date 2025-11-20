@@ -1690,6 +1690,7 @@ public class TableRepository extends EntityRepository<Table> {
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
     private final Table table;
+    private final Map<Integer, Boolean> recordCreateStatus = new HashMap<>();
 
     TableCsv(Table table, String user) {
       super(TABLE, HEADERS, user);
@@ -1746,7 +1747,10 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       for (int i = 1; i < records.size(); i++) {
-        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+        CSVRecord record = records.get(i);
+        boolean isCreated = recordCreateStatus.getOrDefault((int) record.getRecordNumber(), false);
+        String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
+        importSuccess(resultsPrinter, record, status);
       }
     }
 
@@ -1754,6 +1758,7 @@ public class TableRepository extends EntityRepository<Table> {
       String columnFqn = csvRecord.get(0);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
+      recordCreateStatus.put((int) csvRecord.getRecordNumber(), !columnExists);
       if (!columnExists) {
         // Create Column, if not found
         column =
