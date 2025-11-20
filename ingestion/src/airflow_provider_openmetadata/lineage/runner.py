@@ -12,11 +12,15 @@
 """
 OpenMetadata Airflow Provider Lineage Runner
 """
+import logging
+import os
 from itertools import groupby
 from typing import List, Optional
 
 from airflow.configuration import conf
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 # Version detection for Airflow 3.x compatibility
 try:
@@ -111,6 +115,7 @@ class AirflowLineageRunner:
         self.xlets = xlets
 
         # Get base_url with fallback for Airflow 3.x ([api] section) and 2.x ([webserver] section)
+        self.host_port = None
         try:
             if IS_AIRFLOW_3_OR_HIGHER:
                 self.host_port = conf.get("api", "base_url")
@@ -118,9 +123,15 @@ class AirflowLineageRunner:
                 self.host_port = conf.get("webserver", "base_url")
         except Exception:
             # Fallback: try alternate section
-            self.host_port = conf.get(
-                "webserver" if IS_AIRFLOW_3_OR_HIGHER else "api", "base_url"
-            )
+            try:
+                self.host_port = conf.get(
+                    "webserver" if IS_AIRFLOW_3_OR_HIGHER else "api", "base_url"
+                )
+            except Exception:
+                # If base_url is not configured in either section, use environment variable or default
+                self.host_port = os.getenv(
+                    "AIRFLOW_WEBSERVER_BASE_URL", "http://localhost:8080"
+                )
 
     def get_or_create_pipeline_service(self) -> PipelineService:
         """
@@ -212,11 +223,11 @@ class AirflowLineageRunner:
         pipeline_request.sourceHash = create_entity_request_hash
 
         if pipeline is None:
-            self.dag.log.info("Creating Pipeline Entity from DAG...")
+            logger.info("Creating Pipeline Entity from DAG...")
             return self.metadata.create_or_update(pipeline_request)
 
         if create_entity_request_hash != pipeline.sourceHash:
-            self.dag.log.info("Updating Pipeline Entity from DAG...")
+            logger.info("Updating Pipeline Entity from DAG...")
             return self.metadata.patch(
                 entity=Pipeline,
                 source=pipeline,
@@ -225,29 +236,67 @@ class AirflowLineageRunner:
                 restrict_update_fields=RESTRICT_UPDATE_LIST,
             )
 
-        self.dag.log.info("DAG has not changed since last run")
+        logger.info("DAG has not changed since last run")
         return pipeline
 
     def get_all_pipeline_status(self) -> List[PipelineStatus]:
         """
         Iterate over the DAG's task instances and map
-        them to PipelineStatus
+        them to PipelineStatus.
+
+        In Airflow 2.x we can still hit the metadata DB, so we keep
+        the original behaviour. In Airflow 3.x we try to gather the
+        data from the dag run objects, but fall back to returning an
+        empty list when direct DB access is not available.
         """
 
-        # This list is already ordered by Execution Date
-        grouped_ti: List[List["TaskInstance"]] = [
-            list(value)
-            for _, value in groupby(
-                self.dag.get_task_instances(), key=lambda ti: ti.run_id
-            )
-        ]
-        # Order descending by execution date
-        grouped_ti.reverse()
+        if not IS_AIRFLOW_3_OR_HIGHER:
+            # Airflow 2.x path - rely on get_task_instances()
+            grouped_ti: List[List["TaskInstance"]] = [
+                list(value)
+                for _, value in groupby(
+                    self.dag.get_task_instances(), key=lambda ti: ti.run_id
+                )
+            ]
+            grouped_ti.reverse()
 
-        return [
-            self.get_pipeline_status(task_instances)
-            for task_instances in grouped_ti[: self.max_status]
-        ]
+            return [
+                self.get_pipeline_status(task_instances)
+                for task_instances in grouped_ti[: self.max_status]
+            ]
+
+        try:
+            from airflow.models import DagRun
+
+            dag_runs = DagRun.find(dag_id=self.dag.dag_id, state=None)
+            if not dag_runs:
+                logger.info("No DAG runs found for status collection")
+                return []
+
+            recent_runs = sorted(
+                dag_runs, key=lambda r: r.execution_date, reverse=True
+            )[: self.max_status]
+
+            pipeline_statuses = []
+            for dag_run in recent_runs:
+                task_instances = dag_run.get_task_instances()
+                if task_instances:
+                    pipeline_statuses.append(self.get_pipeline_status(task_instances))
+
+            return pipeline_statuses
+
+        except RuntimeError as e:
+            if "Direct database access" in str(e):
+                logger.warning(
+                    "Direct database access not allowed in Airflow 3.x. "
+                    "Skipping pipeline status collection. "
+                    "Status should be updated via REST API separately."
+                )
+                return []
+            raise
+        except Exception as e:
+            logger.warning(f"Could not collect pipeline status: {e}")
+            return []
 
     @staticmethod
     def get_dag_status_from_task_instances(task_instances: List["TaskInstance"]) -> str:
@@ -352,12 +401,12 @@ class AirflowLineageRunner:
                         )
                         self.metadata.add_lineage(lineage)
                     else:
-                        self.dag.log.warning(
+                        logger.warning(
                             f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
                             f"[{pipeline.fullyQualifiedName.root}] outlets"
                         )
             else:
-                self.dag.log.warning(
+                logger.warning(
                     f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
                     f"[{pipeline.fullyQualifiedName.root}] inlets"
                 )
@@ -402,7 +451,7 @@ class AirflowLineageRunner:
 
         for edge in upstream_edges or []:
             if edge.fqn not in (inlet.fqn for inlet in xlets.inlets):
-                self.dag.log.info(f"Removing upstream edge with {edge.fqn}")
+                logger.info(f"Removing upstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
                     fromEntity=EntityReference(
                         id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
@@ -416,7 +465,7 @@ class AirflowLineageRunner:
 
         for edge in downstream_edges or []:
             if edge.fqn not in (outlet.fqn for outlet in xlets.outlets):
-                self.dag.log.info(f"Removing downstream edge with {edge.fqn}")
+                logger.info(f"Removing downstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
                     fromEntity=EntityReference(
                         id=pipeline.id,
@@ -432,18 +481,18 @@ class AirflowLineageRunner:
         """
         Run the whole ingestion logic
         """
-        self.dag.log.info("Executing Airflow Lineage Runner...")
+        logger.info("Executing Airflow Lineage Runner...")
         pipeline_service = self.get_or_create_pipeline_service()
         pipeline = self.create_or_update_pipeline_entity(pipeline_service)
         self.add_all_pipeline_status(pipeline)
 
-        self.dag.log.info(f"Processing XLet data {self.xlets}")
+        logger.info(f"Processing XLet data {self.xlets}")
 
         for xlet in self.xlets or []:
-            self.dag.log.info(f"Got some xlet data. Processing lineage for {xlet}")
+            logger.info(f"Got some xlet data. Processing lineage for {xlet}")
             self.add_lineage(pipeline, xlet)
             if self.only_keep_dag_lineage:
-                self.dag.log.info(
+                logger.info(
                     "`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets..."
                 )
                 self.clean_lineage(pipeline, xlet)

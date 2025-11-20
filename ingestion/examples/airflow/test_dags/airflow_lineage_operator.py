@@ -115,7 +115,25 @@ if res.status_code == 404:  # not found
         },
         headers=DEFAULT_AIRFLOW_HEADERS,
     )
-
+elif res.status_code == 500:  # Internal server error (e.g., corrupted connection)
+    # Try to delete the corrupted connection and recreate it
+    delete_res = requests.delete(
+        AIRFLOW_HOST_API_ROOT + f"connections/{DEFAULT_OM_AIRFLOW_CONNECTION}",
+        headers=DEFAULT_AIRFLOW_HEADERS,
+    )
+    # Recreate the connection regardless of delete result
+    requests.post(
+        AIRFLOW_HOST_API_ROOT + "connections",
+        json={
+            "connection_id": DEFAULT_OM_AIRFLOW_CONNECTION,
+            "conn_type": "openmetadata",
+            "host": "openmetadata-server",
+            "schema": "http",
+            "port": 8585,
+            "password": OM_JWT,
+        },
+        headers=DEFAULT_AIRFLOW_HEADERS,
+    )
 elif res.status_code != 200:
     raise RuntimeError(f"Could not fetch {DEFAULT_OM_AIRFLOW_CONNECTION} connection")
 
@@ -134,11 +152,13 @@ with DAG(
     t1 = BashOperator(
         task_id="print_date",
         bash_command="date",
-        outlets={
-            "tables": [
-                "test-service-table-lineage.test-db.test-schema.lineage-test-outlet"
-            ]
-        },
+        outlets=[
+            {
+                "tables": [
+                    "test-service-table-lineage.test-db.test-schema.lineage-test-outlet"
+                ]
+            }
+        ],
     )
 
     t2 = BashOperator(
@@ -146,12 +166,14 @@ with DAG(
         depends_on_past=False,
         bash_command="sleep 1",
         retries=3,
-        inlets={
-            "tables": [
-                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
-                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet2",
-            ]
-        },
+        inlets=[
+            {
+                "tables": [
+                    "test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
+                    "test-service-table-lineage.test-db.test-schema.lineage-test-inlet2",
+                ]
+            }
+        ],
     )
 
     dag.doc_md = (

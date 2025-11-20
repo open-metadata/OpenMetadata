@@ -253,7 +253,36 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
     }
 
-    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response =
+        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+    // If we get a 400 with CSRF token expired error, clear the token and retry once
+    if (authenticate
+        && response.statusCode() == 400
+        && response.body() != null
+        && response.body().contains("CSRF token")) {
+      LOG.warn("CSRF token expired, refreshing and retrying request");
+      clearCsrfToken();
+      fetchCsrfTokenIfNeeded();
+
+      // Rebuild request with new token
+      requestBuilder =
+          HttpRequest.newBuilder(URI.create(endpoint))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
+              .POST(HttpRequest.BodyPublishers.ofString(payload));
+
+      if (csrfToken != null && !csrfToken.isEmpty()) {
+        requestBuilder.header("X-CSRFToken", csrfToken);
+      }
+      if (sessionCookies != null && !sessionCookies.isEmpty()) {
+        requestBuilder.header("Cookie", String.join("; ", sessionCookies));
+      }
+
+      response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    return response;
   }
 
   public final HttpResponse<String> post(String endpoint, String payload)
@@ -685,7 +714,20 @@ public class AirflowRESTClient extends PipelineServiceClient {
     // DELETE endpoints are protected by CSRF on Airflow 3.x
     fetchCsrfTokenIfNeeded();
     HttpRequest request = authenticatedRequestBuilder(url).DELETE().build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    // If we get a 400 with CSRF token expired error, clear the token and retry once
+    if (response.statusCode() == 400
+        && response.body() != null
+        && response.body().contains("CSRF token has expired")) {
+      LOG.warn("CSRF token expired, refreshing and retrying DELETE request");
+      clearCsrfToken();
+      fetchCsrfTokenIfNeeded();
+      request = authenticatedRequestBuilder(url).DELETE().build();
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    return response;
   }
 
   private HttpRequest.Builder authenticatedRequestBuilder(String url) {
@@ -705,6 +747,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
 
     return builder;
+  }
+
+  /**
+   * Clear the CSRF token and session cookies to force a refresh.
+   */
+  private void clearCsrfToken() {
+    synchronized (detectionLock) {
+      csrfToken = null;
+      sessionCookies = null;
+      LOG.debug("Cleared CSRF token and session cookies");
+    }
   }
 
   /**
