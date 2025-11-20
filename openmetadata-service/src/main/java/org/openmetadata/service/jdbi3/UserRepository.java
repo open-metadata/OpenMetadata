@@ -1082,6 +1082,35 @@ public class UserRepository extends EntityRepository<User> {
       super(original, updated, operation);
     }
 
+    /**
+     * Filter domain references to remove deleted domains, then populate valid ones.
+     * This prevents EntityNotFoundException when domains are deleted between updates.
+     */
+    private List<EntityReference> filterValidDomains(List<EntityReference> domains) {
+      if (domains == null || domains.isEmpty()) {
+        return domains;
+      }
+
+      // First filter out deleted domains, then populate valid references
+      List<EntityReference> validDomains =
+          domains.stream()
+              .filter(
+                  domain -> {
+                    try {
+                      Entity.getEntityReference(domain, ALL);
+                      return true;
+                    } catch (EntityNotFoundException e) {
+                      LOG.warn(
+                          "Removing deleted domain {} from user update",
+                          domain.getFullyQualifiedName());
+                      return false;
+                    }
+                  })
+              .collect(Collectors.toList());
+
+      return EntityUtil.populateEntityReferences(validDomains);
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -1138,10 +1167,11 @@ public class UserRepository extends EntityRepository<User> {
         return;
       }
 
-      List<EntityReference> origDomains = listOrEmptyMutable(original.getDomains());
+      List<EntityReference> origDomains =
+          filterValidDomains(listOrEmptyMutable(original.getDomains()));
       // Skip domains inherited from teams,they are handled in setInheritedFields().
       List<EntityReference> updatedDomains =
-          listOrEmptyMutable(updated.getDomains()).stream()
+          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
               .filter(domain -> domain.getInherited() == null || !domain.getInherited())
               .collect(Collectors.toList());
       updated.setDomains(updatedDomains);
