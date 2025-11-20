@@ -178,8 +178,7 @@
     },
     "supportsQueryRunner": {
       "title": "Supports Query Runner",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner",
-      "default": true
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner"
     },
     "creditCost": {
       "title": "Cost of Credit",
