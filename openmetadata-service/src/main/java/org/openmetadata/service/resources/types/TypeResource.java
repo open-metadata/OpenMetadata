@@ -61,6 +61,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
@@ -254,17 +255,22 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // For custom property requests on entity types, use entity-specific authorization- Authorize on
-    // the entity type (e.g., "table"), not on "Type"
+    // For custom property requests on entity types, authorize on the entity type (e.g., "table")
+    // instead of on the Type resource
     Fields fields = getFields(fieldsParam);
     if (fields.getFieldList().contains("customProperties")) {
-      Entity.getEntityRepository(name);
-
-      OperationContext operationContext =
-          new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
-      ResourceContext<?> resourceContext = new ResourceContext<>(name);
-      authorizer.authorize(securityContext, operationContext, resourceContext);
-      return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+      try {
+        if (Entity.entityHasField(name, Entity.FIELD_EXTENSION)) {
+          OperationContext operationContext =
+              new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
+          ResourceContext<?> resourceContext = new ResourceContext<>(name);
+          authorizer.authorize(securityContext, operationContext, resourceContext);
+          return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+        }
+      } catch (EntityNotFoundException e) {
+        // Not a valid entity type supporting customProperties, fall through to standard Type
+        // authorization
+      }
     }
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
