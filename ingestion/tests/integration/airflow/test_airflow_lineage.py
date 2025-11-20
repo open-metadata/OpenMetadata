@@ -296,6 +296,9 @@ class AirflowLineageTest(TestCase):
         self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
 
         # Validate status
+        self.assertIsNotNone(
+            pipeline.pipelineStatus, "Pipeline status should be collected via REST API"
+        )
         self.assertEqual(
             get_task_status_type_by_name(pipeline, "print_date"), StatusType.Successful
         )

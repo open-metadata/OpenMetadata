@@ -239,15 +239,187 @@ class AirflowLineageRunner:
         logger.info("DAG has not changed since last run")
         return pipeline
 
+    def get_pipeline_status_via_api(self) -> List[PipelineStatus]:
+        """
+        Collect pipeline status using Airflow REST API (for Airflow 3.x).
+        This avoids the direct database access restriction.
+        """
+        try:
+            import requests
+            from datetime import datetime
+
+            # Get authentication credentials from environment or config
+            airflow_username = os.getenv("AIRFLOW_USERNAME", "admin")
+            airflow_password = os.getenv("AIRFLOW_PASSWORD", "admin")
+
+            # Build API URL
+            api_url = f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns"
+
+            # Get JWT token for authentication
+            token_url = f"{self.host_port}/auth/token"
+            try:
+                auth_response = requests.post(
+                    token_url,
+                    json={"username": airflow_username, "password": airflow_password},
+                    timeout=5,
+                )
+                if auth_response.status_code in (200, 201):
+                    jwt_token = auth_response.json().get("access_token")
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {jwt_token}",
+                    }
+                else:
+                    logger.warning(
+                        f"Failed to get JWT token, trying basic auth: {auth_response.status_code}"
+                    )
+                    # Fallback to basic auth
+                    import base64
+
+                    credentials = base64.b64encode(
+                        f"{airflow_username}:{airflow_password}".encode()
+                    ).decode()
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Basic {credentials}",
+                    }
+            except Exception as auth_error:
+                logger.warning(
+                    f"Authentication failed: {auth_error}, trying without auth"
+                )
+                headers = {"Content-Type": "application/json"}
+
+            # Fetch DAG runs
+            response = requests.get(
+                api_url,
+                params={"limit": self.max_status, "order_by": "-execution_date"},
+                headers=headers,
+                timeout=10,
+            )
+
+            if response.status_code != 200:
+                logger.warning(
+                    f"Failed to fetch DAG runs: {response.status_code} - {response.text}"
+                )
+                return []
+
+            dag_runs_data = response.json().get("dag_runs", [])
+            if not dag_runs_data:
+                logger.info("No DAG runs found via API")
+                return []
+
+            pipeline_statuses = []
+
+            for dag_run in dag_runs_data:
+                dag_run_id = dag_run.get("dag_run_id")
+                if not dag_run_id:
+                    continue
+
+                # Fetch task instances for this DAG run
+                task_instances_url = f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns/{dag_run_id}/taskInstances"
+                ti_response = requests.get(
+                    task_instances_url, headers=headers, timeout=10
+                )
+
+                if ti_response.status_code != 200:
+                    logger.warning(
+                        f"Failed to fetch task instances for {dag_run_id}: {ti_response.status_code}"
+                    )
+                    continue
+
+                task_instances_data = ti_response.json().get("task_instances", [])
+                if not task_instances_data:
+                    continue
+
+                # Build TaskStatus list from API response
+                task_status_list = []
+                for ti in task_instances_data:
+                    task_state = ti.get("state", "pending")
+                    execution_status = STATUS_MAP.get(
+                        task_state, StatusType.Pending.value
+                    )
+
+                    # Parse timestamps
+                    start_time = None
+                    end_time = None
+                    if ti.get("start_date"):
+                        try:
+                            start_dt = datetime.fromisoformat(
+                                ti["start_date"].replace("Z", "+00:00")
+                            )
+                            start_time = datetime_to_ts(start_dt)
+                        except Exception:
+                            pass
+
+                    if ti.get("end_date"):
+                        try:
+                            end_dt = datetime.fromisoformat(
+                                ti["end_date"].replace("Z", "+00:00")
+                            )
+                            end_time = datetime_to_ts(end_dt)
+                        except Exception:
+                            pass
+
+                    task_status_list.append(
+                        TaskStatus(
+                            name=ti.get("task_id", "unknown"),
+                            executionStatus=execution_status,
+                            startTime=start_time,
+                            endTime=end_time,
+                            logLink=ti.get("log_url"),
+                        )
+                    )
+
+                # Determine overall DAG run status
+                task_states = [ti.get("state") for ti in task_instances_data]
+                if any(
+                    s in ["pending", "queued", "scheduled", "running"]
+                    for s in task_states
+                ):
+                    dag_status = StatusType.Pending.value
+                elif any(s == "failed" for s in task_states):
+                    dag_status = StatusType.Failed.value
+                else:
+                    dag_status = StatusType.Successful.value
+
+                # Parse execution date
+                execution_date_str = dag_run.get("logical_date") or dag_run.get(
+                    "execution_date"
+                )
+                execution_timestamp = None
+                if execution_date_str:
+                    try:
+                        exec_dt = datetime.fromisoformat(
+                            execution_date_str.replace("Z", "+00:00")
+                        )
+                        execution_timestamp = datetime_to_ts(exec_dt)
+                    except Exception:
+                        pass
+
+                pipeline_status = PipelineStatus(
+                    timestamp=execution_timestamp,
+                    executionStatus=dag_status,
+                    taskStatus=task_status_list,
+                )
+                pipeline_statuses.append(pipeline_status)
+
+            logger.info(
+                f"Collected {len(pipeline_statuses)} pipeline statuses via REST API"
+            )
+            return pipeline_statuses
+
+        except Exception as e:
+            logger.error(f"Error collecting pipeline status via API: {e}")
+            raise
+
     def get_all_pipeline_status(self) -> List[PipelineStatus]:
         """
         Iterate over the DAG's task instances and map
         them to PipelineStatus.
 
         In Airflow 2.x we can still hit the metadata DB, so we keep
-        the original behaviour. In Airflow 3.x we try to gather the
-        data from the dag run objects, but fall back to returning an
-        empty list when direct DB access is not available.
+        the original behaviour. In Airflow 3.x we use the REST API
+        to fetch status information.
         """
 
         if not IS_AIRFLOW_3_OR_HIGHER:
@@ -265,6 +437,20 @@ class AirflowLineageRunner:
                 for task_instances in grouped_ti[: self.max_status]
             ]
 
+        # Airflow 3.x - try REST API first, fall back to DB access
+        try:
+            pipeline_statuses = self.get_pipeline_status_via_api()
+            if pipeline_statuses:
+                return pipeline_statuses
+            logger.info(
+                "REST API returned no statuses, trying direct DB access as fallback"
+            )
+        except Exception as e:
+            logger.warning(
+                f"Failed to get status via REST API: {e}, trying DB access as fallback"
+            )
+
+        # Fallback to direct DB access (will likely fail in Airflow 3.x)
         try:
             from airflow.models import DagRun
 
@@ -289,8 +475,7 @@ class AirflowLineageRunner:
             if "Direct database access" in str(e):
                 logger.warning(
                     "Direct database access not allowed in Airflow 3.x. "
-                    "Skipping pipeline status collection. "
-                    "Status should be updated via REST API separately."
+                    "Pipeline status collection skipped."
                 )
                 return []
             raise
