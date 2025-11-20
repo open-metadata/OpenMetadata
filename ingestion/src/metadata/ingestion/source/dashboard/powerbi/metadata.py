@@ -51,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -1248,6 +1249,37 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
+    def _create_dataset_upstream_dataset_column_lineage(
+        self, datamodel_entity, upstream_dataset_entity
+    ):
+        try:
+            target_tables = [table.name.root for table in datamodel_entity.columns]
+            column_lineage = []
+            for table in upstream_dataset_entity.columns:
+                if table.name.root in target_tables:
+                    for column in table:
+                        source_column = self._get_data_model_column_fqn(
+                            data_model_entity=upstream_dataset_entity,
+                            column=column.name.root,
+                        )
+                        target_column = self._get_data_model_column_fqn(
+                            data_model_entity=datamodel_entity,
+                            column=column.name.root,
+                        )
+                        if source_column and target_column:
+                            column_lineage.append(
+                                ColumnLineage(
+                                    fromColumns=[source_column], toColumn=target_column
+                                )
+                            )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error while creating column lineage between dataset={datamodel_entity.name.root} and upstream dataset={upstream_dataset_entity.name.root}"
+            )
+        return []
+
     def create_dataset_upstream_dataset_lineage(
         self, datamodel: Dataset, datamodel_entity: DashboardDataModel
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -1274,9 +1306,17 @@ class PowerbiSource(DashboardServiceSource):
                     fqn=upstream_dataset_fqn,
                 )
                 if upstream_dataset_entity and datamodel_entity:
+                    # create column lineage between current dataset/datamodel
+                    # and its upstream dataset.
+                    column_lineage = (
+                        self._create_dataset_upstream_dataset_column_lineage(
+                            datamodel_entity, upstream_dataset_entity
+                        )
+                    )
                     yield self._get_add_lineage_request(
                         from_entity=upstream_dataset_entity,
                         to_entity=datamodel_entity,
+                        column_lineage=column_lineage,
                     )
                 else:
                     logger.debug(
