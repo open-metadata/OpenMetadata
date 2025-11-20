@@ -732,38 +732,66 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription != null) {
-      Pair<String, Map<String, Object>> updates =
-          getInheritedFieldChanges(changeDescription, entity);
-      Pair<String, String> parentMatch;
-      if (!updates.getValue().isEmpty()
-          // domains can be updatedDomains or deletedDomains and need to be propagated from the
-          // service level
-          && (updates.getValue().keySet().stream()
-                  .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
-              || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
-        if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.API_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
-          parentMatch = new ImmutablePair<>(SERVICE_ID, entityId);
-        } else {
-          parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
-        }
-      } else {
-        parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
-      }
-      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-      if (updates.getKey() != null && !updates.getKey().isEmpty() && !nullOrEmpty(childAliases)) {
-        searchClient.updateChildren(childAliases, parentMatch, updates);
+    if (changeDescription == null) {
+      return;
+    }
+
+    Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription, entity);
+    if (updates.getKey() == null || updates.getKey().isEmpty()) {
+      return;
+    }
+
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
+    if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+      propagateToDomainChildren(entityId, indexMapping, updates);
+      return;
+    }
+
+    // Other entities: resolve parent field name and propagate to children
+    String parentFieldName = resolveParentFieldName(entityType, updates);
+    Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+    searchClient.updateChildren(childAliases, parentMatch, updates);
+  }
+
+  private String resolveParentFieldName(
+      String entityType, Pair<String, Map<String, Object>> updates) {
+    // For service entities, use SERVICE_ID when propagating domains or displayName
+    if (!updates.getValue().isEmpty()
+        && (updates.getValue().keySet().stream()
+                .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
+            || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
+      if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.API_SERVICE)
+          || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
+        return SERVICE_ID;
       }
     }
+    return entityType + ".id";
+  }
+
+  private void propagateToDomainChildren(
+      String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    searchClient.updateChildren(
+        List.of(indexMapping.getIndexName(clusterAlias)),
+        new ImmutablePair<>("parent.id", domainId),
+        updates);
+    searchClient.updateChildren(
+        List.of(entityIndexMap.get(Entity.DATA_PRODUCT).getIndexName(clusterAlias)),
+        new ImmutablePair<>("domains.id", domainId),
+        updates);
   }
 
   public void propagateGlossaryTags(
