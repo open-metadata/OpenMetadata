@@ -244,6 +244,7 @@ class AirflowLineageRunner:
         Collect pipeline status using Airflow REST API (for Airflow 3.x).
         This avoids the direct database access restriction.
         """
+        logger.info("Attempting to collect pipeline status via Airflow REST API")
         try:
             from datetime import datetime
 
@@ -252,85 +253,125 @@ class AirflowLineageRunner:
             # Get authentication credentials from environment or config
             airflow_username = os.getenv("AIRFLOW_USERNAME", "admin")
             airflow_password = os.getenv("AIRFLOW_PASSWORD", "admin")
+            logger.info(f"Using Airflow API URL: {self.host_port}")
 
             # Build API URL
             api_url = f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns"
 
-            # Get JWT token for authentication
+            # Get JWT token for authentication (following the DAG file pattern)
             token_url = f"{self.host_port}/auth/token"
+            jwt_token = None
+
             try:
+                logger.info(f"Attempting JWT auth at: {token_url}")
                 auth_response = requests.post(
                     token_url,
                     json={"username": airflow_username, "password": airflow_password},
                     timeout=5,
                 )
+                logger.info(f"JWT auth response status: {auth_response.status_code}")
                 if auth_response.status_code in (200, 201):
-                    jwt_token = auth_response.json().get("access_token")
-                    headers = {
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {jwt_token}",
-                    }
+                    token_data = auth_response.json()
+                    jwt_token = token_data.get("access_token")
+                    if jwt_token:
+                        logger.info("Successfully obtained JWT token")
+                    else:
+                        logger.warning("JWT response did not contain access_token")
                 else:
                     logger.warning(
-                        f"Failed to get JWT token, trying basic auth: {auth_response.status_code}"
+                        f"Failed to get JWT token (status {auth_response.status_code})"
                     )
-                    # Fallback to basic auth
-                    import base64
-
-                    credentials = base64.b64encode(
-                        f"{airflow_username}:{airflow_password}".encode()
-                    ).decode()
-                    headers = {
-                        "Content-Type": "application/json",
-                        "Authorization": f"Basic {credentials}",
-                    }
+                    logger.warning(f"JWT response: {auth_response.text[:200]}")
             except Exception as auth_error:
                 logger.warning(
-                    f"Authentication failed: {auth_error}, trying without auth"
+                    f"JWT authentication failed with exception: {auth_error}"
                 )
-                headers = {"Content-Type": "application/json"}
+                import traceback
+
+                logger.warning(f"Auth traceback: {traceback.format_exc()}")
+
+            # Set headers based on whether we got a JWT token
+            if jwt_token:
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {jwt_token}",
+                }
+                logger.info("Using JWT token for authentication")
+            else:
+                # Fallback to basic auth
+                import base64
+
+                credentials = base64.b64encode(
+                    f"{airflow_username}:{airflow_password}".encode()
+                ).decode()
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Basic {credentials}",
+                }
+                logger.info("Using Basic auth as fallback")
 
             # Fetch DAG runs
+            # Airflow 3.x uses 'logical_date' instead of 'execution_date'
+            logger.info(f"Fetching DAG runs from: {api_url}")
+            logger.info(f"Params: limit={self.max_status}, order_by=-logical_date")
             response = requests.get(
                 api_url,
-                params={"limit": self.max_status, "order_by": "-execution_date"},
+                params={"limit": self.max_status, "order_by": "-logical_date"},
                 headers=headers,
                 timeout=10,
             )
 
+            logger.info(f"DAG runs API response status: {response.status_code}")
             if response.status_code != 200:
-                logger.warning(
-                    f"Failed to fetch DAG runs: {response.status_code} - {response.text}"
+                logger.error(
+                    f"Failed to fetch DAG runs: {response.status_code} - {response.text[:500]}"
                 )
                 return []
 
             dag_runs_data = response.json().get("dag_runs", [])
             if not dag_runs_data:
-                logger.info("No DAG runs found via API")
+                logger.warning("No DAG runs found via API")
+                logger.warning(f"API response: {response.text[:500]}")
                 return []
+
+            logger.info(f"Found {len(dag_runs_data)} DAG runs via API")
+            for dag_run in dag_runs_data:
+                logger.info(
+                    f"  - DAG run: {dag_run.get('dag_run_id')} state={dag_run.get('state')}"
+                )
 
             pipeline_statuses = []
 
             for dag_run in dag_runs_data:
                 dag_run_id = dag_run.get("dag_run_id")
                 if not dag_run_id:
+                    logger.warning("Skipping DAG run with no dag_run_id")
                     continue
 
                 # Fetch task instances for this DAG run
                 task_instances_url = f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns/{dag_run_id}/taskInstances"
+                logger.info(f"Fetching task instances from: {task_instances_url}")
                 ti_response = requests.get(
                     task_instances_url, headers=headers, timeout=10
                 )
 
+                logger.info(
+                    f"Task instances API response status: {ti_response.status_code}"
+                )
                 if ti_response.status_code != 200:
-                    logger.warning(
-                        f"Failed to fetch task instances for {dag_run_id}: {ti_response.status_code}"
+                    logger.error(
+                        f"Failed to fetch task instances for {dag_run_id}: {ti_response.status_code} - {ti_response.text[:300]}"
                     )
                     continue
 
                 task_instances_data = ti_response.json().get("task_instances", [])
                 if not task_instances_data:
+                    logger.warning(f"No task instances found for DAG run {dag_run_id}")
                     continue
+
+                logger.info(
+                    f"Found {len(task_instances_data)} task instances for run {dag_run_id}"
+                )
 
                 # Build TaskStatus list from API response
                 task_status_list = []
@@ -403,14 +444,20 @@ class AirflowLineageRunner:
                     taskStatus=task_status_list,
                 )
                 pipeline_statuses.append(pipeline_status)
+                logger.info(
+                    f"Created pipeline status for run {dag_run_id}: {len(task_status_list)} tasks, status={dag_status}"
+                )
 
             logger.info(
-                f"Collected {len(pipeline_statuses)} pipeline statuses via REST API"
+                f"Successfully collected {len(pipeline_statuses)} pipeline statuses via REST API"
             )
             return pipeline_statuses
 
         except Exception as e:
             logger.error(f"Error collecting pipeline status via API: {e}")
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
     def get_all_pipeline_status(self) -> List[PipelineStatus]:
@@ -422,6 +469,9 @@ class AirflowLineageRunner:
         the original behaviour. In Airflow 3.x we use the REST API
         to fetch status information.
         """
+        logger.info(
+            f"get_all_pipeline_status called. IS_AIRFLOW_3_OR_HIGHER={IS_AIRFLOW_3_OR_HIGHER}"
+        )
 
         if not IS_AIRFLOW_3_OR_HIGHER:
             # Airflow 2.x path - rely on get_task_instances()
