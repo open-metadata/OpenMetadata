@@ -71,7 +71,8 @@ jobs:
           source env/bin/activate
           sudo make install_antlr_cli
           make install install_test install_dev
-
+          pip uninstall -y uvloop || true 
+      # uninstall uvloop is to fix checkstyle 
       # Add back linting once we have 10/10 on main
       - name: Code style check
         id: style
