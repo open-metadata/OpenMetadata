@@ -144,6 +144,19 @@ public class SearchRepository {
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
+  private static final Set<String> SERVICE_ENTITY_SET =
+      Set.of(
+          Entity.DATABASE_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.SECURITY_SERVICE,
+          Entity.API_SERVICE,
+          Entity.DRIVE_SERVICE);
+
   private final List<String> inheritableFields =
       List.of(
           FIELD_OWNERS,
@@ -765,16 +778,7 @@ public class SearchRepository {
         && (updates.getValue().keySet().stream()
                 .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
             || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
-      if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.API_SERVICE)
-          || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
+      if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
         return SERVICE_ID;
       }
     }
