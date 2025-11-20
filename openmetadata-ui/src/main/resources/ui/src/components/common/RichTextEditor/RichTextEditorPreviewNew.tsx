@@ -12,7 +12,7 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   formatContent,
@@ -37,6 +37,19 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const clampStyle: Record<string, string | number> | undefined = useMemo(
+    () =>
+      readMore
+        ? undefined
+        : {
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: Number(maxLineLength),
+            overflow: 'hidden',
+          },
+    [readMore, maxLineLength]
+  );
+
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
   useEffect(() => {
@@ -58,17 +71,19 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       if (contentRef.current) {
         const el = contentRef.current;
 
-        // Temporarily apply line-clamp to measure overflow
+        // Save original styles
         const originalDisplay = el.style.display;
         const originalBoxOrient = el.style.webkitBoxOrient;
         const originalOverflow = el.style.overflow;
         const originalLineClamp = el.style.webkitLineClamp;
 
+        // Temporarily apply line-clamp to measure overflow
         el.style.display = '-webkit-box';
         el.style.webkitBoxOrient = 'vertical';
         el.style.overflow = 'hidden';
         el.style.webkitLineClamp = maxLineLength;
 
+        // Check if content overflows
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
 
@@ -111,16 +126,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser"
         ref={contentRef}
-        style={
-          readMore
-            ? {}
-            : {
-                display: '-webkit-box',
-                WebkitBoxOrient: 'vertical',
-                WebkitLineClamp: Number(maxLineLength),
-                overflow: 'hidden',
-              }
-        }>
+        style={clampStyle}>
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
       {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
