@@ -20,6 +20,7 @@ import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
@@ -30,6 +31,7 @@ const CustomPropertiesSection = ({
   entityData,
   entityType,
   entityTypeDetail,
+  viewCustomPropertiesPermission,
   isEntityDataLoading,
 }: CustomPropertiesSectionProps) => {
   const { t } = useTranslation();
@@ -63,6 +65,45 @@ const CustomPropertiesSection = ({
       <div className="entity-summary-panel-tab-content">
         <div className="p-x-md p-t-md">
           <Loader size="default" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!viewCustomPropertiesPermission) {
+    return (
+      <div className="items-center d-block align-items-center text-center">
+        <ErrorPlaceHolder
+          className="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.custom-property-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      </div>
+    );
+  }
+  if (customProperties.length === 0) {
+    return (
+      <div
+        className="entity-summary-panel-tab-content"
+        data-testid="no-data-placeholder">
+        <div className="p-x-md p-t-md text-justify no-data-placeholder">
+          <Transi18next
+            i18nKey="message.no-custom-properties-entity"
+            renderElement={
+              <a
+                href={CUSTOM_PROPERTIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Custom properties documentation"
+              />
+            }
+            values={{
+              docs: t('label.doc-plural-lowercase'),
+              entity: startCase(entityType),
+            }}
+          />
         </div>
       </div>
     );
