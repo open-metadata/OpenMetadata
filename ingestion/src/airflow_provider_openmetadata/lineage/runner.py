@@ -245,8 +245,9 @@ class AirflowLineageRunner:
         This avoids the direct database access restriction.
         """
         try:
-            import requests
             from datetime import datetime
+
+            import requests
 
             # Get authentication credentials from environment or config
             airflow_username = os.getenv("AIRFLOW_USERNAME", "admin")

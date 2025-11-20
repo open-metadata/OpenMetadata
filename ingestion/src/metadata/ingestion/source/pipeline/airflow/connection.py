@@ -123,14 +123,18 @@ def _get_engine_from_env_vars() -> Engine:
     database = os.environ.get("AIRFLOW_DB")
     properties = os.environ.get("DB_PROPERTIES")
 
-    missing = [name for name, value in (
-        ("DB_SCHEME", scheme),
-        ("DB_USER", user),
-        ("DB_PASSWORD", password),
-        ("DB_HOST", host),
-        ("DB_PORT", port),
-        ("AIRFLOW_DB", database),
-    ) if not value]
+    missing = [
+        name
+        for name, value in (
+            ("DB_SCHEME", scheme),
+            ("DB_USER", user),
+            ("DB_PASSWORD", password),
+            ("DB_HOST", host),
+            ("DB_PORT", port),
+            ("AIRFLOW_DB", database),
+        )
+        if not value
+    ]
     if missing:
         raise SourceConnectionException(
             "Airflow 3.x execution environments must define the following environment "
