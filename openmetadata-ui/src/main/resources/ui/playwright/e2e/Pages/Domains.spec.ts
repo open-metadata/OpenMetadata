@@ -402,12 +402,24 @@ test.describe('Domains', () => {
     await page.reload();
 
     await redirectToExplorePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
 
+    const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
     await page.getByTestId('domain-dropdown').click();
+    await domainsResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const searchDomainResponse = page.waitForResponse(
+      'api/v1/search/query?q=*&index=domain_search_index*'
+    );
+    await page.getByTestId('searchbar').fill(domain.responseData.displayName);
+    await searchDomainResponse;
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+    await waitForAllLoadersToDisappear(page);
 
     await page.waitForLoadState('networkidle');
 
