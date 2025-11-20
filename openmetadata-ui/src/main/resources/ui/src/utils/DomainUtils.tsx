@@ -103,8 +103,13 @@ export const getQueryFilterToIncludeDomain = (
           bool: {
             must_not: [
               {
-                term: {
-                  entityType: 'dataProduct',
+                terms: {
+                  entityType: [
+                    EntityType.DATA_PRODUCT,
+                    EntityType.TEST_SUITE,
+                    EntityType.QUERY,
+                    EntityType.TEST_CASE,
+                  ],
                 },
               },
             ],
@@ -482,6 +487,7 @@ export const getDomainDetailTabs = ({
                 feedCount={feedCount}
                 layoutType={ActivityFeedLayoutType.THREE_PANEL}
                 owners={domain.owners}
+                urlFqn={domain.fullyQualifiedName}
                 onFeedUpdate={onFeedUpdate ?? noop}
                 onUpdateEntityDetails={noop}
               />

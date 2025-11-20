@@ -97,6 +97,7 @@ import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
+import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
@@ -332,6 +333,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -476,6 +480,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       subDomainForm.resetFields();
     },
@@ -862,22 +869,8 @@ const DomainDetails = ({
           gap: 1.5,
         }}>
         <CoverImage
-          imageUrl={
-            (domain.style as Style & { coverImage?: { url?: string } })
-              ?.coverImage?.url
-          }
-          position={
-            (domain.style as Style & { coverImage?: { position?: string } })
-              ?.coverImage?.position
-              ? {
-                  y: (
-                    domain.style as Style & {
-                      coverImage?: { position?: string };
-                    }
-                  )?.coverImage?.position,
-                }
-              : undefined
-          }
+          imageUrl={domain.style?.coverImage?.url}
+          position={{ y: domain.style?.coverImage?.position }}
         />
         <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
           <Box sx={{ flex: 1 }}>

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TooltipProps } from '@mui/material';
+
 /**
  * Heatmap layout and behavior constants
  * These values are tuned for optimal visualization of daily time-series data
@@ -60,3 +62,54 @@ export const TOOLTIP_STYLES = {
   /** Font size for tooltip content (metrics) */
   CONTENT_FONT_SIZE: 12,
 } as const;
+
+/**
+ * Tooltip popper configuration for heatmap cells
+ * Optimized for viewport boundaries and responsive positioning
+ */
+export const HEATMAP_TOOLTIP_SLOT_PROPS: TooltipProps['slotProps'] = {
+  popper: {
+    disablePortal: false,
+    popperOptions: {
+      strategy: 'fixed',
+    },
+    modifiers: [
+      {
+        name: 'offset',
+        options: {
+          offset: [0, 8],
+        },
+      },
+      {
+        name: 'preventOverflow',
+        enabled: true,
+        options: {
+          boundary: 'viewport',
+          padding: 16,
+          altAxis: true,
+        },
+      },
+      {
+        name: 'flip',
+        enabled: true,
+        options: {
+          fallbackPlacements: [
+            'bottom',
+            'left',
+            'right',
+            'top-start',
+            'bottom-start',
+          ],
+        },
+      },
+    ],
+  },
+  tooltip: {
+    sx: {
+      backgroundColor: 'transparent',
+      padding: 0,
+      boxShadow: 'none',
+      maxWidth: 'none',
+    },
+  },
+};

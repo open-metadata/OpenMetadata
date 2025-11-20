@@ -58,8 +58,18 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
     };
   }, [node]);
 
+  const { children } = useMemo(
+    () => getEntityChildrenAndLabel(node),
+    [node.id]
+  );
+  const childrenCount = children.length;
+
   return (
-    <Col className="items-center entity-label-container">
+    <Col
+      className={classNames(
+        'items-center entity-label-container',
+        childrenCount > 0 ? 'with-footer' : ''
+      )}>
       <Col className="d-flex items-center m-b-sm" flex="auto">
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
@@ -181,6 +191,10 @@ const EntityFooter = ({
     },
     [toggleColumnsList]
   );
+
+  if (childrenCount === 0) {
+    return null;
+  }
 
   return (
     <div className="entity-footer">

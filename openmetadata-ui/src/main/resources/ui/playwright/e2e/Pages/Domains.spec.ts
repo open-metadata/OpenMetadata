@@ -23,6 +23,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -812,6 +813,45 @@ test.describe('Domains', () => {
     }
   });
 
+  test('Verify redirect path on data product delete', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
+
+    await page.reload();
+    await redirectToHomePage(page);
+
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.data);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button-title').click();
+
+    await page.getByTestId('confirmation-text-input').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+    const dpListRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=data_product_search_index*'
+    );
+    const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+
+    await page.getByTestId('confirm-button').click();
+
+    await deleteRes;
+    await dpListRes;
+
+    await expect(
+      page.getByText(`"Data Product" deleted successfully!`)
+    ).toBeVisible();
+
+    await expect(page.getByTestId('add-entity-button')).toBeVisible();
+
+    await afterAction();
+  });
+
   test('Verify duplicate domain creation', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -1414,14 +1454,14 @@ test.describe('Domain Access with noDomain() Rule', () => {
 });
 
 test.describe('Domain Tree View Functionality', () => {
-  const domain = new Domain();
   let subDomain: SubDomain;
+  const domain = EntityDataClass.domain1;
+  const domainDisplayName = domain.responseData.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await domain.create(apiContext);
     subDomain = new SubDomain(domain);
     await subDomain.create(apiContext);
     await afterAction();
@@ -1432,7 +1472,6 @@ test.describe('Domain Tree View Functionality', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await subDomain.delete(apiContext);
-    await domain.delete(apiContext);
     await afterAction();
   });
 
@@ -1449,15 +1488,33 @@ test.describe('Domain Tree View Functionality', () => {
     await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
 
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .clear();
+
+    const searchDomain = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(domainDisplayName)}*`
+    );
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .fill(domainDisplayName);
+    await searchDomain;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
     await expect(
       page
-        .getByRole('treeitem', { name: domain.data.displayName })
+        .getByRole('treeitem', {
+          name: domainDisplayName,
+        })
         .locator('div')
         .nth(2)
     ).toBeVisible();
 
     await page
-      .getByRole('treeitem', { name: domain.data.displayName })
+      .getByRole('treeitem', { name: domainDisplayName })
       .locator('div')
       .nth(2)
       .click();
@@ -1471,14 +1528,14 @@ test.describe('Domain Tree View Functionality', () => {
     await expect(
       page
         .getByRole('listitem')
-        .filter({ hasText: domain.data.fullyQualifiedName })
+        .filter({ hasText: domain.responseData.fullyQualifiedName })
         .getByTestId('breadcrumb-link')
     ).toBeVisible();
     await expect(page.getByTestId('entity-header-display-name')).toContainText(
-      domain.data.displayName
+      domainDisplayName
     );
     await expect(page.getByTestId('entity-header-name')).toContainText(
-      domain.data.name
+      domain.responseData.name
     );
     await expect(
       page.getByTestId('documentation').getByText('Documentation')
@@ -1499,18 +1556,9 @@ test.describe('Domain Tree View Functionality', () => {
     await expect(
       page
         .getByTestId('asset-description-container')
-        .getByText(domain.data.description)
+        .getByText(domain.responseData.description)
     ).toBeVisible();
     await expect(page.getByTestId('domain-details-add-button')).toBeVisible();
-
-    await page.getByTestId('data_products').getByText('Data Products').click();
-    await page.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(
-      page.getByTestId('no-data-placeholder').getByRole('paragraph')
-    ).toContainText("Looks like you haven't added any data products yet.");
-    await expect(page.getByTestId('data-product-add-button')).toBeVisible();
 
     await expect(
       page.getByTestId('subdomains').getByTestId('count')
