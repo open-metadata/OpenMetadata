@@ -487,6 +487,7 @@ export const getDomainDetailTabs = ({
                 feedCount={feedCount}
                 layoutType={ActivityFeedLayoutType.THREE_PANEL}
                 owners={domain.owners}
+                urlFqn={domain.fullyQualifiedName}
                 onFeedUpdate={onFeedUpdate ?? noop}
                 onUpdateEntityDetails={noop}
               />

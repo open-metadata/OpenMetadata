@@ -50,6 +50,9 @@ import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -91,7 +94,18 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -2457,6 +2471,122 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
+  void test_tierRemovalFromDatabaseAndSearch(TestInfo test)
+      throws IOException, InterruptedException {
+    Table table = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.withTags(List.of(TIER1_TAG_LABEL));
+
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+    assertEquals(TIER1_TAG_LABEL.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+    Thread.sleep(2000);
+
+    assertTierInSearch(table, TIER1_TAG_LABEL.getTagFQN());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withTags(new ArrayList<>());
+
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    fieldDeleted(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertTrue(table.getTags() == null || table.getTags().isEmpty());
+
+    Thread.sleep(2000);
+
+    assertTierNotInSearch(table);
+  }
+
+  private void assertTierInSearch(Table table, String expectedTierFqn) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+
+    Request refreshRequest =
+        new Request(
+            "POST",
+            format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            table.getId().toString());
+    request.setJsonEntity(query);
+
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertFalse(hitsList.isEmpty(), "Table should be found in search index");
+
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Map<String, Object> tier = (Map<String, Object>) source.get("tier");
+
+    assertNotNull(tier, "Tier should be present in search index");
+    assertEquals(expectedTierFqn, tier.get("tagFQN"), "Tier tag FQN should match in search index");
+
+    searchClient.close();
+  }
+
+  private void assertTierNotInSearch(Table table) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+
+    Request refreshRequest =
+        new Request(
+            "POST",
+            format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            table.getId().toString());
+    request.setJsonEntity(query);
+
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertFalse(hitsList.isEmpty(), "Table should be found in search index");
+
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Object tier = source.get("tier");
+
+    assertNull(tier, "Tier should be removed from search index");
+
+    searchClient.close();
   }
 
   @Test
@@ -5954,5 +6084,102 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Cleanup
     deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_generatesChangeEvents(TestInfo test) throws IOException {
+    int tableCount = 3;
+    List<CreateTable> createRequests = new ArrayList<>();
+
+    for (int i = 0; i < tableCount; i++) {
+      String tableName = getEntityName(test, i);
+      CreateTable create =
+          createRequest(tableName).withDescription("Table " + i + " for bulk creation test");
+      createRequests.add(create);
+    }
+
+    WebTarget target = getResource("tables/bulk");
+    BulkOperationResult result =
+        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(tableCount, result.getNumberOfRowsProcessed());
+    assertEquals(tableCount, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    ResultList<ChangeEvent> changeEvents =
+        getChangeEvents(TABLE, null, null, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(changeEvents);
+    assertNotNull(changeEvents.getData());
+
+    long bulkCreatedEventCount =
+        changeEvents.getData().stream()
+            .filter(
+                event ->
+                    event.getEntityType().equals(TABLE)
+                        && event.getEventType().equals(ENTITY_CREATED)
+                        && event.getUserName().equals("admin"))
+            .count();
+
+    assertTrue(
+        bulkCreatedEventCount >= tableCount,
+        "Expected at least "
+            + tableCount
+            + " change events for bulk created tables, but found "
+            + bulkCreatedEventCount);
+
+    for (CreateTable createRequest : createRequests) {
+      Optional<ChangeEvent> tableEvent =
+          changeEvents.getData().stream()
+              .filter(
+                  event ->
+                      event.getEntityType().equals(TABLE)
+                          && event.getEntityFullyQualifiedName() != null
+                          && event.getEntityFullyQualifiedName().contains(createRequest.getName()))
+              .findFirst();
+
+      assertTrue(
+          tableEvent.isPresent(), "Change event not found for table: " + createRequest.getName());
+      assertEquals(ENTITY_CREATED, tableEvent.get().getEventType());
+      assertEquals("admin", tableEvent.get().getUserName());
+    }
+
+    // Update the descriptions for bulk update test
+    for (int i = 0; i < createRequests.size(); i++) {
+      CreateTable request = createRequests.get(i);
+      createRequests.set(
+          i,
+          createRequest(request.getName()).withDescription("Updated description for table " + i));
+    }
+
+    target = getResource("tables/bulk");
+    result =
+        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(tableCount, result.getNumberOfRowsProcessed());
+    assertEquals(tableCount, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    changeEvents = getChangeEvents(null, TABLE, null, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(changeEvents);
+    assertNotNull(changeEvents.getData());
+
+    long bulkUpdatedEventCount =
+        changeEvents.getData().stream()
+            .filter(
+                event ->
+                    event.getEntityType().equals(TABLE)
+                        && (event.getEventType().equals(ENTITY_UPDATED)
+                            || event.getEventType().equals(ENTITY_FIELDS_CHANGED))
+                        && event.getUserName().equals("admin"))
+            .count();
+
+    assertTrue(
+        bulkUpdatedEventCount >= tableCount,
+        "Expected at least "
+            + tableCount
+            + " change events for bulk updated tables, but found "
+            + bulkUpdatedEventCount);
   }
 }

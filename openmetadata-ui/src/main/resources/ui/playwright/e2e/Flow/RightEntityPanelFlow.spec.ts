@@ -27,7 +27,6 @@ const testDataProduct = new DataProduct(
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await EntityDataClass.preRequisitesForTests(apiContext);
   await testEntity.create(apiContext);
   await testDataProduct.create(apiContext);
 
@@ -54,7 +53,6 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
 
   await testDataProduct.delete(apiContext);
   await testEntity.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
 
   await afterAction();
 });
