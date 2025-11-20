@@ -1666,6 +1666,8 @@
     "suggested-by": "Предложен",
     "suggested-description": "Предложенное описание",
     "suggested-description-plural": "Предложенные описания",
+    "suggested-description-tag-plural": "Предложенные описания & Теги",
+    "suggested-tag-plural": "Предложенные Теги",
     "suggestion": "Предложение",
     "suggestion-lowercase-plural": "предложения",
     "suggestion-pending": "Предложение в ожидании",

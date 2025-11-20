@@ -62,3 +62,13 @@ Token to use the API. This is required for private repositories and to ensure we
 Follow these <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token" target="_blank">steps</a> in order to create a fine-grained personal access token.
 
 When configuring, give repository access to `Only select repositories` and choose the one containing your LookML files. Then, we only need `Repository Permissions` as `Read-only` for `Contents`.
+
+$$note
+
+**Important for Organizations with SAML SSO:**
+
+If your GitHub organization has SAML Single Sign-On (SSO) enabled, you must authorize your Personal Access Token for SSO access after creating it. Without this authorization, you will receive a 403 error when attempting to clone the repository.
+
+Follow these <a href="https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/authorizing-a-personal-access-token-for-use-with-single-sign-on" target="_blank">steps</a> to authorize your token for use with SAML SSO.
+
+$$

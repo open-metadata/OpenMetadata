@@ -1666,6 +1666,8 @@
     "suggested-by": "Suggested by",
     "suggested-description": "Suggested Description",
     "suggested-description-plural": "Suggested Descriptions",
+    "suggested-description-tag-plural": "Suggested Descriptions & Tags",
+    "suggested-tag-plural": "Suggested Tags",
     "suggestion": "הצעה",
     "suggestion-lowercase-plural": "הצעות",
     "suggestion-pending": "Suggestions Pending",
