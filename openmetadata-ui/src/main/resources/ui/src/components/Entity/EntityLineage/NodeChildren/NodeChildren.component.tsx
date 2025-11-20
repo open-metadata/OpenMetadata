@@ -116,9 +116,12 @@ const NodeChildren = ({
     tracedColumns,
     activeLayer,
     onColumnClick,
+    onColumnMouseOver,
+    onColumnMouseOut,
     columnsHavingLineage,
     isEditMode,
     expandAllColumns,
+    selectedColumn,
   } = useLineageProvider();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
@@ -258,8 +261,11 @@ const NodeChildren = ({
       const headerContent = getColumnContent(
         record,
         isColumnTraced,
+        selectedColumn,
         isConnectable,
         onColumnClick,
+        onColumnMouseOver,
+        onColumnMouseOut,
         showDataObservabilitySummary,
         isLoading,
         columnSummary
@@ -292,8 +298,11 @@ const NodeChildren = ({
           return getColumnContent(
             child,
             isColumnTraced,
+            selectedColumn,
             isConnectable,
             onColumnClick,
+            onColumnMouseOver,
+            onColumnMouseOut,
             showDataObservabilitySummary,
             isLoading,
             columnSummary
@@ -324,6 +333,8 @@ const NodeChildren = ({
       isConnectable,
       tracedColumns,
       onColumnClick,
+      onColumnMouseOver,
+      onColumnMouseOut,
       isColumnVisible,
       showDataObservabilitySummary,
       isLoading,
@@ -346,8 +357,11 @@ const NodeChildren = ({
         return getColumnContent(
           column,
           isColumnTraced,
+          selectedColumn,
           isConnectable,
           onColumnClick,
+          onColumnMouseOver,
+          onColumnMouseOut,
           showDataObservabilitySummary,
           isLoading,
           columnSummary
@@ -356,6 +370,7 @@ const NodeChildren = ({
     },
     [
       isConnectable,
+      selectedColumn,
       tracedColumns,
       isColumnVisible,
       showDataObservabilitySummary,

@@ -175,18 +175,18 @@
       padding-top: 0;
       background-color: @grey-1;
 
+      // check this
       .inside-current-page {
+        display: block;
         .custom-node-header-column-tracing {
           display: block;
         }
       }
-      .outside-current-page {
-        .custom-node-column-container {
-          display: none;
-        }
-        .custom-node-header-column-tracing {
-          display: block;
-        }
+      .outside-current-page:has(.custom-node-column-container) {
+        display: none;
+      }
+      .outside-current-page:has(.custom-node-header-column-tracing) {
+        display: block;
       }
 
       .lineage-collapse-column.ant-collapse {
