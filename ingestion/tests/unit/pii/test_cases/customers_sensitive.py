@@ -140,14 +140,4 @@ expected_column_tags = [
             state=State.Suggested,
         ),
     ),
-    ColumnTag(
-        column_fqn="Service.database.schema.example_table.address",
-        tag_label=TagLabel(
-            name="NonSensitive",
-            tagFQN=TagFQN(root="PII.NonSensitive"),
-            source=TagSource.Classification,
-            labelType=LabelType.Generated,
-            state=State.Suggested,
-        ),
-    ),
 ]
