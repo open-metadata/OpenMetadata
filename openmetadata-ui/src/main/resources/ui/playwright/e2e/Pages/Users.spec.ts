@@ -38,6 +38,7 @@ import {
   checkStewardServicesPermissions,
   generateToken,
   hardDeleteUserProfilePage,
+  performUserLogin,
   permanentDeleteUser,
   resetPassword,
   restoreUser,
@@ -554,7 +555,10 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
   test.slow(true);
 
   test.beforeAll('Prerequisites', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performUserLogin(
+      browser,
+      adminUser
+    );
 
     await adminUser.patch({
       apiContext,
@@ -981,7 +985,10 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
 test.describe('User Profile Persona Interactions', () => {
   test.beforeEach(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performUserLogin(
+      browser,
+      adminUser
+    );
 
     // Patch admin user to add personas
     await adminUser.patch({
