@@ -7,13 +7,10 @@ google-cloud-storage==2.10.0
 kubernetes==29.0.0
 exasol-integration-test-docker-environment==3.4.0
 
-# IMPORTANT: grpcio pinned to 1.62.x for Dagster 1.8.9 compatibility (requires protobuf<5)
-# grpcio-tools 1.62.x supports protobuf>=4.21.6,<5.0dev which is compatible with dagster 1.8.9
-grpcio>=1.62.0,<1.63.0
-grpcio-status>=1.62.0,<1.63.0
-grpcio-tools>=1.62.0,<1.63.0
-grpcio-health-checking>=1.62.0,<1.63.0
-protobuf>=4.21.6,<5.0
+# gRPC and Protobuf packages
+# Dagster 1.12.2 supports protobuf>=4,<7 which is compatible with opentelemetry-exporter-otlp 1.37.0
+grpcio>=1.63.2
+protobuf>=5.26.1,<7
 
 # Snowflake connector - causes backtracking through many patch versions
 snowflake-connector-python==3.17.4
@@ -39,11 +36,8 @@ oracledb==1.4.2
 locust==2.32.10
 
 # Workflow orchestration packages
-# Dagster has complex dependency tree - pin to latest compatible version to prevent backtracking
-# All Dagster packages must use the same version
-dagster==1.8.9
-dagster-graphql==1.8.9
-dagster-webserver==1.8.9
-dagster-pipes==1.8.9
-# universal-pathlib pinned to 0.2.6 for fsspec 2023.x compatibility (pyiceberg 0.5.1 requires fsspec<2024.1.0)
-universal-pathlib==0.2.6
+# Dagster 1.12.2+ supports protobuf 5/6, making it compatible with opentelemetry-exporter-otlp 1.37.0
+dagster>=1.12.2
+dagster-graphql>=1.12.2
+dagster-webserver>=1.12.2
+dagster-pipes>=1.12.2
