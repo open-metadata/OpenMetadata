@@ -94,7 +94,17 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -2460,6 +2470,122 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
+  void test_tierRemovalFromDatabaseAndSearch(TestInfo test)
+      throws IOException, InterruptedException {
+    Table table = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.withTags(List.of(TIER1_TAG_LABEL));
+
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+    assertEquals(TIER1_TAG_LABEL.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+    Thread.sleep(2000);
+
+    assertTierInSearch(table, TIER1_TAG_LABEL.getTagFQN());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withTags(new ArrayList<>());
+
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    fieldDeleted(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertTrue(table.getTags() == null || table.getTags().isEmpty());
+
+    Thread.sleep(2000);
+
+    assertTierNotInSearch(table);
+  }
+
+  private void assertTierInSearch(Table table, String expectedTierFqn) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+
+    Request refreshRequest =
+        new Request(
+            "POST",
+            format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            table.getId().toString());
+    request.setJsonEntity(query);
+
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertFalse(hitsList.isEmpty(), "Table should be found in search index");
+
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Map<String, Object> tier = (Map<String, Object>) source.get("tier");
+
+    assertNotNull(tier, "Tier should be present in search index");
+    assertEquals(expectedTierFqn, tier.get("tagFQN"), "Tier tag FQN should match in search index");
+
+    searchClient.close();
+  }
+
+  private void assertTierNotInSearch(Table table) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+
+    Request refreshRequest =
+        new Request(
+            "POST",
+            format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            table.getId().toString());
+    request.setJsonEntity(query);
+
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertFalse(hitsList.isEmpty(), "Table should be found in search index");
+
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Object tier = source.get("tier");
+
+    assertNull(tier, "Tier should be removed from search index");
+
+    searchClient.close();
   }
 
   @Test
