@@ -39,6 +39,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { IconButton, Pagination, Stack, Typography } from '@mui/material';
 import React from 'react';
+import classNames from 'classnames';
 
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
@@ -393,7 +394,12 @@ const NodeChildren = ({
     return (
       (isColumnLayerEnabled || isChildrenListExpanded) &&
       !isEmpty(children) && (
-        <div className="column-container" data-testid="column-container">
+        <div
+          className={classNames(
+            'column-container',
+            selectedColumn && 'any-column-selected'
+          )}
+          data-testid="column-container">
           <div className="search-box">
             <Input
               data-testid="search-column-input"

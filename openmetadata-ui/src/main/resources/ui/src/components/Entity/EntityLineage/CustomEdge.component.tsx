@@ -96,6 +96,7 @@ export const CustomEdge = ({
     onColumnEdgeRemove,
     dataQualityLineage,
     dqHighlightedEdges,
+    selectedColumn,
   } = useLineageProvider();
 
   const { theme } = useApplicationStore();
@@ -166,7 +167,11 @@ export const CustomEdge = ({
       display = tracedNodes.length === 0 || isStrokeNeeded ? 'block' : 'none';
     }
 
-    let stroke = isStrokeNeeded ? theme.primaryColor : undefined;
+    let stroke = isStrokeNeeded
+      ? selectedColumn
+        ? '#800080'
+        : theme.primaryColor
+      : undefined;
 
     if (showDqTracing) {
       stroke = RED_3;
