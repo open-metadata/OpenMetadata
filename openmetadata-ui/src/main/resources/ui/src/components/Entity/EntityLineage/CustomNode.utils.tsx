@@ -196,14 +196,31 @@ const getColumnNameContent = (column: Column, isLoading: boolean) => {
 export const getColumnContent = (
   column: Column,
   isColumnTraced: boolean,
+  selectedColumn: string | null,
   isConnectable: boolean,
   onColumnClick: (column: string) => void,
+  onColumnMouseOver: (column: string) => void,
+  onColumnMouseOut: () => void,
   showDataObservabilitySummary: boolean,
   isLoading: boolean,
   summary?: ColumnTestSummaryDefinition
 ) => {
   const { fullyQualifiedName } = column;
   const columnNameContentRender = getColumnNameContent(column, isLoading);
+
+  const handleMouseOver = () => {
+    if (selectedColumn) {
+      return;
+    }
+    onColumnMouseOver(fullyQualifiedName ?? '');
+  };
+
+  const handleMouseOut = () => {
+    if (selectedColumn) {
+      return;
+    }
+    onColumnMouseOut();
+  };
 
   return (
     <div
@@ -216,7 +233,9 @@ export const getColumnContent = (
       onClick={(e) => {
         e.stopPropagation();
         onColumnClick(fullyQualifiedName ?? '');
-      }}>
+      }}
+      onMouseOut={handleMouseOut}
+      onMouseOver={handleMouseOver}>
       {getColumnHandle(
         EntityLineageNodeType.DEFAULT,
         isConnectable,
