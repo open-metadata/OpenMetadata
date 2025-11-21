@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
@@ -48,9 +49,12 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -570,6 +574,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public final List<CsvHeader> HEADERS;
     private final DatabaseSchema schema;
     private final boolean recursive;
+    private final Map<Integer, Boolean> recordCreateStatus = new HashMap<>();
+    private final Map<Integer, ChangeDescription> recordFieldChanges = new HashMap<>();
 
     public DatabaseSchemaCsv(DatabaseSchema schema, String user, boolean recursive) {
       super(TABLE, getCsvDocumentation(Entity.DATABASE_SCHEMA, recursive).getHeaders(), user);
@@ -676,8 +682,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
       Table table;
+      boolean tableExists;
       try {
         table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+        tableExists = true;
       } catch (Exception ex) {
         LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
         table =
@@ -685,12 +693,17 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .withService(schema.getService())
                 .withDatabase(schema.getDatabase())
                 .withDatabaseSchema(schema.getEntityReference());
+        tableExists = false;
       }
 
+      recordCreateStatus.put((int) csvRecord.getRecordNumber(), !tableExists);
+
+      // Track field changes for Phase 2 using ChangeDescription structure
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
-      // retentionPeriod,
-      // sourceUrl, domain
-      // Field 1,2,3,6,7 - database schema name, displayName, description
+      // retentionPeriod, sourceUrl, domain
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -701,6 +714,104 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
+      if (!tableExists) {
+        // For new tables, all non-null fields are "added"
+        if (!nullOrEmpty(csvRecord.get(1))) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(csvRecord.get(1)));
+        }
+        if (!nullOrEmpty(csvRecord.get(2))) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
+        }
+        if (tagLabels != null && !tagLabels.isEmpty()) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (certification != null) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("certification")
+                  .withNewValue(JsonUtils.pojoToJson(certification)));
+        }
+        if (!nullOrEmpty(csvRecord.get(8))) {
+          fieldsAdded.add(
+              new FieldChange().withName("retentionPeriod").withNewValue(csvRecord.get(8)));
+        }
+        if (!nullOrEmpty(csvRecord.get(9))) {
+          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(csvRecord.get(9)));
+        }
+      } else {
+        // Compare existing values with CSV values to track changes
+        String newDisplayName = csvRecord.get(1);
+        if (!Objects.equals(table.getDisplayName(), newDisplayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(table.getDisplayName())
+                  .withNewValue(newDisplayName));
+        }
+
+        String newDescription = csvRecord.get(2);
+        if (!Objects.equals(table.getDescription(), newDescription)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(table.getDescription())
+                  .withNewValue(newDescription));
+        }
+
+        if (!Objects.equals(table.getTags(), tagLabels)) {
+          String oldTagsJson =
+              table.getTags() == null ? null : JsonUtils.pojoToJson(table.getTags());
+          String newTagsJson = tagLabels == null ? null : JsonUtils.pojoToJson(tagLabels);
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(oldTagsJson)
+                  .withNewValue(newTagsJson));
+        }
+
+        if (!Objects.equals(table.getCertification(), certification)) {
+          String oldCertJson =
+              table.getCertification() == null
+                  ? null
+                  : JsonUtils.pojoToJson(table.getCertification());
+          String newCertJson = certification == null ? null : JsonUtils.pojoToJson(certification);
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("certification")
+                  .withOldValue(oldCertJson)
+                  .withNewValue(newCertJson));
+        }
+
+        String newRetentionPeriod = csvRecord.get(8);
+        if (!Objects.equals(table.getRetentionPeriod(), newRetentionPeriod)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("retentionPeriod")
+                  .withOldValue(table.getRetentionPeriod())
+                  .withNewValue(newRetentionPeriod));
+        }
+
+        String newSourceUrl = csvRecord.get(9);
+        if (!Objects.equals(table.getSourceUrl(), newSourceUrl)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("sourceUrl")
+                  .withOldValue(table.getSourceUrl())
+                  .withNewValue(newSourceUrl));
+        }
+      }
+
+      // Create ChangeDescription object and store for this record
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChanges.put((int) csvRecord.getRecordNumber(), changeDescription);
 
       table
           .withName(csvRecord.get(0))
@@ -717,8 +828,61 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
-        createEntity(printer, csvRecord, table, TABLE);
+        createEntityWithChangeDescription(printer, csvRecord, table, TABLE);
       }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, Table table, String entityType)
+        throws IOException {
+      boolean isCreated = recordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
+      ChangeDescription changeDescription =
+          recordFieldChanges.getOrDefault(
+              (int) csvRecord.getRecordNumber(), new ChangeDescription());
+
+      String status;
+      if (isCreated) {
+        status = ENTITY_CREATED;
+      } else {
+        status = ENTITY_UPDATED;
+      }
+
+      // Create or update the entity through the repository if not in dry run mode
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<Table> repository =
+              (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
+          repository.createOrUpdate(null, table, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+
+      // Print success message with change description
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      // Add structured change description as JSON at the end
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
