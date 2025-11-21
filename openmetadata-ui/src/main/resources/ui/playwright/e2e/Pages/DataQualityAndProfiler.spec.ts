@@ -1230,6 +1230,25 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     // Apply domain globally
     await page.getByTestId('domain-dropdown').click();
 
+    // Wait for the domain select dropdown to be visible
+    await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      state: 'visible',
+    });
+
+    // Search for the domain and wait for API response
+    const domainSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.name
+      )}*&index=domain_search_index*`
+    );
+
+    await page
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill(domain.responseData.name);
+
+    await domainSearchResponse;
+
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
