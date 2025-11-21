@@ -551,7 +551,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) {
-      if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
+      if (updatedLevel != null && (origLevel == null || !origLevel.equals(updatedLevel))) {
         recordChange("loggerLevel", origLevel, updatedLevel);
       }
     }
@@ -559,25 +559,25 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateEnableStreamableLogs(
         Boolean origEnableStreamableLogs, Boolean updatedEnableStreamableLogs) {
       if (updatedEnableStreamableLogs != null
-          && !origEnableStreamableLogs.equals(updatedEnableStreamableLogs)) {
+          && (origEnableStreamableLogs == null || !origEnableStreamableLogs.equals(updatedEnableStreamableLogs))) {
         recordChange("enableStreamableLogs", origEnableStreamableLogs, updatedEnableStreamableLogs);
       }
     }
 
     private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
-      if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
+      if (updatedDeployed != null && (origDeployed == null || !origDeployed.equals(updatedDeployed))) {
         recordChange("deployed", origDeployed, updatedDeployed);
       }
     }
 
     private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
-      if (updatedRaiseOnError != null && !origRaiseOnError.equals(updatedRaiseOnError)) {
+      if (updatedRaiseOnError != null && (origRaiseOnError == null || !origRaiseOnError.equals(updatedRaiseOnError))) {
         recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
 
     private void updateEnabled(Boolean origEnabled, Boolean updatedEnabled) {
-      if (updatedEnabled != null && !origEnabled.equals(updatedEnabled)) {
+      if (updatedEnabled != null && (origEnabled == null || !origEnabled.equals(updatedEnabled))) {
         recordChange("enabled", origEnabled, updatedEnabled);
       }
     }
