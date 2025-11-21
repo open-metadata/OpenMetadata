@@ -16,7 +16,7 @@ import { test } from '../fixtures/pages';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { describeEntity, updateDescription } from '../../utils/entity';
+import { updateDescriptionForChildren } from '../../utils/entity';
 
 // Create a custom table class with reserved keyword column names
 class ReservedKeywordTableClass extends TableClass {
@@ -202,13 +202,13 @@ test.describe('EntityLink Grammar with Reserved Keywords', () => {
 
         const newDescription = `Test description for ${columnName} column`;
         
-        await describeEntity({
+        await updateDescriptionForChildren(
           page,
-          rowSelector: 'data-row-key',
-          fqn: columnName,
-          description: newDescription,
-          isCustomProperty: false,
-        });
+          newDescription,
+          columnName,
+          'data-row-key',
+          'tables'
+        );
 
         // Verify description was added
         const descriptionCell = columnRow.locator('[data-testid="description"]');
@@ -231,13 +231,13 @@ test.describe('EntityLink Grammar with Reserved Keywords', () => {
 
         const newDescription = `Test description for ${columnName} column`;
         
-        await describeEntity({
+        await updateDescriptionForChildren(
           page,
-          rowSelector: 'data-row-key',
-          fqn: columnName,
-          description: newDescription,
-          isCustomProperty: false,
-        });
+          newDescription,
+          columnName,
+          'data-row-key',
+          'tables'
+        );
 
         // Verify description was added
         const descriptionCell = columnRow.locator('[data-testid="description"]');
