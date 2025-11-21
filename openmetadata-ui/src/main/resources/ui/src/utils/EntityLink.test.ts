@@ -138,4 +138,284 @@ describe('Test EntityLink', () => {
 
     expect(columnName).toStrictEqual('type');
   });
+
+  describe('Reserved keywords as column names', () => {
+    describe('ENTITY_TYPE keywords as column names', () => {
+      it('Should split entityLink with "topic" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::topic>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'topic',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'topic'
+        );
+      });
+
+      it('Should split entityLink with "user" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::user>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'user',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual('user');
+      });
+
+      it('Should split entityLink with "database" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::database>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'database',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'database'
+        );
+      });
+
+      it('Should split entityLink with "role" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::role>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'role',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual('role');
+      });
+
+      it('Should split entityLink with "chart" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::chart>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'chart',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'chart'
+        );
+      });
+
+      it('Should split entityLink with "dashboard" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::dashboard>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'dashboard',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'dashboard'
+        );
+      });
+
+      it('Should split entityLink with "pipeline" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::pipeline>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'pipeline',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'pipeline'
+        );
+      });
+
+      it('Should split entityLink with "team" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::team>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'team',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual('team');
+      });
+    });
+
+    describe('ENTITY_FIELD keywords as column names', () => {
+      it('Should split entityLink with "description" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::description>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'description',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'description'
+        );
+      });
+
+      it('Should split entityLink with "owner" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::owner>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'owner',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'owner'
+        );
+      });
+
+      it('Should split entityLink with "tags" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::tags>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'tags',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual('tags');
+      });
+
+      it('Should split entityLink with "name" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::name>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'name',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual('name');
+      });
+
+      it('Should split entityLink with "tests" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::tests>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'tests',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'tests'
+        );
+      });
+
+      it('Should split entityLink with "displayName" as column name', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::displayName>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'displayName',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'displayName'
+        );
+      });
+    });
+
+    describe('Reserved keywords with field access', () => {
+      it('Should split entityLink with reserved keyword column and field', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::description::tags>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'description',
+          'tags',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'description'
+        );
+        expect(EntityLink.getTableColumnField(entityLink)).toStrictEqual(
+          'tags'
+        );
+      });
+
+      it('Should split entityLink with "owner" column and "description" field', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::owner::description>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'owner',
+          'description',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual(
+          'owner'
+        );
+        expect(EntityLink.getTableColumnField(entityLink)).toStrictEqual(
+          'description'
+        );
+      });
+
+      it('Should split entityLink with "tags" column and "description" field', () => {
+        const entityLink =
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::tags::description>';
+        const parts = EntityLink.split(entityLink);
+
+        expect(parts).toStrictEqual([
+          'table',
+          'sample_data.ecommerce_db.shopify.dim_address',
+          'columns',
+          'tags',
+          'description',
+        ]);
+        expect(EntityLink.getTableColumnName(entityLink)).toStrictEqual('tags');
+        expect(EntityLink.getTableColumnField(entityLink)).toStrictEqual(
+          'description'
+        );
+      });
+    });
+  });
 });
