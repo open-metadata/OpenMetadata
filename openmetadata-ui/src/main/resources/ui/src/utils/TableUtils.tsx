@@ -785,6 +785,7 @@ export const getTableDetailPageBaseTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
@@ -1062,7 +1063,7 @@ export const getTableDetailPageBaseTabs = ({
         <CustomPropertyTable<EntityType.TABLE>
           entityType={EntityType.TABLE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

@@ -1666,6 +1666,8 @@
     "suggested-by": "แนะนำโดย",
     "suggested-description": "คำอธิบายที่แนะนำ",
     "suggested-description-plural": "คำอธิบายที่แนะนำหลายรายการ",
+    "suggested-description-tag-plural": "คำอธิบาย & แท็กที่แนะนำหลายรายการ",
+    "suggested-tag-plural": "แท็กที่แนะนำหลายรายการ",
     "suggestion": "ข้อเสนอแนะ",
     "suggestion-lowercase-plural": "ข้อเสนอแนะหลายรายการ",
     "suggestion-pending": "ข้อเสนอแนะที่รออยู่",

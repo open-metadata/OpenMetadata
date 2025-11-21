@@ -34,10 +34,12 @@ class LookerLocalRepoTest(TestCase):
         local_path = Path("/tmp/test-repo")
         local_repo_creds = LocalRepositoryPath(root=str(local_path))
 
-        repo = LookerSource._LookerSource__init_repo(local_repo_creds)
+        repos = LookerSource._LookerSource__init_repo(local_repo_creds)
 
-        self.assertEqual(repo.name, "test-repo")
-        self.assertEqual(repo.path, str(local_path))
+        self.assertIsInstance(repos, list)
+        self.assertEqual(len(repos), 1)
+        self.assertEqual(repos[0].name, "test-repo")
+        self.assertEqual(repos[0].path, str(local_path))
 
     @patch("pathlib.Path.is_file")
     @patch("lkml.load")
@@ -58,7 +60,7 @@ class LookerLocalRepoTest(TestCase):
             from metadata.ingestion.source.dashboard.looker.models import LookMLRepo
 
             mock_repo = LookMLRepo(name="test", path="/tmp/test-repo")
-            mock_init_repo.return_value = mock_repo
+            mock_init_repo.return_value = [mock_repo]
 
             source = LookerSource.__new__(LookerSource)
             source._main_lookml_repo = mock_repo
@@ -66,7 +68,7 @@ class LookerLocalRepoTest(TestCase):
             local_repo_creds = LocalRepositoryPath(root="/tmp/test-repo")
 
             # This should not raise any exceptions
-            manifest = source._LookerSource__read_manifest(local_repo_creds)
+            manifest = source._LookerSource__read_manifest(local_repo_creds, mock_repo)
 
             # Verify that the manifest is processed correctly
             self.assertIsNotNone(manifest)
@@ -88,7 +90,7 @@ class LookerLocalRepoTest(TestCase):
             from metadata.ingestion.source.dashboard.looker.models import LookMLRepo
 
             mock_repo = LookMLRepo(name="test", path="/tmp/test-repo")
-            mock_init_repo.return_value = mock_repo
+            mock_init_repo.return_value = [mock_repo]
 
             source = LookerSource.__new__(LookerSource)
             source._main_lookml_repo = mock_repo
@@ -96,7 +98,7 @@ class LookerLocalRepoTest(TestCase):
             local_repo_creds = LocalRepositoryPath(root="/tmp/test-repo")
 
             # This should log a warning about missing manifest file
-            manifest = source._LookerSource__read_manifest(local_repo_creds)
+            manifest = source._LookerSource__read_manifest(local_repo_creds, mock_repo)
 
             # Should return None when file doesn't exist
             self.assertIsNone(manifest)
@@ -134,7 +136,7 @@ class LookerLocalRepoTest(TestCase):
                 from metadata.ingestion.source.dashboard.looker.models import LookMLRepo
 
                 mock_repo = LookMLRepo(name="test", path="/tmp/test-repo")
-                mock_init_repo.return_value = mock_repo
+                mock_init_repo.return_value = [mock_repo]
 
                 source = LookerSource.__new__(LookerSource)
                 source._main_lookml_repo = mock_repo
@@ -142,7 +144,9 @@ class LookerLocalRepoTest(TestCase):
                 local_repo_creds = LocalRepositoryPath(root="/tmp/test-repo")
 
                 # This should log a warning about remote dependencies
-                manifest = source._LookerSource__read_manifest(local_repo_creds)
+                manifest = source._LookerSource__read_manifest(
+                    local_repo_creds, mock_repo
+                )
 
                 # Should return the manifest despite the warning
                 self.assertIsNotNone(manifest)
