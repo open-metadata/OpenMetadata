@@ -188,17 +188,24 @@ class AirflowSource(PipelineServiceSource):
         Return the DagRuns of given dag
         """
         try:
+            # In Airflow 3.x, execution_date was renamed to logical_date
+            execution_date_column = (
+                DagRun.logical_date
+                if hasattr(DagRun, "logical_date")
+                else DagRun.execution_date
+            )
+
             dag_run_list = (
                 self.session.query(
                     DagRun.dag_id,
                     DagRun.run_id,
                     DagRun.queued_at,
-                    DagRun.execution_date,
+                    execution_date_column,
                     DagRun.start_date,
                     DagRun.state,
                 )
                 .filter(DagRun.dag_id == dag_id)
-                .order_by(DagRun.execution_date.desc())
+                .order_by(execution_date_column.desc())
                 .limit(self.config.serviceConnection.root.config.numberOfStatus)
                 .all()
             )
@@ -207,17 +214,33 @@ class AirflowSource(PipelineServiceSource):
 
             # Build DagRun manually to not fall into new/old columns from
             # different Airflow versions
-            return [
-                DagRun(
-                    dag_id=elem.get("dag_id"),
-                    run_id=elem.get("run_id"),
-                    queued_at=elem.get("queued_at"),
-                    execution_date=elem.get("execution_date"),
-                    start_date=elem.get("start_date"),
-                    state=elem.get("state"),
+            dag_runs = []
+            for elem in dag_run_dict:
+                # Get the execution/logical date value
+                date_value = (
+                    elem.get("logical_date")
+                    if "logical_date" in elem
+                    else elem.get("execution_date")
                 )
-                for elem in dag_run_dict
-            ]
+
+                # Build kwargs based on Airflow version
+                kwargs = {
+                    "dag_id": elem.get("dag_id"),
+                    "run_id": elem.get("run_id"),
+                    "queued_at": elem.get("queued_at"),
+                    "start_date": elem.get("start_date"),
+                    "state": elem.get("state"),
+                }
+
+                # Use logical_date for Airflow 3.x, execution_date for Airflow 2.x
+                if hasattr(DagRun, "logical_date"):
+                    kwargs["logical_date"] = date_value
+                else:
+                    kwargs["execution_date"] = date_value
+
+                dag_runs.append(DagRun(**kwargs))
+
+            return dag_runs
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -309,7 +332,14 @@ class AirflowSource(PipelineServiceSource):
                         if task.task_id in self.context.get().task_names
                     ]
 
-                    timestamp = datetime_to_ts(dag_run.execution_date)
+                    # In Airflow 3.x, execution_date was renamed to logical_date
+                    execution_date = (
+                        dag_run.logical_date
+                        if hasattr(dag_run, "logical_date")
+                        and dag_run.logical_date is not None
+                        else dag_run.execution_date
+                    )
+                    timestamp = datetime_to_ts(execution_date)
                     pipeline_status = PipelineStatus(
                         taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
@@ -352,19 +382,41 @@ class AirflowSource(PipelineServiceSource):
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
 
-        session_query = self.session.query(
-            SerializedDagModel.dag_id,
-            json_data_column,
-            SerializedDagModel.fileloc,
-        )
-        if not self.source_config.includeUnDeployedPipelines:
-            session_query = session_query.select_from(
+        # In Airflow 3.x, fileloc is not available on SerializedDagModel
+        # We need to get it from DagModel instead
+        if hasattr(SerializedDagModel, "fileloc"):
+            # Airflow 2.x: fileloc is on SerializedDagModel
+            session_query = self.session.query(
+                SerializedDagModel.dag_id,
+                json_data_column,
+                SerializedDagModel.fileloc,
+            )
+        else:
+            # Airflow 3.x: fileloc is only on DagModel, we need to join
+            session_query = self.session.query(
+                SerializedDagModel.dag_id,
+                json_data_column,
+                DagModel.fileloc,
+            ).select_from(
                 join(
                     SerializedDagModel,
                     DagModel,
                     SerializedDagModel.dag_id == DagModel.dag_id,
                 )
-            ).filter(
+            )
+
+        if not self.source_config.includeUnDeployedPipelines:
+            # If we haven't already joined with DagModel (Airflow 2.x case)
+            if hasattr(SerializedDagModel, "fileloc"):
+                session_query = session_query.select_from(
+                    join(
+                        SerializedDagModel,
+                        DagModel,
+                        SerializedDagModel.dag_id == DagModel.dag_id,
+                    )
+                )
+            # Add the is_paused filter
+            session_query = session_query.filter(
                 DagModel.is_paused == False  # pylint: disable=singleton-comparison
             )
         limit = 100  # Number of records per batch

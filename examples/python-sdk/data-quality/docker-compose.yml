@@ -1,0 +1,31 @@
+# Depends on OpenMetadata's compose file
+# Should be run like `docker compose -f openmetadata-compose.yml -f docker-compose.yml up`
+
+services:
+  jupyter:
+    image: quay.io/jupyter/minimal-notebook:python-3.11.10
+    container_name: jupyter-notebook
+    volumes:
+      - "./README.md:/home/jovyan/README.md"
+      - "./notebooks:/home/jovyan/notebooks"
+      - "../../../ingestion:/opt/openmetadata/ingestion"
+    networks:
+      - app_net
+    ports:
+      - "8888:8888"
+  dwh:
+    image: postgres:15-alpine
+    container_name: dwh-postgres
+    volumes:
+      - dwh_data:/var/lib/postgresql/data
+      - "./pg_scripts:/docker-entrypoint-initdb.d"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    networks:
+      - app_net
+
+volumes:
+  dwh_data: {}

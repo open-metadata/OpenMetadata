@@ -124,7 +124,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
       <TagSelectableList
         hasPermission={hasPermission}
         popoverProps={{
-          placement: 'bottomLeft',
+          placement: 'topRight',
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
           overlayClassName: 'tag-select-popover',
@@ -170,7 +170,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     }
 
     return (
-      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+      <span className="no-data-placeholder">
+        {t('label.no-entity-assigned', {
+          entity: t('label.tag-plural'),
+        })}
+      </span>
     );
   }, [isLoading, isEditing, loadingState, editingState, t]);
 

@@ -24,7 +24,6 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
     BaseColumnValuesToBeInSetValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -48,17 +47,6 @@ class ColumnValuesToBeInSetValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
-
-    def compute_row_count(self, column: Column):
-        """Compute row count for the given column
-
-        Args:
-            column (Union[SQALikeColumn, Column]): column to compute row count for
-
-        Raises:
-            NotImplementedError:
-        """
-        return self._compute_row_count(self.runner, column)
 
     def _execute_dimensional_validation(
         self,
@@ -84,8 +72,10 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params["allowed_values"]
-            match_enum = test_params["match_enum"]
+            allowed_values = test_params[
+                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
+            ]
+            match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             # Build metric expressions using enum names as keys
             metric_expressions = {}
@@ -111,8 +101,14 @@ class ColumnValuesToBeInSetValidator(
                 ]
                 metric_expressions[DIMENSION_FAILED_COUNT_KEY] = literal(0)
 
-            result_rows = self._execute_with_others_aggregation(
-                dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
+
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
             )
 
             for row in result_rows:
@@ -136,3 +132,14 @@ class ColumnValuesToBeInSetValidator(
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
+
+    def compute_row_count(self, column: Column):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        return self._compute_row_count(self.runner, column)

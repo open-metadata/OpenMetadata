@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import DirectoryChildrenTable from '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -54,6 +56,7 @@ export const getDirectoryDetailsPageTabs = ({
   customPropertiesTab,
   activeTab,
   feedCount,
+  labelMap,
 }: DirectoryDetailPageTabProps) => {
   return [
     {
@@ -62,7 +65,7 @@ export const getDirectoryDetailsPageTabs = ({
           count={childrenCount ?? 0}
           id={EntityTabs.CHILDREN}
           isActive={activeTab === EntityTabs.CHILDREN}
-          name={i18n.t('label.children')}
+          name={get(labelMap, EntityTabs.CHILDREN, i18n.t('label.children'))}
         />
       ),
       key: EntityTabs.CHILDREN,
@@ -74,7 +77,11 @@ export const getDirectoryDetailsPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={i18n.t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
+            i18n.t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -82,7 +89,10 @@ export const getDirectoryDetailsPageTabs = ({
     },
     {
       label: (
-        <TabsLabel id={EntityTabs.LINEAGE} name={i18n.t('label.lineage')} />
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, i18n.t('label.lineage'))}
+        />
       ),
       key: EntityTabs.LINEAGE,
       children: lineageTab,
@@ -90,8 +100,22 @@ export const getDirectoryDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={i18n.t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            i18n.t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,

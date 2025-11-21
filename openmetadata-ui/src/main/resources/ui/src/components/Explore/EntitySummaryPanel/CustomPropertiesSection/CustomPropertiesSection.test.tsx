@@ -51,6 +51,39 @@ jest.mock('../../../common/Loader/Loader', () => {
   ));
 });
 
+// Mock SearchBarComponent
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ onSearch, placeholder, searchValue }) => (
+      <div data-testid="search-bar">
+        <input
+          data-testid="search-input"
+          placeholder={placeholder}
+          value={searchValue}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
+    )),
+}));
+
+// Mock ErrorPlaceHolderNew component
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children, className, icon, type }) => (
+      <div
+        className={className}
+        data-testid="error-placeholder"
+        data-type={type}>
+        {icon}
+        {children}
+      </div>
+    )),
+}));
+
 // Mock utility functions
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test-entity-link'),
@@ -78,30 +111,82 @@ const mockEntityData = {
 
 const mockEntityDetails = {
   details: {
+    id: 'test-id',
+    name: 'test-entity',
+    displayName: 'Test Entity',
     fullyQualifiedName: 'test.entity.fqn',
+    description: 'Test entity description',
+    deleted: false,
+    serviceType: 'testService',
   },
 };
 
 const mockEntityTypeDetail = {
   customProperties: [
-    { name: 'property1', displayName: 'Property 1' },
-    { name: 'property2', displayName: 'Property 2' },
-    { name: 'property3', displayName: 'Property 3' },
-    { name: 'property4', displayName: 'Property 4' },
-    { name: 'property5', displayName: 'Property 5' },
-    { name: 'property6', displayName: 'Property 6' },
-    { name: 'property7', displayName: 'Property 7' },
-    { name: 'property8', displayName: 'Property 8' },
-    { name: 'property9', displayName: 'Property 9' },
+    {
+      name: 'property1',
+      displayName: 'Property 1',
+      description: 'Property 1 description',
+      propertyType: { id: 'type1', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property2',
+      displayName: 'Property 2',
+      description: 'Property 2 description',
+      propertyType: { id: 'type2', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property3',
+      displayName: 'Property 3',
+      description: 'Property 3 description',
+      propertyType: { id: 'type3', name: 'array', type: 'type' },
+    },
+    {
+      name: 'property4',
+      displayName: 'Property 4',
+      description: 'Property 4 description',
+      propertyType: { id: 'type4', name: 'object', type: 'type' },
+    },
+    {
+      name: 'property5',
+      displayName: 'Property 5',
+      description: 'Property 5 description',
+      propertyType: { id: 'type5', name: 'object', type: 'type' },
+    },
+    {
+      name: 'property6',
+      displayName: 'Property 6',
+      description: 'Property 6 description',
+      propertyType: { id: 'type6', name: 'table', type: 'type' },
+    },
+    {
+      name: 'property7',
+      displayName: 'Property 7',
+      description: 'Property 7 description',
+      propertyType: { id: 'type7', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property8',
+      displayName: 'Property 8',
+      description: 'Property 8 description',
+      propertyType: { id: 'type8', name: 'string', type: 'type' },
+    },
+    {
+      name: 'property9',
+      displayName: 'Property 9',
+      description: 'Property 9 description',
+      propertyType: { id: 'type9', name: 'string', type: 'type' },
+    },
   ],
 };
 
 const defaultProps = {
   entityData: mockEntityData,
-  entityDetails: mockEntityDetails,
   entityType: EntityType.TABLE,
   entityTypeDetail: mockEntityTypeDetail,
   isEntityDataLoading: false,
+  viewCustomPropertiesPermission: true,
+  entityDetails: mockEntityDetails,
 };
 
 describe('CustomPropertiesSection', () => {
@@ -122,7 +207,11 @@ describe('CustomPropertiesSection', () => {
 
     it('should render with correct CSS classes when loading', () => {
       const { container } = render(
-        <CustomPropertiesSection {...defaultProps} isEntityDataLoading />
+        <CustomPropertiesSection
+          {...defaultProps}
+          isEntityDataLoading
+          entityTypeDetail={mockEntityTypeDetail}
+        />
       );
 
       expect(
@@ -181,7 +270,61 @@ describe('CustomPropertiesSection', () => {
         container.querySelector('.entity-summary-panel-tab-content')
       ).toBeInTheDocument();
       expect(container.querySelector('.text-justify')).toBeInTheDocument();
-      expect(container.querySelector('.text-grey-muted')).toBeInTheDocument();
+      expect(
+        container.querySelector('.no-data-placeholder')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Permission Error', () => {
+    it('should render permission error when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('trans-component')).toHaveTextContent(
+        'message.no-access-placeholder - label.view-entity -'
+      );
+    });
+
+    it('should not render custom properties when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
+      expect(screen.queryByText('Property 2')).not.toBeInTheDocument();
+      expect(screen.queryByText('value1')).not.toBeInTheDocument();
+    });
+
+    it('should not render view all button when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
+    });
+
+    it('should render permission error with correct placeholder type', () => {
+      const { container } = render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(
+        container.querySelector('.permission-error-placeholder')
+      ).toBeInTheDocument();
     });
   });
 
@@ -189,11 +332,11 @@ describe('CustomPropertiesSection', () => {
     it('should render custom properties when available', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-      expect(screen.getByText('Property 2')).toBeInTheDocument();
-      expect(screen.getByText('Property 3')).toBeInTheDocument();
-      expect(screen.getByText('Property 4')).toBeInTheDocument();
-      expect(screen.getByText('Property 5')).toBeInTheDocument();
+      expect(screen.getAllByText('Property 1')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 2')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 3')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 4')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Property 5')[0]).toBeInTheDocument();
     });
 
     it('should render with correct CSS classes', () => {
@@ -210,39 +353,40 @@ describe('CustomPropertiesSection', () => {
       ).toBeInTheDocument();
     });
 
-    it('should limit display to first 5 properties', () => {
+    it('should display all properties without limit', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      // Should show first 5 properties
+      // Should show all properties (no 5-item limit)
       expect(screen.getByText('Property 1')).toBeInTheDocument();
       expect(screen.getByText('Property 2')).toBeInTheDocument();
       expect(screen.getByText('Property 3')).toBeInTheDocument();
       expect(screen.getByText('Property 4')).toBeInTheDocument();
       expect(screen.getByText('Property 5')).toBeInTheDocument();
-
-      // Should not show properties beyond the 5th
-      expect(screen.queryByText('Property 6')).not.toBeInTheDocument();
-      expect(screen.queryByText('Property 7')).not.toBeInTheDocument();
+      expect(screen.getByText('Property 6')).toBeInTheDocument();
+      expect(screen.getByText('Property 7')).toBeInTheDocument();
+      expect(screen.getByText('Property 8')).toBeInTheDocument();
+      expect(screen.getByText('Property 9')).toBeInTheDocument();
     });
 
-    it('should show view all button when more than 5 properties', () => {
+    it('should render search bar when custom properties exist', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('label.view-all')).toBeInTheDocument();
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+      expect(screen.getByTestId('search-input')).toHaveAttribute(
+        'placeholder',
+        'label.search-for-type'
+      );
     });
 
-    it('should not show view all button when 5 or fewer properties', () => {
-      const limitedProps = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: mockEntityTypeDetail.customProperties.slice(0, 5),
-        },
-      };
+    it('should not render search bar when no custom properties', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          entityTypeDetail={{ customProperties: [] }}
+        />
+      );
 
-      render(<CustomPropertiesSection {...limitedProps} />);
-
-      expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
     });
   });
 
@@ -276,7 +420,14 @@ describe('CustomPropertiesSection', () => {
       const tableProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property6', displayName: 'Property 6' }],
+          customProperties: [
+            {
+              name: 'property6',
+              displayName: 'Property 6',
+              description: 'Property 6 description',
+              propertyType: { id: 'type6', name: 'table', type: 'type' },
+            },
+          ],
         },
       };
 
@@ -298,43 +449,64 @@ describe('CustomPropertiesSection', () => {
       expect(screen.getByText('row2-col2')).toBeInTheDocument();
     });
 
-    it('should render "no data found" for null values', () => {
+    it('should render "not set" for null values', () => {
       const nullProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property7', displayName: 'Property 7' }],
+          customProperties: [
+            {
+              name: 'property7',
+              displayName: 'Property 7',
+              description: 'Property 7 description',
+              propertyType: { id: 'type7', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
       render(<CustomPropertiesSection {...nullProps} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
     });
 
-    it('should render "no data found" for undefined values', () => {
+    it('should render "not set" for undefined values', () => {
       const undefinedProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property8', displayName: 'Property 8' }],
+          customProperties: [
+            {
+              name: 'property8',
+              displayName: 'Property 8',
+              description: 'Property 8 description',
+              propertyType: { id: 'type8', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
       render(<CustomPropertiesSection {...undefinedProps} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
     });
 
-    it('should render "no data found" for empty string values', () => {
+    it('should render "not set" for empty string values', () => {
       const emptyProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property9', displayName: 'Property 9' }],
+          customProperties: [
+            {
+              name: 'property9',
+              displayName: 'Property 9',
+              description: 'Property 9 description',
+              propertyType: { id: 'type9', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 
       render(<CustomPropertiesSection {...emptyProps} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
     });
 
     it('should render JSON string for complex objects', () => {
@@ -349,7 +521,12 @@ describe('CustomPropertiesSection', () => {
         entityData: complexObjectData,
         entityTypeDetail: {
           customProperties: [
-            { name: 'complexProperty', displayName: 'Complex Property' },
+            {
+              name: 'complexProperty',
+              displayName: 'Complex Property',
+              description: 'Complex Property description',
+              propertyType: { id: 'typeComplex', name: 'object', type: 'type' },
+            },
           ],
         },
       };
@@ -375,8 +552,17 @@ describe('CustomPropertiesSection', () => {
         ...defaultProps,
         entityTypeDetail: {
           customProperties: [
-            { name: 'property1' }, // No displayName
-            { name: 'property2', displayName: 'Property 2' },
+            {
+              name: 'property1',
+              description: 'Property 1 description',
+              propertyType: { id: 'type1', name: 'string', type: 'type' },
+            },
+            {
+              name: 'property2',
+              displayName: 'Property 2',
+              description: 'Property 2 description',
+              propertyType: { id: 'type2', name: 'string', type: 'type' },
+            },
           ],
         },
       };
@@ -385,30 +571,6 @@ describe('CustomPropertiesSection', () => {
 
       expect(screen.getByText('property1')).toBeInTheDocument();
       expect(screen.getByText('Property 2')).toBeInTheDocument();
-    });
-  });
-
-  describe('View All Button', () => {
-    it('should render view all button with correct props', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      const viewAllButton = screen.getByText('label.view-all');
-
-      expect(viewAllButton).toHaveTextContent('label.view-all');
-      expect(viewAllButton).toHaveClass('text-primary');
-    });
-
-    it('should call getEntityLinkFromType with correct parameters', () => {
-      const { getEntityLinkFromType } = jest.requireMock(
-        '../../../../utils/EntityUtils'
-      );
-
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      expect(getEntityLinkFromType).toHaveBeenCalledWith(
-        'test.entity.fqn',
-        EntityType.TABLE
-      );
     });
   });
 
@@ -423,24 +585,6 @@ describe('CustomPropertiesSection', () => {
 
       expect(screen.getByText('Property 1')).toBeInTheDocument();
     });
-
-    it('should pass correct entity type to getEntityLinkFromType', () => {
-      const { getEntityLinkFromType } = jest.requireMock(
-        '../../../../utils/EntityUtils'
-      );
-
-      const topicProps = {
-        ...defaultProps,
-        entityType: EntityType.TOPIC,
-      };
-
-      render(<CustomPropertiesSection {...topicProps} />);
-
-      expect(getEntityLinkFromType).toHaveBeenCalledWith(
-        'test.entity.fqn',
-        EntityType.TOPIC
-      );
-    });
   });
 
   describe('Edge Cases', () => {
@@ -451,7 +595,7 @@ describe('CustomPropertiesSection', () => {
 
       expect(screen.getByText('Property 1')).toBeInTheDocument();
 
-      const noDataElements = screen.getAllByText('label.no-data-found');
+      const noDataElements = screen.getAllByText('label.not-set');
 
       expect(noDataElements.length).toBeGreaterThan(0);
     });
@@ -464,25 +608,7 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
-    });
-
-    it('should handle missing entityDetails gracefully', () => {
-      const propsWithoutViewAll = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: [{ name: 'property1', displayName: 'Property 1' }],
-        },
-      };
-
-      render(
-        <CustomPropertiesSection
-          {...propsWithoutViewAll}
-          entityDetails={undefined}
-        />
-      );
-
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     });
 
     it('should handle empty extension data', () => {
@@ -493,8 +619,8 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...emptyExtensionProps} />);
 
-      // All properties should show "no data found"
-      const noDataElements = screen.getAllByText('label.no-data-found');
+      // All properties should show "not set"
+      const noDataElements = screen.getAllByText('label.not-set');
 
       expect(noDataElements.length).toBeGreaterThan(0);
     });
@@ -514,7 +640,12 @@ describe('CustomPropertiesSection', () => {
         entityData: emptyTableData,
         entityTypeDetail: {
           customProperties: [
-            { name: 'emptyTable', displayName: 'Empty Table' },
+            {
+              name: 'emptyTable',
+              displayName: 'Empty Table',
+              description: 'Empty Table description',
+              propertyType: { id: 'typeEmpty', name: 'table', type: 'type' },
+            },
           ],
         },
       };
@@ -553,7 +684,16 @@ describe('CustomPropertiesSection', () => {
         entityData: incompleteTableData,
         entityTypeDetail: {
           customProperties: [
-            { name: 'incompleteTable', displayName: 'Incomplete Table' },
+            {
+              name: 'incompleteTable',
+              displayName: 'Incomplete Table',
+              description: 'Incomplete Table description',
+              propertyType: {
+                id: 'typeIncomplete',
+                name: 'table',
+                type: 'type',
+              },
+            },
           ],
         },
       };
@@ -566,6 +706,73 @@ describe('CustomPropertiesSection', () => {
       const dashElements = screen.getAllByText('-');
 
       expect(dashElements.length).toBeGreaterThan(0); // Missing data placeholder
+    });
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties when viewCustomPropertiesPermission is true', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission
+        />
+      );
+
+      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByText('value1')).toBeInTheDocument();
+    });
+
+    it('should hide custom properties and show error when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
+      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
+    });
+
+    it('should take precedence over loading state when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          isEntityDataLoading
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
+
+    it('should show permission error even when no custom properties exist', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          entityTypeDetail={{ customProperties: [] }}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('trans-component')).toHaveTextContent(
+        'message.no-access-placeholder'
+      );
+    });
+
+    it('should display custom properties correctly when permission is granted and data exists', () => {
+      const { container } = render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission
+        />
+      );
+
+      expect(
+        container.querySelector('.custom-properties-list')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByText('Property 2')).toBeInTheDocument();
     });
   });
 
@@ -603,7 +810,14 @@ describe('CustomPropertiesSection', () => {
       const tableProps = {
         ...defaultProps,
         entityTypeDetail: {
-          customProperties: [{ name: 'property6', displayName: 'Property 6' }],
+          customProperties: [
+            {
+              name: 'property6',
+              displayName: 'Property 6',
+              description: 'Property 6 description',
+              propertyType: { id: 'type6', name: 'string', type: 'type' },
+            },
+          ],
         },
       };
 

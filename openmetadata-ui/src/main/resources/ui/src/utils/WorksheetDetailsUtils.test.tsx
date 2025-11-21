@@ -81,20 +81,18 @@ const mockProps: WorksheetDetailPageTabProps = {
   ),
   activeTab: EntityTabs.SCHEMA,
   feedCount: { totalCount: 12 },
-  labelMap: {
-    [EntityTabs.SCHEMA]: 'Schema',
-    [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-    [EntityTabs.LINEAGE]: 'Lineage',
-    [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-  } as Record<EntityTabs, string>,
 };
+
+jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {
+  return jest.fn().mockImplementation(() => <p>DataContractComponent</p>);
+});
 
 describe('WorksheetDetailsUtils', () => {
   describe('getWorksheetDetailsPageTabs', () => {
     it('should return correct number of tabs', () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
 
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
     });
 
     it('should return tabs with correct keys', () => {
@@ -105,6 +103,7 @@ describe('WorksheetDetailsUtils', () => {
         EntityTabs.SCHEMA,
         EntityTabs.ACTIVITY_FEED,
         EntityTabs.LINEAGE,
+        EntityTabs.CONTRACT,
         EntityTabs.CUSTOM_PROPERTIES,
       ]);
     });
@@ -143,9 +142,21 @@ describe('WorksheetDetailsUtils', () => {
       expect(screen.getByText('label.lineage')).toBeInTheDocument();
     });
 
+    it('should render contract tab without count', () => {
+      const tabs = getWorksheetDetailsPageTabs(mockProps);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByTestId('tab-label-label.contract')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.contract')).toBeInTheDocument();
+    });
+
     it('should render custom properties tab without count', () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.label}</MemoryRouter>);
 
@@ -187,7 +198,7 @@ describe('WorksheetDetailsUtils', () => {
 
     it('should render custom properties tab content correctly', () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.children}</MemoryRouter>);
 
@@ -459,6 +470,179 @@ describe('WorksheetDetailsUtils', () => {
     });
   });
 
+  describe('labelMap props', () => {
+    it('should use custom labels from labelMap when provided', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.SCHEMA]: 'Custom Schema Label',
+          [EntityTabs.ACTIVITY_FEED]: 'Custom Activity Feed',
+          [EntityTabs.LINEAGE]: 'Custom Lineage',
+          [EntityTabs.CONTRACT]: 'Custom Contract',
+          [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties Label',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+      const schemaTab = tabs[0];
+
+      render(<MemoryRouter>{schemaTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByText('Custom Schema Label - Active')
+      ).toBeInTheDocument();
+    });
+
+    it('should use custom label for activity feed tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.ACTIVITY_FEED]: 'Custom Activity',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+      const activityTab = tabs[1];
+
+      render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Activity (12)')).toBeInTheDocument();
+    });
+
+    it('should use custom label for lineage tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.LINEAGE]: 'Custom Lineage Label',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+      const lineageTab = tabs[2];
+
+      render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Lineage Label')).toBeInTheDocument();
+    });
+
+    it('should use custom label for contract tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.CONTRACT]: 'Custom Contract Label',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Contract Label')).toBeInTheDocument();
+    });
+
+    it('should use custom label for custom properties tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.CUSTOM_PROPERTIES]: 'My Custom Properties',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+      const customPropertiesTab = tabs[4];
+
+      render(<MemoryRouter>{customPropertiesTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('My Custom Properties')).toBeInTheDocument();
+    });
+
+    it('should fallback to default i18n labels when labelMap is empty', () => {
+      const propsWithEmptyLabelMap = {
+        ...mockProps,
+        labelMap: {} as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithEmptyLabelMap);
+      const schemaTab = tabs[0];
+
+      render(<MemoryRouter>{schemaTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('label.schema - Active')).toBeInTheDocument();
+    });
+
+    it('should partially override labels when labelMap has only some keys', () => {
+      const propsWithPartialLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.SCHEMA]: 'Custom Schema',
+          [EntityTabs.LINEAGE]: 'Custom Lineage',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithPartialLabelMap);
+
+      render(<MemoryRouter>{tabs[0].label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Schema - Active')).toBeInTheDocument();
+
+      render(<MemoryRouter>{tabs[2].label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Lineage')).toBeInTheDocument();
+    });
+
+    it('should use labelMap with active tab state', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        activeTab: EntityTabs.CONTRACT,
+        labelMap: {
+          [EntityTabs.CONTRACT]: 'My Contract Tab',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('My Contract Tab')).toBeInTheDocument();
+    });
+
+    it('should handle labelMap with special characters', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.SCHEMA]: 'Schema & Configuration',
+          [EntityTabs.ACTIVITY_FEED]: 'Activity <Feed>',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithLabelMap);
+
+      render(<MemoryRouter>{tabs[0].label}</MemoryRouter>);
+
+      expect(
+        screen.getByText('Schema & Configuration - Active')
+      ).toBeInTheDocument();
+    });
+
+    it('should handle labelMap with empty string values', () => {
+      const propsWithEmptyStringLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.SCHEMA]: '',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getWorksheetDetailsPageTabs(propsWithEmptyStringLabelMap);
+      const schemaTab = tabs[0];
+
+      render(<MemoryRouter>{schemaTab.label}</MemoryRouter>);
+
+      expect(screen.getByTestId('tab-label-')).toBeInTheDocument();
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle missing feedCount gracefully', () => {
       const propsWithoutFeedCount = {
@@ -532,7 +716,7 @@ describe('WorksheetDetailsUtils', () => {
 
       const tabs = getWorksheetDetailsPageTabs(propsWithoutLabelMap);
 
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
 
       tabs.forEach((tab) => {
         expect(tab.key).toBeDefined();

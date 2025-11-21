@@ -83,8 +83,7 @@
     },
     "entityStatus": {
       "description": "Status of the Report.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

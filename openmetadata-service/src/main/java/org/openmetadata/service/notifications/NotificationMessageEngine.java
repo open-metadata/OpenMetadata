@@ -13,6 +13,7 @@
 package org.openmetadata.service.notifications;
 
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
@@ -32,4 +33,22 @@ public interface NotificationMessageEngine {
    */
   NotificationMessage generateMessage(
       ChangeEvent event, EventSubscription subscription, SubscriptionDestination destination);
+
+  /**
+   * Generate notification message using a specific template (for testing).
+   * Bypasses template resolution and uses the provided template directly.
+   * This method is primarily used for testing notification templates without storing them in the
+   * database.
+   *
+   * @param event The ChangeEvent to render
+   * @param subscription The EventSubscription context
+   * @param destination The target destination
+   * @param template The NotificationTemplate to use (not resolved from DB)
+   * @return Rendered NotificationMessage for the destination type
+   */
+  NotificationMessage generateMessageWithTemplate(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination destination,
+      NotificationTemplate template);
 }

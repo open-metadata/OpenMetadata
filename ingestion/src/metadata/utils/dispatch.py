@@ -14,7 +14,7 @@ Helper that implements custom dispatcher logic
 """
 
 from collections import namedtuple
-from typing import Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -52,5 +52,8 @@ def class_register():
 
         return inner
 
-    Register = namedtuple("Register", ["add", "registry"])
-    return Register(add, registry)
+    def get(entity_type: Type[T], default: Optional[Any] = None):
+        return registry.get(entity_type.__name__, default)
+
+    Register = namedtuple("Register", ["add", "registry", "get"])
+    return Register(add, registry, get)

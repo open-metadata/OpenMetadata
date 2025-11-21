@@ -12,8 +12,8 @@
  */
 import { Badge, Typography } from 'antd';
 import { startCase } from 'lodash';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../constants/constants';
 import { TagSource } from '../../../generated/tests/testCase';
 import {
   getDataTypeString,
@@ -35,14 +35,82 @@ const FieldCard: React.FC<FieldCardProps> = ({
   isHighlighted = false,
 }) => {
   const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [shouldShowButton, setShouldShowButton] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
 
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const checkIfTextIsTruncated = useCallback(() => {
+    if (containerRef.current) {
+      const element = containerRef.current;
+      const markdownParser = element.querySelector('.markdown-parser');
+      const measureNode = (markdownParser as HTMLElement) || element;
+      const isVisible = measureNode.getClientRects().length > 0;
+      if (!isVisible) {
+        return;
+      }
+      const isTruncated =
+        measureNode.scrollHeight > measureNode.clientHeight + 1;
+      setShouldShowButton(isTruncated);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!description) {
+      return;
+    }
+
+    setIsExpanded(false);
+    setShouldShowButton(false);
+
+    const id = setTimeout(checkIfTextIsTruncated, 100);
+
+    return () => clearTimeout(id);
+  }, [description, checkIfTextIsTruncated]);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      checkIfTextIsTruncated();
+    });
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [checkIfTextIsTruncated]);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          checkIfTextIsTruncated();
+        }
+      }
+    });
+    io.observe(node);
+
+    return () => io.disconnect();
+  }, [checkIfTextIsTruncated]);
+
   return (
     <div
-      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}>
-      <div className="field-card-header">
-        <Badge className="data-type-badge">
+      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
+      data-testid={`field-card-${fieldName}`}>
+      <div className="field-card-header" data-testid="field-card-header">
+        <Badge
+          className="data-type-badge"
+          data-testid={`data-type-badge-${dataType}`}>
           {getDataTypeString(startCase(dataType))}
         </Badge>
         <div className="field-name-container">
@@ -57,19 +125,41 @@ const FieldCard: React.FC<FieldCardProps> = ({
               })}
             </span>
           )}
-          <Typography.Text strong className="field-name">
+          <Typography.Text
+            strong
+            className="field-name"
+            data-testid={`field-name-${fieldName}`}>
             {fieldName}
           </Typography.Text>
         </div>
       </div>
 
-      <div className="field-card-content">
-        <Paragraph className="field-description">
+      <div className="field-card-content" data-testid="field-card-content">
+        <Paragraph
+          className="field-description"
+          data-testid={`field-description-${fieldName}`}>
           {description ? (
-            <RichTextEditorPreviewerV1
-              markdown={description}
-              maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
-            />
+            <div className="description-display">
+              <div
+                className={`description-text ${
+                  isExpanded ? 'expanded' : 'collapsed'
+                }`}
+                ref={containerRef}>
+                <RichTextEditorPreviewerV1
+                  enableSeeMoreVariant={false}
+                  isDescriptionExpanded={isExpanded}
+                  markdown={description}
+                />
+              </div>
+              {(shouldShowButton || isExpanded) && (
+                <button
+                  className="show-more-button"
+                  type="button"
+                  onClick={toggleExpanded}>
+                  {isExpanded ? t('label.show-less') : t('label.show-more')}
+                </button>
+              )}
+            </div>
           ) : (
             <Text className="no-description-text">
               {t('label.no-entity', { entity: t('label.description') })}

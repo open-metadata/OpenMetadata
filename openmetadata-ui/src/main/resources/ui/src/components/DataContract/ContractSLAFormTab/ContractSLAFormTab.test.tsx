@@ -48,6 +48,16 @@ const mockContract: Partial<DataContract> = {
   },
 };
 
+const commonProps = {
+  onChange: mockOnChange,
+  onPrev: mockOnPrev,
+  buttonProps: {
+    nextLabel: 'Custom Next',
+    prevLabel: 'Custom Previous',
+    isNextVisible: true,
+  },
+};
+
 describe('ContractSLAFormTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,9 +65,7 @@ describe('ContractSLAFormTab', () => {
 
   describe('Basic Rendering', () => {
     it('should render the component with default props', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       expect(screen.getByText('label.sla')).toBeInTheDocument();
       expect(
@@ -66,13 +74,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should render with custom prev label', () => {
-      render(
-        <ContractSLAFormTab
-          prevLabel="Custom Previous"
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });
@@ -80,9 +82,7 @@ describe('ContractSLAFormTab', () => {
 
   describe('TimePicker Configuration', () => {
     it('should render TimePicker with correct format and placeholder', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       const timePicker = document.querySelector('.availability-time-picker');
 
@@ -92,9 +92,7 @@ describe('ContractSLAFormTab', () => {
 
   describe('Form Fields', () => {
     it('should render all SLA form sections', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       expect(screen.getByText('label.refresh-frequency')).toBeInTheDocument();
       expect(screen.getByText('label.max-latency')).toBeInTheDocument();
@@ -104,11 +102,7 @@ describe('ContractSLAFormTab', () => {
 
     it('should render form with initial values in edit mode', () => {
       render(
-        <ContractSLAFormTab
-          initialValues={mockContract}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractSLAFormTab initialValues={mockContract} {...commonProps} />
       );
 
       // Component should render without errors with initial values
@@ -118,9 +112,7 @@ describe('ContractSLAFormTab', () => {
 
   describe('Enum Options', () => {
     it('should use enum-based options for unit selects', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // The component should render multiple select fields for different unit types
       // This verifies that the enum to options conversion is working
@@ -132,19 +124,15 @@ describe('ContractSLAFormTab', () => {
 
   describe('Navigation', () => {
     it('should render Previous button', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
-      expect(screen.getByText('label.previous')).toBeInTheDocument();
+      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });
 
     it('should call onPrev when Previous button is clicked', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
-      const prevButton = screen.getByText('label.previous');
+      const prevButton = screen.getByText('Custom Previous');
       prevButton.click();
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -153,9 +141,7 @@ describe('ContractSLAFormTab', () => {
 
   describe('Form Validation', () => {
     it('should have proper validation rules for numeric fields', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Verify InputNumber components are rendered with proper constraints
       const refreshFrequencyInput = screen.getByTestId(
@@ -179,9 +165,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should have validation rules configured for minimum values', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Verify InputNumber components are rendered which have built-in numeric validation
       const refreshFrequencyInput = screen.getByTestId(
@@ -206,9 +190,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should have form validation rules for required fields', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Form should be present with proper structure
       const form = document.querySelector('form');
@@ -224,9 +206,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should configure InputNumber with appropriate constraints', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       const refreshFrequencyInput = screen.getByTestId(
         'refresh-frequency-interval-input'
@@ -243,9 +223,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should call onChange when form values change', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Verify the onChange prop is being used by the component
       expect(mockOnChange).toHaveBeenCalledTimes(0);
@@ -257,9 +235,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should have conditional logic for SLA data construction', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Verify that the component renders all required form fields for SLA construction
       expect(
@@ -276,9 +252,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should have conditional logic for including valid refresh frequency values', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Component should render form fields for refresh frequency
       expect(
@@ -290,9 +264,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should have conditional logic for including valid max latency values', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Component should render form fields for max latency
       expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
@@ -300,9 +272,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should have conditional logic for including valid retention values', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Component should render form fields for retention
       expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
@@ -310,9 +280,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should render TimePicker for availability time', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       const timePicker = screen.getByTestId('availability');
 
@@ -320,9 +288,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should use >= 0 validation logic for numeric values', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Component implements conditional logic that checks for >= 0 values
       // This is verified by the presence of InputNumber components which handle this validation
@@ -337,11 +303,7 @@ describe('ContractSLAFormTab', () => {
   describe('Initial Values Handling', () => {
     it('should render component with initial values without errors', () => {
       render(
-        <ContractSLAFormTab
-          initialValues={mockContract}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractSLAFormTab initialValues={mockContract} {...commonProps} />
       );
 
       // Component should render successfully with initial values
@@ -355,11 +317,7 @@ describe('ContractSLAFormTab', () => {
 
     it('should handle availability time with moment formatting', () => {
       render(
-        <ContractSLAFormTab
-          initialValues={mockContract}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractSLAFormTab initialValues={mockContract} {...commonProps} />
       );
 
       // The availability time picker should be present and configured correctly
@@ -370,17 +328,11 @@ describe('ContractSLAFormTab', () => {
 
     it('should use useEffect hook for setting initial form values', () => {
       // Test that component accepts initialValues prop and renders without errors
-      const { rerender } = render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      const { rerender } = render(<ContractSLAFormTab {...commonProps} />);
 
       // Re-render with initial values
       rerender(
-        <ContractSLAFormTab
-          initialValues={mockContract}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractSLAFormTab initialValues={mockContract} {...commonProps} />
       );
 
       expect(screen.getByText('label.sla')).toBeInTheDocument();
@@ -398,11 +350,7 @@ describe('ContractSLAFormTab', () => {
       };
 
       render(
-        <ContractSLAFormTab
-          initialValues={partialContract}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractSLAFormTab initialValues={partialContract} {...commonProps} />
       );
 
       // Should render without errors even with partial data
@@ -410,13 +358,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should handle undefined initialValues gracefully', () => {
-      render(
-        <ContractSLAFormTab
-          initialValues={undefined}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSLAFormTab initialValues={undefined} {...commonProps} />);
 
       // Should render without errors
       expect(screen.getByText('label.sla')).toBeInTheDocument();
@@ -425,9 +367,7 @@ describe('ContractSLAFormTab', () => {
 
   describe('Edge Cases and Boundary Conditions', () => {
     it('should render InputNumber components that handle numeric validation', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // InputNumber components provide built-in validation for numeric inputs
       const intervalInput = screen.getByTestId(
@@ -448,31 +388,21 @@ describe('ContractSLAFormTab', () => {
 
     it('should handle form reset after initial values are set', () => {
       const { rerender } = render(
-        <ContractSLAFormTab
-          initialValues={mockContract}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractSLAFormTab initialValues={mockContract} {...commonProps} />
       );
 
       // Re-render with no initial values (simulating form reset)
-      rerender(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      rerender(<ContractSLAFormTab {...commonProps} />);
 
       // Component should handle the transition gracefully
       expect(screen.getByText('label.sla')).toBeInTheDocument();
     });
 
     it('should maintain form state during re-renders', () => {
-      const { rerender } = render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      const { rerender } = render(<ContractSLAFormTab {...commonProps} />);
 
       // Re-render with same props
-      rerender(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      rerender(<ContractSLAFormTab {...commonProps} />);
 
       // All form fields should still be present
       expect(
@@ -483,9 +413,7 @@ describe('ContractSLAFormTab', () => {
     });
 
     it('should handle mixed validation scenarios with conditional logic', () => {
-      render(
-        <ContractSLAFormTab onChange={mockOnChange} onPrev={mockOnPrev} />
-      );
+      render(<ContractSLAFormTab {...commonProps} />);
 
       // Component uses conditional logic to include only valid field combinations
       // This is evidenced by the presence of both value and unit fields for each metric

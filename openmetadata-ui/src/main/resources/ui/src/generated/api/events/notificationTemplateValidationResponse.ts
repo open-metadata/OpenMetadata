@@ -15,29 +15,15 @@
  */
 export interface NotificationTemplateValidationResponse {
     /**
-     * Validation result for template body
+     * Error message if body validation failed, null otherwise
      */
-    templateBody?: FieldValidation;
+    bodyError?: null | string;
     /**
-     * Validation result for template subject
+     * Whether both subject and body passed validation
      */
-    templateSubject?: FieldValidation;
-}
-
-/**
- * Validation result for template body
- *
- * Validation result for a template field
- *
- * Validation result for template subject
- */
-export interface FieldValidation {
+    isValid: boolean;
     /**
-     * Error message if validation failed
+     * Error message if subject validation failed, null otherwise
      */
-    error?: string;
-    /**
-     * Whether the field validation passed
-     */
-    passed: boolean;
+    subjectError?: null | string;
 }
