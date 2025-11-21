@@ -12,7 +12,7 @@
  */
 import { Badge, Typography } from 'antd';
 import { startCase } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -52,14 +52,19 @@ const FieldCard: React.FC<FieldCardProps> = ({
   const cachedTagsCount = useRef<number | null>(null);
   const cachedTermsCount = useRef<number | null>(null);
 
-  const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
-  const nonGlossaryTags = tags.filter(
-    (tag) => tag.source !== TagSource.Glossary
+  const glossaryTerms = useMemo(
+    () => tags.filter((tag) => tag.source === TagSource.Glossary),
+    [tags]
   );
 
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const nonGlossaryTags = useMemo(
+    () => tags.filter((tag) => tag.source !== TagSource.Glossary),
+    [tags]
+  );
+
+  const toggleExpanded = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
 
   const checkIfTextIsTruncated = useCallback(() => {
     if (containerRef.current) {
@@ -139,8 +144,8 @@ const FieldCard: React.FC<FieldCardProps> = ({
       let visibleCount = 0;
 
       // Count items on the first line
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].offsetTop === firstItemTop) {
+      for (const item of items) {
+        if (item.offsetTop === firstItemTop) {
           visibleCount++;
         } else {
           // Item wrapped to second line
@@ -219,6 +224,66 @@ const FieldCard: React.FC<FieldCardProps> = ({
     return () => clearTimeout(timeout);
   }, [glossaryTerms, showAllTerms, calculateVisibleItems]);
 
+  const dataTypeDisplay = useMemo(
+    () => getDataTypeString(startCase(dataType)),
+    [dataType]
+  );
+
+  const constraintIcon = useMemo(
+    () =>
+      columnConstraint
+        ? prepareConstraintIcon({
+            columnName: fieldName,
+            columnConstraint,
+            tableConstraints,
+            iconClassName: 'm-r-xss',
+            iconWidth: '14px',
+          })
+        : null,
+    [columnConstraint, fieldName, tableConstraints]
+  );
+
+  const visibleTags = useMemo(
+    () =>
+      showAllTags || visibleTagsCount === null
+        ? nonGlossaryTags
+        : nonGlossaryTags.slice(0, visibleTagsCount),
+    [showAllTags, visibleTagsCount, nonGlossaryTags]
+  );
+
+  const visibleTerms = useMemo(
+    () =>
+      showAllTerms || visibleTermsCount === null
+        ? glossaryTerms
+        : glossaryTerms.slice(0, visibleTermsCount),
+    [showAllTerms, visibleTermsCount, glossaryTerms]
+  );
+
+  const tagsMoreLabel = useMemo(
+    () =>
+      visibleTagsCount !== null
+        ? `+${nonGlossaryTags.length - visibleTagsCount} ${t(
+            'label.more-lowercase'
+          )}`
+        : '',
+    [visibleTagsCount, nonGlossaryTags.length, t]
+  );
+
+  const termsMoreLabel = useMemo(
+    () =>
+      visibleTermsCount !== null
+        ? `+${glossaryTerms.length - visibleTermsCount} ${t(
+            'label.more-lowercase'
+          )}`
+        : '',
+    [visibleTermsCount, glossaryTerms.length, t]
+  );
+
+  const handleShowAllTags = useCallback(() => setShowAllTags(true), []);
+  const handleHideAllTags = useCallback(() => setShowAllTags(false), []);
+  const handleShowAllTerms = useCallback(() => setShowAllTerms(true), []);
+  const handleHideAllTerms = useCallback(() => setShowAllTerms(false), []);
+
   return (
     <div
       className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
@@ -227,19 +292,11 @@ const FieldCard: React.FC<FieldCardProps> = ({
         <Badge
           className="data-type-badge"
           data-testid={`data-type-badge-${dataType}`}>
-          {getDataTypeString(startCase(dataType))}
+          {dataTypeDisplay}
         </Badge>
         <div className="field-name-container">
-          {columnConstraint && (
-            <span className="constraint-icon">
-              {prepareConstraintIcon({
-                columnName: fieldName,
-                columnConstraint,
-                tableConstraints,
-                iconClassName: 'm-r-xss',
-                iconWidth: '14px',
-              })}
-            </span>
+          {constraintIcon && (
+            <span className="constraint-icon">{constraintIcon}</span>
           )}
           <Typography.Text
             strong
@@ -292,10 +349,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
               </Text>
               <div className="tags-display">
                 <div className="tags-list" ref={tagsContainerRef}>
-                  {(showAllTags || visibleTagsCount === null
-                    ? nonGlossaryTags
-                    : nonGlossaryTags.slice(0, visibleTagsCount)
-                  ).map((tag) => (
+                  {visibleTags.map((tag) => (
                     <div
                       className="tag-item"
                       data-testid={`tag-${tag.tagFQN}`}
@@ -310,17 +364,15 @@ const FieldCard: React.FC<FieldCardProps> = ({
                       <button
                         className="show-more-tags-button"
                         type="button"
-                        onClick={() => setShowAllTags(true)}>
-                        {`+${nonGlossaryTags.length - visibleTagsCount} ${t(
-                          'label.more-lowercase'
-                        )}`}
+                        onClick={handleShowAllTags}>
+                        {tagsMoreLabel}
                       </button>
                     )}
                   {showAllTags && nonGlossaryTags.length > 1 && (
                     <button
                       className="show-more-tags-button"
                       type="button"
-                      onClick={() => setShowAllTags(false)}>
+                      onClick={handleHideAllTags}>
                       {t('label.less')}
                     </button>
                   )}
@@ -338,10 +390,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
               </Text>
               <div className="glossary-terms-display">
                 <div className="glossary-terms-list" ref={termsContainerRef}>
-                  {(showAllTerms || visibleTermsCount === null
-                    ? glossaryTerms
-                    : glossaryTerms.slice(0, visibleTermsCount)
-                  ).map((glossaryTerm) => (
+                  {visibleTerms.map((glossaryTerm) => (
                     <div
                       className="glossary-term-item"
                       data-testid={`term-${glossaryTerm.tagFQN}`}
@@ -358,17 +407,15 @@ const FieldCard: React.FC<FieldCardProps> = ({
                       <button
                         className="show-more-terms-button"
                         type="button"
-                        onClick={() => setShowAllTerms(true)}>
-                        {`+${glossaryTerms.length - visibleTermsCount} ${t(
-                          'label.more-lowercase'
-                        )}`}
+                        onClick={handleShowAllTerms}>
+                        {termsMoreLabel}
                       </button>
                     )}
                   {showAllTerms && glossaryTerms.length > 1 && (
                     <button
                       className="show-more-terms-button"
                       type="button"
-                      onClick={() => setShowAllTerms(false)}>
+                      onClick={handleHideAllTerms}>
                       {t('label.less')}
                     </button>
                   )}

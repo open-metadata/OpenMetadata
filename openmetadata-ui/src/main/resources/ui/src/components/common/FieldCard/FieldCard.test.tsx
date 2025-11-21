@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { startCase } from 'lodash';
 import { ConstraintType } from '../../../generated/entity/data/table';
-import { TagSource } from '../../../generated/tests/testCase';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import FieldCard from './FieldCard';
 
 // Mock i18n
@@ -62,24 +62,24 @@ const mockTags = [
     name: 'Sensitive',
     displayName: 'Sensitive Data',
     source: TagSource.Classification,
-    labelType: 'Manual',
-    state: 'Confirmed',
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'Classification.Security.Public',
     name: 'Public',
     displayName: 'Public Data',
     source: TagSource.Classification,
-    labelType: 'Manual',
-    state: 'Confirmed',
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'Classification.Compliance.GDPR',
     name: 'GDPR',
     displayName: 'GDPR Compliant',
     source: TagSource.Classification,
-    labelType: 'Manual',
-    state: 'Confirmed',
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
 ];
 
@@ -89,24 +89,24 @@ const mockGlossaryTerms = [
     name: 'Customer',
     displayName: 'Customer Term',
     source: TagSource.Glossary,
-    labelType: 'Manual',
-    state: 'Confirmed',
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'Glossary.Product',
     name: 'Product',
     displayName: 'Product Term',
     source: TagSource.Glossary,
-    labelType: 'Manual',
-    state: 'Confirmed',
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
   {
     tagFQN: 'Glossary.Revenue',
     name: 'Revenue',
     displayName: 'Revenue Term',
     source: TagSource.Glossary,
-    labelType: 'Manual',
-    state: 'Confirmed',
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
   },
 ];
 
@@ -373,16 +373,16 @@ describe('FieldCard', () => {
           name: 'Type1',
           displayName: 'Classification Type',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
         {
           tagFQN: 'Glossary.Type2',
           name: 'Type2',
           displayName: 'Glossary Type',
           source: TagSource.Glossary,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -405,8 +405,8 @@ describe('FieldCard', () => {
           tagFQN: 'Classification.NoDisplay',
           name: 'NoDisplayName',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -423,8 +423,8 @@ describe('FieldCard', () => {
         {
           tagFQN: 'Classification.Empty',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ];
 
@@ -549,8 +549,8 @@ describe('FieldCard', () => {
         name: `Tag${i}`,
         displayName: `Tag Display ${i}`,
         source: TagSource.Classification,
-        labelType: 'Manual',
-        state: 'Confirmed',
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
       }));
 
       const { container } = render(
@@ -570,24 +570,24 @@ describe('FieldCard', () => {
           name: 'Manual',
           displayName: 'Manual Tag',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
         {
           tagFQN: 'Classification.Derived',
           name: 'Derived',
           displayName: 'Derived Tag',
           source: TagSource.Classification,
-          labelType: 'Derived',
-          state: 'Confirmed',
+          labelType: LabelType.Derived,
+          state: State.Confirmed,
         },
         {
           tagFQN: 'Classification.Automated',
           name: 'Automated',
           displayName: 'Automated Tag',
           source: TagSource.Classification,
-          labelType: 'Automated',
-          state: 'Confirmed',
+          labelType: LabelType.Automated,
+          state: State.Confirmed,
         },
       ];
 
@@ -608,16 +608,16 @@ describe('FieldCard', () => {
           name: 'Confirmed',
           displayName: 'Confirmed Tag',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
         {
           tagFQN: 'Classification.Suggested',
           name: 'Suggested',
           displayName: 'Suggested Tag',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Suggested',
+          labelType: LabelType.Manual,
+          state: State.Suggested,
         },
       ];
 
