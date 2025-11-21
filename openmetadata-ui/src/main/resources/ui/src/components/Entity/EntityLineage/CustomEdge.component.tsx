@@ -161,10 +161,13 @@ export const CustomEdge = ({
 
     const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
     let display = 'block';
+    let opacity = 1;
     if (isColumnLineage) {
       display = isColumnHighlighted ? 'block' : 'none';
+      opacity = isColumnHighlighted ? 1 : 0;
     } else {
       display = tracedNodes.length === 0 || isStrokeNeeded ? 'block' : 'none';
+      opacity = tracedNodes.length === 0 ? 1 : isStrokeNeeded ? 1 : 0;
     }
 
     let stroke = isStrokeNeeded
@@ -180,7 +183,7 @@ export const CustomEdge = ({
     return {
       ...style,
       stroke,
-      display,
+      opacity,
     };
   }, [
     style,
