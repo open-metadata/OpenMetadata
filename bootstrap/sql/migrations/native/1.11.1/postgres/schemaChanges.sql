@@ -1,7 +1,6 @@
 --
 -- Add REPLICA IDENTITY to tables for PostgreSQL logical replication support
 -- This allows UPDATE and DELETE operations to work when logical replication is enabled
--- Fix for: https://github.com/open-metadata/OpenMetadata/issues/[issue_number]
 --
 
 -- Set replica identity for all tables that have UPDATE statements in migrations
