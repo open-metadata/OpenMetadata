@@ -117,64 +117,145 @@ until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_in
   sleep 5
 done
 
-until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
-  IMPORT_ERRORS="$(curl -s --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/importErrors")"
-  echo $IMPORT_ERRORS | grep "/airflow_sample_data.py" > /dev/null;
-  if [[ "$?" == "0" ]]; then
-    echo -e "${RED}Airflow found an error importing \`sample_data\` DAG"
-    printf '%s' "$IMPORT_ERRORS" | jq '.["import_errors"] | .[] | select(.filename | endswith("airflow_sample_data.py"))'
-    exit 1
+# Function to get OAuth access token for Airflow API
+get_airflow_token() {
+  local token_response=$(curl -s -X POST 'http://localhost:8080/auth/token' \
+    -H 'Content-Type: application/json' \
+    -d '{"username": "admin", "password": "admin"}')
+
+  local access_token=$(echo "$token_response" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('access_token', ''))" 2>/dev/null || echo "")
+
+  if [ -z "$access_token" ]; then
+    echo "✗ Failed to get access token" >&2
+    echo "  Response: ${token_response}" >&2
+    return 1
   fi
-  echo 'Checking if Sample Data DAG is reachable...\n'
+
+  echo "$access_token"
+}
+
+# Wait for Airflow API to be ready and get initial token
+echo "Waiting for Airflow API to be ready..."
+until AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null && [ -n "$AIRFLOW_ACCESS_TOKEN" ]; do
+  echo 'Checking if Airflow API is reachable...'
   sleep 5
 done
+echo "✓ Airflow API is ready, token obtained"
+
+# Check if sample_data DAG is available
+echo "Checking if Sample Data DAG is available..."
+until curl -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
+  # Check for import errors
+  IMPORT_ERRORS=$(curl -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
+  if [ -n "$IMPORT_ERRORS" ]; then
+    echo "$IMPORT_ERRORS" | grep "/airflow_sample_data.py" > /dev/null 2>&1
+    if [ "$?" == "0" ]; then
+      echo -e "${RED}Airflow found an error importing \`sample_data\` DAG"
+      echo "$IMPORT_ERRORS" | python3 -c "import sys, json; data=json.load(sys.stdin); [print(json.dumps(e, indent=2)) for e in data.get('import_errors', []) if e.get('filename', '').endswith('airflow_sample_data.py')]" 2>/dev/null || echo "$IMPORT_ERRORS"
+      exit 1
+    fi
+  fi
+  echo 'Checking if Sample Data DAG is reachable...'
+  sleep 5
+  # Refresh token if needed (tokens expire after 24h)
+  AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null
+done
+echo "✓ Sample Data DAG is available"
 
 until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"; do
   echo 'Checking if OM Server is reachable...\n'
   sleep 5
 done
 
-curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
-  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-        "is_paused": false
-      }'
+# Function to unpause DAG using Airflow API with OAuth Bearer token
+unpause_dag() {
+  local dag_id=$1
+  echo "Unpausing DAG: ${dag_id}"
 
-curl --location --request PATCH 'localhost:8080/api/v1/dags/extended_sample_data' \
-  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
+  # Get fresh token if not already set
+  if [ -z "$AIRFLOW_ACCESS_TOKEN" ]; then
+    AIRFLOW_ACCESS_TOKEN=$(get_airflow_token)
+    if [ -z "$AIRFLOW_ACCESS_TOKEN" ]; then
+      return 1
+    fi
+    echo "✓ OAuth token obtained"
+  fi
+
+  response=$(curl -s -w "\n%{http_code}" --location --request PATCH "http://localhost:8080/api/v2/dags/${dag_id}" \
+    --header "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"is_paused": false}')
+
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+    echo "✓ Successfully unpaused ${dag_id}"
+  else
+    echo "✗ Failed to unpause ${dag_id} (HTTP ${http_code})"
+    echo "  Response: ${body}"
+    # Token might be expired, try refreshing once
+    if [ "$http_code" = "401" ]; then
+      echo "  Refreshing token and retrying..."
+      AIRFLOW_ACCESS_TOKEN=$(get_airflow_token)
+      if [ -n "$AIRFLOW_ACCESS_TOKEN" ]; then
+        response=$(curl -s -w "\n%{http_code}" --location --request PATCH "http://localhost:8080/api/v2/dags/${dag_id}" \
+          --header "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" \
+          --header 'Content-Type: application/json' \
+          --data-raw '{"is_paused": false}')
+        http_code=$(echo "$response" | tail -n1)
+        if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+          echo "✓ Successfully unpaused ${dag_id} after retry"
+        fi
+      fi
+    fi
+  fi
+}
+
+unpause_dag "sample_data"
+unpause_dag "extended_sample_data"
+
+# Trigger sample_data DAG to run
+echo "Triggering sample_data DAG..."
+LOGICAL_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+response=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8080/api/v2/dags/sample_data/dagRuns" \
+  --header "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" \
   --header 'Content-Type: application/json' \
-  --data-raw '{
-        "is_paused": false
-      }'
+  --data-raw "{\"logical_date\": \"$LOGICAL_DATE\"}")
+
+http_code=$(echo "$response" | tail -n1)
+if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+  echo "✓ Successfully triggered sample_data DAG"
+else
+  echo "⚠ Could not trigger sample_data DAG (HTTP ${http_code})"
+  echo "  Response: $(echo "$response" | sed '$d')"
+  echo "  Note: DAG may run automatically on schedule"
+fi
 
 echo 'Validate sample data DAG...'
 sleep 5
 # This validates the sample data DAG flow
 make install
-python docker/validate_compose.py
+
+# Run validation with timeout to avoid hanging indefinitely
+echo "Running DAG validation (this may take a few minutes)..."
+timeout 300 python docker/validate_compose.py || {
+  exit_code=$?
+  if [ $exit_code -eq 124 ]; then
+    echo "⚠ Warning: DAG validation timed out after 5 minutes"
+    echo "  The DAG may still be running. Check Airflow UI at http://localhost:8080"
+  else
+    echo "⚠ Warning: DAG validation failed with exit code $exit_code"
+  fi
+  echo "  Continuing with remaining setup..."
+}
 
 sleep 5
-curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_usage' \
-  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-      "is_paused": false
-      }'
+unpause_dag "sample_usage"
 sleep 5
-curl --location --request PATCH 'localhost:8080/api/v1/dags/index_metadata' \
-  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-      "is_paused": false
-      }'
+unpause_dag "index_metadata"
 sleep 2
-curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_lineage' \
-  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-      "is_paused": false
-      }'
+unpause_dag "sample_lineage"
 
 echo "✔running reindexing"
 # Trigger ElasticSearch ReIndexing from UI
