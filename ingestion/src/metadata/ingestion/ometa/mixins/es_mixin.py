@@ -29,7 +29,7 @@ from typing import (
 )
 from urllib.parse import quote_plus
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.data.container import Container
@@ -77,6 +77,22 @@ class HitsModel(BaseModel):
             description="Sort field. Used internally to get the next page FQN",
         ),
     ]
+
+    @field_validator("sort", mode="before")
+    def normalize_sort(cls, sort_value: list[str] | None):
+        """
+        Return sort as a list of strings, regardless of the actual type.
+        if sort_field is set to `_score`, sort is a list of the score and the sort value.
+
+        Input examples from ES:
+        - ["metric"]
+        - [1.234, "metric"]
+
+        """
+        if sort_value is None:
+            return None
+
+        return [str(v) for v in sort_value]
 
 
 class ESHits(BaseModel):

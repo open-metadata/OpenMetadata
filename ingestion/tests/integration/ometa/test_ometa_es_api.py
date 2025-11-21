@@ -462,3 +462,22 @@ class OMetaESTest(TestCase):
             "paginating_table_3",
             "paginating_table_4",
         ]
+
+        # sorting by _score should be supported.
+        assets = list(
+            self.metadata.paginate_es(
+                entity=Table, query_filter=query_filter, size=2, sort_field="_score"
+            )
+        )
+        returned_table_names = [
+            asset.name.root
+            for asset in assets
+            if asset.name.root.startswith("paginating_table_")
+        ]
+        assert returned_table_names == [
+            "paginating_table_0",
+            "paginating_table_1",
+            "paginating_table_2",
+            "paginating_table_3",
+            "paginating_table_4",
+        ]
