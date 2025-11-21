@@ -2020,7 +2020,8 @@ ALTER TABLE ONLY public.storage_container_entity REPLICA IDENTITY USING INDEX st
 ALTER TABLE ONLY public.storage_service_entity REPLICA IDENTITY USING INDEX storage_service_entity_namehash_key;
 ALTER TABLE ONLY public.table_entity REPLICA IDENTITY USING INDEX table_entity_fqnhash_key;
 ALTER TABLE ONLY public.tag REPLICA IDENTITY USING INDEX tag_fqnhash_key;
-ALTER TABLE ONLY public.tag_usage REPLICA IDENTITY USING INDEX tag_usage_source_tagfqnhash_targetfqnhash_key;
+-- tag_usage uses FULL because the unique constraint includes nullable columns
+ALTER TABLE ONLY public.tag_usage REPLICA IDENTITY FULL;
 ALTER TABLE ONLY public.team_entity REPLICA IDENTITY USING INDEX team_entity_namehash_key;
 ALTER TABLE ONLY public.test_case REPLICA IDENTITY USING INDEX test_case_fqnhash_key;
 ALTER TABLE ONLY public.test_definition REPLICA IDENTITY USING INDEX test_definition_namehash_key;

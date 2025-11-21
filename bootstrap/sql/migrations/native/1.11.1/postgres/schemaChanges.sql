@@ -42,7 +42,9 @@ ALTER TABLE IF EXISTS storage_container_entity REPLICA IDENTITY USING INDEX stor
 ALTER TABLE IF EXISTS storage_service_entity REPLICA IDENTITY USING INDEX storage_service_entity_namehash_key;
 ALTER TABLE IF EXISTS table_entity REPLICA IDENTITY USING INDEX table_entity_fqnhash_key;
 ALTER TABLE IF EXISTS tag REPLICA IDENTITY USING INDEX tag_fqnhash_key;
-ALTER TABLE IF EXISTS tag_usage REPLICA IDENTITY USING INDEX tag_usage_source_tagfqnhash_targetfqnhash_key;
+-- tag_usage uses FULL because the unique constraint includes nullable columns (tagfqnhash, targetfqnhash)
+-- This is required for DELETE operations to work with logical replication
+ALTER TABLE IF EXISTS tag_usage REPLICA IDENTITY FULL;
 ALTER TABLE IF EXISTS team_entity REPLICA IDENTITY USING INDEX team_entity_namehash_key;
 ALTER TABLE IF EXISTS test_case REPLICA IDENTITY USING INDEX test_case_fqnhash_key;
 ALTER TABLE IF EXISTS test_definition REPLICA IDENTITY USING INDEX test_definition_namehash_key;
