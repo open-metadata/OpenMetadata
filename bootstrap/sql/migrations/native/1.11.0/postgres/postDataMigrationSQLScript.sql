@@ -102,4 +102,4 @@ WHERE json->>'name' IN ('CollateAIQualityAgentApplication', 'CollateAITierAgentA
   AND json->>'appType' = 'internal' AND json->>'sourcePythonClass' IS NULL;
   
 -- Remove bot form App entity  
-UPDATE installed_apps SET json = json - 'bot' WHERE json ? 'bot';  
+UPDATE installed_apps SET json = json - 'bot';
