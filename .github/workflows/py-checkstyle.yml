@@ -71,7 +71,7 @@ jobs:
           source env/bin/activate
           sudo make install_antlr_cli
           make install install_test install_dev
-      # uninstall uvloop is to fix checkstyle 
+
       # Add back linting once we have 10/10 on main
       - name: Code style check
         id: style
@@ -79,7 +79,6 @@ jobs:
         run: |
           source env/bin/activate
           make generate
-          pip uninstall -y uvloop || true
           make py_format_check
 
       - name: Create a comment in the PR with the instructions
