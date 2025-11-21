@@ -15,6 +15,7 @@
         "Create",
         "BulkCreate",
         "CreateIngestionPipelineAutomator",
+        "CreateTests",
         "Delete",
         "ViewAll",
         "ViewBasic",
