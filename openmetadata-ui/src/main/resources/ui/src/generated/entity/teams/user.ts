@@ -27,6 +27,10 @@ export interface User {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * Default Persona for the user from list of personas.
      */
     defaultPersona?: EntityReference;

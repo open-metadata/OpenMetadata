@@ -21,6 +21,10 @@ export interface Chart {
     changeDescription?: ChangeDescription;
     chartType?:         ChartType;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * All the dashboards containing this chart.
      */
     dashboards?: EntityReference[];

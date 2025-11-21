@@ -50,6 +50,10 @@ public interface EntityInterface {
 
   Long getUpdatedAt();
 
+  default Long getCreationTime() {
+    return null;
+  }
+
   default String getImpersonatedBy() {
     return null;
   }
@@ -153,6 +157,10 @@ public interface EntityInterface {
   void setUpdatedBy(String admin);
 
   void setUpdatedAt(Long updatedAt);
+
+  default void setCreationTime(Long creationTime) {
+    /* no-op implementation to be overridden */
+  }
 
   default void setImpersonatedBy(String botName) {
     /* no-op implementation to be overridden */

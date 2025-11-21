@@ -752,4 +752,31 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_dashboardCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new dashboard
+    long beforeCreation = System.currentTimeMillis();
+
+    CreateDashboard create = createRequest(test);
+    Dashboard dashboard = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(dashboard.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        dashboard.getCreationTime() >= beforeCreation,
+        "creationTime should be >= time before creation");
+    assertTrue(
+        dashboard.getCreationTime() <= afterCreation,
+        "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(dashboard.getUpdatedAt());
+    long timeDiff = Math.abs(dashboard.getUpdatedAt() - dashboard.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
 }

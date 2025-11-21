@@ -25,6 +25,10 @@ export interface Mlmodel {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * Performance Dashboard URL to track metric evolution.
      */
     dashboard?: EntityReference;

@@ -363,4 +363,29 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       assertCommonFieldChange(fieldName, expected, actual);
     }
   }
+
+  @Test
+  void test_roleCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new role
+    long beforeCreation = System.currentTimeMillis();
+
+    CreateRole create = createRequest(test);
+    Role role = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(role.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        role.getCreationTime() >= beforeCreation, "creationTime should be >= time before creation");
+    assertTrue(
+        role.getCreationTime() <= afterCreation, "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(role.getUpdatedAt());
+    long timeDiff = Math.abs(role.getUpdatedAt() - role.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
 }

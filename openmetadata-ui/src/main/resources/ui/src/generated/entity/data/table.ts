@@ -38,6 +38,10 @@ export interface Table {
      */
     compressionStrategy?: CompressionStrategy;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * List of Custom Metrics registered for a table.
      */
     customMetrics?: CustomMetric[];

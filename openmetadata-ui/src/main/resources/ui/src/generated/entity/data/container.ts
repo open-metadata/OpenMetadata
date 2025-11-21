@@ -28,6 +28,10 @@ export interface Container {
      */
     children?: EntityReference[];
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * References to the container's data model, if data is structured, or null otherwise
      */
     dataModel?: ContainerDataModel;

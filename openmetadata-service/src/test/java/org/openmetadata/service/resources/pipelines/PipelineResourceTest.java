@@ -1208,4 +1208,31 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_pipelineCreationTimeIsSet(TestInfo test) throws HttpResponseException {
+    // Test that creationTime is automatically set when creating a new pipeline
+    long beforeCreation = System.currentTimeMillis();
+
+    CreatePipeline create = createRequest(test);
+    Pipeline pipeline = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify creationTime is set and within expected range
+    assertNotNull(pipeline.getCreationTime(), "creationTime should not be null for new entities");
+    assertTrue(
+        pipeline.getCreationTime() >= beforeCreation,
+        "creationTime should be >= time before creation");
+    assertTrue(
+        pipeline.getCreationTime() <= afterCreation,
+        "creationTime should be <= time after creation");
+
+    // Verify creationTime is close to updatedAt for new entities
+    assertNotNull(pipeline.getUpdatedAt());
+    long timeDiff = Math.abs(pipeline.getUpdatedAt() - pipeline.getCreationTime());
+    assertTrue(
+        timeDiff < 1000,
+        "creationTime and updatedAt should be very close for new entities (within 1 second)");
+  }
 }

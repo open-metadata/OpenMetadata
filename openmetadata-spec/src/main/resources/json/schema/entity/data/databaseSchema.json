@@ -47,6 +47,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "creationTime": {
+      "description": "Creation time of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
     "impersonatedBy": {
       "description": "Bot user that performed the action on behalf of the actual user.",
       "$ref": "../../type/basic.json#/definitions/impersonatedBy"

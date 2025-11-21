@@ -21,6 +21,10 @@ export interface Database {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Creation time of the entity in Unix epoch time milliseconds.
+     */
+    creationTime?: number;
+    /**
      * This schema defines the type for Database profile config.
      */
     databaseProfilerConfig?: DatabaseProfilerConfig;
