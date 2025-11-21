@@ -33,10 +33,15 @@ public class ApplicationContext {
     LOG.info("Initializing Application Context");
 
     AppRepository appRepo = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    ListFilter listFilter = new ListFilter(Include.ALL);
     List<App> installedApps =
         appRepo
-            .listBefore(
-                null, appRepo.getFields("*"), new ListFilter(Include.ALL), Integer.MAX_VALUE, "")
+            .listAfter(
+                null,
+                appRepo.getFields("*"),
+                listFilter,
+                appRepo.getDao().listCount(listFilter),
+                "")
             .getData();
     for (App app : installedApps) {
       try {
