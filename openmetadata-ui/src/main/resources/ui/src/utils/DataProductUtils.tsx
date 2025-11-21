@@ -49,6 +49,7 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
+import { stringToDOMElement } from './StringsUtils';
 
 export interface DataProductDetailPageTabProps {
   dataProduct: DataProduct;
@@ -239,6 +240,16 @@ export const getDataProductDetailTabs = ({
   ];
 };
 
+const getPlainTextFromHtml = (html: string): string => {
+  try {
+    const domElement = stringToDOMElement(html);
+
+    return domElement.textContent || domElement.innerText || '';
+  } catch {
+    return html;
+  }
+};
+
 export const DataProductListItemRenderer = (props: EntityReference) => {
   return (
     <Space direction="vertical" size={0}>
@@ -248,7 +259,7 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
       </Space>
       {props.description && (
         <Typography.Text className="text-xs text-grey-muted">
-          {props.description}
+          {getPlainTextFromHtml(props.description)}
         </Typography.Text>
       )}
     </Space>

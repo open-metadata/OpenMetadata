@@ -14,7 +14,10 @@ import { Badge, Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
+import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getDataTypeString,
   prepareConstraintIcon,
@@ -37,9 +40,15 @@ const FieldCard: React.FC<FieldCardProps> = ({
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [showAllTerms, setShowAllTerms] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const maxVisibleItems = 2;
   const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
+  const nonGlossaryTags = tags.filter(
+    (tag) => tag.source !== TagSource.Glossary
+  );
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -168,22 +177,78 @@ const FieldCard: React.FC<FieldCardProps> = ({
         </Paragraph>
 
         <div className="field-metadata">
-          {tags.length > 0 && (
-            <div className="metadata-item">
+          {nonGlossaryTags.length > 0 && (
+            <div className="metadata-section">
               <Text className="metadata-label">
                 {t('label.-with-colon', { text: t('label.tag-plural') })}
               </Text>
-              <Text className="metadata-value">{tags.length}</Text>
+              <div className="tags-display">
+                <div className="tags-list">
+                  {(showAllTags
+                    ? nonGlossaryTags
+                    : nonGlossaryTags.slice(0, maxVisibleItems)
+                  ).map((tag) => (
+                    <div
+                      className="tag-item"
+                      data-testid={`tag-${tag.tagFQN}`}
+                      key={tag.tagFQN}>
+                      <ClassificationIcon className="tag-icon" />
+                      <span className="tag-name">{getEntityName(tag)}</span>
+                    </div>
+                  ))}
+                  {nonGlossaryTags.length > maxVisibleItems && (
+                    <button
+                      className="show-more-tags-button"
+                      type="button"
+                      onClick={() => setShowAllTags(!showAllTags)}>
+                      {showAllTags
+                        ? t('label.less')
+                        : `+${nonGlossaryTags.length - maxVisibleItems} ${t(
+                            'label.more-lowercase'
+                          )}`}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           {glossaryTerms.length > 0 && (
-            <div className="metadata-item">
+            <div className="metadata-section">
               <Text className="metadata-label">
                 {t('label.-with-colon', {
                   text: t('label.glossary-term-plural'),
                 })}
               </Text>
-              <Text className="metadata-value">{glossaryTerms.length}</Text>
+              <div className="glossary-terms-display">
+                <div className="glossary-terms-list">
+                  {(showAllTerms
+                    ? glossaryTerms
+                    : glossaryTerms.slice(0, maxVisibleItems)
+                  ).map((glossaryTerm) => (
+                    <div
+                      className="glossary-term-item"
+                      data-testid={`term-${glossaryTerm.tagFQN}`}
+                      key={glossaryTerm.tagFQN}>
+                      <GlossaryIcon className="glossary-term-icon" />
+                      <span className="glossary-term-name">
+                        {getEntityName(glossaryTerm)}
+                      </span>
+                    </div>
+                  ))}
+                  {glossaryTerms.length > maxVisibleItems && (
+                    <button
+                      className="show-more-terms-button"
+                      type="button"
+                      onClick={() => setShowAllTerms(!showAllTerms)}>
+                      {showAllTerms
+                        ? t('label.less')
+                        : `+${glossaryTerms.length - maxVisibleItems} ${t(
+                            'label.more-lowercase'
+                          )}`}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

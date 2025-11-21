@@ -20,6 +20,7 @@ import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import { CustomPropertyValueRenderer } from '../../../../utils/CustomPropertyRenderers';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
@@ -109,80 +110,6 @@ const CustomPropertiesSection = ({
     );
   }
 
-  const formatValue = (val: unknown) => {
-    if (!val) {
-      return (
-        <Typography.Text className="no-data-text">
-          {t('label.not-set')}
-        </Typography.Text>
-      );
-    }
-
-    if (typeof val === 'object') {
-      if (Array.isArray(val)) {
-        return val.join(', ');
-      }
-      const objVal = val as Record<string, unknown>;
-      if (objVal.name || objVal.displayName) {
-        return String(objVal.name || objVal.displayName);
-      }
-      if (objVal.value) {
-        return String(objVal.value);
-      }
-      // Handle table-type custom properties
-      if (objVal.rows && objVal.columns) {
-        const tableVal = objVal as {
-          rows: Record<string, unknown>[];
-          columns: string[];
-        };
-
-        return (
-          <div className="custom-property-table">
-            <table className="ant-table ant-table-small">
-              <colgroup>
-                {tableVal.columns.map((column: string) => (
-                  <col key={column} style={{ minWidth: '80px' }} />
-                ))}
-              </colgroup>
-              <thead>
-                <tr>
-                  {tableVal.columns.map((column: string) => (
-                    <th className="ant-table-cell" key={column}>
-                      {column}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tableVal.rows.map(
-                  (row: Record<string, unknown>, rowIndex: number) => {
-                    const rowKey = `row-${rowIndex}-${tableVal.columns
-                      .map((col: string) => row[col])
-                      .join('-')}`;
-
-                    return (
-                      <tr key={rowKey}>
-                        {tableVal.columns.map((column: string) => (
-                          <td className="ant-table-cell" key={column}>
-                            {String(row[column] || '-')}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  }
-                )}
-              </tbody>
-            </table>
-          </div>
-        );
-      }
-
-      return JSON.stringify(val);
-    }
-
-    return String(val);
-  };
-
   return (
     <div className="entity-summary-panel-tab-content">
       <div className="p-x-md">
@@ -207,9 +134,12 @@ const CustomPropertiesSection = ({
                   <Typography.Text className="property-name">
                     {property.displayName || property.name}
                   </Typography.Text>
-                  <Typography.Text className="property-value">
-                    {formatValue(value)}
-                  </Typography.Text>
+                  <div className="property-value">
+                    <CustomPropertyValueRenderer
+                      property={property}
+                      value={value}
+                    />
+                  </div>
                 </div>
               );
             })
