@@ -37,18 +37,8 @@ class ReservedKeywordTableClass extends TableClass {
       'tests',        // ENTITY_FIELD keyword
     ];
 
-    this.entityLinkColumnsName = [
-      this.columnsName[0], // topic
-      this.columnsName[1], // user
-      this.columnsName[2], // database
-      this.columnsName[3], // role
-      this.columnsName[4], // chart
-      this.columnsName[5], // description
-      this.columnsName[6], // owner
-      this.columnsName[7], // tags
-      this.columnsName[8], // name
-      this.columnsName[9], // tests
-    ];
+    // entityLinkColumnsName is used by parent class methods
+    this.entityLinkColumnsName = this.columnsName;
 
     this.children = [
       {
@@ -124,7 +114,7 @@ class ReservedKeywordTableClass extends TableClass {
     ];
 
     this.entity = {
-      name: `pw-table-reserved-keywords-${Date.now()}`,
+      name: `pw-table-reserved-keywords-${crypto.randomUUID().substring(0, 8)}`,
       displayName: 'Table with Reserved Keyword Column Names',
       description: 'Test table with columns using reserved keywords from EntityLink grammar',
       columns: this.children,

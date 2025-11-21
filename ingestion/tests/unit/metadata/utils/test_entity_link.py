@@ -286,9 +286,9 @@ def test_reserved_keywords_get_table_or_column_fqn(entity_link, expected_fqn):
 )
 def test_reserved_keywords_get_decoded_column(entity_link, expected_decoded_column):
     """Test that reserved keywords can be decoded as column names.
-    
+
     Args:
-        entity_link (str): Entity link with reserved keyword as column name
-        expected_decoded_column (str): Expected decoded column name
+        entity_link: Entity link with reserved keyword as column name
+        expected_decoded_column: Expected decoded column name
     """
     assert get_decoded_column(entity_link) == expected_decoded_column
