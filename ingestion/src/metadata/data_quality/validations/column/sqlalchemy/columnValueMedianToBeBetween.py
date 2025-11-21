@@ -18,7 +18,6 @@ from typing import List, Optional
 from sqlalchemy import Column, select
 
 from metadata.data_quality.validations.base_test_handler import (
-    DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
 )
@@ -113,11 +112,6 @@ class ColumnValueMedianToBeBetweenValidator(
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
                 Metrics.MEDIAN.name: median_expr,
-                # DIMENSION_FAILED_COUNT_KEY: (
-                #     self._get_validation_checker(
-                #         test_params
-                #     ).build_agg_level_violation_sqa([median_expr], row_count_expr)
-                # ),
             }
 
             failed_count_builder = (
@@ -176,11 +170,6 @@ class ColumnValueMedianToBeBetweenValidator(
             return {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
                 Metrics.MEDIAN.name: median_expr,
-                DIMENSION_FAILED_COUNT_KEY: (
-                    self._get_validation_checker(
-                        test_params
-                    ).build_agg_level_violation_sqa([median_expr], row_count_expr)
-                ),
             }
 
         return build_others_metric_expressions
