@@ -252,11 +252,11 @@ def test_get_table_fqn(entity_link, expected):
 )
 def test_reserved_keywords_get_table_or_column_fqn(entity_link, expected_fqn):
     """Test that reserved keywords (ENTITY_TYPE and ENTITY_FIELD) can be used as column names.
-    
+
     This verifies that the EntityLink grammar correctly allows reserved keywords to be used
     as column names in entity links, which is important for real-world scenarios where
     column names might coincidentally match reserved words.
-    
+
     Args:
         entity_link (str): Entity link with reserved keyword as column name
         expected_fqn (str): Expected fully qualified name
