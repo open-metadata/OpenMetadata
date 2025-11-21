@@ -113,12 +113,20 @@ class ColumnValueMedianToBeBetweenValidator(
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
                 Metrics.MEDIAN.name: median_expr,
-                DIMENSION_FAILED_COUNT_KEY: (
-                    self._get_validation_checker(
-                        test_params
-                    ).build_agg_level_violation_sqa([median_expr], row_count_expr)
-                ),
+                # DIMENSION_FAILED_COUNT_KEY: (
+                #     self._get_validation_checker(
+                #         test_params
+                #     ).build_agg_level_violation_sqa([median_expr], row_count_expr)
+                # ),
             }
+
+            failed_count_builder = (
+                lambda cte, row_count_expr: self._get_validation_checker(
+                    test_params
+                ).build_agg_level_violation_sqa(
+                    [getattr(cte.c, Metrics.MEDIAN.name)], row_count_expr
+                )
+            )
 
             result_rows = self._run_dimensional_validation_query(
                 source=normalized_dim_cte,
@@ -127,6 +135,7 @@ class ColumnValueMedianToBeBetweenValidator(
                 others_metric_expressions_builder=self._get_others_metric_expressions_builder(
                     test_params
                 ),
+                failed_count_builder=failed_count_builder,
             )
             for row in result_rows:
                 median_value = row.get(Metrics.MEDIAN.name)
