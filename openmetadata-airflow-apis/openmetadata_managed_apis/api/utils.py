@@ -123,9 +123,21 @@ def get_dagbag():
     """
     Load the dagbag from Airflow settings
     """
-    dagbag = DagBag(dag_folder=settings.DAGS_FOLDER, read_dags_from_db=True)
+    airflow_semver = version.parse(airflow_version)
+
+    dagbag_kwargs = {"dag_folder": settings.DAGS_FOLDER}
+    if airflow_semver < version.parse("3.0.0"):
+        dagbag_kwargs["read_dags_from_db"] = True
+
+    dagbag = DagBag(**dagbag_kwargs)
     dagbag.collect_dags()
-    dagbag.collect_dags_from_db()
+
+    # Airflow < 3.0 still exposes collect_dags_from_db
+    if airflow_semver < version.parse("3.0.0") and hasattr(
+        dagbag, "collect_dags_from_db"
+    ):
+        dagbag.collect_dags_from_db()
+
     return dagbag
 
 

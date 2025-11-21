@@ -145,7 +145,11 @@ describe('DomainsSection', () => {
       expect(container.querySelector('.domains-header')).toBeInTheDocument();
       expect(container.querySelector('.domains-content')).toBeInTheDocument();
       // Initially no domains provided in props, component shows no-data when not editing
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.domain-plural"}'
+        )
+      ).toBeInTheDocument();
     });
 
     it('renders existing domains via custom domain cards when provided', () => {

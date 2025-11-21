@@ -64,6 +64,17 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockPush),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 describe('TopicVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
@@ -130,5 +141,80 @@ describe('TopicVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/topic/sample_kafka.sales/versions/0.3/custom_properties'
     );
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    const mockCustomPropertyTable = jest.requireMock(
+      '../../common/CustomPropertyTable/CustomPropertyTable'
+    ).CustomPropertyTable;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is true', () => {
+      render(
+        <TopicVersion
+          {...topicVersionMockProps}
+          entityPermissions={{ ...ENTITY_PERMISSIONS, ViewCustomFields: true }}
+        />
+      );
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: true,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is false', () => {
+      render(
+        <TopicVersion
+          {...topicVersionMockProps}
+          entityPermissions={{
+            ...ENTITY_PERMISSIONS,
+            ViewCustomFields: false,
+          }}
+        />
+      );
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: false,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should render custom properties tab regardless of ViewCustomFields value', () => {
+      render(
+        <TopicVersion
+          {...topicVersionMockProps}
+          entityPermissions={{
+            ...ENTITY_PERMISSIONS,
+            ViewCustomFields: false,
+          }}
+        />
+      );
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
   });
 });

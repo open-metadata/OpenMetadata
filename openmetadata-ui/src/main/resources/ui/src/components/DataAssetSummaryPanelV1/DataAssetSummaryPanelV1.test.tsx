@@ -804,9 +804,18 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('data-quality-section')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId('data-quality-section')).toHaveTextContent(
+          '0'
+        );
+        expect(screen.getByTestId('test-success')).toHaveTextContent(
+          'success: 0'
+        );
+        expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+          'aborted: 0'
+        );
+        expect(screen.getByTestId('test-failed')).toHaveTextContent(
+          'failed: 0'
+        );
       });
     });
 
@@ -820,9 +829,18 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
-        expect(
-          screen.queryByTestId('data-quality-section')
-        ).not.toBeInTheDocument();
+        expect(screen.getByTestId('data-quality-section')).toHaveTextContent(
+          '0'
+        );
+        expect(screen.getByTestId('test-success')).toHaveTextContent(
+          'success: 0'
+        );
+        expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+          'aborted: 0'
+        );
+        expect(screen.getByTestId('test-failed')).toHaveTextContent(
+          'failed: 0'
+        );
       });
     });
   });

@@ -14,12 +14,14 @@
 import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../constants/constants';
@@ -30,15 +32,25 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useTableFilters } from '../../../../hooks/useTableFilters';
 import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
   domainTableObject,
@@ -57,18 +69,64 @@ const DataModelTable = ({
   handleShowDeleted,
 }: DataModelTableProps) => {
   const { t } = useTranslation();
+  const location = useCustomLocation();
   const { fqn } = useFqn();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
   const {
     currentPage,
     pageSize,
     paging,
+    pagingCursor,
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
   } = usePaging();
   const [isLoading, setIsLoading] = useState(true);
+  const { setFilters } = useTableFilters({});
+
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.dataModel as string | undefined;
+  }, [location.search]);
+
+  const searchDataModels = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setIsLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'service.fullyQualifiedName.keyword',
+            fqn,
+            searchValue
+          ),
+          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          includeDeleted: showDeleted,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((model) => model._source);
+        const total = response.hits.total.value;
+        setDataModels(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fqn, showDeleted, handlePagingChange]
+  );
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [
@@ -77,6 +135,7 @@ const DataModelTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
+        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record: ServicePageData) => {
           const dataModelDisplayName = getEntityName(record);
 
@@ -89,7 +148,9 @@ const DataModelTable = ({
                   EntityType.DASHBOARD_DATA_MODEL,
                   record.fullyQualifiedName || ''
                 )}>
-                {dataModelDisplayName}
+                {stringToHTML(
+                  highlightSearchText(dataModelDisplayName, searchValue)
+                )}
               </Link>
             </div>
           );
@@ -122,7 +183,7 @@ const DataModelTable = ({
       ...dataProductTableObject<ServicePageData>(),
       ...tagTableObject<ServicePageData>(),
     ],
-    []
+    [searchValue, t]
   );
 
   const fetchDashboardsDataModel = useCallback(
@@ -153,21 +214,62 @@ const DataModelTable = ({
     cursorType,
     currentPage,
   }) => {
-    if (cursorType) {
+    if (searchValue) {
+      searchDataModels(searchValue, currentPage);
+      handlePageChange(currentPage);
+    } else if (cursorType) {
       fetchDashboardsDataModel({ [cursorType]: paging[cursorType] });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
-    handlePageChange(currentPage);
   };
+
+  const onDataModelSearch = useCallback(
+    (value: string) => {
+      setFilters({ dataModel: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchDataModels(value);
+      } else {
+        fetchDashboardsDataModel();
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
+    },
+    [searchDataModels, fetchDashboardsDataModel]
+  );
 
   const handleShowDeletedChange = (checked: boolean) => {
     handleShowDeleted(checked);
-    handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(PAGE_SIZE_BASE);
+    handlePageChange(
+      INITIAL_PAGING_VALUE,
+      { cursorType: null, cursorValue: undefined },
+      PAGE_SIZE_BASE
+    );
   };
 
   useEffect(() => {
-    fetchDashboardsDataModel();
-  }, [pageSize, showDeleted]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchDashboardsDataModel({ [cursorType]: cursorValue });
+    } else {
+      fetchDashboardsDataModel();
+    }
+  }, [pageSize, showDeleted, pagingCursor]);
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.data-model'),
+      }),
+      typingInterval: 500,
+      searchValue: searchValue,
+      onSearch: onDataModelSearch,
+    }),
+    [onDataModelSearch, searchValue, t]
+  );
 
   return (
     <Table
@@ -175,6 +277,7 @@ const DataModelTable = ({
       customPaginationProps={{
         currentPage,
         isLoading,
+        isNumberBased: Boolean(searchValue),
         pageSize,
         paging,
         pagingHandler: handleDataModelPageChange,
@@ -204,6 +307,7 @@ const DataModelTable = ({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />

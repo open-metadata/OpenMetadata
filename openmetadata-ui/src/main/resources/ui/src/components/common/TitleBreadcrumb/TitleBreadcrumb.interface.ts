@@ -19,6 +19,7 @@ export type TitleLink = {
   options?: NavigateOptions;
   imgSrc?: string;
   activeTitle?: boolean;
+  icon?: React.ReactNode;
 };
 export type TitleBreadcrumbProps = {
   titleLinks: Array<TitleLink>;
