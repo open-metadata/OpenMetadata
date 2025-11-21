@@ -226,14 +226,16 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         try:
             created = self.metadata.create_or_update(entity_request)
             if created:
+                self.status.scanned(created)
                 return Either(right=created)
 
             error = f"Failed to ingest {type(entity_request).__name__}"
-            return Either(
-                left=StackTraceError(
-                    name=type(entity_request).__name__, error=error, stackTrace=None
-                )
+            self.status.scanned(entity_request)
+            stacktrace = StackTraceError(
+                name=type(entity_request).__name__, error=error, stackTrace=None
             )
+            self.status.failed(stacktrace)
+            return Either(left=stacktrace)
         except LimitsException as _:
             self.limit_reached.add(type(entity_request).__name__)
             return Either(
@@ -274,7 +276,20 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         self.buffer = []
         if result and result.status == basic.Status.success:
+            self.status.scanned_all(result.successRequest)
             return Either(right=result, left=None)
+
+        self.status.scanned_all(result.successRequest)
+        self.status.fail(
+            [
+                StackTraceError(
+                    name="Entity Buffer",
+                    error=f"Failed to flush entities to bulk API: {err}",
+                    stackTrace=None,
+                )
+                for err in result.failedRequest
+            ]
+        )
         return Either(
             right=None,
             left=StackTraceError(
