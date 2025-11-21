@@ -208,14 +208,14 @@ export const getColumnContent = (
   const { fullyQualifiedName } = column;
   const columnNameContentRender = getColumnNameContent(column, isLoading);
 
-  const handleMouseOver = () => {
+  const handleMouseEnter = () => {
     if (selectedColumn) {
       return;
     }
     onColumnMouseOver(fullyQualifiedName ?? '');
   };
 
-  const handleMouseOut = () => {
+  const handleMouseLeave = () => {
     if (selectedColumn) {
       return;
     }
@@ -234,8 +234,8 @@ export const getColumnContent = (
         e.stopPropagation();
         onColumnClick(fullyQualifiedName ?? '');
       }}
-      onMouseOut={handleMouseOut}
-      onMouseOver={handleMouseOver}>
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}>
       {getColumnHandle(
         EntityLineageNodeType.DEFAULT,
         isConnectable,
