@@ -42,9 +42,16 @@ const FieldCard: React.FC<FieldCardProps> = ({
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [showAllTerms, setShowAllTerms] = useState(false);
+  const [visibleTagsCount, setVisibleTagsCount] = useState<number | null>(null);
+  const [visibleTermsCount, setVisibleTermsCount] = useState<number | null>(
+    null
+  );
   const containerRef = useRef<HTMLDivElement>(null);
+  const tagsContainerRef = useRef<HTMLDivElement>(null);
+  const termsContainerRef = useRef<HTMLDivElement>(null);
+  const cachedTagsCount = useRef<number | null>(null);
+  const cachedTermsCount = useRef<number | null>(null);
 
-  const maxVisibleItems = 2;
   const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
   const nonGlossaryTags = tags.filter(
     (tag) => tag.source !== TagSource.Glossary
@@ -112,6 +119,106 @@ const FieldCard: React.FC<FieldCardProps> = ({
     return () => io.disconnect();
   }, [checkIfTextIsTruncated]);
 
+  const calculateVisibleItems = useCallback(
+    (containerRef: React.RefObject<HTMLDivElement>, itemsCount: number) => {
+      if (!containerRef.current || itemsCount === 0) {
+        return itemsCount;
+      }
+
+      const container = containerRef.current;
+      const items = Array.from(
+        container.querySelectorAll('.tag-item, .glossary-term-item')
+      ) as HTMLElement[];
+
+      if (items.length === 0) {
+        return itemsCount;
+      }
+
+      // Find first line baseline
+      const firstItemTop = items[0].offsetTop;
+      let visibleCount = 0;
+
+      // Count items on the first line
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].offsetTop === firstItemTop) {
+          visibleCount++;
+        } else {
+          // Item wrapped to second line
+          break;
+        }
+      }
+
+      // If all items fit on one line, return all
+      if (visibleCount === items.length) {
+        return items.length;
+      }
+
+      // Otherwise, reserve space for "+X more" button by reducing count by 1
+      return Math.max(1, visibleCount - 1);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (nonGlossaryTags.length === 0 || showAllTags) {
+      setVisibleTagsCount(null);
+
+      return;
+    }
+
+    // If we have cached count and just collapsed, use it immediately
+    if (cachedTagsCount.current !== null && !showAllTags) {
+      setVisibleTagsCount(cachedTagsCount.current);
+
+      return;
+    }
+
+    const calculateTags = () => {
+      const count = calculateVisibleItems(
+        tagsContainerRef,
+        nonGlossaryTags.length
+      );
+
+      cachedTagsCount.current = count;
+      setVisibleTagsCount(count);
+    };
+
+    // Calculate after render
+    const timeout = setTimeout(calculateTags, 100);
+
+    return () => clearTimeout(timeout);
+  }, [nonGlossaryTags, showAllTags, calculateVisibleItems]);
+
+  useEffect(() => {
+    if (glossaryTerms.length === 0 || showAllTerms) {
+      setVisibleTermsCount(null);
+
+      return;
+    }
+
+    // If we have cached count and just collapsed, use it immediately
+    if (cachedTermsCount.current !== null && !showAllTerms) {
+      setVisibleTermsCount(cachedTermsCount.current);
+
+      return;
+    }
+
+    const calculateTerms = () => {
+      const count = calculateVisibleItems(
+        termsContainerRef,
+        glossaryTerms.length
+      );
+
+      cachedTermsCount.current = count;
+      setVisibleTermsCount(count);
+    };
+
+    // Calculate after render
+    const timeout = setTimeout(calculateTerms, 100);
+
+    return () => clearTimeout(timeout);
+  }, [glossaryTerms, showAllTerms, calculateVisibleItems]);
+
   return (
     <div
       className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
@@ -178,15 +285,16 @@ const FieldCard: React.FC<FieldCardProps> = ({
 
         <div className="field-metadata">
           {nonGlossaryTags.length > 0 && (
-            <div className="metadata-section">
+            <div
+              className={`metadata-section ${showAllTags ? 'expanded' : ''}`}>
               <Text className="metadata-label">
                 {t('label.-with-colon', { text: t('label.tag-plural') })}
               </Text>
               <div className="tags-display">
-                <div className="tags-list">
-                  {(showAllTags
+                <div className="tags-list" ref={tagsContainerRef}>
+                  {(showAllTags || visibleTagsCount === null
                     ? nonGlossaryTags
-                    : nonGlossaryTags.slice(0, maxVisibleItems)
+                    : nonGlossaryTags.slice(0, visibleTagsCount)
                   ).map((tag) => (
                     <div
                       className="tag-item"
@@ -196,16 +304,24 @@ const FieldCard: React.FC<FieldCardProps> = ({
                       <span className="tag-name">{getEntityName(tag)}</span>
                     </div>
                   ))}
-                  {nonGlossaryTags.length > maxVisibleItems && (
+                  {visibleTagsCount !== null &&
+                    nonGlossaryTags.length > visibleTagsCount &&
+                    !showAllTags && (
+                      <button
+                        className="show-more-tags-button"
+                        type="button"
+                        onClick={() => setShowAllTags(true)}>
+                        {`+${nonGlossaryTags.length - visibleTagsCount} ${t(
+                          'label.more-lowercase'
+                        )}`}
+                      </button>
+                    )}
+                  {showAllTags && nonGlossaryTags.length > 1 && (
                     <button
                       className="show-more-tags-button"
                       type="button"
-                      onClick={() => setShowAllTags(!showAllTags)}>
-                      {showAllTags
-                        ? t('label.less')
-                        : `+${nonGlossaryTags.length - maxVisibleItems} ${t(
-                            'label.more-lowercase'
-                          )}`}
+                      onClick={() => setShowAllTags(false)}>
+                      {t('label.less')}
                     </button>
                   )}
                 </div>
@@ -213,17 +329,18 @@ const FieldCard: React.FC<FieldCardProps> = ({
             </div>
           )}
           {glossaryTerms.length > 0 && (
-            <div className="metadata-section">
+            <div
+              className={`metadata-section ${showAllTerms ? 'expanded' : ''}`}>
               <Text className="metadata-label">
                 {t('label.-with-colon', {
                   text: t('label.glossary-term-plural'),
                 })}
               </Text>
               <div className="glossary-terms-display">
-                <div className="glossary-terms-list">
-                  {(showAllTerms
+                <div className="glossary-terms-list" ref={termsContainerRef}>
+                  {(showAllTerms || visibleTermsCount === null
                     ? glossaryTerms
-                    : glossaryTerms.slice(0, maxVisibleItems)
+                    : glossaryTerms.slice(0, visibleTermsCount)
                   ).map((glossaryTerm) => (
                     <div
                       className="glossary-term-item"
@@ -235,16 +352,24 @@ const FieldCard: React.FC<FieldCardProps> = ({
                       </span>
                     </div>
                   ))}
-                  {glossaryTerms.length > maxVisibleItems && (
+                  {visibleTermsCount !== null &&
+                    glossaryTerms.length > visibleTermsCount &&
+                    !showAllTerms && (
+                      <button
+                        className="show-more-terms-button"
+                        type="button"
+                        onClick={() => setShowAllTerms(true)}>
+                        {`+${glossaryTerms.length - visibleTermsCount} ${t(
+                          'label.more-lowercase'
+                        )}`}
+                      </button>
+                    )}
+                  {showAllTerms && glossaryTerms.length > 1 && (
                     <button
                       className="show-more-terms-button"
                       type="button"
-                      onClick={() => setShowAllTerms(!showAllTerms)}>
-                      {showAllTerms
-                        ? t('label.less')
-                        : `+${glossaryTerms.length - maxVisibleItems} ${t(
-                            'label.more-lowercase'
-                          )}`}
+                      onClick={() => setShowAllTerms(false)}>
+                      {t('label.less')}
                     </button>
                   )}
                 </div>
