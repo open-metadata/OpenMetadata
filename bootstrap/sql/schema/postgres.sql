@@ -1980,6 +1980,58 @@ CREATE INDEX thread_entity_updated_at_index ON public.thread_entity USING btree 
 
 
 --
+-- Name: REPLICA IDENTITY; Type: ALTER TABLE; Schema: public; Owner: openmetadata_user
+-- Set replica identity for tables to support PostgreSQL logical replication
+-- This is required for UPDATE/DELETE operations when logical replication is enabled
+--
+
+ALTER TABLE ONLY public.automations_workflow REPLICA IDENTITY USING INDEX automations_workflow_namehash_key;
+ALTER TABLE ONLY public.bot_entity REPLICA IDENTITY USING INDEX bot_entity_namehash_key;
+ALTER TABLE ONLY public.chart_entity REPLICA IDENTITY USING INDEX chart_entity_fqnhash_key;
+ALTER TABLE ONLY public.classification REPLICA IDENTITY USING INDEX classification_namehash_key;
+ALTER TABLE ONLY public.dashboard_data_model_entity REPLICA IDENTITY USING INDEX dashboard_data_model_entity_fqnhash_key;
+ALTER TABLE ONLY public.dashboard_entity REPLICA IDENTITY USING INDEX dashboard_entity_fqnhash_key;
+ALTER TABLE ONLY public.dashboard_service_entity REPLICA IDENTITY USING INDEX dashboard_service_entity_namehash_key;
+ALTER TABLE ONLY public.data_insight_chart REPLICA IDENTITY USING INDEX data_insight_chart_fqnhash_key;
+ALTER TABLE ONLY public.data_product_entity REPLICA IDENTITY USING INDEX data_product_entity_fqnhash_key;
+ALTER TABLE ONLY public.database_entity REPLICA IDENTITY USING INDEX database_entity_fqnhash_key;
+ALTER TABLE ONLY public.database_schema_entity REPLICA IDENTITY USING INDEX database_schema_entity_fqnhash_key;
+ALTER TABLE ONLY public.dbservice_entity REPLICA IDENTITY USING INDEX dbservice_entity_namehash_key;
+ALTER TABLE ONLY public.domain_entity REPLICA IDENTITY USING INDEX domain_entity_fqnhash_key;
+ALTER TABLE ONLY public.event_subscription_entity REPLICA IDENTITY USING INDEX event_subscription_entity_namehash_key;
+ALTER TABLE ONLY public.glossary_entity REPLICA IDENTITY USING INDEX glossary_entity_namehash_key;
+ALTER TABLE ONLY public.glossary_term_entity REPLICA IDENTITY USING INDEX glossary_term_entity_fqnhash_key;
+ALTER TABLE ONLY public.ingestion_pipeline_entity REPLICA IDENTITY USING INDEX ingestion_pipeline_entity_fqnhash_key;
+ALTER TABLE ONLY public.kpi_entity REPLICA IDENTITY USING INDEX kpi_entity_namehash_key;
+ALTER TABLE ONLY public.messaging_service_entity REPLICA IDENTITY USING INDEX messaging_service_entity_namehash_key;
+ALTER TABLE ONLY public.metadata_service_entity REPLICA IDENTITY USING INDEX metadata_service_entity_namehash_key;
+ALTER TABLE ONLY public.metric_entity REPLICA IDENTITY USING INDEX metric_entity_fqnhash_key;
+ALTER TABLE ONLY public.ml_model_entity REPLICA IDENTITY USING INDEX ml_model_entity_fqnhash_key;
+ALTER TABLE ONLY public.mlmodel_service_entity REPLICA IDENTITY USING INDEX mlmodel_service_entity_namehash_key;
+ALTER TABLE ONLY public.pipeline_entity REPLICA IDENTITY USING INDEX pipeline_entity_fqnhash_key;
+ALTER TABLE ONLY public.pipeline_service_entity REPLICA IDENTITY USING INDEX pipeline_service_entity_namehash_key;
+ALTER TABLE ONLY public.policy_entity REPLICA IDENTITY USING INDEX policy_entity_fqnhash_key;
+ALTER TABLE ONLY public.query_entity REPLICA IDENTITY USING INDEX query_entity_namehash_key;
+ALTER TABLE ONLY public.report_entity REPLICA IDENTITY USING INDEX report_entity_fqnhash_key;
+ALTER TABLE ONLY public.role_entity REPLICA IDENTITY USING INDEX role_entity_namehash_key;
+ALTER TABLE ONLY public.search_index_entity REPLICA IDENTITY USING INDEX search_index_entity_fqnhash_key;
+ALTER TABLE ONLY public.search_service_entity REPLICA IDENTITY USING INDEX search_service_entity_namehash_key;
+ALTER TABLE ONLY public.storage_container_entity REPLICA IDENTITY USING INDEX storage_container_entity_fqnhash_key;
+ALTER TABLE ONLY public.storage_service_entity REPLICA IDENTITY USING INDEX storage_service_entity_namehash_key;
+ALTER TABLE ONLY public.table_entity REPLICA IDENTITY USING INDEX table_entity_fqnhash_key;
+ALTER TABLE ONLY public.tag REPLICA IDENTITY USING INDEX tag_fqnhash_key;
+ALTER TABLE ONLY public.tag_usage REPLICA IDENTITY USING INDEX tag_usage_source_tagfqnhash_targetfqnhash_key;
+ALTER TABLE ONLY public.team_entity REPLICA IDENTITY USING INDEX team_entity_namehash_key;
+ALTER TABLE ONLY public.test_case REPLICA IDENTITY USING INDEX test_case_fqnhash_key;
+ALTER TABLE ONLY public.test_definition REPLICA IDENTITY USING INDEX test_definition_namehash_key;
+ALTER TABLE ONLY public.test_suite REPLICA IDENTITY USING INDEX test_suite_namehash_key;
+ALTER TABLE ONLY public.thread_entity REPLICA IDENTITY USING INDEX task_id_constraint;
+ALTER TABLE ONLY public.topic_entity REPLICA IDENTITY USING INDEX topic_entity_fqnhash_key;
+ALTER TABLE ONLY public.user_entity REPLICA IDENTITY USING INDEX user_entity_namehash_key;
+ALTER TABLE ONLY public.web_analytic_event REPLICA IDENTITY USING INDEX web_analytic_event_fqnhash_key;
+
+
+--
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
 --
 
