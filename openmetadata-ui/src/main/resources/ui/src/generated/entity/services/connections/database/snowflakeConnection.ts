@@ -95,7 +95,6 @@ export interface SnowflakeConnection {
     supportsMetadataExtraction?:            boolean;
     supportsProfiler?:                      boolean;
     supportsQueryComment?:                  boolean;
-    supportsQueryRunner?:                   boolean;
     supportsSystemProfile?:                 boolean;
     supportsUsageExtraction?:               boolean;
     /**
