@@ -53,10 +53,11 @@ ALTER TABLE IF EXISTS topic_entity REPLICA IDENTITY USING INDEX topic_entity_fqn
 ALTER TABLE IF EXISTS user_entity REPLICA IDENTITY USING INDEX user_entity_namehash_key;
 ALTER TABLE IF EXISTS web_analytic_event REPLICA IDENTITY USING INDEX web_analytic_event_fqnhash_key;
 
--- For entity_extension_time_series, set replica identity after constraint is created in later migrations
--- This table gets its unique constraint in version 1.1.5 native migrations
+-- For entity_extension_time_series, set replica identity using the constraint created in version 1.1.5
+-- The constraint entity_extension_time_series_constraint was added in earlier migrations
 ALTER TABLE IF EXISTS entity_extension_time_series REPLICA IDENTITY USING INDEX entity_extension_time_series_constraint;
 
--- For time series tables created in native migrations
+-- For time series tables created in version 1.1.5
+-- These tables have their unique constraints defined at creation time
 ALTER TABLE IF EXISTS profiler_data_time_series REPLICA IDENTITY USING INDEX profiler_data_time_series_unique_hash_extension_ts;
 ALTER TABLE IF EXISTS data_quality_data_time_series REPLICA IDENTITY USING INDEX data_quality_data_time_series_unique_hash_extension_ts;
