@@ -559,19 +559,22 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateEnableStreamableLogs(
         Boolean origEnableStreamableLogs, Boolean updatedEnableStreamableLogs) {
       if (updatedEnableStreamableLogs != null
-          && (origEnableStreamableLogs == null || !origEnableStreamableLogs.equals(updatedEnableStreamableLogs))) {
+          && (origEnableStreamableLogs == null
+              || !origEnableStreamableLogs.equals(updatedEnableStreamableLogs))) {
         recordChange("enableStreamableLogs", origEnableStreamableLogs, updatedEnableStreamableLogs);
       }
     }
 
     private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
-      if (updatedDeployed != null && (origDeployed == null || !origDeployed.equals(updatedDeployed))) {
+      if (updatedDeployed != null
+          && (origDeployed == null || !origDeployed.equals(updatedDeployed))) {
         recordChange("deployed", origDeployed, updatedDeployed);
       }
     }
 
     private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
-      if (updatedRaiseOnError != null && (origRaiseOnError == null || !origRaiseOnError.equals(updatedRaiseOnError))) {
+      if (updatedRaiseOnError != null
+          && (origRaiseOnError == null || !origRaiseOnError.equals(updatedRaiseOnError))) {
         recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
