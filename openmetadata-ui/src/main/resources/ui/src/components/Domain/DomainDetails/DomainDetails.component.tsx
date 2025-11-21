@@ -130,6 +130,7 @@ const DomainDetails = ({
   domainFqnOverride,
   onNavigate,
   refreshDomains,
+  extraProps,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -834,13 +835,14 @@ const DomainDetails = ({
           entityType: 'domain',
           parent: isSubDomain ? { type: 'domain' } : undefined,
         }}
-        size={91}
+        size={extraProps?.iconSize ?? 91}
         sx={{
           borderRadius: '5px',
           border: '2px solid',
           borderColor: theme.palette.allShades.white,
           marginTop: '-25px',
           marginRight: 2,
+          ...extraProps?.iconStyles,
         }}
       />
     );
@@ -868,11 +870,19 @@ const DomainDetails = ({
           flexDirection: 'column',
           gap: 1.5,
         }}>
-        <CoverImage
-          imageUrl={domain.style?.coverImage?.url}
-          position={{ y: domain.style?.coverImage?.position }}
-        />
-        <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
+        {extraProps?.showCoverImage !== false && (
+          <CoverImage
+            imageUrl={domain.style?.coverImage?.url}
+            position={{ y: domain.style?.coverImage?.position }}
+          />
+        )}
+        <Box
+          sx={{
+            display: 'flex',
+            mx: 5,
+            alignItems: 'flex-end',
+            ...extraProps?.headerContainerStyles,
+          }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader
               breadcrumb={[]}
@@ -894,6 +904,7 @@ const DomainDetails = ({
                 justifyContent: 'flex-end',
                 alignItems: 'center',
                 pb: '4px',
+                ...extraProps?.actionContainerStyles,
               }}>
               {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
@@ -991,7 +1002,7 @@ const DomainDetails = ({
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
           <Box className="domain-details-page-tabs" sx={{ width: '100%' }}>
-            <Box sx={{ padding: 5 }}>
+            <Box sx={{ padding: 5, ...extraProps?.tabContainerStyles }}>
               <Tabs
                 destroyInactiveTabPane
                 activeKey={activeTab}
@@ -1074,7 +1085,13 @@ const DomainDetails = ({
   return (
     <>
       {breadcrumbs}
-      <Box sx={getDomainContainerStyles(theme)}>{content}</Box>
+      <Box
+        sx={{
+          ...getDomainContainerStyles(theme),
+          ...extraProps?.domainContainerStyles,
+        }}>
+        {content}
+      </Box>
     </>
   );
 };

@@ -10,8 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SxProps } from '@mui/material';
+import { Theme } from '@mui/system';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
+
+export type DomainExtraProps = {
+  iconSize?: number;
+  showCoverImage?: boolean;
+  iconStyles?: SxProps<Theme>;
+  headerContainerStyles?: SxProps<Theme>;
+  tabContainerStyles?: SxProps<Theme>;
+  domainContainerStyles?: SxProps<Theme>;
+  actionContainerStyles?: SxProps<Theme>;
+};
 
 export interface DomainDetailsProps {
   domain: Domain;
@@ -38,4 +50,5 @@ export interface DomainDetailsProps {
    */
   onNavigate?: (path: string) => void;
   refreshDomains?: () => void;
+  extraProps?: DomainExtraProps;
 }

@@ -50,6 +50,7 @@ import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
+import '../../ExploreV1/exploreV1.less';
 
 interface DomainTreeViewProps {
   searchQuery?: string;
@@ -761,7 +762,8 @@ const DomainTreeView = ({
                 <Typography
                   sx={{
                     color: 'text.primary',
-                  }}>
+                  }}
+                  variant="body2">
                   {getEntityName(node)}
                 </Typography>
                 {hasChildren && (
@@ -856,6 +858,15 @@ const DomainTreeView = ({
         <DomainDetails
           activeTab={activeTab}
           domain={selectedDomain}
+          extraProps={{
+            showCoverImage: false,
+            iconSize: 60,
+            iconStyles: { marginTop: 0 },
+            headerContainerStyles: { mx: 0, alignItems: 'center' },
+            tabContainerStyles: { p: 0, py: 5 },
+            domainContainerStyles: { border: 'none' },
+            actionContainerStyles: { p: 0 },
+          }}
           handleFollowingClick={handleFollowingToggle}
           isFollowing={isFollowing}
           isFollowingLoading={isFollowingLoading}
