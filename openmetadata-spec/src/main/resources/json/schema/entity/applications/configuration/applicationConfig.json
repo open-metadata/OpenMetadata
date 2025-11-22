@@ -14,7 +14,7 @@
           "$ref": "external/automatorAppConfig.json"
         },
         {
-          "$ref": "external/slackAppTokenConfiguration.json"
+          "$ref": "../../../configuration/slackAppConfiguration.json"
         },
         {
           "$ref": "external/collateAIQualityAgentAppConfig.json"

@@ -20,6 +20,7 @@ import {
   LOG_ENTITY_TYPE,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
+  PLACEHOLDER_ROUTE_DIMENSION_KEY,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_ID,
@@ -560,6 +561,20 @@ export const getTestCaseVersionPath = (
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+export const getTestCaseDimensionsDetailPagePath = (
+  fqn: string,
+  dimensionKey: string,
+  tab = TestCasePageTabs.TEST_CASE_RESULTS
+) => {
+  let path = ROUTES.TEST_CASE_DIMENSIONS_WITH_TAB;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
+    .replace(PLACEHOLDER_ROUTE_DIMENSION_KEY, dimensionKey)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };

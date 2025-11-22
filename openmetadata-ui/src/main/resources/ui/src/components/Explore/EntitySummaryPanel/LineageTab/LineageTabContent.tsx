@@ -13,7 +13,7 @@
 
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -31,6 +31,7 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
 import './LineageTabContent.less';
@@ -42,6 +43,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
+  const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
     useMemo(() => {
@@ -122,8 +124,37 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     return items;
   }, [filter, upstreamNodes, downstreamNodes, lineageData, entityFqn]);
 
+  const filteredLineageItems = useMemo(() => {
+    if (!searchText) {
+      return lineageItems;
+    }
+
+    const searchLower = searchText.toLowerCase();
+
+    return lineageItems.filter((item) => {
+      const entityName = item.entity.name?.toLowerCase() || '';
+      const entityDisplayName = item.entity.displayName?.toLowerCase() || '';
+      const entityFqn = item.entity.fullyQualifiedName?.toLowerCase() || '';
+
+      return (
+        entityName.includes(searchLower) ||
+        entityDisplayName.includes(searchLower) ||
+        entityFqn.includes(searchLower)
+      );
+    });
+  }, [lineageItems, searchText]);
+
   return (
     <div className="lineage-tab-content">
+      <SearchBarComponent
+        containerClassName="searchbar-container"
+        placeholder={t('label.search-for-type', {
+          type: t('label.entity-plural'),
+        })}
+        searchValue={searchText}
+        typingInterval={350}
+        onSearch={setSearchText}
+      />
       <div className="lineage-filter-buttons">
         <Button
           className={`lineage-filter-button ${
@@ -171,8 +202,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
       {/* Lineage Items */}
       <div className="lineage-items-list">
-        {lineageItems.length > 0 ? (
-          lineageItems.map((item) => (
+        {filteredLineageItems.length > 0 ? (
+          filteredLineageItems.map((item) => (
             <Link
               className="lineage-item-link"
               key={
@@ -202,14 +233,17 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     </div>
                     <div className="item-path-container">
                       {item.path &&
-                        getTruncatedPath(item.path, 'breadcrumb-container')}
+                        getTruncatedPath(
+                          item.path,
+                          'condensed-breadcrumb-container'
+                        )}
                     </div>
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <UpstreamIcon />
+                      <UpstreamIcon height={18} width={18} />
                     ) : (
-                      <DownstreamIcon />
+                      <DownstreamIcon height={18} width={18} />
                     )}
                   </div>
                 </div>
@@ -239,9 +273,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     </span>
                     {item.entity.owners && item.entity.owners.length > 0 ? (
                       <OwnerLabel
-                        isCompactView
                         avatarSize={16}
                         className="item-owner-label-text"
+                        isCompactView={false}
                         owners={item.entity.owners}
                         showLabel={false}
                       />
@@ -261,13 +295,13 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </Link>
           ))
         ) : (
-          <div className="lineage-items-list empty-state">
+          <div>
             <ErrorPlaceHolderNew
-              className="text-grey-14"
+              className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center text-grey-muted m-t-sm">
-                {t('label.no-data-found')}
+              <Typography.Paragraph className="text-center  no-data-placeholder">
+                {t('label.lineage-not-found')}
               </Typography.Paragraph>
             </ErrorPlaceHolderNew>
           </div>

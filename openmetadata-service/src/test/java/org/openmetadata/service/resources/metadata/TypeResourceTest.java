@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -553,6 +554,117 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     boolean hasDataModelColumns =
         fields.stream().anyMatch(field -> "dataModel.columns".equals(field.get("name")));
     assertTrue(hasDataModelColumns, "dataModel.columns field should be exposed");
+  }
+
+  @Test
+  void test_getEntityTypeFields_classificationEntities() throws HttpResponseException {
+    // Test that classification entities (classification and tag) are properly recognized
+    // and their fields are correctly extracted
+
+    // Test Classification entity fields
+    WebTarget classificationTarget = getCollection().path("/fields/classification");
+    List<Map<String, Object>> classificationFields =
+        TestUtils.get(classificationTarget, List.class, ADMIN_AUTH_HEADERS);
+
+    // Verify essential Classification fields are present
+    assertNotNull(classificationFields, "Classification fields should not be null");
+    assertFalse(classificationFields.isEmpty(), "Classification should have fields");
+
+    // Check for key Classification fields
+    boolean hasName =
+        classificationFields.stream().anyMatch(field -> "name".equals(field.get("name")));
+    boolean hasDescription =
+        classificationFields.stream().anyMatch(field -> "description".equals(field.get("name")));
+    boolean hasDisabled =
+        classificationFields.stream().anyMatch(field -> "disabled".equals(field.get("name")));
+    boolean hasMutuallyExclusive =
+        classificationFields.stream()
+            .anyMatch(field -> "mutuallyExclusive".equals(field.get("name")));
+    boolean hasOwners =
+        classificationFields.stream().anyMatch(field -> "owners".equals(field.get("name")));
+    boolean hasReviewers =
+        classificationFields.stream().anyMatch(field -> "reviewers".equals(field.get("name")));
+    boolean hasEntityStatus =
+        classificationFields.stream().anyMatch(field -> "entityStatus".equals(field.get("name")));
+
+    assertTrue(hasName, "Classification should have 'name' field");
+    assertTrue(hasDescription, "Classification should have 'description' field");
+    assertTrue(hasDisabled, "Classification should have 'disabled' field");
+    assertTrue(hasMutuallyExclusive, "Classification should have 'mutuallyExclusive' field");
+    assertTrue(hasOwners, "Classification should have 'owners' field");
+    assertTrue(hasReviewers, "Classification should have 'reviewers' field");
+    assertTrue(hasEntityStatus, "Classification should have 'entityStatus' field");
+
+    // Test Tag entity fields
+    WebTarget tagTarget = getCollection().path("/fields/tag");
+    List<Map<String, Object>> tagFields = TestUtils.get(tagTarget, List.class, ADMIN_AUTH_HEADERS);
+
+    // Verify essential Tag fields are present
+    assertNotNull(tagFields, "Tag fields should not be null");
+    assertFalse(tagFields.isEmpty(), "Tag should have fields");
+
+    // Check for key Tag fields
+    boolean hasTagName = tagFields.stream().anyMatch(field -> "name".equals(field.get("name")));
+    boolean hasTagDescription =
+        tagFields.stream().anyMatch(field -> "description".equals(field.get("name")));
+    boolean hasClassification =
+        tagFields.stream().anyMatch(field -> "classification".equals(field.get("name")));
+    boolean hasParent = tagFields.stream().anyMatch(field -> "parent".equals(field.get("name")));
+    boolean hasTagDisabled =
+        tagFields.stream().anyMatch(field -> "disabled".equals(field.get("name")));
+    boolean hasTagMutuallyExclusive =
+        tagFields.stream().anyMatch(field -> "mutuallyExclusive".equals(field.get("name")));
+    boolean hasTagOwners = tagFields.stream().anyMatch(field -> "owners".equals(field.get("name")));
+    boolean hasTagReviewers =
+        tagFields.stream().anyMatch(field -> "reviewers".equals(field.get("name")));
+    boolean hasTagEntityStatus =
+        tagFields.stream().anyMatch(field -> "entityStatus".equals(field.get("name")));
+    boolean hasRecognizers =
+        tagFields.stream().anyMatch(field -> "recognizers".equals(field.get("name")));
+    boolean hasAutoClassificationEnabled =
+        tagFields.stream().anyMatch(field -> "autoClassificationEnabled".equals(field.get("name")));
+
+    assertTrue(hasTagName, "Tag should have 'name' field");
+    assertTrue(hasTagDescription, "Tag should have 'description' field");
+    assertTrue(hasClassification, "Tag should have 'classification' field");
+    assertTrue(hasParent, "Tag should have 'parent' field");
+    assertTrue(hasTagDisabled, "Tag should have 'disabled' field");
+    assertTrue(hasTagMutuallyExclusive, "Tag should have 'mutuallyExclusive' field");
+    assertTrue(hasTagOwners, "Tag should have 'owners' field");
+    assertTrue(hasTagReviewers, "Tag should have 'reviewers' field");
+    assertTrue(hasTagEntityStatus, "Tag should have 'entityStatus' field");
+    assertTrue(hasRecognizers, "Tag should have 'recognizers' field");
+    assertTrue(hasAutoClassificationEnabled, "Tag should have 'autoClassificationEnabled' field");
+
+    // Verify the field types are correct
+    Map<String, Object> ownersField =
+        classificationFields.stream()
+            .filter(field -> "owners".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(ownersField, "owners field should be present in Classification");
+    assertEquals(
+        "array<entityReference>",
+        ownersField.get("type"),
+        "owners field should be of type array<entityReference>");
+
+    Map<String, Object> reviewersField =
+        tagFields.stream()
+            .filter(field -> "reviewers".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(reviewersField, "reviewers field should be present in Tag");
+    assertEquals(
+        "array<entityReference>",
+        reviewersField.get("type"),
+        "reviewers field should be of type array<entityReference>");
+
+    Map<String, Object> entityStatusField =
+        tagFields.stream()
+            .filter(field -> "entityStatus".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(entityStatusField, "entityStatus field should be present in Tag");
   }
 
   @Override

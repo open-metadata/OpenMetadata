@@ -72,6 +72,8 @@ export enum Access {
  */
 export enum Operation {
     All = "All",
+    BulkCreate = "BulkCreate",
+    BulkUpdate = "BulkUpdate",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",
@@ -105,6 +107,7 @@ export enum Operation {
     EditTests = "EditTests",
     EditTier = "EditTier",
     EditUsage = "EditUsage",
+    EditUserNotificationTemplate = "EditUserNotificationTemplate",
     EditUsers = "EditUsers",
     GenerateToken = "GenerateToken",
     Impersonate = "Impersonate",
@@ -112,6 +115,7 @@ export enum Operation {
     Trigger = "Trigger",
     ViewAll = "ViewAll",
     ViewBasic = "ViewBasic",
+    ViewCustomFields = "ViewCustomFields",
     ViewDataProfile = "ViewDataProfile",
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
