@@ -63,6 +63,8 @@ from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
 
+from ingestion.build.lib.metadata.profiler.metrics.static.count import Count
+
 logger = profiler_interface_registry_logger()
 thread_local = threading.local()
 
@@ -271,7 +273,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     else sample.c[column.name]
                 )
                 subquery = (
-                    self.session.query(func.count(sample_column).label(column.name))
+                    self.session.query(Count(sample_column).fn().label(column.name))
                     .select_from(sample)
                     .group_by(sample_column)
                     .subquery()
