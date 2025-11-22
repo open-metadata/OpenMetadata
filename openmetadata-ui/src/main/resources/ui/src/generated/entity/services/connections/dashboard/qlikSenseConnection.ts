@@ -62,6 +62,8 @@ export interface QlikSenseConnection {
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
+ *
+ * Qlik Authentication using JWT Token
  */
 export interface QlikCertificatesBy {
     sslConfig?: Config;
@@ -77,6 +79,10 @@ export interface QlikCertificatesBy {
      * Root Certificate.
      */
     rootCertificate?: string;
+    /**
+     * JWT token to authenticate to Qlik Sense.
+     */
+    token?: string;
     [property: string]: any;
 }
 
