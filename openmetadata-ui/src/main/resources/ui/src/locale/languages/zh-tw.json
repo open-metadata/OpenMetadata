@@ -1666,6 +1666,8 @@
     "suggested-by": "建議者",
     "suggested-description": "建議的描述",
     "suggested-description-plural": "建議的描述",
+    "suggested-description-tag-plural": "建議的描述 & 標籤",
+    "suggested-tag-plural": "建議的標籤",
     "suggestion": "建議",
     "suggestion-lowercase-plural": "建議",
     "suggestion-pending": "待處理的建議",

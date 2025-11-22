@@ -1666,6 +1666,8 @@
     "suggested-by": "Suggéré par",
     "suggested-description": "Description Suggérée",
     "suggested-description-plural": "Descriptions Suggérées",
+    "suggested-description-tag-plural": "Descriptions & Balises Suggérées",
+    "suggested-tag-plural": "Balises Suggérées",
     "suggestion": "Suggestion",
     "suggestion-lowercase-plural": "suggestions",
     "suggestion-pending": "Suggestions P$ending",

@@ -13,7 +13,7 @@
 BetweenBoundsChecker implements the checker for any metric that should be between two bounds
 """
 import math
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, List, Mapping
 
 from metadata.data_quality.validations.checkers.base_checker import (
     BaseValidationChecker,
@@ -77,14 +77,12 @@ class BetweenBoundsChecker(BaseValidationChecker):
         """Check if any value is outside [min_bound, max_bound]. Used on Pandas Data Quality."""
         return any(self._value_violates(value) for value in metrics.values())
 
-    def build_violation_sqa(
-        self, metrics: Mapping[str, "ClauseElement"]
-    ) -> "ClauseElement":
+    def build_violation_sqa(self, metrics: List["ClauseElement"]) -> "ClauseElement":
         """Build SQA Violation Expression"""
         from sqlalchemy import and_, literal, or_
 
         conditions = []
-        for expr in metrics.values():
+        for expr in metrics:
             expr_conditions = []
 
             if not math.isinf(self.min_bound):

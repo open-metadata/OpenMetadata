@@ -58,7 +58,10 @@ import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
-import { getPrioritizedEditPermission } from './PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -487,6 +490,7 @@ export const getDomainDetailTabs = ({
                 feedCount={feedCount}
                 layoutType={ActivityFeedLayoutType.THREE_PANEL}
                 owners={domain.owners}
+                urlFqn={domain.fullyQualifiedName}
                 onFeedUpdate={onFeedUpdate ?? noop}
                 onUpdateEntityDetails={noop}
               />
@@ -559,7 +563,10 @@ export const getDomainDetailTabs = ({
                   domainPermission,
                   Operation.EditCustomFields
                 )}
-                hasPermission={domainPermission.ViewAll}
+                hasPermission={getPrioritizedViewPermission(
+                  domainPermission,
+                  Operation.ViewCustomFields
+                )}
               />
             ),
           },

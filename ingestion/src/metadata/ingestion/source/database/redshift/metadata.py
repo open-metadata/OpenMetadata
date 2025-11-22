@@ -216,9 +216,9 @@ class RedshiftSource(
         result = self.connection.execute(
             sql.text(
                 REDSHIFT_GET_ALL_RELATION_INFO.format(
-                    view_filter="c.relkind IN ('v', 'm')"
+                    view_filter="OR c.relkind IN ('v', 'm')"
                     if self.source_config.includeViews
-                    else "TRUE"
+                    else "AND c.relkind NOT IN ('v', 'm')"
                 )
             ),
             {"schema": schema_name},
