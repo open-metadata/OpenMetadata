@@ -253,8 +253,8 @@ class MicroStrategyClient:
         """
         try:
             headers = {"X-MSTR-ProjectID": project_id} | self.auth_params.auth_header
-            resp_dashboard = self.client._request(  # pylint: disable=protected-access
-                "GET", path=f"/v2/dossiers/{dashboard_id}/definition", headers=headers
+            resp_dashboard = self.client.get(
+                path=f"/v2/dossiers/{dashboard_id}/definition", headers=headers
             )
 
             return MstrDashboardDetails(
@@ -277,8 +277,8 @@ class MicroStrategyClient:
                 "cubeId": cube_id,
             } | self.auth_params.auth_header
 
-            resp_dataset = self.client._request(  # pylint: disable=protected-access
-                "GET", path=f"/v2/cubes/{cube_id}/sqlView", headers=headers
+            resp_dataset = self.client.get(
+                path=f"/v2/cubes/{cube_id}/sqlView", headers=headers
             )
             return resp_dataset["sqlStatement"]
 
