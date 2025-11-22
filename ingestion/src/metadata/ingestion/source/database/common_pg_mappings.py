@@ -36,6 +36,7 @@ ischema_names.update(
         "box": create_sqlalchemy_type("BOX"),
         "bpchar": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
+        "citext": SqlAlchemyString,
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),
         "path": create_sqlalchemy_type("PATH"),
