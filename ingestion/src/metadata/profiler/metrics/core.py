@@ -148,7 +148,7 @@ class Metric(ABC):
     def is_computed_metric(cls) -> bool:
         """
         Marks the metric as computed metric. A computed metric
-        is a metric that computed during the profiling process.
+        is a metric that is computed during the profiling process.
 
         By default, assume that a metric is a computed
         metric. Non Computed metrics should override this.

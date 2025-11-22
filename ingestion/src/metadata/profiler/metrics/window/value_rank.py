@@ -30,6 +30,11 @@ class ValueRank(StaticMetric):
 
     @classmethod
     def is_computed_metric(cls) -> bool:
+        """
+        Indicates that ValueRank is not a computed metric.
+        Unlike the base class default, this returns False because ValueRank is a window metric
+        that operates over value occurrences rather than being derived from other computed metrics.
+        """
         return False
 
     @classmethod
