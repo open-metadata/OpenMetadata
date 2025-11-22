@@ -25,11 +25,12 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, Union
 
-from sqlalchemy import Column, func, inspect, text
+from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.elements import Label
 
+from ingestion.build.lib.metadata.profiler.metrics.static.count import Count
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     SystemProfile,
@@ -62,8 +63,6 @@ from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
-
-from ingestion.build.lib.metadata.profiler.metrics.static.count import Count
 
 logger = profiler_interface_registry_logger()
 thread_local = threading.local()

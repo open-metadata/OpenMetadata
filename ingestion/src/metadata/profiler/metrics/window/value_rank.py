@@ -14,8 +14,8 @@ ValueRank Metric definition
 """
 from sqlalchemy import column
 
-from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.value_rank import ValueRankFn
 
 
