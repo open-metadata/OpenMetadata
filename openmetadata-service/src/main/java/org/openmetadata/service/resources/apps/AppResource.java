@@ -374,7 +374,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     List<AppRunRecord> sortedRuns = new ArrayList<>(runs.getData());
     sortedRuns.sort(
         Comparator.comparing(
-            AppRunRecord::getStartTime, Comparator.nullsLast(Comparator.naturalOrder())));
+            AppRunRecord::getStartTime, Comparator.nullsLast(Comparator.reverseOrder())));
     runs.setData(sortedRuns);
     return runs;
   }
