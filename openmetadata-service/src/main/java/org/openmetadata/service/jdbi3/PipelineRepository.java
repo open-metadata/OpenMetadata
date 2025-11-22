@@ -83,6 +83,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -373,48 +374,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    */
   private void indexPipelineExecutionInES(Pipeline pipeline, PipelineStatus pipelineStatus)
       throws IOException {
-    Map<String, Object> doc = new HashMap<>();
+    PipelineExecutionIndex pipelineExecutionIndex =
+        new PipelineExecutionIndex(pipeline, pipelineStatus);
 
-    // Pipeline identifiers
-    doc.put("pipelineId", pipeline.getId().toString());
-    doc.put("pipelineFqn", pipeline.getFullyQualifiedName());
-    doc.put("pipelineName", pipeline.getName());
-
-    // Service information
-    if (pipeline.getService() != null) {
-      doc.put("serviceName", pipeline.getService().getName());
-    }
-    doc.put("serviceType", pipeline.getServiceType().value());
-
-    // Execution data
-    doc.put("executionId", pipelineStatus.getExecutionId());
-    doc.put("timestamp", pipelineStatus.getTimestamp());
-    doc.put("executionStatus", pipelineStatus.getExecutionStatus().value());
-
-    // Runtime calculation (required for Runtime Trend API)
-    if (pipelineStatus.getEndTime() != null) {
-      doc.put("endTime", pipelineStatus.getEndTime());
-      Long runtime = pipelineStatus.getEndTime() - pipelineStatus.getTimestamp();
-      doc.put("runtime", runtime);
-    }
-
-    // Additional metadata
-    if (pipelineStatus.getVersion() != null) {
-      doc.put("version", pipelineStatus.getVersion());
-    }
-
-    // Mark as execution record (distinguish from table-pipeline relationships)
-    doc.put("entityType", "pipelineExecution");
-    doc.put("deleted", false);
-
-    // Unique document ID: prevents overwrites, one doc per execution
-    String docId =
-        String.format(
-            "%s_%s_%s",
-            pipeline.getFullyQualifiedName(),
-            pipelineStatus.getExecutionId(),
-            pipelineStatus.getTimestamp());
-
+    Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
+    String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
     String docJson = JsonUtils.pojoToJson(doc);
     String indexName =
         Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
