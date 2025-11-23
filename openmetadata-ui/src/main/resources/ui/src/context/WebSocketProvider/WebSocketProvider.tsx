@@ -23,6 +23,7 @@ import {
 import { io, Socket } from 'socket.io-client';
 import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { getBasePath } from '../../utils/HistoryUtils';
 
 export const WebSocketContext = createContext<{ socket?: Socket }>({});
 
@@ -36,9 +37,14 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
 
   // Init websocket for Feed & notification
   const initWebSocket = useCallback(() => {
+    const basePath = getBasePath();
+    const socketPath = basePath
+      ? `${basePath}${ROUTES.ACTIVITY_PUSH_FEED}`
+      : ROUTES.ACTIVITY_PUSH_FEED;
+
     setSocket(
-      io(ROUTES.HOME, {
-        path: ROUTES.ACTIVITY_PUSH_FEED,
+      io({
+        path: socketPath,
         reconnectionAttempts: 3,
         query: {
           userId: currentUser?.id,
