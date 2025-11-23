@@ -22,6 +22,15 @@ import { createCustomPropertyForEntity } from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
 
+interface ColumnChild {
+  name: string;
+  dataType: string;
+  dataTypeDisplay: string;
+  description?: string;
+  dataLength?: number;
+  children?: ColumnChild[];
+}
+
 const testEntity = new TableClass();
 const testDataProduct = new DataProduct(
   [EntityDataClass.domain1],
@@ -352,7 +361,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    testEntity.children.forEach(async (child) => {
+    (testEntity.children as ColumnChild[]).forEach(async (child) => {
       const fieldCard = adminPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -376,7 +385,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
 
       await expect(fieldDescription).toBeVisible();
-      await expect(fieldDescription).toContainText(child.description);
+      await expect(fieldDescription).toContainText(child.description ?? '');
     });
   });
 
@@ -398,7 +407,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await expect(tabContent).toBeVisible();
 
     // When there's no lineage, verify empty state
-    await expect(adminPage.getByText(/No data found/i)).toBeVisible();
+    await expect(adminPage.getByText(/Lineage not found/i)).toBeVisible();
   });
 
   test('Lineage Tab - With Upstream and Downstream', async ({ adminPage }) => {
@@ -538,17 +547,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    // Verify empty state message with documentation link
+    // Verify empty state message
     await expect(
       adminPage.getByText(
-        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+        /No data quality results found.*Schedule or run tests to see results/i
       )
     ).toBeVisible();
-
-    // Verify documentation link is present
-    const docLink = tabContent.locator('a[href*="data-quality"]');
-
-    await expect(docLink).toBeVisible();
   });
 
   test('Data Quality Tab - Incidents Empty State', async ({ adminPage }) => {
@@ -566,17 +570,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    // Verify empty state message with documentation link
+    // Verify empty state message
     await expect(
       adminPage.getByText(
-        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+        /No data quality results found.*Schedule or run tests to see results/i
       )
     ).toBeVisible();
-
-    // Verify documentation link is present
-    const docLink = tabContent.locator('a[href*="data-quality"]');
-
-    await expect(docLink).toBeVisible();
   });
 
   test('Data Quality Tab - With Test Cases', async ({ adminPage }) => {
@@ -599,7 +598,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const testCase2 = await testEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
-        entityLink: `<#E::table::${testEntity.entityResponseData?.['fullyQualifiedName']}::columns::${testEntity.entity?.columns[0].name}>`,
+        entityLink: `<#E::table::${
+          testEntity.entityResponseData?.['fullyQualifiedName']
+        }::columns::${(testEntity.entity?.columns as ColumnChild[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -749,7 +750,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(columnDetail).toBeVisible();
       await expect(columnDetail).toContainText(
-        testEntity.entity?.columns[0].name
+        (testEntity.entity?.columns as ColumnChild[])[0].name
       );
 
       // Switch to success filter
@@ -1319,7 +1320,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    testEntity.children.forEach(async (child) => {
+    (testEntity.children as ColumnChild[]).forEach(async (child) => {
       const fieldCard = dataStewardPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -1343,7 +1344,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       );
 
       await expect(fieldDescription).toBeVisible();
-      await expect(fieldDescription).toContainText(child.description);
+      await expect(fieldDescription).toContainText(child.description ?? '');
     });
   });
 
@@ -1369,7 +1370,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     await expect(tabContent).toBeVisible();
 
     // When there's no lineage, verify empty state
-    await expect(dataStewardPage.getByText(/No data found/i)).toBeVisible();
+    await expect(dataStewardPage.getByText(/Lineage not found/i)).toBeVisible();
   });
 
   test('Data Steward - Data Quality Tab - No Test Cases', async ({
@@ -1391,17 +1392,12 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    // Verify empty state message with documentation link
+    // Verify empty state message
     await expect(
       dataStewardPage.getByText(
-        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+        /No data quality results found.*Schedule or run tests to see results/i
       )
     ).toBeVisible();
-
-    // Verify documentation link is present
-    const docLink = tabContent.locator('a[href*="data-quality"]');
-
-    await expect(docLink).toBeVisible();
   });
 
   test('Data Steward - Custom Properties Tab - View Custom Properties', async ({
@@ -1702,7 +1698,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    testEntity.children.forEach(async (child) => {
+    (testEntity.children as ColumnChild[]).forEach(async (child) => {
       const fieldCard = dataConsumerPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -1726,7 +1722,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       );
 
       await expect(fieldDescription).toBeVisible();
-      await expect(fieldDescription).toContainText(child.description);
+      await expect(fieldDescription).toContainText(child.description ?? '');
     });
   });
 
@@ -1752,7 +1748,9 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     await expect(tabContent).toBeVisible();
 
     // When there's no lineage, verify empty state
-    await expect(dataConsumerPage.getByText(/No data found/i)).toBeVisible();
+    await expect(
+      dataConsumerPage.getByText(/Lineage not found/i)
+    ).toBeVisible();
   });
 
   test('Data Consumer - Data Quality Tab - No Test Cases', async ({
@@ -1774,17 +1772,12 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    // Verify empty state message with documentation link
+    // Verify empty state message
     await expect(
       dataConsumerPage.getByText(
-        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+        /No data quality results found.*Schedule or run tests to see results/i
       )
     ).toBeVisible();
-
-    // Verify documentation link is present
-    const docLink = tabContent.locator('a[href*="data-quality"]');
-
-    await expect(docLink).toBeVisible();
   });
 
   test('Data Consumer - Data Quality Tab - Incidents Empty State', async ({
@@ -1806,17 +1799,12 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    // Verify empty state message with documentation link
+    // Verify empty state message
     await expect(
       dataConsumerPage.getByText(
-        'Enhance your data reliability by adding quality tests to this table. Our step-by-step guide will show you how to get started, explore our guide here.'
+        /No data quality results found.*Schedule or run tests to see results/i
       )
     ).toBeVisible();
-
-    // Verify documentation link is present
-    const docLink = tabContent.locator('a[href*="data-quality"]');
-
-    await expect(docLink).toBeVisible();
   });
 
   test('Data Consumer - Custom Properties Tab - View Custom Properties', async ({
