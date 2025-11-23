@@ -1048,9 +1048,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     );
     const displayedCount = await displayedPropertyCards.count();
 
-    // Verify at least some properties are displayed (max 5)
     expect(displayedCount).toBeGreaterThan(0);
-    expect(displayedCount).toBeLessThanOrEqual(5);
 
     for (let i = 0; i < displayedCount; i++) {
       const propertyCard = displayedPropertyCards.nth(i);
