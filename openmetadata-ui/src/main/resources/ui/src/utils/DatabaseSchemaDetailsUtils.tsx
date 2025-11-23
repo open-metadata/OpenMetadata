@@ -48,6 +48,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   activeTab,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   storedProcedureCount,
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
@@ -135,7 +136,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
           className=""
           entityType={EntityType.DATABASE_SCHEMA}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

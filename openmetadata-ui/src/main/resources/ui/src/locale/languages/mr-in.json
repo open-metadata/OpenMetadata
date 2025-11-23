@@ -1666,6 +1666,8 @@
     "suggested-by": "द्वारे सुचवलेले",
     "suggested-description": "सुचवलेले वर्णन",
     "suggested-description-plural": "सुचवलेली वर्णने",
+    "suggested-description-tag-plural": "सुचवलेली वर्णने & टॅग",
+    "suggested-tag-plural": "सुचवलेले टॅग",
     "suggestion": "सूचना",
     "suggestion-lowercase-plural": "सूचना",
     "suggestion-pending": "प्रलंबित सूचना",
