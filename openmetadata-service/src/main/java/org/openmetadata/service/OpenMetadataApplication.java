@@ -204,13 +204,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
-    LOG.info("**** BASE_PATH Configuration ****");
-    LOG.info("BASE_PATH from config: {}", catalogConfig.getBasePath());
-    LOG.info(
-        "Application Context Path: {}",
-        ((DefaultServerFactory) catalogConfig.getServerFactory()).getApplicationContextPath());
-    LOG.info("*********************************");
-
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
