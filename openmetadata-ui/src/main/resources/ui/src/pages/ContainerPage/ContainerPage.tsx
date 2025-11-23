@@ -210,6 +210,7 @@ const ContainerPage = () => {
     editLineagePermission,
     viewBasicPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -242,6 +243,10 @@ const ContainerPage = () => {
         Operation.ViewBasic
       ),
       viewAllPermission: containerPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        containerPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [containerPermissions, deleted]
   );
@@ -492,6 +497,7 @@ const ContainerPage = () => {
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       feedCount: feedCount ?? { totalCount: 0 },
       getEntityFeedCount,
       handleFeedCount,
@@ -515,6 +521,7 @@ const ContainerPage = () => {
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     deleted,
     feedCount.totalCount,
     handleFeedCount,

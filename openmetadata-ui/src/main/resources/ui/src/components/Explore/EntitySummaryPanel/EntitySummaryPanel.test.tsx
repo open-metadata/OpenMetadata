@@ -41,7 +41,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       ViewBasic: true,
-      ViewAll: true,
+      ViewCustomFields: true,
     }),
   }),
 }));

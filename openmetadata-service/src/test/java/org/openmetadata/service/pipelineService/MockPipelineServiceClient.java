@@ -1,5 +1,7 @@
 package org.openmetadata.service.pipelineService;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -19,66 +21,75 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
     super(pipelineServiceClientConfiguration);
   }
 
+  private PipelineServiceClientResponse createSuccessResponse(String message) {
+    return new PipelineServiceClientResponse()
+        .withCode(200)
+        .withReason(message)
+        .withPlatform("Mock");
+  }
+
   @Override
   public PipelineServiceClientResponse getServiceStatusInternal() {
-    return null;
+    return createSuccessResponse("Mock service is healthy");
   }
 
   @Override
   public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
-    return null;
+    return createSuccessResponse("Mock workflow triggered successfully");
   }
 
   @Override
   public PipelineServiceClientResponse runApplicationFlow(App application) {
-    return null;
+    return createSuccessResponse("Mock application flow triggered successfully");
   }
 
   @Override
   public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app) {
-    return null;
+    return createSuccessResponse("Mock app validation successful");
   }
 
   @Override
   public PipelineServiceClientResponse deployPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return null;
+    return createSuccessResponse("Mock pipeline deployed successfully");
   }
 
   @Override
   public PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return null;
+    return createSuccessResponse("Mock pipeline triggered successfully");
   }
 
   @Override
   public PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline) {
-    return null;
+    return createSuccessResponse("Mock pipeline deleted successfully");
   }
 
   @Override
   public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
-    return null;
+    return new ArrayList<>();
   }
 
   @Override
   public PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline) {
-    return null;
+    return createSuccessResponse("Mock pipeline toggled successfully");
   }
 
   @Override
   public Map<String, String> getLastIngestionLogs(
       IngestionPipeline ingestionPipeline, String after) {
-    return null;
+    return new HashMap<>();
   }
 
   @Override
   public PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline) {
-    return null;
+    return createSuccessResponse("Mock pipeline killed successfully");
   }
 
   @Override
   public Map<String, String> requestGetHostIp() {
-    return null;
+    Map<String, String> result = new HashMap<>();
+    result.put("ip", "127.0.0.1");
+    return result;
   }
 }

@@ -2,6 +2,7 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
 import org.openmetadata.service.dataInsight.UnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.core.search.Hit;
 import os.org.opensearch.client.opensearch.core.search.HitsMetadata;
@@ -18,7 +19,7 @@ public class OpenSearchUnusedAssetsAggregator
 
   @Override
   protected Object getDataFromSource(Hit<JsonData> hit) {
-    return hit.source().toJson().asJsonObject().get("data");
+    return OsUtils.jsonDataToMap(hit.source()).get("data");
   }
 
   @Override
