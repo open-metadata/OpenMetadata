@@ -3737,7 +3737,7 @@ export interface ConfigObject {
      * provided when identityType is `ANONYMOUS` )
      */
     namespace?:    string;
-    certificates?: QlikCertificatesBy;
+    certificates?: Qlik;
     /**
      * Qlik Sense Base URL, used for genrating dashboard & chat url
      */
@@ -5363,8 +5363,10 @@ export interface SSLCertificatesByPath {
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
+ *
+ * Qlik Authentication using JWT Token
  */
-export interface QlikCertificatesBy {
+export interface Qlik {
     sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
@@ -5378,6 +5380,10 @@ export interface QlikCertificatesBy {
      * Root Certificate.
      */
     rootCertificate?: string;
+    /**
+     * JWT token to authenticate to Qlik Sense.
+     */
+    token?: string;
     [property: string]: any;
 }
 
