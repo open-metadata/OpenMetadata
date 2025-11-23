@@ -34,8 +34,11 @@ public class QueryIndex implements SearchIndex {
     // The full votes object with voter lists is excluded by DEFAULT_EXCLUDED_FIELDS
     if (query.getVotes() != null) {
       Map<String, Object> votesMap = new HashMap<>();
-      votesMap.put("upVotes", query.getVotes().getUpVotes());
-      votesMap.put("downVotes", query.getVotes().getDownVotes());
+      votesMap.put(
+          "upVotes", query.getVotes().getUpVotes() != null ? query.getVotes().getUpVotes() : 0);
+      votesMap.put(
+          "downVotes",
+          query.getVotes().getDownVotes() != null ? query.getVotes().getDownVotes() : 0);
       doc.put("votes", votesMap);
     }
 
