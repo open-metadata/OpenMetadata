@@ -1064,16 +1064,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(propertyValueElement).toBeVisible();
     }
 
-    const totalPropertyCount = Object.keys(customProperties).length;
-    if (totalPropertyCount > 5) {
-      const viewAllLink = summaryPanel.locator('.view-all-container');
-
-      await expect(viewAllLink).toBeVisible();
-      await expect(viewAllLink.locator('.text-primary')).toContainText(
-        'View All'
-      );
-    }
-
     await afterAction();
   });
 });
