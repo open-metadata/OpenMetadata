@@ -1052,7 +1052,6 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
     if (!fieldsToRemove.isEmpty()) {
       result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
-      LOG.info("Fields to remove from search index: {}", fieldsToRemove);
     }
 
     return result;
