@@ -1049,7 +1049,6 @@ export interface ConfigObject {
     supportsLineageExtraction?: boolean;
     supportsProfiler?:          boolean;
     supportsQueryComment?:      boolean;
-    supportsQueryRunner?:       boolean;
     supportsSystemProfile?:     boolean;
     /**
      * Supports Usage Extraction.

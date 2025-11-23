@@ -696,6 +696,12 @@ const DomainTreeView = ({
 
   const handleNavigate = useCallback(
     (path: string) => {
+      if (path.includes('/versions/')) {
+        navigate(path);
+
+        return;
+      }
+
       const regex = /^\/domain\/([^/]+)(?:\/([^/]+))?/;
       const match = regex.exec(path);
       if (match) {

@@ -97,7 +97,7 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
       c.relkind
     FROM pg_catalog.pg_class c
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind IN ('r', 'S', 'f') AND {view_filter}
+    WHERE (c.relkind IN ('r', 'S', 'f') {view_filter})
       AND n.nspname = :schema
     UNION
     SELECT
