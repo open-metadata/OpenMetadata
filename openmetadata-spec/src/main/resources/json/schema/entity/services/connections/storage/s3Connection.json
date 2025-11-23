@@ -53,6 +53,12 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "consoleEndpointURL": {
+      "title": "Console Endpoint URL",
+      "description": "Console EndPoint URL for S3-compatible services",
+      "type": "string",
+      "format": "uri"
     }
   },
   "additionalProperties": false,

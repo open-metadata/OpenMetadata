@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -33,18 +34,6 @@ export interface SecurityValidationResponse {
   status: string;
   message: string;
   results: ValidationResult[];
-}
-
-export interface JsonPatchOperation {
-  op: 'replace' | 'add' | 'remove';
-  path: string;
-  value?:
-    | string
-    | number
-    | boolean
-    | Record<string, unknown>
-    | unknown[]
-    | null;
 }
 
 /**
@@ -105,10 +94,10 @@ export const testSecurityConfiguration = async (
  * @returns Promise with updated configuration
  */
 export const patchAuthenticationConfiguration = async (
-  patches: JsonPatchOperation[]
+  patches: Operation[]
 ): Promise<AxiosResponse<AuthenticationConfiguration>> => {
   return APIClient.patch<
-    JsonPatchOperation[],
+    Operation[],
     AxiosResponse<AuthenticationConfiguration>
   >('/system/settings/authenticationConfiguration', patches, {
     headers: {
@@ -123,16 +112,17 @@ export const patchAuthenticationConfiguration = async (
  * @returns Promise with updated configuration
  */
 export const patchAuthorizerConfiguration = async (
-  patches: JsonPatchOperation[]
+  patches: Operation[]
 ): Promise<AxiosResponse<AuthorizerConfiguration>> => {
-  return APIClient.patch<
-    JsonPatchOperation[],
-    AxiosResponse<AuthorizerConfiguration>
-  >('/system/settings/authorizerConfiguration', patches, {
-    headers: {
-      'Content-Type': 'application/json-patch+json',
-    },
-  });
+  return APIClient.patch<Operation[], AxiosResponse<AuthorizerConfiguration>>(
+    '/system/settings/authorizerConfiguration',
+    patches,
+    {
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    }
+  );
 };
 
 /**
@@ -141,14 +131,15 @@ export const patchAuthorizerConfiguration = async (
  * @returns Promise with updated configuration
  */
 export const patchSecurityConfiguration = async (
-  patches: JsonPatchOperation[]
+  patches: Operation[]
 ): Promise<AxiosResponse<SecurityConfiguration>> => {
-  return APIClient.patch<
-    JsonPatchOperation[],
-    AxiosResponse<SecurityConfiguration>
-  >('/system/security/config', patches, {
-    headers: {
-      'Content-Type': 'application/json-patch+json',
-    },
-  });
+  return APIClient.patch<Operation[], AxiosResponse<SecurityConfiguration>>(
+    '/system/security/config',
+    patches,
+    {
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    }
+  );
 };

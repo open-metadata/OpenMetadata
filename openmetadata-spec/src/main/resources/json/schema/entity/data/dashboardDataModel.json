@@ -212,8 +212,7 @@
     },
     "entityStatus": {
       "description": "Status of the DashboardDataModel.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

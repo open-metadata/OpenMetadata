@@ -1,0 +1,97 @@
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "name": "sample_table",
+  "displayName": "Sample Table",
+  "fullyQualifiedName": "sample-service.sample-db.public.sample_table",
+  "description": "Mock table for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1234567890000,
+  "updatedBy": "admin",
+  "href": "http://localhost:8585/api/v1/tables/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "tableType": "Regular",
+  "columns": [
+    {
+      "name": "id",
+      "dataType": "BIGINT",
+      "dataTypeDisplay": "bigint",
+      "description": "Unique identifier",
+      "fullyQualifiedName": "sample-service.sample-db.public.sample_table.id",
+      "ordinalPosition": 1
+    },
+    {
+      "name": "name",
+      "dataType": "VARCHAR",
+      "dataTypeDisplay": "varchar(255)",
+      "description": "User name",
+      "fullyQualifiedName": "sample-service.sample-db.public.sample_table.name",
+      "ordinalPosition": 2
+    },
+    {
+      "name": "email",
+      "dataType": "VARCHAR",
+      "dataTypeDisplay": "varchar(255)",
+      "description": "Contact email address",
+      "fullyQualifiedName": "sample-service.sample-db.public.sample_table.email",
+      "ordinalPosition": 3
+    }
+  ],
+  "databaseSchema": {
+    "id": "7c7f9a8b-1234-5678-9abc-def012345678",
+    "type": "databaseSchema",
+    "name": "public",
+    "fullyQualifiedName": "sample-service.sample-db.public",
+    "description": "Public database schema",
+    "displayName": "Public"
+  },
+  "database": {
+    "id": "8d8e0b9c-2345-6789-0bcd-ef1234567890",
+    "type": "database",
+    "name": "sample-db",
+    "fullyQualifiedName": "sample-service.sample-db",
+    "description": "Sample database",
+    "displayName": "Sample DB"
+  },
+  "service": {
+    "id": "9e9f1cad-3456-789a-1cde-f23456789012",
+    "type": "databaseService",
+    "name": "sample-service",
+    "fullyQualifiedName": "sample-service",
+    "displayName": "Sample Service"
+  },
+  "serviceType": "Postgres",
+  "tableConstraints": [
+    {
+      "constraintType": "PRIMARY_KEY",
+      "columns": ["id"]
+    }
+  ],
+  "tablePartition": {
+    "columns": ["created_date"],
+    "intervalType": "TIME-UNIT"
+  },
+  "dataModel": {
+    "id": "4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c",
+    "type": "dashboardDataModel",
+    "name": "sample_data_model",
+    "fullyQualifiedName": "sample-dashboard-service.sample_data_model"
+  },
+  "sourceUrl": "https://github.com/organization/repo/blob/main/schema/sample_table.sql",
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": [],
+  "deleted": false
+}

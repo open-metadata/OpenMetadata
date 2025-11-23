@@ -61,6 +61,12 @@
       "description": "Tenant ID for PowerBI.",
       "type": "string"
     },
+    "apiURL": {
+      "title": "PowerBI REST API url",
+      "description": "API URL to call powerbi rest apis to extract metadata. Default to `https://api.powerbi.com`. You can provide youw own in case of different environment",
+      "type": "string",
+      "default": "https://api.powerbi.com"
+    },
     "authorityURI": {
       "title": "Authority URI",
       "description": "Authority URI for the PowerBI service.",

@@ -71,6 +71,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -136,7 +137,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
         MetadataOperation.EDIT_LINEAGE,
-        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP,
+        MetadataOperation.CREATE_TESTS);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -404,6 +406,39 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Valid CreateTable create) {
     Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateTables",
+      summary = "Bulk create or update tables",
+      description =
+          "Create or update multiple tables in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateTable> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

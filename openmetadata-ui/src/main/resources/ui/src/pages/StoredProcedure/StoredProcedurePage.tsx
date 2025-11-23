@@ -41,6 +41,7 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
+import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -63,7 +64,10 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   getStoredProcedureDetailsPageTabs,
@@ -412,6 +416,7 @@ const StoredProcedurePage = () => {
     editLineagePermission,
     viewAllPermission,
     viewBasicPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -438,6 +443,10 @@ const StoredProcedurePage = () => {
       viewBasicPermission:
         storedProcedurePermissions.ViewAll ||
         storedProcedurePermissions.ViewBasic,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        storedProcedurePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [storedProcedurePermissions, storedProcedure]
   );
@@ -457,6 +466,7 @@ const StoredProcedurePage = () => {
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       onExtensionUpdate,
       getEntityFeedCount: getEntityFeedCount,
       fetchStoredProcedureDetails,
@@ -483,6 +493,7 @@ const StoredProcedurePage = () => {
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     onExtensionUpdate,
     getEntityFeedCount,
     fetchStoredProcedureDetails,

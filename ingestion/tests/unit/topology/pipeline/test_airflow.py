@@ -169,6 +169,17 @@ class TestAirflow(TestCase):
     Test Airflow model processing
     """
 
+    @patch.dict(
+        "os.environ",
+        {
+            "DB_SCHEME": "mysql+pymysql",
+            "DB_USER": "airflow",
+            "DB_PASSWORD": "airflow",
+            "DB_HOST": "localhost",
+            "DB_PORT": "3306",
+            "AIRFLOW_DB": "airflow",
+        },
+    )
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )

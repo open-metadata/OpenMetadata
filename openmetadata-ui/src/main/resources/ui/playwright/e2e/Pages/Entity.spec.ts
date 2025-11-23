@@ -37,13 +37,13 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeDomain,
+  removeSingleSelectDomain,
   verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
@@ -118,7 +118,6 @@ entities.forEach((EntityClass) => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -153,7 +152,10 @@ entities.forEach((EntityClass) => {
           false
         );
 
-        await assignDomain(page, EntityDataClass.domain1.responseData);
+        await assignSingleSelectDomain(
+          page,
+          EntityDataClass.domain1.responseData
+        );
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
@@ -168,22 +170,25 @@ entities.forEach((EntityClass) => {
           },
           false
         );
-        await removeDomain(page, EntityDataClass.domain1.responseData);
+        await removeSingleSelectDomain(
+          page,
+          EntityDataClass.domain1.responseData
+        );
       }
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
+      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+      const OWNER3 = EntityDataClass.user3.getUserDisplayName();
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
-      const OWNER1 = EntityDataClass.team1.data.displayName;
-      const OWNER2 = EntityDataClass.team2.data.displayName;
+      const OWNER1 = EntityDataClass.team1.responseData.displayName;
+      const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
@@ -200,7 +205,7 @@ entities.forEach((EntityClass) => {
 
       await addMultiOwner({
         page,
-        ownerNames: [OWNER2.getUserName()],
+        ownerNames: [OWNER2.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: entity.endpoint,
@@ -209,7 +214,7 @@ entities.forEach((EntityClass) => {
 
       await addMultiOwner({
         page,
-        ownerNames: [OWNER1.getUserName()],
+        ownerNames: [OWNER1.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: entity.endpoint,
@@ -219,7 +224,7 @@ entities.forEach((EntityClass) => {
 
       await removeOwnersFromList({
         page,
-        ownerNames: [OWNER1.getUserName()],
+        ownerNames: [OWNER1.getUserDisplayName()],
         endpoint: entity.endpoint,
         dataTestId: 'data-assets-header',
       });
@@ -227,7 +232,7 @@ entities.forEach((EntityClass) => {
       await removeOwner({
         page,
         endpoint: entity.endpoint,
-        ownerName: OWNER2.getUserName(),
+        ownerName: OWNER2.getUserDisplayName(),
         type: 'Users',
         dataTestId: 'data-assets-header',
       });
@@ -622,7 +627,6 @@ entities.forEach((EntityClass) => {
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });

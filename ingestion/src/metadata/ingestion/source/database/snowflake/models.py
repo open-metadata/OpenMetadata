@@ -21,6 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
@@ -92,6 +93,7 @@ class SnowflakeTable(BaseModel):
 
     name: str
     deleted: Optional[datetime] = None
+    type_: Optional[TableType] = None
 
 
 class SnowflakeTableList(BaseModel):

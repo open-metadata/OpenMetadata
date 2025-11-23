@@ -38,6 +38,7 @@ import {
   checkStewardServicesPermissions,
   generateToken,
   hardDeleteUserProfilePage,
+  performUserLogin,
   permanentDeleteUser,
   resetPassword,
   restoreUser,
@@ -70,6 +71,7 @@ const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
 const user = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 const tableEntity = new TableClass();
 const tableEntity2 = new TableClass();
 const policy = new PolicyClass();
@@ -114,6 +116,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataStewardUser.setDataStewardRole(apiContext);
   await user.create(apiContext);
   await user2.create(apiContext);
+  await user3.create(apiContext);
+  await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
   await tableEntity2.create(apiContext);
   await policy.create(apiContext, DATA_STEWARD_RULES);
@@ -469,38 +473,43 @@ test.describe('User with Data Steward Roles', () => {
 
 test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
-    adminPage,
+    browser,
   }) => {
-    await redirectToHomePage(adminPage);
-    const feedResponse = adminPage.waitForResponse(
-      '/api/v1/feed?type=Conversation'
-    );
+    test.slow(true);
 
-    await visitOwnProfilePage(adminPage);
+    const { page, afterAction } = await performUserLogin(browser, user3);
+
+    await redirectToHomePage(page);
+    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
+
+    await visitOwnProfilePage(page);
     await feedResponse;
 
-    await adminPage.waitForSelector('[data-testid="message-container"]');
-    const userDetailsResponse = adminPage.waitForResponse(
-      '/api/v1/users/name/*'
-    );
-    const userFeedResponse = adminPage.waitForResponse(
-      '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
+    await page.waitForSelector('[data-testid="message-container"]');
+    const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
+
+    const userFeedResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/feed') &&
+        response.url().includes('type=Conversation') &&
+        response.url().includes('filterType=OWNER_OR_FOLLOWS') &&
+        response.url().includes('userId=')
     );
 
-    const avatar = adminPage
+    const avatar = page
       .locator('#feedData [data-testid="message-container"]')
       .first()
       .locator('[data-testid="profile-avatar"]')
       .first();
 
     await avatar.hover();
-    await adminPage.waitForSelector('.ant-popover-card');
+    await page.waitForSelector('.ant-popover-card');
 
     // Ensure popover is stable and visible before clicking
-    await adminPage.waitForTimeout(500); // Give popover time to stabilize
+    await page.waitForTimeout(500); // Give popover time to stabilize
 
     // Get the user name element and ensure it's ready for interaction
-    const userNameElement = adminPage.getByTestId('user-name').nth(1);
+    const userNameElement = page.getByTestId('user-name').nth(1);
 
     // Click with force to handle pointer event interception
     await userNameElement.click({ force: true });
@@ -517,9 +526,11 @@ test.describe('User Profile Feed Interactions', () => {
     // The UI shows displayName if available, otherwise falls back to name
     const expectedText = displayName ?? name;
 
-    await expect(
-      adminPage.locator('[data-testid="user-display-name"]')
-    ).toHaveText(expectedText);
+    await expect(page.locator('[data-testid="user-display-name"]')).toHaveText(
+      expectedText
+    );
+
+    await afterAction();
   });
 
   test('Close the profile dropdown after redirecting to user profile page', async ({
@@ -544,38 +555,50 @@ test.describe('User Profile Feed Interactions', () => {
 });
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
-  test.beforeAll('Prerequisites', async ({ adminPage }) => {
-    test.slow(true);
+  test.slow(true);
 
-    // First, add personas to the user profile for testing
-    await visitOwnProfilePage(adminPage);
-    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-
-    // Set default persona
-    await adminPage
-      .locator('[data-testid="default-edit-user-persona"]')
-      .click();
-    await adminPage.waitForSelector(
-      '[data-testid="default-persona-select-list"]'
+  test.beforeAll('Prerequisites', async ({ browser }) => {
+    const { apiContext, afterAction } = await performUserLogin(
+      browser,
+      adminUser
     );
-    await adminPage
-      .locator('[data-testid="default-persona-select-list"]')
-      .click();
-    await adminPage.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
+
+    await adminUser.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/personas',
+          value: [
+            {
+              id: persona1.responseData.id,
+              type: 'persona',
+              name: persona1.responseData.name,
+              fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            },
+            {
+              id: persona2.responseData.id,
+              type: 'persona',
+              name: persona2.responseData.name,
+              fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+            },
+          ],
+        },
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: persona1.responseData.id,
+            name: persona1.responseData.name,
+            displayName: persona1.responseData.displayName,
+            fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
+        },
+      ],
     });
 
-    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
-
-    const defaultPersonaUpdateResponse =
-      adminPage.waitForResponse('/api/v1/users/*');
-
-    await adminPage
-      .locator('[data-testid="user-profile-default-persona-edit-save"]')
-      .click();
-    await defaultPersonaUpdateResponse;
-
-    await redirectToHomePage(adminPage);
+    await afterAction();
   });
 
   test('Should display persona dropdown with pagination', async ({
@@ -921,10 +944,11 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
       .click();
 
+    const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
     await adminPage
       .locator('[data-testid="user-profile-default-persona-edit-save"]')
       .click();
-    await adminPage.waitForResponse('/api/v1/users/*');
+    await removePersonaResponse;
 
     // Verify NO notification appears when removing default persona
     await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
@@ -964,7 +988,10 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
 test.describe('User Profile Persona Interactions', () => {
   test.beforeEach(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performUserLogin(
+      browser,
+      adminUser
+    );
 
     // Patch admin user to add personas
     await adminUser.patch({
@@ -1108,12 +1135,13 @@ test.describe('User Profile Persona Interactions', () => {
       await defaultPersonaOptionTestId.click();
 
       // Save the changes
+      const savePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
       await adminPage
         .locator('[data-testid="user-profile-default-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and default persona to appear
-      await adminPage.waitForResponse('/api/v1/users/*');
+      await savePersonaResponse;
 
       // Check that success notification appears with correct message
       await toastNotification(

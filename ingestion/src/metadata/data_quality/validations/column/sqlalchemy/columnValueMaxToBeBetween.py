@@ -12,10 +12,9 @@
 Validator for column value max to be between test case
 """
 
-import math
 from typing import List, Optional
 
-from sqlalchemy import Column, case, func, inspect, literal, or_
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
@@ -23,7 +22,6 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMaxToBeBetween import (
     BaseColumnValueMaxToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -38,25 +36,6 @@ class ColumnValueMaxToBeBetweenValidator(
     BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin
 ):
     """Validator for column value max to be between test case"""
-
-    def _get_column_name(self, column_name: Optional[str] = None) -> Column:
-        """Get column object for the given column name
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            Column: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                inspect(self.runner.dataset).c,
-            )
-        return self.get_column_name(
-            column_name,
-            inspect(self.runner.dataset).c,
-        )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case
@@ -93,44 +72,30 @@ class ColumnValueMaxToBeBetweenValidator(
         dimension_results = []
 
         try:
-            min_bound = test_params["minValueForMaxInCol"]
-            max_bound = test_params["maxValueForMaxInCol"]
-
+            row_count_expr = Metrics.ROW_COUNT().fn()
+            max_expr = Metrics.MAX(column).fn()
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                Metrics.MAX.name: func.max(column),
+                DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
+                Metrics.MAX.name: max_expr,
             }
 
-            def build_failed_count(cte1):
-                max_col = getattr(cte1.c, Metrics.MAX.name)
-                count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
-
-                conditions = []
-                if not math.isinf(min_bound):
-                    conditions.append(max_col < min_bound)
-                if not math.isinf(max_bound):
-                    conditions.append(max_col > max_bound)
-
-                if not conditions:
-                    return literal(0)
-
-                violation = or_(*conditions) if len(conditions) > 1 else conditions[0]
-
-                return case(
-                    (max_col.is_(None), literal(0)),
-                    (violation, count_col),
-                    else_=literal(0),
+            failed_count_builder = (
+                lambda cte, row_count_expr: self._get_validation_checker(
+                    test_params
+                ).build_agg_level_violation_sqa(
+                    [getattr(cte.c, Metrics.MAX.name)], row_count_expr
                 )
+            )
 
-            def build_max_final(cte):
-                return func.max(getattr(cte.c, Metrics.MAX.name))
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
 
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                build_failed_count,
-                final_metric_builders={Metrics.MAX.name: build_max_final},
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
+                failed_count_builder=failed_count_builder,
             )
 
             for row in result_rows:

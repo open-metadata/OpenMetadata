@@ -6,19 +6,13 @@
   "description": "A `DataContract` entity defines the schema and quality guarantees for a data asset.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DataContract",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "contractStatus": {
       "javaType": "org.openmetadata.schema.type.ContractStatus",
       "description": "Status of the data contract.",
       "type": "string",
-      "enum": [
-        "Draft",
-        "Active",
-        "Deprecated"
-      ],
+      "enum": ["Draft", "Active", "Deprecated"],
       "javaEnums": [
         {
           "name": "Draft"
@@ -57,11 +51,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "timestamp",
-        "updatedBy",
-        "version"
-      ],
+      "required": ["timestamp", "updatedBy", "version"],
       "additionalProperties": false
     },
     "rowFilter": {
@@ -291,6 +281,7 @@
         "$ref": "./table.json#/definitions/column"
       },
       "default": null
+
     },
     "semantics": {
       "description": "Semantics rules defined in the data contract.",
@@ -394,10 +385,6 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "entity"
-  ],
+  "required": ["id", "name", "entity"],
   "additionalProperties": false
 }

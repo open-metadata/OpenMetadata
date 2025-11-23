@@ -1,0 +1,60 @@
+{
+  "id": "af9e8d7c-6b5a-4f3e-2d1c-0b9a8f7e6d5c",
+  "name": "sample_pipeline",
+  "displayName": "Sample Pipeline",
+  "fullyQualifiedName": "sample-pipeline-service.sample_pipeline",
+  "description": "Mock pipeline for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "sourceUrl": "http://localhost:8080/pipelines/sample_pipeline",
+  "href": "http://localhost:8585/api/v1/pipelines/af9e8d7c-6b5a-4f3e-2d1c-0b9a8f7e6d5c",
+  "service": {
+    "id": "7c6b5a4f-3e2d-1c0b-9a8f-7e6d5c4b3a2f",
+    "type": "pipelineService",
+    "name": "sample-pipeline-service",
+    "fullyQualifiedName": "sample-pipeline-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/pipelineServices/7c6b5a4f-3e2d-1c0b-9a8f-7e6d5c4b3a2f"
+  },
+  "serviceType": "Airflow",
+  "pipelineStatus": {
+    "timestamp": 1699564800000,
+    "executionStatus": "Successful"
+  },
+  "tasks": [
+    {
+      "name": "extract_task",
+      "displayName": "Extract Data",
+      "description": "Extract data from source"
+    },
+    {
+      "name": "transform_task",
+      "displayName": "Transform Data",
+      "description": "Transform extracted data"
+    },
+    {
+      "name": "load_task",
+      "displayName": "Load Data",
+      "description": "Load transformed data"
+    }
+  ],
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": []
+}

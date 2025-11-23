@@ -84,7 +84,7 @@ public class FetchEntitiesImpl implements JavaDelegate {
                               finalEntityTypeToFetch, (String) result.get("fullyQualifiedName"))
                           .getLinkString())
               .toList());
-      execution.setVariable("searchAfter", JsonUtils.pojoToJson(response.getLastHitSortValues()));
+      execution.setVariable("searchAfter", response.getLastDocumentsInBatch());
     }
 
     int cardinality = entityList.size();

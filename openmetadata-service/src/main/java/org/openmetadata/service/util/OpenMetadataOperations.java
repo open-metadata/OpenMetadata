@@ -77,6 +77,7 @@ import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -97,6 +98,7 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
@@ -148,7 +150,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -313,6 +315,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       initializeCollectionRegistry();
+      WorkflowHandler.initialize(config);
+      SettingsCache.initialize(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
@@ -345,6 +349,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       initializeCollectionRegistry();
+      SettingsCache.initialize(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       if (deleteApplication(appRepository, appName)) {
@@ -389,6 +394,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       initializeCollectionRegistry();
+      SettingsCache.initialize(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
@@ -566,6 +572,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
       initializeSecurityConfig();
 
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
@@ -766,6 +773,47 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup orphaned relationships due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "tagUsageCleanup",
+      description =
+          "Cleans up orphaned tag usages where referenced tags or glossary terms no longer exist. "
+              + "By default, runs in dry-run mode to only identify orphaned tag usages.")
+  public Integer cleanupOrphanedTagUsages(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned tag usages. Without this flag, the command only identifies orphaned tag usages (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of tag usages to process in each batch.")
+          int batchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info("Running Tag Usage Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
+      parseConfig();
+
+      TagUsageCleanup cleanup = new TagUsageCleanup(collectionDAO, dryRun);
+      TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(batchSize);
+
+      LOG.info("Total tag usages scanned: {}", result.getTotalTagUsagesScanned());
+      LOG.info("Orphaned tag usages found: {}", result.getOrphanedTagUsagesFound());
+      LOG.info("Tag usages deleted: {}", result.getTagUsagesDeleted());
+
+      if (dryRun && result.getOrphanedTagUsagesFound() > 0) {
+        LOG.info("To actually delete these orphaned tag usages, run with --delete");
+        return 1;
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned tag usages due to ", e);
       return 1;
     }
   }
@@ -1478,7 +1526,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private Set<String> getAllIndices() {
     Set<String> indices = new HashSet<>();
     try {
-      SearchClient<?> searchClient = searchRepository.getSearchClient();
+      SearchClient searchClient = searchRepository.getSearchClient();
 
       if (searchClient instanceof ElasticSearchClient) {
         es.org.elasticsearch.client.Request request =
