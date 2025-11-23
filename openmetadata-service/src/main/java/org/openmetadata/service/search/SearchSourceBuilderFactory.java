@@ -73,6 +73,19 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    */
   default S getSearchSourceBuilder(
       String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+    return getSearchSourceBuilder(indexName, searchQuery, fromOffset, size, includeExplain, true);
+  }
+
+  /**
+   * Get the appropriate search source builder based on the index name.
+   */
+  default S getSearchSourceBuilder(
+      String indexName,
+      String searchQuery,
+      int fromOffset,
+      int size,
+      boolean includeExplain,
+      boolean includeAggregations) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
@@ -89,14 +102,14 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
     if (isDataAssetIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
-          indexName, searchQuery, fromOffset, size, includeExplain);
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
       // For consistency, use entity-specific search builder for dataAsset searches
       // This ensures both /search/query and /search/entityTypeCounts use the same logic
       return buildDataAssetSearchBuilderV2(
-          indexName, searchQuery, fromOffset, size, includeExplain);
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     return switch (indexName) {
@@ -104,7 +117,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
           "user",
           "team_search_index",
           "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
-      default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size);
+      default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
 
@@ -115,9 +128,24 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   S buildDataAssetSearchBuilderV2(
       String indexName, String query, int from, int size, boolean explain);
 
+  default S buildDataAssetSearchBuilderV2(
+      String indexName,
+      String query,
+      int from,
+      int size,
+      boolean explain,
+      boolean includeAggregations) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, explain);
+  }
+
   S buildUserOrTeamSearchBuilderV2(String query, int from, int size);
 
   S buildAggregateSearchBuilderV2(String query, int from, int size);
+
+  default S buildAggregateSearchBuilderV2(
+      String query, int from, int size, boolean includeAggregations) {
+    return buildAggregateSearchBuilderV2(query, from, size);
+  }
 
   default S buildTimeSeriesSearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
