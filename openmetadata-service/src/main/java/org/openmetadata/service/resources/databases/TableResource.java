@@ -923,13 +923,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Table with pipeline observability data",
+            description = "List of pipeline observability data",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(type = "array", implementation = PipelineObservability.class)))
       })
-  public Table getPipelineObservability(
+  public List<PipelineObservability> getPipelineObservability(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
@@ -937,8 +937,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.getPipelineObservability(id);
-    return addHref(uriInfo, table);
+    return repository.getPipelineObservability(id);
   }
 
   @GET
@@ -950,13 +949,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Table with pipeline observability data",
+            description = "List of pipeline observability data",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(type = "array", implementation = PipelineObservability.class)))
       })
-  public Table getPipelineObservabilityByName(
+  public List<PipelineObservability> getPipelineObservabilityByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -967,8 +966,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Table table = repository.getPipelineObservabilityByName(fqn);
-    return addHref(uriInfo, table);
+    return repository.getPipelineObservabilityByName(fqn);
   }
 
   @DELETE

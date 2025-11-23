@@ -31,7 +31,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1146,7 +1148,29 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String afterCursor = pipelines.getPaging() != null ? pipelines.getPaging().getAfter() : null;
     Integer total = pipelines.getPaging() != null ? pipelines.getPaging().getTotal() : 0;
 
-    return new ResultList<>(summaries, beforeCursor, afterCursor, total != null ? total : 0);
+    // Decode the cursors before passing to ResultList constructor to avoid double-encoding
+    // The cursors from pipelines.getPaging() are already Base64-encoded
+    // ResultList constructor will encode them again, so we need to decode first
+    String decodedBefore = null;
+    String decodedAfter = null;
+
+    try {
+      if (beforeCursor != null) {
+        decodedBefore =
+            new String(Base64.getUrlDecoder().decode(beforeCursor), StandardCharsets.UTF_8);
+      }
+      if (afterCursor != null) {
+        decodedAfter =
+            new String(Base64.getUrlDecoder().decode(afterCursor), StandardCharsets.UTF_8);
+      }
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Failed to decode pagination cursors: {}", e.getMessage());
+      // If decoding fails, use the cursors as-is (they might not be encoded)
+      decodedBefore = beforeCursor;
+      decodedAfter = afterCursor;
+    }
+
+    return new ResultList<>(summaries, decodedBefore, decodedAfter, total != null ? total : 0);
   }
 
   private PipelineSummary buildPipelineSummary(Pipeline pipeline) {
@@ -1448,9 +1472,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public PipelineExecutionTrendList getPipelineExecutionTrend(
-      Long startTs, Long endTs, String pipelineFqn, String serviceType) {
+      Long startTs,
+      Long endTs,
+      String pipelineFqn,
+      String serviceType,
+      Integer limit,
+      Integer offset) {
     try {
-      return getPipelineExecutionTrendFromES(startTs, endTs, pipelineFqn, serviceType);
+      return getPipelineExecutionTrendFromES(
+          startTs, endTs, pipelineFqn, serviceType, limit, offset);
     } catch (Exception e) {
       LOG.warn("Failed to get execution trend from Elasticsearch: {}", e.getMessage());
       return createEmptyExecutionTrend("Elasticsearch unavailable: " + e.getMessage());
@@ -1458,7 +1488,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineExecutionTrendList getPipelineExecutionTrendFromES(
-      Long startTs, Long endTs, String pipelineFqn, String serviceType) throws IOException {
+      Long startTs,
+      Long endTs,
+      String pipelineFqn,
+      String serviceType,
+      Integer limit,
+      Integer offset)
+      throws IOException {
     try {
       String pipelineStatusIndex = "pipeline_status_search_index";
 
@@ -1494,7 +1530,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       DataQualityReport report =
           searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, searchAggregation);
 
-      return parseExecutionTrendFromReport(report, startTs, endTs);
+      return parseExecutionTrendFromReport(report, startTs, endTs, limit, offset);
 
     } catch (Exception e) {
       LOG.error("Failed to get pipeline execution trend: {}", e.getMessage(), e);
@@ -1503,7 +1539,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineExecutionTrendList parseExecutionTrendFromReport(
-      DataQualityReport report, Long startTs, Long endTs) {
+      DataQualityReport report, Long startTs, Long endTs, Integer limit, Integer offset) {
     PipelineExecutionTrendList trendList = new PipelineExecutionTrendList();
     List<PipelineExecutionTrend> trends = new ArrayList<>();
 
@@ -1525,11 +1561,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
         for (Map<String, String> row : rows) {
           if (row.containsKey("timestamp")) {
-            String dateKey = row.get("timestamp").toString();
-            String status =
-                row.containsKey("executionStatus") ? row.get("executionStatus").toString() : "";
+            String dateKey = row.get("timestamp");
+            String status = row.containsKey("executionStatus") ? row.get("executionStatus") : "";
             String docCountStr =
-                row.get("document_count") != null ? row.get("document_count").toString() : "0";
+                row.get("document_count") != null ? row.get("document_count") : "0";
             int count = Integer.parseInt(docCountStr);
 
             dateStatusMap.putIfAbsent(dateKey, new HashMap<>());
@@ -1575,7 +1610,28 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         trends.sort(Comparator.comparing(PipelineExecutionTrend::getTimestamp));
       }
 
-      trendList.setData(trends);
+      // Apply pagination following DashboardDataModelRepository pattern
+      int total = trends.size();
+      int fromIndex = Math.min(offset != null ? offset : 0, total);
+      int toIndex = Math.min(fromIndex + (limit != null ? limit : 30), total);
+
+      List<PipelineExecutionTrend> paginatedTrends = trends.subList(fromIndex, toIndex);
+
+      // Calculate pagination metadata
+      String before =
+          fromIndex > 0
+              ? String.valueOf(Math.max(0, fromIndex - (limit != null ? limit : 30)))
+              : null;
+      String after = toIndex < total ? String.valueOf(toIndex) : null;
+
+      // Set paginated data
+      trendList.setData(paginatedTrends);
+      trendList.setPaging(
+          new org.openmetadata.schema.type.Paging()
+              .withBefore(before)
+              .withAfter(after)
+              .withTotal(total));
+
       trendList.setTotalSuccessful(totalSuccess);
       trendList.setTotalFailed(totalFailed);
       trendList.setTotalExecutions(totalExecutions);
@@ -1585,7 +1641,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       trendList.setStartDate(startInstant.toString());
       trendList.setEndDate(endInstant.toString());
 
-      trendList.setDataAvailable(!trends.isEmpty());
+      trendList.setDataAvailable(!paginatedTrends.isEmpty());
 
     } catch (Exception e) {
       LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);
@@ -1607,9 +1663,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public PipelineRuntimeTrendList getPipelineRuntimeTrend(
-      Long startTs, Long endTs, String pipelineFqn, String serviceType) {
+      Long startTs,
+      Long endTs,
+      String pipelineFqn,
+      String serviceType,
+      Integer limit,
+      Integer offset) {
     try {
-      return getPipelineRuntimeTrendFromES(startTs, endTs, pipelineFqn, serviceType);
+      return getPipelineRuntimeTrendFromES(startTs, endTs, pipelineFqn, serviceType, limit, offset);
     } catch (Exception e) {
       LOG.warn("Failed to get runtime trend from Elasticsearch: {}", e.getMessage());
       return createEmptyRuntimeTrend("Elasticsearch unavailable: " + e.getMessage());
@@ -1617,7 +1678,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineRuntimeTrendList getPipelineRuntimeTrendFromES(
-      Long startTs, Long endTs, String pipelineFqn, String serviceType) throws IOException {
+      Long startTs,
+      Long endTs,
+      String pipelineFqn,
+      String serviceType,
+      Integer limit,
+      Integer offset)
+      throws IOException {
     try {
       String pipelineStatusIndex = "pipeline_status_search_index";
 
@@ -1651,7 +1718,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // separately.
       // The framework's traverseAggregationResults() only processes the first sibling metric.
 
-      // Query 1: Get max runtime
+      // Query 1: Get max runtime and document count
       String maxQuery =
           "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
               + "bucketName=max_runtime:aggType=max:field=runtime";
@@ -1675,7 +1742,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       DataQualityReport avgReport =
           searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, avgAggregation);
 
-      return parseRuntimeTrendFromSeparateReports(maxReport, minReport, avgReport, startTs, endTs);
+      // Query 4: Get cardinality (distinct pipeline count) per day
+      String cardinalityQuery =
+          "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
+              + "bucketName=distinct_pipelines:aggType=cardinality:field=pipelineFqn";
+      SearchAggregation cardinalityAggregation =
+          SearchIndexUtils.buildAggregationTree(cardinalityQuery);
+      DataQualityReport cardinalityReport =
+          searchRepository.genericAggregation(
+              filterQuery, pipelineStatusIndex, cardinalityAggregation);
+
+      return parseRuntimeTrendFromSeparateReports(
+          maxReport, minReport, avgReport, cardinalityReport, startTs, endTs, limit, offset);
 
     } catch (Exception e) {
       LOG.error("Failed to get pipeline runtime trend: {}", e.getMessage(), e);
@@ -1687,8 +1765,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       DataQualityReport maxReport,
       DataQualityReport minReport,
       DataQualityReport avgReport,
+      DataQualityReport cardinalityReport,
       Long startTs,
-      Long endTs) {
+      Long endTs,
+      Integer limit,
+      Integer offset) {
     PipelineRuntimeTrendList trendList = new PipelineRuntimeTrendList();
     List<PipelineRuntimeTrend> trends = new ArrayList<>();
 
@@ -1697,7 +1778,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       // Extract max runtime by date
       Map<String, Double> maxRuntimeByDate = new HashMap<>();
-      Map<String, Integer> docCountByDate = new HashMap<>();
       if (maxReport.getData() != null) {
         for (org.openmetadata.schema.tests.Datum datum : maxReport.getData()) {
           Map<String, String> row = datum.getAdditionalProperties();
@@ -1705,9 +1785,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             String timestamp = row.get("timestamp");
             try {
               maxRuntimeByDate.put(timestamp, Double.parseDouble(row.get("runtime")));
-              if (row.containsKey("document_count")) {
-                docCountByDate.put(timestamp, Integer.parseInt(row.get("document_count")));
-              }
               LOG.info("Max runtime for {}: {}", timestamp, row.get("runtime"));
             } catch (NumberFormatException e) {
               LOG.warn("Invalid max runtime value for timestamp {}: {}", timestamp, e.getMessage());
@@ -1750,17 +1827,45 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         }
       }
 
+      // Extract cardinality (distinct pipeline count) by date
+      // The OpenMetadata aggregation framework doesn't properly return nested cardinality metrics
+      // So we count distinct pipelineFqn values from the data instead
+      Map<String, Integer> cardinalityByDate = new HashMap<>();
+      if (cardinalityReport != null && cardinalityReport.getData() != null) {
+        // Group by timestamp and count distinct pipelineFqn
+        Map<String, Set<String>> pipelinesByDate = new HashMap<>();
+
+        for (org.openmetadata.schema.tests.Datum datum : cardinalityReport.getData()) {
+          Map<String, String> row = datum.getAdditionalProperties();
+          if (row != null && row.containsKey("timestamp") && row.containsKey("pipelineFqn")) {
+            String timestamp = row.get("timestamp");
+            String pipelineFqn = row.get("pipelineFqn");
+
+            pipelinesByDate.computeIfAbsent(timestamp, k -> new HashSet<>()).add(pipelineFqn);
+          }
+        }
+
+        // Convert to cardinality map
+        for (Map.Entry<String, Set<String>> entry : pipelinesByDate.entrySet()) {
+          int distinctCount = entry.getValue().size();
+          cardinalityByDate.put(entry.getKey(), distinctCount);
+          LOG.info("Distinct pipelines for {}: {}", entry.getKey(), distinctCount);
+        }
+      }
+
       LOG.info(
-          "Parsed data - Max: {} dates, Min: {} dates, Avg: {} dates",
+          "Parsed data - Max: {} dates, Min: {} dates, Avg: {} dates, Cardinality: {} dates",
           maxRuntimeByDate.size(),
           minRuntimeByDate.size(),
-          avgRuntimeByDate.size());
+          avgRuntimeByDate.size(),
+          cardinalityByDate.size());
 
       // Combine all metrics for each date
       Set<String> allDates = new HashSet<>();
       allDates.addAll(maxRuntimeByDate.keySet());
       allDates.addAll(minRuntimeByDate.keySet());
       allDates.addAll(avgRuntimeByDate.keySet());
+      allDates.addAll(cardinalityByDate.keySet());
 
       for (String timestampStr : allDates) {
         try {
@@ -1774,7 +1879,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           double maxRuntime = maxRuntimeByDate.getOrDefault(timestampStr, 0.0);
           double minRuntime = minRuntimeByDate.getOrDefault(timestampStr, 0.0);
           double avgRuntime = avgRuntimeByDate.getOrDefault(timestampStr, 0.0);
-          int totalPipelines = docCountByDate.getOrDefault(timestampStr, 0);
+          int totalPipelines = cardinalityByDate.getOrDefault(timestampStr, 0);
 
           trend.setMaxRuntime(maxRuntime);
           trend.setMinRuntime(minRuntime);
@@ -1782,7 +1887,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           trend.setTotalPipelines(totalPipelines);
 
           LOG.info(
-              "Combined trend for {}: max={}, min={}, avg={}, count={}",
+              "Combined trend for {}: max={}, min={}, avg={}, totalPipelines={}",
               timestamp,
               maxRuntime,
               minRuntime,
@@ -1797,14 +1902,35 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       }
 
       trends.sort(Comparator.comparing(PipelineRuntimeTrend::getTimestamp));
-      trendList.setData(trends);
+
+      // Apply pagination following DashboardDataModelRepository pattern
+      int total = trends.size();
+      int fromIndex = Math.min(offset != null ? offset : 0, total);
+      int toIndex = Math.min(fromIndex + (limit != null ? limit : 30), total);
+
+      List<PipelineRuntimeTrend> paginatedTrends = trends.subList(fromIndex, toIndex);
+
+      // Calculate pagination metadata
+      String before =
+          fromIndex > 0
+              ? String.valueOf(Math.max(0, fromIndex - (limit != null ? limit : 30)))
+              : null;
+      String after = toIndex < total ? String.valueOf(toIndex) : null;
+
+      // Set paginated data
+      trendList.setData(paginatedTrends);
+      trendList.setPaging(
+          new org.openmetadata.schema.type.Paging()
+              .withBefore(before)
+              .withAfter(after)
+              .withTotal(total));
 
       java.time.Instant startInstant = java.time.Instant.ofEpochMilli(startTs);
       java.time.Instant endInstant = java.time.Instant.ofEpochMilli(endTs);
       trendList.setStartDate(startInstant.toString());
       trendList.setEndDate(endInstant.toString());
 
-      trendList.setDataAvailable(!trends.isEmpty());
+      trendList.setDataAvailable(!paginatedTrends.isEmpty());
 
     } catch (Exception e) {
       LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);

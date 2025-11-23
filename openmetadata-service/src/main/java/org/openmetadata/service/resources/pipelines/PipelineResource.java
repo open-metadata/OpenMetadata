@@ -820,7 +820,18 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           String pipelineFqn,
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
-          String serviceType) {
+          String serviceType,
+      @Parameter(
+              description = "Maximum number of trend data points to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("30")
+          Integer limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          Integer offset) {
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
@@ -828,7 +839,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     try {
       PipelineExecutionTrendList trendList =
-          repository.getPipelineExecutionTrend(startTs, endTs, pipelineFqn, serviceType);
+          repository.getPipelineExecutionTrend(
+              startTs, endTs, pipelineFqn, serviceType, limit, offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineExecutionTrendList emptyTrend =
@@ -879,7 +891,18 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           String pipelineFqn,
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
-          String serviceType) {
+          String serviceType,
+      @Parameter(
+              description = "Maximum number of trend data points to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("30")
+          Integer limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          Integer offset) {
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
@@ -887,7 +910,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     try {
       PipelineRuntimeTrendList trendList =
-          repository.getPipelineRuntimeTrend(startTs, endTs, pipelineFqn, serviceType);
+          repository.getPipelineRuntimeTrend(
+              startTs, endTs, pipelineFqn, serviceType, limit, offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineRuntimeTrendList emptyTrend =

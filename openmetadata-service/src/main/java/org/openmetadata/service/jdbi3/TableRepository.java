@@ -589,22 +589,16 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withPipelineObservability(getAllPipelineObservability(table));
   }
 
-  public Table getPipelineObservability(UUID tableId) {
+  public List<PipelineObservability> getPipelineObservability(UUID tableId) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
-    List<PipelineObservability> pipelineObservabilityList = getAllPipelineObservability(table);
-    table.setPipelineObservability(pipelineObservabilityList);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
-    return table;
+    return getAllPipelineObservability(table);
   }
 
-  public Table getPipelineObservabilityByName(String tableFqn) {
+  public List<PipelineObservability> getPipelineObservabilityByName(String tableFqn) {
     // Validate the request content
     Table table = findByName(tableFqn, NON_DELETED);
-    List<PipelineObservability> pipelineObservabilityList = getAllPipelineObservability(table);
-    table.setPipelineObservability(pipelineObservabilityList);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
-    return table;
+    return getAllPipelineObservability(table);
   }
 
   private List<PipelineObservability> getAllPipelineObservability(Table table) {
