@@ -165,8 +165,9 @@ test.describe('FeedWidget on landing page', () => {
     await titleLink.click();
     await page.waitForLoadState('networkidle');
 
-    // Verify navigation to explore
-    await expect(page.url()).toContain('/explore');
+    // Verify navigation to user activity feed
+    await expect(page.url()).toContain('/users/');
+    await expect(page.url()).toContain('/activity_feed/all');
   });
 
   test('feed body renders content or empty state', async ({ page }) => {
@@ -416,12 +417,12 @@ test.describe('Mention notifications in Notification Box', () => {
   }) => {
     test.slow();
 
-    const entityFQN = 'sample_data.ecommerce_db.shopify.performance_test_table';
+    const entityFQN = 'sample_superset.eta_predictions_performance';
 
     await test.step(
       'Admin user creates a conversation on an entity',
       async () => {
-        await adminPage.goto(`/table/${entityFQN}`);
+        await adminPage.goto(`/dashboard/${entityFQN}`);
 
         await adminPage.waitForLoadState('networkidle');
         await adminPage.waitForSelector('[data-testid="loader"]', {
@@ -462,7 +463,7 @@ test.describe('Mention notifications in Notification Box', () => {
     );
 
     await test.step('User1 mentions admin user in a reply', async () => {
-      await user1Page.goto(`/table/${entityFQN}`);
+      await user1Page.goto(`/dashboard/${entityFQN}`);
       await user1Page.waitForLoadState('networkidle');
       await user1Page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',

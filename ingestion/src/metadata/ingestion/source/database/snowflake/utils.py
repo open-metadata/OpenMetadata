@@ -24,6 +24,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -33,25 +34,19 @@ from metadata.ingestion.source.database.snowflake.models import (
 )
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
-    SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
-    SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
     SNOWFLAKE_GET_STREAM_DEFINITION,
     SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
-    SNOWFLAKE_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_DDL,
     SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
-    SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
 from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
@@ -67,16 +62,10 @@ QueryMap = Dict[str, Query]
 
 TABLE_QUERY_MAPS = {
     "full": {
-        "default": SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
-        "transient_tables": SNOWFLAKE_GET_TRANSIENT_NAMES,
-        "external_tables": SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
-        "dynamic_tables": SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
+        "default": SNOWFLAKE_GET_TABLE_NAMES,
     },
     "incremental": {
-        "default": SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
-        "transient_tables": SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
-        "external_tables": SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
-        "dynamic_tables": SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
+        "default": SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES,
     },
 }
 
@@ -194,9 +183,15 @@ def _get_query_parameters(
     schema: str,
     incremental: Optional[IncrementalConfig],
     account_usage: Optional[str] = None,
+    include_transient_tables: Optional[bool] = False,
+    include_views: Optional[bool] = False,
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
-    parameters = {"schema": fqn.unquote_name(schema)}
+    parameters = {
+        "schema": fqn.unquote_name(schema),
+        "is_transient": "YES" if include_transient_tables else "NO",
+        "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
+    }
 
     if incremental and incremental.enabled:
         database, _ = self._current_database_schema(connection)  # pylint: disable=W0212
@@ -217,28 +212,41 @@ def get_table_names(self, connection, schema: str, **kw):
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
     parameters = _get_query_parameters(
-        self, connection, schema, incremental, account_usage
+        self,
+        connection,
+        schema,
+        incremental,
+        account_usage,
+        include_transient_tables=kw.get("include_transient_tables", False),
+        include_views=kw.get("include_views", False),
     )
 
     query = queries["default"]
 
-    if kw.get("include_transient_tables"):
-        query = queries["transient_tables"]
-
-    if kw.get("external_tables"):
-        query = queries["external_tables"]
-
-    if kw.get("dynamic_tables"):
-        query = queries["dynamic_tables"]
-
     cursor = connection.execute(query.format(**parameters))
     result = SnowflakeTableList(
         tables=[
-            SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
+            SnowflakeTable(
+                name=self.normalize_name(row[0]),
+                deleted=row[1],
+                type_=_get_table_type(row[2] if row[2] else "BASE TABLE"),
+            )
             for row in cursor
         ]
     )
     return result
+
+
+def _get_table_type(table_type: str) -> TableType:
+    table_type_map = {
+        "BASE TABLE": TableType.Regular,
+        "VIEW": TableType.View,
+        "MATERIALIZED VIEW": TableType.MaterializedView,
+        "EXTERNAL TABLE": TableType.External,
+        "TRANSIENT TABLE": TableType.Transient,
+        "DYNAMIC TABLE": TableType.Dynamic,
+    }
+    return table_type_map.get(table_type, TableType.Regular)
 
 
 def get_view_names(self, connection, schema, **kw):

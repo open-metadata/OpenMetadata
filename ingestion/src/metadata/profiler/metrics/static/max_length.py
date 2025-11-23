@@ -15,13 +15,19 @@ MAX_LENGTH Metric definition
 # pylint: disable=duplicate-code
 
 
+from typing import TYPE_CHECKING, Optional
+
 from sqlalchemy import column, func
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable
 from metadata.utils.logger import profiler_logger
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = profiler_logger()
 
@@ -30,7 +36,7 @@ class MaxLength(StaticMetric):
     """
     MAX_LENGTH Metric
 
-    Given a column, return the MIN LENGTH value.
+    Given a column, return the MAX LENGTH value.
 
     Only works for concatenable types
     """
@@ -60,22 +66,49 @@ class MaxLength(StaticMetric):
     # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs=None):
         """dataframe function"""
+        computation = self.get_pandas_computation()
+        accumulator = computation.create_accumulator()
+
+        for df in dfs:
+            try:
+                accumulator = computation.update_accumulator(accumulator, df)
+            except Exception as err:
+                logger.debug(
+                    f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
+                )
+                return None
+        return computation.aggregate_accumulator(accumulator)
+
+    def get_pandas_computation(self) -> PandasComputation:
+        """Returns the logic to compute this metrics using Pandas"""
+        return PandasComputation[Optional[int], Optional[int]](
+            create_accumulator=lambda: None,
+            update_accumulator=lambda acc, df: MaxLength.update_accumulator(
+                acc, df, self.col
+            ),
+            aggregate_accumulator=lambda acc: acc,
+        )
+
+    @staticmethod
+    def update_accumulator(
+        current_max: Optional[int], df: "pd.DataFrame", column
+    ) -> Optional[int]:
+        """Computes one DataFrame chunk and updates the running maximum"""
+        import pandas as pd
         from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
-        if self._is_concatenable():
-            max_length_list = []
+        chunk_max = None
 
-            for df in dfs:
-                if any(df[self.col.name].dropna()):
-                    max_length_list.append(
-                        length_vectorize_func(
-                            df[self.col.name].dropna().astype(str)
-                        ).max()
-                    )
-            if max_length_list:
-                return max(max_length_list)
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
-        )
-        return None
+        if is_concatenable(column.type):
+            max_val = length_vectorize_func(df[column.name].dropna().astype(str)).max()
+            if not pd.isnull(max_val):
+                chunk_max = max_val
+
+        if chunk_max is None or pd.isnull(chunk_max):
+            return current_max
+
+        if current_max is None:
+            return chunk_max
+
+        return max(current_max, chunk_max)

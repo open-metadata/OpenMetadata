@@ -74,8 +74,8 @@ class MockTestValidator(BaseTestValidator):
         # Default implementation returns empty list
         return []
 
-    def _get_column_name(self, column_name=None):
-        """Mock implementation of _get_column_name"""
+    def get_column(self, column_name=None):
+        """Mock implementation of get_column"""
         # For testing purposes, accept any column name that's provided
         # This simulates that all dimension columns exist
         if column_name:
@@ -386,7 +386,7 @@ class TestBaseTestValidator:
         validator._run_dimensional_validation.assert_called_once()
 
 
-def test_get_test_parameters_default_returns_none():
+def test_get_test_parameters_default_returns_empty_dict():
     """Test that default _get_test_parameters implementation returns None"""
     test_case = MagicMock(spec=TestCase)
     test_case.name = "test_default_params"
@@ -400,7 +400,7 @@ def test_get_test_parameters_default_returns_none():
 
     result = validator._get_test_parameters()
 
-    assert result is None
+    assert result == {}
 
 
 def test_evaluate_test_condition_not_implemented_error():

@@ -3,6 +3,7 @@ package org.openmetadata.service.security.auth.validator;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.unboundid.util.Nullable;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +68,7 @@ public class OktaAuthValidator {
         return clientIdValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain, null);
       if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
@@ -104,7 +105,8 @@ public class OktaAuthValidator {
       }
 
       // Step 4: Validate public key URLs (required for JWT signature verification)
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
+      FieldError publicKeyValidation =
+          validatePublicKeyUrls(authConfig, oktaDomain, oidcConfig.getDiscoveryUri());
       if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
@@ -112,7 +114,8 @@ public class OktaAuthValidator {
       // Step 5: Validate client credentials (secret)
       String clientId = oidcConfig.getId();
       FieldError credentialsValidation =
-          validateClientCredentials(oktaDomain, clientId, oidcConfig.getSecret());
+          validateClientCredentials(
+              oktaDomain, clientId, oidcConfig.getSecret(), oidcConfig.getDiscoveryUri());
       if (credentialsValidation != null) {
         return credentialsValidation;
       }
@@ -143,14 +146,57 @@ public class OktaAuthValidator {
   }
 
   private FieldError validatePublicClientId(String oktaDomain, String clientId) {
+    String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
     return validateClientIdViaIntrospection(
-        oktaDomain, clientId, "okta-public-client-id", "public");
+        discoveryUri, clientId, "okta-public-client-id", "public");
+  }
+
+  private String getIntrospectUrl(String discoveryUri) {
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+
+      if (response.getStatusCode() != 200) {
+        throw new IllegalArgumentException(
+            "Failed to fetch OIDC discovery document. HTTP response: " + response.getStatusCode());
+      }
+
+      // 2. Parse JSON
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+
+      // 3. Prefer the explicit 'introspection_endpoint' field (best case)
+      if (discoveryDoc.hasNonNull("introspection_endpoint")) {
+        return discoveryDoc.get("introspection_endpoint").asText();
+      }
+
+      // 4. Fallback: derive from issuer (specifically for Okta)
+      if (discoveryDoc.hasNonNull("issuer")) {
+        String issuer = discoveryDoc.get("issuer").asText();
+        if (issuer.endsWith("/")) {
+          issuer = issuer.substring(0, issuer.length() - 1);
+        }
+
+        // Okta patterns:
+        // - issuer = https://<domain>/oauth2/default  -> introspect = <issuer>/v1/introspect
+        // - issuer = https://<domain>                -> introspect = <issuer>/oauth2/v1/introspect
+        if (issuer.contains("/oauth2")) {
+          return issuer + "/v1/introspect";
+        } else {
+          return issuer + "/oauth2/v1/introspect";
+        }
+      }
+
+      throw new IllegalArgumentException(
+          "Discovery document did not contain 'introspection_endpoint' or 'issuer'.");
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to resolve Okta introspection endpoint from discovery document", e);
+    }
   }
 
   private FieldError validateClientIdViaIntrospection(
-      String oktaDomain, String clientId, String componentName, String clientType) {
+      String discoveryUri, String clientId, String componentName, String clientType) {
     try {
-      String introspectUrl = oktaDomain + "/v1/introspect";
+      String introspectUrl = getIntrospectUrl(discoveryUri);
       String requestBody =
           "token=dummy_invalid_token&token_type_hint=access_token&client_id=" + clientId;
 
@@ -168,12 +214,12 @@ public class OktaAuthValidator {
           return null; // Success - Okta client ID validated
         } else {
           return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
               "Unexpected introspection response format - missing 'active' field");
         }
       } else {
         return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
             "Client ID validation failed. HTTP response: " + response.getStatusCode());
       }
 
@@ -185,84 +231,104 @@ public class OktaAuthValidator {
   }
 
   private FieldError validatePublicKeyUrls(
-      AuthenticationConfiguration authConfig, String oktaDomain) {
+      AuthenticationConfiguration authConfig, String oktaDomain, @Nullable String discoveryUri) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        throw new IllegalArgumentException("Public key URLs are required for public clients");
+        throw new IllegalArgumentException("Public key URLs are required");
       }
 
-      String expectedJwksUrl = oktaDomain + "/v1/keys";
-      boolean hasCorrectOktaJwksUrl = false;
+      // Determine expected JWKS URL based on client type
+      String expectedJwksUrl;
 
-      // Check if at least one URL matches the expected Okta JWKS format
-      for (String urlStr : publicKeyUrls) {
-        if (urlStr.equals(expectedJwksUrl)) {
-          hasCorrectOktaJwksUrl = true;
-          break;
-        }
+      if (!nullOrEmpty(discoveryUri)) {
+        // CONFIDENTIAL CLIENT – read from metadata
+        expectedJwksUrl = getJwksUriFromDiscovery(discoveryUri);
+      } else {
+        // PUBLIC CLIENT – derive from authority
+        expectedJwksUrl = deriveOktaJwksFromAuthority(oktaDomain);
       }
 
-      if (!hasCorrectOktaJwksUrl) {
+      boolean hasCorrect = publicKeyUrls.stream().anyMatch(expectedJwksUrl::equals);
+
+      if (!hasCorrect) {
         throw new IllegalArgumentException(
-            "At least one public key URL must be the Okta JWKS endpoint: " + expectedJwksUrl);
+            "At least one public key URL must match the Okta JWKS endpoint: " + expectedJwksUrl);
       }
 
-      // Validate all provided URLs
+      // Validate URL reachability + JWKS format
       for (String urlStr : publicKeyUrls) {
-        try {
-          ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(urlStr);
+        ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(urlStr);
 
-          if (response.getStatusCode() != 200) {
-            throw new IllegalArgumentException(
-                "Public key URL is not accessible. HTTP response: "
-                    + response.getStatusCode()
-                    + " for URL: "
-                    + urlStr);
-          }
+        if (response.getStatusCode() != 200) {
+          throw new IllegalArgumentException("Cannot access JWKS: " + urlStr);
+        }
 
-          // Validate response is proper JWKS
-          JsonNode jwks = JsonUtils.readTree(response.getBody());
-
-          // For JWKS, should have 'keys' array
-          if (!jwks.has("keys")) {
-            throw new IllegalArgumentException(
-                "Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
-          }
-
-          // Validate keys array is not empty
-          if (jwks.get("keys").size() == 0) {
-            throw new IllegalArgumentException(
-                "JWKS endpoint returned empty keys array: " + urlStr);
-          }
-
-          // For the expected Okta URL, validate it contains RSA keys
-          if (urlStr.equals(expectedJwksUrl)) {
-            JsonNode keys = jwks.get("keys");
-            boolean hasRsaKey = false;
-            for (JsonNode key : keys) {
-              if (key.has("kty") && "RSA".equals(key.get("kty").asText())) {
-                hasRsaKey = true;
-                break;
-              }
-            }
-            if (!hasRsaKey) {
-              throw new IllegalArgumentException(
-                  "Okta JWKS endpoint should contain at least one RSA key at: " + urlStr);
-            }
-          }
-
-        } catch (Exception e) {
-          throw new IllegalArgumentException(
-              "Invalid public key URL '" + urlStr + "': " + e.getMessage());
+        JsonNode jwks = JsonUtils.readTree(response.getBody());
+        if (!jwks.has("keys") || jwks.get("keys").size() == 0) {
+          throw new IllegalArgumentException("Invalid JWKS: " + urlStr);
         }
       }
 
-      return null; // Success - Okta public key URLs are valid
+      return null;
+
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
           ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
           "Public key URL validation failed: " + e.getMessage());
+    }
+  }
+
+  private String deriveOktaJwksFromAuthority(String authority) {
+    if (nullOrEmpty(authority)) {
+      throw new IllegalArgumentException("Okta authority/domain must not be empty");
+    }
+
+    // Normalize trailing slash
+    String domain =
+        authority.endsWith("/") ? authority.substring(0, authority.length() - 1) : authority;
+
+    /*
+     * Patterns we want to support:
+     *
+     * 1) Custom / default authorization server:
+     *    issuer / authority: https://dev-xxxx.okta.com/oauth2/default
+     *                        https://dev-xxxx.okta.com/oauth2/ausosygfsxMxgYnFO5d7
+     *    JWKS:               <issuer>/v1/keys
+     *
+     * 2) Org authorization server:
+     *    issuer / authority: https://kansai-airports.okta.com
+     *    JWKS:               https://kansai-airports.okta.com/oauth2/v1/keys
+     */
+
+    // Case 1: custom auth server (issuer contains /oauth2/{id})
+    if (domain.matches(".*/oauth2/[^/]+$")) {
+      return domain + "/v1/keys";
+    }
+
+    // Case 2: org auth server (no /oauth2/{id} in authority)
+    return domain + "/oauth2/v1/keys";
+  }
+
+  private String getJwksUriFromDiscovery(String discoveryUri) {
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+
+      if (response.getStatusCode() != 200) {
+        throw new IllegalArgumentException(
+            "Failed to fetch discovery document. HTTP " + response.getStatusCode());
+      }
+
+      JsonNode doc = JsonUtils.readTree(response.getBody());
+
+      if (!doc.hasNonNull("jwks_uri")) {
+        throw new IllegalArgumentException("Discovery document missing 'jwks_uri'");
+      }
+
+      return doc.get("jwks_uri").asText();
+
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to resolve JWKS URI from discovery: " + e.getMessage(), e);
     }
   }
 
@@ -306,10 +372,10 @@ public class OktaAuthValidator {
   }
 
   private FieldError validateClientCredentials(
-      String oktaDomain, String clientId, String clientSecret) {
+      String oktaDomain, String clientId, String clientSecret, String discoveryUri) {
     try {
 
-      String introspectUrl = oktaDomain + "/v1/introspect";
+      String introspectUrl = getIntrospectUrl(discoveryUri);
       String requestBody = "token=dummy&token_type_hint=access_token";
       String authHeader = ValidationHttpUtil.createBasicAuthHeader(clientId, clientSecret);
 

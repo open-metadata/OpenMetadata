@@ -23,10 +23,11 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as AddItemIcon } from '../../../../assets/svg/add-item-icon.svg';
-import { ReactComponent as SuccessTicketIcon } from '../../../../assets/svg/ic-dq-success-widget.svg';
-import { ReactComponent as RedCircleIcon } from '../../../../assets/svg/red-circle-with-dash.svg';
-import { ReactComponent as YellowCalendarIcon } from '../../../../assets/svg/yellow-calendar.icon.svg';
+import { ReactComponent as ColumnCountIcon } from '../../../../assets/svg/data-observability/column-count.svg';
+import { ReactComponent as CreatedDateIcon } from '../../../../assets/svg/data-observability/created-date.svg';
+import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data-observability/profile-sample.svg';
+import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
+import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
@@ -137,7 +138,7 @@ export const TableProfilerProvider = ({
         }),
         key: 'row-count',
         value: profile?.rowCount ?? 0,
-        icon: AddItemIcon,
+        icon: RowCountIcon,
       },
       {
         title: t('label.column-entity', {
@@ -145,19 +146,19 @@ export const TableProfilerProvider = ({
         }),
         key: 'column-count',
         value: profile?.columnCount ?? tableProfiler?.columns?.length ?? 0,
-        icon: SuccessTicketIcon,
+        icon: ColumnCountIcon,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
         key: 'profile-sample-type',
         value: getProfileSampleValue(),
-        icon: RedCircleIcon,
+        icon: ProfileSampleIcon,
       },
       {
         title: t('label.size'),
         key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
-        icon: YellowCalendarIcon,
+        icon: TotalSizeIcon,
       },
       {
         title: t('label.created-date'),
@@ -172,7 +173,7 @@ export const TableProfilerProvider = ({
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
-        icon: YellowCalendarIcon,
+        icon: CreatedDateIcon,
       },
     ];
   }, [tableProfiler]);

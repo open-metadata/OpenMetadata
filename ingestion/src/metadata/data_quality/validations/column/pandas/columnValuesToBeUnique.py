@@ -15,7 +15,7 @@ Validator for column values to be unique test case
 
 import logging
 from collections import Counter, defaultdict
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import pandas as pd
 
@@ -29,11 +29,11 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 )
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
-    aggregate_others_pandas,
     calculate_impact_score_pandas,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
+    aggregate_others_statistical_pandas,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
@@ -41,34 +41,13 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = logging.getLogger(__name__)
 
+COUNTER_ACCUMULATOR_KEY = "counter_accumulator"
+
 
 class ColumnValuesToBeUniqueValidator(
     BaseColumnValuesToBeUniqueValidator, PandasValidatorMixin
 ):
     """Validator for column values to be unique test case"""
-
-    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            SQALikeColumn: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                self.runner,
-            )
-        else:
-            return self.get_column_name(
-                column_name,
-                self.runner,
-            )
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
@@ -117,44 +96,54 @@ class ColumnValuesToBeUniqueValidator(
 
         try:
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            unique_count_impl = Metrics.UNIQUE_COUNT(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
-                lambda: {"all_values": [], "total_count": 0, "total_rows": 0}
+                lambda: {
+                    Metrics.UNIQUE_COUNT.name: unique_count_impl.create_accumulator(),
+                    Metrics.COUNT.name: 0,
+                    DIMENSION_TOTAL_COUNT_KEY: 0,
+                }
             )
 
-            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
             for df in dfs:
-                grouped = df.groupby(dimension_col.name, dropna=False)
+                df_typed = cast(pd.DataFrame, df)
+                grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    # Collect all non-NULL values to compute unique count across dataframes
-                    dimension_aggregates[dimension_value]["all_values"].extend(
-                        group_df[column.name].dropna().tolist()
+                    unique_count_impl.update_accumulator(
+                        dimension_aggregates[dimension_value][
+                            Metrics.UNIQUE_COUNT.name
+                        ],
+                        group_df,
                     )
-                    # Count non-NULL values (consistent with COUNT metric)
-                    dimension_aggregates[dimension_value]["total_count"] += group_df[
-                        column.name
-                    ].count()
-                    # Track total rows including NULLs for impact score
-                    dimension_aggregates[dimension_value]["total_rows"] += len(group_df)
+                    dimension_aggregates[dimension_value][
+                        Metrics.COUNT.name
+                    ] += Metrics.COUNT(column).df_fn([group_df])
+                    dimension_aggregates[dimension_value][
+                        DIMENSION_TOTAL_COUNT_KEY
+                    ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                total_count = agg["total_count"]
-                total_rows = agg["total_rows"]
-                counter = Counter(agg["all_values"])
-                unique_count = sum(1 for value in counter.values() if value == 1)
-                duplicate_count = total_count - unique_count
+                total_count = agg[Metrics.COUNT.name]
+                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
+                counter_accumulator = agg[Metrics.UNIQUE_COUNT.name]
+                unique_count = unique_count_impl.aggregate_accumulator(
+                    counter_accumulator
+                )
+                failed_count = total_count - unique_count
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
+                        COUNTER_ACCUMULATOR_KEY: counter_accumulator,
                         Metrics.COUNT.name: total_count,
                         Metrics.UNIQUE_COUNT.name: unique_count,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
-                        DIMENSION_FAILED_COUNT_KEY: duplicate_count,
+                        DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
                 )
 
@@ -167,9 +156,49 @@ class ColumnValuesToBeUniqueValidator(
                     total_column=DIMENSION_TOTAL_COUNT_KEY,
                 )
 
-                results_df = aggregate_others_pandas(
+                def calculate_unique_count_from_counter(
+                    df_aggregated, others_mask, metric_column
+                ):
+                    result = df_aggregated[metric_column].copy()
+                    if others_mask.any():
+                        merged_counter = df_aggregated.loc[
+                            others_mask, COUNTER_ACCUMULATOR_KEY
+                        ].iloc[0]
+                        unique_count = sum(1 for v in merged_counter.values() if v == 1)
+                        result.loc[others_mask] = unique_count
+                    return result
+
+                def calculate_failed_count_from_metrics(
+                    df_aggregated, others_mask, metric_column
+                ):
+                    result = df_aggregated[metric_column].copy()
+                    if others_mask.any():
+                        count = df_aggregated.loc[others_mask, Metrics.COUNT.name].iloc[
+                            0
+                        ]
+                        unique_count = df_aggregated.loc[
+                            others_mask, Metrics.UNIQUE_COUNT.name
+                        ].iloc[0]
+                        failed_count = count - unique_count
+                        result.loc[others_mask] = failed_count
+                    return result
+
+                results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
+                    agg_functions={
+                        COUNTER_ACCUMULATOR_KEY: lambda counters: sum(
+                            counters, Counter()
+                        ),
+                        Metrics.COUNT.name: "sum",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
+                    final_metric_calculators={
+                        Metrics.UNIQUE_COUNT.name: calculate_unique_count_from_counter,
+                        DIMENSION_FAILED_COUNT_KEY: calculate_failed_count_from_metrics,
+                    },
+                    exclude_from_final=[COUNTER_ACCUMULATOR_KEY],
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 

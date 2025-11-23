@@ -25,6 +25,7 @@ const mockHandleClosePanel = jest.fn();
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
   getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+  getEntityOverview: jest.fn().mockImplementation(() => []),
 }));
 jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
@@ -40,12 +41,12 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       ViewBasic: true,
-      ViewAll: true,
+      ViewCustomFields: true,
     }),
   }),
 }));
 
-describe.skip('EntitySummaryPanel component tests', () => {
+describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     await act(async () => {
       render(

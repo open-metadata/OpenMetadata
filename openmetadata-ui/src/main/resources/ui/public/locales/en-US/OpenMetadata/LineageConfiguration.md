@@ -25,3 +25,13 @@ Select a lineage layer to view specific data relationships:
 - **Column Level Lineage**: Shows lineage at the column level, detailing relationships between individual columns.
 - **Data Observability**: Highlights data quality and monitoring insights within the lineage.
 $$
+
+$$section
+
+### Pipeline View Mode $(id="pipelineViewMode")
+
+Choose how pipelines are displayed in the lineage view:
+- **Node**: Displays pipelines as separate nodes in the graph, providing a detailed view of data flow through each pipeline (Default)
+- **Edge**: Represents pipelines as direct connections between nodes, offering a simplified view of data relationships
+
+$$

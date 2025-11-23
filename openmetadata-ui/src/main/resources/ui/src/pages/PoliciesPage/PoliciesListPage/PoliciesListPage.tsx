@@ -71,6 +71,7 @@ const PoliciesListPage = () => {
     pageSize,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const { permissions } = usePermissionProvider();
@@ -227,7 +228,7 @@ const PoliciesListPage = () => {
     ];
   }, []);
 
-  const fetchPolicies = async (paging?: Paging) => {
+  const fetchPolicies = async (paging?: Partial<Paging>) => {
     setIsLoading(true);
     try {
       const data = await getPolicies(
@@ -255,18 +256,28 @@ const PoliciesListPage = () => {
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
     if (cursorType && paging) {
       fetchPolicies({
         [cursorType]: paging[cursorType],
         total: paging?.total,
       } as Paging);
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
   useEffect(() => {
-    fetchPolicies();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchPolicies({ [cursorType]: cursorValue });
+    } else {
+      fetchPolicies();
+    }
+  }, [pageSize, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>

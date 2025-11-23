@@ -4,10 +4,23 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.stream.JsonGenerator;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -16,33 +29,31 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
-import os.org.opensearch.action.bulk.BackoffPolicy;
-import os.org.opensearch.action.bulk.BulkProcessor;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.action.index.IndexRequest;
-import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.client.HttpAsyncResponseConsumerFactory;
-import os.org.opensearch.client.RequestOptions;
-import os.org.opensearch.client.RestHighLevelClient;
-import os.org.opensearch.common.unit.ByteSizeUnit;
-import os.org.opensearch.common.unit.ByteSizeValue;
-import os.org.opensearch.common.unit.TimeValue;
-import os.org.opensearch.common.xcontent.XContentType;
+import org.openmetadata.service.search.opensearch.OsUtils;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
+import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 
 /**
- * OpenSearch implementation using native BulkProcessor
+ * OpenSearch implementation using new Java API client with custom bulk handler
  */
 @Slf4j
 public class OpenSearchBulkSink implements BulkSink {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
+      new JacksonJsonpMapper(OBJECT_MAPPER);
 
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
-  private final BulkProcessor bulkProcessor;
+  private final CustomBulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
 
   // Track metrics
@@ -72,112 +83,26 @@ public class OpenSearchBulkSink implements BulkSink {
     this.bulkProcessor = createBulkProcessor(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
   }
 
-  private BulkProcessor createBulkProcessor(
+  private CustomBulkProcessor createBulkProcessor(
       int bulkActions, int concurrentRequests, long maxPayloadSizeBytes) {
-    RestHighLevelClient client = searchClient.getClient();
-
-    // Create custom request options with larger buffer for big responses
-    RequestOptions.Builder optionsBuilder = RequestOptions.DEFAULT.toBuilder();
-    optionsBuilder.setHttpAsyncResponseConsumerFactory(
-        new HttpAsyncResponseConsumerFactory.HeapBufferedResponseConsumerFactory(
-            100 * 1024 * 1024)); // 100MB buffer
-
-    RequestOptions requestOptions = optionsBuilder.build();
-
     LOG.info(
-        "Creating BulkProcessor with batch size {}, {} concurrent requests, max payload {} MB",
+        "Creating CustomBulkProcessor with batch size {}, {} concurrent requests, max payload {} MB",
         bulkActions,
         concurrentRequests,
         maxPayloadSizeBytes / (1024 * 1024));
 
-    return BulkProcessor.builder(
-            (request, bulkListener) -> client.bulkAsync(request, requestOptions, bulkListener),
-            new BulkProcessor.Listener() {
-              @Override
-              public void beforeBulk(long executionId, BulkRequest request) {
-                int numberOfActions = request.numberOfActions();
-                totalSubmitted.addAndGet(numberOfActions);
-                LOG.debug(
-                    "Executing bulk request {} with {} actions", executionId, numberOfActions);
-              }
-
-              @Override
-              public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
-                int numberOfActions = request.numberOfActions();
-
-                if (response.hasFailures()) {
-                  int failures = 0;
-                  for (var item : response.getItems()) {
-                    if (item.isFailed()) {
-                      failures++;
-                      String failureMessage = item.getFailureMessage();
-                      // Log document_missing_exception differently as it indicates a race condition
-                      if (failureMessage != null
-                          && failureMessage.contains("document_missing_exception")) {
-                        LOG.warn(
-                            "Document missing error for {}: {} - This may occur during concurrent reindexing",
-                            item.getId(),
-                            failureMessage);
-                      } else {
-                        LOG.warn("Failed to index document {}: {}", item.getId(), failureMessage);
-                      }
-                    }
-                  }
-                  int successes = numberOfActions - failures;
-                  totalSuccess.addAndGet(successes);
-                  totalFailed.addAndGet(failures);
-
-                  LOG.warn(
-                      "Bulk request {} completed with {} failures out of {} actions",
-                      executionId,
-                      failures,
-                      numberOfActions);
-
-                  // Check for rejected execution exceptions
-                  String failureMessage = response.buildFailureMessage();
-                  if (failureMessage.contains("rejected_execution_exception")) {
-                    LOG.warn(
-                        "Detected backpressure from OpenSearch cluster. The BulkProcessor will handle retry with exponential backoff.");
-                  }
-                } else {
-                  totalSuccess.addAndGet(numberOfActions);
-                  LOG.debug(
-                      "Bulk request {} completed successfully with {} actions",
-                      executionId,
-                      numberOfActions);
-                }
-
-                updateStats();
-              }
-
-              @Override
-              public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
-                int numberOfActions = request.numberOfActions();
-                totalFailed.addAndGet(numberOfActions);
-
-                LOG.error(
-                    "Bulk request {} failed completely with {} actions",
-                    executionId,
-                    numberOfActions,
-                    failure);
-
-                if (failure.getMessage() != null
-                    && failure.getMessage().contains("rejected_execution_exception")) {
-                  LOG.warn(
-                      "Detected backpressure from OpenSearch cluster. The BulkProcessor will handle retry with exponential backoff.");
-                }
-
-                updateStats();
-              }
-            })
-        .setBulkActions(bulkActions)
-        .setBulkSize(new ByteSizeValue(maxPayloadSizeBytes, ByteSizeUnit.BYTES))
-        .setFlushInterval(TimeValue.timeValueSeconds(5)) // Reduced from 10s for better throughput
-        .setConcurrentRequests(concurrentRequests)
-        .setBackoffPolicy(
-            BackoffPolicy.exponentialBackoff(
-                TimeValue.timeValueMillis(100), 3)) // Reduced from 1s to 100ms for faster retries
-        .build();
+    return new CustomBulkProcessor(
+        searchClient,
+        bulkActions,
+        maxPayloadSizeBytes,
+        concurrentRequests,
+        5000, // 5 seconds flush interval
+        100, // 100ms initial backoff
+        3, // 3 retries
+        totalSubmitted,
+        totalSuccess,
+        totalFailed,
+        this::updateStats);
   }
 
   @Override
@@ -209,7 +134,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
     try {
       // Check if these are time series entities
-      if (!entities.isEmpty() && entities.getFirst() instanceof EntityTimeSeriesInterface) {
+      if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
         for (EntityTimeSeriesInterface entity : tsEntities) {
           addTimeSeriesEntity(entity, indexName, entityType);
@@ -249,41 +174,63 @@ public class OpenSearchBulkSink implements BulkSink {
       boolean recreateIndex,
       ReindexContext reindexContext,
       boolean embeddingsEnabled) {
-    // Build the search index document using the proper transformation
-    String entityType = Entity.getEntityTypeFromObject(entity);
-    Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
-    String json = JsonUtils.pojoToJson(searchIndexDoc);
+    try {
+      String entityType = Entity.getEntityTypeFromObject(entity);
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      String json = JsonUtils.pojoToJson(searchIndexDoc);
+      String docId = entity.getId().toString();
 
-    if (recreateIndex) {
-      // Use IndexRequest for fresh indexing to avoid document_missing_exception
-      IndexRequest indexRequest =
-          new IndexRequest(indexName).id(entity.getId().toString()).source(json, XContentType.JSON);
-      bulkProcessor.add(indexRequest);
-    } else {
-      // Use UpdateRequest with upsert for regular updates
-      UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
-      updateRequest.doc(json, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      bulkProcessor.add(updateRequest);
-    }
+      BulkOperation operation;
+      if (recreateIndex) {
+        operation =
+            BulkOperation.of(
+                op ->
+                    op.index(
+                        idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json))));
+      } else {
+        operation =
+            BulkOperation.of(
+                op ->
+                    op.update(
+                        upd ->
+                            upd.index(indexName)
+                                .id(docId)
+                                .document(OsUtils.toJsonData(json))
+                                .docAsUpsert(true)));
+      }
+      bulkProcessor.add(operation);
 
-    // If embeddings are enabled, also index to vector_search_index
-    if (embeddingsEnabled) {
-      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex, reindexContext);
+      if (embeddingsEnabled) {
+        addEntityToVectorIndex(bulkProcessor, entity, recreateIndex, reindexContext);
+      }
+    } catch (EntityNotFoundException e) {
+      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
     }
   }
 
   private void addTimeSeriesEntity(
       EntityTimeSeriesInterface entity, String indexName, String entityType) {
-    Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
-    String json = JsonUtils.pojoToJson(searchIndexDoc);
-    String docId = entity.getId().toString();
+    try {
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      String json = JsonUtils.pojoToJson(searchIndexDoc);
+      String docId = entity.getId().toString();
 
-    IndexRequest indexRequest =
-        new IndexRequest(indexName).id(docId).source(json, XContentType.JSON);
+      BulkOperation operation =
+          BulkOperation.of(
+              op ->
+                  op.index(
+                      idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json))));
 
-    // Add to bulk processor - it handles everything including size limits
-    bulkProcessor.add(indexRequest);
+      bulkProcessor.add(operation);
+    } catch (EntityNotFoundException e) {
+      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+    }
   }
 
   private void updateStats() {
@@ -323,51 +270,299 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  /**
-   * Get current batch size
-   */
   public int getBatchSize() {
     return batchSize;
   }
 
-  /**
-   * Get current concurrent requests
-   */
   public int getConcurrentRequests() {
     return maxConcurrentRequests;
   }
 
-  /**
-   * Update batch size - Note: This only updates the value for future processor creation
-   */
   public void updateBatchSize(int newBatchSize) {
     this.batchSize = newBatchSize;
     LOG.info("Batch size updated to: {}", newBatchSize);
   }
 
-  /**
-   * Update concurrent requests - Note: This only updates the value for future processor creation
-   */
   public void updateConcurrentRequests(int concurrentRequests) {
     this.maxConcurrentRequests = concurrentRequests;
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
 
-  /**
-   * Checks if vector embeddings are enabled for a specific entity type.
-   * This combines SearchRepository capability check with job configuration.
-   */
   protected boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return false;
   }
 
-  /**
-   * Adds entity to vector_search_index for embedding search.
-   * This method will only be called when embeddings are enabled for the entity type.
-   */
   protected void addEntityToVectorIndex(
-      BulkProcessor bulkProcessor,
+      CustomBulkProcessor bulkProcessor,
       EntityInterface entity,
       boolean recreateIndex,
       ReindexContext reindexContext) {}
+
+  public static class CustomBulkProcessor {
+    private final OpenSearchAsyncClient asyncClient;
+    private final List<BulkOperation> buffer = new ArrayList<>();
+    private long currentBufferSize = 0;
+    private final Lock lock = new ReentrantLock();
+    private final int bulkActions;
+    private final long maxPayloadSizeBytes;
+    private final Semaphore concurrentRequestSemaphore;
+    private final AtomicInteger activeBulkRequests = new AtomicInteger(0);
+    private final AtomicLong executionIdCounter = new AtomicLong(0);
+    private final ScheduledExecutorService scheduler;
+    private final AtomicLong totalSubmitted;
+    private final AtomicLong totalSuccess;
+    private final AtomicLong totalFailed;
+    private final Runnable statsUpdater;
+    private final long initialBackoffMillis;
+    private final int maxRetries;
+    private volatile boolean closed = false;
+
+    CustomBulkProcessor(
+        OpenSearchClient client,
+        int bulkActions,
+        long maxPayloadSizeBytes,
+        int concurrentRequests,
+        long flushIntervalMillis,
+        long initialBackoffMillis,
+        int maxRetries,
+        AtomicLong totalSubmitted,
+        AtomicLong totalSuccess,
+        AtomicLong totalFailed,
+        Runnable statsUpdater) {
+      this.asyncClient = new OpenSearchAsyncClient(client.getNewClient()._transport());
+      this.bulkActions = bulkActions;
+      this.maxPayloadSizeBytes = maxPayloadSizeBytes;
+      this.concurrentRequestSemaphore = new Semaphore(concurrentRequests);
+      this.initialBackoffMillis = initialBackoffMillis;
+      this.maxRetries = maxRetries;
+      this.totalSubmitted = totalSubmitted;
+      this.totalSuccess = totalSuccess;
+      this.totalFailed = totalFailed;
+      this.statsUpdater = statsUpdater;
+      this.scheduler = Executors.newScheduledThreadPool(1);
+
+      scheduler.scheduleAtFixedRate(
+          this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);
+    }
+
+    void add(BulkOperation operation) {
+      lock.lock();
+      try {
+        if (closed) {
+          throw new IllegalStateException("Bulk processor is closed");
+        }
+
+        long operationSize = estimateOperationSize(operation);
+        buffer.add(operation);
+        currentBufferSize += operationSize;
+
+        if (buffer.size() >= bulkActions || currentBufferSize >= maxPayloadSizeBytes) {
+          flushInternal();
+        }
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    private long estimateOperationSize(BulkOperation operation) {
+      try {
+        StringWriter writer = new StringWriter();
+        JsonGenerator generator = JACKSON_JSONP_MAPPER.jsonProvider().createGenerator(writer);
+        operation.serialize(generator, JACKSON_JSONP_MAPPER);
+        generator.close();
+        return writer.toString().getBytes(StandardCharsets.UTF_8).length;
+      } catch (Exception e) {
+        LOG.warn("Failed to estimate bulk operation size, using default: {}", e.getMessage());
+        return 1024;
+      }
+    }
+
+    void flush() {
+      lock.lock();
+      try {
+        if (!buffer.isEmpty()) {
+          flushInternal();
+        }
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    private void flushIfNeeded() {
+      lock.lock();
+      try {
+        if (!buffer.isEmpty() && !closed) {
+          flushInternal();
+        }
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    private void flushInternal() {
+      if (buffer.isEmpty()) {
+        return;
+      }
+
+      List<BulkOperation> toFlush = new ArrayList<>(buffer);
+      buffer.clear();
+      currentBufferSize = 0;
+
+      long executionId = executionIdCounter.incrementAndGet();
+      int numberOfActions = toFlush.size();
+      totalSubmitted.addAndGet(numberOfActions);
+
+      LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
+
+      try {
+        concurrentRequestSemaphore.acquire();
+      } catch (InterruptedException e) {
+        LOG.error("Interrupted while waiting for semaphore", e);
+        Thread.currentThread().interrupt();
+        totalFailed.addAndGet(numberOfActions);
+        return;
+      }
+
+      activeBulkRequests.incrementAndGet();
+      executeBulkWithRetry(toFlush, executionId, numberOfActions, 0);
+    }
+
+    private void executeBulkWithRetry(
+        List<BulkOperation> operations, long executionId, int numberOfActions, int attemptNumber) {
+      CompletableFuture<BulkResponse> future;
+      try {
+        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      } catch (IOException e) {
+        handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        return;
+      }
+
+      future.whenComplete(
+          (response, error) -> {
+            try {
+              if (error != null) {
+                handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, error);
+              } else if (response.errors()) {
+                handlePartialFailure(response, executionId, numberOfActions);
+              } else {
+                totalSuccess.addAndGet(numberOfActions);
+                LOG.debug(
+                    "Bulk request {} completed successfully with {} actions",
+                    executionId,
+                    numberOfActions);
+                statsUpdater.run();
+              }
+            } finally {
+              if (error != null && shouldRetry(attemptNumber, error)) {
+                // Don't release resources yet, we're retrying
+              } else {
+                activeBulkRequests.decrementAndGet();
+                concurrentRequestSemaphore.release();
+              }
+            }
+          });
+    }
+
+    private void handleBulkFailure(
+        List<BulkOperation> operations,
+        long executionId,
+        int numberOfActions,
+        int attemptNumber,
+        Throwable error) {
+      if (shouldRetry(attemptNumber, error)) {
+        long backoffTime = calculateBackoff(attemptNumber);
+        LOG.warn(
+            "Bulk request {} failed (attempt {}), retrying in {}ms: {}",
+            executionId,
+            attemptNumber + 1,
+            backoffTime,
+            error.getMessage());
+
+        scheduler.schedule(
+            () -> executeBulkWithRetry(operations, executionId, numberOfActions, attemptNumber + 1),
+            backoffTime,
+            TimeUnit.MILLISECONDS);
+      } else {
+        totalFailed.addAndGet(numberOfActions);
+        LOG.error(
+            "Bulk request {} failed completely after {} attempts with {} actions",
+            executionId,
+            attemptNumber + 1,
+            numberOfActions,
+            error);
+        statsUpdater.run();
+      }
+    }
+
+    private void handlePartialFailure(
+        BulkResponse response, long executionId, int numberOfActions) {
+      int failures = 0;
+      for (BulkResponseItem item : response.items()) {
+        if (item.error() != null) {
+          failures++;
+          String failureMessage = item.error().reason();
+          if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
+            LOG.warn(
+                "Document missing error for {}: {} - This may occur during concurrent reindexing",
+                item.id(),
+                failureMessage);
+          } else {
+            LOG.warn("Failed to index document {}: {}", item.id(), failureMessage);
+          }
+        }
+      }
+      int successes = numberOfActions - failures;
+      totalSuccess.addAndGet(successes);
+      totalFailed.addAndGet(failures);
+
+      LOG.warn(
+          "Bulk request {} completed with {} failures out of {} actions",
+          executionId,
+          failures,
+          numberOfActions);
+      statsUpdater.run();
+    }
+
+    private boolean shouldRetry(int attemptNumber, Throwable error) {
+      if (attemptNumber >= maxRetries) {
+        return false;
+      }
+      String errorMessage = error.getMessage();
+      if (errorMessage == null) {
+        return true;
+      }
+      return errorMessage.contains("rejected_execution_exception")
+          || errorMessage.contains("EsRejectedExecutionException")
+          || errorMessage.contains("RemoteTransportException")
+          || errorMessage.contains("ConnectException")
+          || errorMessage.contains("timeout");
+    }
+
+    private long calculateBackoff(int attemptNumber) {
+      return initialBackoffMillis * (long) Math.pow(2, attemptNumber);
+    }
+
+    boolean awaitClose(long timeout, TimeUnit unit) throws InterruptedException {
+      closed = true;
+      flush();
+      scheduler.shutdown();
+
+      long timeoutMillis = unit.toMillis(timeout);
+      long startTime = System.currentTimeMillis();
+
+      // Wait for all active bulk requests to complete
+      while (activeBulkRequests.get() > 0) {
+        long elapsed = System.currentTimeMillis() - startTime;
+        if (elapsed >= timeoutMillis) {
+          LOG.warn(
+              "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
+          return false;
+        }
+        Thread.sleep(100);
+      }
+
+      return scheduler.awaitTermination(
+          timeoutMillis - (System.currentTimeMillis() - startTime), TimeUnit.MILLISECONDS);
+    }
+  }
 }

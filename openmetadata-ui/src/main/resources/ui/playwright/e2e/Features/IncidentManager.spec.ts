@@ -110,7 +110,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const testCaseName = testCase?.['name'];
     const assignee = {
       name: user1.data.email.split('@')[0],
-      displayName: user1.getUserName(),
+      displayName: user1.getUserDisplayName(),
     };
 
     await test.step('Claim ownership of table', async () => {
@@ -157,7 +157,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Re-assign incident to user', async () => {
       const assignee1 = {
         name: user2.data.email.split('@')[0],
-        displayName: user2.getUserName(),
+        displayName: user2.getUserDisplayName(),
       };
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
@@ -235,7 +235,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       async () => {
         const assignee2 = {
           name: user3.data.email.split('@')[0],
-          displayName: user3.getUserName(),
+          displayName: user3.getUserDisplayName(),
         };
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/name/*?fields=*'
@@ -403,7 +403,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const pipeline = table1.testSuitePipelineResponseData[0];
     const assignee = {
       name: user1.data.email.split('@')[0],
-      displayName: user1.getUserName(),
+      displayName: user1.getUserDisplayName(),
     };
     const { apiContext } = await getApiContext(page);
 
@@ -507,7 +507,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test("Verify filters in Incident Manager's page", async ({ page }) => {
     const assigneeTestCase = {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
-      userDisplayName: user1.getUserName(),
+      userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
@@ -571,13 +571,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="test-case-select"]');
     const testCaseResponse = page.waitForResponse(
-      `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+      `/api/v1/search/query?q=*index=test_case_search_index*`
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;
 
     const testCaseFilterRes = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*`
     );
     await page.click(`[title="${testCase1}"]`);
     await testCaseFilterRes;

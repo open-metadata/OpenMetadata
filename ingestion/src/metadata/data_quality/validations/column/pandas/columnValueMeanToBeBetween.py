@@ -14,13 +14,12 @@ Validator for column value mean to be between test case
 """
 
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import pandas as pd
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_SUM_VALUE_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
 )
@@ -29,11 +28,11 @@ from metadata.data_quality.validations.column.base.columnValueMeanToBeBetween im
 )
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
-    aggregate_others_statistical_pandas,
     calculate_impact_score_pandas,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
+    aggregate_others_statistical_pandas,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
@@ -47,29 +46,6 @@ class ColumnValueMeanToBeBetweenValidator(
     BaseColumnValueMeanToBeBetweenValidator, PandasValidatorMixin
 ):
     """Validator for column value mean to be between test case"""
-
-    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            SQALikeColumn: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                self.runner,
-            )
-        else:
-            return self.get_column_name(
-                column_name,
-                self.runner,
-            )
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
@@ -111,60 +87,65 @@ class ColumnValueMeanToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
+        checker = self._get_validation_checker(test_params)
         dimension_results = []
 
         try:
-            min_bound = test_params["minValueForMeanInCol"]
-            max_bound = test_params["maxValueForMeanInCol"]
-
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            mean_impl = Metrics.MEAN(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
-                lambda: {"sums": [], "counts": [], "total_rows": []}
+                lambda: {
+                    Metrics.MEAN.name: mean_impl.create_accumulator(),
+                    DIMENSION_TOTAL_COUNT_KEY: 0,
+                }
             )
 
-            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
             for df in dfs:
-                grouped = df.groupby(dimension_col.name, dropna=False)
+                df_typed = cast(pd.DataFrame, df)
+                grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    # dropna for mean calculation (consistent with pandas .mean())
-                    non_null_values = group_df[column.name].dropna()
-                    dimension_aggregates[dimension_value]["sums"].append(
-                        non_null_values.sum()
+                    dimension_aggregates[dimension_value][
+                        Metrics.MEAN.name
+                    ] = mean_impl.update_accumulator(
+                        dimension_aggregates[dimension_value][Metrics.MEAN.name],
+                        group_df,
                     )
-                    dimension_aggregates[dimension_value]["counts"].append(
-                        len(non_null_values)
-                    )
-                    # Track total rows including NULLs (consistent with SQL COUNT(*))
-                    dimension_aggregates[dimension_value]["total_rows"].append(
-                        len(group_df)
-                    )
+
+                    dimension_aggregates[dimension_value][
+                        DIMENSION_TOTAL_COUNT_KEY
+                    ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                total_count = sum(agg["counts"])
-                total_sum = sum(agg["sums"])
-                total_rows = sum(agg["total_rows"])
+                mean_value = mean_impl.aggregate_accumulator(agg[Metrics.MEAN.name])
 
-                if total_count == 0:
+                if mean_value is None:
+                    logger.warning(
+                        "Skipping '%s=%s' dimension since 'mean' is 'None'",
+                        dimension_col.name,
+                        dimension_value,
+                    )
                     continue
 
-                mean_value = total_sum / total_count
+                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 # Statistical validator: when mean fails, ALL rows in dimension fail
-                if min_bound <= mean_value <= max_bound:
-                    failed_count = 0
-                else:
-                    failed_count = total_rows
+                failed_count = (
+                    total_rows
+                    if checker.violates_pandas({Metrics.MEAN.name: mean_value})
+                    else 0
+                )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
                         Metrics.MEAN.name: mean_value,
-                        DIMENSION_SUM_VALUE_KEY: total_sum,
+                        Metrics.COUNT.name: agg[Metrics.MEAN.name].count_value,
+                        Metrics.SUM.name: agg[Metrics.MEAN.name].sum_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -183,10 +164,10 @@ class ColumnValueMeanToBeBetweenValidator(
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
                         others_sum = df_aggregated.loc[
-                            others_mask, DIMENSION_SUM_VALUE_KEY
+                            others_mask, Metrics.SUM.name
                         ].iloc[0]
                         others_count = df_aggregated.loc[
-                            others_mask, DIMENSION_TOTAL_COUNT_KEY
+                            others_mask, Metrics.COUNT.name
                         ].iloc[0]
                         if others_count > 0:
                             result.loc[others_mask] = others_sum / others_count
@@ -195,11 +176,19 @@ class ColumnValueMeanToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
+                    agg_functions={
+                        Metrics.SUM.name: "sum",
+                        Metrics.COUNT.name: "sum",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     final_metric_calculators={
                         Metrics.MEAN.name: calculate_weighted_mean
                     },
-                    exclude_from_final=[DIMENSION_SUM_VALUE_KEY],
+                    exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
                     top_n=DEFAULT_TOP_DIMENSIONS,
+                    violation_metrics=[Metrics.MEAN.name],
+                    violation_predicate=checker.violates_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):

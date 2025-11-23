@@ -18,8 +18,7 @@ import {
   useCompositeDrawer,
 } from './useCompositeDrawer';
 
-export interface FormDrawerConfig<T = any>
-  extends Omit<CompositeDrawerConfig, 'header' | 'footer' | 'body'> {
+export interface FormDrawerConfig<T> extends CompositeDrawerConfig {
   title: string | ReactNode;
   form: ReactNode;
   onSubmit: (data: T) => Promise<void> | void;
@@ -70,7 +69,7 @@ export interface FormDrawerConfig<T = any>
  * );
  * ```
  */
-export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
+export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -92,6 +91,9 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
     headerActions,
     footerAlign = 'right',
     closeOnEscape,
+    header = {},
+    body = {},
+    footer = {},
     ...drawerConfig
   } = config;
 
@@ -103,10 +105,12 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
       title,
       // onClose will be handled by useCompositeDrawer with onBeforeClose
       actions: headerActions,
+      ...header,
     },
     body: {
       children: form,
       loading: loading || isSubmitting,
+      ...body,
     },
     footer: {
       align: footerAlign,
@@ -134,6 +138,7 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
           }
         },
       },
+      ...footer,
     },
   });
 
@@ -171,9 +176,9 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
  * });
  * ```
  */
-export const useFormDrawerWithRef = <T = any,>(
+export const useFormDrawerWithRef = <T,>(
   config: FormDrawerConfig<T> & {
-    formRef?: { submit: () => void; validateFields?: () => Promise<any> };
+    formRef?: { submit: () => void; validateFields?: () => Promise<T> };
   }
 ) => {
   const { formRef, onSubmit, ...restConfig } = config;
