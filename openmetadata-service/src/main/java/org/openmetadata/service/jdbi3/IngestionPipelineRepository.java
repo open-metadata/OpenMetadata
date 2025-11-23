@@ -487,6 +487,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         PipelineStatus.class);
   }
 
+  @Transaction
+  public IngestionPipeline deletePipelineStatusByRunId(UUID ingestionPipelineId, UUID runId) {
+    IngestionPipeline ingestionPipeline = find(ingestionPipelineId, Include.NON_DELETED);
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .deleteExtensionByKey(
+            RUN_ID_EXTENSION_KEY,
+            runId.toString(),
+            ingestionPipeline.getFullyQualifiedName(),
+            PIPELINE_STATUS_EXTENSION);
+    setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
+    return ingestionPipeline;
+  }
+
   /**
    * Handles entity updated from PUT and POST operation.
    */
@@ -551,7 +565,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) {
-      if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
+      if (updatedLevel != null && !updatedLevel.equals(origLevel)) {
         recordChange("loggerLevel", origLevel, updatedLevel);
       }
     }
