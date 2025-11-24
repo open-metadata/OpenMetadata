@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 import base64
 import json
 import traceback
-from typing import List, Optional, Type, TypeVar
+from typing import Dict, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, validate_call
 
@@ -28,6 +28,7 @@ from metadata.generated.schema.api.tests.createCustomMetric import (
     CreateCustomMetricRequest,
 )
 from metadata.generated.schema.entity.data.table import (
+    Column,
     ColumnProfile,
     DataModel,
     SystemProfile,
@@ -470,3 +471,17 @@ class OMetaTableMixin:
 
         # Backend returns BulkOperationResult in both async and sync modes
         return BulkOperationResult(**resp)
+
+    def get_table_columns(
+        self,
+        table_fqn: str,
+        fields: Optional[List[str]] = None,
+        params: Optional[Dict[str, str]] = None,
+    ) -> List[Column]:
+        uri = self.get_suffix(Table) + "/name/" + quote(table_fqn) + "/columns"
+
+        url_fields = f"?fields={','.join(fields)}" if fields else ""
+
+        resp = self.client.get(path=f"{uri}{url_fields}", data=params)
+
+        return [Column(**elmt) for elmt in resp["data"]]
