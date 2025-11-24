@@ -17,7 +17,6 @@ from typing import List, Optional
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
-    DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValueMaxToBeBetween import (
@@ -78,12 +77,15 @@ class ColumnValueMaxToBeBetweenValidator(
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
                 Metrics.MAX.name: max_expr,
-                DIMENSION_FAILED_COUNT_KEY: (
-                    self._get_validation_checker(
-                        test_params
-                    ).build_agg_level_violation_sqa([max_expr], row_count_expr)
-                ),
             }
+
+            failed_count_builder = (
+                lambda cte, row_count_expr: self._get_validation_checker(
+                    test_params
+                ).build_agg_level_violation_sqa(
+                    [getattr(cte.c, Metrics.MAX.name)], row_count_expr
+                )
+            )
 
             normalized_dimension = self._get_normalized_dimension_expression(
                 dimension_col
@@ -93,6 +95,7 @@ class ColumnValueMaxToBeBetweenValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                failed_count_builder=failed_count_builder,
             )
 
             for row in result_rows:
