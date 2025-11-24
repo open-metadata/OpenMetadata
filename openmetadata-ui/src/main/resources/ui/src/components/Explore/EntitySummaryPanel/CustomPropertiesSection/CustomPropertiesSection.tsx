@@ -61,56 +61,7 @@ const CustomPropertiesSection = ({
     });
   }, [customProperties, searchText]);
 
-  if (isEntityDataLoading) {
-    return (
-      <div className="entity-summary-panel-tab-content">
-        <div className="p-x-md p-t-md">
-          <Loader size="default" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!viewCustomPropertiesPermission) {
-    return (
-      <div className="items-center d-block align-items-center text-center">
-        <ErrorPlaceHolder
-          className="permission-error-placeholder"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.custom-property-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      </div>
-    );
-  }
-  if (customProperties.length === 0) {
-    return (
-      <div
-        className="entity-summary-panel-tab-content"
-        data-testid="no-data-placeholder">
-        <div className="p-x-md p-t-md text-justify no-data-placeholder">
-          <Transi18next
-            i18nKey="message.no-custom-properties-entity"
-            renderElement={
-              <a
-                href={CUSTOM_PROPERTIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-                title="Custom properties documentation"
-              />
-            }
-            values={{
-              docs: t('label.doc-plural-lowercase'),
-              entity: startCase(entityType),
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const renderEmptyState = () => {
+  const emptyState = useMemo(() => {
     if (searchText) {
       return (
         <Typography.Paragraph className="text-center text-grey-muted p-sm">
@@ -148,7 +99,57 @@ const CustomPropertiesSection = ({
         </ErrorPlaceHolderNew>
       </div>
     );
-  };
+  }, [searchText, entityType, t]);
+
+  if (isEntityDataLoading) {
+    return (
+      <div className="entity-summary-panel-tab-content">
+        <div className="p-x-md p-t-md">
+          <Loader size="default" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!viewCustomPropertiesPermission) {
+    return (
+      <div className="items-center d-block align-items-center text-center">
+        <ErrorPlaceHolder
+          className="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.custom-property-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      </div>
+    );
+  }
+
+  if (customProperties.length === 0) {
+    return (
+      <div
+        className="entity-summary-panel-tab-content"
+        data-testid="no-data-placeholder">
+        <div className="p-x-md p-t-md text-justify no-data-placeholder">
+          <Transi18next
+            i18nKey="message.no-custom-properties-entity"
+            renderElement={
+              <a
+                href={CUSTOM_PROPERTIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Custom properties documentation"
+              />
+            }
+            values={{
+              docs: t('label.doc-plural-lowercase'),
+              entity: startCase(entityType),
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="entity-summary-panel-tab-content">
@@ -183,7 +184,7 @@ const CustomPropertiesSection = ({
                   </div>
                 );
               })
-            : renderEmptyState()}
+            : emptyState}
         </div>
       </div>
     </div>
