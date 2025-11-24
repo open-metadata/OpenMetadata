@@ -4471,7 +4471,7 @@ public interface CollectionDAO {
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
-      tags.forEach(TagLabelUtil::applyTagCommonFields);
+      tags.forEach(TagLabelUtil::applyTagCommonFieldsGracefully);
       return tags;
     }
 
