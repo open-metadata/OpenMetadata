@@ -1129,6 +1129,10 @@ export interface PipelineObservability {
      */
     scheduleInterval?: null | string;
     /**
+     * Type of pipeline service
+     */
+    serviceType?: PipelineServiceType;
+    /**
      * Start time of the pipeline schedule.
      */
     startTime?: number;
@@ -1143,6 +1147,36 @@ export enum LastRunStatus {
     Running = "Running",
     Skipped = "Skipped",
     Successful = "Successful",
+}
+
+/**
+ * Type of pipeline service
+ *
+ * Type of pipeline service - Airflow or Prefect.
+ */
+export enum PipelineServiceType {
+    Airbyte = "Airbyte",
+    Airflow = "Airflow",
+    CustomPipeline = "CustomPipeline",
+    DBTCloud = "DBTCloud",
+    Dagster = "Dagster",
+    DataFactory = "DataFactory",
+    DatabricksPipeline = "DatabricksPipeline",
+    DomoPipeline = "DomoPipeline",
+    Fivetran = "Fivetran",
+    Flink = "Flink",
+    GluePipeline = "GluePipeline",
+    KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
+    Matillion = "Matillion",
+    Nifi = "Nifi",
+    OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
+    Spark = "Spark",
+    Spline = "Spline",
+    Ssis = "SSIS",
+    Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**
