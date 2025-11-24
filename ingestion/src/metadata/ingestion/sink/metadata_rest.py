@@ -134,7 +134,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.team_entities = {}
         self.limit_reached = set()
         self.buffer: list[BaseModel] = []
-        self._lifecycle_lock = threading.Lock()
         self.deferred_lifecycle_records: list[OMetaLifeCycleData] = []
         self.deferred_lifecycle_processed = False
 
