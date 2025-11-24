@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
@@ -29,18 +28,6 @@ public class QueryIndex implements SearchIndex {
     doc.put("tier", parseTags.getTierTag());
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
-
-    // Add votes with only counts (not voter lists) to reduce index size
-    // The full votes object with voter lists is excluded by DEFAULT_EXCLUDED_FIELDS
-    if (query.getVotes() != null) {
-      Map<String, Object> votesMap = new HashMap<>();
-      votesMap.put(
-          "upVotes", query.getVotes().getUpVotes() != null ? query.getVotes().getUpVotes() : 0);
-      votesMap.put(
-          "downVotes",
-          query.getVotes().getDownVotes() != null ? query.getVotes().getDownVotes() : 0);
-      doc.put("voteCounts", votesMap);
-    }
 
     return doc;
   }
