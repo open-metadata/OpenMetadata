@@ -101,6 +101,10 @@ export interface Dashboard {
      */
     project?: string;
     /**
+     * Reviewers of this dashboard.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to service where this dashboard is hosted in.
      */
     service: EntityReference;

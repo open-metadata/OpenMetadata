@@ -109,6 +109,10 @@ export interface Database {
      */
     retentionPeriod?: string;
     /**
+     * Reviewers of this database.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the database cluster/service where this database is hosted in.
      */
     service: EntityReference;

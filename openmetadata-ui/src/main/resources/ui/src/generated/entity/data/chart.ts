@@ -91,6 +91,10 @@ export interface Chart {
      */
     owners?: EntityReference[];
     /**
+     * Reviewers of this chart.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to service where this dashboard is hosted in.
      */
     service: EntityReference;

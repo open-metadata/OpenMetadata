@@ -70,6 +70,10 @@ export interface Report {
      */
     owners?: EntityReference[];
     /**
+     * Reviewers of this Report.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to service where this report is hosted in.
      */
     service: EntityReference;

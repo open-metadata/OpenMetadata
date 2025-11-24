@@ -100,6 +100,10 @@ export interface Query {
      */
     queryUsedIn?: EntityReference[];
     /**
+     * Reviewers of this Query.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the service this query belongs to.
      */
     service: EntityReference;

@@ -96,6 +96,10 @@ export interface DashboardDataModel {
      */
     project?: string;
     /**
+     * Reviewers of this data model.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to service where this data model is hosted in.
      */
     service?: EntityReference;
