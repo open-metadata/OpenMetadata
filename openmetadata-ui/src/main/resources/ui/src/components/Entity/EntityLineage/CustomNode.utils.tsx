@@ -199,8 +199,8 @@ export const getColumnContent = (
   selectedColumn: string | null,
   isConnectable: boolean,
   onColumnClick: (column: string) => void,
-  onColumnMouseOver: (column: string) => void,
-  onColumnMouseOut: () => void,
+  onColumnMouseEnter: (column: string) => void,
+  onColumnMouseLeave: () => void,
   showDataObservabilitySummary: boolean,
   isLoading: boolean,
   summary?: ColumnTestSummaryDefinition
@@ -217,14 +217,14 @@ export const getColumnContent = (
     if (selectedColumn) {
       return;
     }
-    onColumnMouseOver(fullyQualifiedName ?? '');
+    onColumnMouseEnter(fullyQualifiedName ?? '');
   };
 
   const handleMouseLeave = () => {
     if (selectedColumn) {
       return;
     }
-    onColumnMouseOut();
+    onColumnMouseLeave();
   };
 
   return (
