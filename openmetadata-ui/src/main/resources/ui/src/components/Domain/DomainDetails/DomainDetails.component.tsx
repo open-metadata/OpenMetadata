@@ -130,7 +130,7 @@ const DomainDetails = ({
   domainFqnOverride,
   onNavigate,
   refreshDomains,
-  extraProps,
+  isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -830,23 +830,23 @@ const DomainDetails = ({
   const iconData = useMemo(() => {
     return (
       <EntityAvatar
+        className="entity-header-avatar"
         entity={{
           ...domain,
           entityType: 'domain',
           parent: isSubDomain ? { type: 'domain' } : undefined,
         }}
-        size={extraProps?.iconSize ?? 91}
+        size={isTreeView ? 60 : 91}
         sx={{
           borderRadius: '5px',
           border: '2px solid',
           borderColor: theme.palette.allShades.white,
-          marginTop: '-25px',
+          marginTop: isTreeView ? 0 : '-25px',
           marginRight: 2,
-          ...extraProps?.iconStyles,
         }}
       />
     );
-  }, [domain, isSubDomain, theme]);
+  }, [domain, isSubDomain, theme, isTreeView]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -870,18 +870,18 @@ const DomainDetails = ({
           flexDirection: 'column',
           gap: 1.5,
         }}>
-        {extraProps?.showCoverImage !== false && (
+        {!isTreeView && (
           <CoverImage
             imageUrl={domain.style?.coverImage?.url}
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
         <Box
+          className="entity-header"
           sx={{
             display: 'flex',
             mx: 5,
             alignItems: 'flex-end',
-            ...extraProps?.headerContainerStyles,
           }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader
@@ -898,13 +898,13 @@ const DomainDetails = ({
           </Box>
           <Box>
             <Box
+              className="domain-header-action-container"
               sx={{
                 display: 'flex',
                 gap: 3,
                 justifyContent: 'flex-end',
                 alignItems: 'center',
                 pb: '4px',
-                ...extraProps?.actionContainerStyles,
               }}>
               {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
@@ -1002,7 +1002,7 @@ const DomainDetails = ({
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
           <Box className="domain-details-page-tabs" sx={{ width: '100%' }}>
-            <Box sx={{ padding: 5, ...extraProps?.tabContainerStyles }}>
+            <Box sx={{ px: isTreeView ? 0 : 5, py: 5 }}>
               <Tabs
                 destroyInactiveTabPane
                 activeKey={activeTab}
@@ -1086,9 +1086,9 @@ const DomainDetails = ({
     <>
       {breadcrumbs}
       <Box
+        className={isTreeView ? 'domain-tree-view-variant' : ''}
         sx={{
           ...getDomainContainerStyles(theme),
-          ...extraProps?.domainContainerStyles,
         }}>
         {content}
       </Box>

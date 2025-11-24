@@ -856,17 +856,9 @@ const DomainTreeView = ({
     if (selectedDomain) {
       return (
         <DomainDetails
+          isTreeView
           activeTab={activeTab}
           domain={selectedDomain}
-          extraProps={{
-            showCoverImage: false,
-            iconSize: 60,
-            iconStyles: { marginTop: 0 },
-            headerContainerStyles: { mx: 0, alignItems: 'center' },
-            tabContainerStyles: { p: 0, py: 5 },
-            domainContainerStyles: { border: 'none' },
-            actionContainerStyles: { p: 0 },
-          }}
           handleFollowingClick={handleFollowingToggle}
           isFollowing={isFollowing}
           isFollowingLoading={isFollowingLoading}
