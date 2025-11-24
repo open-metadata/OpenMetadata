@@ -143,7 +143,11 @@ class MetricFilter:
         Returns:
             List[Type[TMetric]]:
         """
-        return [metric for metric in self.metrics if issubclass(metric, _type)]
+        return [
+            metric
+            for metric in self.metrics
+            if issubclass(metric, _type) and metric.is_computed_metric()
+        ]
 
     def filter_column_metrics_from_global_config(
         self,
