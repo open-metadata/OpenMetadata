@@ -22,6 +22,7 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -49,7 +50,6 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
-import { stringToDOMElement } from './StringsUtils';
 
 export interface DataProductDetailPageTabProps {
   dataProduct: DataProduct;
@@ -240,16 +240,6 @@ export const getDataProductDetailTabs = ({
   ];
 };
 
-const getPlainTextFromHtml = (html: string): string => {
-  try {
-    const domElement = stringToDOMElement(html);
-
-    return domElement.textContent || domElement.innerText || '';
-  } catch {
-    return html;
-  }
-};
-
 export const DataProductListItemRenderer = (props: EntityReference) => {
   return (
     <Space direction="vertical" size={0}>
@@ -258,9 +248,14 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
         <Typography.Text>{getEntityName(props)}</Typography.Text>
       </Space>
       {props.description && (
-        <Typography.Text className="text-xs text-grey-muted">
-          {getPlainTextFromHtml(props.description)}
-        </Typography.Text>
+        <Typography.Paragraph
+          className="data-product-list-description"
+          ellipsis={{
+            tooltip: props.description,
+            rows: 2,
+          }}>
+          <RichTextEditorPreviewerV1 markdown={props.description} />
+        </Typography.Paragraph>
       )}
     </Space>
   );

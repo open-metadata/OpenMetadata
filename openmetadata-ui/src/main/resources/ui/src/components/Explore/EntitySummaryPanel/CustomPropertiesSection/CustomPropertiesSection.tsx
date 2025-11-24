@@ -113,12 +113,12 @@ const CustomPropertiesSection = ({
   const renderEmptyState = () => {
     if (searchText) {
       return (
-        <div className="text-center text-grey-muted p-sm">
+        <Typography.Paragraph className="text-center text-grey-muted p-sm">
           {t('message.no-entity-found-for-name', {
             entity: t('label.custom-property-plural'),
             name: searchText,
           })}
-        </div>
+        </Typography.Paragraph>
       );
     }
 
