@@ -762,7 +762,7 @@ const DomainTreeView = ({
                 <EntityAvatar entity={node} size={24} variant="rounded" />
                 <Typography
                   sx={{
-                    color: 'text.primary',
+                    color: theme.palette.allShades?.gray?.[800],
                   }}
                   variant="body2">
                   {getEntityName(node)}
@@ -921,19 +921,19 @@ const DomainTreeView = ({
             '--tree-item-center': '22px',
             '& .MuiTreeItem-content': {
               borderRadius: 1,
-              gap: 3,
+              gap: 2,
               p: 0,
-              mb: 1.5,
+              mb: 4,
               display: 'flex',
               alignItems: 'center',
               position: 'relative',
               '&::before': {
                 content: '""',
                 position: 'absolute',
-                left: '-20px',
+                left: '-24px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '12px',
+                width: '16px',
                 height: '1px',
                 background: theme.palette.allShades?.gray?.[200],
                 zIndex: 0,
@@ -964,9 +964,9 @@ const DomainTreeView = ({
               '&::before': {
                 content: '""',
                 position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: '22px',
+                left: '-4.5px',
+                top: '-24px',
+                bottom: '32px',
                 width: '1px',
                 background: theme.palette.allShades?.gray?.[200],
                 zIndex: 0,
@@ -980,7 +980,7 @@ const DomainTreeView = ({
 
             '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
               '&:hover, &.Mui-selected': {
-                backgroundColor: theme.palette.allShades?.blue?.[50],
+                backgroundColor: '#0000000A',
               },
             },
 
@@ -1000,12 +1000,25 @@ const DomainTreeView = ({
               },
             'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg))':
               {
-                pl: '36px !important',
+                pl: '32px !important',
               },
             'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg)) li .MuiTreeItem-content::before':
               {
-                left: '-35px',
-                width: '28px',
+                left: '-36px',
+                width: '32px',
+              },
+            'li[style*="--TreeView-itemDepth:"] .MuiTreeItem-content::before': {
+              borderBottom: `1px solid ${BORDER_COLOR}`,
+              backgroundColor: 'transparent',
+            },
+            'li[style*="--TreeView-itemDepth:"] .MuiCollapse-vertical::before':
+              {
+                borderLeft: `1px solid ${BORDER_COLOR}`,
+                backgroundColor: 'transparent',
+              },
+            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content:not(.Mui-expanded)':
+              {
+                marginBottom: 2.5,
               },
             'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
               {
@@ -1016,6 +1029,7 @@ const DomainTreeView = ({
               {
                 borderLeft: `1px dashed ${BORDER_COLOR}`,
                 backgroundColor: 'transparent',
+                bottom: '26px',
               },
           }}
           onExpandedItemsChange={handleExpandedChange}
@@ -1071,7 +1085,7 @@ const DomainTreeView = ({
           <Box
             ref={scrollContainerRef}
             sx={{
-              pt: 3,
+              pt: 4.5,
               pr: 3,
               overflowY: 'auto',
               maxHeight: 'calc(80vh - 160px)',
