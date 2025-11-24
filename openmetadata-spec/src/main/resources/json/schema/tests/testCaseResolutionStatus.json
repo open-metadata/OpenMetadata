@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/tests/testCaseResolutionStatus.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestCaseResolutionStatus",
   "description": "Schema to capture test case resolution status.",
   "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatus",

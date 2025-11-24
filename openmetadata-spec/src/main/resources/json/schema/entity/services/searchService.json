@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/searchService.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Search Service",
   "description": "This schema defines the Search Service entity, such as ElasticSearch, OpenSearch.",
   "type": "object",

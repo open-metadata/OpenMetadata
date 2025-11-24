@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/Query.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Query",
   "description": "This schema defines the type to capture any data asset's queries.",
   "type": "object",

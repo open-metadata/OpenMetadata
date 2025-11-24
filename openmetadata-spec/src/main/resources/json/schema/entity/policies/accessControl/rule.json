@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/policies/accessControl/rule.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Rule",
   "description": "Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user (subject) and entity (object) attributes are evaluated with logical AND.",
   "type": "object",

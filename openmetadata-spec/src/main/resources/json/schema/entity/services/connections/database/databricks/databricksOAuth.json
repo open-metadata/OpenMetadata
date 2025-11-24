@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/databricks/databricksOAuth.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Databricks OAuth",
   "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
   "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",

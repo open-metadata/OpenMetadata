@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/api/eventsRecord.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Event Subscription Events Record",
   "description": "Schema defining the response for event subscription events record, including total, pending, successful, and failed event counts for a specific alert.",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/events/webhook.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Webhook",
   "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
