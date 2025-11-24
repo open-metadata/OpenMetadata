@@ -64,12 +64,13 @@
       "default": false
     },
     "includeTags": {
+      "title": "Include Tags",
       "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
       "default": true
     },
     "dbtClassificationName": {
-      "title": "dbt Classification Name",
+      "title": "DBT Classification Name",
       "description": "Custom OpenMetadata Classification name for dbt tags.",
       "type": "string",
       "default": "dbtTags"
