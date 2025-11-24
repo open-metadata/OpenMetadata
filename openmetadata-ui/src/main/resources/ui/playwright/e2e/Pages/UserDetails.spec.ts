@@ -93,7 +93,11 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
-    await adminPage.getByText('Accounting').click();
+    await adminPage
+      .locator('.ant-select-tree-title')
+      .filter({ hasText: 'Accounting' })
+      .first()
+      .click();
 
     await adminPage.getByTestId('teams-edit-save-btn').click();
 
@@ -167,6 +171,12 @@ test.describe('User with different Roles', () => {
     await redirectToUserPage(adminPage);
 
     await adminPage.waitForLoadState('networkidle');
+
+    // Wait for the team to be visible in the teams section
+    await adminPage
+      .getByTestId('user-profile-teams')
+      .getByText(team.responseData.displayName)
+      .waitFor({ state: 'visible', timeout: 10000 });
 
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       team.responseData.displayName
