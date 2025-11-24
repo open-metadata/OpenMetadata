@@ -45,6 +45,7 @@ export const getStoredProcedureDetailsPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchStoredProcedureDetails,
   handleFeedCount,
@@ -135,7 +136,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.STORED_PROCEDURE>
           entityType={EntityType.STORED_PROCEDURE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

@@ -83,11 +83,26 @@ public class TagLabelUtil {
       List<String> tagFQNs = tagFqnMap.getOrDefault(targetHash, Collections.emptyList());
       List<String> termFQNs = termFqnMap.getOrDefault(targetHash, Collections.emptyList());
 
-      Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
-      GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
+      try {
+        Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
+        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to fetch classification tags for target {}. Skipping these tags. Error: {}",
+            targetHash,
+            ex.getMessage());
+      }
 
-      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
-      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+      try {
+        GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
+        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to fetch glossary terms {} for target {}. Skipping these terms. Error: {}",
+            termFQNs,
+            targetHash,
+            ex.getMessage());
+      }
 
       result.put(targetHash, tagLabels);
     }
@@ -129,6 +144,18 @@ public class TagLabelUtil {
     }
   }
 
+  public static void applyTagCommonFieldsGracefully(TagLabel label) {
+    try {
+      applyTagCommonFields(label);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to apply common fields for {} tag '{}'. Tag label will be returned without enrichment. Error: {}",
+          label.getSource(),
+          label.getTagFQN(),
+          ex.getMessage());
+    }
+  }
+
   /** Returns true if the parent of the tag label is mutually exclusive */
   public static boolean mutuallyExclusive(TagLabel label) {
     String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());
@@ -147,6 +174,15 @@ public class TagLabelUtil {
     }
   }
 
+  /**
+   * Add derived tags to the given tag labels. This method is used in WRITE operations (create,
+   * update) and will throw an exception if any derived tags cannot be fetched due to missing
+   * entities.
+   *
+   * @param tagLabels the tag labels to add derived tags to
+   * @return the tag labels with derived tags added
+   * @throws RuntimeException if derived tags cannot be fetched
+   */
   public static List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
@@ -163,6 +199,44 @@ public class TagLabelUtil {
     for (TagLabel tagLabel : tagLabels) {
       if (tagLabel != null) {
         EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+      }
+    }
+    updatedTagLabels.sort(compareTagLabel);
+    return updatedTagLabels;
+  }
+
+  /**
+   * Add derived tags to the given tag labels with graceful error handling. This method is used in
+   * READ operations (getByName, list) and will log a warning but continue if any derived tags
+   * cannot be fetched due to missing entities.
+   *
+   * @param tagLabels the tag labels to add derived tags to
+   * @return the tag labels with derived tags added (missing derived tags are skipped)
+   */
+  public static List<TagLabel> addDerivedTagsGracefully(List<TagLabel> tagLabels) {
+    if (nullOrEmpty(tagLabels)) {
+      return tagLabels;
+    }
+
+    List<TagLabel> filteredTags =
+        tagLabels.stream()
+            .filter(Objects::nonNull)
+            .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
+            .toList();
+
+    List<TagLabel> updatedTagLabels = new ArrayList<>();
+    EntityUtil.mergeTags(updatedTagLabels, filteredTags);
+    for (TagLabel tagLabel : tagLabels) {
+      if (tagLabel != null) {
+        try {
+          EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+        } catch (Exception ex) {
+          LOG.warn(
+              "Failed to fetch derived tags for {} '{}'. Skipping derived tags for this label. Error: {}",
+              tagLabel.getSource(),
+              tagLabel.getTagFQN(),
+              ex.getMessage());
+        }
       }
     }
     updatedTagLabels.sort(compareTagLabel);
