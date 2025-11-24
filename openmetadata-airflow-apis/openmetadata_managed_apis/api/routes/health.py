@@ -34,7 +34,17 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.www.app import csrf
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+
+    # CSRF protection import - different between Airflow 2.x and 3.x
+    if not is_airflow_3_or_higher():
+        from airflow.www.app import csrf
+    else:
+        # Airflow 3.x doesn't have csrf in the same location, use a no-op
+        class csrf:
+            @staticmethod
+            def exempt(f):
+                return f
 
     @blueprint.route("/health", methods=["GET"])
     @csrf.exempt

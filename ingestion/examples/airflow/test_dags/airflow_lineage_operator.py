@@ -31,14 +31,67 @@ from airflow_provider_openmetadata.hooks.openmetadata import OpenMetadataHook
 # You can override them on a per-task basis during operator initialization
 from airflow_provider_openmetadata.lineage.operator import OpenMetadataLineageOperator
 
+# Version detection for Airflow 3.x API compatibility
+try:
+    import airflow
+    from packaging import version
+
+    AIRFLOW_VERSION = version.parse(airflow.__version__)
+    IS_AIRFLOW_3_OR_HIGHER = AIRFLOW_VERSION.major >= 3
+except Exception:
+    IS_AIRFLOW_3_OR_HIGHER = False
+
 OM_HOST_PORT = "http://localhost:8585/api"
 OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-AIRFLOW_HOST_API_ROOT = "http://localhost:8080/api/v1/"
+
+# Airflow 3.x uses /api/v2, Airflow 2.x uses /api/v1
+AIRFLOW_API_VERSION = "v2" if IS_AIRFLOW_3_OR_HIGHER else "v1"
+AIRFLOW_HOST = "http://localhost:8080"
+AIRFLOW_HOST_API_ROOT = f"{AIRFLOW_HOST}/api/{AIRFLOW_API_VERSION}/"
+AIRFLOW_USERNAME = "admin"
+AIRFLOW_PASSWORD = "admin"
+
 DEFAULT_OM_AIRFLOW_CONNECTION = "openmetadata_conn_id"
-DEFAULT_AIRFLOW_HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": "Basic YWRtaW46YWRtaW4=",
-}
+
+
+def get_airflow_jwt_token():
+    """
+    Get JWT token from Airflow authentication endpoint.
+    """
+    token_url = f"{AIRFLOW_HOST}/auth/token"
+    payload = {"username": AIRFLOW_USERNAME, "password": AIRFLOW_PASSWORD}
+
+    try:
+        response = requests.post(token_url, json=payload, timeout=5)
+        if response.status_code in (200, 201):
+            token_data = response.json()
+            access_token = token_data.get("access_token")
+            if access_token:
+                return access_token
+    except Exception:
+        pass
+    return None
+
+
+def get_airflow_headers():
+    """
+    Get authentication headers for Airflow API.
+    Tries JWT token first, falls back to Basic Auth.
+    """
+    jwt_token = get_airflow_jwt_token()
+    if jwt_token:
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {jwt_token}",
+        }
+
+    return {
+        "Content-Type": "application/json",
+        "Authorization": "Basic YWRtaW46YWRtaW4=",
+    }
+
+
+DEFAULT_AIRFLOW_HEADERS = get_airflow_headers()
 
 default_args = {
     "retries": 0,
@@ -62,7 +115,25 @@ if res.status_code == 404:  # not found
         },
         headers=DEFAULT_AIRFLOW_HEADERS,
     )
-
+elif res.status_code == 500:  # Internal server error (e.g., corrupted connection)
+    # Try to delete the corrupted connection and recreate it
+    delete_res = requests.delete(
+        AIRFLOW_HOST_API_ROOT + f"connections/{DEFAULT_OM_AIRFLOW_CONNECTION}",
+        headers=DEFAULT_AIRFLOW_HEADERS,
+    )
+    # Recreate the connection regardless of delete result
+    requests.post(
+        AIRFLOW_HOST_API_ROOT + "connections",
+        json={
+            "connection_id": DEFAULT_OM_AIRFLOW_CONNECTION,
+            "conn_type": "openmetadata",
+            "host": "openmetadata-server",
+            "schema": "http",
+            "port": 8585,
+            "password": OM_JWT,
+        },
+        headers=DEFAULT_AIRFLOW_HEADERS,
+    )
 elif res.status_code != 200:
     raise RuntimeError(f"Could not fetch {DEFAULT_OM_AIRFLOW_CONNECTION} connection")
 
@@ -71,7 +142,7 @@ with DAG(
     "lineage_tutorial_operator",
     default_args=default_args,
     description="A simple tutorial DAG",
-    schedule_interval=None,
+    schedule=None,
     is_paused_upon_creation=True,
     start_date=datetime(2021, 1, 1),
     catchup=False,
@@ -81,11 +152,13 @@ with DAG(
     t1 = BashOperator(
         task_id="print_date",
         bash_command="date",
-        outlets={
-            "tables": [
-                "test-service-table-lineage.test-db.test-schema.lineage-test-outlet"
-            ]
-        },
+        outlets=[
+            {
+                "tables": [
+                    "test-service-table-lineage.test-db.test-schema.lineage-test-outlet"
+                ]
+            }
+        ],
     )
 
     t2 = BashOperator(
@@ -93,12 +166,14 @@ with DAG(
         depends_on_past=False,
         bash_command="sleep 1",
         retries=3,
-        inlets={
-            "tables": [
-                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
-                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet2",
-            ]
-        },
+        inlets=[
+            {
+                "tables": [
+                    "test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
+                    "test-service-table-lineage.test-db.test-schema.lineage-test-inlet2",
+                ]
+            }
+        ],
     )
 
     dag.doc_md = (

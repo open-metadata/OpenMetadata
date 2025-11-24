@@ -32,7 +32,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -284,7 +284,7 @@ public class TableRepository extends EntityRepository<Table> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (Table table : tables) {
       table.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
 

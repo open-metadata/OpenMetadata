@@ -137,7 +137,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
         MetadataOperation.EDIT_LINEAGE,
-        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP,
+        MetadataOperation.CREATE_TESTS);
   }
 
   public static class TableList extends ResultList<Table> {
