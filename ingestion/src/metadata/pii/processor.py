@@ -10,9 +10,24 @@
 #  limitations under the License.
 
 """
-Processor util to fetch pii sensitive columns
+Processor util to fetch pii sensitive columns.
+
+DEPRECATED: This processor is deprecated in favor of TagProcessor which supports
+multiple classifications and respects classification-level configuration.
+
+For migration, use TagProcessor instead:
+    from metadata.pii.tag_processor import TagProcessor
+    processor = TagProcessor(config, metadata, classification_filter=["PII"])
 """
+import warnings
 from typing import Any, Sequence
+
+warnings.warn(
+    "PIIProcessor is deprecated and will be removed in a future version. "
+    "Please use TagProcessor instead for enhanced multi-classification support.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column
