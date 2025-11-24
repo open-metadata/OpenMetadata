@@ -29,6 +29,7 @@ const TagSelectForm = ({
   tagData,
   tagType,
   filterOptions,
+  multiSelect,
 }: TagsSelectFormProps) => {
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
@@ -66,6 +67,7 @@ const TagSelectForm = ({
           <TreeAsyncSelectList
             filterOptions={filterOptions}
             initialOptions={tagData}
+            isMultiSelect={multiSelect}
             isSubmitLoading={isSubmitLoading}
             optionClassName="tag-select-box"
             placeholder={placeholder}

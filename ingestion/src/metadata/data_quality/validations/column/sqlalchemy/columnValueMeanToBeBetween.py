@@ -15,7 +15,7 @@ Validator for column value mean to be between test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, case, func
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
@@ -23,10 +23,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMeanToBeBetween import (
     BaseColumnValueMeanToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
-    DIMENSION_GROUP_LABEL,
-    DIMENSION_OTHERS_LABEL,
     SQAValidatorMixin,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
@@ -76,38 +73,30 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_results = []
 
         try:
+            row_count_expr = Metrics.ROW_COUNT().fn()
+            mean_expr = Metrics.MEAN(column).fn()
             metric_expressions = {
-                Metrics.SUM.name: Metrics.SUM(column).fn(),
-                Metrics.COUNT.name: Metrics.COUNT(column).fn(),
-                Metrics.MEAN.name: Metrics.MEAN(column).fn(),
-                DIMENSION_TOTAL_COUNT_KEY: func.count(),
+                DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
+                Metrics.MEAN.name: mean_expr,
             }
 
-            def build_mean_final(cte):
-                return case(
-                    [
-                        (
-                            getattr(cte.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.max(getattr(cte.c, Metrics.MEAN.name)),
-                        )
-                    ],
-                    else_=(
-                        func.sum(getattr(cte.c, Metrics.SUM.name))
-                        / func.sum(getattr(cte.c, Metrics.COUNT.name))
-                    ),
+            failed_count_builder = (
+                lambda cte, row_count_expr: self._get_validation_checker(
+                    test_params
+                ).build_agg_level_violation_sqa(
+                    [getattr(cte.c, Metrics.MEAN.name)], row_count_expr
                 )
+            )
 
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
-                    {Metrics.MEAN.name: Metrics.MEAN.name},
-                    DIMENSION_TOTAL_COUNT_KEY,
-                ),
-                final_metric_builders={Metrics.MEAN.name: build_mean_final},
-                exclude_from_results=[Metrics.SUM.name, Metrics.COUNT.name],
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
+
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
+                failed_count_builder=failed_count_builder,
             )
 
             for row in result_rows:

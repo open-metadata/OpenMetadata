@@ -48,6 +48,7 @@ import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngin
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.notifications.template.testing.EntityFixtureLoader;
 import org.openmetadata.service.notifications.template.testing.MockChangeEventFactory;
@@ -243,19 +244,13 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     }
   }
 
-  public void resetToDefault(String fqn) {
+  public void resetToDefault(NotificationTemplate original) {
     try {
-      NotificationTemplate original = getByName(null, fqn, getFields("*"));
-      if (original == null) {
-        throw new IllegalArgumentException("NotificationTemplate not found: " + fqn);
-      }
-
       if (!ProviderType.SYSTEM.equals(original.getProvider())) {
-        throw new IllegalArgumentException(
-            "Cannot reset template: only SYSTEM templates can be reset to default");
+        return;
       }
 
-      NotificationTemplate defaultTemplate = getDefaultTemplateFromSeed(fqn);
+      NotificationTemplate defaultTemplate = getDefaultTemplateFromSeed(original.getName());
       NotificationTemplate updated = JsonUtils.deepCopy(original, NotificationTemplate.class);
       updated
           .withTemplateBody(defaultTemplate.getTemplateBody())
@@ -266,7 +261,7 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
       entityUpdater.update();
 
-      LOG.info("Reset NotificationTemplate {} to default", fqn);
+      LOG.info("Reset NotificationTemplate {} to default", original.getName());
     } catch (IllegalArgumentException e) {
       LOG.error("Failed to reset template: {}", e.getMessage(), e);
       throw e;
@@ -412,6 +407,10 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     return validation;
   }
 
+  public List<HandlebarsHelperMetadata> getHelperMetadata() {
+    return templateProcessor.getHelperMetadata();
+  }
+
   private NotificationTemplate getDefaultTemplateFromSeed(String fqn) throws IOException {
     String seedPath =
         ResourcePathResolver.getResourcePath(NotificationTemplateResourcePathProvider.class);
@@ -499,6 +498,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     @Override
     protected void entitySpecificUpdate(boolean consolidatingChanges) {
+      // Preserve provider type - it's immutable after creation
+      updated.setProvider(original.getProvider());
+
       recordChange("templateBody", original.getTemplateBody(), updated.getTemplateBody());
       recordChange("templateSubject", original.getTemplateSubject(), updated.getTemplateSubject());
 

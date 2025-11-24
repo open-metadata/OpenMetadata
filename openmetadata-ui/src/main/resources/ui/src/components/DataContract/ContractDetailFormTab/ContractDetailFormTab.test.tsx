@@ -45,6 +45,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 const mockOnNext = jest.fn();
 const mockOnChange = jest.fn();
 

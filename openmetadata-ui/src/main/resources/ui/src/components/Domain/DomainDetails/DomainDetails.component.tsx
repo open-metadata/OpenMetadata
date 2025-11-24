@@ -21,7 +21,7 @@ import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -54,8 +54,6 @@ import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useFqn } from '../../../hooks/useFqn';
-import { FeedCounts } from '../../../interface/feed.interface';
 import {
   addDataProducts,
   patchDataProduct,
@@ -92,14 +90,16 @@ import {
 import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
+  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
+import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
+import { FeedCounts } from '../../../interface/feed.interface';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
@@ -125,17 +125,41 @@ const DomainDetails = ({
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
+  activeTab: activeTabOverride,
+  onActiveTabChange,
+  domainFqnOverride,
+  onNavigate,
+  refreshDomains,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const navigate = useNavigate();
-  const { tab: activeTab, version } = useRequiredParams<{
-    tab: EntityTabs;
-    version: string;
-  }>();
-  const { fqn: domainFqn } = useFqn();
+  const routeParams =
+    useParams<{ fqn?: string; tab?: string; version?: string }>();
+  const reactNavigate = useNavigate();
+  const navigate = useCallback(
+    (path: string) => {
+      if (onNavigate) {
+        onNavigate(path);
+      } else {
+        reactNavigate(path);
+      }
+    },
+    [onNavigate, reactNavigate]
+  );
+  const domainFqn = useMemo(
+    () =>
+      domainFqnOverride ??
+      domain.fullyQualifiedName ??
+      (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
+    [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
+  );
+  const activeTab = useMemo(
+    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
+    [activeTabOverride, routeParams.tab]
+  ) as EntityTabs;
+  const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
   const assetTabRef = useRef<AssetsTabRef>(null);
@@ -210,13 +234,82 @@ const DomainDetails = ({
     }
   };
 
+  const fetchDataProducts = async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
+
+        setDataProductsCount(res.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.data-product-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  };
+
+  const fetchSubDomainsCount = useCallback(async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
+
+        const totalCount = res.hits.total.value ?? 0;
+        setSubDomainsCount(totalCount);
+      } catch (error) {
+        setSubDomainsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.sub-domain-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  }, [isVersionsView, encodedFqn]);
+
   const handleTabChange = (activeKey: string) => {
-    if (activeKey === 'assets') {
+    if (activeKey === EntityTabs.ASSETS) {
+      // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      navigate(getDomainDetailsPath(domainFqn, activeKey));
+      if (onActiveTabChange) {
+        onActiveTabChange(activeKey as EntityTabs);
+      } else if (domainFqn) {
+        navigate(getDomainDetailsPath(domainFqn, activeKey));
+      }
     }
+  };
+
+  const onDeleteSubDomain = () => {
+    fetchSubDomainsCount();
+    refreshDomains?.();
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -240,6 +333,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -269,6 +365,7 @@ const DomainDetails = ({
               patchEntity: patchDataProduct,
               onSuccess: () => {
                 fetchDataProducts();
+                dataProductsTabRef.current?.refreshDataProducts();
                 handleTabChange(EntityTabs.DATA_PRODUCTS);
                 onUpdate?.(domain);
                 closeDataProductDrawer();
@@ -333,10 +430,10 @@ const DomainDetails = ({
       const announcements = await getActiveAnnouncement(
         getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
       );
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncement(announcements.data[0]);
-      } else {
+      if (isEmpty(announcements.data)) {
         setActiveAnnouncement(undefined);
+      } else {
+        setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
       showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
@@ -383,6 +480,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       subDomainForm.resetFields();
     },
@@ -409,6 +509,7 @@ const DomainDetails = ({
               patchEntity: patchDomains,
               onSuccess: () => {
                 fetchSubDomainsCount();
+                refreshDomains?.();
                 handleTabChange(EntityTabs.SUBDOMAINS);
                 closeSubDomainDrawer();
               },
@@ -463,37 +564,6 @@ const DomainDetails = ({
       : []),
   ];
 
-  const fetchSubDomainsCount = useCallback(async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'parent.fullyQualifiedName.keyword':
-              domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DOMAIN,
-          trackTotalHits: true,
-        });
-
-        const totalCount = res.hits.total.value ?? 0;
-        setSubDomainsCount(totalCount);
-      } catch (error) {
-        setSubDomainsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
-  }, [isVersionsView, encodedFqn]);
-
   const addSubDomain = useCallback(
     async (formData: CreateDomain) => {
       const data = {
@@ -533,39 +603,14 @@ const DomainDetails = ({
   );
 
   const handleVersionClick = async () => {
+    if (!domainFqn) {
+      return;
+    }
     const path = isVersionsView
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
     navigate(path);
-  };
-
-  const fetchDataProducts = async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DATA_PRODUCT,
-        });
-
-        setDataProductsCount(res.hits.total.value ?? 0);
-      } catch (error) {
-        setDataProductsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.data-product-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
   };
 
   const fetchDomainPermission = async () => {
@@ -736,10 +781,11 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
-        activeTab !== 'assets' && handleTabChange('assets');
+        activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
+      onDeleteSubDomain: onDeleteSubDomain,
       showAddSubDomainModal: false,
       labelMap: tabLabelMap,
       feedCount,
@@ -823,22 +869,8 @@ const DomainDetails = ({
           gap: 1.5,
         }}>
         <CoverImage
-          imageUrl={
-            (domain.style as Style & { coverImage?: { url?: string } })
-              ?.coverImage?.url
-          }
-          position={
-            (domain.style as Style & { coverImage?: { position?: string } })
-              ?.coverImage?.position
-              ? {
-                  y: (
-                    domain.style as Style & {
-                      coverImage?: { position?: string };
-                    }
-                  ).coverImage!.position!,
-                }
-              : undefined
-          }
+          imageUrl={domain.style?.coverImage?.url}
+          position={{ y: domain.style?.coverImage?.position }}
         />
         <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
           <Box sx={{ flex: 1 }}>
@@ -994,7 +1026,7 @@ const DomainDetails = ({
         onSave={() => {
           fetchDomainAssets();
           assetTabRef.current?.refreshAssets();
-          activeTab !== 'assets' && handleTabChange('assets');
+          activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
         }}
       />
 

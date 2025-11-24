@@ -49,6 +49,10 @@ export interface Response {
      * Request that can be processed successfully.
      */
     request?: any;
+    /**
+     * HTTP status code for the request.
+     */
+    status?: number;
 }
 
 /**
@@ -58,5 +62,6 @@ export enum Status {
     Aborted = "aborted",
     Failure = "failure",
     PartialSuccess = "partialSuccess",
+    Running = "running",
     Success = "success",
 }

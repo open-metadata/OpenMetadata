@@ -26,7 +26,10 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -58,8 +61,8 @@ const DocumentationTab = ({
   const {
     editDescriptionPermission,
     editCustomAttributePermission,
-    viewAllPermission,
     editTagsPermission,
+    viewCustomPropertiesPermission,
     editGlossaryTermsPermission,
   } = useMemo(() => {
     if (isVersionsView) {
@@ -96,6 +99,10 @@ const DocumentationTab = ({
         Operation.EditGlossaryTerms
       ),
       viewAllPermission: permissions?.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewCustomFields
+      ),
     };
   }, [permissions, isVersionsView, resourceType]);
 
@@ -197,7 +204,7 @@ const DocumentationTab = ({
                 isRenderedInRightPanel
                 entityType={EntityType.DATA_PRODUCT}
                 hasEditAccess={Boolean(editCustomAttributePermission)}
-                hasPermission={Boolean(viewAllPermission)}
+                hasPermission={Boolean(viewCustomPropertiesPermission)}
                 maxDataCap={5}
               />
             )}

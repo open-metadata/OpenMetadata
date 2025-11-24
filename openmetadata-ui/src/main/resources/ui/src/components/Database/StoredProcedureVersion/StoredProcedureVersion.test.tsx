@@ -55,6 +55,17 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 describe('StoredProcedureVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
