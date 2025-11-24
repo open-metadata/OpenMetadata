@@ -617,12 +617,12 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-    fetchFeedCount();
   }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
       fetchCurrentTagPermission();
+      fetchFeedCount();
     }
   }, [tagItem]);
 

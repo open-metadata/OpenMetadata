@@ -176,11 +176,6 @@
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
-    "supportsQueryRunner": {
-      "title": "Supports Query Runner",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner",
-      "default": true
-    },
     "creditCost": {
       "title": "Cost of Credit",
       "description": "Cost of credit for the Snowflake account.",

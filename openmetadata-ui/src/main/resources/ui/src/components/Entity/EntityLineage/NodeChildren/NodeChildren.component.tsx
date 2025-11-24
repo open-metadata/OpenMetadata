@@ -307,10 +307,11 @@ const NodeChildren = ({
   ) {
     return (
       (isColumnLayerEnabled || isChildrenListExpanded) &&
-      !isEmpty(renderedColumns) && (
+      !isEmpty(children) && (
         <div className="column-container" data-testid="column-container">
           <div className="search-box">
             <Input
+              data-testid="search-column-input"
               placeholder={t('label.search-entity', {
                 entity: childrenHeading,
               })}
@@ -320,7 +321,7 @@ const NodeChildren = ({
               onClick={(e) => e.stopPropagation()}
             />
 
-            {isChildrenListExpanded && (
+            {isChildrenListExpanded && !isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   {renderedColumns}
