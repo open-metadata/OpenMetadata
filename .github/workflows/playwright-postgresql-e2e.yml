@@ -22,8 +22,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths:
-      - '.github/workflows/playwright-postgressql-e2e.yml'
     paths-ignore:
       - '.github/**'
       - 'openmetadata-dist/**'
