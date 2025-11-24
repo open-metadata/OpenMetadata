@@ -28,7 +28,9 @@ from typing import Any, Dict, List, Optional, Type, Union
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
+from sqlalchemy.sql.elements import Label
 
+from ingestion.build.lib.metadata.profiler.metrics.static.count import Count
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     SystemProfile,
@@ -257,12 +259,27 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         try:
             col_metric = metric(column)
             metric_query = col_metric.query(sample=sample, session=session)
-            if not metric_query:
+            if metric_query is None:
                 return None
             if col_metric.metric_type == dict:
                 results = runner.select_all_from_query(metric_query)
                 data = {k: [result[k] for result in results] for k in dict(results[0])}
                 return {metric.name(): data}
+            if isinstance(metric_query, Label):
+                # hotfix to handle transition of unique count implementation
+                sample_column = (
+                    sample.__table__.c[column.name]
+                    if hasattr(sample, "__table__")
+                    else sample.c[column.name]
+                )
+                subquery = (
+                    self.session.query(Count(sample_column).fn().label(column.name))
+                    .select_from(sample)
+                    .group_by(sample_column)
+                    .subquery()
+                )
+
+                metric_query = self.session.query(metric_query).select_from(subquery)
 
             row = runner.select_first_from_query(metric_query)
             return dict(row)
