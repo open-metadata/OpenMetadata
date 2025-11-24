@@ -37,6 +37,15 @@ public class MigrationUtil {
       SearchSettings defaultSettings = loadSearchSettingsFromFile();
 
       if (defaultSettings != null && defaultSettings.getNlqConfiguration() != null) {
+        // Idempotent check: compare current and default nlqConfiguration
+        String currentNlqJson = JsonUtils.pojoToJson(currentSettings.getNlqConfiguration());
+        String defaultNlqJson = JsonUtils.pojoToJson(defaultSettings.getNlqConfiguration());
+
+        if (currentNlqJson.equals(defaultNlqJson)) {
+          LOG.info("nlqConfiguration is already up-to-date, skipping update");
+          return;
+        }
+
         LOG.info("Updating nlqConfiguration with latest changes");
         currentSettings.setNlqConfiguration(defaultSettings.getNlqConfiguration());
         searchSettings.withConfigValue(currentSettings);
