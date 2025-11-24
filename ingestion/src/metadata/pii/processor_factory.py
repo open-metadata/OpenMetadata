@@ -8,7 +8,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.processor import PIIProcessor
-from metadata.pii.tag_processor import TagAnalyzerGenerator, TagProcessor
+from metadata.pii.tag_processor import TagProcessor
 
 
 def create_pii_processor(
@@ -19,9 +19,6 @@ def create_pii_processor(
         return TagProcessor(
             config=parse_workflow_config_gracefully(openmetadata_config.model_dump()),
             metadata=metadata,
-            generate_tag_analyzers=TagAnalyzerGenerator(
-                metadata=metadata,
-            ),
         )
     return PIIProcessor.create(
         openmetadata_config.model_dump(),
