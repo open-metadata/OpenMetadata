@@ -8,7 +8,9 @@
     "dbtConfigType": {
       "description": "DBT Config Pipeline type",
       "type": "string",
-      "enum": ["DBT"],
+      "enum": [
+        "DBT"
+      ],
       "default": "DBT"
     }
   },
@@ -44,6 +46,7 @@
       ]
     },
     "searchAcrossDatabases": {
+      "title": "Search Across Database Services",
       "description": "Optional configuration to search across databases for tables or not",
       "type": "boolean",
       "default": false
@@ -73,7 +76,6 @@
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Schema Filter Pattern"
-
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
@@ -98,5 +100,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtConfigSource"]
+  "required": [
+    "dbtConfigSource"
+  ]
 }
