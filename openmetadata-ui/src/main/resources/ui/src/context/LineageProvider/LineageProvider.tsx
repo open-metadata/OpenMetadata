@@ -770,7 +770,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
-  const onColumnMouseOver = useCallback(
+  const onColumnMouseEnter = useCallback(
     (column: string) => {
       const { columnEdge } = getClassifiedEdge(edges);
       const { connectedColumnEdges } = getAllTracedColumnEdge(
@@ -782,7 +782,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [edges]
   );
 
-  const onColumnMouseOut = useCallback(() => {
+  const onColumnMouseLeave = useCallback(() => {
     setTracedColumns([]);
   }, []);
 
@@ -1747,8 +1747,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onNodeDrop,
       onNodeCollapse,
       onColumnClick,
-      onColumnMouseOver,
-      onColumnMouseOut,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       onNodesChange,
       onEdgesChange,
       onZoomUpdate,
@@ -1806,8 +1806,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onNodeDrop,
     onNodeCollapse,
     onColumnClick,
-    onColumnMouseOver,
-    onColumnMouseOut,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
     selectedQuickFilters,
     setSelectedQuickFilters,
     onNodesChange,
