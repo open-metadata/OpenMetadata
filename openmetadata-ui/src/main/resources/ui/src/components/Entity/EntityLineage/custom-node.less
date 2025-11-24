@@ -230,12 +230,6 @@
         border-top-left-radius: 6px;
         border-bottom-left-radius: 6px;
 
-        &:hover {
-          background-color: @primary-1;
-          border-left-color: @primary-color;
-          cursor: pointer;
-        }
-
         .custom-node-name-container {
           min-width: 0;
           display: flex;
@@ -262,6 +256,14 @@
         .ant-skeleton-element {
           .ant-skeleton-button-sm {
             height: 32px; // Height of the skeleton button, to match the height of the column name
+          }
+        }
+      }
+      &:not(.any-column-selected) {
+        .custom-node-column-container {
+          &:hover {
+            background-color: @primary-1;
+            border-left-color: @primary-color;
           }
         }
       }
@@ -297,10 +299,6 @@
         }
         .column-container {
           background-color: #eff8ff;
-          .custom-node-column-container.custom-node-header-column-tracing {
-            // background-color: #ffffff;
-            // border-color: #1570ef;
-          }
         }
       }
       .lineage-node-badge-container {
@@ -379,8 +377,8 @@
         }
         &.any-column-selected {
           .custom-node-column-container.custom-node-header-column-tracing {
-            background-color: #f1def1;
-            border-color: #800080;
+            background-color: #ebe9fe;
+            border-color: #5925dc;
           }
         }
       }
