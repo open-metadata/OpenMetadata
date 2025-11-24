@@ -28,6 +28,7 @@ import static org.openmetadata.service.Entity.WORKSHEET;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -39,7 +40,10 @@ import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -47,6 +51,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.SpreadsheetResource;
@@ -279,77 +284,302 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       this.recursive = recursive;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
 
       if (recursive && csvRecord.size() > 18) {
-        // This is a recursive import with entityType field
         String entityType = csvRecord.get(18);
         if (WORKSHEET.equals(entityType)) {
-          // Skip worksheet rows - they'll be handled by WorksheetRepository
           return;
         }
       }
 
-      // Get spreadsheet name and directory FQN
       String spreadsheetName = csvRecord.get(0);
-      String directoryFqn = csvRecord.get(3); // directory field
+      String directoryFqn = csvRecord.get(3);
       String spreadsheetFqn = FullyQualifiedName.add(directoryFqn, spreadsheetName);
 
       Spreadsheet newSpreadsheet;
+      boolean spreadsheetExists;
       try {
         newSpreadsheet =
             Entity.getEntityByName(SPREADSHEET, spreadsheetFqn, "*", Include.NON_DELETED);
+        spreadsheetExists = true;
       } catch (EntityNotFoundException ex) {
-        LOG.warn("Spreadsheet not found: {}, it will be created with Import.", spreadsheetFqn);
-
-        // Get directory reference
         EntityReference directoryRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
         if (directoryRef == null) {
           importFailure(
               printer, "Directory not found for spreadsheet: " + spreadsheetName, csvRecord);
           return;
         }
-
-        // Get service from directory
         Directory directory =
             Entity.getEntity(DIRECTORY, directoryRef.getId(), "service", Include.NON_DELETED);
-
         newSpreadsheet =
             new Spreadsheet()
                 .withService(directory.getService())
                 .withDirectory(directoryRef)
                 .withName(spreadsheetName)
                 .withFullyQualifiedName(spreadsheetFqn);
+        spreadsheetExists = false;
       }
 
-      // Update spreadsheet fields from CSV
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !spreadsheetExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      CreateSpreadsheet.SpreadsheetMimeType mimeType =
+          CreateSpreadsheet.SpreadsheetMimeType.valueOf(csvRecord.get(4));
+      String path = csvRecord.get(5);
+      Integer size = nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
+      String fileVersion = csvRecord.get(7);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 8);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(10, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 11);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 12);
+      Long createdTime = nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15));
+      Long modifiedTime = nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16));
+
+      if (!spreadsheetExists) {
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (mimeType != null) {
+          fieldsAdded.add(new FieldChange().withName("mimeType").withNewValue(mimeType.toString()));
+        }
+        if (!nullOrEmpty(path)) {
+          fieldsAdded.add(new FieldChange().withName("path").withNewValue(path));
+        }
+        if (size != null) {
+          fieldsAdded.add(new FieldChange().withName("size").withNewValue(size.toString()));
+        }
+        if (!nullOrEmpty(fileVersion)) {
+          fieldsAdded.add(new FieldChange().withName("fileVersion").withNewValue(fileVersion));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!nullOrEmpty(tags)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!nullOrEmpty(domains)) {
+          fieldsAdded.add(
+              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!nullOrEmpty(dataProducts)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("dataProducts")
+                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+        }
+        if (createdTime != null) {
+          fieldsAdded.add(
+              new FieldChange().withName("createdTime").withNewValue(createdTime.toString()));
+        }
+        if (modifiedTime != null) {
+          fieldsAdded.add(
+              new FieldChange().withName("modifiedTime").withNewValue(modifiedTime.toString()));
+        }
+      } else {
+        if (!Objects.equals(newSpreadsheet.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(newSpreadsheet.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(newSpreadsheet.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(newSpreadsheet.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(newSpreadsheet.getMimeType(), mimeType)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("mimeType")
+                  .withOldValue(
+                      newSpreadsheet.getMimeType() != null
+                          ? newSpreadsheet.getMimeType().toString()
+                          : null)
+                  .withNewValue(mimeType != null ? mimeType.toString() : null));
+        }
+        if (!Objects.equals(newSpreadsheet.getPath(), path)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("path")
+                  .withOldValue(newSpreadsheet.getPath())
+                  .withNewValue(path));
+        }
+        if (!Objects.equals(newSpreadsheet.getSize(), size)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("size")
+                  .withOldValue(
+                      newSpreadsheet.getSize() != null ? newSpreadsheet.getSize().toString() : null)
+                  .withNewValue(size != null ? size.toString() : null));
+        }
+        if (!Objects.equals(newSpreadsheet.getFileVersion(), fileVersion)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("fileVersion")
+                  .withOldValue(newSpreadsheet.getFileVersion())
+                  .withNewValue(fileVersion));
+        }
+        if (!Objects.equals(newSpreadsheet.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!Objects.equals(newSpreadsheet.getTags(), tags)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!Objects.equals(newSpreadsheet.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getDomains()))
+                  .withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!Objects.equals(newSpreadsheet.getDataProducts(), dataProducts)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("dataProducts")
+                  .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getDataProducts()))
+                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+        }
+        if (!Objects.equals(newSpreadsheet.getCreatedTime(), createdTime)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("createdTime")
+                  .withOldValue(
+                      newSpreadsheet.getCreatedTime() != null
+                          ? newSpreadsheet.getCreatedTime().toString()
+                          : null)
+                  .withNewValue(createdTime != null ? createdTime.toString() : null));
+        }
+        if (!Objects.equals(newSpreadsheet.getModifiedTime(), modifiedTime)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("modifiedTime")
+                  .withOldValue(
+                      newSpreadsheet.getModifiedTime() != null
+                          ? newSpreadsheet.getModifiedTime().toString()
+                          : null)
+                  .withNewValue(modifiedTime != null ? modifiedTime.toString() : null));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+
       newSpreadsheet
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withMimeType(CreateSpreadsheet.SpreadsheetMimeType.valueOf(csvRecord.get(4)))
-          .withPath(csvRecord.get(5))
-          .withSize(nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6)))
-          .withFileVersion(csvRecord.get(7))
-          .withOwners(getOwners(printer, csvRecord, 8))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(10, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 11))
-          .withDataProducts(getDataProducts(printer, csvRecord, 12))
-          .withCreatedTime(
-              nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
-          .withModifiedTime(
-              nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16)));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withMimeType(mimeType)
+          .withPath(path)
+          .withSize(size)
+          .withFileVersion(fileVersion)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts)
+          .withCreatedTime(createdTime)
+          .withModifiedTime(modifiedTime);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newSpreadsheet, SPREADSHEET);
+        createEntityWithChangeDescription(printer, csvRecord, newSpreadsheet);
       }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, Spreadsheet spreadsheet) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<Spreadsheet> repository =
+              (EntityRepository<Spreadsheet>) Entity.getEntityRepository(SPREADSHEET);
+          repository.createOrUpdate(null, spreadsheet, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     @Override

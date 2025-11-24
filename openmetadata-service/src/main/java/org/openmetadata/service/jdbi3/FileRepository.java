@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.FILE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -37,7 +38,10 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.FileType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -46,6 +50,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.FileResource;
@@ -225,6 +230,22 @@ public class FileRepository extends EntityRepository<File> {
       this.file = file;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
@@ -235,8 +256,10 @@ public class FileRepository extends EntityRepository<File> {
       String fileFqn = FullyQualifiedName.add(directoryFqn, fileName);
 
       File newFile;
+      boolean fileExists;
       try {
         newFile = Entity.getEntityByName(FILE, fileFqn, "*", Include.NON_DELETED);
+        fileExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("File not found: {}, it will be created with Import.", fileFqn);
 
@@ -257,29 +280,199 @@ public class FileRepository extends EntityRepository<File> {
                 .withDirectory(directoryRef)
                 .withName(fileName)
                 .withFullyQualifiedName(fileFqn);
+        fileExists = false;
       }
+
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !fileExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      FileType fileType = FileType.valueOf(csvRecord.get(4));
+      String mimeType = csvRecord.get(5);
+      String fileExtension = csvRecord.get(6);
+      String path = csvRecord.get(7);
+      Integer size = nullOrEmpty(csvRecord.get(8)) ? null : Integer.parseInt(csvRecord.get(8));
+      String checksum = csvRecord.get(9);
+      Boolean isShared = getBoolean(printer, csvRecord, 10);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 11);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(13, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 14);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 15);
+
+      if (!fileExists) {
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (fileType != null) {
+          fieldsAdded.add(new FieldChange().withName("fileType").withNewValue(fileType.toString()));
+        }
+        if (!nullOrEmpty(mimeType)) {
+          fieldsAdded.add(new FieldChange().withName("mimeType").withNewValue(mimeType));
+        }
+        if (!nullOrEmpty(fileExtension)) {
+          fieldsAdded.add(new FieldChange().withName("fileExtension").withNewValue(fileExtension));
+        }
+        if (!nullOrEmpty(path)) {
+          fieldsAdded.add(new FieldChange().withName("path").withNewValue(path));
+        }
+        if (size != null) {
+          fieldsAdded.add(new FieldChange().withName("size").withNewValue(size.toString()));
+        }
+        if (!nullOrEmpty(checksum)) {
+          fieldsAdded.add(new FieldChange().withName("checksum").withNewValue(checksum));
+        }
+        if (isShared != null) {
+          fieldsAdded.add(new FieldChange().withName("isShared").withNewValue(isShared));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!nullOrEmpty(tags)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!nullOrEmpty(domains)) {
+          fieldsAdded.add(
+              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!nullOrEmpty(dataProducts)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("dataProducts")
+                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+        }
+      } else {
+        if (!Objects.equals(newFile.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(newFile.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(newFile.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(newFile.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(newFile.getFileType(), fileType)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("fileType")
+                  .withOldValue(
+                      newFile.getFileType() != null ? newFile.getFileType().toString() : null)
+                  .withNewValue(fileType != null ? fileType.toString() : null));
+        }
+        if (!Objects.equals(newFile.getMimeType(), mimeType)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("mimeType")
+                  .withOldValue(newFile.getMimeType())
+                  .withNewValue(mimeType));
+        }
+        if (!Objects.equals(newFile.getFileExtension(), fileExtension)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("fileExtension")
+                  .withOldValue(newFile.getFileExtension())
+                  .withNewValue(fileExtension));
+        }
+        if (!Objects.equals(newFile.getPath(), path)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("path")
+                  .withOldValue(newFile.getPath())
+                  .withNewValue(path));
+        }
+        if (!Objects.equals(newFile.getSize(), size)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("size")
+                  .withOldValue(newFile.getSize() != null ? newFile.getSize().toString() : null)
+                  .withNewValue(size != null ? size.toString() : null));
+        }
+        if (!Objects.equals(newFile.getChecksum(), checksum)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("checksum")
+                  .withOldValue(newFile.getChecksum())
+                  .withNewValue(checksum));
+        }
+        if (isShared != null && !Objects.equals(newFile.getIsShared(), isShared)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("isShared")
+                  .withOldValue(newFile.getIsShared())
+                  .withNewValue(isShared));
+        }
+        if (!Objects.equals(newFile.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(newFile.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!Objects.equals(newFile.getTags(), tags)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(newFile.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!Objects.equals(newFile.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(JsonUtils.pojoToJson(newFile.getDomains()))
+                  .withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!Objects.equals(newFile.getDataProducts(), dataProducts)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("dataProducts")
+                  .withOldValue(JsonUtils.pojoToJson(newFile.getDataProducts()))
+                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+
       newFile
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withFileType(FileType.valueOf(csvRecord.get(4)))
-          .withMimeType(csvRecord.get(5))
-          .withFileExtension(csvRecord.get(6))
-          .withPath(csvRecord.get(7))
-          .withSize(nullOrEmpty(csvRecord.get(8)) ? null : Integer.parseInt(csvRecord.get(8)))
-          .withChecksum(csvRecord.get(9))
-          .withIsShared(getBoolean(printer, csvRecord, 10))
-          .withOwners(getOwners(printer, csvRecord, 11))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 14))
-          .withDataProducts(getDataProducts(printer, csvRecord, 15));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withFileType(fileType)
+          .withMimeType(mimeType)
+          .withFileExtension(fileExtension)
+          .withPath(path)
+          .withSize(size)
+          .withChecksum(checksum)
+          .withIsShared(isShared)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts);
       if (processRecord) {
-        createEntity(printer, csvRecord, newFile, FILE);
+        createEntityWithChangeDescription(printer, csvRecord, newFile);
       }
     }
 
@@ -332,6 +525,51 @@ public class FileRepository extends EntityRepository<File> {
         }
       }
       return refs.isEmpty() ? null : refs;
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, File file) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<File> repository =
+              (EntityRepository<File>) Entity.getEntityRepository(FILE);
+          repository.createOrUpdate(null, file, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
   }
 

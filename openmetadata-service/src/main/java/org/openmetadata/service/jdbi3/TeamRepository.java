@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -69,10 +70,12 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -83,6 +86,7 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -983,26 +987,224 @@ public class TeamRepository extends EntityRepository<Team> {
       this.team = team;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Field 1, 2, 3, 4, 7 - name, displayName, description, teamType, isJoinable
-      Team team =
-          new Team()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withOwners(getOwners(printer, csvRecord, 5))
-              .withIsJoinable(getBoolean(printer, csvRecord, 6))
-              .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
-              .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
-
-      // Field 5 - parent teams
-      getParents(printer, csvRecord, team);
-      if (processRecord) {
-        createEntity(printer, csvRecord, team);
+      if (csvRecord == null) {
+        return;
       }
+
+      String teamName = csvRecord.get(0);
+      Team team;
+      boolean teamExists;
+      try {
+        team =
+            Entity.getEntityByName(
+                TEAM,
+                teamName,
+                "id,displayName,description,teamType,owners,isJoinable,defaultRoles,policies,parents",
+                Include.NON_DELETED);
+        teamExists = true;
+      } catch (EntityNotFoundException ex) {
+        team = new Team().withName(teamName);
+        teamExists = false;
+      }
+
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !teamExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      TeamType teamType = TeamType.fromValue(csvRecord.get(3));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 5);
+      Boolean isJoinable = getBoolean(printer, csvRecord, 6);
+      List<EntityReference> defaultRoles = getEntityReferences(printer, csvRecord, 7, ROLE);
+      List<EntityReference> policies = getEntityReferences(printer, csvRecord, 8, POLICY);
+
+      if (!teamExists) {
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (teamType != null) {
+          fieldsAdded.add(new FieldChange().withName("teamType").withNewValue(teamType.value()));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (isJoinable != null) {
+          fieldsAdded.add(new FieldChange().withName("isJoinable").withNewValue(isJoinable));
+        }
+        if (!nullOrEmpty(defaultRoles)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("defaultRoles")
+                  .withNewValue(JsonUtils.pojoToJson(defaultRoles)));
+        }
+        if (!nullOrEmpty(policies)) {
+          fieldsAdded.add(
+              new FieldChange().withName("policies").withNewValue(JsonUtils.pojoToJson(policies)));
+        }
+      } else {
+        if (!Objects.equals(team.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(team.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(team.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(team.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(team.getTeamType(), teamType)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("teamType")
+                  .withOldValue(team.getTeamType().value())
+                  .withNewValue(teamType.value()));
+        }
+        if (!Objects.equals(team.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(team.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (isJoinable != null && !Objects.equals(team.getIsJoinable(), isJoinable)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("isJoinable")
+                  .withOldValue(team.getIsJoinable())
+                  .withNewValue(isJoinable));
+        }
+        if (!Objects.equals(team.getDefaultRoles(), defaultRoles)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("defaultRoles")
+                  .withOldValue(JsonUtils.pojoToJson(team.getDefaultRoles()))
+                  .withNewValue(JsonUtils.pojoToJson(defaultRoles)));
+        }
+        if (!Objects.equals(team.getPolicies(), policies)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("policies")
+                  .withOldValue(JsonUtils.pojoToJson(team.getPolicies()))
+                  .withNewValue(JsonUtils.pojoToJson(policies)));
+        }
+      }
+
+      team.withDisplayName(displayName)
+          .withDescription(description)
+          .withTeamType(teamType)
+          .withOwners(owners)
+          .withIsJoinable(isJoinable)
+          .withDefaultRoles(defaultRoles)
+          .withPolicies(policies);
+
+      getParents(printer, csvRecord, team); // This method also handles parent validation
+
+      // Since getParents can set processRecord to false, we need to check it here.
+      if (processRecord) {
+        if (!teamExists) {
+          if (!nullOrEmpty(team.getParents())) {
+            fieldsAdded.add(
+                new FieldChange()
+                    .withName("parents")
+                    .withNewValue(JsonUtils.pojoToJson(team.getParents())));
+          }
+        } else {
+          if (!Objects.equals(team.getParents(), team.getParents())) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("parents")
+                    .withOldValue(JsonUtils.pojoToJson(team.getParents()))
+                    .withNewValue(JsonUtils.pojoToJson(team.getParents())));
+          }
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+
+      if (processRecord) {
+        createEntityWithChangeDescription(printer, csvRecord, team);
+      }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, Team team) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<Team> repository =
+              (EntityRepository<Team>) Entity.getEntityRepository(TEAM);
+          repository.createOrUpdate(null, team, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     @Override

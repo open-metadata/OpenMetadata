@@ -44,8 +44,11 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -347,6 +350,22 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       this.worksheet = worksheet;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
@@ -357,8 +376,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       String worksheetFqn = FullyQualifiedName.add(spreadsheetFqn, worksheetName);
 
       Worksheet newWorksheet;
+      boolean worksheetExists;
       try {
         newWorksheet = Entity.getEntityByName(WORKSHEET, worksheetFqn, "*", Include.NON_DELETED);
+        worksheetExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("Worksheet not found: {}, it will be created with Import.", worksheetFqn);
 
@@ -380,32 +401,199 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                 .withSpreadsheet(spreadsheetRef)
                 .withName(worksheetName)
                 .withFullyQualifiedName(worksheetFqn);
+        worksheetExists = false;
       }
+
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !worksheetExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String worksheetId = csvRecord.get(4);
+      Integer index = nullOrEmpty(csvRecord.get(5)) ? null : Integer.parseInt(csvRecord.get(5));
+      Integer rowCount = nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
+      Integer columnCount =
+          nullOrEmpty(csvRecord.get(7)) ? null : Integer.parseInt(csvRecord.get(7));
+      Boolean isHidden = getBoolean(printer, csvRecord, 8);
+      List<Column> columns = parseColumns(csvRecord.get(9));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 10);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(12, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 13);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 14);
+
+      if (!worksheetExists) {
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (!nullOrEmpty(worksheetId)) {
+          fieldsAdded.add(new FieldChange().withName("worksheetId").withNewValue(worksheetId));
+        }
+        if (index != null) {
+          fieldsAdded.add(new FieldChange().withName("index").withNewValue(index.toString()));
+        }
+        if (rowCount != null) {
+          fieldsAdded.add(new FieldChange().withName("rowCount").withNewValue(rowCount.toString()));
+        }
+        if (columnCount != null) {
+          fieldsAdded.add(
+              new FieldChange().withName("columnCount").withNewValue(columnCount.toString()));
+        }
+        if (isHidden != null) {
+          fieldsAdded.add(new FieldChange().withName("isHidden").withNewValue(isHidden));
+        }
+        if (!nullOrEmpty(columns)) {
+          fieldsAdded.add(
+              new FieldChange().withName("columns").withNewValue(JsonUtils.pojoToJson(columns)));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!nullOrEmpty(tags)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!nullOrEmpty(domains)) {
+          fieldsAdded.add(
+              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!nullOrEmpty(dataProducts)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("dataProducts")
+                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+        }
+      } else {
+        if (!Objects.equals(newWorksheet.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(newWorksheet.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(newWorksheet.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(newWorksheet.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(newWorksheet.getWorksheetId(), worksheetId)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("worksheetId")
+                  .withOldValue(newWorksheet.getWorksheetId())
+                  .withNewValue(worksheetId));
+        }
+        if (!Objects.equals(newWorksheet.getIndex(), index)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("index")
+                  .withOldValue(
+                      newWorksheet.getIndex() != null ? newWorksheet.getIndex().toString() : null)
+                  .withNewValue(index != null ? index.toString() : null));
+        }
+        if (!Objects.equals(newWorksheet.getRowCount(), rowCount)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("rowCount")
+                  .withOldValue(
+                      newWorksheet.getRowCount() != null
+                          ? newWorksheet.getRowCount().toString()
+                          : null)
+                  .withNewValue(rowCount != null ? rowCount.toString() : null));
+        }
+        if (!Objects.equals(newWorksheet.getColumnCount(), columnCount)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("columnCount")
+                  .withOldValue(
+                      newWorksheet.getColumnCount() != null
+                          ? newWorksheet.getColumnCount().toString()
+                          : null)
+                  .withNewValue(columnCount != null ? columnCount.toString() : null));
+        }
+        if (isHidden != null && !Objects.equals(newWorksheet.getIsHidden(), isHidden)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("isHidden")
+                  .withOldValue(newWorksheet.getIsHidden())
+                  .withNewValue(isHidden));
+        }
+        if (!Objects.equals(newWorksheet.getColumns(), columns)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("columns")
+                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getColumns()))
+                  .withNewValue(JsonUtils.pojoToJson(columns)));
+        }
+        if (!Objects.equals(newWorksheet.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!Objects.equals(newWorksheet.getTags(), tags)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!Objects.equals(newWorksheet.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getDomains()))
+                  .withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!Objects.equals(newWorksheet.getDataProducts(), dataProducts)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("dataProducts")
+                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getDataProducts()))
+                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
 
       // Update worksheet fields from CSV
       newWorksheet
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withWorksheetId(csvRecord.get(4))
-          .withIndex(nullOrEmpty(csvRecord.get(5)) ? null : Integer.parseInt(csvRecord.get(5)))
-          .withRowCount(nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6)))
-          .withColumnCount(
-              nullOrEmpty(csvRecord.get(7)) ? null : Integer.parseInt(csvRecord.get(7)))
-          .withIsHidden(getBoolean(printer, csvRecord, 8))
-          .withColumns(parseColumns(csvRecord.get(9)))
-          .withOwners(getOwners(printer, csvRecord, 10))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(12, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 13))
-          .withDataProducts(getDataProducts(printer, csvRecord, 14));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withWorksheetId(worksheetId)
+          .withIndex(index)
+          .withRowCount(rowCount)
+          .withColumnCount(columnCount)
+          .withIsHidden(isHidden)
+          .withColumns(columns)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newWorksheet, WORKSHEET);
+        createEntityWithChangeDescription(printer, csvRecord, newWorksheet);
       }
     }
 
@@ -473,6 +661,51 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
         }
       }
       return refs.isEmpty() ? null : refs;
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, Worksheet worksheet) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<Worksheet> repository =
+              (EntityRepository<Worksheet>) Entity.getEntityRepository(WORKSHEET);
+          repository.createOrUpdate(null, worksheet, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
   }
 

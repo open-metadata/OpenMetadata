@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -38,13 +40,18 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DriveConnection;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.drive.DriveServiceResource;
@@ -108,6 +115,22 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       this.recursive = recursive;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     /**
      * Export all directories with their child entities (subdirectories, files, spreadsheets, worksheets)
      */
@@ -152,38 +175,181 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
+
       String directoryFqn =
           FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
       Directory directory;
+      boolean directoryExists;
       try {
         directory = Entity.getEntityByName(DIRECTORY, directoryFqn, "*", Include.NON_DELETED);
+        directoryExists = true;
       } catch (EntityNotFoundException ex) {
-        LOG.warn("Directory not found: {}, it will be created with Import.", directoryFqn);
         directory =
             new Directory()
                 .withService(service.getEntityReference())
                 .withName(csvRecord.get(0))
                 .withFullyQualifiedName(directoryFqn);
+        directoryExists = false;
       }
 
-      // Update directory fields from CSV
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !directoryExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      String description = csvRecord.get(1);
+      String displayName = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 6);
+      Object extension = getExtension(printer, csvRecord, 7);
+
+      if (!directoryExists) {
+        if (description != null) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (displayName != null) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!nullOrEmpty(tags)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!nullOrEmpty(domains)) {
+          fieldsAdded.add(
+              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (extension != null) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("extension")
+                  .withNewValue(JsonUtils.pojoToJson(extension)));
+        }
+      } else {
+        if (!Objects.equals(directory.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(directory.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(directory.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(directory.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(directory.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(directory.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!Objects.equals(directory.getTags(), tags)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(directory.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!Objects.equals(directory.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(JsonUtils.pojoToJson(directory.getDomains()))
+                  .withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+        if (!Objects.equals(directory.getExtension(), extension)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("extension")
+                  .withOldValue(JsonUtils.pojoToJson(directory.getExtension()))
+                  .withNewValue(JsonUtils.pojoToJson(extension)));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+
       directory
-          .withDescription(csvRecord.get(1))
-          .withDisplayName(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(5, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 6))
-          .withExtension(getExtension(printer, csvRecord, 7));
+          .withDescription(description)
+          .withDisplayName(displayName)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withExtension(extension);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, directory, DIRECTORY);
+        createEntityWithChangeDescription(printer, csvRecord, directory);
       }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, Directory directory) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<Directory> repository =
+              (EntityRepository<Directory>) Entity.getEntityRepository(DIRECTORY);
+          repository.createOrUpdate(null, directory, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = new ArrayList<>();
+      recordList.add(IMPORT_SUCCESS);
+      recordList.add(successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     protected void addEntityToCSV(CsvFile csvFile, EntityInterface entity, String entityType) {

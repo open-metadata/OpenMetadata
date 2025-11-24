@@ -16,6 +16,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
@@ -55,8 +56,11 @@ import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -70,6 +74,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
@@ -234,37 +239,271 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       this.glossary = glossary;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      if (csvRecord == null) return;
-      GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
+      if (csvRecord == null) {
+        return;
+      }
+
       String glossaryTermFqn =
           nullOrEmpty(csvRecord.get(0))
               ? FullyQualifiedName.build(glossary.getFullyQualifiedName(), csvRecord.get(1))
               : FullyQualifiedName.add(csvRecord.get(0), csvRecord.get(1));
 
-      // TODO add header
-      glossaryTerm
-          .withParent(getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM))
-          .withName(csvRecord.get(1))
-          .withFullyQualifiedName(glossaryTermFqn)
-          .withDisplayName(csvRecord.get(2))
-          .withDescription(csvRecord.get(3))
-          .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
-          .withRelatedTerms(getEntityReferences(printer, csvRecord, 5, GLOSSARY_TERM))
-          .withReferences(getTermReferences(printer, csvRecord))
-          .withTags(
-              getTagLabels(
-                  printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
-          .withReviewers(getReviewers(printer, csvRecord, 8))
-          .withOwners(getOwners(printer, csvRecord, 9))
-          .withEntityStatus(getTermStatus(printer, csvRecord))
-          .withStyle(getStyle(csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 13));
-      if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
+      GlossaryTerm glossaryTerm;
+      boolean glossaryTermExists;
+      try {
+        glossaryTerm =
+            Entity.getEntityByName(
+                GLOSSARY_TERM,
+                glossaryTermFqn,
+                "id,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owners,status,style,parent",
+                Include.NON_DELETED);
+        glossaryTermExists = true;
+      } catch (EntityNotFoundException ex) {
+        glossaryTerm =
+            new GlossaryTerm()
+                .withName(csvRecord.get(1))
+                .withGlossary(glossary.getEntityReference());
+        glossaryTermExists = false;
       }
+
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !glossaryTermExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      EntityReference parent = getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM);
+      String displayName = csvRecord.get(2);
+      String description = csvRecord.get(3);
+      List<String> synonyms = CsvUtil.fieldToStrings(csvRecord.get(4));
+      List<EntityReference> relatedTerms =
+          getEntityReferences(printer, csvRecord, 5, GLOSSARY_TERM);
+      List<TermReference> references = getTermReferences(printer, csvRecord);
+      List<TagLabel> tags =
+          getTagLabels(printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION)));
+      List<EntityReference> reviewers = getReviewers(printer, csvRecord, 8);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 9);
+      EntityStatus status = getTermStatus(printer, csvRecord);
+      Style style = getStyle(csvRecord);
+
+      if (!glossaryTermExists) {
+        if (parent != null) {
+          fieldsAdded.add(
+              new FieldChange().withName("parent").withNewValue(JsonUtils.pojoToJson(parent)));
+        }
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (!nullOrEmpty(synonyms)) {
+          fieldsAdded.add(
+              new FieldChange().withName("synonyms").withNewValue(JsonUtils.pojoToJson(synonyms)));
+        }
+        if (!nullOrEmpty(relatedTerms)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("relatedTerms")
+                  .withNewValue(JsonUtils.pojoToJson(relatedTerms)));
+        }
+        if (!nullOrEmpty(references)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("references")
+                  .withNewValue(JsonUtils.pojoToJson(references)));
+        }
+        if (!nullOrEmpty(tags)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!nullOrEmpty(reviewers)) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("reviewers")
+                  .withNewValue(JsonUtils.pojoToJson(reviewers)));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (status != null) {
+          fieldsAdded.add(new FieldChange().withName("status").withNewValue(status.value()));
+        }
+        if (style != null) {
+          fieldsAdded.add(
+              new FieldChange().withName("style").withNewValue(JsonUtils.pojoToJson(style)));
+        }
+      } else {
+        if (!Objects.equals(glossaryTerm.getParent(), parent)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("parent")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getParent()))
+                  .withNewValue(JsonUtils.pojoToJson(parent)));
+        }
+        if (!Objects.equals(glossaryTerm.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(glossaryTerm.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(glossaryTerm.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(glossaryTerm.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(glossaryTerm.getSynonyms(), synonyms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("synonyms")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getSynonyms()))
+                  .withNewValue(JsonUtils.pojoToJson(synonyms)));
+        }
+        if (!Objects.equals(glossaryTerm.getRelatedTerms(), relatedTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("relatedTerms")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getRelatedTerms()))
+                  .withNewValue(JsonUtils.pojoToJson(relatedTerms)));
+        }
+        if (!Objects.equals(glossaryTerm.getReferences(), references)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("references")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReferences()))
+                  .withNewValue(JsonUtils.pojoToJson(references)));
+        }
+        if (!Objects.equals(glossaryTerm.getTags(), tags)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tags)));
+        }
+        if (!Objects.equals(glossaryTerm.getReviewers(), reviewers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("reviewers")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReviewers()))
+                  .withNewValue(JsonUtils.pojoToJson(reviewers)));
+        }
+        if (!Objects.equals(glossaryTerm.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (status != null && !Objects.equals(glossaryTerm.getEntityStatus(), status)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("status")
+                  .withOldValue(glossaryTerm.getEntityStatus().value())
+                  .withNewValue(status.value()));
+        }
+        if (!Objects.equals(glossaryTerm.getStyle(), style)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("style")
+                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getStyle()))
+                  .withNewValue(JsonUtils.pojoToJson(style)));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+
+      glossaryTerm
+          .withParent(parent)
+          .withFullyQualifiedName(glossaryTermFqn)
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withSynonyms(synonyms)
+          .withRelatedTerms(relatedTerms)
+          .withReferences(references)
+          .withTags(tags)
+          .withReviewers(reviewers)
+          .withOwners(owners)
+          .withEntityStatus(status)
+          .withStyle(style)
+          .withExtension(getExtension(printer, csvRecord, 13));
+
+      if (processRecord) {
+        createEntityWithChangeDescription(printer, csvRecord, glossaryTerm);
+      }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, GlossaryTerm glossaryTerm) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<GlossaryTerm> repository =
+              (EntityRepository<GlossaryTerm>) Entity.getEntityRepository(GLOSSARY_TERM);
+          repository.createOrUpdate(null, glossaryTerm, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     private List<TermReference> getTermReferences(CSVPrinter printer, CSVRecord csvRecord)

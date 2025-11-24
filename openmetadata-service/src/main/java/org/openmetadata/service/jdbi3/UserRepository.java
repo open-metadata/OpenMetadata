@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -39,6 +40,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -53,13 +55,15 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
-import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -953,25 +957,188 @@ public class UserRepository extends EntityRepository<User> {
       this.team = importingTeam;
     }
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
-      User user =
-          UserUtil.getUser(
-                  importedBy,
-                  new CreateUser()
-                      .withName(csvRecord.get(0))
-                      .withDisplayName(csvRecord.get(1))
-                      .withDescription(csvRecord.get(2))
-                      .withEmail(csvRecord.get(3))
-                      .withTimezone(csvRecord.get(4))
-                      .withIsAdmin(getBoolean(printer, csvRecord, 5)))
-              .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
-              .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
-      if (processRecord) {
-        createUserEntity(printer, csvRecord, user);
+      if (csvRecord == null) {
+        return;
       }
+
+      String userName = csvRecord.get(0);
+      User user;
+      boolean userExists;
+      try {
+        user =
+            Entity.getEntityByName(
+                USER,
+                userName,
+                "id,displayName,description,timezone,isAdmin,teams,roles",
+                Include.NON_DELETED);
+        userExists = true;
+      } catch (EntityNotFoundException ex) {
+        user = new User().withName(userName).withEmail(csvRecord.get(3)); // Basic user for creation
+        userExists = false;
+      }
+
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !userExists;
+
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      // Fields: name, displayName, description, email, timezone, isAdmin, team, roles
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String timezone = csvRecord.get(4);
+      Boolean isAdmin = getBoolean(printer, csvRecord, 5);
+      List<EntityReference> teams = getTeams(printer, csvRecord, userName);
+      List<EntityReference> roles = getEntityReferences(printer, csvRecord, 7, ROLE);
+
+      if (!userExists) {
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (!nullOrEmpty(timezone)) {
+          fieldsAdded.add(new FieldChange().withName("timezone").withNewValue(timezone));
+        }
+        if (isAdmin != null) {
+          fieldsAdded.add(new FieldChange().withName("isAdmin").withNewValue(isAdmin));
+        }
+        if (!nullOrEmpty(teams)) {
+          fieldsAdded.add(
+              new FieldChange().withName("teams").withNewValue(JsonUtils.pojoToJson(teams)));
+        }
+        if (!nullOrEmpty(roles)) {
+          fieldsAdded.add(
+              new FieldChange().withName("roles").withNewValue(JsonUtils.pojoToJson(roles)));
+        }
+      } else {
+        if (!Objects.equals(user.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(user.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (!Objects.equals(user.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(user.getDescription())
+                  .withNewValue(description));
+        }
+        if (!Objects.equals(user.getTimezone(), timezone)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("timezone")
+                  .withOldValue(user.getTimezone())
+                  .withNewValue(timezone));
+        }
+        if (isAdmin != null && !Objects.equals(user.getIsAdmin(), isAdmin)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("isAdmin")
+                  .withOldValue(user.getIsAdmin())
+                  .withNewValue(isAdmin));
+        }
+        if (!Objects.equals(user.getTeams(), teams)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("teams")
+                  .withOldValue(JsonUtils.pojoToJson(user.getTeams()))
+                  .withNewValue(JsonUtils.pojoToJson(teams)));
+        }
+        if (!Objects.equals(user.getRoles(), roles)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("roles")
+                  .withOldValue(JsonUtils.pojoToJson(user.getRoles()))
+                  .withNewValue(JsonUtils.pojoToJson(roles)));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+
+      user.withDisplayName(displayName)
+          .withDescription(description)
+          .withTimezone(timezone)
+          .withIsAdmin(isAdmin)
+          .withTeams(teams)
+          .withRoles(roles);
+
+      if (processRecord) {
+        createEntityWithChangeDescription(printer, csvRecord, user);
+      }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated = recordCreateStatusArray[recordIndex];
+      ChangeDescription changeDescription =
+          recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          EntityRepository<User> repository =
+              (EntityRepository<User>) Entity.getEntityRepository(USER);
+          repository.createOrUpdate(null, user, importedBy);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
+        }
+      }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     @Override
