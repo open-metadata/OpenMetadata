@@ -1693,12 +1693,25 @@ public class TableRepository extends EntityRepository<Table> {
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
     private final Table table;
-    private final Map<Integer, Boolean> recordCreateStatus = new HashMap<>();
-    private final Map<Integer, ChangeDescription> recordFieldChanges = new HashMap<>();
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
 
     TableCsv(Table table, String user) {
       super(TABLE, HEADERS, user);
       this.table = table;
+    }
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
     }
 
     @Override
@@ -1752,11 +1765,11 @@ public class TableRepository extends EntityRepository<Table> {
 
       for (int i = 1; i < records.size(); i++) {
         CSVRecord record = records.get(i);
-        boolean isCreated = recordCreateStatus.getOrDefault((int) record.getRecordNumber(), false);
+        boolean isCreated = i < recordCreateStatusArray.length && recordCreateStatusArray[i];
         ChangeDescription changeDescription =
-            recordFieldChanges.getOrDefault(
-                (int) record.getRecordNumber(), new ChangeDescription());
-
+            i < recordFieldChangesArray.length && recordFieldChangesArray[i] != null
+                ? recordFieldChangesArray[i]
+                : new ChangeDescription();
         String status;
         if (isCreated) {
           status = ENTITY_CREATED;
@@ -1795,7 +1808,7 @@ public class TableRepository extends EntityRepository<Table> {
       String columnFqn = csvRecord.get(0);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
-      recordCreateStatus.put((int) csvRecord.getRecordNumber(), !columnExists);
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !columnExists;
 
       // Track field changes for Phase 2 using ChangeDescription structure
       List<FieldChange> fieldsAdded = new ArrayList<>();
@@ -1911,7 +1924,7 @@ public class TableRepository extends EntityRepository<Table> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChanges.put((int) csvRecord.getRecordNumber(), changeDescription);
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
 
       // Apply the updates
       column.withDisplayName(csvRecord.get(1));

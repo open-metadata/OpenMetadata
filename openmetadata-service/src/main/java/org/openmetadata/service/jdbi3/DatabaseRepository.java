@@ -480,8 +480,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     public final List<CsvHeader> HEADERS;
     private final Database database;
     private final boolean recursive;
-    private final Map<Integer, Boolean> recordCreateStatus = new HashMap<>();
-    private final Map<Integer, ChangeDescription> recordFieldChanges = new HashMap<>();
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
 
     public DatabaseCsv(Database database, String user, boolean recursive) {
       super(DATABASE_SCHEMA, getCsvDocumentation(Entity.DATABASE, recursive).getHeaders(), user);
@@ -489,6 +489,19 @@ public class DatabaseRepository extends EntityRepository<Database> {
       this.DOCUMENTATION = getCsvDocumentation(Entity.DATABASE, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
+    }
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
     }
 
     /**
@@ -647,7 +660,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         schemaExists = false;
       }
 
-      recordCreateStatus.put((int) csvRecord.getRecordNumber(), !schemaExists);
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !schemaExists;
 
       // Track field changes for Phase 2 using ChangeDescription structure
       List<FieldChange> fieldsAdded = new ArrayList<>();
@@ -762,7 +775,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChanges.put((int) csvRecord.getRecordNumber(), changeDescription);
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
 
       schema
           .withName(csvRecord.get(0))
@@ -777,17 +790,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
-        createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
+        createEntityWithChangeDescription(printer, csvRecord, schema);
       }
     }
 
     private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, DatabaseSchema schema, String entityType)
-        throws IOException {
-      boolean isCreated = recordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
+        CSVPrinter printer, CSVRecord csvRecord, DatabaseSchema schema) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated =
+          recordIndex >= 0
+              && recordIndex < recordCreateStatusArray.length
+              && recordCreateStatusArray[recordIndex];
       ChangeDescription changeDescription =
-          recordFieldChanges.getOrDefault(
-              (int) csvRecord.getRecordNumber(), new ChangeDescription());
+          recordIndex >= 0
+                  && recordIndex < recordFieldChangesArray.length
+                  && recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
 
       String status;
       if (isCreated) {

@@ -32,9 +32,7 @@ import static org.openmetadata.service.Entity.TABLE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -118,8 +116,8 @@ public class DatabaseServiceRepository
     public final List<CsvHeader> HEADERS;
     private final DatabaseService service;
     private final boolean recursive;
-    private final Map<Integer, Boolean> recordCreateStatus = new HashMap<>();
-    private final Map<Integer, ChangeDescription> recordFieldChanges = new HashMap<>();
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
 
     public DatabaseServiceCsv(DatabaseService service, String user, boolean recursive) {
       super(DATABASE, getCsvDocumentation(DATABASE_SERVICE, recursive).getHeaders(), user);
@@ -127,6 +125,19 @@ public class DatabaseServiceRepository
       this.DOCUMENTATION = getCsvDocumentation(DATABASE_SERVICE, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
+    }
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
     }
 
     /**
@@ -219,22 +230,50 @@ public class DatabaseServiceRepository
 
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
-      // Process all records first to track changes
-      List<Database> databasesToProcess = new ArrayList<>();
+      if (recursive) {
+        createEntityWithRecursion(printer, csvRecords);
+      } else {
+        createEntityWithoutRecursion(printer, csvRecords);
+      }
+    }
 
-      while (recordIndex < csvRecords.size()) {
-        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-        if (csvRecord != null) {
-          Database processedDatabase = processRecordFromCsv(printer, csvRecord);
-          if (processedDatabase != null) {
-            databasesToProcess.add(processedDatabase);
-          }
-        }
+    protected void createEntityWithoutRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
       }
 
-      // Batch create/update all databases
-      if (processRecord) {
-        batchProcessDatabases(printer, csvRecords, databasesToProcess);
+      Database database = processRecordFromCsv(printer, csvRecord);
+
+      if (database != null && processRecord) {
+        if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+          try {
+            EntityRepository<Database> repository =
+                (EntityRepository<Database>) Entity.getEntityRepository(DATABASE);
+            repository.createOrUpdate(null, database, importedBy);
+          } catch (Exception ex) {
+            importFailure(printer, ex.getMessage(), csvRecord);
+            importResult.setStatus(ApiStatus.FAILURE);
+            return;
+          }
+        }
+
+        int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+        boolean isCreated =
+            recordIndex >= 0 && recordIndex < recordCreateStatusArray.length
+                ? recordCreateStatusArray[recordIndex]
+                : false;
+        ChangeDescription changeDescription =
+            recordIndex >= 0
+                    && recordIndex < recordFieldChangesArray.length
+                    && recordFieldChangesArray[recordIndex] != null
+                ? recordFieldChangesArray[recordIndex]
+                : new ChangeDescription();
+
+        String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
+
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
       }
     }
 
@@ -253,7 +292,7 @@ public class DatabaseServiceRepository
         databaseExists = false;
       }
 
-      recordCreateStatus.put((int) csvRecord.getRecordNumber(), !databaseExists);
+      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !databaseExists;
 
       // Track field changes for Phase 2 using ChangeDescription structure
       List<FieldChange> fieldsAdded = new ArrayList<>();
@@ -343,7 +382,7 @@ public class DatabaseServiceRepository
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChanges.put((int) csvRecord.getRecordNumber(), changeDescription);
+      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
 
       database
           .withName(csvRecord.get(0))
@@ -357,45 +396,6 @@ public class DatabaseServiceRepository
           .withExtension(getExtension(printer, csvRecord, 9));
 
       return database;
-    }
-
-    private void batchProcessDatabases(
-        CSVPrinter printer, List<CSVRecord> csvRecords, List<Database> databases)
-        throws IOException {
-      // Create or update all databases if not in dry run mode
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          EntityRepository<Database> repository =
-              (EntityRepository<Database>) Entity.getEntityRepository(DATABASE);
-          for (Database database : databases) {
-            repository.createOrUpdate(null, database, importedBy);
-          }
-        } catch (Exception ex) {
-          for (int i = 1; i < csvRecords.size(); i++) {
-            importFailure(printer, ex.getMessage(), csvRecords.get(i));
-            importResult.setStatus(ApiStatus.FAILURE);
-          }
-          return;
-        }
-      }
-
-      // Print success message with change description for each record
-      for (int i = 1; i < csvRecords.size(); i++) {
-        CSVRecord record = csvRecords.get(i);
-        boolean isCreated = recordCreateStatus.getOrDefault((int) record.getRecordNumber(), false);
-        ChangeDescription changeDescription =
-            recordFieldChanges.getOrDefault(
-                (int) record.getRecordNumber(), new ChangeDescription());
-
-        String status;
-        if (isCreated) {
-          status = ENTITY_CREATED;
-        } else {
-          status = ENTITY_UPDATED;
-        }
-
-        importSuccessWithChangeDescription(printer, record, status, changeDescription);
-      }
     }
 
     private void importSuccessWithChangeDescription(
