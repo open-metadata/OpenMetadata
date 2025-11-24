@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/apiCollection.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "APICollection",
   "$comment": "@om-entity-type",
   "description": "This schema defines the APICollection entity. API Collection allows user to group multiple APIs together. In OpenAPI specification its marked as a Tag.",

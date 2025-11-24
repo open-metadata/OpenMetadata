@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHana/sapHanaConnection.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SapHanaSQLConnection",
   "description": "Sap Hana Database SQL Connection Config",
   "type": "object",

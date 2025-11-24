@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/configuration/ldapTrustStoreConfig/truststoreConfig.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TruststoreConfig",
   "description": "Truststore Configuration",
   "type": "object",

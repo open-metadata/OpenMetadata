@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/classification/classification.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Classification",
   "$comment": "@om-entity-type",
   "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/predefinedRecognizer.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PredefinedRecognizer",
   "description": "Built-in recognizer definition. See https://github.com/microsoft/presidio/tree/04920aafbb2958b7359183bf5a72af627cdb2808/presidio-analyzer/presidio_analyzer/predefined_recognizers",
   "type": "object",

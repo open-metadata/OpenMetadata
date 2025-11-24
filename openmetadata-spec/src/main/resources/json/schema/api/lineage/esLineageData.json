@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/lineage/esLineageData.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EsLineageData",
   "description": "Response object for the search lineage request from Elastic Search.",
   "javaType": "org.openmetadata.schema.api.lineage.EsLineageData",

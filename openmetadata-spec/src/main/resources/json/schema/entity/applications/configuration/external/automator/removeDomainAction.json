@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeDomainAction.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RemoveDomainAction",
   "description": "Remove domains from the selected assets.",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/configuration/themeConfiguration.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ThemeConfiguration",
   "description": "This schema defines the Theme Configuration for UI elements.",
   "type": "object",

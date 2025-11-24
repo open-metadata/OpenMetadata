@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/teams/createRole.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateRoleRequest",
   "description": "Request for creating a Role entity",
   "type": "object",

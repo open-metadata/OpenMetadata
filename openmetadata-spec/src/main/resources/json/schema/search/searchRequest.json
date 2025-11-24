@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/search/searchRequest.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SearchRequest",
   "description": "Search Request to find entities from Elastic Search based on different parameters.",
   "javaType": "org.openmetadata.schema.search.SearchRequest",

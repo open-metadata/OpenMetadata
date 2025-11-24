@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/manifestMetadataConfig.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ManifestMetadataConfig",
   "description": "Definition of the manifest file containing entries to be ingested across multiple buckets as object storage entries",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestMetadataConfig",
