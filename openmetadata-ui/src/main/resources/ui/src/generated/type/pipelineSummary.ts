@@ -15,6 +15,10 @@
  */
 export interface PipelineSummary {
     /**
+     * End time of the pipeline schedule
+     */
+    endTime?: number;
+    /**
      * Total count of tables impacted by this pipeline
      */
     impactedAssetsCount: number;
@@ -46,6 +50,10 @@ export interface PipelineSummary {
      * Type of pipeline service
      */
     serviceType: PipelineServiceType;
+    /**
+     * Start time of the pipeline schedule
+     */
+    startTime?: number;
 }
 
 export enum LastRunStatus {
