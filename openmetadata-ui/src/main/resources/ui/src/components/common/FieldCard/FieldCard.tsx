@@ -261,21 +261,21 @@ const FieldCard: React.FC<FieldCardProps> = ({
 
   const tagsMoreLabel = useMemo(
     () =>
-      visibleTagsCount !== null
-        ? `+${nonGlossaryTags.length - visibleTagsCount} ${t(
+      visibleTagsCount === null
+        ? ''
+        : `+${nonGlossaryTags.length - visibleTagsCount} ${t(
             'label.more-lowercase'
-          )}`
-        : '',
+          )}`,
     [visibleTagsCount, nonGlossaryTags.length, t]
   );
 
   const termsMoreLabel = useMemo(
     () =>
-      visibleTermsCount !== null
-        ? `+${glossaryTerms.length - visibleTermsCount} ${t(
+      visibleTermsCount === null
+        ? ''
+        : `+${glossaryTerms.length - visibleTermsCount} ${t(
             'label.more-lowercase'
-          )}`
-        : '',
+          )}`,
     [visibleTermsCount, glossaryTerms.length, t]
   );
 

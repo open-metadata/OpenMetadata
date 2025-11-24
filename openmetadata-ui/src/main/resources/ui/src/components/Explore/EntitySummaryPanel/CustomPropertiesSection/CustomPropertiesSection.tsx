@@ -110,6 +110,46 @@ const CustomPropertiesSection = ({
     );
   }
 
+  const renderEmptyState = () => {
+    if (searchText) {
+      return (
+        <div className="text-center text-grey-muted p-sm">
+          {t('message.no-entity-found-for-name', {
+            entity: t('label.custom-property-plural'),
+            name: searchText,
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="lineage-items-list empty-state">
+        <ErrorPlaceHolderNew
+          className="text-grey-14"
+          icon={<AddPlaceHolderIcon height={100} width={100} />}
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <div className="p-t-md text-justify no-data-placeholder">
+            <Transi18next
+              i18nKey="message.no-custom-properties-entity"
+              renderElement={
+                <a
+                  href={CUSTOM_PROPERTIES_DOCS}
+                  rel="noreferrer"
+                  target="_blank"
+                  title="Custom properties documentation"
+                />
+              }
+              values={{
+                docs: t('label.doc-plural-lowercase'),
+                entity: startCase(entityType),
+              }}
+            />
+          </div>
+        </ErrorPlaceHolderNew>
+      </div>
+    );
+  };
+
   return (
     <div className="entity-summary-panel-tab-content">
       <div className="p-x-md">
@@ -125,57 +165,25 @@ const CustomPropertiesSection = ({
           />
         )}
         <div className="custom-properties-list">
-          {filteredProperties.length > 0 ? (
-            filteredProperties.map((property: CustomProperty) => {
-              const value = extensionData[property.name];
+          {filteredProperties.length > 0
+            ? filteredProperties.map((property: CustomProperty) => {
+                const value = extensionData[property.name];
 
-              return (
-                <div className="custom-property-item" key={property.name}>
-                  <Typography.Text className="property-name">
-                    {property.displayName || property.name}
-                  </Typography.Text>
-                  <div className="property-value">
-                    <CustomPropertyValueRenderer
-                      property={property}
-                      value={value}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          ) : searchText ? (
-            <div className="text-center text-grey-muted p-sm">
-              {t('message.no-entity-found-for-name', {
-                entity: t('label.custom-property-plural'),
-                name: searchText,
-              })}
-            </div>
-          ) : (
-            <div className="lineage-items-list empty-state">
-              <ErrorPlaceHolderNew
-                className="text-grey-14"
-                icon={<AddPlaceHolderIcon height={100} width={100} />}
-                type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                <div className="p-t-md text-justify no-data-placeholder">
-                  <Transi18next
-                    i18nKey="message.no-custom-properties-entity"
-                    renderElement={
-                      <a
-                        href={CUSTOM_PROPERTIES_DOCS}
-                        rel="noreferrer"
-                        target="_blank"
-                        title="Custom properties documentation"
+                return (
+                  <div className="custom-property-item" key={property.name}>
+                    <Typography.Text className="property-name">
+                      {property.displayName || property.name}
+                    </Typography.Text>
+                    <div className="property-value">
+                      <CustomPropertyValueRenderer
+                        property={property}
+                        value={value}
                       />
-                    }
-                    values={{
-                      docs: t('label.doc-plural-lowercase'),
-                      entity: startCase(entityType),
-                    }}
-                  />
-                </div>
-              </ErrorPlaceHolderNew>
-            </div>
-          )}
+                    </div>
+                  </div>
+                );
+              })
+            : renderEmptyState()}
         </div>
       </div>
     </div>

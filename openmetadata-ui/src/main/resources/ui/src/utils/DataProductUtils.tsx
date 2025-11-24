@@ -127,8 +127,9 @@ export const getDataProductDetailTabs = ({
       key: EntityTabs.DOCUMENTATION,
       children: <GenericTab type={PageType.DataProduct} />,
     },
-    ...(!isVersionsView
-      ? [
+    ...(isVersionsView
+      ? []
+      : [
           {
             label: (
               <TabsLabel
@@ -207,8 +208,7 @@ export const getDataProductDetailTabs = ({
               />
             ),
           },
-        ]
-      : []),
+        ]),
     {
       label: (
         <TabsLabel

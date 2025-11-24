@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { CustomProperty, EntityReference } from '../generated/entity/type';
+import { formatTableCellValue } from './CustomProperty.utils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import searchClassBase from './SearchClassBase';
@@ -93,7 +94,7 @@ export const renderTableValue = (tableVal: {
                 <tr key={rowKey}>
                   {tableVal.columns.map((column: string) => (
                     <td className="ant-table-cell" key={column}>
-                      {String(row[column] || '-')}
+                      {formatTableCellValue(row[column])}
                     </td>
                   ))}
                 </tr>
@@ -118,6 +119,57 @@ export const renderIntervalValue = (
   })}: ${objVal.start} - ${t('label.end-entity', {
     entity: entityLabel,
   })}: ${objVal.end}`;
+};
+
+const renderEntityReferenceList = (entityRefs: EntityReference[]) => (
+  <div className="d-flex flex-column gap-2">
+    {entityRefs.map((item: EntityReference) => (
+      <div className="entity-ref-item" key={item.id}>
+        {renderEntityReferenceButton(item)}
+      </div>
+    ))}
+  </div>
+);
+
+const renderEntityReferenceSingle = (item: EntityReference) => (
+  <div className="d-flex items-center">{renderEntityReferenceButton(item)}</div>
+);
+
+const renderEnumValues = (values: string[]) => (
+  <div className="d-flex flex-wrap gap-2">
+    {values.map((enumValue: string) => (
+      <Tag key={enumValue}>{enumValue}</Tag>
+    ))}
+  </div>
+);
+
+const renderObjectValue = (
+  objVal: Record<string, unknown>,
+  propertyTypeName: string | undefined,
+  t: TFunction
+): React.ReactNode => {
+  if (objVal.rows && objVal.columns) {
+    const tableVal = objVal as {
+      rows: Record<string, unknown>[];
+      columns: string[];
+    };
+
+    return renderTableValue(tableVal);
+  }
+
+  if (objVal.start !== undefined && objVal.end !== undefined) {
+    return renderIntervalValue(objVal, propertyTypeName === 'timeInterval', t);
+  }
+
+  if (objVal.name || objVal.displayName) {
+    return String(objVal.name || objVal.displayName);
+  }
+
+  if (objVal.value) {
+    return String(objVal.value);
+  }
+
+  return JSON.stringify(objVal);
 };
 
 interface CustomPropertyValueRendererProps {
@@ -146,69 +198,22 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
       const objVal = val as Record<string, unknown>;
 
       if (propertyTypeName === 'entityReferenceList' && Array.isArray(val)) {
-        const entityRefs = val as EntityReference[];
-
-        return (
-          <div className="d-flex flex-column gap-2">
-            {entityRefs.map((item: EntityReference) => (
-              <div className="entity-ref-item" key={item.id}>
-                {renderEntityReferenceButton(item)}
-              </div>
-            ))}
-          </div>
-        );
+        return renderEntityReferenceList(val as EntityReference[]);
       }
 
       if (propertyTypeName === 'entityReference' && isEntityReference(objVal)) {
-        const item = val as EntityReference;
-
-        return (
-          <div className="d-flex items-center">
-            {renderEntityReferenceButton(item)}
-          </div>
-        );
+        return renderEntityReferenceSingle(val as EntityReference);
       }
 
       if (propertyTypeName === 'enum' && Array.isArray(val)) {
-        return (
-          <div className="d-flex flex-wrap gap-2">
-            {val.map((enumValue: string) => (
-              <Tag key={enumValue}>{enumValue}</Tag>
-            ))}
-          </div>
-        );
-      }
-
-      if (objVal.rows && objVal.columns) {
-        const tableVal = objVal as {
-          rows: Record<string, unknown>[];
-          columns: string[];
-        };
-
-        return renderTableValue(tableVal);
-      }
-
-      if (objVal.start !== undefined && objVal.end !== undefined) {
-        return renderIntervalValue(
-          objVal,
-          propertyTypeName === 'timeInterval',
-          t
-        );
+        return renderEnumValues(val as string[]);
       }
 
       if (Array.isArray(val)) {
         return val.join(', ');
       }
 
-      if (objVal.name || objVal.displayName) {
-        return String(objVal.name || objVal.displayName);
-      }
-
-      if (objVal.value) {
-        return String(objVal.value);
-      }
-
-      return JSON.stringify(val);
+      return renderObjectValue(objVal, propertyTypeName, t);
     }
 
     return <>{String(val)}</>;
