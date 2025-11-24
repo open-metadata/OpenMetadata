@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Typography } from '@mui/material';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
@@ -74,20 +75,30 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <div className="overview-section">
-      {visibleEntityInfo.map((info) => (
-        <div className="overview-row" key={info.name}>
-          <span
-            className={classNames('overview-label')}
-            data-testid={`${info.name}-label`}>
-            {info.name}
-          </span>
-          <span
-            className={classNames('overview-value text-grey-body')}
-            data-testid={`${info.name}-value`}>
-            {renderInfoValue(info)}
-          </span>
+      {visibleEntityInfo.length === 0 ? (
+        <div className="overview-row">
+          <Typography
+            className="no-data-placeholder"
+            data-testid="no-data-placeholder">
+            {t('label.no-overview-available')}
+          </Typography>
         </div>
-      ))}
+      ) : (
+        visibleEntityInfo.map((info) => (
+          <div className="overview-row" key={info.name}>
+            <span
+              className={classNames('overview-label')}
+              data-testid={`${info.name}-label`}>
+              {info.name}
+            </span>
+            <span
+              className={classNames('overview-value text-grey-body')}
+              data-testid={`${info.name}-value`}>
+              {renderInfoValue(info)}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   );
 };
