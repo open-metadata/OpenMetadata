@@ -212,7 +212,9 @@ const CustomPropertiesSection = ({
                     data-testid={`property-${property.name}-name`}>
                     {property.displayName || property.name}
                   </Typography.Text>
-                  <Typography.Text className="property-value">
+                  <Typography.Text
+                    className="property-value"
+                    data-testid="value">
                     {formatValue(value)}
                   </Typography.Text>
                 </div>

@@ -18,7 +18,11 @@ import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
-import { createCustomPropertyForEntity } from '../../utils/customProperty';
+import {
+  createCustomPropertyForEntity,
+  CustomProperty,
+  setValueForProperty,
+} from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
 
@@ -1038,16 +1042,18 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    const customPropertiesContainer =
-      adminPage.getByTestId('custom_properties');
+    const customPropertiesContainer = tabContent.locator(
+      '.custom-properties-list'
+    );
 
     await expect(customPropertiesContainer).toBeVisible();
 
     const displayedPropertyCards = customPropertiesContainer.locator(
-      '[data-testid^="custom-property-"]'
+      '.custom-property-item'
     );
     const displayedCount = await displayedPropertyCards.count();
 
+    // Verify at least some properties are displayed
     expect(displayedCount).toBeGreaterThan(0);
 
     for (let i = 0; i < displayedCount; i++) {
@@ -1065,6 +1071,252 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
 
     await afterAction();
+  });
+
+  test('Admin - Custom Properties Tab - Search Functionality', async ({
+    adminPage,
+  }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    // Create custom properties for Table entity via API
+    const { customProperties } = await createCustomPropertyForEntity(
+      apiContext,
+      EntityTypeEndpoint.Table
+    );
+
+    // Set some custom property values
+    const propertyTypes = Object.keys(customProperties).slice(0, 5);
+    const extensionData: Record<string, string> = {};
+
+    for (const propertyType of propertyTypes) {
+      const { property, value } = customProperties[propertyType];
+      const propertyName = property.name as string;
+      extensionData[propertyName] = value;
+    }
+
+    await testEntity.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/extension',
+          value: extensionData,
+        },
+      ],
+    });
+
+    // Navigate to explore and select the entity
+    await navigateToExploreAndSelectTable(adminPage);
+
+    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+    const cpTab = summaryPanel.getByRole('menuitem', {
+      name: /custom propert/i,
+    });
+
+    await cpTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    // Verify search bar is present
+    const searchBar = tabContent.locator('.searchbar-container input');
+
+    await expect(searchBar).toBeVisible();
+
+    // Get first property name to search for
+    const firstPropertyName = Object.values(customProperties)[0].property
+      .name as string;
+
+    // Perform search
+    await searchBar.fill(firstPropertyName);
+    await adminPage.waitForTimeout(400);
+
+    // Verify filtered results
+    const visibleProperties = tabContent.locator('.custom-property-item');
+    const count = await visibleProperties.count();
+
+    // Should show only matching property
+    expect(count).toBeGreaterThan(0);
+
+    // Verify the property name is visible
+    await expect(
+      visibleProperties.first().locator('.property-name')
+    ).toHaveText(firstPropertyName);
+
+    // Clear search and verify all properties show again
+    await searchBar.clear();
+    await adminPage.waitForTimeout(400);
+
+    const allPropertiesCount = await tabContent
+      .locator('.custom-property-item')
+      .count();
+
+    expect(allPropertiesCount).toBeGreaterThan(count);
+
+    // Test search with no results
+    await searchBar.fill('nonexistent-property-xyz123');
+    await adminPage.waitForTimeout(400);
+
+    // Verify no results message appears (uses translation: "No {{entity}} found for {{name}}")
+    await expect(
+      tabContent.getByText(/No Custom Properties found for/i)
+    ).toBeVisible();
+
+    await afterAction();
+  });
+
+  test('Admin - Custom Properties Tab - Different Property Types Display', async ({
+    adminPage,
+  }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    // Create custom properties for Table entity via API
+    const { customProperties, cleanupUser } =
+      await createCustomPropertyForEntity(apiContext, EntityTypeEndpoint.Table);
+
+    // Test different property types
+    const propertyTypesToTest = [
+      'string',
+      'integer',
+      'markdown',
+      'enum',
+      'email',
+      'number',
+      'duration',
+      'sqlQuery',
+      'timestamp',
+      'entityReference',
+      'entityReferenceList',
+      'timeInterval',
+      'time-cp',
+      'date-cp',
+      'dateTime-cp',
+      'table-cp',
+    ];
+
+    // Navigate to the entity details page to set custom property values
+    await adminPage.goto(
+      `/table/${testEntity.entityResponseData?.['fullyQualifiedName']}`
+    );
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Click on custom properties tab to set values
+    await adminPage.click('[data-testid="custom_properties"]');
+    await adminPage.waitForLoadState('networkidle');
+
+    // Set values for each property type through the UI
+    for (const type of propertyTypesToTest) {
+      if (customProperties[type]) {
+        const { property, value } = customProperties[type];
+        const propertyName = property.name as string;
+
+        await setValueForProperty({
+          page: adminPage,
+          propertyName,
+          value,
+          propertyType: type,
+          endpoint: EntityTypeEndpoint.Table,
+        });
+      }
+    }
+
+    // Wait for all changes to be persisted and indexed
+    await adminPage.waitForTimeout(2000);
+
+    // Now navigate to explore and verify in right panel
+    await navigateToExploreAndSelectTable(adminPage);
+
+    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+    const cpTab = summaryPanel.getByRole('menuitem', {
+      name: /custom propert/i,
+    });
+
+    await cpTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    // Verify each property type is displayed correctly in the read-only view
+    for (const type of propertyTypesToTest) {
+      if (customProperties[type]) {
+        const { property } = customProperties[type];
+        const propertyName = property.name as string;
+        const propertyWithDisplay = property as CustomProperty & {
+          displayName?: string;
+        };
+        const displayName = propertyWithDisplay.displayName || propertyName;
+
+        const propertyCard = tabContent.locator(
+          `[data-testid="custom-property-${propertyName}-card"]`
+        );
+
+        await expect(propertyCard).toBeVisible();
+
+        const propertyNameElement = propertyCard.locator(
+          `[data-testid="property-${propertyName}-name"]`
+        );
+
+        await expect(propertyNameElement).toContainText(displayName);
+
+        // Verify value is displayed (not "Not set")
+        const valueElement = propertyCard.locator('[data-testid="value"]');
+
+        await expect(valueElement).toBeVisible();
+      }
+    }
+
+    await afterAction();
+  });
+
+  test('Admin - Custom Properties Tab - Empty State', async ({ adminPage }) => {
+    // Navigate to explore without creating custom properties
+    await navigateToExploreAndSelectTable(adminPage);
+
+    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+    const cpTab = summaryPanel.getByRole('menuitem', {
+      name: /custom propert/i,
+    });
+
+    await cpTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const tabContent = summaryPanel.locator(
+      '.entity-summary-panel-tab-content'
+    );
+
+    // Check if empty state is shown (when no custom properties are defined for the entity type)
+    const noDataPlaceholder = tabContent.locator(
+      '[data-testid="no-data-placeholder"]'
+    );
+
+    if (await noDataPlaceholder.isVisible()) {
+      // Verify empty state message
+      await expect(noDataPlaceholder).toContainText(/no custom propert/i);
+      await expect(noDataPlaceholder.locator('a')).toHaveAttribute(
+        'href',
+        /.+/
+      );
+      await expect(noDataPlaceholder.locator('a')).toHaveAttribute(
+        'target',
+        '_blank'
+      );
+    }
   });
 });
 
