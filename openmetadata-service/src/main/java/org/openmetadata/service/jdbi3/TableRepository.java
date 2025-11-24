@@ -70,6 +70,7 @@ import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
@@ -611,6 +612,24 @@ public class TableRepository extends EntityRepository<Table> {
     for (ExtensionRecord extensionRecord : extensionRecords) {
       PipelineObservability observability =
           JsonUtils.readValue(extensionRecord.extensionJson(), PipelineObservability.class);
+
+      // Enrich with serviceType if not already present
+      if (observability.getServiceType() == null && observability.getPipeline() != null) {
+        try {
+          Pipeline pipeline =
+              Entity.getEntity(
+                  Entity.PIPELINE, observability.getPipeline().getId(), "", Include.NON_DELETED);
+          if (pipeline != null && pipeline.getServiceType() != null) {
+            observability.setServiceType(pipeline.getServiceType());
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to fetch serviceType for pipeline {}: {}",
+              observability.getPipeline().getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+
       pipelineObservabilityList.add(observability);
     }
 

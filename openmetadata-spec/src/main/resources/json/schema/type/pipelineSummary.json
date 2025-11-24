@@ -23,6 +23,16 @@
       "$ref": "../entity/services/pipelineService.json#/definitions/pipelineServiceType",
       "description": "Type of pipeline service"
     },
+    "startTime": {
+      "$ref": "basic.json#/definitions/timestamp",
+      "default": null,
+      "description": "Start time of the pipeline schedule"
+    },
+    "endTime": {
+      "$ref": "basic.json#/definitions/timestamp",
+      "default": null,
+      "description": "End time of the pipeline schedule"
+    },
     "lastRunTime": {
       "$ref": "basic.json#/definitions/timestamp",
       "default": null,

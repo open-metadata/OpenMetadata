@@ -767,6 +767,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType,
       @Parameter(
               description = "Limit the number of observability records per table",
               schema = @Schema(type = "integer"))
@@ -777,7 +780,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     PipelineObservabilityResponse response =
-        repository.getPipelineObservability(fqn, status, startTs, endTs, limit);
+        repository.getPipelineObservability(fqn, status, startTs, endTs, serviceType, limit);
     return Response.ok(response).build();
   }
 

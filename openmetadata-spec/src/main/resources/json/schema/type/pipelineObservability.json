@@ -10,6 +10,10 @@
       "description": "Reference to the pipeline that processes this data asset.",
       "$ref": "entityReference.json"
     },
+    "serviceType": {
+      "$ref": "../entity/services/pipelineService.json#/definitions/pipelineServiceType",
+      "description": "Type of pipeline service"
+    },
     "scheduleInterval": {
       "description": "Schedule interval for the pipeline in cron format.",
       "type": ["string", "null"]

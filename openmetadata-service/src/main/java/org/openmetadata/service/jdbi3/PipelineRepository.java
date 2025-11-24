@@ -969,7 +969,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(String pipelineFqn) {
-    return getPipelineObservability(pipelineFqn, null, null, null, 10);
+    return getPipelineObservability(pipelineFqn, null, null, null, null, 10);
   }
 
   /**
@@ -979,11 +979,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * @param status filter by execution status (Successful, Failed, Running, Pending, Skipped)
    * @param startTs filter observability data after this timestamp
    * @param endTs filter observability data before this timestamp
+   * @param serviceType filter by pipeline service type (e.g., Airflow, Dagster)
    * @param limit limit the number of observability records per table
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(
-      String pipelineFqn, String status, Long startTs, Long endTs, int limit) {
+      String pipelineFqn, String status, Long startTs, Long endTs, String serviceType, int limit) {
     // Get the pipeline entity to retrieve its ID
     Pipeline pipeline = findByName(pipelineFqn, NON_DELETED);
     if (pipeline == null) {
@@ -1042,6 +1043,23 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               if (status != null && !status.isEmpty() && observability.getLastRunStatus() != null) {
                 matchesFilter =
                     observability.getLastRunStatus().value().equalsIgnoreCase(status.trim());
+              }
+
+              // Filter by service type
+              if (matchesFilter
+                  && serviceType != null
+                  && !serviceType.isEmpty()
+                  && observability.getPipeline() != null) {
+                Pipeline relatedPipeline =
+                    findByName(observability.getPipeline().getFullyQualifiedName(), NON_DELETED);
+                if (relatedPipeline != null
+                    && relatedPipeline.getServiceType() != null
+                    && !relatedPipeline
+                        .getServiceType()
+                        .value()
+                        .equalsIgnoreCase(serviceType.trim())) {
+                  matchesFilter = false;
+                }
               }
 
               // Filter by time range (using lastRunTime)
@@ -1181,6 +1199,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     summary.setPipelineFqn(pipeline.getFullyQualifiedName());
     summary.setServiceType(pipeline.getServiceType());
 
+    if (pipeline.getStartDate() != null) {
+      summary.setStartTime(pipeline.getStartDate().getTime());
+    }
+
+    if (pipeline.getEndDate() != null) {
+      summary.setEndTime(pipeline.getEndDate().getTime());
+    }
+
     if (pipeline.getPipelineStatus() != null) {
       summary.setLastRunTime(pipeline.getPipelineStatus().getTimestamp());
       if (pipeline.getPipelineStatus().getExecutionStatus() != null) {
@@ -1203,6 +1229,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withPipelineName(pipeline.getName())
         .withPipelineFqn(pipeline.getFullyQualifiedName())
         .withServiceType(pipeline.getServiceType())
+        .withStartTime(pipeline.getStartDate() != null ? pipeline.getStartDate().getTime() : null)
+        .withEndTime(pipeline.getEndDate() != null ? pipeline.getEndDate().getTime() : null)
         .withLastRunTime(null)
         .withLastRunStatus(null)
         .withScheduleInterval(pipeline.getScheduleInterval())
