@@ -7,6 +7,7 @@
           "pipeline": "sample_airflow.dim_address_etl",
           "scheduleInterval": "0 10 * * *",
           "startTime": 1756050963120,
+          "endTime": 1764050963120,
           "lastRunTime": 1763402163120,
           "lastRunStatus": "Successful"
         },
@@ -14,6 +15,7 @@
           "pipeline": "sample_dbtcloud.dbt_staging_shopify",
           "scheduleInterval": "0 1 * * *",
           "startTime": 1756050963120,
+          "endTime": 1764050963120,
           "lastRunTime": 1763402163120,
           "lastRunStatus": "Successful"
         }
@@ -26,6 +28,7 @@
         "pipeline": "sample_airflow.dim_product_etl",
         "scheduleInterval": "0 10 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763636163120,
         "lastRunStatus": "Successful"
       },
@@ -33,6 +36,7 @@
         "pipeline": "sample_dbtcloud.dbt_transform_orders",
         "scheduleInterval": "0 3 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763636163120,
         "lastRunStatus": "Successful"
       },
@@ -40,6 +44,7 @@
         "pipeline": "sample_dbtcloud.dbt_snapshot_inventory",
         "scheduleInterval": "0 * * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763733363120,
         "lastRunStatus": "Successful"
       }
@@ -52,6 +57,7 @@
         "pipeline": "sample_dbtcloud.dbt_staging_shopify",
         "scheduleInterval": "0 1 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763402163120,
         "lastRunStatus": "Successful"
       },
@@ -59,6 +65,7 @@
         "pipeline": "sample_dbtcloud.dbt_transform_orders",
         "scheduleInterval": "0 3 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763636163120,
         "lastRunStatus": "Successful"
       },
@@ -66,6 +73,7 @@
         "pipeline": "sample_dbtcloud.dbt_analytics_customers",
         "scheduleInterval": "0 4 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763640163120,
         "lastRunStatus": "Successful"
       },
@@ -73,6 +81,7 @@
         "pipeline": "sample_dbtcloud.dbt_ml_features",
         "scheduleInterval": "0 2,14 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763711763120,
         "lastRunStatus": "Successful"
       }
@@ -85,6 +94,7 @@
         "pipeline": "sample_airflow.presto_etl",
         "scheduleInterval": "0 */4 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763729763120,
         "lastRunStatus": "Failed"
       },
@@ -92,6 +102,7 @@
         "pipeline": "sample_dbtcloud.dbt_transform_orders",
         "scheduleInterval": "0 3 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763636163120,
         "lastRunStatus": "Successful"
       },
@@ -99,6 +110,7 @@
         "pipeline": "sample_dbtcloud.dbt_test_data_quality",
         "scheduleInterval": "0 */6 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763720163120,
         "lastRunStatus": "Successful"
       }
@@ -111,6 +123,7 @@
         "pipeline": "sample_airflow.snowflake_etl",
         "scheduleInterval": "0 */6 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763420163120,
         "lastRunStatus": "Successful"
       },
@@ -118,6 +131,7 @@
         "pipeline": "sample_airflow.ml_feature_pipeline",
         "scheduleInterval": "0 2,14 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763711763120,
         "lastRunStatus": "Successful"
       },
@@ -125,6 +139,7 @@
         "pipeline": "sample_dbtcloud.dbt_transform_orders",
         "scheduleInterval": "0 3 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763636163120,
         "lastRunStatus": "Successful"
       },
@@ -132,6 +147,7 @@
         "pipeline": "sample_dbtcloud.dbt_analytics_customers",
         "scheduleInterval": "0 4 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763640163120,
         "lastRunStatus": "Successful"
       },
@@ -139,6 +155,7 @@
         "pipeline": "sample_dbtcloud.dbt_ml_features",
         "scheduleInterval": "0 2,14 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763711763120,
         "lastRunStatus": "Successful"
       }
@@ -151,6 +168,7 @@
         "pipeline": "sample_airflow.hive_etl",
         "scheduleInterval": "0 3 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1762736163120,
         "lastRunStatus": "Successful"
       }
@@ -163,6 +181,7 @@
         "pipeline": "sample_airflow.dim_location_etl",
         "scheduleInterval": "0 10 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1762793763120,
         "lastRunStatus": "Failed"
       }
@@ -175,6 +194,7 @@
         "pipeline": "sample_airflow.trino_etl",
         "scheduleInterval": "0 * * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763445363120,
         "lastRunStatus": "Successful"
       }
@@ -187,6 +207,7 @@
         "pipeline": "sample_airflow.real_time_metrics",
         "scheduleInterval": "*/15 * * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763733363120,
         "lastRunStatus": "Successful"
       }
@@ -199,6 +220,7 @@
         "pipeline": "sample_airflow.ml_feature_pipeline",
         "scheduleInterval": "0 2,14 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1762592163120,
         "lastRunStatus": "Successful"
       },
@@ -206,6 +228,7 @@
         "pipeline": "sample_dbtcloud.dbt_ml_features",
         "scheduleInterval": "0 2,14 * * *",
         "startTime": 1756050963120,
+        "endTime": 1764050963120,
         "lastRunTime": 1763711763120,
         "lastRunStatus": "Successful"
       }
