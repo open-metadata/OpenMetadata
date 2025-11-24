@@ -480,6 +480,18 @@ class SampleDataSource(
         self.pipeline_service = self.metadata.get_service_or_create(
             entity=PipelineService, config=WorkflowSource(**self.pipeline_service_json)
         )
+
+        # Load DBT Cloud service
+        self.dbtcloud_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/pipelines/dbtcloud_service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.dbtcloud_service = self.metadata.get_service_or_create(
+            entity=PipelineService, config=WorkflowSource(**self.dbtcloud_service_json)
+        )
         self.lineage = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/lineage/lineage.json",
@@ -1796,13 +1808,22 @@ class SampleDataSource(
                 owners = self.metadata.get_reference_by_email(
                     email=pipeline.get("owners")
                 )
+
+            # Determine which service to use
+            service_name = pipeline.get("service")
+            service_fqn = (
+                self.dbtcloud_service.fullyQualifiedName
+                if service_name == "sample_dbtcloud"
+                else self.pipeline_service.fullyQualifiedName
+            )
+
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
-                service=self.pipeline_service.fullyQualifiedName,
+                service=service_fqn,
                 owners=owners,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
