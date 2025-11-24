@@ -133,7 +133,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
-        self._buffer_lock = threading.Lock()
         self.buffer: list[BaseModel] = []
         self._lifecycle_lock = threading.Lock()
         self.deferred_lifecycle_records: list[OMetaLifeCycleData] = []
@@ -207,21 +206,20 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         ):
             return self.write_create_single_request(entity_request)
 
-        with self._buffer_lock:
-            self.buffer.append(entity_request)
-            try:
-                if len(self.buffer) >= self.config.bulk_sink_batch_size:
-                    return self._flush_buffer()
-                return Either(right=None)
-            except LimitsException as _:
-                self.limit_reached.add(type(entity_request).__name__)
-                return Either(
-                    left=StackTraceError(
-                        name=type(entity_request).__name__,
-                        error=f"Limit reached for {type(entity_request).__name__}",
-                        stackTrace=None,
-                    )
+        self.buffer.append(entity_request)
+        try:
+            if len(self.buffer) >= self.config.bulk_sink_batch_size:
+                return self._flush_buffer()
+            return Either(right=None)
+        except LimitsException as _:
+            self.limit_reached.add(type(entity_request).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__,
+                    error=f"Limit reached for {type(entity_request).__name__}",
+                    stackTrace=None,
                 )
+            )
 
     def write_create_single_request(self, entity_request) -> Either[Entity]:
         try:
@@ -703,8 +701,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
-        with self._lifecycle_lock:
-            self.deferred_lifecycle_records.append(record)
+        self.deferred_lifecycle_records.append(record)
         return Either(right=None)
 
     @_run_dispatch.register
@@ -848,68 +845,66 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             logger.debug("Deferred lifecycle processing already completed, skipping")
             return
 
-        with self._lifecycle_lock:
-            if not self.deferred_lifecycle_records:
-                return
+        if not self.deferred_lifecycle_records:
+            return
 
-            logger.info(
-                f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
-            )
+        logger.info(
+            f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
+        )
 
-            success_count = 0
-            error_count = 0
+        success_count = 0
+        error_count = 0
 
-            for record in self.deferred_lifecycle_records:
-                try:
-                    entity = self.metadata.get_by_name(
-                        entity=record.entity, fqn=record.entity_fqn
+        for record in self.deferred_lifecycle_records:
+            try:
+                entity = self.metadata.get_by_name(
+                    entity=record.entity, fqn=record.entity_fqn
+                )
+                if entity:
+                    self.metadata.patch_life_cycle(
+                        entity=entity, life_cycle=record.life_cycle
                     )
-                    if entity:
-                        self.metadata.patch_life_cycle(
-                            entity=entity, life_cycle=record.life_cycle
-                        )
-                        success_count += 1
-                    else:
-                        logger.warning(
-                            f"Table {record.entity_fqn} not found even after bulk processing"
-                        )
-                        error_count += 1
-                        self.status.failed(
-                            StackTraceError(
-                                name=record.entity_fqn,
-                                error=f"Entity not found: {record.entity_fqn}",
-                                stackTrace=None,
-                            )
-                        )
-                except Exception as exc:
-                    logger.error(
-                        f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                    success_count += 1
+                else:
+                    logger.warning(
+                        f"Table {record.entity_fqn} not found even after bulk processing"
                     )
-                    logger.debug(traceback.format_exc())
                     error_count += 1
                     self.status.failed(
                         StackTraceError(
                             name=record.entity_fqn,
-                            error=f"Lifecycle processing error: {exc}",
-                            stackTrace=traceback.format_exc(),
+                            error=f"Entity not found: {record.entity_fqn}",
+                            stackTrace=None,
                         )
                     )
+            except Exception as exc:
+                logger.error(
+                    f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
+                error_count += 1
+                self.status.failed(
+                    StackTraceError(
+                        name=record.entity_fqn,
+                        error=f"Lifecycle processing error: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
-            logger.info(
-                f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
-            )
+        logger.info(
+            f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
+        )
 
-            self.deferred_lifecycle_processed = True
+        self.deferred_lifecycle_processed = True
 
     def close(self):
         """
         Flush any remaining buffered tables and stop worker threads
         """
         # Flush all thread-local buffers
-        with self._buffer_lock:
-            if self.buffer:
-                logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
-                self._flush_buffer()
+        if self.buffer:
+            logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
+            self._flush_buffer()
 
         # Process deferred lifecycle data now that all tables exist
         self._process_deferred_lifecycle_data()
