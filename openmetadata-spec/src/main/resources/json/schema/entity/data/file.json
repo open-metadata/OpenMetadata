@@ -145,6 +145,10 @@
       "description": "Owners of this file.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this file.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"

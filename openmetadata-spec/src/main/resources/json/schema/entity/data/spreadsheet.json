@@ -118,6 +118,10 @@
       "description": "Owners of this spreadsheet.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this spreadsheet.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
