@@ -1089,6 +1089,7 @@ const DomainDetails = ({
         className={isTreeView ? 'domain-tree-view-variant' : ''}
         sx={{
           ...getDomainContainerStyles(theme),
+          ...(isTreeView && { border: 'none' }),
         }}>
         {content}
       </Box>

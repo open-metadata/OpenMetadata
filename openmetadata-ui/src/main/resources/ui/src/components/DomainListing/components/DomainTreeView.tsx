@@ -1089,6 +1089,7 @@ const DomainTreeView = ({
               pr: 3,
               overflowY: 'auto',
               maxHeight: 'calc(80vh - 160px)',
+              borderRight: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
             }}
             onScroll={handleScroll}>
             {hierarchySection}
