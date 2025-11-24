@@ -17,6 +17,7 @@ import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -24,8 +25,10 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -59,6 +62,17 @@ public class EntityFieldUtils {
       String fieldName,
       String fieldValue,
       boolean applyPatch) {
+    setEntityField(entity, entityType, user, fieldName, fieldValue, applyPatch, null);
+  }
+
+  public static void setEntityField(
+      EntityInterface entity,
+      String entityType,
+      String user,
+      String fieldName,
+      String fieldValue,
+      boolean applyPatch,
+      String impersonatedBy) {
 
     // Store original state for patch creation
     String originalJson = applyPatch ? JsonUtils.pojoToJson(entity) : null;
@@ -121,8 +135,23 @@ public class EntityFieldUtils {
     if (applyPatch) {
       String updatedJson = JsonUtils.pojoToJson(entity);
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-      entityRepository.patch(null, entity.getId(), user, patch, null);
+      if (!originalJson.equals(updatedJson)) {
+        EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+        entityRepository.patch(null, entity.getId(), user, patch, null, impersonatedBy);
+        ChangeEvent changeEvent =
+            new ChangeEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withEntityId(entity.getId())
+                .withEntityType(entityType)
+                .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
+                .withUserName(user)
+                .withImpersonatedBy(impersonatedBy)
+                .withTimestamp(System.currentTimeMillis())
+                .withEntity(entity);
+
+        Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+      }
     }
   }
 

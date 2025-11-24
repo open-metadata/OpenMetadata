@@ -27,7 +27,6 @@ const testDataProduct = new DataProduct(
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await EntityDataClass.preRequisitesForTests(apiContext);
   await testEntity.create(apiContext);
   await testDataProduct.create(apiContext);
 
@@ -54,7 +53,6 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
 
   await testDataProduct.delete(apiContext);
   await testEntity.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
 
   await afterAction();
 });
@@ -293,20 +291,35 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tree).toBeVisible();
 
-    const firstNode = tree
-      .locator('[data-testid="tag-TestDomain"]')
-      .waitFor({ state: 'visible' });
-    await firstNode;
-    await tree.locator('[data-testid="tag-TestDomain"]').click();
-    const updateBtn = adminPage.getByRole('button', { name: 'Update' });
-    if (await updateBtn.isVisible()) {
-      await updateBtn.click();
-      await waitForPatchResponse(adminPage);
+    const searchDomain = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*TestDomain*`
+    );
 
-      await expect(
-        adminPage.getByText(/Domains updated successfully/i)
-      ).toBeVisible();
-    }
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill('TestDomain');
+
+    await searchDomain;
+
+    // Wait for the tag element to be visible and ensure page is still valid
+    const tagSelector = adminPage.getByTestId('tag-TestDomain');
+    await tagSelector.waitFor({ state: 'visible' });
+
+    const patchReq = adminPage.waitForResponse(
+      (req) => req.request().method() === 'PATCH'
+    );
+
+    await tagSelector.click();
+
+    await patchReq;
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      adminPage.getByText(/Domains updated successfully/i)
+    ).toBeVisible();
   });
 
   test('Tab Navigation - Schema Tab', async ({ adminPage }) => {

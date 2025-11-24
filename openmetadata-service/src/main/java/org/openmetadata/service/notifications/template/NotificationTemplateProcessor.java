@@ -12,9 +12,11 @@
  */
 package org.openmetadata.service.notifications.template;
 
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 
 /**
  * Interface for abstracting template engine operations.
@@ -39,4 +41,11 @@ public interface NotificationTemplateProcessor {
    * @return Validation response with field-specific results
    */
   NotificationTemplateValidationResponse validate(NotificationTemplateValidationRequest request);
+
+  /**
+   * Get metadata for all available template helpers.
+   *
+   * @return List of helper metadata with names, descriptions, and usage examples
+   */
+  List<HandlebarsHelperMetadata> getHelperMetadata();
 }

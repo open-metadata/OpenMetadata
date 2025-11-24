@@ -72,6 +72,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
@@ -382,6 +383,42 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         "Unrecognized field \"thisShouldFail\"");
   }
 
+  @Test
+  void list_app_runs_returns_newest_run_first() throws IOException {
+    String appName = "AppRunOrderingTest" + System.currentTimeMillis();
+    App app = createAndCheckEntity(createRequest(appName), ADMIN_AUTH_HEADERS);
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+    Entity.getCollectionDAO()
+        .appExtensionTimeSeriesDao()
+        .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
+
+    long baseTime = System.currentTimeMillis();
+    AppRunRecord newerRun =
+        new AppRunRecord()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(baseTime + 2000)
+            .withStartTime(baseTime + 2000)
+            .withStatus(AppRunRecord.Status.SUCCESS);
+    AppRunRecord olderRun =
+        new AppRunRecord()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(baseTime + 1000)
+            .withStartTime(baseTime + 1000)
+            .withStatus(AppRunRecord.Status.FAILED);
+
+    // Insert in reverse chronological order to ensure API reorders by startTime.
+    appRepository.addAppStatus(newerRun);
+    appRepository.addAppStatus(olderRun);
+
+    ResultList<AppRunRecord> runList = listAppRuns(appName, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals(2, runList.getData().size());
+    Assertions.assertEquals(newerRun.getStartTime(), runList.getData().get(0).getStartTime());
+    Assertions.assertEquals(olderRun.getStartTime(), runList.getData().get(1).getStartTime());
+  }
+
   private void assertAppStatusAvailableAfterTrigger(String appName) {
     assertEventually(
         "appIsRunning",
@@ -663,6 +700,12 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     WebTarget target = getResource("apps/stop").path(appName);
     Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
     readResponse(response, OK.getStatusCode());
+  }
+
+  private ResultList<AppRunRecord> listAppRuns(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("apps/name/%s/status", appName));
+    return TestUtils.get(target, AppResource.AppRunList.class, authHeaders);
   }
 
   private AppRunRecord getLatestAppRun(String appName, Map<String, String> authHeaders)

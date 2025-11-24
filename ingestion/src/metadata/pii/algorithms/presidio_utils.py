@@ -13,27 +13,39 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Callable, Iterable, List, Type, Union
+from typing import Any, Callable, Iterable, List, Optional, Set, Type, Union, cast
 
 import spacy
+from dateutil import parser
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
     PatternRecognizer,
+    RecognizerRegistry,
     RecognizerResult,
     predefined_recognizers,
 )
 from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
+from presidio_analyzer.predefined_recognizers import (
+    AuTfnRecognizer,
+    CreditCardRecognizer,
+    DateRecognizer,
+    NhsRecognizer,
+    UsLicenseRecognizer,
+)
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
+from metadata.pii.algorithms import patterns
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
+from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
 
 def load_nlp_engine(
-    model_name: str = SPACY_EN_MODEL, supported_language: str = SUPPORTED_LANG
+    model_name: str = SPACY_EN_MODEL,
+    supported_language: str = SUPPORTED_LANG,
 ) -> SpacyNlpEngine:
     _load_spacy_model(model_name)
     model = {
@@ -54,19 +66,15 @@ def build_analyzer_engine(
     nlp_engine = load_nlp_engine(
         model_name=model_name, supported_language=SUPPORTED_LANG
     )
-    analyzer_engine = AnalyzerEngine(
-        nlp_engine=nlp_engine, supported_languages=[SUPPORTED_LANG]
+    recognizer_registry = RecognizerRegistry(
+        recognizers=list(_get_all_pattern_recognizers()),
+        supported_languages=[SUPPORTED_LANG],
     )
-    for recognizer in _get_all_pattern_recognizers():
-        # Register the recognizer by setting the appropriate language.
-        # Presidio recognizers are language-dependent: when analyzing text,
-        # Presidio filters recognizers based on the specified language, assuming
-        # language-specific patterns (e.g., for country-specific formats).
-        # However, our use case involves analyzing structured table data rather than free text,
-        # so this language-based approach doesn't always make sense.
-        # To fix this, we manually set the recognizer supported language to the one we want.
-        recognizer.supported_language = SUPPORTED_LANG
-        analyzer_engine.registry.add_recognizer(recognizer)
+    analyzer_engine = AnalyzerEngine(
+        nlp_engine=nlp_engine,
+        supported_languages=[SUPPORTED_LANG],
+        registry=recognizer_registry,
+    )
 
     return analyzer_engine
 
@@ -103,19 +111,164 @@ def _get_all_entity_recognizer_classes() -> Iterable[Type[EntityRecognizer]]:
             yield obj
 
 
+recognizer_factories = class_register()
+
+
+class SanitizedCreditCardRecognizer(CreditCardRecognizer):
+    def analyze(
+        self,
+        text: str,
+        entities: List[str],
+        nlp_artifacts: Optional[NlpArtifacts] = None,
+        regex_flags: Optional[int] = None,
+    ) -> List[RecognizerResult]:
+        return super().analyze(
+            self.sanitize_value(text, self.replacement_pairs),
+            entities,
+            nlp_artifacts,
+            regex_flags,
+        )
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    CreditCardRecognizer
+)
+def credit_card_factory(**kwargs: Any) -> SanitizedCreditCardRecognizer:
+    return SanitizedCreditCardRecognizer(
+        patterns=patterns.credit_cards,
+        **kwargs,
+    )
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    UsLicenseRecognizer
+)
+def us_license_factory(**kwargs: Any) -> UsLicenseRecognizer:
+    return UsLicenseRecognizer(patterns=patterns.us_driving_license, **kwargs)
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    AuTfnRecognizer
+)
+def au_tfn_factory(**kwargs: Any) -> AuTfnRecognizer:
+    return AuTfnRecognizer(
+        patterns=patterns.au_tfn_number,
+        **kwargs,
+    )
+
+
+class ContextAwareNhsRecognizer(NhsRecognizer):
+    TIMESTAMP_KEYWORDS: Set[str] = {
+        "time",
+        "timestamp",
+        "date",
+        "created",
+        "updated",
+        "modified",
+        "deleted",
+        "at",
+        "on",
+        "when",
+        "epoch",
+        "unix",
+        "millis",
+        "seconds",
+        "utc",
+        "gmt",
+        "datetime",
+        "expired",
+        "expires",
+        "transaction",
+        "logged",
+        "recorded",
+        "started",
+        "ended",
+        "finished",
+    }
+
+    def enhance_using_context(
+        self,
+        text: str,
+        raw_recognizer_results: List[RecognizerResult],
+        other_raw_recognizer_results: List[RecognizerResult],
+        nlp_artifacts: NlpArtifacts,
+        context: Optional[List[str]] = None,
+    ) -> List[RecognizerResult]:
+        """Enhance confidence score using context of the entity.
+
+        Filter out NHS number false positives when context suggests
+        the column contains timestamp data.
+
+        :param text: The actual text that was analyzed
+        :param raw_recognizer_results: This recognizer's results, to be updated
+        based on recognizer specific context.
+        :param other_raw_recognizer_results: Other recognizer results matched in
+        the given text to allow related entity context enhancement
+        :param nlp_artifacts: The nlp artifacts contains elements
+                              such as lemmatized tokens for better
+                              accuracy of the context enhancement process
+        :param context: list of context words
+        """
+        if context is None:
+            return raw_recognizer_results
+
+        if self._is_timestamp_context(context):
+            return []
+
+        return raw_recognizer_results
+
+    def _is_timestamp_context(self, context: List[str]) -> bool:
+        """Check if the context contains timestamp-related keywords."""
+        context_lower = {word.lower() for word in context}
+        return bool(context_lower & self.TIMESTAMP_KEYWORDS)
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    NhsRecognizer
+)
+def nhs_recognizer(**kwargs: Any) -> NhsRecognizer:
+    return ContextAwareNhsRecognizer(**kwargs)
+
+
+class ValidatedDateRecognizer(DateRecognizer):
+    def validate_result(self, pattern_text: str) -> Optional[bool]:
+        try:
+            _ = parser.parse(pattern_text)
+        except Exception as e:
+            logger.debug(f"Failed to parse {pattern_text}: {e}")
+            # Return None so score isn't modified, relying on Regex score
+            return None
+
+        # Return True so score is boosted to 1.0
+        return True
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    DateRecognizer
+)
+def date_recognizer(**kwargs: Any) -> ValidatedDateRecognizer:
+    return ValidatedDateRecognizer(**kwargs)
+
+
 def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
     for cls in _get_all_entity_recognizer_classes():
         if issubclass(cls, PatternRecognizer):
             try:
                 # Try to instantiate the recognizer
-                yield cls(
-                    supported_language=SUPPORTED_LANG
-                )  # pyright: ignore[reportCallIssue]
+                factory = cast(
+                    Callable[..., PatternRecognizer],
+                    recognizer_factories.get(  # pyright: ignore[reportUnknownMemberType]
+                        cls, cls
+                    ),
+                )
+                yield factory(supported_language=SUPPORTED_LANG)
             except Exception as e:
                 logger.warning(e)
         elif cls == predefined_recognizers.PhoneRecognizer:
             # Not a pattern recognizer, but pretty much the same
             yield predefined_recognizers.PhoneRecognizer()
+        elif issubclass(cls, predefined_recognizers.SpacyRecognizer):
+            yield cls(supported_language=SUPPORTED_LANG)
 
 
 def apply_confidence_threshold(

@@ -32,7 +32,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -126,9 +126,10 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
+  public static final String UPDATE_FIELDS =
+      "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -197,15 +198,6 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column column : table.getColumns()) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
-    }
-    if (fields.contains("queries")) {
-      List<Query> queriesEntity =
-          getEntities(
-              listOrEmpty(findTo(table.getId(), TABLE, Relationship.MENTIONED_IN, QUERY)),
-              "id",
-              ALL);
-      List<String> queries = listOrEmpty(queriesEntity).stream().map(Query::getQuery).toList();
-      table.setQueries(queries);
     }
   }
 
@@ -292,7 +284,7 @@ public class TableRepository extends EntityRepository<Table> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (Table table : tables) {
       table.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
 

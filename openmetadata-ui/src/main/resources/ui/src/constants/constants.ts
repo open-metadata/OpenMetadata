@@ -116,6 +116,7 @@ export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const LOG_ENTITY_TYPE = ':logEntityType';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -266,6 +267,8 @@ export const ROUTES = {
   TEST_CASE_DETAILS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   TEST_CASE_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  TEST_CASE_DIMENSIONS: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}`,
+  TEST_CASE_DIMENSIONS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
@@ -293,8 +296,9 @@ export const ROUTES = {
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Notification Alerts
-  NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
-  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
+  NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
+  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Metric Entity

@@ -22,10 +22,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -308,5 +312,98 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
     generator.close();
 
     return stringWriter.toString();
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request, String index) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot perform get entity type counts");
+      throw new IOException("ElasticSearch client is not available");
+    }
+
+    try {
+      // Get search settings for consistency with other search operations
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+
+      // Build request using the source builder factory for consistency
+      ElasticSearchSourceBuilderFactory searchBuilderFactory =
+          new ElasticSearchSourceBuilderFactory(searchSettings);
+      ElasticSearchRequestBuilder requestBuilder =
+          searchBuilderFactory.getSearchSourceBuilderV2(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // Apply deleted filter if specified
+      if (request.getDeleted() != null && request.getDeleted()) {
+        Query currentQuery = requestBuilder.query();
+        Query deletedQuery =
+            Query.of(q -> q.term(t -> t.field("deleted").value(request.getDeleted())));
+
+        if (currentQuery != null) {
+          final Query finalQuery = currentQuery;
+          Query combined = Query.of(q -> q.bool(b -> b.must(finalQuery).must(deletedQuery)));
+          requestBuilder.query(combined);
+        } else {
+          requestBuilder.query(deletedQuery);
+        }
+      }
+
+      // Apply query filter if specified
+      if (request.getQueryFilter() != null
+          && !request.getQueryFilter().isEmpty()
+          && !request.getQueryFilter().equals("{}")) {
+        try {
+          String queryToProcess = EsUtils.parseJsonQuery(request.getQueryFilter());
+          Query filter = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
+          Query currentQuery = requestBuilder.query();
+
+          if (currentQuery != null) {
+            final Query finalQuery = currentQuery;
+            Query combined = Query.of(q -> q.bool(b -> b.must(finalQuery).must(filter)));
+            requestBuilder.query(combined);
+          } else {
+            requestBuilder.query(filter);
+          }
+        } catch (Exception ex) {
+          LOG.error(
+              "Error parsing query_filter from query parameters, ignoring filter: {}",
+              request.getQueryFilter(),
+              ex);
+        }
+      }
+
+      // Set basic parameters
+      requestBuilder.from(0);
+      requestBuilder.size(0);
+      requestBuilder.trackTotalHits(true);
+
+      // Resolve the index alias properly
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      // Build and execute search
+      SearchRequest searchRequest = requestBuilder.build(resolvedIndex);
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+      LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
+
+      // Serialize response
+      String jsonResponse = serializeSearchResponse(searchResponse);
+      return Response.status(Response.Status.OK).entity(jsonResponse).build();
+
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
   }
 }
