@@ -175,8 +175,8 @@
       padding-top: 0;
       background-color: @grey-1;
 
-      // check this
       .inside-current-page {
+        margin-top: 0px;
         display: block;
         .custom-node-header-column-tracing {
           display: block;
@@ -232,12 +232,8 @@
 
         &:hover {
           background-color: @primary-1;
-          color: @blue-44;
-          .custom-node-column-label {
-            color: inherit;
-            font-weight: 500;
-          }
           border-left-color: @primary-color;
+          cursor: pointer;
         }
 
         .custom-node-name-container {
@@ -302,8 +298,8 @@
         .column-container {
           background-color: #eff8ff;
           .custom-node-column-container.custom-node-header-column-tracing {
-            background-color: #ffffff;
-            border-color: #1570ef;
+            // background-color: #ffffff;
+            // border-color: #1570ef;
           }
         }
       }
@@ -375,7 +371,7 @@
       }
       .column-container {
         .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: #ffffff;
+          background-color: @primary-1;
           border-color: #1570ef;
           &:hover {
             background-color: @primary-1;
