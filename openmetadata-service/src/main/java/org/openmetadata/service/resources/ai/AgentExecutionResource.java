@@ -93,7 +93,7 @@ public class AgentExecutionResource
     ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    ListFilter filter = new ListFilter();
+    ListFilter filter = new ListFilter(org.openmetadata.schema.type.Include.ALL);
     if (agentId != null) {
       filter.addQueryParam("agentId", agentId.toString());
     }

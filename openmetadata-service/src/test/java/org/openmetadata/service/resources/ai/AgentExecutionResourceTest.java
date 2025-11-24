@@ -19,8 +19,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -31,10 +29,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.ai.CreateAIApplication;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AgentExecution;
-import org.openmetadata.schema.entity.ai.ApplicationType;
 import org.openmetadata.schema.entity.ai.ExecutionStatus;
-import org.openmetadata.schema.entity.ai.ModelConfiguration;
-import org.openmetadata.schema.entity.ai.ModelPurpose;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -44,27 +39,74 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 class AgentExecutionResourceTest extends OpenMetadataApplicationTest {
 
-  private static final String collectionName = "v1/agentExecutions";
+  private static final String collectionName = "agentExecutions";
   private static AIApplication testAgent;
   private static EntityReference testAgentRef;
 
   @BeforeAll
-  public void setup(TestInfo test) throws IOException {
-    AIApplicationResourceTest aiAgentTest = new AIApplicationResourceTest();
-    EntityReference modelRef = new EntityReference().withType("llmModel").withName("test-model");
-    ModelConfiguration modelConfig =
-        new ModelConfiguration().withModel(modelRef).withPurpose(ModelPurpose.Primary);
+  public void setup(TestInfo test) throws Exception {
+    // We need to create dependencies for AgentExecution
+    // Create LLMService, LLMModel, and AIApplication using REST API directly
+
+    // Create LLMService
+    org.openmetadata.schema.api.services.CreateLLMService createService =
+        new org.openmetadata.schema.api.services.CreateLLMService()
+            .withName("test-llm-service-agent-exec")
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreateLLMService.LlmServiceType.OpenAI)
+            .withConnection(
+                new org.openmetadata.schema.type.LLMConnection()
+                    .withConfig(
+                        new org.openmetadata.schema.services.connections.llm.OpenAIConnection()
+                            .withApiKey("test-key")
+                            .withBaseURL("https://api.openai.com/v1")));
+    org.openmetadata.schema.entity.services.LLMService llmService =
+        TestUtils.post(
+            getResource("services/llmServices"),
+            createService,
+            org.openmetadata.schema.entity.services.LLMService.class,
+            201,
+            ADMIN_AUTH_HEADERS);
+
+    // Create LLMModel
+    org.openmetadata.schema.api.ai.CreateLLMModel createModel =
+        new org.openmetadata.schema.api.ai.CreateLLMModel()
+            .withName("test-model-agent-exec")
+            .withBaseModel("gpt-4")
+            .withService(llmService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.ai.LLMModel llmModel =
+        TestUtils.post(
+            getResource("llmModels"),
+            createModel,
+            org.openmetadata.schema.entity.ai.LLMModel.class,
+            201,
+            ADMIN_AUTH_HEADERS);
+
+    // Create AIApplication
+    org.openmetadata.schema.entity.ai.ModelConfiguration modelConfig =
+        new org.openmetadata.schema.entity.ai.ModelConfiguration()
+            .withModel(llmModel.getEntityReference())
+            .withPurpose(org.openmetadata.schema.entity.ai.ModelPurpose.Primary);
     CreateAIApplication createAgent =
         new CreateAIApplication()
             .withName("test-agent-for-execution")
-            .withApplicationType(ApplicationType.Chatbot)
-            .withModelConfigurations(new ArrayList<>(List.of(modelConfig)));
-    testAgent = aiAgentTest.createEntity(createAgent, ADMIN_AUTH_HEADERS);
+            .withApplicationType(org.openmetadata.schema.entity.ai.ApplicationType.Chatbot)
+            .withModelConfigurations(new java.util.ArrayList<>(java.util.List.of(modelConfig)));
+    testAgent =
+        TestUtils.post(
+            getResource("aiApplications"),
+            createAgent,
+            AIApplication.class,
+            201,
+            ADMIN_AUTH_HEADERS);
     testAgentRef = testAgent.getEntityReference();
   }
 
   @Test
   void post_agent_execution_200() throws IOException {
+    assertNotNull(testAgent, "Test agent should have been created in setup");
+    assertNotNull(testAgentRef, "Test agent reference should exist");
+
     AgentExecution execution = createAgentExecution();
     AgentExecution posted = postAgentExecution(execution, ADMIN_AUTH_HEADERS);
     assertNotNull(posted.getId());

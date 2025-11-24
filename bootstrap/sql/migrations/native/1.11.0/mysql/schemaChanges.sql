@@ -185,16 +185,16 @@ CREATE TABLE IF NOT EXISTS prompt_template_entity (
     INDEX deleted_index (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Prompt Template entities';
 
--- Create application_execution_entity table
-CREATE TABLE IF NOT EXISTS application_execution_entity (
+-- Create agent_execution_entity table
+CREATE TABLE IF NOT EXISTS agent_execution_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    applicationId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.applicationId') STORED NOT NULL,
+    agentId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.agentId') STORED NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
     PRIMARY KEY (id),
-    INDEX application_index (applicationId),
+    INDEX agent_index (agentId),
     INDEX timestamp_index (timestamp)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Application Execution logs';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Agent Execution logs';
 
 -- Create ai_governance_policy_entity table
 CREATE TABLE IF NOT EXISTS ai_governance_policy_entity (

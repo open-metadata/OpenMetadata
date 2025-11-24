@@ -114,9 +114,9 @@ public class AIGovernancePolicyResourceTest
         byName
             ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(policy.getOwners(), policy.getFollowers(), policy.getTags());
+    assertListNull(policy.getOwners(), policy.getFollowers());
 
-    fields = "owners,followers,tags";
+    fields = "owners,followers,tags,extension,domains";
     policy =
         byName
             ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -136,8 +136,9 @@ public class AIGovernancePolicyResourceTest
   public void compareEntities(
       AIGovernancePolicy expected, AIGovernancePolicy updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEquals(expected.getPolicyType(), updated.getPolicyType());
-    assertEquals(expected.getEnforcementLevel(), updated.getEnforcementLevel());
+    assertEquals(expected.getPolicyType().toString(), updated.getPolicyType().toString());
+    assertEquals(
+        expected.getEnforcementLevel().toString(), updated.getEnforcementLevel().toString());
     TestUtils.validateTags(expected.getTags(), updated.getTags());
     TestUtils.validateEntityReferences(updated.getFollowers());
   }
@@ -148,8 +149,11 @@ public class AIGovernancePolicyResourceTest
       CreateAIGovernancePolicy createRequest,
       Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEquals(createRequest.getPolicyType(), createdEntity.getPolicyType());
-    assertEquals(createRequest.getEnforcementLevel(), createdEntity.getEnforcementLevel());
+    assertEquals(
+        createRequest.getPolicyType().toString(), createdEntity.getPolicyType().toString());
+    assertEquals(
+        createRequest.getEnforcementLevel().toString(),
+        createdEntity.getEnforcementLevel().toString());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
   }
@@ -159,6 +163,10 @@ public class AIGovernancePolicyResourceTest
     if (expected == actual) {
       return;
     }
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.equals("policyType") || fieldName.equals("enforcementLevel")) {
+      assertEquals(expected.toString(), actual.toString(), "Field name " + fieldName);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

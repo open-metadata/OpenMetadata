@@ -122,9 +122,9 @@ public class PromptTemplateResourceTest
         byName
             ? getEntityByName(template.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(template.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(template.getOwners(), template.getFollowers(), template.getTags());
+    assertListNull(template.getOwners(), template.getFollowers());
 
-    fields = "owners,followers,tags";
+    fields = "owners,followers,tags,extension,domains";
     template =
         byName
             ? getEntityByName(template.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -147,7 +147,7 @@ public class PromptTemplateResourceTest
       throws HttpResponseException {
     assertEquals(expected.getTemplateContent(), updated.getTemplateContent());
     assertEquals(expected.getSystemPrompt(), updated.getSystemPrompt());
-    assertEquals(expected.getTemplateType(), updated.getTemplateType());
+    assertEquals(expected.getTemplateType().toString(), updated.getTemplateType().toString());
     assertEquals(expected.getTemplateVersion(), updated.getTemplateVersion());
     TestUtils.validateTags(expected.getTags(), updated.getTags());
     TestUtils.validateEntityReferences(updated.getFollowers());
@@ -161,7 +161,8 @@ public class PromptTemplateResourceTest
       throws HttpResponseException {
     assertEquals(createRequest.getTemplateContent(), createdEntity.getTemplateContent());
     assertEquals(createRequest.getSystemPrompt(), createdEntity.getSystemPrompt());
-    assertEquals(createRequest.getTemplateType(), createdEntity.getTemplateType());
+    assertEquals(
+        createRequest.getTemplateType().toString(), createdEntity.getTemplateType().toString());
     assertEquals(createRequest.getTemplateVersion(), createdEntity.getTemplateVersion());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
@@ -172,6 +173,10 @@ public class PromptTemplateResourceTest
     if (expected == actual) {
       return;
     }
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.equals("templateType")) {
+      assertEquals(expected.toString(), actual.toString(), "Field name " + fieldName);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

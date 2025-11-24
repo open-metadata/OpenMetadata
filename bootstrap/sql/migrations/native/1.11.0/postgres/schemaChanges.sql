@@ -226,19 +226,19 @@ CREATE INDEX IF NOT EXISTS prompt_template_deleted_index ON prompt_template_enti
 
 COMMENT ON TABLE prompt_template_entity IS 'Prompt Template entities';
 
--- Create application_execution_entity table
-CREATE TABLE IF NOT EXISTS application_execution_entity (
+-- Create agent_execution_entity table
+CREATE TABLE IF NOT EXISTS agent_execution_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
-    applicationId VARCHAR(36) GENERATED ALWAYS AS (json->>'applicationId') STORED NOT NULL,
+    agentId VARCHAR(36) GENERATED ALWAYS AS (json->>'agentId') STORED NOT NULL,
     json JSONB NOT NULL,
     timestamp BIGINT GENERATED ALWAYS AS ((json->>'timestamp')::bigint) STORED NOT NULL,
     PRIMARY KEY (id)
 );
 
-CREATE INDEX IF NOT EXISTS application_execution_application_index ON application_execution_entity(applicationId);
-CREATE INDEX IF NOT EXISTS application_execution_timestamp_index ON application_execution_entity(timestamp);
+CREATE INDEX IF NOT EXISTS agent_execution_agent_index ON agent_execution_entity(agentId);
+CREATE INDEX IF NOT EXISTS agent_execution_timestamp_index ON agent_execution_entity(timestamp);
 
-COMMENT ON TABLE application_execution_entity IS 'AI Application Execution logs';
+COMMENT ON TABLE agent_execution_entity IS 'AI Agent Execution logs';
 
 -- Create ai_governance_policy_entity table
 CREATE TABLE IF NOT EXISTS ai_governance_policy_entity (
