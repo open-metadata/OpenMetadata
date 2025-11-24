@@ -272,7 +272,7 @@ test('Query Entity', async ({ page }) => {
 
     const upVoteCount = await page
       .getByTestId('extra-option-container')
-      .getByTestId('up-vote-count')
+      .getByTestId('up-vote-btn')
       .textContent();
 
     expect(upVoteCount).toBe('1');
@@ -290,10 +290,17 @@ test('Query Entity', async ({ page }) => {
 
     const downVoteCount = await page
       .getByTestId('extra-option-container')
-      .getByTestId('down-vote-count')
+      .getByTestId('down-vote-btn')
       .textContent();
 
     expect(downVoteCount).toBe('1');
+
+    const upVoteCount2 = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .textContent();
+
+    expect(upVoteCount2).toBe('0');
   });
 
   await test.step('Visit full screen view of query and Delete', async () => {
