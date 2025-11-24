@@ -74,8 +74,8 @@ export interface LineageContextType {
   onNodeClick: (node: Node) => void;
   onEdgeClick: (edge: Edge) => void;
   onColumnClick: (node: string) => void;
-  onColumnMouseOver: (columnName: string) => void;
-  onColumnMouseOut: () => void;
+  onColumnMouseEnter: (columnName: string) => void;
+  onColumnMouseLeave: () => void;
   onLineageEditClick: () => void;
   onZoomUpdate: (value: number) => void;
   onLineageConfigUpdate: (config: LineageConfig) => void;
