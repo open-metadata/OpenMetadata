@@ -39,7 +39,7 @@ public class QueryIndex implements SearchIndex {
       votesMap.put(
           "downVotes",
           query.getVotes().getDownVotes() != null ? query.getVotes().getDownVotes() : 0);
-      doc.put("votes", votesMap);
+      doc.put("voteCounts", votesMap);
     }
 
     return doc;
