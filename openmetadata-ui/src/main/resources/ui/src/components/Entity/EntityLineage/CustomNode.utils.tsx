@@ -208,6 +208,11 @@ export const getColumnContent = (
   const { fullyQualifiedName } = column;
   const columnNameContentRender = getColumnNameContent(column, isLoading);
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onColumnClick(fullyQualifiedName ?? '');
+  };
+
   const handleMouseEnter = () => {
     if (selectedColumn) {
       return;
@@ -230,10 +235,7 @@ export const getColumnContent = (
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
-      onClick={(e) => {
-        e.stopPropagation();
-        onColumnClick(fullyQualifiedName ?? '');
-      }}
+      onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
       {getColumnHandle(

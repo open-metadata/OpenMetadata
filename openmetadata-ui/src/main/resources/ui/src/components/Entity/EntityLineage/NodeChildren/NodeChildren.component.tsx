@@ -38,8 +38,8 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { IconButton, Pagination, Stack, Typography } from '@mui/material';
-import React from 'react';
 import classNames from 'classnames';
+import React from 'react';
 
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
@@ -136,7 +136,9 @@ const NodeChildren = ({
     isEditMode,
     expandAllColumns,
     selectedColumn,
+    useUpdateNodeInternals,
   } = useLineageProvider();
+  const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
@@ -242,6 +244,12 @@ const NodeChildren = ({
   useEffect(() => {
     setShowAllColumns(expandAllColumns);
   }, [expandAllColumns]);
+
+  useEffect(() => {
+    if (node.id) {
+      updateNodeInternals?.(node.id);
+    }
+  }, [selectedColumn, updateNodeInternals, tracedColumns]);
 
   const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
     setIsLoading(true);
