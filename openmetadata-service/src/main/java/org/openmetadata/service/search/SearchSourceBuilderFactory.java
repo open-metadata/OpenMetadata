@@ -123,29 +123,30 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   S buildServiceSearchBuilderV2(String query, int from, int size);
 
-  S buildDataAssetSearchBuilderV2(String indexName, String query, int from, int size);
-
-  S buildDataAssetSearchBuilderV2(
-      String indexName, String query, int from, int size, boolean explain);
+  default S buildDataAssetSearchBuilderV2(String indexName, String query, int from, int size) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, false, true);
+  }
 
   default S buildDataAssetSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean explain) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, explain, true);
+  }
+
+  S buildDataAssetSearchBuilderV2(
       String indexName,
       String query,
       int from,
       int size,
       boolean explain,
-      boolean includeAggregations) {
-    return buildDataAssetSearchBuilderV2(indexName, query, from, size, explain);
-  }
+      boolean includeAggregations);
 
   S buildUserOrTeamSearchBuilderV2(String query, int from, int size);
 
-  S buildAggregateSearchBuilderV2(String query, int from, int size);
-
-  default S buildAggregateSearchBuilderV2(
-      String query, int from, int size, boolean includeAggregations) {
-    return buildAggregateSearchBuilderV2(query, from, size);
+  default S buildAggregateSearchBuilderV2(String query, int from, int size) {
+    return buildAggregateSearchBuilderV2(query, from, size, true);
   }
+
+  S buildAggregateSearchBuilderV2(String query, int from, int size, boolean includeAggregations);
 
   default S buildTimeSeriesSearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
