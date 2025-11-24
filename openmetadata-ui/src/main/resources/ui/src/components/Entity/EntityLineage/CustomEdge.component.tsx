@@ -26,13 +26,13 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { LineageLayer } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getColumnSourceTargetHandles,
   getEdgePathData,
 } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
+import { useTheme } from '@mui/material';
 
 interface LineageEdgeIconProps {
   children: React.ReactNode;
@@ -99,7 +99,7 @@ export const CustomEdge = ({
     selectedColumn,
   } = useLineageProvider();
 
-  const { theme } = useApplicationStore();
+  const theme = useTheme();
 
   // Get edge path data once
   const { edgePath, edgeCenterX, edgeCenterY } = useMemo(
@@ -174,8 +174,8 @@ export const CustomEdge = ({
 
     let stroke = isStrokeNeeded
       ? selectedColumn
-        ? '#800080'
-        : theme.primaryColor
+        ? theme.palette.allShades.purple[400]
+        : theme.palette.primary.main
       : undefined;
 
     if (showDqTracing) {
@@ -197,7 +197,6 @@ export const CustomEdge = ({
     tracedColumns.length,
     showDqTracing,
     isEditMode,
-    theme.primaryColor,
   ]);
 
   // Calculate conditions for various component displays
