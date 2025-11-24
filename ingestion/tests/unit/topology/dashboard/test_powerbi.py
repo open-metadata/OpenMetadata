@@ -8,9 +8,11 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -671,3 +673,71 @@ class PowerBIUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    @pytest.mark.order(12)
+    def test_create_dataset_upstream_dataset_column_lineage(self):
+        """
+        Test column lineage creation between dataset and upstream dataset
+        """
+        upstream_entity = DashboardDataModel(
+            name="upstream_dataset",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="orders",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="order_id",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.upstream_dataset.orders.order_id",
+                        ),
+                        Column(
+                            name="amount",
+                            dataType=DataType.FLOAT,
+                            fullyQualifiedName="service.upstream_dataset.orders.amount",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        downstream_entity = DashboardDataModel(
+            name="downstream_dataset",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="orders",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="order_id",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.downstream_dataset.orders.order_id",
+                        ),
+                        Column(
+                            name="amount",
+                            dataType=DataType.FLOAT,
+                            fullyQualifiedName="service.downstream_dataset.orders.amount",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._create_dataset_upstream_dataset_column_lineage(
+            datamodel_entity=downstream_entity,
+            upstream_dataset_entity=upstream_entity,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], ColumnLineage)
+        self.assertEqual(
+            result[0].fromColumns[0].root, "service.upstream_dataset.orders.order_id"
+        )
+        self.assertEqual(
+            result[0].toColumn.root, "service.downstream_dataset.orders.order_id"
+        )
