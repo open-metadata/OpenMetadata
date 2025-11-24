@@ -302,6 +302,18 @@ public final class EntityUtil {
     return list;
   }
 
+  public static List<EntityReference> validateAndPopulateEntityReferences(
+      List<EntityReference> list) {
+    if (list != null) {
+      for (EntityReference ref : list) {
+        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
+        EntityUtil.copy(ref2, ref);
+      }
+      list.sort(compareEntityReference);
+    }
+    return list;
+  }
+
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
@@ -470,6 +482,18 @@ public final class EntityUtil {
     return ids.stream()
         .map(id -> new EntityReference().withId(id).withType(entityType))
         .collect(Collectors.toList());
+  }
+
+  public static List<EntityReference> validateToEntityReferences(
+      List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (UUID id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+    }
+    return refs;
   }
 
   public static List<UUID> refToIds(List<EntityReference> refs) {
