@@ -92,6 +92,7 @@ class CardinalityDistribution(HybridMetric):
                 ValueRank(col).fn(),
             )
             .select_from(sample)
+            .where(col != None)
             .group_by(col)
             .cte("value_counts")
         )
