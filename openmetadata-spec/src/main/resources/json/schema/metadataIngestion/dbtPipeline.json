@@ -52,11 +52,13 @@
       "default": false
     },
     "dbtUpdateDescriptions": {
+      "title": "Update Descriptions",
       "description": "Optional configuration to update the description from DBT or not",
       "type": "boolean",
       "default": false
     },
     "dbtUpdateOwners": {
+      "title": "Update Owners",
       "description": "Optional configuration to update the owners from DBT or not",
       "type": "boolean",
       "default": false
