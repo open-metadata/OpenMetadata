@@ -1057,6 +1057,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         return;
       }
 
+      if (selectedColumn) {
+        return;
+      }
+
       if (node.type === EntityLineageNodeType.LOAD_MORE) {
         selectLoadMoreNode(node);
       } else {
@@ -1067,7 +1071,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         handleLineageTracing(node);
       }
     },
-    [handleLineageTracing]
+    [handleLineageTracing, selectedColumn]
   );
 
   const onPaneClick = useCallback(() => {
