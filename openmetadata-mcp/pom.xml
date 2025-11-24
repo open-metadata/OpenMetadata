@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.open-metadata</groupId>
         <artifactId>platform</artifactId>
-        <version>1.10.8</version>
+        <version>1.10.9</version>
     </parent>
     
     <artifactId>openmetadata-mcp</artifactId>
