@@ -49,6 +49,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
 import '../../ExploreV1/exploreV1.less';
 
@@ -1061,37 +1062,41 @@ const DomainTreeView = ({
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: 3,
-        minHeight: 480,
-      }}>
-      <Box
-        ref={scrollContainerRef}
-        sx={{
-          width: TREE_CONTAINER_MIN_WIDTH,
-          borderRight: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
-          pr: 3,
-          pt: 3,
-          mr: 1,
-          overflowY: 'auto',
-          maxHeight: 'calc(80vh - 160px)',
-        }}
-        onScroll={handleScroll}>
-        {hierarchySection}
-      </Box>
-
-      <Box
-        sx={{
-          flex: 1,
-          overflowY: 'auto',
-          maxHeight: 'calc(80vh - 160px)',
-          pt: 3,
-        }}>
-        {domainSection}
-      </Box>
-    </Box>
+    <ResizableLeftPanels
+      firstPanel={{
+        className: 'domain-tree-panel',
+        minWidth: 280,
+        flex: 0.25,
+        children: (
+          <Box
+            ref={scrollContainerRef}
+            sx={{
+              pt: 3,
+              pr: 3,
+              overflowY: 'auto',
+              maxHeight: 'calc(80vh - 160px)',
+            }}
+            onScroll={handleScroll}>
+            {hierarchySection}
+          </Box>
+        ),
+      }}
+      secondPanel={{
+        className: 'domain-details-panel',
+        minWidth: 600,
+        flex: 0.75,
+        children: (
+          <Box
+            sx={{
+              pt: 3,
+              overflowY: 'auto',
+              maxHeight: 'calc(80vh - 160px)',
+            }}>
+            {domainSection}
+          </Box>
+        ),
+      }}
+    />
   );
 };
 
