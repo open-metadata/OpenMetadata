@@ -10,20 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TableConstraint } from '../../../generated/entity/data/table';
-import { TagLabel } from '../../../generated/type/tagLabel';
+@import (reference) '../../../styles/variables.less';
 
-export interface FieldCardProps {
-  fieldName: string;
-  dataType: string;
-  description?: string;
-  tags?: TagLabel[];
-  glossaryTerms?: Array<{
-    name: string;
-    displayName: string;
-    fullyQualifiedName: string;
-  }>;
-  columnConstraint?: string;
-  tableConstraints?: TableConstraint[];
-  isHighlighted?: boolean;
+.data-product-list-description {
+  .block-editor-wrapper .tiptap.ProseMirror {
+    font-size: 12px !important;
+    margin-bottom: 0;
+    color: @grey-600;
+  }
 }
