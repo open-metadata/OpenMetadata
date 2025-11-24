@@ -159,24 +159,31 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.fromEntity.id) &&
       tracedNodes.includes(edge.toEntity.id);
 
-    const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
+    let stroke = '';
+    let opacity = 1;
     let display = 'block';
 
-    if (isColumnLineage) {
-      display = isColumnHighlighted ? 'block' : 'none';
+    // For nodes
+    if (isNodeTraced) {
+      stroke = theme.palette.primary.main;
+      opacity = 1;
+    } else if (tracedNodes.length === 0) {
+      opacity = 1;
     } else {
-      display = tracedNodes.length === 0 || isStrokeNeeded ? 'block' : 'none';
+      opacity = 0.5;
     }
 
-    if (isEditMode) {
-      display = 'block';
+    // For columns
+    if (isColumnLineage) {
+      display = 'none';
+      if (isColumnHighlighted) {
+        display = 'block';
+        stroke = theme.palette.primary.main;
+        if (selectedColumn) {
+          stroke = theme.palette.allShades.purple[400];
+        }
+      }
     }
-
-    let stroke = isStrokeNeeded
-      ? selectedColumn
-        ? theme.palette.allShades.purple[400]
-        : theme.palette.primary.main
-      : undefined;
 
     if (showDqTracing) {
       stroke = RED_3;
@@ -186,6 +193,7 @@ export const CustomEdge = ({
       ...style,
       stroke,
       display,
+      opacity,
     };
   }, [
     style,
