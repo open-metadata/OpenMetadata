@@ -85,7 +85,8 @@ export interface LineageContextType {
   onEdgesChange: (changes: EdgeChange[]) => void;
   loadChildNodesHandler: (
     node: SourceType,
-    direction: LineageDirection
+    direction: LineageDirection,
+    depth: number
   ) => Promise<void>;
   fetchLineageData: (
     entityFqn: string,

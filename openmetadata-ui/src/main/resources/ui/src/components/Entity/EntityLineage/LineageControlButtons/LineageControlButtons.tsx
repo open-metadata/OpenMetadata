@@ -10,60 +10,50 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ArrowsAltOutlined, ShrinkOutlined } from '@ant-design/icons';
 import {
-  ArrowsAltOutlined,
-  ExpandOutlined,
-  FullscreenExitOutlined,
-  FullscreenOutlined,
-  NodeIndexOutlined,
-  SettingOutlined,
-  ShrinkOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
-} from '@ant-design/icons';
-import { Button } from 'antd';
-import classNames from 'classnames';
+  MenuItem,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  useTheme,
+} from '@mui/material';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
+import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
+import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
+import { ReactComponent as FitViewOptionsIcon } from '../../../../assets/svg/ic-fit-view-options.svg';
+import { ReactComponent as FullscreenIcon } from '../../../../assets/svg/ic-fullscreen.svg';
+import { ReactComponent as HomeIcon } from '../../../../assets/svg/ic-home.svg';
+import { ReactComponent as MapIcon } from '../../../../assets/svg/ic-map.svg';
+import { ReactComponent as RearrangeNodesIcon } from '../../../../assets/svg/ic-rearrange-nodes.svg';
+import { ReactComponent as ZoomInIcon } from '../../../../assets/svg/ic-zoom-in.svg';
+import { ReactComponent as ZoomOutIcon } from '../../../../assets/svg/ic-zoom-out.svg';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { getLoadingStatusValue } from '../../../../utils/EntityLineageUtils';
-import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { LineageConfig } from '../EntityLineage.interface';
-import LineageConfigModal from '../LineageConfigModal';
-import './lineage-control-buttons.less';
-import { LineageControlButtonsProps } from './LineageControlButtons.interface';
+import { centerNodePosition } from '../../../../utils/EntityLineageUtils';
+import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
 
-const LineageControlButtons: FC<LineageControlButtonsProps> = ({
-  deleted,
-  hasEditAccess,
-  entityType,
-}) => {
+const LineageControlButtons: FC<{
+  onToggleMiniMap: () => void;
+  miniMapVisible?: boolean;
+}> = ({ onToggleMiniMap, miniMapVisible = false }) => {
   const { t } = useTranslation();
-  const [dialogVisible, setDialogVisible] = useState<boolean>(false);
+  const theme = useTheme();
+  const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
+    useState<null | HTMLElement>(null);
+
   const {
+    reactFlowInstance,
+    redraw,
     activeLayer,
     isEditMode,
     expandAllColumns,
-    lineageConfig,
-    platformView,
     toggleColumnView,
-    onExportClick,
-    loading,
-    status,
-    onLineageEditClick,
-    onLineageConfigUpdate,
-    reactFlowInstance,
-    redraw,
   } = useLineageProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
@@ -71,12 +61,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   const isColumnLayerActive = useMemo(() => {
     return activeLayer.includes(LineageLayer.ColumnLevelLineage);
   }, [activeLayer]);
-
-  const editIcon = (
-    <span className="anticon">
-      <EditIcon className={isEditMode ? 'active' : ''} height={18} width={18} />
-    </span>
-  );
 
   const isFullscreen = useMemo(() => {
     const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -92,14 +76,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     });
   }, [isFullscreen]);
 
-  const handleDialogSave = useCallback(
-    (config: LineageConfig) => {
-      onLineageConfigUpdate?.(config);
-      setDialogVisible(false);
-    },
-    [onLineageConfigUpdate, setDialogVisible]
-  );
-
   const handleZoomIn = useCallback(() => {
     reactFlowInstance?.zoomIn();
   }, [reactFlowInstance]);
@@ -109,139 +85,165 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   }, [reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
+    const currentZoom = reactFlowInstance?.getZoom() ?? 1;
     reactFlowInstance?.fitView({ padding: 0.2 });
+    reactFlowInstance?.zoomTo(currentZoom);
+
+    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
   const handleRearrange = useCallback(() => {
     redraw?.();
+    setLineageViewOptionsAnchorEl(null);
   }, [redraw]);
 
-  const handleExportClick = useCallback(() => {
-    onExportClick?.();
-  }, [onExportClick]);
+  const handleRefocusSelected = useCallback(() => {
+    const selectedElement = reactFlowInstance
+      ?.getNodes()
+      .find((el) => el.selected);
+
+    selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
+    setLineageViewOptionsAnchorEl(null);
+  }, [reactFlowInstance]);
+
+  const handleRefocusHome = useCallback(() => {
+    const selectedElement = reactFlowInstance
+      ?.getNodes()
+      .find((el) => el.data.isRootNode);
+    selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
+    setLineageViewOptionsAnchorEl(null);
+  }, [reactFlowInstance]);
 
   return (
-    <>
-      <div className="lineage-control-buttons">
-        {!deleted &&
-          platformView === LineagePlatformView.None &&
-          entityType &&
-          !SERVICE_TYPES.includes(entityType as AssetsUnion) && (
-            <Button
-              className={classNames('lineage-button', {
-                active: isEditMode,
-              })}
-              data-testid="edit-lineage"
-              disabled={!hasEditAccess}
-              icon={getLoadingStatusValue(editIcon, loading, status)}
-              title={
-                hasEditAccess
-                  ? t('label.edit-entity', { entity: t('label.lineage') })
-                  : NO_PERMISSION_FOR_ACTION
-              }
-              type="text"
-              onClick={onLineageEditClick}
-            />
-          )}
+    <ToggleButtonGroup
+      exclusive
+      color="primary"
+      sx={{
+        /* Shadows/shadow-xs */
+        boxShadow: theme.shadows[1],
+        background: theme.palette.background.paper,
 
-        {isColumnLayerActive && !isEditMode && (
-          <Button
+        svg: {
+          height: theme.spacing(4),
+          width: theme.spacing(4),
+        },
+      }}>
+      <Tooltip
+        arrow
+        placement="top"
+        title={t('label.lineage-view-option-plural')}>
+        <ToggleButton
+          data-testid="fit-screen"
+          value="fit-view"
+          onClick={(event) =>
+            setLineageViewOptionsAnchorEl(event.currentTarget)
+          }>
+          <FitViewOptionsIcon />
+        </ToggleButton>
+      </Tooltip>
+
+      <StyledMenu
+        anchorEl={lineageViewOptionsAnchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        id="lineage-view-options-menu"
+        open={Boolean(lineageViewOptionsAnchorEl)}
+        slotProps={{
+          paper: {
+            sx: {
+              marginTop: '0',
+            },
+          },
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        onClose={() => setLineageViewOptionsAnchorEl(null)}>
+        <MenuItem onClick={handleFitView}>
+          <FitScreenIcon />
+          {t('label.fit-to-screen')}
+        </MenuItem>
+        <MenuItem onClick={handleRefocusSelected}>
+          <FitViewOptionsIcon />
+          {t('label.refocused-to-selected')}
+        </MenuItem>
+        <MenuItem onClick={handleRearrange}>
+          <RearrangeNodesIcon />
+          {t('label.rearrange-nodes')}
+        </MenuItem>
+        <MenuItem onClick={handleRefocusHome}>
+          <HomeIcon />
+          {t('label.refocused-to-home')}
+        </MenuItem>
+      </StyledMenu>
+
+      {/* Remove this after we have paginated column view inside nodes */}
+      {isColumnLayerActive && !isEditMode && (
+        <Tooltip
+          arrow
+          placement="top"
+          title={
+            expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
+          }>
+          <ToggleButton
             className="lineage-button"
             data-testid="expand-column"
-            icon={expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
-            title={
-              expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
-            }
-            type="text"
-            onClick={toggleColumnView}
-          />
-        )}
+            value="expand-column"
+            onClick={toggleColumnView}>
+            {expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
+          </ToggleButton>
+        </Tooltip>
+      )}
 
-        <Button
-          className="lineage-button"
-          data-testid="lineage-export"
-          disabled={isEditMode}
-          icon={
-            <span className="anticon">
-              <ExportIcon height={18} width={18} />
-            </span>
-          }
-          title={t('label.export-entity', { entity: t('label.lineage') })}
-          type="text"
-          onClick={handleExportClick}
-        />
+      <Tooltip arrow placement="top" title={t('label.mind-map')}>
+        <ToggleButton
+          data-testid="toggle-mind-map"
+          selected={miniMapVisible}
+          value="mind-map"
+          onClick={onToggleMiniMap}>
+          <MapIcon />
+        </ToggleButton>
+      </Tooltip>
 
-        <Button
-          className="lineage-button"
-          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-          icon={
-            <span className="anticon">
-              {isFullscreen ? (
-                <FullscreenExitOutlined />
-              ) : (
-                <FullscreenOutlined />
-              )}
-            </span>
-          }
-          title={t('label.full-screen')}
-          type="text"
-          onClick={toggleFullscreenView}
-        />
-
-        <Button
-          className="lineage-button"
+      <Tooltip arrow placement="top" title={t('label.zoom-in')}>
+        <ToggleButton
           data-testid="zoom-in"
-          icon={<ZoomInOutlined />}
-          title={t('label.zoom-in')}
-          type="text"
-          onClick={handleZoomIn}
-        />
+          value="zoom-in"
+          onClick={handleZoomIn}>
+          <ZoomInIcon />
+        </ToggleButton>
+      </Tooltip>
 
-        <Button
-          className="lineage-button"
+      <Tooltip arrow placement="top" title={t('label.zoom-out')}>
+        <ToggleButton
           data-testid="zoom-out"
-          icon={<ZoomOutOutlined />}
-          title={t('label.zoom-out')}
-          type="text"
-          onClick={handleZoomOut}
-        />
+          value="zoom-out"
+          onClick={handleZoomOut}>
+          <ZoomOutIcon />
+        </ToggleButton>
+      </Tooltip>
 
-        <Button
-          className="lineage-button"
-          data-testid="fit-screen"
-          icon={<ExpandOutlined />}
-          title={t('label.fit-to-screen')}
-          type="text"
-          onClick={handleFitView}
-        />
-
-        <Button
-          className="lineage-button"
-          data-testid="rearrange"
-          icon={<NodeIndexOutlined />}
-          title={t('label.rearrange-nodes')}
-          type="text"
-          onClick={handleRearrange}
-        />
-
-        <Button
-          className="lineage-button"
-          data-testid="lineage-config"
-          disabled={isEditMode}
-          icon={<SettingOutlined />}
-          title={t('label.setting-plural')}
-          type="text"
-          onClick={() => setDialogVisible(true)}
-        />
-      </div>
-
-      <LineageConfigModal
-        config={lineageConfig}
-        visible={dialogVisible}
-        onCancel={() => setDialogVisible(false)}
-        onSave={handleDialogSave}
-      />
-    </>
+      <Tooltip
+        arrow
+        placement="top"
+        title={
+          isFullscreen
+            ? t('label.exit-full-screen')
+            : t('label.full-screen-view')
+        }>
+        <ToggleButton
+          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
+          selected={isFullscreen}
+          size="large"
+          value="full-screen"
+          onClick={toggleFullscreenView}>
+          {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+        </ToggleButton>
+      </Tooltip>
+    </ToggleButtonGroup>
   );
 };
 

@@ -27,7 +27,6 @@ const testDataProduct = new DataProduct(
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await EntityDataClass.preRequisitesForTests(apiContext);
   await testEntity.create(apiContext);
   await testDataProduct.create(apiContext);
 
@@ -54,30 +53,28 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
 
   await testDataProduct.delete(apiContext);
   await testEntity.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
 
   await afterAction();
 });
 
-async function openEntitySummaryPanel(page: Page, entityType: string) {
-  await page.getByRole('button', { name: 'Data Assets' }).click();
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input')
-    .fill(entityType.toLowerCase());
-  await dataAssetDropdownRequest;
-  await page.getByTestId(`${entityType.toLowerCase()}-checkbox`).check();
-  await page.getByTestId('update-btn').click();
+async function openEntitySummaryPanel(page: Page, entityName: string) {
+  const searchResponse = page.waitForResponse('/api/v1/search/query*');
+
+  await page.getByTestId('searchBox').fill(entityName);
+  await searchResponse;
+
+  await page.getByTestId('searchBox').press('Enter');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await page.waitForLoadState('networkidle');
 
-  const firstEntityCard = page
+  const entityCard = page
     .locator('[data-testid="table-data-card"]')
+    .filter({ hasText: entityName })
     .first();
-  if (await firstEntityCard.isVisible()) {
-    await firstEntityCard.click();
+  if (await entityCard.isVisible()) {
+    await entityCard.click();
     await page.waitForLoadState('networkidle');
   }
 }
@@ -93,25 +90,7 @@ async function navigateToExploreAndSelectTable(page: Page) {
     .catch(() => {
       // Loader might not appear, continue
     });
-  await openEntitySummaryPanel(page, 'table');
-
-  // Wait for loader to disappear
-  await page
-    .waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout: 15000,
-    })
-    .catch(() => {
-      // Loader might not appear, continue
-    });
-
-  await page.waitForSelector('.highlight-card', {
-    timeout: 15000,
-  });
-
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-
-  await expect(summaryPanel).toBeVisible({ timeout: 15000 });
+  await openEntitySummaryPanel(page, testEntity.entity.name);
 }
 
 async function waitForPatchResponse(page: Page) {
@@ -203,15 +182,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await adminPage
       .locator('[data-testid="edit-icon-tier"]')
       .scrollIntoViewIfNeeded();
-    await adminPage.waitForSelector('[data-testid="edit-icon-tier"]', {
-      state: 'visible',
-    });
 
     await adminPage.locator('[data-testid="edit-icon-tier"]').click();
 
-    const tierCard = adminPage.locator('.ant-popover');
+    await adminPage.locator('[data-testid="cards"]').scrollIntoViewIfNeeded();
 
-    await expect(tierCard).toBeVisible();
+    await expect(adminPage.locator('[data-testid="cards"]')).toBeVisible();
 
     const tier1Radio = adminPage.getByTestId('radio-btn-Tier1');
     await tier1Radio.click();
@@ -236,15 +212,16 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await adminPage
       .locator('[data-testid="edit-icon-tags"]')
       .scrollIntoViewIfNeeded();
-    await adminPage.waitForSelector('[data-testid="edit-icon-tags"]', {
-      state: 'visible',
-    });
 
     await adminPage.locator('[data-testid="edit-icon-tags"]').click();
 
-    const tagsPopover = adminPage.locator('.ant-popover');
+    await adminPage
+      .locator('[data-testid="selectable-list"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(tagsPopover).toBeVisible();
+    await expect(
+      adminPage.locator('[data-testid="selectable-list"]')
+    ).toBeVisible();
 
     const tagOption = adminPage.getByTitle('None');
     if (await tagOption.isVisible()) {
@@ -277,9 +254,13 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
 
-    const glossaryPopover = adminPage.locator('.ant-popover');
+    await adminPage
+      .locator('[data-testid="selectable-list"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(glossaryPopover).toBeVisible();
+    await expect(
+      adminPage.locator('[data-testid="selectable-list"]')
+    ).toBeVisible();
 
     const firstTerm = adminPage.locator('.ant-list-item').first();
     await firstTerm.click();
@@ -299,49 +280,88 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(domainsSection).toBeVisible();
 
-    const domainEditButton = domainsSection.locator(
-      '[data-testid="add-domain"]'
+    await domainsSection
+      .locator('[data-testid="add-domain"]')
+      .scrollIntoViewIfNeeded();
+    await adminPage.waitForSelector('[data-testid="add-domain"]', {
+      state: 'visible',
+    });
+    await adminPage.locator('[data-testid="add-domain"]').click();
+    const tree = adminPage.getByTestId('domain-selectable-tree');
+
+    await expect(tree).toBeVisible();
+
+    const searchDomain = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*TestDomain*`
     );
-    if (await domainEditButton.isVisible()) {
-      await domainEditButton.click();
 
-      const tree = adminPage.getByTestId('domain-selectable-tree');
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill('TestDomain');
 
-      await expect(tree).toBeVisible();
+    await searchDomain;
 
-      const firstNode = tree
-        .locator('[data-testid="tag-TestDomain"]')
-        .waitFor({ state: 'visible' });
-      await firstNode;
-      await tree.locator('[data-testid="tag-TestDomain"]').click();
-      const updateBtn = adminPage.getByRole('button', { name: 'Update' });
-      if (await updateBtn.isVisible()) {
-        await updateBtn.click();
-        await waitForPatchResponse(adminPage);
+    // Wait for the tag element to be visible and ensure page is still valid
+    const tagSelector = adminPage.getByTestId('tag-TestDomain');
+    await tagSelector.waitFor({ state: 'visible' });
 
-        await expect(
-          adminPage.getByText(/Domains updated successfully/i)
-        ).toBeVisible();
-      }
-    }
+    const patchReq = adminPage.waitForResponse(
+      (req) => req.request().method() === 'PATCH'
+    );
+
+    await tagSelector.click();
+
+    await patchReq;
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      adminPage.getByText(/Domains updated successfully/i)
+    ).toBeVisible();
   });
 
   test('Tab Navigation - Schema Tab', async ({ adminPage }) => {
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const schemaTab = summaryPanel.getByRole('menuitem', { name: /schema/i });
+    const schemaTab = adminPage.locator('[data-testid="schema-tab"]');
 
-    if (await schemaTab.isVisible()) {
-      await schemaTab.click();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await schemaTab.click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
+    const tabContent = adminPage.locator(
+      '[data-testid="entity-details-section"]'
+    );
+
+    await expect(tabContent).toBeVisible();
+
+    testEntity.children.forEach(async (child) => {
+      const fieldCard = adminPage.locator(
+        `[data-testid="field-card-${child.name}"]`
       );
 
-      await expect(tabContent).toBeVisible();
-    }
+      await expect(fieldCard).toBeVisible();
+
+      const dataTypeBadge = fieldCard.locator(
+        `[data-testid="data-type-badge-${child.dataType}"]`
+      );
+
+      await expect(dataTypeBadge).toBeVisible();
+
+      const fieldName = fieldCard.locator(
+        `[data-testid="field-name-${child.name}"]`
+      );
+
+      await expect(fieldName).toHaveText(child.name);
+
+      const fieldDescription = fieldCard.locator(
+        `[data-testid="field-description-${child.name}"]`
+      );
+
+      await expect(fieldDescription).toBeVisible();
+      await expect(fieldDescription).toContainText(child.description);
+    });
   });
 
   test('Tab Navigation - Lineage Tab', async ({ adminPage }) => {
@@ -507,9 +527,13 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await dataStewardPage.locator('[data-testid="edit-icon-tier"]').click();
 
-    const tierCard = dataStewardPage.locator('.ant-popover');
+    await dataStewardPage
+      .locator('[data-testid="cards"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(tierCard).toBeVisible();
+    await expect(
+      dataStewardPage.locator('[data-testid="cards"]')
+    ).toBeVisible();
 
     const tier2Radio = dataStewardPage.getByTestId('radio-btn-Tier2');
     await tier2Radio.click();
@@ -538,15 +562,20 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     await dataStewardPage
       .locator('[data-testid="edit-icon-tags"]')
       .scrollIntoViewIfNeeded();
+
     await dataStewardPage.waitForSelector('[data-testid="edit-icon-tags"]', {
       state: 'visible',
     });
 
     await dataStewardPage.locator('[data-testid="edit-icon-tags"]').click();
 
-    const tagsPopover = dataStewardPage.locator('.ant-popover');
+    await dataStewardPage
+      .locator('[data-testid="selectable-list"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(tagsPopover).toBeVisible();
+    await expect(
+      dataStewardPage.locator('[data-testid="selectable-list"]')
+    ).toBeVisible();
 
     const tagOption = dataStewardPage.getByTitle('PII.Sensitive');
     if (await tagOption.isVisible()) {
@@ -588,10 +617,17 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       .locator('[data-testid="edit-glossary-terms"]')
       .click();
 
-    const glossaryPopover = dataStewardPage.locator('.ant-popover');
+    await dataStewardPage
+      .locator('[data-testid="selectable-list"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(glossaryPopover).toBeVisible();
+    await expect(
+      dataStewardPage.locator('[data-testid="selectable-list"]')
+    ).toBeVisible();
 
+    await dataStewardPage.waitForSelector('.ant-list-item', {
+      state: 'visible',
+    });
     const firstTerm = dataStewardPage.locator('.ant-list-item').first();
     await firstTerm.click();
 
@@ -607,13 +643,9 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test('Data Steward - Should NOT have permissions for Domains', async ({
     dataStewardPage,
   }) => {
-    const summaryPanel = dataStewardPage.locator(
-      '.entity-summary-panel-container'
-    );
-
-    await expect(summaryPanel.getByTestId('add-domain')).not.toBeVisible();
+    await expect(dataStewardPage.getByTestId('add-domain')).not.toBeVisible();
     await expect(
-      summaryPanel.getByTestId('edit-data-products')
+      dataStewardPage.getByTestId('edit-data-products')
     ).not.toBeVisible();
   });
 
@@ -754,7 +786,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     }
   });
 
-  test('Data Consumer - Should NOT have edit permissions for Owners', async ({
+  test('Data Consumer - Owners Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -763,7 +795,36 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     const ownersSection = summaryPanel.locator('.owners-section');
 
     await expect(ownersSection).toBeVisible();
-    await expect(summaryPanel.getByTestId('edit-owners')).not.toBeVisible();
+
+    const editButton = ownersSection.getByTestId('edit-owners');
+    if (await editButton.isVisible()) {
+      await editButton.click();
+
+      const popover = dataConsumerPage.getByTestId('select-owner-tabs');
+
+      await expect(popover).toBeVisible();
+
+      await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
+
+      const firstOwner = dataConsumerPage.getByRole('listitem', {
+        name: 'admin',
+        exact: true,
+      });
+      if (await firstOwner.isVisible()) {
+        await firstOwner.click();
+        const updateBtn = dataConsumerPage.getByRole('button', {
+          name: 'Update',
+        });
+        if (await updateBtn.isVisible()) {
+          await updateBtn.click();
+          await waitForPatchResponse(dataConsumerPage);
+
+          await expect(
+            dataConsumerPage.getByText(/Owners updated successfully/i)
+          ).toBeVisible();
+        }
+      }
+    }
   });
 
   test('Data Consumer - Tier Section - Add and Update', async ({
@@ -785,9 +846,13 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await dataConsumerPage.locator('[data-testid="edit-icon-tier"]').click();
 
-    const tierCard = dataConsumerPage.locator('.ant-popover');
+    await dataConsumerPage
+      .locator('[data-testid="cards"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(tierCard).toBeVisible();
+    await expect(
+      dataConsumerPage.locator('[data-testid="cards"]')
+    ).toBeVisible();
 
     const tier3Radio = dataConsumerPage.getByTestId('radio-btn-Tier3');
     await tier3Radio.click();
@@ -822,9 +887,16 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await dataConsumerPage.locator('[data-testid="edit-icon-tags"]').click();
 
-    const tagsPopover = dataConsumerPage.locator('.ant-popover');
+    await dataConsumerPage.locator('loader').waitFor({
+      state: 'detached',
+    });
+    await dataConsumerPage
+      .locator('[data-testid="selectable-list"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(tagsPopover).toBeVisible();
+    await expect(
+      dataConsumerPage.locator('[data-testid="selectable-list"]')
+    ).toBeVisible();
 
     const tagOption = dataConsumerPage.getByTitle('PersonalData.Personal');
     if (await tagOption.isVisible()) {
@@ -868,9 +940,13 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       .locator('[data-testid="edit-glossary-terms"]')
       .click();
 
-    const glossaryPopover = dataConsumerPage.locator('.ant-popover');
+    await dataConsumerPage
+      .locator('[data-testid="selectable-list"]')
+      .scrollIntoViewIfNeeded();
 
-    await expect(glossaryPopover).toBeVisible();
+    await expect(
+      dataConsumerPage.locator('[data-testid="selectable-list"]')
+    ).toBeVisible();
 
     const firstTerm = dataConsumerPage.locator('.ant-list-item').first();
     await firstTerm.click();

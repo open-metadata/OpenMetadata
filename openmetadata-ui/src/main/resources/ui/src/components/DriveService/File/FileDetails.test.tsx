@@ -724,4 +724,54 @@ describe('FileDetails', () => {
 
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should pass ViewCustomFields permission correctly when true', async () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderFileDetails({
+        filePermissions: permissionsWithViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should pass ViewCustomFields permission correctly when false', async () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderFileDetails({
+        filePermissions: permissionsWithoutViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle undefined ViewCustomFields permission', async () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderFileDetails({
+        filePermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+  });
 });

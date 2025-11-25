@@ -165,7 +165,7 @@ test.describe('Teams Page', () => {
 
       await addMultiOwner({
         page,
-        ownerNames: [user.getUserName()],
+        ownerNames: [user.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.Teams,
         type: 'Users',
@@ -193,7 +193,7 @@ test.describe('Teams Page', () => {
       // Select the user to remove
       await page
         .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
         )
         .click();
 
@@ -396,10 +396,19 @@ test.describe('Teams Page', () => {
 
     await page.getByRole('link', { name: publicTeam.displayName }).click();
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page
       .getByTestId('team-details-collapse')
       .getByTestId('manage-button')
       .click();
+
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).toBeVisible();
 
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
@@ -640,17 +649,17 @@ test.describe('Teams Page', () => {
     // Search and select the user
     await page
       .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-      .fill(user.getUserName());
+      .fill(user.getUserDisplayName());
 
     await page
       .locator(
-        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
       )
       .click();
 
     await expect(
       page.locator(
-        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
       )
     ).toHaveClass(/active/);
 

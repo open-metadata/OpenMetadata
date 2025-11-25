@@ -48,7 +48,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     Set<String> parentAliases = context.getParentAliases();
 
     SearchRepository searchRepository = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepository.getSearchClient();
+    SearchClient searchClient = searchRepository.getSearchClient();
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
@@ -157,7 +157,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     SearchRepository searchRepository = Entity.getSearchRepository();
     String clusterAlias = searchRepository.getClusterAlias();
-    SearchClient<?> searchClient = searchRepository.getSearchClient();
+    SearchClient searchClient = searchRepository.getSearchClient();
 
     String canonicalIndexName = indexMapping.getIndexName(clusterAlias);
     String activeIndexName = canonicalIndexName;

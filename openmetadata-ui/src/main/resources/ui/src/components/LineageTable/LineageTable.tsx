@@ -517,12 +517,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel
-            avatarSize={24}
-            isCompactView={false}
-            owners={owners}
-            showLabel={false}
-          />
+          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {

@@ -89,5 +89,5 @@ export interface ExpandCollapseHandlesProps {
   downstreamExpandPerformed: boolean;
   upstreamLineageLength: number;
   onCollapse: (direction?: LineageDirection) => void;
-  onExpand: (direction: LineageDirection) => void;
+  onExpand: (direction: LineageDirection, depth: number) => void;
 }
