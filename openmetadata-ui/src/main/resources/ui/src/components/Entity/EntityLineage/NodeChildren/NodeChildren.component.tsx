@@ -137,6 +137,7 @@ const NodeChildren = ({
     expandAllColumns,
     selectedColumn,
     useUpdateNodeInternals,
+    isCreatingEdge,
   } = useLineageProvider();
   const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
@@ -418,7 +419,8 @@ const NodeChildren = ({
         <div
           className={classNames(
             'column-container',
-            selectedColumn && 'any-column-selected'
+            selectedColumn && 'any-column-selected',
+            isCreatingEdge && 'creating-edge'
           )}
           data-testid="column-container">
           <div className="search-box">
