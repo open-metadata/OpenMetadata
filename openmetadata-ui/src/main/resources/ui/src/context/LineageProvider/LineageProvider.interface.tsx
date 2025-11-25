@@ -19,6 +19,8 @@ import {
   Node,
   NodeChange,
   NodeProps,
+  OnConnectEnd,
+  OnConnectStart,
   ReactFlowInstance,
   UpdateNodeInternals,
 } from 'reactflow';
@@ -66,6 +68,7 @@ export interface LineageContextType {
   expandAllColumns: boolean;
   isPlatformLineage: boolean;
   entityFqn: string;
+  isCreatingEdge: boolean;
   exportLineageData: (_: string) => Promise<CSVExportResponse>;
   onCloseDrawer: () => void;
   toggleColumnView: () => void;
@@ -105,6 +108,8 @@ export interface LineageContextType {
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
+  onConnectStart: OnConnectStart;
+  onConnectEnd: OnConnectEnd;
   updateEntityData: (
     entityType: EntityType,
     entity?: SourceType,
