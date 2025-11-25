@@ -23,6 +23,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -40,6 +41,7 @@ import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase'
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
@@ -222,6 +224,7 @@ const DashboardDetails = ({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -236,6 +239,10 @@ const DashboardDetails = ({
           PermissionOperation.EditLineage
         ) && !deleted,
       viewAllPermission: dashboardPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        dashboardPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [dashboardPermissions, deleted]
   );
@@ -247,6 +254,7 @@ const DashboardDetails = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       dashboardDetails,
       deleted: deleted ?? false,
       handleFeedCount,

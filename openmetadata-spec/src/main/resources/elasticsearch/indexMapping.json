@@ -115,6 +115,13 @@
     ],
     "childAliases": []
   },
+  "pipelineStatus": {
+    "indexName": "pipeline_status_search_index",
+    "indexMappingFile": "/elasticsearch/%s/pipeline_status_index_mapping.json",
+    "alias": "pipelineStatus",
+    "parentAliases": [],
+    "childAliases": []
+  },
   "topic": {
     "indexName": "topic_search_index",
     "indexMappingFile": "/elasticsearch/%s/topic_index_mapping.json",

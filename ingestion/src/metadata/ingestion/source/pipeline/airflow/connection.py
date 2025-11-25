@@ -12,11 +12,16 @@
 """
 Source connection handler
 """
+import os
 from functools import partial, singledispatch
 from typing import Optional
+from urllib.parse import quote
 
+from airflow import __version__ as airflow_version
 from airflow import settings
 from airflow.models.serialized_dag import SerializedDagModel
+from packaging import version
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -48,6 +53,17 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+ORM_ACCESS_BLOCKED_ERROR = "Direct database access via the ORM"
+
+try:
+    IS_AIRFLOW_3 = version.parse(airflow_version).major >= 3
+except Exception:  # pylint: disable=broad-except
+    # Be conservative and keep the Airflow 2.x code path if we can't detect the version
+    IS_AIRFLOW_3 = False
 
 
 # Only import when needed
@@ -62,8 +78,86 @@ def _get_connection(airflow_connection) -> Engine:
 
 @_get_connection.register
 def _(_: BackendConnection) -> Engine:
-    with settings.Session() as session:
-        return session.get_bind()
+    if IS_AIRFLOW_3:
+        return _get_engine_from_env_vars()
+
+    engine = _get_backend_engine_from_session()
+    if not engine:
+        raise SourceConnectionException(
+            "Could not create an Airflow metadata DB engine using airflow.settings. "
+            "If you are running Airflow >= 3, ensure the required DB_* environment "
+            "variables are set."
+        )
+    return engine
+
+
+def _get_backend_engine_from_session() -> Optional[Engine]:
+    """
+    Try to get the Airflow metadata engine via airflow.settings.Session.
+    This is allowed on Airflow 2.x but raises a RuntimeError on Airflow 3.x.
+    """
+    try:
+        with settings.Session() as session:
+            return session.get_bind()
+    except RuntimeError as exc:
+        if ORM_ACCESS_BLOCKED_ERROR in str(exc):
+            logger.info(
+                "Airflow prevented direct ORM access (likely Airflow 3.x). "
+                "Switching to the environment-based connection builder."
+            )
+            return None
+        raise
+
+
+def _get_engine_from_env_vars() -> Engine:
+    """
+    Build the Airflow metadata database URL based on the DB_* variables that
+    ingestion_dependency.sh sets to keep docker + tests working.
+    """
+
+    scheme = os.environ.get("DB_SCHEME")
+    user = os.environ.get("DB_USER")
+    password = os.environ.get("DB_PASSWORD")
+    host = os.environ.get("DB_HOST")
+    port = os.environ.get("DB_PORT")
+    database = os.environ.get("AIRFLOW_DB")
+    properties = os.environ.get("DB_PROPERTIES")
+
+    missing = [
+        name
+        for name, value in (
+            ("DB_SCHEME", scheme),
+            ("DB_USER", user),
+            ("DB_PASSWORD", password),
+            ("DB_HOST", host),
+            ("DB_PORT", port),
+            ("AIRFLOW_DB", database),
+        )
+        if not value
+    ]
+    if missing:
+        raise SourceConnectionException(
+            "Airflow 3.x execution environments must define the following environment "
+            f"variables to allow OpenMetadata to build the metadata DB connection: "
+            f"{', '.join(missing)}"
+        )
+
+    encoded_user = quote(user, safe="")
+    encoded_password = quote(password, safe="")
+    properties = properties or ""
+
+    sql_alchemy_conn = (
+        f"{scheme}://{encoded_user}:{encoded_password}"
+        f"@{host}:{port}/{database}{properties}"
+    )
+
+    try:
+        return create_engine(sql_alchemy_conn, pool_pre_ping=True)
+    except Exception as exc:  # pylint: disable=broad-except
+        raise SourceConnectionException(
+            "Failed to create SQLAlchemy engine using the DB_* environment variables. "
+            "Double check the credentials and scheme."
+        ) from exc
 
 
 @_get_connection.register

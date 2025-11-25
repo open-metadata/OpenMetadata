@@ -437,4 +437,63 @@ describe('DirectoryVersion', () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties tab when ViewCustomFields is true', async () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderDirectoryVersion({
+        entityPermissions: permissionsWithViewCustomFields,
+      });
+
+      await waitFor(() => {
+        const customPropertyTabLabel = screen.getByText(
+          'label.custom-property-plural'
+        );
+
+        expect(customPropertyTabLabel).toBeInTheDocument();
+      });
+    });
+
+    it('should render custom properties tab when ViewCustomFields is false', async () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderDirectoryVersion({
+        entityPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      await waitFor(() => {
+        const customPropertyTabLabel = screen.getByText(
+          'label.custom-property-plural'
+        );
+
+        expect(customPropertyTabLabel).toBeInTheDocument();
+      });
+    });
+
+    it('should render custom properties tab when ViewCustomFields is undefined', async () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderDirectoryVersion({
+        entityPermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      await waitFor(() => {
+        const customPropertyTabLabel = screen.getByText(
+          'label.custom-property-plural'
+        );
+
+        expect(customPropertyTabLabel).toBeInTheDocument();
+      });
+    });
+  });
 });

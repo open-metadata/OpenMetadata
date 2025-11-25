@@ -78,6 +78,7 @@ export const getDashboardDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,
   activeTab,
@@ -134,9 +135,7 @@ export const getDashboardDetailPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -155,7 +154,7 @@ export const getDashboardDetailPageTabs = ({
         <CustomPropertyTable<EntityType.DASHBOARD>
           entityType={EntityType.DASHBOARD}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

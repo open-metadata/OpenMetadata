@@ -277,7 +277,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         </div>
         <div className="domains-content">
           <span className="no-data-placeholder">
-            {t('label.no-data-found')}
+            {t('label.no-entity-assigned', {
+              entity: t('label.domain-plural'),
+            })}
           </span>
         </div>
       </div>

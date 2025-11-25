@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/api/handlebarsHelpers.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Handlebars Helpers List",
+  "description": "List of available Handlebars helpers with metadata",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/handlebarsHelperMetadata"
+  },
+  "definitions": {
+    "handlebarsHelperUsage": {
+      "type": "object",
+      "javaType": "org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage",
+      "description": "Usage example for a Handlebars helper",
+      "properties": {
+        "syntax": {
+          "description": "Syntax pattern showing how to use the helper",
+          "type": "string"
+        },
+        "example": {
+          "description": "Concrete example demonstrating the helper usage",
+          "type": "string"
+        }
+      },
+      "required": ["syntax", "example"],
+      "additionalProperties": false
+    },
+    "handlebarsHelperMetadata": {
+      "type": "object",
+      "javaType": "org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata",
+      "description": "Metadata describing a Handlebars helper",
+      "properties": {
+        "name": {
+          "description": "Helper name as used in templates",
+          "type": "string"
+        },
+        "description": {
+          "description": "Brief description of what the helper does (max 15 words)",
+          "type": "string"
+        },
+        "cursorOffset": {
+          "description": "Character offset position in the template where the cursor should be placed after helper insertion",
+          "type": "integer"
+        },
+        "usages": {
+          "description": "List of usage examples showing different ways to use the helper",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/handlebarsHelperUsage"
+          }
+        }
+      },
+      "required": ["name", "description", "usages"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -28,6 +28,7 @@ import { WorkflowStatus } from '../../generated/governance/workflows/workflowIns
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { getDashboards, getDataModels } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
 import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
@@ -96,6 +97,15 @@ jest.mock('../../rest/serviceAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ version: 2 })),
 }));
+
+jest.mock(
+  '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: jest.fn().mockReturnValue([]) },
+    }),
+  })
+);
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
@@ -229,6 +239,13 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: () => ({
+    pathname: '/mock-path',
+    search: '',
+    state: undefined,
+    key: '',
+    hash: '',
+  }),
   MemoryRouter: ({ children }: any) => (
     <div data-testid="memory-router">{children}</div>
   ),
@@ -240,16 +257,28 @@ jest.mock('../../hooks/useFqn', () => ({
   })),
 }));
 
-jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn().mockImplementation(() => ({
-    paging: { total: 10, pageSize: 10, currentPage: 1 },
+jest.mock('../../hooks/paging/usePaging', () => {
+  const mockPaging = { total: 10 };
+  const mockPagingCursor = {
+    cursorType: undefined,
+    cursorValue: undefined,
+    currentPage: '1',
     pageSize: 10,
-    currentPage: 1,
-    pagingCursor: { before: null, after: null },
-    handlePageChange: jest.fn(),
-    handlePagingChange: jest.fn(),
-  })),
-}));
+  };
+
+  return {
+    usePaging: jest.fn().mockImplementation(() => ({
+      paging: mockPaging,
+      pageSize: 10,
+      currentPage: 1,
+      pagingCursor: mockPagingCursor,
+      showPagination: true,
+      handlePageChange: jest.fn(),
+      handlePagingChange: jest.fn(),
+      handlePageSizeChange: jest.fn(),
+    })),
+  };
+});
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
@@ -489,6 +518,8 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest
     .fn()
     .mockImplementation((days) => 1715404800000 - days * 24 * 60 * 60 * 1000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -499,6 +530,14 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 jest.mock('../../utils/StringsUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
   getEncodedFqn: jest.fn().mockImplementation((text) => text),
+}));
+
+const mockSetFilters = jest.fn();
+jest.mock('../../hooks/useTableFilters', () => ({
+  useTableFilters: jest.fn().mockImplementation(() => ({
+    filters: {},
+    setFilters: mockSetFilters,
+  })),
 }));
 
 describe('ServiceDetailsPage', () => {
@@ -861,6 +900,10 @@ describe('ServiceDetailsPage', () => {
         deleted: true,
       };
       (getServiceByFQN as jest.Mock).mockResolvedValue(deletedService);
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: { showDeletedTables: true },
+        setFilters: jest.fn(),
+      });
 
       // Re-render component to trigger the showDeleted change
       await renderComponent();
@@ -888,6 +931,11 @@ describe('ServiceDetailsPage', () => {
         });
       });
 
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: { showDeletedTables: false },
+        setFilters: jest.fn(),
+      });
+
       await renderComponent();
 
       // Wait for initial fetch (non-deleted by default)
@@ -911,6 +959,10 @@ describe('ServiceDetailsPage', () => {
         deleted: true,
       };
       (getServiceByFQN as jest.Mock).mockResolvedValue(deletedService);
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: { showDeletedTables: true },
+        setFilters: jest.fn(),
+      });
 
       // Re-render component to trigger the showDeleted change
       await renderComponent();
