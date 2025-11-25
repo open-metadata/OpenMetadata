@@ -56,7 +56,6 @@ import '../../ExploreV1/exploreV1.less';
 interface DomainTreeViewProps {
   searchQuery?: string;
   filters?: Record<string, string[]>;
-  onDomainMutated?: () => void;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
 }
@@ -67,7 +66,6 @@ const SCROLL_TRIGGER_THRESHOLD = 200;
 const DomainTreeView = ({
   searchQuery,
   filters,
-  onDomainMutated,
   refreshToken = 0,
   openAddDomainDrawer,
 }: DomainTreeViewProps) => {
@@ -541,7 +539,7 @@ const DomainTreeView = ({
       return;
     }
     await loadDomains(selectedFqn ?? undefined);
-  }, [loadDomains, onDomainMutated, selectedFqn, searchDomain, searchQuery]);
+  }, [loadDomains, selectedFqn, searchDomain, searchQuery]);
 
   const handleDomainUpdate = useCallback(
     async (updatedData: Domain) => {
@@ -629,7 +627,6 @@ const DomainTreeView = ({
             }
           : prev
       );
-      onDomainMutated?.();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -638,7 +635,7 @@ const DomainTreeView = ({
         })
       );
     }
-  }, [currentUserId, onDomainMutated, selectedDomain, t]);
+  }, [currentUserId, selectedDomain, t]);
 
   const unFollowDomain = useCallback(async () => {
     if (!selectedDomain?.id || !currentUserId) {
@@ -661,7 +658,6 @@ const DomainTreeView = ({
             }
           : prev
       );
-      onDomainMutated?.();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -670,7 +666,7 @@ const DomainTreeView = ({
         })
       );
     }
-  }, [currentUserId, onDomainMutated, selectedDomain, t]);
+  }, [currentUserId, selectedDomain, t]);
 
   const isFollowing = useMemo(() => {
     if (!selectedDomain?.followers?.length || !currentUserId) {

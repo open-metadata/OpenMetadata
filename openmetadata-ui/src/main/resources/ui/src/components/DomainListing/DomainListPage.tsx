@@ -215,7 +215,6 @@ const DomainListPage = () => {
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
-            onDomainMutated={refreshAllDomains}
           />
         </Box>
       );
