@@ -754,13 +754,16 @@ export const testTableSorting = async (page: Page, columnHeader: string) => {
   const initialValue = await getFirstCellValue();
 
   await header.click();
+  await waitForAllLoadersToDisappear(page);
   await header.click();
+  await waitForAllLoadersToDisappear(page);
 
   const afterFirstClickValue = await getFirstCellValue();
 
   expect(afterFirstClickValue).not.toBe(initialValue);
 
   await header.click();
+  await waitForAllLoadersToDisappear(page);
 
   const afterSecondClickValue = await getFirstCellValue();
 

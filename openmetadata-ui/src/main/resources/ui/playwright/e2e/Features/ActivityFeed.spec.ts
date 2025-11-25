@@ -21,6 +21,7 @@ import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base;
 
@@ -411,23 +412,44 @@ test.describe('Mention notifications in Notification Box', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup users and entities', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await entity.delete(apiContext);
+      await user1.delete(apiContext);
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test('Mention notification shows correct user details in Notification box', async ({
     adminPage,
     user1Page,
   }) => {
     test.slow();
 
-    const entityFQN = 'sample_superset.eta_predictions_performance';
-
     await test.step(
       'Admin user creates a conversation on an entity',
       async () => {
-        await adminPage.goto(`/dashboard/${entityFQN}`);
-
-        await adminPage.waitForLoadState('networkidle');
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await entity.visitEntityPage(adminPage);
+        // Added a safty check on waiting for activity feed count to avoid missing feed
+        // Poll the activity feed tab count from the page until it's a valid non-negative number
+        let count = NaN;
+        const maxRetries = 10;
+        for (let i = 0; i < maxRetries && (isNaN(count) || count < 0); i++) {
+          const countText = await adminPage
+            .getByRole('tab', { name: 'Activity Feeds & Tasks' })
+            .getByTestId('count')
+            .textContent();
+          count = Number(countText ?? '0');
+          if (isNaN(count) || count <= 0) {
+            await adminPage.reload();
+            await adminPage.waitForLoadState('networkidle');
+            await waitForAllLoadersToDisappear(adminPage);
+          }
+        }
 
         await adminPage.getByTestId('activity_feed').click();
         await adminPage.waitForLoadState('networkidle');
@@ -463,11 +485,7 @@ test.describe('Mention notifications in Notification Box', () => {
     );
 
     await test.step('User1 mentions admin user in a reply', async () => {
-      await user1Page.goto(`/dashboard/${entityFQN}`);
-      await user1Page.waitForLoadState('networkidle');
-      await user1Page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await entity.visitEntityPage(user1Page);
 
       await user1Page.getByTestId('activity_feed').click();
       await user1Page.waitForLoadState('networkidle');
