@@ -61,7 +61,6 @@ interface DomainTreeViewProps {
   openAddDomainDrawer?: () => void;
 }
 
-const TREE_CONTAINER_MIN_WIDTH = 320;
 const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
 
@@ -193,11 +192,12 @@ const DomainTreeView = ({
     (
       domains: Domain[],
       resetExpandedItems = false,
-      domainFqn?: string | undefined
+      domainFqn?: string | undefined,
+      shouldLoadChildren = true
     ) => {
       const firstDomain = selectDomain(domains, resetExpandedItems, domainFqn);
 
-      if ((firstDomain?.childrenCount || 0) > 0) {
+      if ((firstDomain?.childrenCount || 0) > 0 && shouldLoadChildren) {
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
@@ -604,7 +604,7 @@ const DomainTreeView = ({
 
       const result = removeDomain(prev);
 
-      applySelection(result, false, parentDomainFqn);
+      applySelection(result, false, parentDomainFqn, false);
 
       return result;
     });
@@ -979,8 +979,11 @@ const DomainTreeView = ({
               },
 
             '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
-              '&:hover, &.Mui-selected': {
+              '&:hover': {
                 backgroundColor: '#0000000A',
+              },
+              '&.Mui-selected': {
+                backgroundColor: theme.palette.allShades?.blue?.[50],
               },
             },
 
@@ -1016,7 +1019,7 @@ const DomainTreeView = ({
                 borderLeft: `1px solid ${BORDER_COLOR}`,
                 backgroundColor: 'transparent',
               },
-            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content:not(.Mui-expanded)':
+            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content:not(:has(.MuiTreeItem-iconContainer:not(:empty)))':
               {
                 marginBottom: 2.5,
               },
