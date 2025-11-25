@@ -116,6 +116,7 @@ Trust the server certificate without validation When using **pyodbc** scheme.
 **Important:**
 - Can be combined with Encrypt Connection option
 - Default value is `false`
+$$
 
 $$section
 ### SSL Configuration $(id="sslConfig")
