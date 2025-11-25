@@ -60,6 +60,7 @@ export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
             color="inherit"
             href="#"
             key={item}
+            sx={{ fontSize: '10px' }}
             underline="hover"
             onClick={handleLinkClick}>
             {item}
