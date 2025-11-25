@@ -50,6 +50,10 @@ export interface ManifestMetadataEntry {
      * What's the schema format for the container, eg. avro, parquet, csv.
      */
     structureFormat?: string;
+    /**
+     * What's the schema formats for the container, eg. avro, parquet, csv.
+     */
+    unstructuredFormats?: string[];
     [property: string]: any;
 }
 
