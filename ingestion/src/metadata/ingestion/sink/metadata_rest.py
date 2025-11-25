@@ -93,7 +93,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.routes import CreateContainerRequest
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    PipelineUsage,
+    TablePipelineObservability,
+)
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -825,6 +828,64 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             pipeline_usage_request=pipeline_usage.usage,
         )
         return Either(right=pipeline_usage.pipeline)
+
+    @_run_dispatch.register
+    def write_table_pipeline_observability(
+        self, record: TablePipelineObservability
+    ) -> Either[Table]:
+        """
+        Send pipeline observability metrics to a table entity.
+
+        This handler processes observability data for tables that are processed by pipelines,
+        tracking metrics like last run status, execution times, and schedule intervals.
+
+        :param record: TablePipelineObservability with table and observability data
+        :return: Either with updated Table or error
+        """
+        try:
+            if not record.observability_data:
+                logger.debug(
+                    f"No pipeline observability data for "
+                    f"{record.table.fullyQualifiedName.root}"
+                )
+                return Either(right=record.table)
+
+            updated_table = self.metadata.add_pipeline_observability(
+                table_id=record.table.id,
+                pipeline_observability=record.observability_data,
+            )
+
+            if updated_table:
+                logger.debug(
+                    f"Successfully added {len(record.observability_data)} pipeline "
+                    f"observability records for {record.table.fullyQualifiedName.root}"
+                )
+                return Either(right=updated_table)
+            else:
+                error = (
+                    f"Failed to add pipeline observability for "
+                    f"{record.table.fullyQualifiedName.root} - API returned None"
+                )
+                return Either(
+                    left=StackTraceError(
+                        name=record.table.fullyQualifiedName.root,
+                        error=error,
+                        stackTrace=None,
+                    )
+                )
+
+        except Exception as exc:
+            error = (
+                f"Error adding pipeline observability for "
+                f"{record.table.fullyQualifiedName.root}: {exc}"
+            )
+            return Either(
+                left=StackTraceError(
+                    name=record.table.fullyQualifiedName.root,
+                    error=error,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _process_deferred_lifecycle_data(self):
         """Process all deferred lifecycle records - called after all tables exist"""

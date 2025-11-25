@@ -101,5 +101,86 @@
         ]
       }
     ]
+  },
+  {
+    "pipeline": "sample_dbtcloud.dbt_staging_shopify",
+    "pipelineStatus": [
+      {
+        "timestamp": 1649582444000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_staging"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_test_staging"
+          }
+        ]
+      },
+      {
+        "timestamp": 1649668844000,
+        "executionStatus": "Failed",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_staging"
+          },
+          {
+            "executionStatus": "Failed",
+            "name": "dbt_test_staging"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_dbtcloud.dbt_transform_orders",
+    "pipelineStatus": [
+      {
+        "timestamp": 1649582444000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_orders"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_test_orders"
+          }
+        ]
+      },
+      {
+        "timestamp": 1649668844000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_orders"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_test_orders"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_dbtcloud.dbt_analytics_customers",
+    "pipelineStatus": [
+      {
+        "timestamp": 1649582444000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_build_analytics"
+          }
+        ]
+      }
+    ]
   }
 ]
