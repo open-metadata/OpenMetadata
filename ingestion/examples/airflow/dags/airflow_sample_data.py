@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import yaml
 from airflow import DAG
@@ -18,8 +18,6 @@ try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
 
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -45,7 +43,11 @@ source:
   sourceConfig: {}
 sink:
   type: metadata-rest
-  config: {}
+  config:
+    api_endpoint: null
+    bulk_sink_batch_size: 1
+    enable_async_pipeline: false
+    async_pipeline_workers: 2
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://openmetadata-server:8585/api
@@ -68,7 +70,7 @@ with DAG(
     "sample_data",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
+    start_date=datetime(2024, 1, 1),
     is_paused_upon_creation=True,
     catchup=False,
 ) as dag:

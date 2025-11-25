@@ -214,7 +214,13 @@ class RedshiftSource(
         self._set_constraint_details(schema_name)
 
         result = self.connection.execute(
-            sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
+            sql.text(
+                REDSHIFT_GET_ALL_RELATION_INFO.format(
+                    view_filter="OR c.relkind IN ('v', 'm')"
+                    if self.source_config.includeViews
+                    else "AND c.relkind NOT IN ('v', 'm')"
+                )
+            ),
             {"schema": schema_name},
         )
 

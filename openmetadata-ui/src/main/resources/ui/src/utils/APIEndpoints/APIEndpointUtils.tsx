@@ -43,6 +43,7 @@ export const getApiEndpointDetailsPageTabs = ({
   handleFeedCount,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   editLineagePermission,
   labelMap,
 }: APIEndpointDetailPageTabProps) => {
@@ -105,7 +106,6 @@ export const getApiEndpointDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
         />
@@ -128,7 +128,7 @@ export const getApiEndpointDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.API_ENDPOINT>
           entityType={EntityType.API_ENDPOINT}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

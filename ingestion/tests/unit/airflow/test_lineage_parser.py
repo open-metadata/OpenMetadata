@@ -108,7 +108,7 @@ def test_get_xlets_from_operator():
     operator = BashOperator(
         task_id="print_date",
         bash_command="date",
-        outlets={"tables": ["A"]},
+        outlets=[{"tables": ["A"]}],
     )
 
     assert get_xlets_from_operator(operator, XLetsMode.INLETS) is None
@@ -120,7 +120,7 @@ def test_get_xlets_from_operator():
     operator = BashOperator(
         task_id="print_date",
         bash_command="date",
-        inlets={"tables": ["A"], "more_tables": ["X"]},
+        inlets=[{"tables": ["A"], "more_tables": ["X"]}],
     )
 
     assert get_xlets_from_operator(operator, xlet_mode=XLetsMode.INLETS) == (
@@ -142,13 +142,13 @@ def test_get_string_xlets_from_dag():
         BashOperator(
             task_id="print_date",
             bash_command="date",
-            inlets={"tables": ["A"]},
+            inlets=[{"tables": ["A"]}],
         )
 
         BashOperator(
             task_id="sleep",
             bash_command=SLEEP,
-            outlets={"tables": ["B"]},
+            outlets=[{"tables": ["B"]}],
         )
 
         assert_xlets_equals(
@@ -165,13 +165,13 @@ def test_get_string_xlets_from_dag():
         BashOperator(
             task_id="print_date",
             bash_command="date",
-            inlets={"tables": ["A", "A"], "this is a bit random": "foo"},
+            inlets=[{"tables": ["A", "A"], "this is a bit random": "foo"}],
         )
 
         BashOperator(
             task_id="sleep",
             bash_command=SLEEP,
-            outlets={"tables": ["B"]},
+            outlets=[{"tables": ["B"]}],
         )
 
         assert_xlets_equals(
@@ -188,20 +188,24 @@ def test_get_string_xlets_from_dag():
         BashOperator(
             task_id="print_date",
             bash_command="date",
-            inlets={
-                "tables": ["A", "A"],
-                "more_tables": ["X", "Y"],
-                "this is a bit random": "foo",
-            },
+            inlets=[
+                {
+                    "tables": ["A", "A"],
+                    "more_tables": ["X", "Y"],
+                    "this is a bit random": "foo",
+                }
+            ],
         )
 
         BashOperator(
             task_id="sleep",
             bash_command=SLEEP,
-            outlets={
-                "tables": ["B"],
-                "more_tables": ["Z"],
-            },
+            outlets=[
+                {
+                    "tables": ["B"],
+                    "more_tables": ["Z"],
+                }
+            ],
         )
 
         assert_xlets_equals(
@@ -225,17 +229,21 @@ def test_get_string_xlets_from_dag():
         BashOperator(
             task_id="print_date",
             bash_command="date",
-            inlets={
-                "tables": ["A", "B"],
-            },
+            inlets=[
+                {
+                    "tables": ["A", "B"],
+                }
+            ],
         )
 
         BashOperator(
             task_id="sleep",
             bash_command=SLEEP,
-            outlets={
-                "tables": ["B"],
-            },
+            outlets=[
+                {
+                    "tables": ["B"],
+                }
+            ],
         )
 
         assert_xlets_equals(

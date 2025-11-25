@@ -264,21 +264,47 @@ public class AppScheduler {
       throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
     }
     try {
-      JobDetail jobDetailScheduled =
-          scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-      JobDetail jobDetailOnDemand =
-          scheduler.getJobDetail(
-              new JobKey(
-                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
-      // Check if the job is already running
-      List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
-      for (JobExecutionContext context : currentJobs) {
-        if ((jobDetailScheduled != null
-                && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
-            || (jobDetailOnDemand != null
-                && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
-          throw new UnhandledServerException(
-              "Job is already running, please wait for it to complete.");
+      // Check if app allows concurrent execution
+      boolean allowConcurrent =
+          application.getAllowConcurrentExecution() != null
+              && application.getAllowConcurrentExecution();
+
+      String jobIdentity;
+      String triggerIdentity;
+
+      if (allowConcurrent && config != null && config.containsKey("ingestionRunner")) {
+        // For apps that allow concurrent execution, use ingestionRunner as unique identifier
+        String ingestionRunner = (String) config.get("ingestionRunner");
+        jobIdentity =
+            String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, ingestionRunner);
+        triggerIdentity =
+            String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, ingestionRunner);
+        LOG.info(
+            "Triggering app {} with concurrent execution support. Unique identity: {} for ingestionRunner: {}",
+            application.getName(),
+            jobIdentity,
+            ingestionRunner);
+      } else {
+        // For apps that don't allow concurrent execution, use standard identity and apply blocking
+        // logic
+        jobIdentity = String.format("%s-%s", application.getName(), ON_DEMAND_JOB);
+        triggerIdentity = String.format("%s-%s", application.getName(), ON_DEMAND_JOB);
+
+        JobDetail jobDetailScheduled =
+            scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+        JobDetail jobDetailOnDemand =
+            scheduler.getJobDetail(new JobKey(jobIdentity, APPS_JOB_GROUP));
+
+        // Check if the job is already running
+        List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+        for (JobExecutionContext context : currentJobs) {
+          if ((jobDetailScheduled != null
+                  && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
+              || (jobDetailOnDemand != null
+                  && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
+            throw new UnhandledServerException(
+                "Job is already running, please wait for it to complete.");
+          }
         }
       }
 
@@ -287,16 +313,16 @@ public class AppScheduler {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
         return;
       }
-      JobDetail newJobDetail =
-          jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
+
+      JobDetail newJobDetail = jobBuilder(application, jobIdentity);
       newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
       // Use the application name for lookup consistency in OmAppJobListener
       newJobDetail.getJobDataMap().put(APP_NAME, application.getName());
       newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
+
       Trigger trigger =
           TriggerBuilder.newTrigger()
-              .withIdentity(
-                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP)
+              .withIdentity(triggerIdentity, APPS_TRIGGER_GROUP)
               .startNow()
               .build();
       scheduler.scheduleJob(newJobDetail, trigger);

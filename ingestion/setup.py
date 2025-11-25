@@ -20,7 +20,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.10.5",
+    "airflow": "apache-airflow==3.1.2",
     "adlfs": "adlfs>=2023.1.0",
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
@@ -63,7 +63,7 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
-    "pydoris": "pydoris==1.0.2",
+    "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
@@ -303,7 +303,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=2.22.0"},
+    "mlflow": {"mlflow-skinny~=3.6.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -377,6 +377,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
+    "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -449,7 +450,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests==2.31.0",
+    "requests>=2.31.0,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],

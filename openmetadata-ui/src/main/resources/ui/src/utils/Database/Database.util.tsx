@@ -125,6 +125,7 @@ export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   schemaInstanceCount,
   feedCount,
   handleFeedCount,
@@ -175,9 +176,7 @@ export const getDatabasePageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -199,7 +198,7 @@ export const getDatabasePageBaseTabs = ({
         <CustomPropertyTable<EntityType.DATABASE>
           entityType={EntityType.DATABASE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

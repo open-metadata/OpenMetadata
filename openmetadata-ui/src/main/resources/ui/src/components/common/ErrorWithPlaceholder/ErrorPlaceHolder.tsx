@@ -12,6 +12,7 @@
  */
 
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import MUICreateErrorPlaceHolder from '../MUICreate/MUICreateErrorPlaceHolder';
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
@@ -34,6 +35,8 @@ const ErrorPlaceHolder = ({
   icon,
   placeholderText,
   permissionValue,
+  buttonTitle,
+  contentMaxWidth,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
@@ -50,6 +53,21 @@ const ErrorPlaceHolder = ({
             size={size}
             onClick={onClick}
           />
+        );
+
+      case ERROR_PLACEHOLDER_TYPE.MUI_CREATE:
+        return (
+          <MUICreateErrorPlaceHolder
+            buttonId={buttonId}
+            buttonTitle={buttonTitle}
+            className={className}
+            contentMaxWidth={contentMaxWidth}
+            heading={heading}
+            icon={icon}
+            permission={permission}
+            onClick={onClick}>
+            {children}
+          </MUICreateErrorPlaceHolder>
         );
 
       case ERROR_PLACEHOLDER_TYPE.ASSIGN:
