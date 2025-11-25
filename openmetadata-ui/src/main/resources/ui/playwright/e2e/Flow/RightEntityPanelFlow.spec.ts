@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { Column } from '../../../src/generated/entity/data/table';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -25,15 +26,6 @@ import {
 } from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
-
-interface ColumnChild {
-  name: string;
-  dataType: string;
-  dataTypeDisplay: string;
-  description?: string;
-  dataLength?: number;
-  children?: ColumnChild[];
-}
 
 const testEntity = new TableClass();
 const testDataProduct = new DataProduct(
@@ -365,7 +357,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    (testEntity.children as ColumnChild[]).forEach(async (child) => {
+    for (const child of testEntity.children as Column[]) {
       const fieldCard = adminPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -390,7 +382,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(fieldDescription).toBeVisible();
       await expect(fieldDescription).toContainText(child.description ?? '');
-    });
+    }
   });
 
   test('Lineage Tab - No Lineage', async ({ adminPage }) => {
@@ -469,11 +461,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(upstreamButton).toHaveText('Upstream');
       await expect(downstreamButton).toHaveText('Downstream');
 
-      // Verify upstream entity card is visible
-      const upstreamCard = lineageContainer
-        .locator('.lineage-item-card')
-        .first();
-
+      // Verify downstream entity card is visible (shown by default)
       const downstreamCard = lineageContainer
         .locator('.lineage-item-card')
         .first();
@@ -490,7 +478,13 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(downstreamIcon).toBeVisible();
 
+      // Click upstream button to view upstream entities
       await upstreamButton.click();
+
+      // Get upstream card after switching to upstream view
+      const upstreamCard = lineageContainer
+        .locator('.lineage-item-card')
+        .first();
 
       await expect(upstreamCard).toBeVisible();
       await expect(upstreamCard).toContainText(
@@ -604,7 +598,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         name: `pw_test_case_failed_${uuid()}`,
         entityLink: `<#E::table::${
           testEntity.entityResponseData?.['fullyQualifiedName']
-        }::columns::${(testEntity.entity?.columns as ColumnChild[])[0].name}>`,
+        }::columns::${(testEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -706,7 +700,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       // Click on failed filter to see failed test cases
       await failedStat.click();
-      await adminPage.waitForTimeout(300);
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Verify test case cards section
       const testCaseCardsSection = tabContent.locator(
@@ -754,13 +750,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(columnDetail).toBeVisible();
       await expect(columnDetail).toContainText(
-        (testEntity.entity?.columns as ColumnChild[])[0].name
+        (testEntity.entity?.columns as Column[])[0].name
       );
 
       // Switch to success filter
 
       await successStat.click();
-      await adminPage.waitForTimeout(300);
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Verify success test case card
       const successCards = testCaseCardsSection.locator('.test-case-card');
@@ -777,8 +775,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(successBadge).toContainText(/success/i);
 
       await abortedStat.click();
-      await adminPage.waitForTimeout(300);
-
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       // Verify aborted test case card
       const abortedCards = testCaseCardsSection.locator('.test-case-card');
 
@@ -852,8 +851,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       if (await incidentsTabButton.isVisible()) {
         await incidentsTabButton.click();
-        await adminPage.waitForTimeout(500);
-
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
         // Verify incidents tab content is visible
         const incidentsTabContent = tabContent.locator(
           '.incidents-tab-content'
@@ -896,7 +896,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
         if (!activeFilter) {
           await newCard.click();
-          await adminPage.waitForTimeout(300);
+          await adminPage.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
         }
 
         // Verify incident cards section (may be empty if no incidents)
@@ -1135,10 +1137,13 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     // Perform search
     await searchBar.fill(firstPropertyName);
-    await adminPage.waitForTimeout(400);
 
     // Verify filtered results
     const visibleProperties = tabContent.locator('.custom-property-item');
+
+    // Wait for filtered results to appear
+    await expect(visibleProperties.first()).toBeVisible();
+
     const count = await visibleProperties.count();
 
     // Should show only matching property
@@ -1151,7 +1156,11 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     // Clear search and verify all properties show again
     await searchBar.clear();
-    await adminPage.waitForTimeout(400);
+
+    // Wait for all properties to reappear
+    await expect(
+      tabContent.locator('.custom-property-item').first()
+    ).toBeVisible();
 
     const allPropertiesCount = await tabContent
       .locator('.custom-property-item')
@@ -1161,7 +1170,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     // Test search with no results
     await searchBar.fill('nonexistent-property-xyz123');
-    await adminPage.waitForTimeout(400);
 
     // Verify no results message appears (uses translation: "No {{entity}} found for {{name}}")
     await expect(
@@ -1179,8 +1187,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
     // Create custom properties for Table entity via API
-    const { customProperties, cleanupUser } =
-      await createCustomPropertyForEntity(apiContext, EntityTypeEndpoint.Table);
+    const { customProperties } = await createCustomPropertyForEntity(
+      apiContext,
+      EntityTypeEndpoint.Table
+    );
 
     // Test different property types
     const propertyTypesToTest = [
@@ -1229,9 +1239,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         });
       }
     }
-
-    // Wait for all changes to be persisted and indexed
-    await adminPage.waitForTimeout(2000);
 
     // Now navigate to explore and verify in right panel
     await navigateToExploreAndSelectTable(adminPage);
@@ -1560,7 +1567,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    (testEntity.children as ColumnChild[]).forEach(async (child) => {
+    for (const child of testEntity.children as Column[]) {
       const fieldCard = dataStewardPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -1585,7 +1592,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
       await expect(fieldDescription).toBeVisible();
       await expect(fieldDescription).toContainText(child.description ?? '');
-    });
+    }
   });
 
   test('Data Steward - Lineage Tab - No Lineage', async ({
@@ -1938,7 +1945,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    (testEntity.children as ColumnChild[]).forEach(async (child) => {
+    for (const child of testEntity.children as Column[]) {
       const fieldCard = dataConsumerPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -1963,7 +1970,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
       await expect(fieldDescription).toBeVisible();
       await expect(fieldDescription).toContainText(child.description ?? '');
-    });
+    }
   });
 
   test('Data Consumer - Lineage Tab - No Lineage', async ({
