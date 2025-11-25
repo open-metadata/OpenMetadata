@@ -313,6 +313,15 @@ export const removeDomain = async (
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   const patchReq = page.waitForResponse(
