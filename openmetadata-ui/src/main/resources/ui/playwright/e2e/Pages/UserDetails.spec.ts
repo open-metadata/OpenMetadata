@@ -174,9 +174,14 @@ test.describe('User with different Roles', () => {
 
     // Wait for the team to be visible in the teams section
     await adminPage
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await adminPage
       .getByTestId('user-profile-teams')
       .getByText(team.responseData.displayName)
-      .waitFor({ state: 'visible', timeout: 10000 });
+      .waitFor({ state: 'visible' });
 
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       team.responseData.displayName
