@@ -119,6 +119,7 @@ import {
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
+  getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getEdgeDataFromEdge,
   getELKLayoutedElements,
@@ -1089,7 +1090,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(true);
     setTracedNodes([]);
-    setTracedColumns([]);
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    if (sourceHandle && targetHandle) {
+      setTracedColumns([sourceHandle, targetHandle]);
+    }
   }, []);
 
   const onLineageEditClick = useCallback(() => {
