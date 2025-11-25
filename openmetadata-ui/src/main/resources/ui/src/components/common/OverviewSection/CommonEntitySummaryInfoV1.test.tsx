@@ -50,6 +50,14 @@ describe('CommonEntitySummaryInfoV1', () => {
     jest.clearAllMocks();
   });
 
+  it('renders no data placeholder when entityInfo is empty', () => {
+    render(
+      <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={[]} />
+    );
+
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+  });
+
   it('renders visible items for the given componentType', () => {
     const { container } = render(
       <CommonEntitySummaryInfoV1

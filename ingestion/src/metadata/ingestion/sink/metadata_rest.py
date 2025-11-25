@@ -94,7 +94,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.routes import CreateContainerRequest
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    PipelineUsage,
+    TablePipelineObservability,
+)
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -133,9 +136,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
-        self._buffer_lock = threading.Lock()
         self.buffer: list[BaseModel] = []
-        self._lifecycle_lock = threading.Lock()
         self.deferred_lifecycle_records: list[OMetaLifeCycleData] = []
         self.deferred_lifecycle_processed = False
 
@@ -207,21 +208,20 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         ):
             return self.write_create_single_request(entity_request)
 
-        with self._buffer_lock:
-            self.buffer.append(entity_request)
-            try:
-                if len(self.buffer) >= self.config.bulk_sink_batch_size:
-                    return self._flush_buffer()
-                return Either(right=None)
-            except LimitsException as _:
-                self.limit_reached.add(type(entity_request).__name__)
-                return Either(
-                    left=StackTraceError(
-                        name=type(entity_request).__name__,
-                        error=f"Limit reached for {type(entity_request).__name__}",
-                        stackTrace=None,
-                    )
+        self.buffer.append(entity_request)
+        try:
+            if len(self.buffer) >= self.config.bulk_sink_batch_size:
+                return self._flush_buffer()
+            return Either(right=None)
+        except LimitsException as _:
+            self.limit_reached.add(type(entity_request).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__,
+                    error=f"Limit reached for {type(entity_request).__name__}",
+                    stackTrace=None,
                 )
+            )
 
     def write_create_single_request(self, entity_request) -> Either[Entity]:
         try:
@@ -703,8 +703,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
-        with self._lifecycle_lock:
-            self.deferred_lifecycle_records.append(record)
+        self.deferred_lifecycle_records.append(record)
         return Either(right=None)
 
     @_run_dispatch.register
@@ -842,74 +841,130 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
         return Either(right=pipeline_usage.pipeline)
 
+    @_run_dispatch.register
+    def write_table_pipeline_observability(
+        self, record: TablePipelineObservability
+    ) -> Either[Table]:
+        """
+        Send pipeline observability metrics to a table entity.
+
+        This handler processes observability data for tables that are processed by pipelines,
+        tracking metrics like last run status, execution times, and schedule intervals.
+
+        :param record: TablePipelineObservability with table and observability data
+        :return: Either with updated Table or error
+        """
+        try:
+            if not record.observability_data:
+                logger.debug(
+                    f"No pipeline observability data for "
+                    f"{record.table.fullyQualifiedName.root}"
+                )
+                return Either(right=record.table)
+
+            updated_table = self.metadata.add_pipeline_observability(
+                table_id=record.table.id,
+                pipeline_observability=record.observability_data,
+            )
+
+            if updated_table:
+                logger.debug(
+                    f"Successfully added {len(record.observability_data)} pipeline "
+                    f"observability records for {record.table.fullyQualifiedName.root}"
+                )
+                return Either(right=updated_table)
+            else:
+                error = (
+                    f"Failed to add pipeline observability for "
+                    f"{record.table.fullyQualifiedName.root} - API returned None"
+                )
+                return Either(
+                    left=StackTraceError(
+                        name=record.table.fullyQualifiedName.root,
+                        error=error,
+                        stackTrace=None,
+                    )
+                )
+
+        except Exception as exc:
+            error = (
+                f"Error adding pipeline observability for "
+                f"{record.table.fullyQualifiedName.root}: {exc}"
+            )
+            return Either(
+                left=StackTraceError(
+                    name=record.table.fullyQualifiedName.root,
+                    error=error,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def _process_deferred_lifecycle_data(self):
         """Process all deferred lifecycle records - called after all tables exist"""
         if self.deferred_lifecycle_processed:
             logger.debug("Deferred lifecycle processing already completed, skipping")
             return
 
-        with self._lifecycle_lock:
-            if not self.deferred_lifecycle_records:
-                return
+        if not self.deferred_lifecycle_records:
+            return
 
-            logger.info(
-                f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
-            )
+        logger.info(
+            f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records"
+        )
 
-            success_count = 0
-            error_count = 0
+        success_count = 0
+        error_count = 0
 
-            for record in self.deferred_lifecycle_records:
-                try:
-                    entity = self.metadata.get_by_name(
-                        entity=record.entity, fqn=record.entity_fqn
+        for record in self.deferred_lifecycle_records:
+            try:
+                entity = self.metadata.get_by_name(
+                    entity=record.entity, fqn=record.entity_fqn
+                )
+                if entity:
+                    self.metadata.patch_life_cycle(
+                        entity=entity, life_cycle=record.life_cycle
                     )
-                    if entity:
-                        self.metadata.patch_life_cycle(
-                            entity=entity, life_cycle=record.life_cycle
-                        )
-                        success_count += 1
-                    else:
-                        logger.warning(
-                            f"Table {record.entity_fqn} not found even after bulk processing"
-                        )
-                        error_count += 1
-                        self.status.failed(
-                            StackTraceError(
-                                name=record.entity_fqn,
-                                error=f"Entity not found: {record.entity_fqn}",
-                                stackTrace=None,
-                            )
-                        )
-                except Exception as exc:
-                    logger.error(
-                        f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                    success_count += 1
+                else:
+                    logger.warning(
+                        f"Table {record.entity_fqn} not found even after bulk processing"
                     )
-                    logger.debug(traceback.format_exc())
                     error_count += 1
                     self.status.failed(
                         StackTraceError(
                             name=record.entity_fqn,
-                            error=f"Lifecycle processing error: {exc}",
-                            stackTrace=traceback.format_exc(),
+                            error=f"Entity not found: {record.entity_fqn}",
+                            stackTrace=None,
                         )
                     )
+            except Exception as exc:
+                logger.error(
+                    f"Error processing lifecycle for {record.entity_fqn}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
+                error_count += 1
+                self.status.failed(
+                    StackTraceError(
+                        name=record.entity_fqn,
+                        error=f"Lifecycle processing error: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
-            logger.info(
-                f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
-            )
+        logger.info(
+            f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed"
+        )
 
-            self.deferred_lifecycle_processed = True
+        self.deferred_lifecycle_processed = True
 
     def close(self):
         """
         Flush any remaining buffered tables and stop worker threads
         """
         # Flush all thread-local buffers
-        with self._buffer_lock:
-            if self.buffer:
-                logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
-                self._flush_buffer()
+        if self.buffer:
+            logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
+            self._flush_buffer()
 
         # Process deferred lifecycle data now that all tables exist
         self._process_deferred_lifecycle_data()
