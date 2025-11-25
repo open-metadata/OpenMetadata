@@ -30,7 +30,6 @@ from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.elements import Label
 
-from ingestion.build.lib.metadata.profiler.metrics.static.count import Count
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     SystemProfile,
