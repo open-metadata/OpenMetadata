@@ -145,4 +145,6 @@ $$section
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
 When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes. You can also configure these through the corresponding fields.
+
+When using the pytds connection scheme with a CA certificate, you might need to specify validate_host: false in the connection arguments.
 $$
