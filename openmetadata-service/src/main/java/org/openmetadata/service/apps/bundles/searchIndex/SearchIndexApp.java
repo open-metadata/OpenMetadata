@@ -265,6 +265,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void finalizeAllEntityReindex(boolean finalSuccess) {
+    if (recreateIndexHandler == null || recreateContext == null) {
+      return;
+    }
+
     try {
       recreateContext
           .getEntities()
