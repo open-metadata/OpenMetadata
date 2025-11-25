@@ -48,6 +48,10 @@ export interface Pipeline {
      */
     domains?: EntityReference[];
     /**
+     * End date of the workflow.
+     */
+    endDate?: Date;
+    /**
      * Status of the Pipeline.
      */
     entityStatus?: EntityStatus;
@@ -71,6 +75,10 @@ export interface Pipeline {
      * Unique identifier that identifies a pipeline instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */

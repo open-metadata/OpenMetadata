@@ -291,6 +291,7 @@ export const validateValueForProperty = async (data: {
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
+    // For markdown, remove * and _ as they are formatting characters
     await expect(
       container.locator(descriptionBoxReadOnly).last()
     ).toContainText(value.replace(/\*|_/gi, ''));
@@ -302,7 +303,8 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
+    // For other types (string, integer, number, duration), match exact value without transformation
+    await expect(container.getByTestId('value')).toContainText(value);
   }
 };
 
@@ -446,7 +448,7 @@ export const createCustomPropertyForEntity = async (
 
   // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
   const userNames = users.reduce((acc, user, index) => {
-    acc[`user${index + 1}`] = user.getUserName();
+    acc[`user${index + 1}`] = user.getUserDisplayName();
 
     return acc;
   }, {} as Record<string, string>);
@@ -570,7 +572,7 @@ export const addCustomPropertiesForEntity = async ({
 }: {
   page: Page;
   propertyName: string;
-  customPropertyData: { description: string; entityApiType: string };
+  customPropertyData: { description: string; entityApiType?: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
   formatConfig?: string;

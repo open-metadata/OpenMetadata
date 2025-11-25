@@ -73,6 +73,10 @@ export interface Worksheet {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -767,6 +771,11 @@ export interface ColumnProfile {
  * Cardinality distribution showing top categories with an 'Others' bucket.
  */
 export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
     /**
      * List of category names including 'Others'.
      */

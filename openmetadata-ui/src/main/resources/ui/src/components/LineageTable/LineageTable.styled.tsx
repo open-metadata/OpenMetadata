@@ -25,12 +25,10 @@ export const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
   ({ theme }) => ({
     '& .MuiPaper-root': {
       width: 'auto',
-      /* Shadows/shadow-xs */
-      boxShadow: theme.shadows[1],
+
       '& .MuiMenu-list': {
         padding: '0',
         borderRadius: '8px',
-        border: '1px solid #EAECF5',
       },
       '& .MuiMenuItem-root': {
         margin: '0',

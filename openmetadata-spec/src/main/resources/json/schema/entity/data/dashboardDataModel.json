@@ -111,6 +111,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this data model entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -208,8 +212,7 @@
     },
     "entityStatus": {
       "description": "Status of the DashboardDataModel.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

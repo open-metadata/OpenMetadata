@@ -28,6 +28,10 @@ export interface Domain {
      */
     children?: EntityReference[];
     /**
+     * Count of all nested children domains under this domain
+     */
+    childrenCount?: number;
+    /**
      * Description of the Domain.
      */
     description: string;
@@ -63,6 +67,10 @@ export interface Domain {
      * Unique ID of the Domain
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */

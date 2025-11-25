@@ -13,6 +13,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
@@ -400,14 +401,53 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
+      boolean isAliasExist = client.indices().existsAlias(b -> b.name(aliasName)).value();
+      if (!isAliasExist) {
+        LOG.warn("Alias '{}' does not exist. Returning empty index set.", aliasName);
+        return indices;
+      }
+
       GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
       GetAliasResponse response = client.indices().getAlias(request);
 
       indices.addAll(response.result().keySet());
 
       LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
+    } catch (OpenSearchException osEx) {
+      if (osEx.status() == 404) {
+        LOG.warn("Alias '{}' not found (404). Returning empty set.", aliasName);
+        return indices;
+      }
+
+      // Other errors should not be masked
+      LOG.error(
+          "Unexpected OpensearchException while getting alias {}: {}",
+          aliasName,
+          osEx.getMessage(),
+          osEx);
     } catch (Exception e) {
       LOG.error("Failed to get indices for alias {} due to", aliasName, e);
+    }
+    return indices;
+  }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot list indices by prefix.");
+      return indices;
+    }
+    try {
+      String pattern = prefix + "*";
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      indices.addAll(response.result().keySet());
+
+      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+    } catch (Exception e) {
+      LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
   }

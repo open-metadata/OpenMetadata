@@ -22,7 +22,6 @@ import {
   startCase,
 } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import QueryString from 'qs';
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
@@ -32,7 +31,7 @@ import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
-import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   EntityServiceUnion,
@@ -285,7 +284,14 @@ const getCommonOverview = (
       ? [
           {
             name: i18next.t('label.owner-plural'),
-            value: <OwnerLabel hasPermission={false} owners={owners} />,
+            value: (
+              <OwnerLabel
+                hasPermission={false}
+                isCompactView={false}
+                owners={owners}
+                showLabel={false}
+              />
+            ),
             visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
           },
         ]
@@ -415,11 +421,9 @@ const getTableOverview = (
         pathname: getEntityDetailsPath(
           EntityType.TABLE,
           fullyQualifiedName ?? '',
-          EntityTabs.PROFILER
+          EntityTabs.PROFILER,
+          ProfilerTabPath.INCIDENTS
         ),
-        search: QueryString.stringify({
-          activeTab: TableProfilerTab.INCIDENTS,
-        }),
       },
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -957,9 +961,9 @@ const getDatabaseOverview = (databaseDetails: Database) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName || NO_DATA,
+      value: service?.fullyQualifiedName || NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.DATABASE_SERVICES
       ),
       isLink: true,
@@ -998,9 +1002,9 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.DATABASE_SERVICES
       ),
       isLink: true,
@@ -1008,10 +1012,10 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     },
     {
       name: i18next.t('label.database'),
-      value: database.fullyQualifiedName ?? NO_DATA,
+      value: database?.fullyQualifiedName ?? NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE,
-        database.fullyQualifiedName ?? ''
+        database?.fullyQualifiedName ?? ''
       ),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -2395,7 +2399,7 @@ export const getEntityBreadcrumbs = (
           url:
             (entity as EventSubscription).alertType === AlertType.Observability
               ? ROUTES.OBSERVABILITY_ALERTS
-              : ROUTES.NOTIFICATION_ALERTS,
+              : ROUTES.NOTIFICATION_ALERT_LIST,
         },
         {
           name: entity.name,

@@ -76,6 +76,10 @@ export interface DataContract {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Incremental change description of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -217,6 +221,10 @@ export interface ContractUpdate {
      * Description of changes made to the contract.
      */
     changeDescription?: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Timestamp when the contract was updated.
      */
@@ -684,6 +692,11 @@ export interface ColumnProfile {
  * Cardinality distribution showing top categories with an 'Others' bucket.
  */
 export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
     /**
      * List of category names including 'Others'.
      */

@@ -8,9 +8,11 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -82,6 +84,38 @@ EXPECTED_SNOWFLAKE_RESULT = [
     }
 ]
 
+MOCK_DATABRICKS_EXP = """let
+    Source = Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog = "", Database = ""]),
+    test_database = Source{[Name="DEMO_STAGE",Kind="Database"]}[Data],
+    test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
+    test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
+in 
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+
+EXPECTED_DATABRICKS_RESULT = [
+    {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
+]
+
+MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "WITH test as (select) Select test", null, [EnableFolding=true])
+in
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_INVALID_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], null, [EnableFolding=true])
+in
+    Source"""
+
 mock_config = {
     "source": {
         "type": "powerbi",
@@ -107,6 +141,7 @@ mock_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
+            "enableVersionValidation": "false",
             "securityConfig": {
                 "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
                 "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
@@ -164,6 +199,7 @@ MOCK_USER_2_ENITYTY_REF_LIST = EntityReferenceList(
 )
 
 MOCK_SNOWFLAKE_EXP_V2 = 'let\n    Source = Snowflake.Databases(Snowflake_URL,Warehouse,[Role=Role]),\n    Database = Source{[Name=DB,Kind="Database"]}[Data],\n    DB_Schema = Database{[Name=Schema,Kind="Schema"]}[Data],\n    Table = DB_Schema{[Name="CUSTOMER_TABLE",Kind="Table"]}[Data],\n    #"Andere entfernte Spalten" = Table.SelectColumns(Table,{"ID_BERICHTSMONAT", "ID_AKQUISE_VERMITTLER", "ID_AKQUISE_OE", "ID_SPARTE", "ID_RISIKOTRAEGER", "ID_KUNDE", "STUECK", "BBE"})\nin\n    #"Andere entfernte Spalten"'
+MOCK_SNOWFLAKE_EXP_V3 = 'let\n    Source = Snowflake.Databases(Snowflake_URL,Warehouse,[Role=Role]),\n    Database = Source{[Name=P_Database_name,Kind="Database"]}[Data],\n    DB_Schema = Database{[Name=P_Schema_name,Kind="Schema"]}[Data],\n    Table = DB_Schema{[Name="CUSTOMER_TABLE",Kind="Table"]}[Data],\n    #"Andere entfernte Spalten" = Table.SelectColumns(Table,{"ID_BERICHTSMONAT", "ID_AKQUISE_VERMITTLER", "ID_AKQUISE_OE", "ID_SPARTE", "ID_RISIKOTRAEGER", "ID_KUNDE", "STUECK", "BBE"})\nin\n    #"Andere entfernte Spalten"'
 EXPECTED_SNOWFLAKE_RESULT_V2 = [
     {
         "database": "MY_DB",
@@ -196,6 +232,23 @@ MOCK_DATASET_FROM_WORKSPACE_V2 = Dataset(
         },
         {
             "name": "Schema",
+        },
+    ],
+)
+MOCK_DATASET_FROM_WORKSPACE_V3 = Dataset(
+    id="testdataset",
+    name="Test Dataset",
+    tables=[],
+    expressions=[
+        {
+            "name": "P_Database_name",
+            "description": "The parameter contains the name of the database",
+            "expression": '"MANUFACTURING_BUSINESS_DATA_PRODUCTS" meta [IsParameterQuery=true, List={"DEVELOPMENT_BUSINESS_DATA_PRODUCTS", "MANUFACTURING_BUSINESS_DATA_PRODUCTS"}, DefaultValue="DEVELOPMENT_BUSINESS_DATA_PRODUCTS", Type="Text", IsParameterQueryRequired=true]',
+        },
+        {
+            "name": "P_Schema_name",
+            "description": "The parameter contains the schema name",
+            "expression": '"INVENTORY_BY_PURPOSE" meta [IsParameterQuery=true, List={"MVANGENE_INVENTORY_BY_PURPOSE", "INVENTORY_BY_PURPOSE", "ANORRBRI_INVENTORY_BY_PURPOSE"}, DefaultValue="MVANGENE_INVENTORY_BY_PURPOSE", Type="Text", IsParameterQueryRequired=true]',
         },
     ],
 )
@@ -279,6 +332,32 @@ class PowerBIUnitTest(TestCase):
         result_table = result[0]
         self.assertEqual(result_table.get("schema"), "STG")
         self.assertEqual(result_table.get("table"), "STATIC_AOPANDLE")
+
+        # Test with valid databricks native source
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertIsNone(result)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertIsNone(result)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
@@ -398,6 +477,23 @@ class PowerBIUnitTest(TestCase):
             table, MOCK_DASHBOARD_DATA_MODEL
         )
         self.assertEqual(result, None)
+
+    @pytest.mark.order(11)
+    @patch.object(
+        PowerbiSource,
+        "_fetch_dataset_from_workspace",
+        return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
+    )
+    def test_parse_dataset_expressions_v2(self, *_):
+        # test with valid snowflake source but no
+        # dataset expression value
+        result = self.powerbi._parse_snowflake_source(
+            MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL
+        )
+        result = result[0]
+        self.assertEqual(result["database"], "MANUFACTURING_BUSINESS_DATA_PRODUCTS")
+        self.assertEqual(result["schema"], "INVENTORY_BY_PURPOSE")
+        self.assertEqual(result["table"], "CUSTOMER_TABLE")
 
     @pytest.mark.order(4)
     @patch.object(
@@ -577,3 +673,71 @@ class PowerBIUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    @pytest.mark.order(12)
+    def test_create_dataset_upstream_dataset_column_lineage(self):
+        """
+        Test column lineage creation between dataset and upstream dataset
+        """
+        upstream_entity = DashboardDataModel(
+            name="upstream_dataset",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="orders",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="order_id",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.upstream_dataset.orders.order_id",
+                        ),
+                        Column(
+                            name="amount",
+                            dataType=DataType.FLOAT,
+                            fullyQualifiedName="service.upstream_dataset.orders.amount",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        downstream_entity = DashboardDataModel(
+            name="downstream_dataset",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="orders",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="order_id",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.downstream_dataset.orders.order_id",
+                        ),
+                        Column(
+                            name="amount",
+                            dataType=DataType.FLOAT,
+                            fullyQualifiedName="service.downstream_dataset.orders.amount",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._create_dataset_upstream_dataset_column_lineage(
+            datamodel_entity=downstream_entity,
+            upstream_dataset_entity=upstream_entity,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], ColumnLineage)
+        self.assertEqual(
+            result[0].fromColumns[0].root, "service.upstream_dataset.orders.order_id"
+        )
+        self.assertEqual(
+            result[0].toColumn.root, "service.downstream_dataset.orders.order_id"
+        )

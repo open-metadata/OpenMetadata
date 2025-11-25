@@ -22,18 +22,23 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { selectOption } from '../../utils/advancedSearch';
+import { selectOption, selectRange } from '../../utils/advancedSearch';
 import {
   assignDataProduct,
-  assignDomain,
+  assignSingleSelectDomain,
   redirectToHomePage,
   removeDataProduct,
-  removeDomain,
+  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   performInitialStepForRules,
   saveAndTriggerDataContractValidation,
 } from '../../utils/dataContracts';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from '../../utils/dateTime';
 import {
   addOwner,
   removeOwnersFromList,
@@ -241,7 +246,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       async () => {
         await removeOwnersFromList({
           page,
-          ownerNames: [user2.getUserName()],
+          ownerNames: [user2.getUserDisplayName()],
           endpoint: EntityTypeEndpoint.Table,
           dataTestId: 'data-assets-header',
         });
@@ -358,7 +363,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       async () => {
         await removeOwnersFromList({
           page,
-          ownerNames: [user2.getUserName()],
+          ownerNames: [user2.getUserDisplayName()],
           endpoint: EntityTypeEndpoint.Table,
           dataTestId: 'data-assets-header',
         });
@@ -473,7 +478,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       async () => {
         await removeOwnersFromList({
           page,
-          ownerNames: [user2.getUserName()],
+          ownerNames: [user2.getUserDisplayName()],
           endpoint: EntityTypeEndpoint.Table,
           dataTestId: 'data-assets-header',
         });
@@ -1132,7 +1137,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await assignDomain(page, domain1.responseData);
+        await assignSingleSelectDomain(page, domain1.responseData);
 
         await performInitialStepForRules(page);
       }
@@ -1178,8 +1183,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with Is condition should failed', async () => {
-      await removeDomain(page, domain1.responseData);
-      await assignDomain(page, domain2.responseData);
+      await removeSingleSelectDomain(page, domain1.responseData);
+      await assignSingleSelectDomain(page, domain2.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1223,7 +1228,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain1.responseData);
+        await assignSingleSelectDomain(page, domain1.responseData);
 
         await performInitialStepForRules(page);
       }
@@ -1269,8 +1274,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsNot condition should failed', async () => {
-      await removeDomain(page, domain1.responseData);
-      await assignDomain(page, domain2.responseData);
+      await removeSingleSelectDomain(page, domain1.responseData);
+      await assignSingleSelectDomain(page, domain2.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1315,7 +1320,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await assignDomain(page, domain1.responseData);
+        await assignSingleSelectDomain(page, domain1.responseData);
 
         await performInitialStepForRules(page);
       }
@@ -1361,8 +1366,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with AnyIn condition should failed', async () => {
-      await removeDomain(page, domain1.responseData);
-      await assignDomain(page, domain2.responseData);
+      await removeSingleSelectDomain(page, domain1.responseData);
+      await assignSingleSelectDomain(page, domain2.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1406,7 +1411,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain2.responseData);
+        await assignSingleSelectDomain(page, domain2.responseData);
         await performInitialStepForRules(page);
       }
     );
@@ -1451,8 +1456,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with NotIn condition should failed', async () => {
-      await removeDomain(page, domain2.responseData);
-      await assignDomain(page, domain1.responseData);
+      await removeSingleSelectDomain(page, domain2.responseData);
+      await assignSingleSelectDomain(page, domain1.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1496,7 +1501,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain1.responseData);
+        await assignSingleSelectDomain(page, domain1.responseData);
         await performInitialStepForRules(page);
       }
     );
@@ -1535,7 +1540,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsSet condition should failed', async () => {
-      await removeDomain(page, domain1.responseData);
+      await removeSingleSelectDomain(page, domain1.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1622,7 +1627,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step(
       'Domain with IsNotSet condition should failed',
       async () => {
-        await assignDomain(page, domain1.responseData);
+        await assignSingleSelectDomain(page, domain1.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
@@ -1713,7 +1718,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Non-Correct entity version should failed', async () => {
-      await assignDomain(page, domain.responseData);
+      await assignSingleSelectDomain(page, domain.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1806,7 +1811,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step(
       'Contract with is_not condition for version should failed',
       async () => {
-        await assignDomain(page, domain.responseData);
+        await assignSingleSelectDomain(page, domain.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
@@ -1900,7 +1905,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step(
       'Contract with < condition for version should failed',
       async () => {
-        await assignDomain(page, domain.responseData);
+        await assignSingleSelectDomain(page, domain.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
@@ -1995,7 +2000,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step(
       'Contract with > condition for version should passed',
       async () => {
-        await assignDomain(page, domain.responseData);
+        await assignSingleSelectDomain(page, domain.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
@@ -2091,7 +2096,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step(
       'Contract with <= condition for version should failed',
       async () => {
-        await assignDomain(page, domain.responseData);
+        await assignSingleSelectDomain(page, domain.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
@@ -2188,7 +2193,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step(
       'Contract with >= condition for version should failed',
       async () => {
-        await assignDomain(page, domain.responseData);
+        await assignSingleSelectDomain(page, domain.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
@@ -2252,12 +2257,10 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignSingleSelectDomain(page, domain.responseData);
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2311,11 +2314,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       });
 
       await removeDataProduct(page, createdDataProducts[0].responseData);
-      await assignDataProduct(
-        page,
-        domain.responseData,
-        createdDataProducts[1].responseData
-      );
+      await assignDataProduct(page, domain.responseData, [
+        createdDataProducts[1].responseData,
+      ]);
 
       await page.click('[data-testid="contract"]');
       await page.waitForSelector('[data-testid="loader"]', {
@@ -2364,12 +2365,10 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignSingleSelectDomain(page, domain.responseData);
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2428,11 +2427,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         });
 
         await removeDataProduct(page, createdDataProducts[1].responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
 
         await page.click('[data-testid="contract"]');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -2482,12 +2479,10 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignSingleSelectDomain(page, domain.responseData);
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2546,11 +2541,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         });
 
         await removeDataProduct(page, createdDataProducts[1].responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
 
         await page.click('[data-testid="contract"]');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -2599,12 +2592,10 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignSingleSelectDomain(page, domain.responseData);
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2662,11 +2653,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         });
 
         await removeDataProduct(page, createdDataProducts[1].responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[0].responseData
-        );
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[0].responseData,
+        ]);
 
         await page.click('[data-testid="contract"]');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -2716,12 +2705,10 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
-        await assignDomain(page, domain.responseData);
-        await assignDataProduct(
-          page,
-          domain.responseData,
-          createdDataProducts[1].responseData
-        );
+        await assignSingleSelectDomain(page, domain.responseData);
+        await assignDataProduct(page, domain.responseData, [
+          createdDataProducts[1].responseData,
+        ]);
         await performInitialStepForRules(page);
       }
     );
@@ -2871,13 +2858,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
             state: 'detached',
           });
 
-          await assignDomain(page, domain.responseData);
+          await assignSingleSelectDomain(page, domain.responseData);
 
-          await assignDataProduct(
-            page,
-            domain.responseData,
-            createdDataProducts[1].responseData
-          );
+          await assignDataProduct(page, domain.responseData, [
+            createdDataProducts[1].responseData,
+          ]);
 
           await page.click('[data-testid="contract"]');
           await page.waitForSelector('[data-testid="loader"]', {
@@ -3517,6 +3502,650 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         await expect(
           page.getByTestId('data-contract-latest-result-btn')
         ).not.toBeVisible();
+      }
+    );
+  });
+});
+
+test.describe('Data Contracts Semantics Rule Updated on', () => {
+  test('Validate UpdatedOn Rule Between', async ({ page, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Between condition should passed',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Updated on',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.between
+        );
+
+        const startDate = customFormatDateTime(
+          getCurrentMillis(),
+          'dd.MM.yyyy'
+        );
+        const endDate = customFormatDateTime(
+          getEpochMillisForFutureDays(5),
+          'dd.MM.yyyy'
+        );
+
+        await selectRange(page, ruleLocator, startDate, endDate);
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Between condition should failed',
+      async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const newStart = customFormatDateTime(
+          getEpochMillisForFutureDays(1),
+          'dd.MM.yyyy'
+        );
+        page.getByRole('textbox', { name: 'Enter date from' }).fill(newStart);
+        await page.press('.ant-picker-input-active input', 'Enter');
+        await page.press('.ant-picker-input-active input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
+      }
+    );
+  });
+
+  test('Validate UpdatedOn Rule Not_Between', async ({ page, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Between condition should failed',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Updated on',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.not_between
+        );
+
+        const startDate = customFormatDateTime(
+          getCurrentMillis(),
+          'dd.MM.yyyy'
+        );
+        const endDate = customFormatDateTime(
+          getEpochMillisForFutureDays(5),
+          'dd.MM.yyyy'
+        );
+
+        await selectRange(page, ruleLocator, startDate, endDate);
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Between condition should passed',
+      async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const newStart = customFormatDateTime(
+          getEpochMillisForFutureDays(1),
+          'dd.MM.yyyy'
+        );
+        await page
+          .locator('.group')
+          .nth(0)
+          .locator('.rule--value .ant-picker-range')
+          .click();
+
+        await page.waitForSelector('.ant-picker-dropdown-range', {
+          state: 'visible',
+        });
+
+        await page
+          .getByRole('textbox', { name: 'Enter date from' })
+          .fill(newStart);
+        await page.press('.ant-picker-input-active input', 'Enter');
+        await page.press('.ant-picker-input-active input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+  });
+
+  test('Validate UpdatedOn Rule Less than', async ({ page, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Less than condition should failed',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Updated on',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.less
+        );
+
+        const date = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+
+        await ruleLocator.locator('.rule--value .ant-picker').click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(date);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Less than condition should passed',
+      async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const newDate = customFormatDateTime(
+          getEpochMillisForFutureDays(1),
+          'dd.MM.yyyy'
+        );
+
+        await page
+          .locator('.group')
+          .nth(0)
+          .locator('.rule--value .ant-picker')
+          .click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(newDate);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+  });
+
+  test('Validate UpdatedOn Rule Greater than', async ({ page, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Greater than condition should failed',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Updated on',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
+        );
+
+        const date = customFormatDateTime(
+          getEpochMillisForFutureDays(1),
+          'dd.MM.yyyy'
+        );
+
+        await ruleLocator.locator('.rule--value .ant-picker').click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(date);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Greater than condition should passed',
+      async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const newDate = customFormatDateTime(
+          getEpochMillisForFutureDays(-1),
+          'dd.MM.yyyy'
+        );
+
+        await page
+          .locator('.group')
+          .nth(0)
+          .locator('.rule--value .ant-picker')
+          .click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(newDate);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+  });
+
+  test('Validate UpdatedOn Rule Less than Equal', async ({ page, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with LessThanEqual condition should passed',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Updated on',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
+        );
+
+        const date = customFormatDateTime(
+          getEpochMillisForFutureDays(1),
+          'dd.MM.yyyy'
+        );
+
+        await ruleLocator.locator('.rule--value .ant-picker').click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(date);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with Less than condition should failed',
+      async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const newDate = customFormatDateTime(
+          getEpochMillisForFutureDays(-1),
+          'dd.MM.yyyy'
+        );
+
+        await page
+          .locator('.group')
+          .nth(0)
+          .locator('.rule--value .ant-picker')
+          .click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(newDate);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
+      }
+    );
+  });
+
+  test('Validate UpdatedOn Rule Greater Than Equal', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with GreaterThanEqual condition should passed',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Updated on',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
+        );
+
+        const date = customFormatDateTime(
+          getEpochMillisForFutureDays(-1),
+          'dd.MM.yyyy'
+        );
+
+        await ruleLocator.locator('.rule--value .ant-picker').click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(date);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+
+    await test.step(
+      'UpdatedOn with GreaterThanEqual condition should failed',
+      async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const newDate = customFormatDateTime(
+          getEpochMillisForFutureDays(1),
+          'dd.MM.yyyy'
+        );
+
+        await page
+          .locator('.group')
+          .nth(0)
+          .locator('.rule--value .ant-picker')
+          .click();
+        await page.waitForSelector('.ant-picker-dropdown', {
+          state: 'visible',
+        });
+        await page.locator('.ant-picker-input input').fill(newDate);
+        await page.press('.ant-picker-input input', 'Enter');
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
       }
     );
   });

@@ -51,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -59,6 +60,9 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
+    parse_databricks_native_query_source,
+)
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     Dataset,
@@ -83,6 +87,7 @@ logger = ingestion_logger()
 
 OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
+DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -311,7 +316,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/datasets/{dataset_id}?experience=power-bi"
+            f"{workspace_id}/datasets/{dataset_id}/details?experience=power-bi"
         )
 
     def _get_dataflow_url(self, workspace_id: str, dataflow_id: str) -> str:
@@ -761,7 +766,7 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_snowflake_regex_exp(
+    def _parse_expression_regex_exp(
         self, match: re.Match, datamodel_entity: DashboardDataModel
     ) -> Optional[str]:
         """parse snowflake regex expression"""
@@ -782,7 +787,7 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             continue
                         if dexpression.name == match.group(2):
-                            pattern = r'DefaultValue="([^"]+)"'
+                            pattern = r'^"([^"]+)"\s+meta'
                             kw_match = re.search(pattern, dexpression.expression)
                             if kw_match:
                                 return kw_match.group(1)
@@ -959,6 +964,59 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_catalog_table_definition(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
+        """parse catalog table definition"""
+        db_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
+        )
+        schema_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression
+        )
+        table_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
+        )
+        view_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
+        )
+        try:
+            database = self._parse_expression_regex_exp(db_match, datamodel_entity)
+            schema = self._parse_expression_regex_exp(schema_match, datamodel_entity)
+            table = self._parse_expression_regex_exp(table_match, datamodel_entity)
+            view = self._parse_expression_regex_exp(view_match, datamodel_entity)
+            if table or view:  # at least table or view should be present
+                return [
+                    {
+                        "database": database,
+                        "schema": schema,
+                        "table": table if table else view,
+                    }
+                ]
+        except Exception as exc:
+            logger.debug(f"Error to parse databricks table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_databricks_source(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
+        if "Databricks.Catalogs" not in source_expression:
+            return None
+        dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
+        if dataset and dataset.expressions:
+            try:
+                if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
+                    return parse_databricks_native_query_source(source_expression)
+                else:
+                    return self._parse_catalog_table_definition(
+                        source_expression, datamodel_entity
+                    )
+            except Exception as exc:
+                logger.debug(f"Error to parse databricks table source: {exc}")
+                logger.debug(traceback.format_exc())
+        return None
+
     def _parse_snowflake_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
     ) -> Optional[List[dict]]:
@@ -969,33 +1027,9 @@ class PowerbiSource(DashboardServiceSource):
             if SNOWFLAKE_QUERY_EXPRESSION_KW in source_expression:
                 # snowflake query source identified
                 return self._parse_snowflake_query_source(source_expression)
-            db_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
+            return self._parse_catalog_table_definition(
+                source_expression, datamodel_entity
             )
-            schema_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression
-            )
-            table_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
-            )
-            view_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
-            )
-
-            database = self._parse_snowflake_regex_exp(db_match, datamodel_entity)
-            schema = self._parse_snowflake_regex_exp(schema_match, datamodel_entity)
-            table = self._parse_snowflake_regex_exp(table_match, datamodel_entity)
-            view = self._parse_snowflake_regex_exp(view_match, datamodel_entity)
-
-            if table or view:  # atlease table or view should be fetched
-                return [
-                    {
-                        "database": database,
-                        "schema": schema,
-                        "table": table if table else view,
-                    }
-                ]
-            return None
         except Exception as exc:
             logger.debug(f"Error to parse snowflake table source: {exc}")
             logger.debug(traceback.format_exc())
@@ -1021,6 +1055,14 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_redshift_source(source_expression)
             if isinstance(table_info_list, List):
                 return table_info_list
+
+            # parse databricks source
+            table_info_list = self._parse_databricks_source(
+                source_expression, datamodel_entity
+            )
+            if isinstance(table_info_list, List):
+                return table_info_list
+
             return None
         except Exception as exc:
             logger.debug(f"Error to parse table source: {exc}")
@@ -1207,6 +1249,70 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
+    def _get_downstream_data_model_column_fqn(
+        self, data_model_entity: DashboardDataModel, table_name: str, column: str
+    ) -> Optional[str]:
+        """
+        Get the FQN of the column if it exists in the
+        downstream data model entity's table and column.
+        """
+        try:
+            if not data_model_entity:
+                return None
+            for table in data_model_entity.columns:
+                if table.name.root != table_name:
+                    continue
+                for child_column in table.children or []:
+                    if column.lower() == child_column.name.root.lower():
+                        return child_column.fullyQualifiedName.root
+        except Exception as exc:
+            logger.error(
+                f"Error to get downstream data_model_column_fqn for data_model_entity="
+                f"{data_model_entity.name.root}, table_name={table_name}, column={column}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _create_dataset_upstream_dataset_column_lineage(
+        self,
+        datamodel_entity: DashboardDataModel,
+        upstream_dataset_entity: DashboardDataModel,
+    ) -> Optional[List[ColumnLineage]]:
+        """
+        Create column lineage between powerbi dataset/datamodel and
+        its upstream dataset/datamodel
+        """
+        try:
+            target_tables = [table.name.root for table in datamodel_entity.columns]
+            if not target_tables:
+                return []
+            column_lineage = []
+            for table in upstream_dataset_entity.columns:
+                if table.name.root not in target_tables:
+                    continue
+                for column in table.children or []:
+                    source_column = column.fullyQualifiedName.root
+                    target_column = self._get_downstream_data_model_column_fqn(
+                        data_model_entity=datamodel_entity,
+                        table_name=table.name.root,
+                        column=column.name.root,
+                    )
+                    if source_column and target_column:
+                        column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[source_column], toColumn=target_column
+                            )
+                        )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                "Error while creating column lineage between dataset = "
+                f"{datamodel_entity.name.root} and upstream dataset = "
+                f"{upstream_dataset_entity.name.root}: {exc}"
+            )
+        return []
+
     def create_dataset_upstream_dataset_lineage(
         self, datamodel: Dataset, datamodel_entity: DashboardDataModel
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -1233,9 +1339,17 @@ class PowerbiSource(DashboardServiceSource):
                     fqn=upstream_dataset_fqn,
                 )
                 if upstream_dataset_entity and datamodel_entity:
+                    # create column lineage between current dataset/datamodel
+                    # and its upstream dataset.
+                    column_lineage = (
+                        self._create_dataset_upstream_dataset_column_lineage(
+                            datamodel_entity, upstream_dataset_entity
+                        )
+                    )
                     yield self._get_add_lineage_request(
                         from_entity=upstream_dataset_entity,
                         to_entity=datamodel_entity,
+                        column_lineage=column_lineage,
                     )
                 else:
                     logger.debug(

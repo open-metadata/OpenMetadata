@@ -17,18 +17,19 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, toString } from 'lodash';
+import { cloneDeep, isEmpty, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
-import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -37,19 +38,35 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import {
+  getEntityDeleteMessage,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
+import {
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityFeedLink, getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -66,31 +83,25 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
-import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
-import { DocumentationEntity } from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
-import AssetsTabs, {
-  AssetsTabRef,
-} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import './data-products-details-page.less';
-import {
-  DataProductsDetailsPageProps,
-  DataProductTabs,
-} from './DataProductsDetailsPage.interface';
+import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
 const DataProductsDetailsPage = ({
   dataProduct,
@@ -114,6 +125,10 @@ const DataProductsDetailsPage = ({
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
+    PageType.DataProduct
+  );
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
@@ -122,6 +137,24 @@ const DataProductsDetailsPage = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
   const [assetCount, setAssetCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
+    useState<boolean>(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DATA_PRODUCT,
+      dataProduct.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
+  };
 
   const openAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(true);
@@ -130,6 +163,36 @@ const DataProductsDetailsPage = ({
   const closeAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(false);
   }, []);
+
+  const fetchActiveAnnouncement = async () => {
+    try {
+      const announcements = await getActiveAnnouncement(
+        getEntityFeedLink(
+          EntityType.DATA_PRODUCT,
+          dataProduct.fullyQualifiedName ?? ''
+        )
+      );
+      if (isEmpty(announcements.data)) {
+        setActiveAnnouncement(undefined);
+      } else {
+        setActiveAnnouncement(announcements.data[0]);
+      }
+    } catch (error) {
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
+    }
+  };
+
+  const handleOpenAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(true);
+  };
+
+  const handleCloseAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(false);
+    fetchActiveAnnouncement();
+  };
 
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
     const items: BreadcrumbItem[] = [];
@@ -252,6 +315,26 @@ const DataProductsDetailsPage = ({
   }, [dataProduct, enqueueSnackbar]);
 
   const manageButtonContent: ItemType[] = [
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
+            ),
+            key: 'announcement-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleOpenAnnouncementDrawer();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(editDisplayNamePermission
       ? ([
           {
@@ -402,119 +485,41 @@ const DataProductsDetailsPage = ({
     []
   );
 
-  const handelExtensionUpdate = useCallback(
-    async (updatedDataProduct: DataProduct) => {
-      await onUpdate({
-        ...dataProduct,
-        extension: updatedDataProduct.extension,
-      });
-    },
-    [onUpdate, dataProduct]
-  );
-
   const tabs = useMemo(() => {
-    return [
-      {
-        label: (
-          <TabsLabel
-            id={DataProductTabs.DOCUMENTATION}
-            name={t('label.documentation')}
-          />
-        ),
-        key: DataProductTabs.DOCUMENTATION,
-        children: (
-          <DocumentationTab
-            isVersionsView={isVersionsView}
-            type={DocumentationEntity.DATA_PRODUCT}
-          />
-        ),
-      },
-      ...(!isVersionsView
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  count={assetCount ?? 0}
-                  id={DataProductTabs.ASSETS}
-                  isActive={activeTab === DataProductTabs.ASSETS}
-                  name={t('label.asset-plural')}
-                />
-              ),
-              key: DataProductTabs.ASSETS,
-              children: (
-                <ResizablePanels
-                  className="h-full domain-height-with-resizable-panel"
-                  firstPanel={{
-                    className: 'domain-resizable-panel-container',
-                    wrapInCard: false,
-                    children: (
-                      <AssetsTabs
-                        assetCount={assetCount}
-                        entityFqn={dataProduct.fullyQualifiedName}
-                        isSummaryPanelOpen={false}
-                        permissions={dataProductPermission}
-                        ref={assetTabRef}
-                        type={AssetsOfEntity.DATA_PRODUCT}
-                        onAddAsset={openAssetDrawer}
-                        onAssetClick={handleAssetClick}
-                        onRemoveAsset={handleAssetSave}
-                      />
-                    ),
-                    minWidth: 800,
-                    flex: 0.87,
-                  }}
-                  hideSecondPanel={!previewAsset}
-                  pageTitle={t('label.domain')}
-                  secondPanel={{
-                    wrapInCard: false,
-                    children: previewAsset && (
-                      <EntitySummaryPanel
-                        entityDetails={previewAsset}
-                        handleClosePanel={() => setPreviewAsset(undefined)}
-                      />
-                    ),
-                    minWidth: 400,
-                    flex: 0.13,
-                    className:
-                      'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
-                  }}
-                />
-              ),
-            },
-          ]
-        : []),
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable<EntityType.DATA_PRODUCT>
-            entityType={EntityType.DATA_PRODUCT}
-            hasEditAccess={
-              getPrioritizedEditPermission(
-                dataProductPermission,
-                Operation.EditCustomFields
-              ) && !isVersionsView
-            }
-            hasPermission={dataProductPermission.ViewAll}
-            isVersionView={isVersionsView}
-          />
-        ),
-      },
-    ];
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+
+    const tabs = dataProductClassBase.getDataProductDetailPageTabs({
+      dataProduct,
+      isVersionsView,
+      dataProductPermission,
+      assetCount,
+      activeTab: activeTab as EntityTabs,
+      assetTabRef,
+      previewAsset,
+      setPreviewAsset,
+      setAssetModalVisible: openAssetDrawer,
+      handleAssetClick,
+      handleAssetSave,
+      feedCount,
+      getEntityFeedCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.DOCUMENTATION
+    );
   }, [
+    customizedPage?.tabs,
+    dataProduct,
     dataProductPermission,
     previewAsset,
-    dataProduct,
-    isVersionsView,
+    handleAssetClick,
     handleAssetSave,
     assetCount,
     activeTab,
-    handelExtensionUpdate,
+    feedCount,
   ]);
 
   const iconData = useMemo(() => {
@@ -539,7 +544,41 @@ const DataProductsDetailsPage = ({
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
+    getEntityFeedCount();
+    fetchActiveAnnouncement();
   }, [dataProductFqn]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(
+        tabs[0],
+        activeTab as EntityTabs,
+        PageType.DataProduct
+      ),
+    [tabs[0], activeTab]
+  );
+
+  const statusBadge = useMemo(() => {
+    const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
+      EntityType.DATA_PRODUCT
+    );
+    const entityStatus =
+      'entityStatus' in dataProduct
+        ? dataProduct.entityStatus
+        : EntityStatus.Unprocessed;
+
+    return shouldShowStatus && entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={entityStatus} />
+    ) : null;
+  }, [dataProduct]);
+
+  if (isCustomPageLoading) {
+    return <Loader />;
+  }
 
   const content = (
     <>
@@ -563,11 +602,12 @@ const DataProductsDetailsPage = ({
               }
             )?.coverImage?.position
               ? {
-                  y: (
-                    dataProduct.style as Style & {
-                      coverImage?: { position?: string };
-                    }
-                  ).coverImage!.position!,
+                  y:
+                    (
+                      dataProduct.style as Style & {
+                        coverImage?: { position?: string };
+                      }
+                    )?.coverImage?.position ?? '',
                 }
               : undefined
           }
@@ -575,6 +615,7 @@ const DataProductsDetailsPage = ({
         <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader
+              badge={statusBadge}
               breadcrumb={[]}
               entityData={{ ...dataProduct, displayName, name }}
               entityType={EntityType.DATA_PRODUCT}
@@ -586,17 +627,17 @@ const DataProductsDetailsPage = ({
               titleColor={dataProduct.style?.color}
             />
           </Box>
-          <Box sx={{ width: '320px' }}>
+          <Box>
             <Box
               sx={{
                 display: 'flex',
                 gap: 3,
                 justifyContent: 'flex-end',
+                alignItems: 'center',
                 pb: '4px',
               }}>
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
-                  className="h-10"
                   data-testid="data-product-details-add-button"
                   type="primary"
                   onClick={openAssetDrawer}>
@@ -663,6 +704,13 @@ const DataProductsDetailsPage = ({
                   </Dropdown>
                 )}
               </ButtonGroup>
+
+              {activeAnnouncement && (
+                <AnnouncementCard
+                  announcement={activeAnnouncement}
+                  onClick={handleOpenAnnouncementDrawer}
+                />
+              )}
             </Box>
           </Box>
         </Box>
@@ -670,10 +718,12 @@ const DataProductsDetailsPage = ({
         <GenericProvider<DataProduct>
           muiTags
           currentVersionData={dataProduct}
+          customizedPage={customizedPage}
           data={dataProduct}
+          isTabExpanded={isTabExpanded}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
-          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
+          type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
           <Box
             className="data-product-details-page-tabs"
@@ -685,6 +735,17 @@ const DataProductsDetailsPage = ({
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
                 onChange={handleTabChange}
               />
             </Box>
@@ -740,6 +801,15 @@ const DataProductsDetailsPage = ({
         style={dataProduct.style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
+      />
+
+      <AnnouncementDrawer
+        showToastInSnackbar
+        createPermission={editAllPermission}
+        entityFQN={dataProduct.fullyQualifiedName ?? ''}
+        entityType={EntityType.DATA_PRODUCT}
+        open={isAnnouncementDrawerOpen}
+        onClose={handleCloseAnnouncementDrawer}
       />
     </>
   );

@@ -10,9 +10,54 @@ The SDK is part of the openmetadata-ingestion package:
 pip install openmetadata-ingestion
 ```
 
+### Data Quality SDK Installation
+
+For running data quality tests, additional dependencies may be required:
+
+**DataFrame Validation:**
+```bash
+pip install 'openmetadata-ingestion[pandas]'
+```
+
+**Table-Based Testing:**
+```bash
+# Install the database extra matching your table's service type
+pip install 'openmetadata-ingestion[mysql]'        # For MySQL
+pip install 'openmetadata-ingestion[postgres]'     # For PostgreSQL
+pip install 'openmetadata-ingestion[snowflake]'    # For Snowflake
+pip install 'openmetadata-ingestion[clickhouse]'   # For ClickHouse
+```
+
 ## Quick Start
 
-### Initialize the SDK
+### Configure the SDK
+
+The simplest way to configure the SDK is using the `configure()` function:
+
+```python
+from metadata.sdk import configure
+
+# Configure with explicit credentials
+configure(host="http://localhost:8585/api", jwt_token="your-jwt-token")
+
+# Or configure from environment variables
+# Set OPENMETADATA_HOST and OPENMETADATA_JWT_TOKEN
+configure()
+```
+
+The `configure()` function supports:
+- **`host`** or **`server_url`**: OpenMetadata server URL
+- **`jwt_token`**: JWT authentication token
+- Falls back to environment variables:
+  - `OPENMETADATA_HOST` or `OPENMETADATA_SERVER_URL` for the server URL
+  - `OPENMETADATA_JWT_TOKEN` or `OPENMETADATA_API_KEY` for authentication
+  - `OPENMETADATA_VERIFY_SSL`: Enable SSL verification (default: false)
+  - `OPENMETADATA_CA_BUNDLE`: Path to CA bundle
+  - `OPENMETADATA_CLIENT_TIMEOUT`: Client timeout in seconds (default: 30)
+
+### Alternative: Manual Initialization
+
+For more control, you can manually initialize the SDK:
 
 ```python
 from metadata.sdk import OpenMetadata, OpenMetadataConfig
@@ -21,7 +66,7 @@ from metadata.sdk.api import Search, Lineage, Bulk
 
 # Configure the client
 config = OpenMetadataConfig(
-    server_url="http://localhost:8585",
+    server_url="http://localhost:8585/api",
     jwt_token="your-jwt-token"
 )
 
@@ -34,6 +79,17 @@ User.set_default_client(client)
 Search.set_default_client(client)
 Lineage.set_default_client(client)
 Bulk.set_default_client(client)
+```
+
+### Configuration from Environment Variables Only
+
+You can also load configuration entirely from environment variables:
+
+```python
+from metadata.sdk.config import OpenMetadataConfig
+
+# Reads from OPENMETADATA_HOST, OPENMETADATA_JWT_TOKEN, etc.
+config = OpenMetadataConfig.from_env()
 ```
 
 ## Entity Operations

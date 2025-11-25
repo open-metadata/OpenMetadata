@@ -78,11 +78,18 @@ public class DomainRepository extends EntityRepository<Domain> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
   }
 
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withParent(getParent(entity));
+    entity.withChildrenCount(
+        fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
+  }
+
+  private Integer getChildrenCount(Domain entity) {
+    return daoCollection.domainDAO().countNestedDomains(entity.getFullyQualifiedName());
   }
 
   @Override
@@ -106,9 +113,21 @@ public class DomainRepository extends EntityRepository<Domain> {
     setFieldFromMap(true, domains, batchFetchExperts(domains), Domain::setExperts);
   }
 
+  private void fetchAndSetChildrenCount(List<Domain> entities, Fields fields) {
+    if (!fields.contains("childrenCount") || entities.isEmpty()) {
+      return;
+    }
+
+    for (Domain entity : entities) {
+      int count = daoCollection.domainDAO().countNestedDomains(entity.getFullyQualifiedName());
+      entity.setChildrenCount(count);
+    }
+  }
+
   @Override
   public void clearFields(Domain entity, Fields fields) {
     entity.withParent(fields.contains("parent") ? entity.getParent() : null);
+    entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
   }
 
   @Override
@@ -321,45 +340,24 @@ public class DomainRepository extends EntityRepository<Domain> {
         : null;
   }
 
-  public List<EntityHierarchy> buildHierarchy(String fieldsParam, int limit) {
+  public ResultList<EntityHierarchy> buildHierarchy(
+      String fieldsParam, int limit, String directChildrenOf, int offset) {
     fieldsParam = EntityUtil.addField(fieldsParam, Entity.FIELD_PARENT);
     Fields fields = getFields(fieldsParam);
-    ResultList<Domain> resultList = listAfter(null, fields, new ListFilter(null), limit, null);
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("directChildrenOf", directChildrenOf);
+    filter.addQueryParam("offset", String.valueOf(offset));
+    ResultList<Domain> resultList = listAfter(null, fields, filter, limit, null);
     List<Domain> domains = resultList.getData();
 
-    /*
-      Maintaining hierarchy in terms of EntityHierarchy to get all other fields of Domain like style,
-      which would have been restricted if built using hierarchy of Domain, as Domain.getChildren() returns List<EntityReference>
-      and EntityReference does not support additional properties
-    */
-    List<EntityHierarchy> rootDomains = new ArrayList<>();
-
-    Map<UUID, EntityHierarchy> entityHierarchyMap =
+    List<EntityHierarchy> hierarchyList =
         domains.stream()
-            .collect(
-                Collectors.toMap(
-                    Domain::getId,
-                    domain -> {
-                      EntityHierarchy entityHierarchy =
-                          JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class);
-                      entityHierarchy.setChildren(new ArrayList<>());
-                      return entityHierarchy;
-                    }));
+            .map(domain -> JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class))
+            .collect(Collectors.toList());
 
-    for (Domain domain : domains) {
-      EntityHierarchy entityHierarchy = entityHierarchyMap.get(domain.getId());
-
-      if (domain.getParent() != null) {
-        EntityHierarchy parentHierarchy = entityHierarchyMap.get(domain.getParent().getId());
-        if (parentHierarchy != null) {
-          parentHierarchy.getChildren().add(entityHierarchy);
-        }
-      } else {
-        rootDomains.add(entityHierarchy);
-      }
-    }
-
-    return rootDomains;
+    int total =
+        resultList.getPaging() != null ? resultList.getPaging().getTotal() : hierarchyList.size();
+    return new ResultList<>(hierarchyList, null, null, total);
   }
 
   public class DomainUpdater extends EntityUpdater {

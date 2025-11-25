@@ -1,26 +1,16 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import es.org.elasticsearch.action.search.SearchAction;
-import es.org.elasticsearch.action.search.SearchRequest;
-import es.org.elasticsearch.action.search.SearchRequestBuilder;
-import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.index.query.BoolQueryBuilder;
-import es.org.elasticsearch.index.query.QueryBuilders;
-import es.org.elasticsearch.script.Script;
-import es.org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.AggregationBuilders;
-import es.org.elasticsearch.search.aggregations.BucketOrder;
-import es.org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
-import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.NumericMetricsAggregation;
-import es.org.elasticsearch.search.aggregations.metrics.Stats;
-import es.org.elasticsearch.search.aggregations.metrics.StatsAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.Sum;
-import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.TopHits;
-import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.pipeline.BucketScriptPipelineAggregationBuilder;
+import es.co.elastic.clients.elasticsearch._types.FieldValue;
+import es.co.elastic.clients.elasticsearch._types.SortOrder;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.elasticsearch.core.SearchRequest;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
+import es.co.elastic.clients.elasticsearch.core.search.Hit;
+import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.util.NamedValue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,158 +22,182 @@ import org.openmetadata.schema.entity.data.QueryDetails;
 import org.openmetadata.schema.entity.data.QueryGroup;
 import org.openmetadata.schema.entity.data.QueryHolder;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class QueryCostRecordsAggregator {
 
   public static SearchRequest getQueryCostRecords(String serviceName) {
-    SearchRequest searchRequest;
-    AbstractAggregationBuilder aggregationBuilder;
-    // Create search request builder
-    SearchRequestBuilder searchRequestBuilder =
-        new SearchRequestBuilder(null, SearchAction.INSTANCE);
-    searchRequestBuilder.setSize(0);
+    Map<String, Aggregation> aggregations = new HashMap<>();
 
-    // Create query groups aggregation with size 10 and order by total_cost
-    TermsAggregationBuilder queryGroupsAgg =
-        AggregationBuilders.terms("query_groups")
-            .field("query.checksum.keyword")
-            .size(10)
-            .order(BucketOrder.aggregation("total_cost", false));
+    // Sub-aggregations for each query group
+    Map<String, Aggregation> queryGroupsSubAggs = new HashMap<>();
 
-    // Add sub-aggregations to query_groups
-    // Users aggregation
-    TermsAggregationBuilder usersAgg =
-        AggregationBuilders.terms("users").field("query.usedBy.keyword").size(10);
-    queryGroupsAgg.subAggregation(usersAgg);
+    queryGroupsSubAggs.put(
+        "users", Aggregation.of(a -> a.terms(t -> t.field("query.usedBy.keyword").size(10))));
 
-    // Total cost aggregation
-    SumAggregationBuilder totalCostAgg = AggregationBuilders.sum("total_cost").field("cost");
-    queryGroupsAgg.subAggregation(totalCostAgg);
+    queryGroupsSubAggs.put("total_cost", Aggregation.of(a -> a.sum(s -> s.field("cost"))));
 
-    // Total count aggregation
-    SumAggregationBuilder totalCountAgg = AggregationBuilders.sum("total_count").field("count");
-    queryGroupsAgg.subAggregation(totalCountAgg);
+    queryGroupsSubAggs.put("total_count", Aggregation.of(a -> a.sum(s -> s.field("count"))));
 
-    // Total duration aggregation
-    SumAggregationBuilder totalDurationAgg =
-        AggregationBuilders.sum("total_duration").field("totalDuration");
-    queryGroupsAgg.subAggregation(totalDurationAgg);
+    queryGroupsSubAggs.put(
+        "total_duration", Aggregation.of(a -> a.sum(s -> s.field("totalDuration"))));
 
-    // Average duration aggregation (bucket script)
-    Map<String, String> bucketsPathMap = new HashMap<>();
-    bucketsPathMap.put("total_duration", "total_duration");
-    bucketsPathMap.put("total_count", "total_count");
-    BucketScriptPipelineAggregationBuilder avgDurationAgg =
-        PipelineAggregatorBuilders.bucketScript(
-            "avg_duration",
-            bucketsPathMap,
-            new Script("params.total_duration / params.total_count"));
-    queryGroupsAgg.subAggregation(avgDurationAgg);
+    queryGroupsSubAggs.put(
+        "avg_duration",
+        Aggregation.of(
+            a ->
+                a.bucketScript(
+                    bs ->
+                        bs.bucketsPath(
+                                bp ->
+                                    bp.dict(
+                                        Map.of(
+                                            "total_duration", "total_duration",
+                                            "total_count", "total_count")))
+                            .script(
+                                s ->
+                                    s.inline(
+                                        i ->
+                                            i.lang("painless")
+                                                .source(
+                                                    "params.total_duration / params.total_count"))))));
 
-    // Query details aggregation (top hits)
-    TopHitsAggregationBuilder queryDetailsAgg =
-        AggregationBuilders.topHits("query_details")
-            .size(1)
-            .fetchSource(new String[] {"query.*"}, null);
-    queryGroupsAgg.subAggregation(queryDetailsAgg);
+    // Top hits for query details
+    queryGroupsSubAggs.put(
+        "query_details",
+        Aggregation.of(
+            a ->
+                a.topHits(th -> th.size(1).source(src -> src.filter(f -> f.includes("query.*"))))));
 
-    // set query size to 10
-    queryGroupsAgg.size(10);
-    queryGroupsAgg.order(BucketOrder.aggregation("total_cost", false));
+    // Terms aggregation for query_groups
+    aggregations.put(
+        "query_groups",
+        Aggregation.of(
+            a ->
+                a.terms(
+                        t ->
+                            t.field("query.checksum.keyword")
+                                .size(10)
+                                .order(NamedValue.of("total_cost", SortOrder.Desc)))
+                    .aggregations(queryGroupsSubAggs)));
 
-    // Overall totals aggregation
-    StatsAggregationBuilder overallTotalsAgg =
-        AggregationBuilders.stats("overall_totals").field("cost");
+    // Aggregation for overall stats
+    aggregations.put("overall_totals", Aggregation.of(a -> a.stats(s -> s.field("cost"))));
 
-    // Total execution count aggregation
-    SumAggregationBuilder totalExecutionCountAgg =
-        AggregationBuilders.sum("total_execution_count").field("count");
-
-    // Add all top-level aggregations to the search request
-    searchRequestBuilder.addAggregation(queryGroupsAgg);
-    searchRequestBuilder.addAggregation(overallTotalsAgg);
-    searchRequestBuilder.addAggregation(totalExecutionCountAgg);
-
-    // If serviceName is provided, add a filter
-    if (serviceName != null && !serviceName.isEmpty()) {
-      BoolQueryBuilder boolQuery =
-          QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("service.name.keyword", serviceName));
-      searchRequestBuilder.setQuery(boolQuery);
-    }
+    // Aggregation for total execution count
+    aggregations.put("total_execution_count", Aggregation.of(a -> a.sum(s -> s.field("count"))));
 
     // Build the search request
-    searchRequest =
-        searchRequestBuilder
-            .request()
-            .indices(
-                Entity.getSearchRepository().getIndexOrAliasName("query_cost_record_search_index"));
+    SearchRequest.Builder searchRequestBuilder =
+        new SearchRequest.Builder()
+            .index(
+                Entity.getSearchRepository().getIndexOrAliasName("query_cost_record_search_index"))
+            .size(0)
+            .aggregations(aggregations);
 
-    return searchRequest;
+    // Optional service name filter
+    if (serviceName != null && !serviceName.isEmpty()) {
+      searchRequestBuilder.query(
+          Query.of(
+              q ->
+                  q.bool(
+                      BoolQuery.of(
+                          b ->
+                              b.must(
+                                  m ->
+                                      m.term(
+                                          t ->
+                                              t.field("service.name.keyword")
+                                                  .value(FieldValue.of(serviceName))))))));
+    }
+
+    return searchRequestBuilder.build();
   }
 
-  public static QueryCostSearchResult parseQueryCostResponse(SearchResponse response) {
+  public static QueryCostSearchResult parseQueryCostResponse(SearchResponse<JsonData> response) {
     List<QueryGroup> queryGroups = new ArrayList<>();
 
-    // Get the query_groups aggregation
-    Terms queryGroupsAgg = response.getAggregations().get("query_groups");
+    if (response.aggregations() == null || !response.aggregations().containsKey("query_groups")) {
+      return new QueryCostSearchResult().withQueryGroups(queryGroups);
+    }
 
-    // Process each query group
-    for (Terms.Bucket bucket : queryGroupsAgg.getBuckets()) {
+    var queryGroupsAgg = response.aggregations().get("query_groups");
+    if (!queryGroupsAgg.isSterms()) {
+      return new QueryCostSearchResult().withQueryGroups(queryGroups);
+    }
+
+    List<StringTermsBucket> buckets = queryGroupsAgg.sterms().buckets().array();
+
+    for (StringTermsBucket bucket : buckets) {
       String queryText = null;
 
-      // Get users
-      Terms usersAgg = bucket.getAggregations().get("users");
-      List<String> users =
-          usersAgg.getBuckets().stream()
-              .map(Terms.Bucket::getKeyAsString)
-              .collect(Collectors.toList());
+      var usersAgg = bucket.aggregations().get("users");
+      List<String> users = new ArrayList<>();
+      if (usersAgg != null && usersAgg.isSterms()) {
+        users =
+            usersAgg.sterms().buckets().array().stream()
+                .map(b -> b.key().stringValue())
+                .collect(Collectors.toList());
+      }
 
-      // Get metrics
-      double totalCost = ((Sum) bucket.getAggregations().get("total_cost")).getValue();
-      long totalCount = (long) ((Sum) bucket.getAggregations().get("total_count")).getValue();
-      double totalDuration = ((Sum) bucket.getAggregations().get("total_duration")).getValue();
+      double totalCost = 0;
+      long totalCount = 0;
+      double totalDuration = 0;
 
-      // Get avg_duration using a more generic approach
+      var totalCostAgg = bucket.aggregations().get("total_cost");
+      if (totalCostAgg != null && totalCostAgg.isSum()) {
+        totalCost = totalCostAgg.sum().value();
+      }
+
+      var totalCountAgg = bucket.aggregations().get("total_count");
+      if (totalCountAgg != null && totalCountAgg.isSum()) {
+        totalCount = (long) totalCountAgg.sum().value();
+      }
+
+      var totalDurationAgg = bucket.aggregations().get("total_duration");
+      if (totalDurationAgg != null && totalDurationAgg.isSum()) {
+        totalDuration = totalDurationAgg.sum().value();
+      }
+
       double avgDuration;
-      Object avgDurationAgg = bucket.getAggregations().get("avg_duration");
-      if (avgDurationAgg instanceof NumericMetricsAggregation.SingleValue) {
-        // This should work for most implementations
-        avgDuration = ((NumericMetricsAggregation.SingleValue) avgDurationAgg).value();
+      var avgDurationAgg = bucket.aggregations().get("avg_duration");
+      if (avgDurationAgg != null && avgDurationAgg.isSimpleValue()) {
+        avgDuration = avgDurationAgg.simpleValue().value();
       } else {
-        // Fallback: calculate it ourselves if the aggregation result can't be accessed
         avgDuration = totalCount > 0 ? totalDuration / totalCount : 0;
       }
 
-      // Get query details
-      TopHits queryDetailsHits = bucket.getAggregations().get("query_details");
-      Map<String, Object> detailsMap = queryDetailsHits.getHits().getHits()[0].getSourceAsMap();
-
-      // Create QueryDetails object
       QueryDetails queryDetails = new QueryDetails();
 
-      // Extract query information if available
-      if (detailsMap.containsKey("query")) {
-        // Create a QueryHolder object instead of using the Map directly
-        QueryHolder query = new QueryHolder();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> queryMap = (Map<String, Object>) detailsMap.get("query");
+      var queryDetailsAgg = bucket.aggregations().get("query_details");
+      if (queryDetailsAgg != null && queryDetailsAgg.isTopHits()) {
+        List<Hit<JsonData>> hits = queryDetailsAgg.topHits().hits().hits();
+        if (!hits.isEmpty()) {
+          Hit<JsonData> hit = hits.get(0);
+          if (hit.source() != null) {
+            Map<String, Object> detailsMap = EsUtils.jsonDataToMap(hit.source());
 
-        // Add all properties from queryMap to the Query__1 object as additional properties
-        for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
-          query.withAdditionalProperty(entry.getKey(), entry.getValue());
-          if (entry.getKey().equals("query")) {
-            queryText = entry.getValue().toString();
+            if (detailsMap.containsKey("query")) {
+              QueryHolder query = new QueryHolder();
+              @SuppressWarnings("unchecked")
+              Map<String, Object> queryMap = (Map<String, Object>) detailsMap.get("query");
+
+              for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
+                query.withAdditionalProperty(entry.getKey(), entry.getValue());
+                if (entry.getKey().equals("query")) {
+                  queryText = entry.getValue().toString();
+                }
+              }
+
+              queryDetails.withQuery(query);
+            }
+
+            for (Map.Entry<String, Object> entry : detailsMap.entrySet()) {
+              if (!entry.getKey().equals("query")) {
+                queryDetails.withAdditionalProperty(entry.getKey(), entry.getValue());
+              }
+            }
           }
-        }
-
-        queryDetails.withQuery(query);
-      }
-
-      // Add any other fields from detailsMap to queryDetails
-      for (Map.Entry<String, Object> entry : detailsMap.entrySet()) {
-        if (!entry.getKey().equals("query")) {
-          queryDetails.withAdditionalProperty(entry.getKey(), entry.getValue());
         }
       }
 
@@ -200,17 +214,32 @@ public class QueryCostRecordsAggregator {
       queryGroups.add(queryGroup);
     }
 
-    // Get overall stats
-    Stats overallTotals = response.getAggregations().get("overall_totals");
-    Sum totalExecutionCount = response.getAggregations().get("total_execution_count");
+    double totalCostSum = 0;
+    double minCost = 0;
+    double maxCost = 0;
+    double avgCost = 0;
+    int totalExecutionCountValue = 0;
+
+    var overallTotalsAgg = response.aggregations().get("overall_totals");
+    if (overallTotalsAgg != null && overallTotalsAgg.isStats()) {
+      totalCostSum = overallTotalsAgg.stats().sum();
+      minCost = overallTotalsAgg.stats().min();
+      maxCost = overallTotalsAgg.stats().max();
+      avgCost = overallTotalsAgg.stats().avg();
+    }
+
+    var totalExecutionCountAgg = response.aggregations().get("total_execution_count");
+    if (totalExecutionCountAgg != null && totalExecutionCountAgg.isSum()) {
+      totalExecutionCountValue = (int) totalExecutionCountAgg.sum().value();
+    }
 
     OverallStats overallStats =
         new OverallStats()
-            .withTotalCost(overallTotals.getSum())
-            .withMinCost(overallTotals.getMin())
-            .withMaxCost(overallTotals.getMax())
-            .withAvgCost(overallTotals.getAvg())
-            .withTotalExecutionCount((int) totalExecutionCount.getValue());
+            .withTotalCost(totalCostSum)
+            .withMinCost(minCost)
+            .withMaxCost(maxCost)
+            .withAvgCost(avgCost)
+            .withTotalExecutionCount(totalExecutionCountValue);
 
     return new QueryCostSearchResult().withQueryGroups(queryGroups).withOverallStats(overallStats);
   }

@@ -517,12 +517,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel
-            avatarSize={24}
-            isCompactView={false}
-            owners={owners}
-            showLabel={false}
-          />
+          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {
@@ -629,7 +624,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record?: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias & { type: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
@@ -671,7 +666,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record?: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias & { type?: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',

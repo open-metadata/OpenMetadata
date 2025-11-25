@@ -167,6 +167,30 @@ export const getField = (field: FieldProp) => {
       );
     }
 
+    case FieldTypes.PASSWORD_MUI: {
+      const { error, ...muiProps } = props;
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUITextField
+            error={Boolean(error)}
+            helperText={
+              helperTextType === HelperTextType.ALERT ? helperText : undefined
+            }
+            id={id}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+            type="password"
+            {...muiProps}
+          />
+        </Form.Item>
+      );
+    }
+
     case FieldTypes.PASSWORD:
       fieldElement = (
         <Input.Password

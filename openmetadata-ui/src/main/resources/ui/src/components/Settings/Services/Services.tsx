@@ -34,7 +34,6 @@ import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
@@ -44,7 +43,11 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+  highlightSearchText,
+} from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getAddServicePath,
@@ -54,6 +57,7 @@ import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
+  getSearchIndexFromService,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -97,6 +101,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     pageSize,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
@@ -111,28 +116,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     setSearchTerm('');
     setServiceTypeFilter([]);
 
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return SearchIndex.DATABASE_SERVICE;
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return SearchIndex.DASHBOARD_SERVICE;
-      case ServiceCategory.MESSAGING_SERVICES:
-        return SearchIndex.MESSAGING_SERVICE;
-      case ServiceCategory.PIPELINE_SERVICES:
-        return SearchIndex.PIPELINE_SERVICE;
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return SearchIndex.ML_MODEL_SERVICE;
-      case ServiceCategory.STORAGE_SERVICES:
-        return SearchIndex.STORAGE_SERVICE;
-      case ServiceCategory.SEARCH_SERVICES:
-        return SearchIndex.SEARCH_SERVICE;
-      case ServiceCategory.API_SERVICES:
-        return SearchIndex.API_SERVICE_INDEX;
-      case ServiceCategory.DRIVE_SERVICES:
-        return SearchIndex.DRIVE_SERVICE;
-    }
-
-    return SearchIndex.DATABASE_SERVICE;
+    return getSearchIndexFromService(serviceName);
   }, [serviceName]);
 
   const getServiceDetails = useCallback(
@@ -214,7 +198,11 @@ const Services = ({ serviceName }: ServicesProps) => {
           queryFilter: serviceTypeQueryFilter,
         });
       } else if (cursorType) {
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
         getServiceDetails({
           [cursorType]: paging[cursorType],
           queryFilter: serviceTypeQueryFilter,
@@ -343,6 +331,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       dataIndex: TABLE_COLUMNS_KEYS.NAME,
       key: TABLE_COLUMNS_KEYS.NAME,
       width: 200,
+      sorter: getColumnSorter<ServicesType, 'name'>('name'),
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
           {getServiceLogo(record.serviceType || '', 'w-4')}
@@ -456,13 +445,28 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServiceSearch = useCallback(
     async (search: string) => {
-      handlePageChange(INITIAL_PAGING_VALUE);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       setSearchTerm(search);
     },
     [getServiceDetails]
   );
 
   useEffect(() => {
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getServiceDetails({
+        search: searchTerm,
+        limit: pageSize,
+        queryFilter: serviceTypeQueryFilter,
+        [cursorType as 'before' | 'after']: cursorValue,
+      });
+
+      return;
+    }
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
@@ -475,6 +479,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     searchTerm,
     serviceTypeQueryFilter,
     deleted,
+    pagingCursor,
   ]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (

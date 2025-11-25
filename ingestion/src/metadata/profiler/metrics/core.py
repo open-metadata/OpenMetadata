@@ -144,6 +144,17 @@ class Metric(ABC):
         """Mark true if returns system metrics"""
         return False
 
+    @classmethod
+    def is_computed_metric(cls) -> bool:
+        """
+        Marks the metric as computed metric. A computed metric
+        is a metric that is computed during the profiling process.
+
+        By default, assume that a metric is a computed
+        metric. Non Computed metrics should override this.
+        """
+        return True
+
     @property
     def metric_type(self):
         """

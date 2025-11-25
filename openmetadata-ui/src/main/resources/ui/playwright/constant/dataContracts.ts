@@ -219,4 +219,6 @@ export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
   greater_equal: '>=',
   contains: 'Contains',
   not_contains: 'Not contains',
+  between: 'Between',
+  not_between: 'Not between',
 };
