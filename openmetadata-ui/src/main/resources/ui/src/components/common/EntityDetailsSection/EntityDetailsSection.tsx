@@ -22,6 +22,7 @@ import Loader from '../Loader/Loader';
 import SearchBarComponent from '../SearchBarComponent/SearchBar.component';
 import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
+
 const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   entityType,
   dataAsset,
