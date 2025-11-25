@@ -13,19 +13,25 @@
       "additionalProperties": false,
       "properties": {
         "totalRecords": {
-          "description": "Count of Total Failed Records",
+          "description": "Count of Total Records in Source (from database)",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        },
+        "processedRecords": {
+          "description": "Count of Records Read from Source and Submitted for Indexing",
           "type": "integer",
           "default": 0,
           "minimum": 0
         },
         "successRecords": {
-          "description": "Count of Total Successfully Records",
+          "description": "Count of Records Successfully Indexed",
           "type": "integer",
           "default": 0,
           "minimum": 0
         },
         "failedRecords": {
-          "description": "Count of Total Failed Records",
+          "description": "Count of Records Failed to Index",
           "type": "integer",
           "default": 0,
           "minimum": 0

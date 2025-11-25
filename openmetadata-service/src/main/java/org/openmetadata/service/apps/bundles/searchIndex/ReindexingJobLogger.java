@@ -186,27 +186,28 @@ public class ReindexingJobLogger {
     lastProcessedCount.set(processed);
   }
 
-  private void logDetailedProgress(long processed, long total) {
+  private void logDetailedProgress(long indexed, long total) {
     Duration elapsed = Duration.between(startTime, Instant.now());
-    double percentage = total > 0 ? (processed * 100.0 / total) : 0;
+    double percentage = total > 0 ? (indexed * 100.0 / total) : 0;
 
     LOG.info("");
     LOG.info("=== Reindexing Progress Update ===");
     LOG.info(
-        "Overall: {}/{} ({}) - Elapsed: {}",
-        formatNumber(processed),
+        "Source Records: {} | Indexed: {}/{} ({}) | Elapsed: {}",
+        formatNumber(total),
+        formatNumber(indexed),
         formatNumber(total),
         formatPercentage(percentage),
         formatDuration(elapsed));
 
     // Calculate throughput and ETA
-    if (elapsed.getSeconds() > 0 && processed > 0) {
-      double throughput = processed / (double) elapsed.getSeconds();
+    if (elapsed.getSeconds() > 0 && indexed > 0) {
+      double throughput = indexed / (double) elapsed.getSeconds();
       LOG.info("Throughput: {} records/sec", formatNumber((long) throughput));
 
       // Calculate ETA
-      if (total > processed) {
-        long remaining = total - processed;
+      if (total > indexed) {
+        long remaining = total - indexed;
         long etaSeconds = (long) (remaining / throughput);
         LOG.info("Estimated time remaining: {}", formatDuration(Duration.ofSeconds(etaSeconds)));
       }
@@ -218,22 +219,22 @@ public class ReindexingJobLogger {
       LOG.info("Entity progress:");
       entityProgressMap.forEach(
           (entity, progress) -> {
-            long entityProcessed = progress.processed.get();
+            long entityIndexed = progress.processed.get();
             long entityTotal = progress.total.get();
             long entityFailed = progress.failed.get();
 
             if (entityTotal > 0) {
-              double entityPercentage = (entityProcessed * 100.0) / entityTotal;
+              double entityPercentage = (entityIndexed * 100.0) / entityTotal;
               String failedInfo =
-                  entityFailed > 0 ? String.format(" (%d failed)", entityFailed) : "";
+                  entityFailed > 0 ? String.format(" | %d failed", entityFailed) : "";
               LOG.info(
-                  "  • {}: {}/{} ({}) - {}{}",
+                  "  • {}: {}/{} indexed ({}){}  [{}]",
                   entity,
-                  formatNumber(entityProcessed),
+                  formatNumber(entityIndexed),
                   formatNumber(entityTotal),
                   formatPercentage(entityPercentage),
-                  progress.status,
-                  failedInfo);
+                  failedInfo,
+                  progress.status);
             }
           });
     }
@@ -256,6 +257,14 @@ public class ReindexingJobLogger {
     LOG.info("Total time: {}", formatDuration(elapsed));
 
     if (finalStats != null && finalStats.getJobStats() != null) {
+      long total =
+          finalStats.getJobStats().getTotalRecords() != null
+              ? finalStats.getJobStats().getTotalRecords()
+              : 0;
+      long processed =
+          finalStats.getJobStats().getProcessedRecords() != null
+              ? finalStats.getJobStats().getProcessedRecords()
+              : 0;
       long success =
           finalStats.getJobStats().getSuccessRecords() != null
               ? finalStats.getJobStats().getSuccessRecords()
@@ -264,15 +273,15 @@ public class ReindexingJobLogger {
           finalStats.getJobStats().getFailedRecords() != null
               ? finalStats.getJobStats().getFailedRecords()
               : 0;
-      long total =
-          finalStats.getJobStats().getTotalRecords() != null
-              ? finalStats.getJobStats().getTotalRecords()
-              : 0;
 
-      LOG.info("Records processed: {}", formatNumber(total));
-      LOG.info("Successful: {}", formatNumber(success));
+      LOG.info("Source records (from DB): {}", formatNumber(total));
+      LOG.info("Records read & submitted: {}", formatNumber(processed));
+      LOG.info("Successfully indexed: {}", formatNumber(success));
       if (failed > 0) {
-        LOG.info("Failed: {}", formatNumber(failed));
+        LOG.info("Failed to index: {}", formatNumber(failed));
+      }
+      if (total > processed) {
+        LOG.info("Not processed (job incomplete): {}", formatNumber(total - processed));
       }
 
       // Show detailed per-entity stats
@@ -281,16 +290,28 @@ public class ReindexingJobLogger {
         LOG.info("Per-entity breakdown:");
         entityProgressMap.forEach(
             (entity, progress) -> {
-              long entityProcessed = progress.processed.get();
+              long entityIndexed = progress.processed.get();
+              long entityTotal = progress.total.get();
               long entityFailed = progress.failed.get();
               Duration entityDuration = Duration.between(progress.startTime, progress.lastUpdate);
 
-              if (entityProcessed > 0 || entityFailed > 0) {
-                String status =
-                    entityFailed > 0
-                        ? String.format(
-                            "%s records (%d failed)", formatNumber(entityProcessed), entityFailed)
-                        : formatNumber(entityProcessed) + " records";
+              if (entityIndexed > 0 || entityFailed > 0) {
+                String status;
+                if (entityFailed > 0) {
+                  status =
+                      String.format(
+                          "%s/%s indexed (%d failed)",
+                          formatNumber(entityIndexed), formatNumber(entityTotal), entityFailed);
+                } else if (entityIndexed < entityTotal) {
+                  status =
+                      String.format(
+                          "%s/%s indexed (incomplete)",
+                          formatNumber(entityIndexed), formatNumber(entityTotal));
+                } else {
+                  status =
+                      String.format(
+                          "%s/%s indexed", formatNumber(entityIndexed), formatNumber(entityTotal));
+                }
                 LOG.info(
                     "  • {}: {} - Duration: {}", entity, status, formatDuration(entityDuration));
               }

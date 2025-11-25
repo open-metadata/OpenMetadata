@@ -304,6 +304,41 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (searchIndexSink != null) {
       LOG.info("Forcing final flush of bulk processor");
       searchIndexSink.close();
+      // After sink closes, sync final stats from the actual bulk processor
+      syncFinalStatsFromSink();
+    }
+  }
+
+  private void syncFinalStatsFromSink() {
+    if (searchIndexSink == null || jobData == null || jobData.getStats() == null) {
+      return;
+    }
+
+    try {
+      StepStats sinkStats = searchIndexSink.getStats();
+      StepStats jobStats = jobData.getStats().getJobStats();
+
+      if (sinkStats != null && jobStats != null) {
+        // The sink has the actual success/failed counts from the bulk processor
+        int sinkSuccess = sinkStats.getSuccessRecords() != null ? sinkStats.getSuccessRecords() : 0;
+        int sinkFailed = sinkStats.getFailedRecords() != null ? sinkStats.getFailedRecords() : 0;
+
+        LOG.info(
+            "Syncing final stats from sink - Sink reports: success={}, failed={}. "
+                + "Job tracked: processed={}, success={}, failed={}",
+            sinkSuccess,
+            sinkFailed,
+            jobStats.getProcessedRecords(),
+            jobStats.getSuccessRecords(),
+            jobStats.getFailedRecords());
+
+        // Update job stats with actual sink counts
+        // The sink tracks cumulative success/failed across all entities
+        jobStats.setSuccessRecords(sinkSuccess);
+        jobStats.setFailedRecords(sinkFailed);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to sync final stats from sink: {}", e.getMessage());
     }
   }
 
@@ -500,13 +535,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
     try {
       App app = getApp();
       if (app != null && app.getId() != null) {
-        collectionDAO.appExtensionTimeSeriesDao().markStaleEntriesStopped(app.getId().toString());
-        LOG.debug("Cleaned up stale jobs.");
+        // Mark any previous "running" jobs as "failed" since they must have crashed
+        // if they're still in "running" state when a new job starts
+        collectionDAO.appExtensionTimeSeriesDao().markStaleEntriesFailed(app.getId().toString());
+        LOG.info("Cleaned up stale jobs - marked previous running jobs as failed.");
       } else {
         LOG.debug("App not initialized, skipping stale job cleanup");
       }
     } catch (Exception ex) {
-      LOG.error("Failed in marking stale entries as stopped.", ex);
+      LOG.error("Failed in marking stale entries as failed.", ex);
     }
   }
 
@@ -1617,8 +1654,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private StepStats createEntityStats(ResultList<?> entities) {
     StepStats stats = new StepStats();
-    stats.setSuccessRecords(listOrEmpty(entities.getData()).size());
-    stats.setFailedRecords(listOrEmpty(entities.getErrors()).size());
+    int dataSize = listOrEmpty(entities.getData()).size();
+    int errorSize = listOrEmpty(entities.getErrors()).size();
+    // processedRecords = total records read from source and submitted to sink
+    // Note: successRecords here means "submitted to async bulk processor"
+    // Actual success/failure is tracked by the sink and synced at job completion
+    stats.setProcessedRecords(dataSize + errorSize);
+    stats.setSuccessRecords(dataSize);
+    stats.setFailedRecords(errorSize);
     return stats;
   }
 
@@ -1754,8 +1797,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private StepStats createFailedStats(IndexingError indexingError, int dataSize) {
     StepStats stats = new StepStats();
-    stats.setSuccessRecords(indexingError != null ? indexingError.getSuccessCount() : 0);
-    stats.setFailedRecords(indexingError != null ? indexingError.getFailedCount() : dataSize);
+    int success = indexingError != null ? indexingError.getSuccessCount() : 0;
+    int failed = indexingError != null ? indexingError.getFailedCount() : dataSize;
+    // processedRecords = total records that were submitted for indexing
+    stats.setProcessedRecords(success + failed);
+    stats.setSuccessRecords(success);
+    stats.setFailedRecords(failed);
     return stats;
   }
 
@@ -1812,13 +1859,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void updateEntityStats(Stats stats, String entityType, StepStats currentEntityStats) {
     StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entityType);
     if (entityStats != null) {
+      int currentProcessed =
+          entityStats.getProcessedRecords() != null ? entityStats.getProcessedRecords() : 0;
+      int newProcessed =
+          currentEntityStats.getProcessedRecords() != null
+              ? currentEntityStats.getProcessedRecords()
+              : 0;
+      entityStats.withProcessedRecords(currentProcessed + newProcessed);
       entityStats.withSuccessRecords(
           entityStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
       entityStats.withFailedRecords(
           entityStats.getFailedRecords() + currentEntityStats.getFailedRecords());
       LOG.debug(
-          "Updated stats for {}: success={}, failed={}, total={}",
+          "Updated stats for {}: processed={}, success={}, failed={}, total={}",
           entityType,
+          entityStats.getProcessedRecords(),
           entityStats.getSuccessRecords(),
           entityStats.getFailedRecords(),
           entityStats.getTotalRecords());
@@ -1827,6 +1882,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void updateJobStats(Stats stats) {
     StepStats jobStats = stats.getJobStats();
+
+    int totalProcessed =
+        stats.getEntityStats().getAdditionalProperties().values().stream()
+            .mapToInt(s -> s.getProcessedRecords() != null ? s.getProcessedRecords() : 0)
+            .sum();
 
     int totalSuccess =
         stats.getEntityStats().getAdditionalProperties().values().stream()
@@ -1838,9 +1898,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
             .mapToInt(StepStats::getFailedRecords)
             .sum();
 
-    jobStats.withSuccessRecords(totalSuccess).withFailedRecords(totalFailed);
+    jobStats
+        .withProcessedRecords(totalProcessed)
+        .withSuccessRecords(totalSuccess)
+        .withFailedRecords(totalFailed);
     LOG.debug(
-        "Updated job stats: success={}, failed={}, total={}",
+        "Updated job stats: processed={}, success={}, failed={}, total={}",
+        jobStats.getProcessedRecords(),
         jobStats.getSuccessRecords(),
         jobStats.getFailedRecords(),
         jobStats.getTotalRecords());
