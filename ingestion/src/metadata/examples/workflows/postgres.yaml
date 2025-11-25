@@ -4,11 +4,24 @@ source:
   serviceConnection:
     config:
       type: Postgres
+      scheme: postgresql+psycopg2
       username: openmetadata_user
       authType:
         password: openmetadata_password
       hostPort: localhost:5432
       database: pagila
+      ingestAllDatabases: false
+      schemaFilterPattern:
+        excludes:
+        - "^information_schema$"
+      databaseFilterPattern:
+        excludes:
+        - "^template1$"
+        - "^template0$"
+      sslMode: disable
+      classificationName: PostgresPolicyTags
+      connectionOptions: {}
+      connectionArguments: {}
   sourceConfig:
     config:
       type: DatabaseMetadata
