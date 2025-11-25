@@ -231,6 +231,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { showModal } = useEntityExportModalProvider();
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
+  const [isCreatingEdge, setIsCreatingEdge] = useState<boolean>(false);
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -1291,6 +1292,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [entityLineage, nodes, entityFqn]
   );
 
+  const onConnectStart = useCallback(() => {
+    setIsCreatingEdge(true);
+  }, []);
+
+  const onConnectEnd = useCallback(() => {
+    setIsCreatingEdge(false);
+  }, []);
+
   const onAddPipelineClick = useCallback(() => {
     setShowAddEdgeModal(true);
   }, []);
@@ -1757,6 +1766,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       platformView,
       isPlatformLineage,
       entityFqn,
+      isCreatingEdge,
       exportLineageData,
       onCloseDrawer,
       updateEntityFqn,
@@ -1764,6 +1774,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onInitReactFlow,
       onPaneClick,
       onConnect,
+      onConnectStart,
+      onConnectEnd,
       onNodeDrop,
       onNodeCollapse,
       onColumnClick,
@@ -1816,6 +1828,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     expandAllColumns,
     isPlatformLineage,
     entityFqn,
+    isCreatingEdge,
     exportLineageData,
     onCloseDrawer,
     updateEntityFqn,
@@ -1823,6 +1836,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onInitReactFlow,
     onPaneClick,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onNodeDrop,
     onNodeCollapse,
     onColumnClick,
