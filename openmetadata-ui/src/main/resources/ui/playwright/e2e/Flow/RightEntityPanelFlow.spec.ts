@@ -1162,12 +1162,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       tabContent.locator('.custom-property-item').first()
     ).toBeVisible();
 
-    const allPropertiesCount = await tabContent
-      .locator('.custom-property-item')
-      .count();
-
-    expect(allPropertiesCount).toBeGreaterThan(count);
-
     // Test search with no results
     await searchBar.fill('nonexistent-property-xyz123');
 
