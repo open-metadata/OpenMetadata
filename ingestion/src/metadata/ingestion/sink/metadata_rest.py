@@ -13,7 +13,6 @@ This is the main used sink for all OM Workflows.
 It picks up the generated Entities and send them
 to the OM API.
 """
-import threading
 import traceback
 from functools import singledispatchmethod
 from typing import Any, Dict, Optional, TypeVar, Union
