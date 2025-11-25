@@ -290,32 +290,14 @@ class SSLManager:
             # ODBC Driver SSL parameters
             if connection.encrypt:
                 connection.connectionArguments.root["Encrypt"] = "yes"
+
             if connection.trustServerCertificate:
                 connection.connectionArguments.root["TrustServerCertificate"] = "yes"
 
         elif connection.scheme.value == "mssql+pytds":
             # pytds driver SSL parameters
-            if connection.encrypt:
-                connection.connectionArguments.root["encryption"] = "on"
-
-        elif connection.scheme.value == "mssql+pymssql":
-            # pymssql driver SSL parameters
-            if connection.encrypt:
-                connection.connectionArguments.root["encrypt"] = True
-            if connection.trustServerCertificate:
-                connection.connectionArguments.root["trust_server_certificate"] = True
-
-        # Add certificate paths if sslConfig is provided
-        if connection.sslConfig:
-            ssl_args = connection.connectionArguments.root.get("ssl", {})
             if self.ca_file_path:
-                ssl_args["ssl_ca"] = self.ca_file_path
-            if self.cert_file_path:
-                ssl_args["ssl_cert"] = self.cert_file_path
-            if self.key_file_path:
-                ssl_args["ssl_key"] = self.key_file_path
-            if ssl_args:
-                connection.connectionArguments.root["ssl"] = ssl_args
+                connection.connectionArguments.root["cafile"] = self.ca_file_path
 
         return connection
 
@@ -374,14 +356,16 @@ def _(connection):
 @check_ssl_and_init.register(MssqlConnection)
 def _(connection):
     service_connection = cast(MssqlConnection, connection)
-    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
-    if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
-        return SSLManager(
-            ca=ssl.root.caCertificate,
-            cert=ssl.root.sslCertificate,
-            key=ssl.root.sslKey,
-        )
-    return None
+    ssl: Optional[
+        verifySSLConfig.SslConfig
+    ] = service_connection.sslConfig or verifySSLConfig.SslConfig(
+        **{"caCertificate": None}
+    )
+    return SSLManager(
+        ca=ssl.root.caCertificate,
+        cert=ssl.root.sslCertificate,
+        key=ssl.root.sslKey,
+    )
 
 
 @check_ssl_and_init.register(MongoDBConnection)
