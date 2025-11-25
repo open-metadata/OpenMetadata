@@ -1273,6 +1273,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           .finally(() => {
             setStatus('initial');
             setLoading(false);
+            if (!tracedColumns.includes(params.sourceHandle as string)) {
+              setTracedColumns((prev) => [
+                ...prev,
+                params.sourceHandle as string,
+              ]);
+            }
+            if (!tracedColumns.includes(params.targetHandle as string)) {
+              setTracedColumns((prev) => [
+                ...prev,
+                params.targetHandle as string,
+              ]);
+            }
           });
       }
     },

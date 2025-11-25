@@ -236,6 +236,7 @@ export const getColumnContent = (
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
       onClick={handleClick}
+      onMouseDown={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
       {getColumnHandle(
