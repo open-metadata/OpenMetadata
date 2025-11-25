@@ -707,7 +707,7 @@ export default function EntitySummaryPanel({
 
   return (
     <div className="entity-summary-panel-container">
-      <div className="d-flex gap-2">
+      <div className="d-flex gap-2 w-full">
         <Card bordered={false} className="summary-panel-container">
           <Card
             className="content-area"
