@@ -28,7 +28,6 @@ public class QueryIndex implements SearchIndex {
     doc.put("tier", parseTags.getTierTag());
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
-
     return doc;
   }
 
