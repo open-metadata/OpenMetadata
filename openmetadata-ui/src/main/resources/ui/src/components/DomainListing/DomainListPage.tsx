@@ -150,7 +150,7 @@ const DomainListPage = () => {
   });
 
   const { view, viewToggle, isTreeView } = useViewToggle({
-    views: ['table', 'tree', 'card'],
+    views: ['table', 'card', 'tree'],
   });
   const { domainCardTemplate } = useDomainCardTemplates();
 
