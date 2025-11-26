@@ -93,7 +93,7 @@ export const useViewToggle = ({
       case 'card':
         return <Grid01 size={16} />;
       case 'tree':
-        return <WorkflowIcon height={16} width={16} />;
+        return <WorkflowIcon aria-label="Tree view" height={16} width={16} />;
       case 'table':
       default:
         return <Menu01 size={16} />;

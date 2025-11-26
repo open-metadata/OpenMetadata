@@ -335,11 +335,8 @@ const DomainTreeView = ({
         return {
           ...domainData,
           children: isAppend
-            ? [
-                ...(domainData.children ?? []),
-                ...(newChildren as unknown as EntityReference[]),
-              ]
-            : (newChildren as unknown as EntityReference[]),
+            ? [...(domainData.children ?? []), ...newChildren]
+            : newChildren,
         } as unknown as EntityReference;
       }
 
@@ -417,17 +414,14 @@ const DomainTreeView = ({
           },
         }));
 
-        setHierarchy((prev) => {
+        setHierarchy((prev): Domain[] => {
           const updated = prev.map((domain) => {
             if (domain.fullyQualifiedName === parentFqn) {
               return {
                 ...domain,
                 children: isLoadMore
-                  ? [
-                      ...(domain.children ?? []),
-                      ...(children as unknown as EntityReference[]),
-                    ]
-                  : (children as unknown as EntityReference[]),
+                  ? [...(domain.children ?? []), ...children]
+                  : children,
               };
             }
 
@@ -446,7 +440,7 @@ const DomainTreeView = ({
             return domain;
           });
 
-          return updated;
+          return updated as Domain[];
         });
       } catch (error) {
         handleError(error);
@@ -1004,7 +998,7 @@ const DomainTreeView = ({
 
             '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
               '&:hover': {
-                backgroundColor: '#0000000A',
+                backgroundColor: theme.palette.action.hover,
               },
               '&.Mui-selected': {
                 backgroundColor: theme.palette.allShades?.blue?.[50],
@@ -1017,7 +1011,7 @@ const DomainTreeView = ({
                   backgroundColor: 'transparent !important',
                 },
                 '&:hover .MuiTreeItem-label': {
-                  backgroundColor: '#0000000A',
+                  backgroundColor: theme.palette.action.hover,
                   borderRadius: '8px',
                 },
                 '&.Mui-selected .MuiTreeItem-label': {
