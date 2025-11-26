@@ -116,7 +116,7 @@ export const setValueForProperty = async (data: {
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
       await page.locator(descriptionBox).isVisible();
@@ -247,7 +247,9 @@ export const setValueForProperty = async (data: {
       break;
     }
   }
-  await patchRequest;
+  const patchRequest = await patchRequestPromise;
+
+  expect(patchRequest.status()).toBe(200);
 };
 
 export const validateValueForProperty = async (data: {
@@ -305,6 +307,9 @@ export const validateValueForProperty = async (data: {
   ) {
     // For other types (string, integer, number, duration), match exact value without transformation
     await expect(container.getByTestId('value')).toContainText(value);
+  } else {
+    await expect(container.getByTestId('value')).toBeVisible();
+    await expect(container.getByTestId('no-data')).not.toBeVisible();
   }
 };
 
