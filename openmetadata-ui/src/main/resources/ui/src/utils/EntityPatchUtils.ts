@@ -22,6 +22,7 @@ import {
 } from '../rest/databaseAPI';
 import { patchDataModelDetails } from '../rest/dataModelsAPI';
 import { patchDataProduct } from '../rest/dataProductAPI';
+import { patchMetric } from '../rest/metricsAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
@@ -49,6 +50,7 @@ class EntityPatchClassBase {
     [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
     [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
     [EntityType.DATA_PRODUCT]: patchDataProduct,
+    [EntityType.METRIC]: patchMetric,
   } as Record<EntityType, PatchAPIFunction>;
 
   public getEntityPatchAPI(entityType?: EntityType): PatchAPIFunction {

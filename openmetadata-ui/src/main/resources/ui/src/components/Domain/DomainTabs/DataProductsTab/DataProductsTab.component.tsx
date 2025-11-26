@@ -163,6 +163,7 @@ const DataProductsTab = forwardRef(
                 },
               }}
               handleClosePanel={() => setSelectedCard(undefined)}
+              panelPath="dataProductsTab"
             />
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
