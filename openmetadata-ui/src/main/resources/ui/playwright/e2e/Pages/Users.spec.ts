@@ -38,6 +38,7 @@ import {
   checkStewardServicesPermissions,
   generateToken,
   hardDeleteUserProfilePage,
+  performUserLogin,
   permanentDeleteUser,
   resetPassword,
   restoreUser,
