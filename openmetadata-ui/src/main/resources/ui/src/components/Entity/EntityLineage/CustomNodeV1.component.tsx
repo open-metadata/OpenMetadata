@@ -287,6 +287,10 @@ const CustomNodeV1 = (props: NodeProps) => {
     setIsTraced(tracedNodes.includes(id));
   }, [tracedNodes, id]);
 
+  if (tracedNodes.length > 0 && !isTraced) {
+    return null;
+  }
+
   return (
     <div
       className={containerClass}
