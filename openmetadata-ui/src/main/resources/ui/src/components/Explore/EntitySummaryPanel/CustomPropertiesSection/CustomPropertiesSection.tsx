@@ -153,7 +153,7 @@ const CustomPropertiesSection = ({
 
   return (
     <div className="entity-summary-panel-tab-content">
-      <div className="p-x-md">
+      <div className="p-x-md" data-testid="custom_properties">
         {customProperties.length > 0 && (
           <SearchBarComponent
             containerClassName="searchbar-container"
@@ -171,11 +171,16 @@ const CustomPropertiesSection = ({
                 const value = extensionData[property.name];
 
                 return (
-                  <div className="custom-property-item" key={property.name}>
-                    <Typography.Text className="property-name">
+                  <div
+                    className="custom-property-item"
+                    data-testid={`custom-property-${property.name}-card`}
+                    key={property.name}>
+                    <Typography.Text
+                      className="property-name"
+                      data-testid={`property-${property.name}-name`}>
                       {property.displayName || property.name}
                     </Typography.Text>
-                    <div className="property-value">
+                    <div className="property-value" data-testid="value">
                       <CustomPropertyValueRenderer
                         property={property}
                         value={value}
