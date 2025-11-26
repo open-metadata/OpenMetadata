@@ -359,6 +359,32 @@ const DomainTreeView = ({
     });
   };
 
+  const updateDomainInHierarchy = (
+    domains: Domain[],
+    updatedDomain: Domain
+  ): Domain[] => {
+    return domains.map((domain) => {
+      if (domain.id === updatedDomain.id) {
+        return {
+          ...updatedDomain,
+          children: domain.children,
+        };
+      }
+
+      if (domain.children?.length) {
+        return {
+          ...domain,
+          children: updateDomainInHierarchy(
+            domain.children as unknown as Domain[],
+            updatedDomain
+          ) as unknown as EntityReference[],
+        };
+      }
+
+      return domain;
+    });
+  };
+
   const loadChildDomains = useCallback(
     async (parentFqn: string, isLoadMore = false) => {
       setLoadingChildren((prev) => ({ ...prev, [parentFqn]: true }));
@@ -561,6 +587,8 @@ const DomainTreeView = ({
         if (response.fullyQualifiedName) {
           setSelectedFqn(response.fullyQualifiedName);
         }
+
+        setHierarchy((prev) => updateDomainInHierarchy(prev, response));
 
         await refreshAll();
       } catch (error) {
