@@ -67,6 +67,7 @@ export const DataAssetSummaryPanelV1 = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
   onOwnerUpdate,
+  panelPath,
   onDomainUpdate,
   onTierUpdate,
   isDomainVisible,
@@ -278,7 +279,10 @@ export const DataAssetSummaryPanelV1 = ({
     editGlossaryTermsPermission,
   } = useMemo(
     () => ({
-      editDomainPermission: entityPermissions?.EditAll && !dataAsset.deleted,
+      editDomainPermission:
+        entityPermissions?.EditAll &&
+        !dataAsset.deleted &&
+        panelPath !== 'dataProductsTab',
       editDescriptionPermission:
         (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
         !dataAsset.deleted,

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@mui/material';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -241,9 +242,23 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <UpstreamIcon height={18} width={18} />
+                      <Tooltip
+                        arrow
+                        placement="top"
+                        title={t('label.upstream')}>
+                        <span>
+                          <UpstreamIcon height={18} width={18} />
+                        </span>
+                      </Tooltip>
                     ) : (
-                      <DownstreamIcon height={18} width={18} />
+                      <Tooltip
+                        arrow
+                        placement="top"
+                        title={t('label.downstream')}>
+                        <span>
+                          <DownstreamIcon height={18} width={18} />
+                        </span>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
