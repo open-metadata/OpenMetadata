@@ -1125,7 +1125,7 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? '',
+      value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
         service.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
