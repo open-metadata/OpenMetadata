@@ -126,3 +126,91 @@ class OMetaDomainMixin:
         payload = AssetsRequest(assets=assets)
 
         return self.client.put(path, payload.model_dump_json())
+
+    # Input Ports methods
+
+    def add_input_ports_to_data_product(
+        self, name: str, ports: List[EntityReference]
+    ) -> Dict:
+        """
+        Add input ports to a data product
+
+        Args:
+            name: Name of the data product
+            ports: List of entity references to add as input ports
+
+        Returns:
+            API response as a dictionary
+        """
+        return self._handle_data_product_ports(name, ports, "inputPorts", "add")
+
+    def remove_input_ports_from_data_product(
+        self, name: str, ports: List[EntityReference]
+    ) -> Dict:
+        """
+        Remove input ports from a data product
+
+        Args:
+            name: Name of the data product
+            ports: List of entity references to remove from input ports
+
+        Returns:
+            API response as a dictionary
+        """
+        return self._handle_data_product_ports(name, ports, "inputPorts", "remove")
+
+    # Output Ports methods
+
+    def add_output_ports_to_data_product(
+        self, name: str, ports: List[EntityReference]
+    ) -> Dict:
+        """
+        Add output ports to a data product
+
+        Args:
+            name: Name of the data product
+            ports: List of entity references to add as output ports
+
+        Returns:
+            API response as a dictionary
+        """
+        return self._handle_data_product_ports(name, ports, "outputPorts", "add")
+
+    def remove_output_ports_from_data_product(
+        self, name: str, ports: List[EntityReference]
+    ) -> Dict:
+        """
+        Remove output ports from a data product
+
+        Args:
+            name: Name of the data product
+            ports: List of entity references to remove from output ports
+
+        Returns:
+            API response as a dictionary
+        """
+        return self._handle_data_product_ports(name, ports, "outputPorts", "remove")
+
+    def _handle_data_product_ports(
+        self,
+        name: str,
+        ports: List[EntityReference],
+        port_type: str,
+        operation: str,
+    ) -> Dict:
+        """
+        Handle adding or removing ports from a data product
+
+        Args:
+            name: Name of the data product
+            ports: List of entity references to add/remove as ports
+            port_type: Type of port ("inputPorts" or "outputPorts")
+            operation: Operation to perform ("add" or "remove")
+
+        Returns:
+            API response as a dictionary
+        """
+        path = f"/dataProducts/{name}/{port_type}/{operation}"
+        payload = AssetsRequest(assets=ports)
+
+        return self.client.put(path, payload.model_dump_json())
