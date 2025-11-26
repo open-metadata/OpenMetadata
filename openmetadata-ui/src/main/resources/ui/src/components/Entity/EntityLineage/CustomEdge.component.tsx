@@ -182,6 +182,9 @@ export const CustomEdge = ({
         }
       } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
         display = 'block';
+        if (sourceX < 0 || sourceY < 0 || targetX < 0 || targetY < 0) {
+          display = 'none';
+        }
       } else {
         display = 'none';
       }
@@ -206,6 +209,10 @@ export const CustomEdge = ({
     tracedColumns.length,
     showDqTracing,
     isEditMode,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
   ]);
 
   // Calculate conditions for various component displays
