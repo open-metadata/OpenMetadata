@@ -43,12 +43,15 @@ import React from 'react';
 
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
+  nodeId?: string;
 }
 
-const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
+const CustomPaginatedList = ({ items, nodeId }: CustomPaginatedListProps) => {
   const ITEMS_PER_PAGE = 5;
   const [page, setPage] = useState(1);
   const { t } = useTranslation();
+  const { useUpdateNodeInternals } = useLineageProvider();
+  const updateNodeInternals = useUpdateNodeInternals();
 
   const count = Math.ceil(items.length / ITEMS_PER_PAGE);
   const start = (page - 1) * ITEMS_PER_PAGE;
@@ -80,6 +83,12 @@ const CustomPaginatedList = ({ items }: CustomPaginatedListProps) => {
     e.stopPropagation();
     setPage((p) => Math.min(p + 1, count));
   };
+
+  useEffect(() => {
+    if (nodeId) {
+      updateNodeInternals(nodeId);
+    }
+  }, [page]);
 
   return (
     <>
@@ -438,7 +447,10 @@ const NodeChildren = ({
             {isChildrenListExpanded && !isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
-                  <CustomPaginatedList items={renderedColumns} />
+                  <CustomPaginatedList
+                    items={renderedColumns}
+                    nodeId={node.id}
+                  />
                 </div>
               </section>
             )}
