@@ -153,15 +153,6 @@ describe('EntityPatchUtils', () => {
       expect(typeof patchAPI).toBe('function');
     });
 
-    it('should return patch API for GLOSSARIES entity type', () => {
-      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
-        EntityType.GLOSSARIES
-      );
-
-      expect(patchAPI).toBeDefined();
-      expect(typeof patchAPI).toBe('function');
-    });
-
     it('should return patch API for GLOSSARY entity type', () => {
       const patchAPI = entityPatchClassBase.getEntityPatchAPI(
         EntityType.GLOSSARY

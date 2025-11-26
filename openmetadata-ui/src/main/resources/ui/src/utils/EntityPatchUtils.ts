@@ -63,7 +63,6 @@ class EntityPatchClassBase {
     [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
     [EntityType.DATA_PRODUCT]: patchDataProduct,
     [EntityType.METRIC]: patchMetric,
-    [EntityType.GLOSSARIES]: patchGlossaries,
     [EntityType.GLOSSARY]: patchGlossaries,
     [EntityType.GLOSSARY_TERM]: patchGlossaryTerm,
     [EntityType.DOMAIN]: patchDomains,
