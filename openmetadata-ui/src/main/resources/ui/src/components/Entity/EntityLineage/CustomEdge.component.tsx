@@ -160,28 +160,30 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.toEntity.id);
 
     let stroke = '';
-    let opacity = 1;
     let display = 'block';
 
-    // For nodes
+    // For nodes edges
     if (isNodeTraced) {
       stroke = theme.palette.primary.main;
-      opacity = 1;
+      display = 'block';
     } else if (tracedNodes.length === 0) {
-      opacity = 1;
+      display = 'block';
     } else {
-      opacity = 0.5;
+      display = 'none';
     }
 
-    // For columns
+    // For columns edges
     if (isColumnLineage) {
-      display = 'none';
       if (isColumnHighlighted) {
         display = 'block';
         stroke = theme.palette.primary.main;
         if (selectedColumn) {
           stroke = theme.palette.allShades.purple[400];
         }
+      } else if (tracedColumns.length === 0) {
+        display = 'block';
+      } else {
+        display = 'none';
       }
     }
 
@@ -193,7 +195,6 @@ export const CustomEdge = ({
       ...style,
       stroke,
       display,
-      opacity,
     };
   }, [
     style,
