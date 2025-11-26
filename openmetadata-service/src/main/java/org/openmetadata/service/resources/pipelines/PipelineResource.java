@@ -662,6 +662,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Fields requested in the returned resource") @QueryParam("fields")
           String fieldsParam,
       @Parameter(description = "Filter by service name") @QueryParam("service") String serviceParam,
+      @Parameter(description = "Search pipelines by name or FQN") @QueryParam("search")
+          String searchParam,
       @Parameter(description = "Limit the number of results (1 to 1000, default = 10)")
           @DefaultValue("10")
           @Min(value = 1, message = "Limit must be at least 1")
@@ -679,7 +681,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     Fields fields = getFields(fieldsParam);
-    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("service", serviceParam)
+            .addQueryParam("search", searchParam);
 
     return repository.listPipelineSummaries(
         uriInfo, securityContext, fields, filter, limitParam, before, after);

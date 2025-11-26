@@ -1161,6 +1161,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       }
     }
 
+    // Apply search filter if provided
+    String searchTerm = filter.getQueryParams().get("search");
+    if (searchTerm != null && !searchTerm.isEmpty()) {
+      String searchLower = searchTerm.toLowerCase();
+      summaries =
+          summaries.stream()
+              .filter(
+                  summary ->
+                      (summary.getPipelineName() != null
+                              && summary.getPipelineName().toLowerCase().contains(searchLower))
+                          || (summary.getPipelineFqn() != null
+                              && summary.getPipelineFqn().toLowerCase().contains(searchLower)))
+              .collect(java.util.stream.Collectors.toList());
+    }
+
     // Extract pagination info correctly
     String beforeCursor = pipelines.getPaging() != null ? pipelines.getPaging().getBefore() : null;
     String afterCursor = pipelines.getPaging() != null ? pipelines.getPaging().getAfter() : null;
@@ -1217,8 +1232,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     summary.setScheduleInterval(pipeline.getScheduleInterval());
 
-    int impactedCount = getImpactedAssetsCount(pipeline.getFullyQualifiedName());
-    summary.setImpactedAssetsCount(impactedCount);
+    List<String> impactedAssetsFqns = getImpactedAssetsFqns(pipeline.getFullyQualifiedName());
+    summary.setImpactedAssetsCount(impactedAssetsFqns.size());
+    summary.setImpactedAssets(impactedAssetsFqns);
 
     return summary;
   }
@@ -1234,7 +1250,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withLastRunTime(null)
         .withLastRunStatus(null)
         .withScheduleInterval(pipeline.getScheduleInterval())
-        .withImpactedAssetsCount(0);
+        .withImpactedAssetsCount(0)
+        .withImpactedAssets(Collections.emptyList());
   }
 
   private int getImpactedAssetsCount(String pipelineFqn) {
@@ -1259,6 +1276,46 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       LOG.error(
           "Failed to get impacted assets count for pipeline '{}': {}", pipelineFqn, e.getMessage());
       return 0;
+    }
+  }
+
+  private List<String> getImpactedAssetsFqns(String pipelineFqn) {
+    if (nullOrEmpty(pipelineFqn)) {
+      return Collections.emptyList();
+    }
+
+    try {
+      String extensionKey = "table.pipelineObservability." + pipelineFqn;
+      List<CollectionDAO.ExtensionWithIdAndSchemaObject> records =
+          daoCollection.entityExtensionDAO().getExtensionsByPrefixBatch(extensionKey);
+
+      // Get unique table IDs
+      Set<String> uniqueTableIds = new HashSet<>();
+      for (CollectionDAO.ExtensionWithIdAndSchemaObject record : records) {
+        uniqueTableIds.add(record.getId());
+      }
+
+      // Convert table IDs to FQNs
+      List<String> tableFqns = new ArrayList<>();
+      for (String tableId : uniqueTableIds) {
+        try {
+          EntityReference tableRef =
+              Entity.getEntityReferenceById(Entity.TABLE, UUID.fromString(tableId), NON_DELETED);
+          if (tableRef != null && tableRef.getFullyQualifiedName() != null) {
+            tableFqns.add(tableRef.getFullyQualifiedName());
+          }
+        } catch (Exception e) {
+          LOG.debug(
+              "Skipping table {} for pipeline '{}': {}", tableId, pipelineFqn, e.getMessage());
+        }
+      }
+
+      return tableFqns;
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to get impacted assets FQNs for pipeline '{}': {}", pipelineFqn, e.getMessage());
+      return Collections.emptyList();
     }
   }
 

@@ -4,6 +4,7 @@
     "pipelineStatus": [
       {
         "timestamp": 1649582444000,
+        "executionId": "airflow_dim_address_etl_1649582444000",
         "executionStatus": "Failed",
         "taskStatus": [
           {
@@ -18,6 +19,7 @@
       },
       {
         "timestamp": 164966958900,
+        "executionId": "airflow_dim_address_etl_164966958900",
         "executionStatus": "Successful",
         "taskStatus": [
           {
@@ -32,6 +34,7 @@
       },
       {
         "timestamp": 164966939400,
+        "executionId": "airflow_dim_address_etl_164966939400",
         "executionStatus": "Failed",
         "taskStatus": [
           {
@@ -46,6 +49,7 @@
       },
       {
         "timestamp": 164966917400,
+        "executionId": "airflow_dim_address_etl_164966917400",
         "executionStatus": "Failed",
         "taskStatus": [
           {
@@ -60,6 +64,7 @@
       },
       {
         "timestamp": 164966927400,
+        "executionId": "airflow_dim_address_etl_164966927400",
         "executionStatus": "Pending",
         "taskStatus": [
           {
@@ -74,6 +79,7 @@
       },
       {
         "timestamp": 164966937400,
+        "executionId": "airflow_dim_address_etl_164966937400",
         "executionStatus": "Pending",
         "taskStatus": [
           {
@@ -88,6 +94,7 @@
       },
       {
         "timestamp": 164966947400,
+        "executionId": "airflow_dim_address_etl_164966947400",
         "executionStatus": "Pending",
         "taskStatus": [
           {
@@ -107,6 +114,7 @@
     "pipelineStatus": [
       {
         "timestamp": 1649582444000,
+        "executionId": "dbtcloud_dbt_staging_shopify_1649582444000",
         "executionStatus": "Successful",
         "taskStatus": [
           {
@@ -121,6 +129,7 @@
       },
       {
         "timestamp": 1649668844000,
+        "executionId": "dbtcloud_dbt_staging_shopify_1649668844000",
         "executionStatus": "Failed",
         "taskStatus": [
           {
@@ -140,6 +149,7 @@
     "pipelineStatus": [
       {
         "timestamp": 1649582444000,
+        "executionId": "dbtcloud_dbt_transform_orders_1649582444000",
         "executionStatus": "Successful",
         "taskStatus": [
           {
@@ -154,6 +164,7 @@
       },
       {
         "timestamp": 1649668844000,
+        "executionId": "dbtcloud_dbt_transform_orders_1649668844000",
         "executionStatus": "Successful",
         "taskStatus": [
           {
@@ -173,6 +184,7 @@
     "pipelineStatus": [
       {
         "timestamp": 1649582444000,
+        "executionId": "dbtcloud_dbt_analytics_customers_1649582444000",
         "executionStatus": "Successful",
         "taskStatus": [
           {

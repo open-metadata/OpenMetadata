@@ -537,6 +537,7 @@ class DbtcloudSource(PipelineServiceSource):
                 )
 
                 pipeline_status = PipelineStatus(
+                    executionId=str(task.id),
                     executionStatus=task_status.executionStatus,
                     taskStatus=[task_status],
                     timestamp=task_status.endTime

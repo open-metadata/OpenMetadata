@@ -1886,17 +1886,29 @@ class SampleDataSource(
             new_timestamp = int(target_start_time + (index * interval))
             status["timestamp"] = new_timestamp
 
+            # Calculate duration from original data with validation for realistic values
             if original_end_time is not None and original_timestamp > 0:
                 duration = original_end_time - original_timestamp
-                if duration > 0:
-                    status["endTime"] = new_timestamp + duration
-                else:
-                    status["endTime"] = new_timestamp + 300000
+
+                # Cap unrealistic durations at 30 minutes (1,800,000 ms)
+                MAX_REALISTIC_DURATION = 30 * 60 * 1000  # 30 minutes in milliseconds
+                MIN_REALISTIC_DURATION = 5 * 60 * 1000  # 5 minutes in milliseconds
+
+                if duration > MAX_REALISTIC_DURATION or duration <= 0:
+                    # Generate realistic random duration between 5-30 minutes
+                    import random
+
+                    duration = random.randint(
+                        MIN_REALISTIC_DURATION, MAX_REALISTIC_DURATION
+                    )
+
+                status["endTime"] = new_timestamp + duration
             elif original_end_time is None and status.get("executionStatus") not in [
                 "Pending",
                 "Skipped",
             ]:
-                status["endTime"] = new_timestamp + 300000
+                # Default 5 minute duration for completed pipelines without endTime
+                status["endTime"] = new_timestamp + (5 * 60 * 1000)
 
             yield Either(
                 right=OMetaPipelineStatus(
