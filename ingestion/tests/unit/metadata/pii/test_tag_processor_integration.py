@@ -36,6 +36,9 @@ from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer
 from _openmetadata_testutils.factories.metadata.generated.schema.type.tag_label import (
     TagLabelFactory,
 )
+from _openmetadata_testutils.pii.fake_classification_manager import (
+    FakeClassificationManager,
+)
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
     ConflictResolution,
@@ -53,9 +56,6 @@ from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_processor import TagProcessor
-from tests.unit.metadata.pii.fake_classification_manager import (
-    FakeClassificationManager,
-)
 
 
 class FakeScoreTagsForColumn:
