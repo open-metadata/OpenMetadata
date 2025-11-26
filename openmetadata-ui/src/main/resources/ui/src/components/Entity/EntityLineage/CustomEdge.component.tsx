@@ -166,7 +166,7 @@ export const CustomEdge = ({
     if (isNodeTraced) {
       stroke = theme.palette.primary.main;
       display = 'block';
-    } else if (tracedNodes.length === 0) {
+    } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
       display = 'block';
     } else {
       display = 'none';
@@ -180,7 +180,7 @@ export const CustomEdge = ({
         if (selectedColumn) {
           stroke = theme.palette.allShades.purple[400];
         }
-      } else if (tracedColumns.length === 0) {
+      } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
         display = 'block';
       } else {
         display = 'none';
