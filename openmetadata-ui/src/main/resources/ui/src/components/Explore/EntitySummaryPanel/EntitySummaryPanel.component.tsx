@@ -73,6 +73,7 @@ import { LineageTabContent } from './LineageTab';
 export default function EntitySummaryPanel({
   entityDetails,
   highlights,
+  panelPath,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -446,6 +447,7 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
