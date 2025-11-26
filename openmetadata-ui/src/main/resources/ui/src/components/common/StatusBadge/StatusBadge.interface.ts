@@ -34,4 +34,5 @@ export interface StatusBadgeProps {
   className?: string;
   externalIcon?: SvgComponent;
   showIcon?: boolean;
+  iconPlacement?: 'left' | 'right';
 }
