@@ -194,6 +194,7 @@ const DomainDetails = ({
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
+  const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
@@ -888,6 +889,7 @@ const DomainDetails = ({
               breadcrumb={[]}
               entityData={{ ...domain, displayName, name }}
               entityType={EntityType.DOMAIN}
+              entityUrl={`${globalThis.location.origin}/domain/${urlEncodedFqn}`}
               handleFollowingClick={handleFollowingClick}
               icon={iconData}
               isFollowing={isFollowing}
