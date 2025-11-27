@@ -966,22 +966,33 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(String pipelineFqn) {
-    return getPipelineObservability(pipelineFqn, null, null, null, null, 10);
+    return getPipelineObservability(pipelineFqn, null, null, null, null, null, 10, null, null);
   }
 
   /**
-   * Get pipeline observability data for all tables associated with a pipeline with filters.
+   * Get pipeline observability data for all tables associated with a pipeline with filters and pagination.
    *
    * @param pipelineFqn the pipeline fully qualified name
    * @param status filter by execution status (Successful, Failed, Running, Pending, Skipped)
    * @param startTs filter observability data after this timestamp
    * @param endTs filter observability data before this timestamp
    * @param serviceType filter by pipeline service type (e.g., Airflow, Dagster)
-   * @param limit limit the number of observability records per table
+   * @param search search tables by name or FQN
+   * @param limit limit the number of tables returned
+   * @param before cursor for reverse pagination
+   * @param after cursor for forward pagination
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(
-      String pipelineFqn, String status, Long startTs, Long endTs, String serviceType, int limit) {
+      String pipelineFqn,
+      String status,
+      Long startTs,
+      Long endTs,
+      String serviceType,
+      String search,
+      int limit,
+      String before,
+      String after) {
     // Get the pipeline entity to retrieve its ID
     Pipeline pipeline = findByName(pipelineFqn, NON_DELETED);
     if (pipeline == null) {
@@ -1110,10 +1121,99 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       throw new RuntimeException("Failed to retrieve pipeline observability data", e);
     }
 
+    // Apply search filter
+    if (search != null && !search.isEmpty()) {
+      String searchLower = search.toLowerCase();
+      tableObservabilityList =
+          tableObservabilityList.stream()
+              .filter(
+                  table ->
+                      table.getTableFqn() != null
+                          && table.getTableFqn().toLowerCase().contains(searchLower))
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Sort by table FQN for consistent pagination
+    tableObservabilityList.sort(
+        (a, b) -> {
+          String fqnA = a.getTableFqn() != null ? a.getTableFqn() : "";
+          String fqnB = b.getTableFqn() != null ? b.getTableFqn() : "";
+          return fqnA.compareTo(fqnB);
+        });
+
+    // Calculate total before pagination
+    int total = tableObservabilityList.size();
+
+    // Apply pagination
+    String beforeCursor = null;
+    String afterCursor = null;
+
+    try {
+      // Decode cursors
+      String decodedBefore = before != null ? RestUtil.decodeCursor(before) : null;
+      String decodedAfter = after != null ? RestUtil.decodeCursor(after) : null;
+
+      // Find position based on cursor
+      int startIndex = 0;
+      if (decodedAfter != null) {
+        // Forward pagination - find position after cursor
+        for (int i = 0; i < tableObservabilityList.size(); i++) {
+          if (tableObservabilityList.get(i).getTableFqn().equals(decodedAfter)) {
+            startIndex = i + 1;
+            break;
+          }
+        }
+      } else if (decodedBefore != null) {
+        // Reverse pagination - find position before cursor
+        for (int i = tableObservabilityList.size() - 1; i >= 0; i--) {
+          if (tableObservabilityList.get(i).getTableFqn().equals(decodedBefore)) {
+            startIndex = Math.max(0, i - limit);
+            break;
+          }
+        }
+      }
+
+      // Get paginated slice (take limit+1 to determine if more pages exist)
+      int endIndex = Math.min(startIndex + limit, tableObservabilityList.size());
+      List<TableObservabilityData> paginatedList =
+          new ArrayList<>(tableObservabilityList.subList(startIndex, endIndex));
+
+      // Generate cursors
+      if (paginatedList.size() > 0) {
+        // Generate before cursor if not at start
+        if (startIndex > 0) {
+          beforeCursor = RestUtil.encodeCursor(paginatedList.get(0).getTableFqn());
+        }
+        // Generate after cursor if not at end
+        if (endIndex < total) {
+          afterCursor =
+              RestUtil.encodeCursor(paginatedList.get(paginatedList.size() - 1).getTableFqn());
+        }
+      }
+
+      tableObservabilityList = paginatedList;
+
+    } catch (Exception e) {
+      LOG.warn("Failed to decode pagination cursors: {}", e.getMessage());
+      // If cursor decoding fails, just return first page
+      int endIndex = Math.min(limit, tableObservabilityList.size());
+      tableObservabilityList = new ArrayList<>(tableObservabilityList.subList(0, endIndex));
+      if (endIndex < total) {
+        afterCursor =
+            RestUtil.encodeCursor(
+                tableObservabilityList.get(tableObservabilityList.size() - 1).getTableFqn());
+      }
+    }
+
     return new PipelineObservabilityResponse()
         .withPipelineId(pipelineId)
         .withPipelineFqn(pipelineFqn)
-        .withTableObservabilityData(tableObservabilityList);
+        .withTableObservabilityData(tableObservabilityList)
+        .withPaging(
+            new org.openmetadata.schema.type.Paging()
+                .withBefore(beforeCursor)
+                .withAfter(afterCursor)
+                .withTotal(total));
   }
 
   private String formatTimestamp(Long timestamp) {

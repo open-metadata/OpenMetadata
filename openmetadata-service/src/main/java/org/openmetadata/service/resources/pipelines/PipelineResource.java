@@ -845,17 +845,25 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(description = "Search tables by name or FQN", schema = @Schema(type = "string"))
+          @QueryParam("search")
+          String search,
       @Parameter(
-              description = "Limit the number of observability records per table",
+              description = "Limit the number of tables returned",
               schema = @Schema(type = "integer"))
           @DefaultValue("10")
           @QueryParam("limit")
-          int limit) {
+          int limit,
+      @Parameter(description = "Returns list before this cursor") @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list after this cursor") @QueryParam("after")
+          String after) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     PipelineObservabilityResponse response =
-        repository.getPipelineObservability(fqn, status, startTs, endTs, serviceType, limit);
+        repository.getPipelineObservability(
+            fqn, status, startTs, endTs, serviceType, search, limit, before, after);
     return Response.ok(response).build();
   }
 
