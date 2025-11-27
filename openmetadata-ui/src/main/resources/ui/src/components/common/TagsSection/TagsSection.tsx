@@ -223,8 +223,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     return tagsDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tagsDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!nonTierTags.length) {
     return (

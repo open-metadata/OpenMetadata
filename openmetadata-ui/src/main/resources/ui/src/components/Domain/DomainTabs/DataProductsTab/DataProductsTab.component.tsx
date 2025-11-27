@@ -23,7 +23,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
-import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -163,6 +163,7 @@ const DataProductsTab = forwardRef(
                 },
               }}
               handleClosePanel={() => setSelectedCard(undefined)}
+              panelPath={ENTITY_PATH.dataProductsTab}
             />
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
