@@ -38,7 +38,7 @@ const DataAssetsTab = () => {
         <DataInsightChartCard
           listAssets
           header={t('label.data-insight-description-summary-type', {
-            type: 'label.data-asset',
+            type: t('label.data-asset'),
           })}
           subHeader={t('message.field-insight', {
             field: 'label.description-lowercase',
@@ -50,10 +50,10 @@ const DataAssetsTab = () => {
         <DataInsightChartCard
           listAssets
           header={t('label.data-insight-owner-summary-type', {
-            type: 'label.data-asset',
+            type: t('label.data-asset'),
           })}
           subHeader={t('message.field-insight', {
-            field: 'label.owner',
+            field: t('label.owner'),
           })}
           type={SystemChartType.PercentageOfDataAssetWithOwner}
         />
@@ -61,10 +61,10 @@ const DataAssetsTab = () => {
       <Col span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-description-summary-type', {
-            type: 'label.service',
+            type: t('label.service'),
           })}
           subHeader={t('message.field-insight', {
-            field: 'label.description-lowercase',
+            field: t('label.description-lowercase'),
           })}
           type={SystemChartType.PercentageOfServiceWithDescription}
         />
@@ -72,10 +72,10 @@ const DataAssetsTab = () => {
       <Col span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-owner-summary-type', {
-            type: 'label.service',
+            type: t('label.service'),
           })}
           subHeader={t('message.field-insight', {
-            field: 'label.owner',
+            field: t('label.owner'),
           })}
           type={SystemChartType.PercentageOfServiceWithOwner}
         />
@@ -84,7 +84,7 @@ const DataAssetsTab = () => {
         <DataInsightChartCard
           header={t('label.data-insight-tier-summary')}
           subHeader={t('message.field-insight', {
-            field: 'label.tier',
+            field: t('label.tier'),
           })}
           type={SystemChartType.TotalDataAssetsByTier}
         />
