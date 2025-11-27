@@ -422,8 +422,8 @@ export const TestCases = () => {
         <Col span={16}>
           <PageHeader
             data={{
-              header: 'label.test-case-insight-plural',
-              subHeader: 'message.test-case-insight-description',
+              header: t('label.test-case-insight-plural'),
+              subHeader: t('message.test-case-insight-description'),
             }}
           />
         </Col>

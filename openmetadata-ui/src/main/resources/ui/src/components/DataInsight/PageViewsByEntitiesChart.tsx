@@ -109,8 +109,8 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         title={
           <PageHeader
             data={{
-              header: 'label.page-views-by-data-asset-plural',
-              subHeader: 'message.data-insight-page-views',
+              header: t('label.page-views-by-data-asset-plural'),
+              subHeader: t('message.data-insight-page-views'),
             }}
           />
         }>
@@ -129,8 +129,8 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         <Col span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
-              header: 'label.page-views-by-data-asset-plural',
-              subHeader: 'message.data-insight-page-views',
+              header: t('label.page-views-by-data-asset-plural'),
+              subHeader: t('message.data-insight-page-views'),
             }}
           />
           <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>

@@ -123,8 +123,8 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
       title={
         <PageHeader
           data={{
-            header: 'label.data-insight-top-viewed-entity-summary',
-            subHeader: 'message.most-viewed-data-assets',
+            header: t('label.data-insight-top-viewed-entity-summary'),
+            subHeader: t('message.most-viewed-data-assets'),
           }}
         />
       }>

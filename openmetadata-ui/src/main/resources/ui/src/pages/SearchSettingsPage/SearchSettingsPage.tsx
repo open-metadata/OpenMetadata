@@ -305,7 +305,12 @@ const SearchSettingsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.SEARCH_SETTINGS.header),
+              subHeader: t(PAGE_HEADERS.SEARCH_SETTINGS.subHeader),
+            }}
+          />
         </Col>
       </Row>
       <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>

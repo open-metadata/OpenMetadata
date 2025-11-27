@@ -99,8 +99,8 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       title={
         <PageHeader
           data={{
-            header: 'label.daily-active-users-on-the-platform',
-            subHeader: 'message.active-users',
+            header: t('label.daily-active-users-on-the-platform'),
+            subHeader: t('message.active-users'),
           }}
         />
       }>

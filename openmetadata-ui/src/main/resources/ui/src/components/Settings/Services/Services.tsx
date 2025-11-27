@@ -229,33 +229,61 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   const getServicePageHeader = useCallback(() => {
+    let pageHeader;
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
-        return PAGE_HEADERS.DATABASES_SERVICES;
+        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
+
+        break;
       case ServiceCategory.DASHBOARD_SERVICES:
-        return PAGE_HEADERS.DASHBOARD_SERVICES;
+        pageHeader = PAGE_HEADERS.DASHBOARD_SERVICES;
+
+        break;
       case ServiceCategory.MESSAGING_SERVICES:
-        return PAGE_HEADERS.MESSAGING_SERVICES;
+        pageHeader = PAGE_HEADERS.MESSAGING_SERVICES;
+
+        break;
       case ServiceCategory.METADATA_SERVICES:
-        return PAGE_HEADERS.METADATA_SERVICES;
+        pageHeader = PAGE_HEADERS.METADATA_SERVICES;
+
+        break;
       case ServiceCategory.ML_MODEL_SERVICES:
-        return PAGE_HEADERS.ML_MODELS_SERVICES;
+        pageHeader = PAGE_HEADERS.ML_MODELS_SERVICES;
+
+        break;
       case ServiceCategory.PIPELINE_SERVICES:
-        return PAGE_HEADERS.PIPELINES_SERVICES;
+        pageHeader = PAGE_HEADERS.PIPELINES_SERVICES;
+
+        break;
       case ServiceCategory.STORAGE_SERVICES:
-        return PAGE_HEADERS.STORAGE_SERVICES;
+        pageHeader = PAGE_HEADERS.STORAGE_SERVICES;
+
+        break;
       case ServiceCategory.SEARCH_SERVICES:
-        return PAGE_HEADERS.SEARCH_SERVICES;
+        pageHeader = PAGE_HEADERS.SEARCH_SERVICES;
+
+        break;
       case ServiceCategory.API_SERVICES:
-        return PAGE_HEADERS.API_SERVICES;
+        pageHeader = PAGE_HEADERS.API_SERVICES;
+
+        break;
       case ServiceCategory.SECURITY_SERVICES:
-        return PAGE_HEADERS.SECURITY_SERVICES;
+        pageHeader = PAGE_HEADERS.SECURITY_SERVICES;
+
+        break;
       case ServiceCategory.DRIVE_SERVICES:
-        return PAGE_HEADERS.DRIVE_SERVICES;
+        pageHeader = PAGE_HEADERS.DRIVE_SERVICES;
+
+        break;
       default:
-        return PAGE_HEADERS.DATABASES_SERVICES;
+        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
     }
-  }, [serviceName]);
+
+    return {
+      header: t(pageHeader.header),
+      subHeader: t(pageHeader.subHeader),
+    };
+  }, [serviceName, t]);
 
   const noDataPlaceholder = useMemo(() => {
     if (

@@ -234,8 +234,8 @@ const KPIChart: FC<Props> = ({
       title={
         <PageHeader
           data={{
-            header: 'label.kpi-title',
-            subHeader: 'message.kpi-subtitle',
+            header: t('label.kpi-title'),
+            subHeader: t('message.kpi-subtitle'),
           }}
         />
       }>

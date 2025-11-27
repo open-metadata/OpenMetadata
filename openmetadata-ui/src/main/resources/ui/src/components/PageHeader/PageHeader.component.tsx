@@ -13,12 +13,11 @@
 
 import { Badge, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
 import './page-header.less';
 import { HeaderProps } from './PageHeader.interface';
 
 const PageHeader = ({
-  data: { header, headerParams, subHeader, subHeaderParams },
+  data: { header, subHeader },
   titleProps,
   subHeaderProps,
   isBeta,
@@ -32,7 +31,7 @@ const PageHeader = ({
         data-testid="heading"
         level={5}
         {...titleProps}>
-        {translateLabel(header, headerParams)}
+        {header}
 
         {isBeta && (
           <Badge
@@ -47,7 +46,7 @@ const PageHeader = ({
         className="sub-heading"
         data-testid="sub-heading"
         {...subHeaderProps}>
-        {translateLabel(subHeader, subHeaderParams)}
+        {subHeader}
       </Typography.Paragraph>
     </div>
   );
