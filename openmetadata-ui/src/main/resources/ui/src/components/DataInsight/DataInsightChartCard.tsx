@@ -481,6 +481,7 @@ export const DataInsightChartCard = ({
           <PageHeader
             data={{
               header,
+              headerParams,
               subHeader,
               subHeaderParams,
             }}
