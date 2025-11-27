@@ -16,7 +16,6 @@ import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 export interface SearchDropdownProps {
   triggerButtonSize?: 'large' | 'middle' | 'small';
   label: string;
-  labelKeyOptions?: Record<string, string | number | boolean>; // Translation parameters for nested translations
   isSuggestionsLoading?: boolean;
   options: SearchDropdownOption[];
   searchKey: string;
