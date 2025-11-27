@@ -375,17 +375,26 @@
             background-color: @primary-1;
           }
         }
-        &.any-column-selected {
-          .custom-node-column-container.custom-node-header-column-tracing {
-            background-color: #ebe9fe;
-            border-color: #5925dc;
-          }
-        }
         &.creating-edge {
           .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
             background-color: @primary-1;
             border-color: #1570ef;
           }
+        }
+      }
+    }
+  }
+
+  .lineage-node-content {
+    .column-container {
+      .custom-node-column-container.custom-node-header-column-tracing {
+        background-color: @primary-1;
+        border-color: #1570ef;
+      }
+      &.any-column-selected {
+        .custom-node-column-container.custom-node-header-column-tracing {
+          background-color: #ebe9fe;
+          border-color: #5925dc;
         }
       }
     }

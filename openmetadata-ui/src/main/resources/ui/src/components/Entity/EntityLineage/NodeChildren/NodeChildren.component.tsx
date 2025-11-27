@@ -411,6 +411,15 @@ const NodeChildren = ({
     ]
   );
 
+  const tracedColumnsForThisNode = useMemo(() => {
+    return filteredColumns
+      .filter((record) =>
+        tracedColumns.includes(record.fullyQualifiedName ?? '')
+      )
+      .filter(Boolean)
+      .map((column) => renderColumnsData(column as Column));
+  }, [filteredColumns, renderColumnsData]);
+
   // Pre-render column data outside of the return statement
   const renderedColumns = useMemo(() => {
     return filteredColumns
@@ -456,6 +465,7 @@ const NodeChildren = ({
                 </div>
               </section>
             )}
+            {!isChildrenListExpanded && tracedColumnsForThisNode}
           </div>
         </div>
       )
