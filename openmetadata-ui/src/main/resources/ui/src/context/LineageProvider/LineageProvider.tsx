@@ -1906,7 +1906,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
                 <div
                   aria-label={t('label.close-panel')}
                   className="drawer-overlay"
+                  role="button"
+                  tabIndex={0}
                   onClick={onCloseDrawer}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onCloseDrawer();
+                    }
+                  }}
                 />
                 <div className="lineage-entity-panel">
                   <EntitySummaryPanel
