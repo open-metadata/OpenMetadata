@@ -40,6 +40,26 @@
       .ant-card-body {
         max-height: calc(100vh - 70px);
       }
+      .data-quality-stats-container,
+      .incidents-stats-container {
+        margin-top: 12px;
+      }
+      .data-quality-tab-container {
+        .data-quality-tabs {
+          .ant-tabs-nav {
+            top: 0px;
+            border-top: none;
+            border-right: none;
+            border-left: none;
+            border-radius: 0px;
+          }
+          .ant-tabs-tabpane {
+            background-color: @white;
+            overflow-y: auto;
+            margin: 0px;
+          }
+        }
+      }
     }
 
     .ant-card-head {

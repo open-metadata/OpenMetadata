@@ -255,7 +255,7 @@ export default function EntitySummaryPanel({
         fqn,
         entityType,
         config: {
-          upstreamDepth: 2,
+          upstreamDepth: 1,
           downstreamDepth: 1,
           nodesPerLayer: 50,
           pipelineViewMode: PipelineViewMode.Node,
@@ -732,7 +732,7 @@ export default function EntitySummaryPanel({
                   </span>
                   <Link
                     className="entity-title-link"
-                    data-testid="entity-link"
+                    data-testid="entity-header-title"
                     href={entityLink as string}
                     rel="noopener noreferrer"
                     target="_blank"
