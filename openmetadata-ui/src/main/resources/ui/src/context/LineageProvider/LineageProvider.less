@@ -20,6 +20,17 @@
   bottom: 0;
   background-color: @overlay-background-color;
   z-index: 8;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .lineage-entity-panel {
@@ -30,4 +41,12 @@
   height: 100%;
   z-index: 999;
   overflow: hidden;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+
+  &.panel-open {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
 }

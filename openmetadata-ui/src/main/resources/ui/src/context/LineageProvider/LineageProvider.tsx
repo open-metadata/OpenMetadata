@@ -1889,8 +1889,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
-        {isDrawerOpen &&
-          !isEditMode &&
+        {!isEditMode &&
           (selectedEdge ? (
             <EdgeInfoDrawer
               hasEditAccess
@@ -1903,20 +1902,25 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           ) : (
             !isEmpty(selectedNode) && (
               <>
+                {isDrawerOpen && (
+                  <div
+                    aria-label={t('label.close-panel')}
+                    className="drawer-overlay"
+                    role="button"
+                    tabIndex={0}
+                    onClick={onCloseDrawer}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onCloseDrawer();
+                      }
+                    }}
+                  />
+                )}
                 <div
-                  aria-label={t('label.close-panel')}
-                  className="drawer-overlay"
-                  role="button"
-                  tabIndex={0}
-                  onClick={onCloseDrawer}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onCloseDrawer();
-                    }
-                  }}
-                />
-                <div className="lineage-entity-panel">
+                  className={classNames('lineage-entity-panel', {
+                    'panel-open': isDrawerOpen,
+                  })}>
                   <EntitySummaryPanel
                     isSideDrawer
                     entityDetails={{ details: selectedNode }}
