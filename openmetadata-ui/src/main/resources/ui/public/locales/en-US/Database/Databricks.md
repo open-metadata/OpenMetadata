@@ -15,14 +15,14 @@ $$
 To extract basic metadata (catalogs, schemas, tables, views) from Databricks, the user or service principal needs the following Unity Catalog privileges:
 
 ```sql
--- Grant USAGE on catalog
-GRANT USAGE ON CATALOG <catalog_name> TO `<user_or_service_principal>`;
+-- Grant USE CATALOG on catalog
+GRANT USE CATALOG ON CATALOG <catalog_name> TO `<user_or_service_principal>`;
 
--- Grant USAGE on schemas
-GRANT USAGE ON SCHEMA <catalog_name>.<schema_name> TO `<user_or_service_principal>`;
+-- Grant USE SCHEMA on schemas
+GRANT USE SCHEMA ON SCHEMA <schema_name> TO `<user_or_service_principal>`;
 
 -- Grant SELECT on tables and views
-GRANT SELECT ON TABLE <catalog_name>.<schema_name>.<table_name> TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE <table_name> TO `<user_or_service_principal>`;
 ```
 
 ### View Definitions (Optional)
@@ -40,17 +40,21 @@ To extract tags at different levels (catalog, schema, table, column), the user n
 
 ```sql
 -- For catalog-level tags
-GRANT SELECT ON VIEW information_schema.catalog_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.catalog_tags TO `<user_or_service_principal>`;
 
 -- For schema-level tags
-GRANT SELECT ON VIEW information_schema.schema_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.schema_tags TO `<user_or_service_principal>`;
 
 -- For table-level tags
-GRANT SELECT ON VIEW information_schema.table_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.table_tags TO `<user_or_service_principal>`;
 
 -- For column-level tags
-GRANT SELECT ON VIEW information_schema.column_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.column_tags TO `<user_or_service_principal>`;
 ```
+
+$$note
+Tag extraction is only supported for Databricks version 13.3 and higher.
+$$
 
 ### Lineage Extraction (Optional)
 
@@ -71,16 +75,15 @@ $$
 ### Usage & Lineage from Query History
 
 $$note
-To get Query Usage and Lineage details from query history, you need a **Databricks Premium account**, since we will be extracting this information from your SQL Warehouse's history API (`/api/2.0/sql/history/queries`).
+To get Query Usage and Lineage details from query history, you need a **Databricks Premium account**, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
 The user or service principal needs appropriate permissions to access the SQL History API:
 
-```
 - Access to SQL Warehouses
 - Permission to view query history
 - API access enabled for the authentication method (PAT or OAuth)
-```
+
 
 ### Profiler & Data Quality
 
