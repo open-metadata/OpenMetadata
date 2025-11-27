@@ -4195,6 +4195,148 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      String status = filter.getQueryParam("status");
+      if (status != null && !status.isEmpty()) {
+        // Remove status from filter to avoid SQL error
+        Map<String, String> params = new HashMap<>(filter.getQueryParams());
+        params.remove("status");
+        ListFilter cleanFilter = new ListFilter(filter.getInclude());
+        params.forEach(cleanFilter::addQueryParam);
+
+        // Build condition with status JOIN
+        String condition = cleanFilter.getCondition();
+        String statusCondition =
+            buildStatusJoinCondition(getTableName(), condition, status, beforeName, beforeId, true);
+        return listBeforeWithStatus(
+            statusCondition, getBindMap(cleanFilter, status, limit, beforeName, beforeId));
+      }
+      return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      String status = filter.getQueryParam("status");
+      if (status != null && !status.isEmpty()) {
+        // Remove status from filter to avoid SQL error
+        Map<String, String> params = new HashMap<>(filter.getQueryParams());
+        params.remove("status");
+        ListFilter cleanFilter = new ListFilter(filter.getInclude());
+        params.forEach(cleanFilter::addQueryParam);
+
+        // Build condition with status JOIN
+        String condition = cleanFilter.getCondition();
+        String statusCondition =
+            buildStatusJoinCondition(getTableName(), condition, status, afterName, afterId, false);
+        return listAfterWithStatus(
+            statusCondition, getBindMap(cleanFilter, status, limit, afterName, afterId));
+      }
+      return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String status = filter.getQueryParam("status");
+      if (status != null && !status.isEmpty()) {
+        // Remove status from filter to avoid SQL error
+        Map<String, String> params = new HashMap<>(filter.getQueryParams());
+        params.remove("status");
+        ListFilter cleanFilter = new ListFilter(filter.getInclude());
+        params.forEach(cleanFilter::addQueryParam);
+
+        // Build condition with status JOIN
+        String condition = cleanFilter.getCondition();
+        String statusCondition = buildStatusCountCondition(getTableName(), condition, status);
+        return listCountWithStatus(statusCondition, getBindMap(cleanFilter, status, 0, null, null));
+      }
+      return EntityDAO.super.listCount(filter);
+    }
+
+    default String buildStatusJoinCondition(
+        String tableName,
+        String baseCondition,
+        String status,
+        String name,
+        String id,
+        boolean isBefore) {
+      String orderDirection = isBefore ? "DESC" : "ASC";
+      String nameComparison = isBefore ? "<" : ">";
+      String idComparison = isBefore ? "<" : ">";
+
+      return String.format(
+          "INNER JOIN ("
+              + "  SELECT entityFQNHash, JSON_UNQUOTE(JSON_EXTRACT(json, '$.executionStatus')) as execStatus "
+              + "  FROM entity_extension_time_series "
+              + "  WHERE extension = 'pipeline.pipelineStatus' "
+              + "    AND timestamp = (SELECT MAX(timestamp) FROM entity_extension_time_series eets2 "
+              + "                      WHERE eets2.entityFQNHash = entity_extension_time_series.entityFQNHash "
+              + "                      AND eets2.extension = 'pipeline.pipelineStatus') "
+              + ") latest_status ON %s.fqnHash = latest_status.entityFQNHash "
+              + "%s AND latest_status.execStatus = :status "
+              + "AND (%s.name %s :beforeAfterName OR (%s.name = :beforeAfterName AND %s.id %s :beforeAfterId)) "
+              + "ORDER BY %s.name %s, %s.id %s LIMIT :limit",
+          tableName,
+          baseCondition,
+          tableName,
+          nameComparison,
+          tableName,
+          tableName,
+          idComparison,
+          tableName,
+          orderDirection,
+          tableName,
+          orderDirection);
+    }
+
+    default String buildStatusCountCondition(
+        String tableName, String baseCondition, String status) {
+      return String.format(
+          "INNER JOIN ("
+              + "  SELECT entityFQNHash, JSON_UNQUOTE(JSON_EXTRACT(json, '$.executionStatus')) as execStatus "
+              + "  FROM entity_extension_time_series "
+              + "  WHERE extension = 'pipeline.pipelineStatus' "
+              + "    AND timestamp = (SELECT MAX(timestamp) FROM entity_extension_time_series eets2 "
+              + "                      WHERE eets2.entityFQNHash = entity_extension_time_series.entityFQNHash "
+              + "                      AND eets2.extension = 'pipeline.pipelineStatus') "
+              + ") latest_status ON %s.fqnHash = latest_status.entityFQNHash "
+              + "%s AND latest_status.execStatus = :status",
+          tableName, baseCondition);
+    }
+
+    default Map<String, Object> getBindMap(
+        ListFilter filter, String status, int limit, String name, String id) {
+      Map<String, Object> bindMap = new HashMap<>();
+      if (status != null) {
+        bindMap.put("status", status);
+      }
+      if (limit > 0) {
+        bindMap.put("limit", limit);
+      }
+      if (name != null) {
+        bindMap.put("beforeAfterName", name);
+      }
+      if (id != null) {
+        bindMap.put("beforeAfterId", id);
+      }
+      // Add filter params
+      filter.getQueryParams().forEach(bindMap::put);
+      return bindMap;
+    }
+
+    @SqlQuery("SELECT json FROM pipeline_entity <cond>")
+    List<String> listAfterWithStatus(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery(
+        "SELECT json FROM (SELECT name, id, json FROM pipeline_entity <cond>) last_rows_subquery ORDER BY name, id")
+    List<String> listBeforeWithStatus(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery("SELECT count(*) FROM pipeline_entity <cond>")
+    int listCountWithStatus(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
   }
 
   interface ClassificationDAO extends EntityDAO<Classification> {
