@@ -155,6 +155,14 @@ export interface Stats {
      * Stats for the job
      */
     jobStats?: StepStats;
+    /**
+     * Stats for the reader step (reading from database)
+     */
+    readerStats?: StepStats;
+    /**
+     * Stats for the sink step (writing to search index)
+     */
+    sinkStats?: StepStats;
 }
 
 /**

@@ -265,6 +265,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void finalizeAllEntityReindex(boolean finalSuccess) {
+    if (recreateIndexHandler == null || recreateContext == null) {
+      return;
+    }
+
     try {
       recreateContext
           .getEntities()
@@ -1311,6 +1315,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
     jobStats.setTotalRecords(total);
     LOG.debug("Set job-level Total Records: {}", jobStats.getTotalRecords());
 
+    StepStats readerStats = jobDataStats.getReaderStats();
+    if (readerStats == null) {
+      readerStats = new StepStats();
+      jobDataStats.setReaderStats(readerStats);
+      LOG.debug("Initialized readerStats.");
+    }
+    readerStats.setTotalRecords(total);
+    readerStats.setSuccessRecords(0);
+    readerStats.setFailedRecords(0);
+
+    StepStats sinkStats = jobDataStats.getSinkStats();
+    if (sinkStats == null) {
+      sinkStats = new StepStats();
+      jobDataStats.setSinkStats(sinkStats);
+      LOG.debug("Initialized sinkStats.");
+    }
+    sinkStats.setTotalRecords(total);
+    sinkStats.setSuccessRecords(0);
+    sinkStats.setFailedRecords(0);
+
     jobData.setStats(jobDataStats);
     return jobDataStats;
   }
@@ -1574,9 +1598,32 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     long startTime = System.currentTimeMillis();
 
+    int readerSuccessCount = listOrEmpty(entities.getData()).size();
+    int readerFailedCount = listOrEmpty(entities.getErrors()).size();
+
+    updateReaderStats(readerSuccessCount, readerFailedCount);
+
     try {
+      StepStats sinkStatsBeforeWrite = searchIndexSink != null ? searchIndexSink.getStats() : null;
+      int beforeSuccess =
+          sinkStatsBeforeWrite != null ? sinkStatsBeforeWrite.getSuccessRecords() : 0;
+      int beforeFailed = sinkStatsBeforeWrite != null ? sinkStatsBeforeWrite.getFailedRecords() : 0;
+
       writeEntitiesToSink(entityType, entities, contextData);
-      StepStats currentEntityStats = createEntityStats(entities);
+
+      StepStats sinkStatsAfterWrite = searchIndexSink != null ? searchIndexSink.getStats() : null;
+      int afterSuccess = sinkStatsAfterWrite != null ? sinkStatsAfterWrite.getSuccessRecords() : 0;
+      int afterFailed = sinkStatsAfterWrite != null ? sinkStatsAfterWrite.getFailedRecords() : 0;
+
+      int sinkSuccessCount = afterSuccess - beforeSuccess;
+      int sinkFailedCount = afterFailed - beforeFailed;
+
+      updateSinkStats(sinkSuccessCount, sinkFailedCount);
+
+      StepStats currentEntityStats = new StepStats();
+      currentEntityStats.setSuccessRecords(sinkSuccessCount);
+      currentEntityStats.setFailedRecords(sinkFailedCount + readerFailedCount);
+
       handleTaskSuccess(entityType, entities, currentEntityStats, jobExecutionContext);
 
       long processingTime = System.currentTimeMillis() - startTime;
@@ -1709,9 +1756,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (indexingError != null) {
         jobData.setFailure(indexingError);
         handleBackpressure(indexingError.getMessage());
+        updateSinkStats(
+            indexingError.getSuccessCount() != null ? indexingError.getSuccessCount() : 0,
+            indexingError.getFailedCount() != null ? indexingError.getFailedCount() : 0);
       } else {
         jobData.setFailure(createSinkError(e.getMessage()));
         handleBackpressure(e.getMessage());
+        updateSinkStats(0, entities.getData().size());
       }
 
       StepStats failedStats = createFailedStats(indexingError, entities.getData().size());
@@ -1736,6 +1787,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       int failedCount =
           entities != null && entities.getData() != null ? entities.getData().size() : 0;
+      updateSinkStats(0, failedCount);
+
       StepStats failedStats = new StepStats().withSuccessRecords(0).withFailedRecords(failedCount);
 
       updateStats(entityType, failedStats);
@@ -1800,13 +1853,68 @@ public class SearchIndexApp extends AbstractNativeApplication {
   synchronized void updateStats(String entityType, StepStats currentEntityStats) {
     Stats jobDataStats = searchIndexStats.get();
     if (jobDataStats == null) {
-      return; // Safety check
+      return;
     }
 
     updateEntityStats(jobDataStats, entityType, currentEntityStats);
     updateJobStats(jobDataStats);
     searchIndexStats.set(jobDataStats);
     jobData.setStats(jobDataStats);
+  }
+
+  synchronized void updateReaderStats(int successCount, int failedCount) {
+    Stats jobDataStats = searchIndexStats.get();
+    if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats readerStats = jobDataStats.getReaderStats();
+    if (readerStats == null) {
+      readerStats = new StepStats();
+      jobDataStats.setReaderStats(readerStats);
+    }
+
+    int currentSuccess =
+        readerStats.getSuccessRecords() != null ? readerStats.getSuccessRecords() : 0;
+    int currentFailed = readerStats.getFailedRecords() != null ? readerStats.getFailedRecords() : 0;
+
+    readerStats.setSuccessRecords(currentSuccess + successCount);
+    readerStats.setFailedRecords(currentFailed + failedCount);
+
+    searchIndexStats.set(jobDataStats);
+    jobData.setStats(jobDataStats);
+
+    LOG.debug(
+        "Updated readerStats: success={}, failed={}",
+        readerStats.getSuccessRecords(),
+        readerStats.getFailedRecords());
+  }
+
+  synchronized void updateSinkStats(int successCount, int failedCount) {
+    Stats jobDataStats = searchIndexStats.get();
+    if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats sinkStats = jobDataStats.getSinkStats();
+    if (sinkStats == null) {
+      sinkStats = new StepStats();
+      jobDataStats.setSinkStats(sinkStats);
+    }
+
+    int currentSuccess = sinkStats.getSuccessRecords() != null ? sinkStats.getSuccessRecords() : 0;
+    int currentFailed = sinkStats.getFailedRecords() != null ? sinkStats.getFailedRecords() : 0;
+
+    sinkStats.setSuccessRecords(currentSuccess + successCount);
+    sinkStats.setFailedRecords(currentFailed + failedCount);
+
+    searchIndexStats.set(jobDataStats);
+    jobData.setStats(jobDataStats);
+
+    LOG.debug(
+        "Updated sinkStats: success={}, failed={}",
+        sinkStats.getSuccessRecords(),
+        sinkStats.getFailedRecords());
   }
 
   private void updateEntityStats(Stats stats, String entityType, StepStats currentEntityStats) {
