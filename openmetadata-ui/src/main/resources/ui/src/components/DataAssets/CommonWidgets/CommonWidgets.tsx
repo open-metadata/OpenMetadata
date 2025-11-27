@@ -350,6 +350,7 @@ export const CommonWidgets = ({
         showSuggestions
         wrapInCard
         description={description}
+        entityFullyQualifiedName={data?.fullyQualifiedName ?? ''}
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}

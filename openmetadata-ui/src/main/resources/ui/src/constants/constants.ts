@@ -368,6 +368,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  dataProductsTab: 'dataProductsTab',
 };
 
 export const VALIDATION_MESSAGES = {

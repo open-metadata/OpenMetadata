@@ -73,6 +73,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
             <Link
               className={classNames(
+                'w-full',
                 { 'diff-added tw-mx-1': tag?.added },
                 { 'diff-removed': tag?.removed }
               )}
