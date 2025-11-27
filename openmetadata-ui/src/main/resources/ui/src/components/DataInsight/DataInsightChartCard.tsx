@@ -38,7 +38,6 @@ import {
   INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
   NO_OWNER_ADVANCE_SEARCH_FILTER,
 } from '../../constants/explore.constants';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
 
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -68,8 +67,6 @@ interface DataInsightChartCardProps {
   type: SystemChartType;
   header: string;
   subHeader: string;
-  headerParams?: Record<string, string | number | boolean>;
-  subHeaderParams?: Record<string, string | number | boolean>;
   listAssets?: boolean;
 }
 
@@ -81,8 +78,6 @@ export const DataInsightChartCard = ({
   type,
   header,
   subHeader,
-  headerParams,
-  subHeaderParams,
   listAssets,
 }: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
@@ -458,10 +453,8 @@ export const DataInsightChartCard = ({
         title={
           <PageHeader
             data={{
-              header: translateLabel(header, headerParams),
-              subHeader: t('message.field-insight', {
-                field: t('label.description-lowercase'),
-              }),
+              header,
+              subHeader,
             }}
           />
         }>
@@ -479,8 +472,8 @@ export const DataInsightChartCard = ({
         <Col span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
-              header: translateLabel(header, headerParams),
-              subHeader: translateLabel(subHeader, subHeaderParams),
+              header,
+              subHeader,
             }}
           />
           <ResponsiveContainer

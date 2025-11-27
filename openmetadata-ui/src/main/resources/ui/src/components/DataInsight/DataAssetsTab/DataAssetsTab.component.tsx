@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import Loader from '../../common/Loader/Loader';
 import { DataInsightChartCard } from '../DataInsightChartCard';
 
 const DataAssetsTab = () => {
+  const { t } = useTranslation();
   const { kpi } = useDataInsightProvider();
 
   if (kpi.isLoading) {
@@ -27,72 +29,63 @@ const DataAssetsTab = () => {
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <DataInsightChartCard
-          header="label.data-insight-total-entity-summary"
-          subHeader="message.total-entity-insight"
+          header={t('label.data-insight-total-entity-summary')}
+          subHeader={t('message.total-entity-insight')}
           type={SystemChartType.TotalDataAssets}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
           listAssets
-          header="label.data-insight-description-summary-type"
-          headerParams={{
+          header={t('label.data-insight-description-summary-type', {
             type: 'label.data-asset',
-          }}
-          subHeader="message.field-insight"
-          subHeaderParams={{
+          })}
+          subHeader={t('message.field-insight', {
             field: 'label.description-lowercase',
-          }}
+          })}
           type={SystemChartType.PercentageOfDataAssetWithDescription}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
           listAssets
-          header="label.data-insight-owner-summary-type"
-          headerParams={{
+          header={t('label.data-insight-owner-summary-type', {
             type: 'label.data-asset',
-          }}
-          subHeader="message.field-insight"
-          subHeaderParams={{
+          })}
+          subHeader={t('message.field-insight', {
             field: 'label.owner',
-          }}
+          })}
           type={SystemChartType.PercentageOfDataAssetWithOwner}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
-          header="label.data-insight-description-summary-type"
-          headerParams={{
+          header={t('label.data-insight-description-summary-type', {
             type: 'label.service',
-          }}
-          subHeader="message.field-insight"
-          subHeaderParams={{
+          })}
+          subHeader={t('message.field-insight', {
             field: 'label.description-lowercase',
-          }}
+          })}
           type={SystemChartType.PercentageOfServiceWithDescription}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
-          header="label.data-insight-owner-summary-type"
-          headerParams={{
+          header={t('label.data-insight-owner-summary-type', {
             type: 'label.service',
-          }}
-          subHeader="message.field-insight"
-          subHeaderParams={{
+          })}
+          subHeader={t('message.field-insight', {
             field: 'label.owner',
-          }}
+          })}
           type={SystemChartType.PercentageOfServiceWithOwner}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
-          header="label.data-insight-tier-summary"
-          subHeader="message.field-insight"
-          subHeaderParams={{
+          header={t('label.data-insight-tier-summary')}
+          subHeader={t('message.field-insight', {
             field: 'label.tier',
-          }}
+          })}
           type={SystemChartType.TotalDataAssetsByTier}
         />
       </Col>
