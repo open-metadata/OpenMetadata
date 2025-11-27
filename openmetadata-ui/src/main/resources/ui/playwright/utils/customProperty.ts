@@ -307,6 +307,18 @@ export const validateValueForProperty = async (data: {
   ) {
     // For other types (string, integer, number, duration), match exact value without transformation
     await expect(container.getByTestId('value')).toContainText(value);
+  } else if ('entityReferenceList' === propertyType) {
+    const refValues = value.split(',');
+
+    for (const val of refValues) {
+      await expect(container.getByTestId(val)).toBeVisible();
+      await expect(container.getByTestId('no-data')).not.toBeVisible();
+    }
+  } else if ('entityReference' === propertyType) {
+    await expect(container.getByTestId('entityReference-value')).toContainText(
+      value
+    );
+    await expect(container.getByTestId('no-data')).not.toBeVisible();
   } else {
     await expect(container.getByTestId('value')).toBeVisible();
     await expect(container.getByTestId('no-data')).not.toBeVisible();
