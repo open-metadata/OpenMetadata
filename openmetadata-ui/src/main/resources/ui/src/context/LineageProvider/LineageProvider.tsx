@@ -53,7 +53,6 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
-import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
   ElementLoadingState,
@@ -61,6 +60,7 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -1901,11 +1901,39 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             />
           ) : (
             !isEmpty(selectedNode) && (
-              <EntityInfoDrawer
-                selectedNode={selectedNode}
-                show={isDrawerOpen}
-                onCancel={onCloseDrawer}
-              />
+              <>
+                {/* Background overlay */}
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                    zIndex: 8,
+                  }}
+                  onClick={onCloseDrawer}
+                />
+                {/* Entity panel */}
+                <div
+                  className="lineage-entity-panel"
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    right: 0,
+                    width: '576px',
+                    height: '100%',
+                    zIndex: 9,
+                    overflow: 'hidden',
+                  }}>
+                  <EntitySummaryPanel
+                    isSideDrawer
+                    entityDetails={{ details: selectedNode }}
+                    handleClosePanel={onCloseDrawer}
+                  />
+                </div>
+              </>
             )
           ))}
 

@@ -19,4 +19,5 @@ export interface EntitySummaryPanelProps {
   handleClosePanel: () => void;
   highlights?: SearchedDataProps['data'][number]['highlight'];
   panelPath?: string;
+  isSideDrawer?: boolean;
 }

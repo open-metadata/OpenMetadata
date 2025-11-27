@@ -33,6 +33,15 @@
     border-color: @grey-38 !important;
     border-top: none !important;
 
+    &.drawer-summary-panel-container {
+      width: 85%;
+      margin-left: 12px;
+      max-height: calc(100vh - 70px);
+      .ant-card-body {
+        max-height: calc(100vh - 70px);
+      }
+    }
+
     .ant-card-head {
       border-bottom: none;
       padding-top: 0;
@@ -66,6 +75,9 @@
       }
 
       scrollbar-gutter: stable;
+      &.drawer-content-area {
+        max-height: calc(100vh - 70px);
+      }
     }
 
     .ant-divider {
@@ -150,7 +162,11 @@
     padding: 4px;
     z-index: 999;
     top: 0;
+    flex: 1;
     background-color: @white;
+  }
+  .drawer-title-section {
+    background-color: transparent !important;
   }
   .title-container {
     display: flex;
@@ -300,6 +316,19 @@
           padding-bottom: 11px;
         }
       }
+    }
+  }
+  .drawer-close-icon {
+    background: transparent;
+    border: none;
+
+    svg {
+      height: 16px;
+      width: 16px;
+    }
+    &:hover {
+      background: none;
+      border: none;
     }
   }
 }
