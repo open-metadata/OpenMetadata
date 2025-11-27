@@ -14,6 +14,7 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -1465,6 +1467,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
+
+      // Check if any pipeline deployments failed by examining the status column
+      boolean hasFailures =
+          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
+
+      if (hasFailures) {
+        LOG.error("Some pipeline deployments failed. Check the table above for details.");
+        return 1;
+      }
+
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
@@ -1883,7 +1895,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Decrypt the JWT token - this is the crucial step that was missing
       secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
-
+      String token = jwtAuthMechanism.getJWTToken();
+      if (secretsManager.isSecret(token)) {
+        return secretsManager.getSecretValue(token);
+      }
       return jwtAuthMechanism.getJWTToken();
     } catch (Exception e) {
       LOG.error("Failed to retrieve ingestion-bot token", e);
@@ -1900,27 +1915,48 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
   private void updatePipelineStatuses(
       List<IngestionPipeline> pipelines, String responseBody, List<List<String>> pipelineStatuses) {
     try {
-      // Parse the bulk deploy response
-      List<Map<String, Object>> responses = JsonUtils.readValue(responseBody, List.class);
+      // Parse the bulk deploy response to typed PipelineServiceClientResponse objects
+      List<PipelineServiceClientResponse> responses =
+          JsonUtils.readValue(
+              responseBody, new TypeReference<List<PipelineServiceClientResponse>>() {});
 
-      // Create a map for quick lookup
-      Map<UUID, String> statusMap =
-          responses.stream()
-              .collect(
-                  Collectors.toMap(
-                      response -> UUID.fromString((String) response.get("pipelineId")),
-                      response -> {
-                        Integer code = (Integer) response.get("code");
-                        return code != null && code == 200 ? "DEPLOYED" : "FAILED";
-                      }));
+      // Log the parsed responses for debugging
+      LOG.info("Received {} deployment responses", responses.size());
+      for (int i = 0; i < responses.size(); i++) {
+        PipelineServiceClientResponse response = responses.get(i);
+        String pipelineName = i < pipelines.size() ? pipelines.get(i).getName() : "unknown";
+        LOG.info(
+            "Pipeline {}: code={}, platform={}, reason={}",
+            pipelineName,
+            response.getCode(),
+            response.getPlatform(),
+            response.getReason() != null ? response.getReason() : "N/A");
+      }
 
-      // Update status table for display
-      for (IngestionPipeline pipeline : pipelines) {
-        String status = statusMap.getOrDefault(pipeline.getId(), "UNKNOWN");
+      // Correlate responses with pipelines by position (assuming same order)
+      for (int i = 0; i < pipelines.size(); i++) {
+        IngestionPipeline pipeline = pipelines.get(i);
+        String status;
+
+        if (i < responses.size()) {
+          PipelineServiceClientResponse response = responses.get(i);
+          Integer code = response.getCode();
+          String reason = response.getReason();
+
+          if (code != null && (code == 200 || code == 201)) {
+            status = "DEPLOYED";
+          } else if (code != null) {
+            status = "FAILED - " + code + (reason != null ? ": " + reason : "");
+          } else {
+            status = "UNKNOWN";
+          }
+        } else {
+          status = "NO_RESPONSE";
+        }
+
         pipelineStatuses.add(
             Arrays.asList(
                 pipeline.getName(),
