@@ -49,7 +49,11 @@ jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
 }));
 
 jest.mock('./i18next/LocalUtil', () => ({
-  t: (key: string) => key,
+  t: jest.fn((key: string) => key),
+  translateLabel: jest.fn((key: string, params?: Record<string, unknown>) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
+  detectBrowserLanguage: jest.fn(() => 'en-US'),
 }));
 
 jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {

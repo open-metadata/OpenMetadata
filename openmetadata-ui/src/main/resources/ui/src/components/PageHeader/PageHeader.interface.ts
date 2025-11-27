@@ -13,12 +13,13 @@
 
 import { TypographyProps } from 'antd';
 import { ParagraphProps } from 'antd/lib/typography/Paragraph';
-import { ReactNode } from 'react';
 
 export interface HeaderProps {
   data: {
-    header: ReactNode;
-    subHeader: ReactNode;
+    header: string;
+    subHeader: string;
+    headerParams?: Record<string, string | number | boolean>;
+    subHeaderParams?: Record<string, string | number | boolean>;
   };
   titleProps?: TypographyProps;
   subHeaderProps?: ParagraphProps;

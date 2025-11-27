@@ -567,7 +567,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                       <SearchDropdown
                         hideCounts
                         isSuggestionsLoading={isOwnerLoading}
-                        label={t('label.owner')}
+                        label="label.owner"
                         options={ownerFilter.options}
                         searchKey="owner"
                         selectedKeys={ownerFilter.selected}
@@ -579,7 +579,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                       <SearchDropdown
                         hideCounts
                         isSuggestionsLoading={isTagsLoading}
-                        label={t('label.tag')}
+                        label="label.tag"
                         options={tagsFilter.options}
                         searchKey="tag"
                         selectedKeys={tagsFilter.selected}

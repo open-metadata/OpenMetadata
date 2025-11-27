@@ -54,7 +54,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
-import { t } from './i18next/LocalUtil';
+import { t, translateLabel } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -62,12 +62,12 @@ import { showErrorToast } from './ToastUtils';
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
  * their label
  * @param filters - Array<QueryFieldInterface>
- * @param {SearchDropdownOption[]} dataLookUp - This is an array of objects that contains the
+ * @param {ExploreQuickFilterField[]} dataLookUp - This is an array of objects that contains the
  * key and label for each filter.
  */
 export const getParseValueFromLocation = (
   filters: Array<QueryFieldInterface>,
-  dataLookUp: SearchDropdownOption[]
+  dataLookUp: ExploreQuickFilterField[]
 ): Record<string, SearchDropdownOption[]> => {
   const dataLookupMap = new Map(
     dataLookUp.map((option) => [option.key, option])
@@ -97,7 +97,10 @@ export const getParseValueFromLocation = (
         label: !customLabel
           ? value
           : t('label.no-entity', {
-              entity: dataCategory.label,
+              entity: translateLabel(
+                dataCategory.label,
+                dataCategory.labelKeyOptions
+              ),
             }),
       });
     }
@@ -108,11 +111,11 @@ export const getParseValueFromLocation = (
 
 /**
  * It takes queryFilter object as input and returns a parsed array of search dropdown options with selected values
- * @param dropdownItems - SearchDropdownOption[]
+ * @param dropdownItems - ExploreQuickFilterField[]
  * @param queryFilter - QueryFilterInterface
  */
 export const getSelectedValuesFromQuickFilter = (
-  dropdownItems: SearchDropdownOption[],
+  dropdownItems: ExploreQuickFilterField[],
   queryFilter?: QueryFilterInterface
 ) => {
   if (!queryFilter) {

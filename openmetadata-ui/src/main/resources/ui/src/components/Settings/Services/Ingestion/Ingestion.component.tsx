@@ -214,7 +214,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             <>
               <SearchDropdown
                 hideCounts
-                label={t('label.status')}
+                label="label.status"
                 options={statusFilters}
                 searchKey="status"
                 selectedKeys={statusFilter ?? []}
@@ -224,7 +224,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
               <SearchDropdown
                 hideCounts
-                label={t('label.type')}
+                label="label.type"
                 options={typeFilters}
                 searchKey="status"
                 selectedKeys={typeFilter ?? []}

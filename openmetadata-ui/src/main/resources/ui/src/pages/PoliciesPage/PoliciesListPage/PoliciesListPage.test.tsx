@@ -100,6 +100,14 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  t: jest.fn((key: string) => key),
+  translateLabel: jest.fn((key: string, params?: Record<string, unknown>) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
+  detectBrowserLanguage: jest.fn(() => 'en-US'),
+}));
+
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {

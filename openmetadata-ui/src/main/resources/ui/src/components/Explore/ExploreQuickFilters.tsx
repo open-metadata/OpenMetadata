@@ -212,6 +212,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
             label={field.label}
+            labelKeyOptions={field.labelKeyOptions}
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}

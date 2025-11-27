@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, Typography } from 'antd';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
@@ -33,6 +34,7 @@ export const GlobalSettingItem = ({
   max,
   onUpdate,
 }: GlobalSettingItemProps) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -59,7 +61,7 @@ export const GlobalSettingItem = ({
   return (
     <div className="d-flex items-center justify-between p-y-xs global-settings-item">
       <Typography.Text data-testid="global-setting-label">
-        {label}
+        {t(label)}
       </Typography.Text>
 
       {isEditing ? (

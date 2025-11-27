@@ -44,6 +44,7 @@ import {
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
+import { translateLabel } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
 import './search-dropdown.less';
@@ -55,6 +56,7 @@ import {
 const SearchDropdown: FC<SearchDropdownProps> = ({
   isSuggestionsLoading,
   label,
+  labelKeyOptions,
   options,
   searchKey,
   selectedKeys,
@@ -80,9 +82,16 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     SearchDropdownOption[]
   >([]);
   const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
-  const nullLabelText = t('label.no-entity', {
-    entity: label,
-  });
+
+  const translatedLabel = useMemo(
+    () => translateLabel(label, labelKeyOptions),
+    [label, labelKeyOptions]
+  );
+
+  const nullLabelText = useMemo(
+    () => t('label.no-entity', { entity: translatedLabel }),
+    [translatedLabel, t]
+  );
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
@@ -249,7 +258,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               autoFocus
               data-testid="search-input"
               placeholder={`${t('label.search-entity', {
-                entity: label,
+                entity: translatedLabel,
               })}...`}
               onChange={(e) => {
                 const { value } = e.target;
@@ -311,7 +320,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       </Card>
     ),
     [
-      label,
+      translatedLabel,
       debouncedOnSearch,
       hasNullOption,
       showClearAllBtn,
@@ -356,7 +365,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               })}
               size={0}>
               <Typography.Text className="filters-label font-medium">
-                {label}
+                {translatedLabel}
               </Typography.Text>
               {selectedKeys.length > 0 && (
                 <span>

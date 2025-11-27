@@ -127,8 +127,8 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
       title={
         <PageHeader
           data={{
-            header: t('label.data-insight-active-user-summary'),
-            subHeader: t('message.most-active-users'),
+            header: 'label.data-insight-active-user-summary',
+            subHeader: 'message.most-active-users',
           }}
         />
       }>

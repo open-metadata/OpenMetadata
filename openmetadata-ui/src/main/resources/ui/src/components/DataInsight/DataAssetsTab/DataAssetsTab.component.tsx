@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import Loader from '../../common/Loader/Loader';
@@ -19,7 +18,6 @@ import { DataInsightChartCard } from '../DataInsightChartCard';
 
 const DataAssetsTab = () => {
   const { kpi } = useDataInsightProvider();
-  const { t } = useTranslation();
 
   if (kpi.isLoading) {
     return <Loader />;
@@ -29,63 +27,72 @@ const DataAssetsTab = () => {
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <DataInsightChartCard
-          header={t('label.data-insight-total-entity-summary')}
-          subHeader={t('message.total-entity-insight')}
+          header="label.data-insight-total-entity-summary"
+          subHeader="message.total-entity-insight"
           type={SystemChartType.TotalDataAssets}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
           listAssets
-          header={t('label.data-insight-description-summary-type', {
-            type: t('label.data-asset'),
-          })}
-          subHeader={t('message.field-insight', {
-            field: t('label.description-lowercase'),
-          })}
+          header="label.data-insight-description-summary-type"
+          headerParams={{
+            type: 'label.data-asset',
+          }}
+          subHeader="message.field-insight"
+          subHeaderParams={{
+            field: 'label.description-lowercase',
+          }}
           type={SystemChartType.PercentageOfDataAssetWithDescription}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
           listAssets
-          header={t('label.data-insight-owner-summary-type', {
-            type: t('label.data-asset'),
-          })}
-          subHeader={t('message.field-insight', {
-            field: t('label.owner'),
-          })}
+          header="label.data-insight-owner-summary-type"
+          headerParams={{
+            type: 'label.data-asset',
+          }}
+          subHeader="message.field-insight"
+          subHeaderParams={{
+            field: 'label.owner',
+          }}
           type={SystemChartType.PercentageOfDataAssetWithOwner}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
-          header={t('label.data-insight-description-summary-type', {
-            type: t('label.service'),
-          })}
-          subHeader={t('message.field-insight', {
-            field: t('label.description-lowercase'),
-          })}
+          header="label.data-insight-description-summary-type"
+          headerParams={{
+            type: 'label.service',
+          }}
+          subHeader="message.field-insight"
+          subHeaderParams={{
+            field: 'label.description-lowercase',
+          }}
           type={SystemChartType.PercentageOfServiceWithDescription}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
-          header={t('label.data-insight-owner-summary-type', {
-            type: t('label.service'),
-          })}
-          subHeader={t('message.field-insight', {
-            field: t('label.owner'),
-          })}
+          header="label.data-insight-owner-summary-type"
+          headerParams={{
+            type: 'label.service',
+          }}
+          subHeader="message.field-insight"
+          subHeaderParams={{
+            field: 'label.owner',
+          }}
           type={SystemChartType.PercentageOfServiceWithOwner}
         />
       </Col>
       <Col span={24}>
         <DataInsightChartCard
-          header={t('label.data-insight-tier-summary')}
-          subHeader={t('message.field-insight', {
-            field: t('label.tier'),
-          })}
+          header="label.data-insight-tier-summary"
+          subHeader="message.field-insight"
+          subHeaderParams={{
+            field: 'label.tier',
+          }}
           type={SystemChartType.TotalDataAssetsByTier}
         />
       </Col>

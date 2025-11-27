@@ -267,10 +267,14 @@ const Services = ({ serviceName }: ServicesProps) => {
         <ErrorPlaceHolder
           className="p-lg border-none"
           doc={CONNECTORS_DOCS}
-          heading={servicesDisplayName[serviceName]}
+          heading={t(servicesDisplayName[serviceName].key, {
+            entity: t(servicesDisplayName[serviceName].entity),
+          })}
           permission={addServicePermission}
           permissionValue={t('label.create-entity', {
-            entity: `${servicesDisplayName[serviceName]}`,
+            entity: t(servicesDisplayName[serviceName].key, {
+              entity: t(servicesDisplayName[serviceName].entity),
+            }),
           })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}

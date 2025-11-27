@@ -27,6 +27,7 @@ import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter-primary.svg';
 import { DATA_ASSET_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { translateLabel } from '../../../utils/i18next/LocalUtil';
 import './filter-configuration.less';
 
 const FilterConfiguration = () => {
@@ -95,7 +96,7 @@ const FilterConfiguration = () => {
           <div
             className="bg-white flex items-center justify-center gap-3 p-y-xss p-x-sm filter-value"
             key={value.key}>
-            {value.label}
+            {translateLabel(value.label)}
             <Icon
               className="text-grey-muted text-xss cursor-pointer"
               component={CloseIcon}

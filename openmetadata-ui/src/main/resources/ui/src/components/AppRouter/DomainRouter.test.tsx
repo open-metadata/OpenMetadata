@@ -20,6 +20,11 @@ jest.mock('../../utils/i18next/LocalUtil', () => ({
   default: {
     t: (key: string) => key,
   },
+  t: jest.fn((key: string) => key),
+  translateLabel: jest.fn((key: string, params?: Record<string, unknown>) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
+  detectBrowserLanguage: jest.fn(() => 'en-US'),
 }));
 
 jest.mock('../Domain/DomainDetailPage/DomainDetailPage.component', () => {
