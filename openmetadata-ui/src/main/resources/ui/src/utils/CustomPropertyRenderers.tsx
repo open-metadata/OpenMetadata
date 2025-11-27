@@ -122,11 +122,9 @@ export const renderIntervalValue = (
 };
 
 const renderEntityReferenceList = (entityRefs: EntityReference[]) => (
-  <div className="d-flex flex-column gap-2">
+  <div className="d-flex flex-column">
     {entityRefs.map((item: EntityReference) => (
-      <div className="entity-ref-item" key={item.id}>
-        {renderEntityReferenceButton(item)}
-      </div>
+      <div key={item.id}>{renderEntityReferenceButton(item)}</div>
     ))}
   </div>
 );
