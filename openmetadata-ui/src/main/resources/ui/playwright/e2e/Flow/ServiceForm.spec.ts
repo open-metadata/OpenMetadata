@@ -11,25 +11,51 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
   supersetFormDetails1,
   supersetFormDetails2,
   supersetFormDetails3,
   supersetFormDetails4,
 } from '../../constant/serviceForm';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import {
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
-import { test } from '../fixtures/pages';
 
 const NEW_SERVICE = {
   name: `PlaywrightService_${uuid()}`,
 };
 
+const adminUser = new UserClass();
+
+const test = base.extend<{
+  page: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
+
 test.describe('Service form functionality', async () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+    await afterAction();
   });
 
   test.describe('Superset', () => {
@@ -230,11 +256,17 @@ test.describe('Service form functionality', async () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
       await page.getByTestId('confirmation-text-input').fill('DELETE');
-      await page.getByTestId('confirm-button').click();
-      await page.waitForLoadState('networkidle');
 
-      await expect(page.getByTestId('alert-message')).toContainText(
-        `Delete operation initiated for ${NEW_SERVICE.name}`
+      const deleteResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/async/*?hardDelete=false&recursive=true`
+      );
+      await page.getByTestId('confirm-button').click();
+      await deleteResponse;
+
+      await toastNotification(
+        page,
+        /(deleted successfully!|Delete operation initiated)/,
+        BIG_ENTITY_DELETE_TIMEOUT
       );
     });
   });
