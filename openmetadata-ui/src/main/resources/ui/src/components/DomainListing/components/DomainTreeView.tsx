@@ -1099,7 +1099,7 @@ const DomainTreeView = ({
   return (
     <ResizableLeftPanels
       firstPanel={{
-        className: 'domain-tree-panel',
+        className: 'domain-tree-panel border-right border-gray-200',
         minWidth: 280,
         flex: 0.25,
         children: (
@@ -1110,7 +1110,6 @@ const DomainTreeView = ({
               pr: 3,
               overflowY: 'auto',
               maxHeight: 'calc(80vh - 160px)',
-              borderRight: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
             }}
             onScroll={handleScroll}>
             {hierarchySection}
