@@ -266,7 +266,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const canShowEditButton =
     showEditButton &&
     hasPermission &&
-    !isEditing &&
     !isLoading &&
     displayActiveDomains?.length > 0;
 

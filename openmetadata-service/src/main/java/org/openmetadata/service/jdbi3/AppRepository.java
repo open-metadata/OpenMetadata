@@ -147,9 +147,12 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();
+    EntityReference bot = entity.getBot();
     entity.withOwners(null);
+    entity.withBot(null);
     store(entity, update);
     entity.withOwners(ownerRefs);
+    entity.setBot(bot);
   }
 
   public EntityReference getBotUser(App application) {
