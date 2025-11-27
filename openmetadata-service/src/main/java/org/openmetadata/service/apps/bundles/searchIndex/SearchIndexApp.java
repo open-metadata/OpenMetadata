@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -308,6 +309,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (searchIndexSink != null) {
       LOG.info("Forcing final flush of bulk processor");
       searchIndexSink.close();
+      syncSinkStatsFromBulkSink();
     }
   }
 
@@ -349,6 +351,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (searchIndexSink != null) {
       try {
         searchIndexSink.close();
+        syncSinkStatsFromBulkSink();
       } catch (Exception e) {
         LOG.error("Error closing search index sink during exception handling", e);
       }
@@ -844,7 +847,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       throws InterruptedException {
     LOG.info("Waiting for all consumers to complete their work...");
     consumerLatch.await(); // Wait indefinitely for consumers to finish all work
-    LOG.info("All consumers have completed their work");
+    LOG.info("All consumers have finished processing tasks");
   }
 
   private void handleInterruption(InterruptedException e) throws InterruptedException {
@@ -1331,7 +1334,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobDataStats.setSinkStats(sinkStats);
       LOG.debug("Initialized sinkStats.");
     }
-    sinkStats.setTotalRecords(total);
+    sinkStats.setTotalRecords(0);
     sinkStats.setSuccessRecords(0);
     sinkStats.setFailedRecords(0);
 
@@ -1399,6 +1402,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       lastWebSocketUpdate = currentTime;
       LOG.debug(
           "Sending WebSocket update - forced: {}, status: {}", forceUpdate, jobData.getStatus());
+
+      // Sync sink stats from BulkSink before sending updates
+      syncSinkStatsFromBulkSink();
 
       // Check and log throughput periodically
       logThroughputIfNeeded();
@@ -1576,6 +1582,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     try {
       LOG.info("Closing search index sink");
       searchIndexSink.close();
+      syncSinkStatsFromBulkSink();
     } catch (Exception e) {
       LOG.error("Error closing search index sink", e);
     }
@@ -1604,26 +1611,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
     updateReaderStats(readerSuccessCount, readerFailedCount);
 
     try {
-      StepStats sinkStatsBeforeWrite = searchIndexSink != null ? searchIndexSink.getStats() : null;
-      int beforeSuccess =
-          sinkStatsBeforeWrite != null ? sinkStatsBeforeWrite.getSuccessRecords() : 0;
-      int beforeFailed = sinkStatsBeforeWrite != null ? sinkStatsBeforeWrite.getFailedRecords() : 0;
-
       writeEntitiesToSink(entityType, entities, contextData);
+      updateSinkTotalSubmitted(readerSuccessCount);
 
-      StepStats sinkStatsAfterWrite = searchIndexSink != null ? searchIndexSink.getStats() : null;
-      int afterSuccess = sinkStatsAfterWrite != null ? sinkStatsAfterWrite.getSuccessRecords() : 0;
-      int afterFailed = sinkStatsAfterWrite != null ? sinkStatsAfterWrite.getFailedRecords() : 0;
-
-      int sinkSuccessCount = afterSuccess - beforeSuccess;
-      int sinkFailedCount = afterFailed - beforeFailed;
-
-      updateSinkStats(sinkSuccessCount, sinkFailedCount);
-
-      StepStats currentEntityStats = new StepStats();
-      currentEntityStats.setSuccessRecords(sinkSuccessCount);
-      currentEntityStats.setFailedRecords(sinkFailedCount + readerFailedCount);
-
+      StepStats currentEntityStats = createEntityStats(entities);
       handleTaskSuccess(entityType, entities, currentEntityStats, jobExecutionContext);
 
       long processingTime = System.currentTimeMillis() - startTime;
@@ -1756,14 +1747,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (indexingError != null) {
         jobData.setFailure(indexingError);
         handleBackpressure(indexingError.getMessage());
-        updateSinkStats(
-            indexingError.getSuccessCount() != null ? indexingError.getSuccessCount() : 0,
-            indexingError.getFailedCount() != null ? indexingError.getFailedCount() : 0);
       } else {
         jobData.setFailure(createSinkError(e.getMessage()));
         handleBackpressure(e.getMessage());
-        updateSinkStats(0, entities.getData().size());
       }
+
+      syncSinkStatsFromBulkSink();
 
       StepStats failedStats = createFailedStats(indexingError, entities.getData().size());
       updateStats(entityType, failedStats);
@@ -1785,10 +1774,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
       updateJobStatus(EventPublisherJob.Status.ACTIVE_ERROR);
       jobData.setFailure(createSinkError(ExceptionUtils.getStackTrace(e)));
 
+      syncSinkStatsFromBulkSink();
+
       int failedCount =
           entities != null && entities.getData() != null ? entities.getData().size() : 0;
-      updateSinkStats(0, failedCount);
-
       StepStats failedStats = new StepStats().withSuccessRecords(0).withFailedRecords(failedCount);
 
       updateStats(entityType, failedStats);
@@ -1814,8 +1803,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @NotNull
   private Set<String> getAll() {
-    Set<String> entities = new HashSet<>(Entity.getEntityList());
-    entities.addAll(TIME_SERIES_ENTITIES);
+    Set<String> entityAvailableForIndex =
+        Entity.getEntityList().stream()
+            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
+            .collect(Collectors.toSet());
+    Set<String> entities = new HashSet<>(entityAvailableForIndex);
+    entities.addAll(
+        TIME_SERIES_ENTITIES.stream()
+            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
+            .collect(Collectors.toSet()));
     return entities;
   }
 
@@ -1890,9 +1886,40 @@ public class SearchIndexApp extends AbstractNativeApplication {
         readerStats.getFailedRecords());
   }
 
-  synchronized void updateSinkStats(int successCount, int failedCount) {
+  synchronized void updateSinkTotalSubmitted(int submittedCount) {
     Stats jobDataStats = searchIndexStats.get();
     if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats sinkStats = jobDataStats.getSinkStats();
+    if (sinkStats == null) {
+      sinkStats = new StepStats();
+      sinkStats.setTotalRecords(0);
+      jobDataStats.setSinkStats(sinkStats);
+    }
+
+    int currentTotal = sinkStats.getTotalRecords() != null ? sinkStats.getTotalRecords() : 0;
+    sinkStats.setTotalRecords(currentTotal + submittedCount);
+
+    searchIndexStats.set(jobDataStats);
+    jobData.setStats(jobDataStats);
+
+    LOG.debug("Updated sink total submitted: {}", sinkStats.getTotalRecords());
+  }
+
+  synchronized void syncSinkStatsFromBulkSink() {
+    if (searchIndexSink == null) {
+      return;
+    }
+
+    Stats jobDataStats = searchIndexStats.get();
+    if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats bulkSinkStats = searchIndexSink.getStats();
+    if (bulkSinkStats == null) {
       return;
     }
 
@@ -1902,17 +1929,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobDataStats.setSinkStats(sinkStats);
     }
 
-    int currentSuccess = sinkStats.getSuccessRecords() != null ? sinkStats.getSuccessRecords() : 0;
-    int currentFailed = sinkStats.getFailedRecords() != null ? sinkStats.getFailedRecords() : 0;
-
-    sinkStats.setSuccessRecords(currentSuccess + successCount);
-    sinkStats.setFailedRecords(currentFailed + failedCount);
+    sinkStats.setSuccessRecords(
+        bulkSinkStats.getSuccessRecords() != null ? bulkSinkStats.getSuccessRecords() : 0);
+    sinkStats.setFailedRecords(
+        bulkSinkStats.getFailedRecords() != null ? bulkSinkStats.getFailedRecords() : 0);
 
     searchIndexStats.set(jobDataStats);
     jobData.setStats(jobDataStats);
 
     LOG.debug(
-        "Updated sinkStats: success={}, failed={}",
+        "Synced sinkStats from BulkSink: total={}, success={}, failed={}",
+        sinkStats.getTotalRecords(),
         sinkStats.getSuccessRecords(),
         sinkStats.getFailedRecords());
   }
