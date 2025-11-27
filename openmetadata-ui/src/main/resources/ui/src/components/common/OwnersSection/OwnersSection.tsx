@@ -189,8 +189,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     return ownersDisplay;
   }, [isLoading, isEditing, editingState, ownersDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!displayOwners.length) {
     return (
