@@ -1142,10 +1142,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String startTsFilter = filter.getQueryParams().get("startTs");
     String endTsFilter = filter.getQueryParams().get("endTs");
 
-    // Create new filter with only SQL-applicable filters (service, domain, owner, tier)
+    // Create new filter with SQL-applicable filters (service, serviceType, domain, owner, tier)
     ListFilter entityFilter =
         new ListFilter(filter.getInclude())
             .addQueryParam("service", filter.getQueryParams().get("service"))
+            .addQueryParam("serviceType", filter.getQueryParams().get("serviceType"))
             .addQueryParam("domain", filter.getQueryParams().get("domain"))
             .addQueryParam("owner", filter.getQueryParams().get("owner"))
             .addQueryParam("tier", filter.getQueryParams().get("tier"));

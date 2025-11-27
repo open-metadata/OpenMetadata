@@ -35,6 +35,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getDatabaseCondition(tableName));
     conditions.add(getDatabaseSchemaCondition(tableName));
     conditions.add(getServiceCondition(tableName));
+    conditions.add(getServiceTypeCondition(tableName));
     conditions.add(getPipelineTypeCondition(tableName));
     conditions.add(getApplicationTypeCondition());
     conditions.add(getParentCondition(tableName));
@@ -210,6 +211,20 @@ public class ListFilter extends Filter<ListFilter> {
     return service == null
         ? ""
         : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service), "service");
+  }
+
+  public String getServiceTypeCondition(String tableName) {
+    String serviceType = queryParams.get("serviceType");
+    if (serviceType == null || serviceType.isEmpty()) {
+      return "";
+    }
+    if (tableName != null && tableName.equals("pipeline_entity")) {
+      String safeServiceType = serviceType.replace("'", "''");
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.serviceType')) = '%s'",
+          tableName, safeServiceType);
+    }
+    return "";
   }
 
   public String getTestSuiteFQNCondition() {
