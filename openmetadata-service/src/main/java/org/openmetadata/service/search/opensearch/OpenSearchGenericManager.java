@@ -296,8 +296,19 @@ public class OpenSearchGenericManager implements GenericClient {
       if (firstNodeStats != null
           && firstNodeStats.jvm() != null
           && firstNodeStats.jvm().mem() != null) {
-        heapUsedBytes = firstNodeStats.jvm().mem().usedInBytes();
-        heapMaxBytes = firstNodeStats.jvm().mem().totalInBytes();
+        try {
+          // Note: OpenSearch Java client may return null for these fields in certain scenarios
+          // (AWS-managed OpenSearch, older versions, etc.), causing NPE during unboxing.
+          // See: https://github.com/opensearch-project/opensearch-java/issues/1040
+          heapUsedBytes = firstNodeStats.jvm().mem().usedInBytes();
+          heapMaxBytes = firstNodeStats.jvm().mem().totalInBytes();
+        } catch (NullPointerException e) {
+          LOG.warn(
+              "OpenSearch returned null JVM memory stats (likely AWS-managed cluster or missing stats). "
+                  + "Using defaults: heapUsed={}MB, heapMax={}MB",
+              SearchClusterMetrics.DEFAULT_HEAP_USED_BYTES / (1024 * 1024),
+              SearchClusterMetrics.DEFAULT_HEAP_MAX_BYTES / (1024 * 1024));
+        }
       }
     }
 
