@@ -19,6 +19,7 @@ import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
 export type DataAssetSummaryPanelProps = {
+  panelPath?: string;
   tags?: EntityTags[];
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   isLoading?: boolean;
