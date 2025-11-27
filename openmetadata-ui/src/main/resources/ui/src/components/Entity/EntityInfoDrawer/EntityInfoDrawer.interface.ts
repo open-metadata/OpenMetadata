@@ -19,7 +19,6 @@ export interface LineageDrawerProps {
   show: boolean;
   onCancel: () => void;
   selectedNode: SourceType;
-  useFullPanel?: boolean;
 }
 
 export interface EdgeInfoDrawerInfo {
