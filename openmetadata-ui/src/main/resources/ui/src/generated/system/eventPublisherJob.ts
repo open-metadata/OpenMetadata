@@ -169,6 +169,10 @@ export interface Stats {
  * Stats for Different Steps Reader, Processor, Writer.
  *
  * Stats for the job
+ *
+ * Stats for the reader step (reading from database)
+ *
+ * Stats for the sink step (writing to search index)
  */
 export interface StepStats {
     /**
