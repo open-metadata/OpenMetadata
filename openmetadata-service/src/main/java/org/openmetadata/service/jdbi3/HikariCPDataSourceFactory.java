@@ -21,11 +21,19 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.db.ManagedDataSource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
+import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.util.jdbi.AwsRdsDatabaseAuthenticationProvider;
 
 @Slf4j
 @Getter
@@ -71,15 +79,23 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   @JsonProperty private String poolName = "openmetadata-hikari-pool";
 
   @JsonIgnore private HikariDataSource hikariDataSource;
+  @JsonIgnore private boolean isAwsRdsIamAuth = false;
+  @JsonIgnore private AwsRdsDatabaseAuthenticationProvider awsRdsAuthProvider;
+  @JsonIgnore private String originalPassword;
 
   @Override
   public ManagedDataSource build(MetricRegistry metricRegistry, String name) {
+    // Initialize AWS RDS IAM authentication if configured
+    initializeAwsRdsIamAuth();
+
     HikariConfig config = buildHikariConfig(name);
 
     if (metricRegistry != null) {
       config.setMetricRegistry(metricRegistry);
     }
 
+    LOG.debug(
+        "Creating standard ManagedHikariDataSource (custom DataSource handling done in config)");
     ManagedHikariDataSource managedDataSource = new ManagedHikariDataSource(config, name);
     this.hikariDataSource = managedDataSource;
     return managedDataSource;
@@ -99,8 +115,16 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       config.setUsername(getUser());
     }
 
-    if (getPassword() != null) {
-      config.setPassword(getPassword());
+    if (isAwsRdsIamAuth) {
+      // For AWS RDS IAM, use custom DataSource that generates fresh tokens
+      LOG.debug("Setting custom AwsRdsIamAwareDataSource for dynamic token generation");
+      config.setDataSource(new AwsRdsIamAwareDataSource(getUrl(), getUser(), awsRdsAuthProvider));
+    } else {
+      // For all other authentication methods, use standard password approach
+      String password = getPassword();
+      if (password != null) {
+        config.setPassword(password);
+      }
     }
 
     config.setPoolName(poolNameToUse);
@@ -193,6 +217,24 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     }
 
     return config;
+  }
+
+  private void initializeAwsRdsIamAuth() {
+    this.isAwsRdsIamAuth =
+        getUrl().contains("awsRegion") && getUrl().contains("allowPublicKeyRetrieval");
+
+    LOG.debug(
+        "IAM detection: URL={}, contains awsRegion={}, contains allowPublicKeyRetrieval={}, isAwsRdsIamAuth={}",
+        getUrl(),
+        getUrl().contains("awsRegion"),
+        getUrl().contains("allowPublicKeyRetrieval"),
+        isAwsRdsIamAuth);
+
+    if (isAwsRdsIamAuth) {
+      this.awsRdsAuthProvider = new AwsRdsDatabaseAuthenticationProvider();
+      this.originalPassword = super.getPassword();
+      LOG.info("AWS RDS IAM authentication enabled via URL parameter detection");
+    }
   }
 
   private void configurePostgreSQL(HikariConfig config) {
@@ -302,6 +344,69 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       if (!this.isClosed()) {
         this.close();
       }
+    }
+  }
+
+  private static class AwsRdsIamAwareDataSource implements DataSource {
+    private final String jdbcUrl;
+    private final String username;
+    private final AwsRdsDatabaseAuthenticationProvider authProvider;
+
+    public AwsRdsIamAwareDataSource(
+        String jdbcUrl, String username, AwsRdsDatabaseAuthenticationProvider authProvider) {
+      this.jdbcUrl = jdbcUrl;
+      this.username = username;
+      this.authProvider = authProvider;
+    }
+
+    @Override
+    public Connection getConnection() throws SQLException {
+      try {
+        String freshToken = authProvider.authenticate(jdbcUrl, username, null);
+        LOG.debug("Generated fresh AWS RDS IAM token for new connection");
+        return DriverManager.getConnection(jdbcUrl, username, freshToken);
+      } catch (Exception e) {
+        LOG.error("Failed to generate AWS RDS IAM token: {}", e.getMessage(), e);
+        throw new SQLException("Failed to authenticate with AWS RDS IAM", e);
+      }
+    }
+
+    @Override
+    public Connection getConnection(String username, String password) throws SQLException {
+      // Ignore provided credentials and use IAM token
+      return getConnection();
+    }
+
+    // Required DataSource interface methods (minimal implementation)
+    @Override
+    public PrintWriter getLogWriter() throws SQLException {
+      return null;
+    }
+
+    @Override
+    public void setLogWriter(PrintWriter out) throws SQLException {}
+
+    @Override
+    public int getLoginTimeout() throws SQLException {
+      return 0;
+    }
+
+    @Override
+    public void setLoginTimeout(int seconds) throws SQLException {}
+
+    @Override
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+      throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public <T> T unwrap(Class<T> iface) throws SQLException {
+      throw new SQLException("Cannot unwrap to " + iface.getName());
+    }
+
+    @Override
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+      return false;
     }
   }
 }
