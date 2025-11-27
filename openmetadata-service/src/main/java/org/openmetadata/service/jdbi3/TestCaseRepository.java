@@ -72,7 +72,6 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
@@ -1455,28 +1454,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private List<TestCase> getTestCasesForTable(String tableFqn) {
     // Get table-level test cases using database filter
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    ListFilter filter = new ListFilter(ALL);
     filter.addQueryParam("entityFQN", tableFqn);
+    filter.addQueryParam("includeAllTests", "true");
     List<TestCase> testCases =
         new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
-
-    // Get the table to access its columns
-    try {
-      Table table = Entity.getEntityByName(TABLE, tableFqn, "columns", Include.NON_DELETED);
-      if (table.getColumns() != null) {
-        // Get test cases for each column
-        for (Column column : table.getColumns()) {
-          String columnFqn = FullyQualifiedName.add(tableFqn, column.getName());
-          ListFilter columnFilter = new ListFilter(Include.NON_DELETED);
-          columnFilter.addQueryParam("entityFQN", columnFqn);
-          testCases.addAll(
-              listAll(new Fields(allowedFields, "testDefinition,testSuite"), columnFilter));
-        }
-      }
-    } catch (Exception e) {
-      // If table not found or error accessing columns, just return table-level tests
-      LOG.warn("Error getting columns for table {}: {}", tableFqn, e.getMessage());
-    }
 
     return testCases;
   }
