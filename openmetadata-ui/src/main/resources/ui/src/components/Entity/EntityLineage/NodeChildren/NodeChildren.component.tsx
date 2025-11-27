@@ -432,43 +432,49 @@ const NodeChildren = ({
     (isColumnLayerEnabled || showDataObservability || isChildrenListExpanded)
   ) {
     return (
-      (isColumnLayerEnabled || isChildrenListExpanded) &&
-      !isEmpty(children) && (
-        <div
-          className={classNames(
-            'column-container',
-            selectedColumn && 'any-column-selected',
-            isCreatingEdge && 'creating-edge'
-          )}
-          data-testid="column-container">
-          <div className="search-box">
-            {isChildrenListExpanded && (
-              <Input
-                data-testid="search-column-input"
-                placeholder={t('label.search-entity', {
-                  entity: childrenHeading,
-                })}
-                suffix={<SearchOutlined color={BORDER_COLOR} />}
-                value={searchValue}
-                onChange={handleSearchChange}
-                onClick={(e) => e.stopPropagation()}
-              />
+      <>
+        {isChildrenListExpanded && !isEmpty(children) && (
+          <div
+            className={classNames(
+              'column-container',
+              selectedColumn && 'any-column-selected',
+              isCreatingEdge && 'creating-edge'
             )}
+            data-testid="column-container">
+            <div className="search-box">
+              {isChildrenListExpanded && (
+                <Input
+                  data-testid="search-column-input"
+                  placeholder={t('label.search-entity', {
+                    entity: childrenHeading,
+                  })}
+                  suffix={<SearchOutlined color={BORDER_COLOR} />}
+                  value={searchValue}
+                  onChange={handleSearchChange}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
 
-            {isChildrenListExpanded && !isEmpty(renderedColumns) && (
-              <section className="m-t-md" id="table-columns">
-                <div className="rounded-4 overflow-hidden">
-                  <CustomPaginatedList
-                    items={renderedColumns}
-                    nodeId={node.id}
-                  />
-                </div>
-              </section>
-            )}
-            {!isChildrenListExpanded && tracedColumnsForThisNode}
+              {isChildrenListExpanded && !isEmpty(renderedColumns) && (
+                <section className="m-t-md" id="table-columns">
+                  <div className="rounded-4 overflow-hidden">
+                    <CustomPaginatedList
+                      items={renderedColumns}
+                      nodeId={node.id}
+                    />
+                  </div>
+                </section>
+              )}
+            </div>
           </div>
-        </div>
-      )
+        )}
+
+        {!isChildrenListExpanded && (
+          <div className={classNames('column-container', 'columns-collapsed')}>
+            {tracedColumnsForThisNode}
+          </div>
+        )}
+      </>
     );
   } else {
     return null;
