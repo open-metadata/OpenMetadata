@@ -43,14 +43,23 @@ import React from 'react';
 
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
+  filteredColumns: EntityChildren;
   nodeId?: string;
 }
 
-const CustomPaginatedList = ({ items, nodeId }: CustomPaginatedListProps) => {
+const CustomPaginatedList = ({
+  items,
+  filteredColumns,
+  nodeId,
+}: CustomPaginatedListProps) => {
   const ITEMS_PER_PAGE = 5;
   const [page, setPage] = useState(1);
   const { t } = useTranslation();
-  const { useUpdateNodeInternals } = useLineageProvider();
+  const {
+    useUpdateNodeInternals,
+    columnsInCurrentPages,
+    setColumnsInCurrentPages,
+  } = useLineageProvider();
   const updateNodeInternals = useUpdateNodeInternals();
 
   const count = Math.ceil(items.length / ITEMS_PER_PAGE);
@@ -71,6 +80,20 @@ const CustomPaginatedList = ({ items, nodeId }: CustomPaginatedListProps) => {
     (_item, i) => i >= start && i < start + ITEMS_PER_PAGE
   );
 
+  const insidePreviousPageFilteredItems = filteredColumns
+    .filter((_item, i) => i >= start - ITEMS_PER_PAGE && i < start)
+    .filter(Boolean)
+    .map((item) => item.fullyQualifiedName);
+  const insideCurrentPageFilteredItems = filteredColumns
+    .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
+    .filter(Boolean)
+    .map((item) => item.fullyQualifiedName);
+
+  console.log({
+    insidePreviousPageFilteredItems,
+    insideCurrentPageFilteredItems,
+  });
+
   const outsideCurrentPageItems = paginatedItemsMapped.filter(
     (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
   );
@@ -85,9 +108,55 @@ const CustomPaginatedList = ({ items, nodeId }: CustomPaginatedListProps) => {
   };
 
   useEffect(() => {
+    // whenever page changes, first remove the current page items from array
+    setColumnsInCurrentPages((prevColumns) => {
+      const updatedColumns = [...prevColumns].filter(
+        (item) => !insidePreviousPageFilteredItems.includes(item ?? '')
+      );
+
+      return updatedColumns;
+    });
+
+    // then add the new page items
+    setColumnsInCurrentPages((prevColumns) => {
+      const updatedColumns = [...prevColumns];
+      insideCurrentPageFilteredItems.filter(Boolean).forEach((item) => {
+        const column = item ?? '';
+        if (!updatedColumns.includes(column)) {
+          updatedColumns.push(column);
+        }
+      });
+
+      return updatedColumns;
+    });
+  }, []);
+
+  useEffect(() => {
     if (nodeId) {
       updateNodeInternals(nodeId);
     }
+
+    // whenever page changes, first remove the current page items from array
+    setColumnsInCurrentPages((prevColumns) => {
+      const updatedColumns = [...prevColumns].filter(
+        (item) => !insidePreviousPageFilteredItems.includes(item ?? '')
+      );
+
+      return updatedColumns;
+    });
+
+    // then add the new page items
+    setColumnsInCurrentPages((prevColumns) => {
+      const updatedColumns = [...prevColumns];
+      insideCurrentPageFilteredItems.filter(Boolean).forEach((item) => {
+        const column = item ?? '';
+        if (!updatedColumns.includes(column)) {
+          updatedColumns.push(column);
+        }
+      });
+
+      return updatedColumns;
+    });
   }, [page]);
 
   return (
@@ -460,6 +529,7 @@ const NodeChildren = ({
                   <div className="rounded-4 overflow-hidden">
                     <CustomPaginatedList
                       items={renderedColumns}
+                      filteredColumns={filteredColumns}
                       nodeId={node.id}
                     />
                   </div>

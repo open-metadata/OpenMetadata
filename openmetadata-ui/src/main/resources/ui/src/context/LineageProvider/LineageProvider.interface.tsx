@@ -120,4 +120,7 @@ export interface LineageContextType {
   updateEntityFqn: (entityFqn: string) => void;
   dqHighlightedEdges?: Set<string>;
   useUpdateNodeInternals: () => UpdateNodeInternals;
+  columnsInCurrentPages: string[];
+  updateColumnsInCurrentPage: (columns: string[]) => void;
+  setColumnsInCurrentPages: Dispatch<SetStateAction<string[]>>;
 }
