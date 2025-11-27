@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react-test-renderer';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
@@ -30,6 +31,16 @@ const mockNodeDataProps = {
         { fullyQualifiedName: 'col2', name: 'col2' },
         { fullyQualifiedName: 'col3', name: 'col3' },
       ],
+      testSuite: {
+        deleted: false,
+        description: 'This is an executable test suite linked to an entity',
+        displayName: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        fullyQualifiedName:
+          'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        id: 'fafada0f-a2e7-4dbe-a65c-8de057a63a7c',
+        name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        type: 'testSuite',
+      },
     },
   },
   selected: false,
@@ -68,6 +79,9 @@ const mockNodeDataProps2 = {
 };
 
 const onMockColumnClick = jest.fn();
+const loadChildNodesHandlerMock = jest.fn();
+let isColumnLayerActive = false;
+let isDataObservabilityLayerActive = false;
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
@@ -86,14 +100,37 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       downstreamEdges: [],
     },
     columnsHavingLineage: [],
-    activeLayer: [LineageLayer.ColumnLevelLineage],
+    activeLayer: [
+      ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
+      ...(isDataObservabilityLayerActive
+        ? [LineageLayer.DataObservability]
+        : []),
+    ],
+    expandAllColumns: true,
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
+    loadChildNodesHandler: loadChildNodesHandlerMock,
   })),
 }));
 
+jest.mock('../../../rest/testAPI', () => ({
+  getTestCaseExecutionSummary: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      testPassed: 5,
+      testFailed: 2,
+      testAborted: 1,
+    })
+  ),
+}));
+
 describe('CustomNodeV1', () => {
+  beforeEach(() => {
+    isColumnLayerActive = false;
+    isDataObservabilityLayerActive = false;
+  });
+
   it('renders node correctly', () => {
+    isColumnLayerActive = true;
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
@@ -101,7 +138,6 @@ describe('CustomNodeV1', () => {
     );
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
-    expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
   });
 
   it('renders node with dbt icon correctly', () => {
@@ -112,7 +148,203 @@ describe('CustomNodeV1', () => {
     );
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
-    expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
+  });
+
+  it('should render footer only when there are children', () => {
+    isColumnLayerActive = true;
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    screen.debug(undefined, Infinity);
+    screen.logTestingPlaygroundURL();
+
+    expect(
+      screen.getByTestId('children-info-dropdown-btn')
+    ).toBeInTheDocument();
+  });
+
+  it('should not render footer when there are no children', () => {
+    isColumnLayerActive = true;
+
+    const mockNodeDataPropsNoChildren = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          columns: [],
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
+      </ReactFlowProvider>
+    );
+
+    expect(
+      screen.queryByTestId('children-info-dropdown-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render searchbar when column layer is applied and node has children', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('search-column-input')).toBeInTheDocument();
+  });
+
+  it('should not remove searchbar from node when no columns are matched while searching', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const searchInput = screen.getByTestId(
+      'search-column-input'
+    ) as HTMLInputElement;
+
+    fireEvent.change(searchInput, { target: { value: 'nonExistingColumn' } });
+
+    expect(screen.getByTestId('search-column-input')).toBeInTheDocument();
+  });
+
+  it('should render NodeChildren when column layer is applied and there are no columns', () => {
+    isColumnLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('column-container')).toBeInTheDocument();
+  });
+
+  it('should not render NodeChildren when column layer is applied but there are no columns', () => {
+    isColumnLayerActive = true;
+
+    const mockNodeDataPropsNoChildren = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          columns: [],
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
+      </ReactFlowProvider>
+    );
+    screen.debug(undefined, Infinity);
+
+    expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+  });
+
+  it('should toggle columns list when children dropdown button is clicked', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const button = screen.getByTestId('children-info-dropdown-btn');
+
+    expect(button).toBeInTheDocument();
+
+    fireEvent.click(button);
+
+    expect(screen.getByText('col1')).toBeInTheDocument();
+    expect(screen.getByText('col2')).toBeInTheDocument();
+    expect(screen.getByText('col3')).toBeInTheDocument();
+
+    fireEvent.click(button);
+
+    expect(screen.queryByText('col1')).not.toBeInTheDocument();
+    expect(screen.queryByText('col2')).not.toBeInTheDocument();
+    expect(screen.queryByText('col3')).not.toBeInTheDocument();
+  });
+
+  it('should have expand and expand all buttons', () => {
+    isColumnLayerActive = true;
+    isDataObservabilityLayerActive = true;
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const expandBtn = screen.getByTestId('plus-icon');
+
+    expect(expandBtn).toBeInTheDocument();
+
+    fireEvent.mouseOver(expandBtn);
+
+    expect(screen.getByTestId('plus-icon')).toBeInTheDocument();
+  });
+
+  it('should expand all when expand all button is clicked', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const expandBtn = screen.getByTestId('plus-icon');
+
+    fireEvent.click(expandBtn);
+
+    expect(loadChildNodesHandlerMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'Downstream',
+      1
+    );
+
+    fireEvent.mouseOver(expandBtn);
+
+    const expandAllBtn = screen.getByTestId('lineage-expand-all-btn');
+
+    fireEvent.click(expandAllBtn);
+
+    expect(loadChildNodesHandlerMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'Downstream',
+      50
+    );
+  });
+
+  it('should have Test summary widget when observability layer is applied', async () => {
+    isDataObservabilityLayerActive = true;
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    await act(async () => {
+      jest.runAllTimers(); // or jest.advanceTimersByTime(1000);
+    });
+
+    screen.debug(undefined, Infinity);
+
+    expect(screen.getByTestId('test-passed')).toBeInTheDocument();
+    expect(screen.getByTestId('test-aborted')).toBeInTheDocument();
+    expect(screen.getByTestId('test-failed')).toBeInTheDocument();
   });
 });

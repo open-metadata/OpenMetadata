@@ -14,11 +14,13 @@
 import { Button, ButtonGroup, useTheme } from '@mui/material';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
+import { ReactComponent as WorkflowIcon } from '../../../../assets/svg/data-flow.svg';
 
-export type ViewMode = 'table' | 'card';
+export type ViewMode = 'table' | 'card' | 'tree';
 
 interface UseViewToggleConfig {
   defaultView?: ViewMode;
+  views?: ViewMode[];
 }
 
 /**
@@ -50,10 +52,23 @@ interface UseViewToggleConfig {
  */
 export const useViewToggle = ({
   defaultView = 'table',
+  views,
 }: UseViewToggleConfig = {}) => {
-  // State management
-  const [view, setView] = useState<ViewMode>(defaultView);
   const theme = useTheme();
+
+  const availableViews = useMemo<ViewMode[]>(
+    () => (views && views.length > 0 ? views : ['table', 'card']),
+    [views]
+  );
+
+  const initialView = useMemo<ViewMode>(() => {
+    return availableViews.includes(defaultView)
+      ? defaultView
+      : availableViews[0];
+  }, [availableViews, defaultView]);
+
+  // State management
+  const [view, setView] = useState<ViewMode>(initialView);
 
   // State change functions
   const setTableView = useCallback(() => {
@@ -64,9 +79,26 @@ export const useViewToggle = ({
     setView('card');
   }, []);
 
+  const setTreeView = useCallback(() => {
+    setView('tree');
+  }, []);
+
   // Computed state
   const isTableView = view === 'table';
   const isCardView = view === 'card';
+  const isTreeView = view === 'tree';
+
+  const renderIcon = useCallback((mode: ViewMode) => {
+    switch (mode) {
+      case 'card':
+        return <Grid01 size={16} />;
+      case 'tree':
+        return <WorkflowIcon aria-label="Tree view" height={16} width={16} />;
+      case 'table':
+      default:
+        return <Menu01 size={16} />;
+    }
+  }, []);
 
   const viewToggle = useMemo(
     () => (
@@ -91,51 +123,35 @@ export const useViewToggle = ({
           },
         }}
         variant="outlined">
-        <Button
-          sx={{
-            backgroundColor:
-              view === 'table'
-                ? theme.palette.allShades?.brand?.[50]
-                : 'inherit',
-            color:
-              view === 'table'
-                ? theme.palette.allShades?.brand?.[600]
-                : 'inherit',
-            '& svg': {
-              color:
-                view === 'table'
+        {availableViews.map((mode) => {
+          const isActive = view === mode;
+
+          return (
+            <Button
+              key={mode}
+              sx={{
+                backgroundColor: isActive
+                  ? theme.palette.allShades?.brand?.[50]
+                  : 'inherit',
+                color: isActive
                   ? theme.palette.allShades?.brand?.[600]
                   : 'inherit',
-            },
-          }}
-          variant="outlined"
-          onClick={setTableView}>
-          <Menu01 size={16} />
-        </Button>
-        <Button
-          sx={{
-            backgroundColor:
-              view === 'card'
-                ? theme.palette.allShades?.brand?.[50]
-                : 'inherit',
-            color:
-              view === 'card'
-                ? theme.palette.allShades?.brand?.[600]
-                : 'inherit',
-            '& svg': {
-              color:
-                view === 'card'
-                  ? theme.palette.allShades?.brand?.[600]
-                  : 'inherit',
-            },
-          }}
-          variant="outlined"
-          onClick={setCardView}>
-          <Grid01 size={16} />
-        </Button>
+                '& svg': {
+                  color: isActive
+                    ? theme.palette.allShades?.brand?.[600]
+                    : 'inherit',
+                },
+              }}
+              title={mode}
+              variant="outlined"
+              onClick={() => setView(mode)}>
+              {renderIcon(mode)}
+            </Button>
+          );
+        })}
       </ButtonGroup>
     ),
-    [view, setTableView, setCardView, theme]
+    [availableViews, renderIcon, setView, theme, view]
   );
 
   return {
@@ -144,7 +160,9 @@ export const useViewToggle = ({
     setView,
     setTableView,
     setCardView,
+    setTreeView,
     isTableView,
     isCardView,
+    isTreeView,
   };
 };

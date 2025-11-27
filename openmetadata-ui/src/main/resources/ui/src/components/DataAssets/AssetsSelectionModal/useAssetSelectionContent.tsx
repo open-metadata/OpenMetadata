@@ -643,7 +643,10 @@ export const useAssetSelectionContent = ({
   const footer = variant === 'drawer' ? drawerFooter : modalFooter;
 
   const content = (
-    <Space className="w-full h-full" direction="vertical" size={16}>
+    <Space
+      className="w-full h-full overflow-hidden asset-selection-space"
+      direction="vertical"
+      size={16}>
       {(assetJobResponse || exportJob?.error) && (
         <Banner
           className="border-radius"
@@ -725,7 +728,7 @@ export const useAssetSelectionContent = ({
       )}
 
       {items.length > 0 && (
-        <div className="border p-xs">
+        <div className="border p-xs asset-list-wrapper">
           <Checkbox
             className="assets-checkbox p-x-sm"
             onChange={(e) => onSelectAll(e.target.checked)}>
@@ -736,7 +739,7 @@ export const useAssetSelectionContent = ({
           <List>
             <VirtualList
               data={items}
-              height={500}
+              height={variant === 'modal' ? 500 : undefined}
               itemKey="id"
               onScroll={onScroll}>
               {({ _source: item }) => {

@@ -11,17 +11,13 @@
  *  limitations under the License.
  */
 import { TableConstraint } from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
 export interface FieldCardProps {
   fieldName: string;
   dataType: string;
   description?: string;
-  tags?: Array<{
-    tagFQN: string;
-    source: string;
-    labelType: string;
-    state: string;
-  }>;
+  tags?: TagLabel[];
   glossaryTerms?: Array<{
     name: string;
     displayName: string;

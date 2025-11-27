@@ -33,6 +33,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -49,6 +50,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -197,7 +199,7 @@ export const CommonWidgets = ({
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
@@ -219,8 +221,11 @@ export const CommonWidgets = ({
         permissions.ViewAll ||
         permissions.ViewDataProfile ||
         permissions.ViewTests,
-      viewAllPermission: permissions.ViewAll,
       viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [permissions, deleted]
   );
@@ -345,6 +350,7 @@ export const CommonWidgets = ({
         showSuggestions
         wrapInCard
         description={description}
+        entityFullyQualifiedName={data?.fullyQualifiedName ?? ''}
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}
@@ -392,7 +398,7 @@ export const CommonWidgets = ({
           isRenderedInRightPanel
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
-          hasPermission={Boolean(viewAllPermission)}
+          hasPermission={viewCustomPropertiesPermission}
           maxDataCap={5}
         />
       );

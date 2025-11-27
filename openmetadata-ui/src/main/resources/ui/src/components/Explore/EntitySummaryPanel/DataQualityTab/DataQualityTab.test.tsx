@@ -230,6 +230,8 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1234567890),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1234567890),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';
@@ -461,7 +463,7 @@ describe('DataQualityTab', () => {
           return card !== null;
         });
 
-        expect(failedStatusBadges).toHaveLength(1);
+        expect(failedStatusBadges).toHaveLength(2); // Failed test case with incidentId has 2 badges (Failed + Assigned)
       });
     });
 
@@ -495,7 +497,7 @@ describe('DataQualityTab', () => {
       const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
-      expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
+      expect(screen.getByText('Assigned')).toBeInTheDocument();
     });
   });
 

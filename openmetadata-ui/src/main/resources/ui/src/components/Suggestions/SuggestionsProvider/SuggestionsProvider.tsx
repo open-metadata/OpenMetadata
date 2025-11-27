@@ -40,6 +40,7 @@ import {
 } from '../../../rest/suggestionsAPI';
 import {
   getSuggestionByType,
+  getSuggestionTypeBasedOnData,
   getUniqueSuggestions,
 } from '../../../utils/Suggestion/SuggestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -63,6 +64,8 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const [suggestionLimit, setSuggestionLimit] = useState<number>(PAGE_SIZE);
   const [suggestionPendingCount, setSuggestionPendingCount] =
     useState<number>(0);
+  const [dataSuggestionType, setDataSuggestionType] =
+    useState<SuggestionType>();
 
   const { allSuggestionsUsers, suggestionsByUser } = useMemo(() => {
     const { allUsersList, groupedSuggestions } =
@@ -94,6 +97,9 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           processedSuggestions = mergedSuggestions;
         }
 
+        setDataSuggestionType(
+          getSuggestionTypeBasedOnData(processedSuggestions)
+        );
         setSuggestionLimit(paging.total);
         setSuggestionPendingCount(paging.total - processedSuggestions.length);
       } catch (err) {
@@ -249,6 +255,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       suggestions,
       suggestionLimit,
       suggestionsByUser,
+      dataSuggestionType,
       selectedUserSuggestions,
       entityFqn,
       loading,
@@ -266,6 +273,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     suggestions,
     suggestionLimit,
     suggestionsByUser,
+    dataSuggestionType,
     selectedUserSuggestions,
     entityFqn,
     loading,

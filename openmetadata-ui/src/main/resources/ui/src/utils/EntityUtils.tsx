@@ -621,7 +621,7 @@ export const getSearchIndexOverview = (
     },
     {
       name: i18next.t('label.service'),
-      value: service?.fullyQualifiedName ?? NO_DATA,
+      value: service.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
         ServiceCategory.SEARCH_SERVICES
@@ -1125,7 +1125,7 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? '',
+      value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
         service.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
@@ -2399,7 +2399,7 @@ export const getEntityBreadcrumbs = (
           url:
             (entity as EventSubscription).alertType === AlertType.Observability
               ? ROUTES.OBSERVABILITY_ALERTS
-              : ROUTES.NOTIFICATION_ALERTS,
+              : ROUTES.NOTIFICATION_ALERT_LIST,
         },
         {
           name: entity.name,

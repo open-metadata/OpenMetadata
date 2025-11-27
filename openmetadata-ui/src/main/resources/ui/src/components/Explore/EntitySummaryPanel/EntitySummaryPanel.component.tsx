@@ -26,6 +26,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
@@ -47,7 +48,10 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -69,6 +73,7 @@ import { LineageTabContent } from './LineageTab';
 export default function EntitySummaryPanel({
   entityDetails,
   highlights,
+  panelPath,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -128,8 +133,7 @@ export default function EntitySummaryPanel({
       let entityPromise: Promise<any> | null = null;
 
       // Fields needed for the right panel to reflect latest state
-      const commonFields =
-        'owners,domains,tags,dataProducts,description,extension';
+      const commonFields = 'owners,domains,tags,dataProducts,extension';
 
       switch (entityType) {
         case EntityType.TABLE:
@@ -443,6 +447,7 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
@@ -689,6 +694,10 @@ export default function EntitySummaryPanel({
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
               isEntityDataLoading={isEntityDataLoading}
+              viewCustomPropertiesPermission={getPrioritizedViewPermission(
+                entityPermissions,
+                Operation.ViewCustomFields
+              )}
             />
           </>
         );
@@ -700,7 +709,7 @@ export default function EntitySummaryPanel({
 
   return (
     <div className="entity-summary-panel-container">
-      <div className="d-flex gap-2">
+      <div className="d-flex gap-2 w-full">
         <Card bordered={false} className="summary-panel-container">
           <Card
             className="content-area"
