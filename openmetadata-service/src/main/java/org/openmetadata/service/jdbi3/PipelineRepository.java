@@ -1750,8 +1750,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private String buildServiceTypeFilter(String serviceType) {
     if (serviceType != null && !serviceType.isEmpty()) {
       String safeServiceType = serviceType.replace("'", "''");
-      return "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + safeServiceType + "'";
+      String filter =
+          "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + safeServiceType + "'";
+      LOG.debug("buildServiceTypeFilter: input='{}', filter='{}'", serviceType, filter);
+      return filter;
     }
+    LOG.debug("buildServiceTypeFilter: returning empty filter (serviceType was null or empty)");
     return "";
   }
 
@@ -1765,30 +1769,77 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return "";
   }
 
+  private boolean isValidUUID(String value) {
+    try {
+      UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  private String resolveDomainToId(String domain) {
+    if (isValidUUID(domain)) {
+      return domain;
+    }
+    try {
+      EntityReference domainRef =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      return domainRef.getId().toString();
+    } catch (Exception e) {
+      LOG.warn("Could not resolve domain '{}' to ID: {}", domain, e.getMessage());
+      return null;
+    }
+  }
+
+  private String resolveOwnerToId(String owner) {
+    if (isValidUUID(owner)) {
+      return owner;
+    }
+    try {
+      EntityReference ownerRef =
+          Entity.getEntityReferenceByName(Entity.USER, owner, Include.NON_DELETED);
+      return ownerRef.getId().toString();
+    } catch (Exception e) {
+      try {
+        EntityReference teamRef =
+            Entity.getEntityReferenceByName(Entity.TEAM, owner, Include.NON_DELETED);
+        return teamRef.getId().toString();
+      } catch (Exception e2) {
+        LOG.warn("Could not resolve owner '{}' to ID: {}", owner, e2.getMessage());
+        return null;
+      }
+    }
+  }
+
   private String buildDomainFilter(String domain) {
     if (domain != null && !domain.isEmpty()) {
+      String domainId = resolveDomainToId(domain);
+      if (domainId == null) {
+        return "";
+      }
       return "AND EXISTS (SELECT 1 FROM entity_relationship er "
           + "WHERE er.toId = pe.id AND er.toEntity = 'pipeline' "
-          + "AND er.fromEntity = 'domain' AND er.relation = 8 "
-          + "AND (er.fromId = '"
-          + domain
-          + "' OR er.fromFQNHash = '"
-          + FullyQualifiedName.buildHash(domain)
-          + "'))";
+          + "AND er.fromEntity = 'domain' AND er.relation = 10 "
+          + "AND er.fromId = '"
+          + domainId
+          + "')";
     }
     return "";
   }
 
   private String buildOwnerFilter(String owner) {
     if (owner != null && !owner.isEmpty()) {
+      String ownerId = resolveOwnerToId(owner);
+      if (ownerId == null) {
+        return "";
+      }
       return "AND EXISTS (SELECT 1 FROM entity_relationship er "
           + "WHERE er.toId = pe.id AND er.toEntity = 'pipeline' "
-          + "AND er.fromEntity IN ('user', 'team') AND er.relation = 2 "
-          + "AND (er.fromId = '"
-          + owner
-          + "' OR er.fromFQNHash = '"
-          + FullyQualifiedName.buildHash(owner)
-          + "'))";
+          + "AND er.fromEntity IN ('user', 'team') AND er.relation = 8 "
+          + "AND er.fromId = '"
+          + ownerId
+          + "')";
     }
     return "";
   }
@@ -1796,9 +1847,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private String buildTierFilter(String tier) {
     if (tier != null && !tier.isEmpty()) {
       String safeTier = tier.replace("'", "''");
-      return "AND JSON_SEARCH(pe.json, 'one', '"
+      return "AND EXISTS (SELECT 1 FROM tag_usage tu "
+          + "WHERE tu.targetFQNHash = pe.fqnHash "
+          + "AND tu.tagFQN = '"
           + safeTier
-          + "', NULL, '$.tags[*].tagFQN') IS NOT NULL";
+          + "')";
     }
     return "";
   }
