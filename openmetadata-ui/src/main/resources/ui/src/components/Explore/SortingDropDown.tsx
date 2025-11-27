@@ -13,7 +13,6 @@
 
 import { Dropdown, Space, Typography } from 'antd';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 
 export interface SortingField {
@@ -32,9 +31,8 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
   handleFieldDropDown,
   sortField,
 }) => {
-  const { t } = useTranslation();
   const items = fieldList.map((field) => ({
-    label: t(field.name),
+    label: field.name,
     key: field.value,
     onClick: () => handleFieldDropDown(field.value),
     'data-testid': 'dropdown-menu-item',
@@ -51,7 +49,7 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
       }}
       trigger={['click']}>
       <Space align="baseline" data-testid="sorting-dropdown-label" size={4}>
-        <Typography.Text>{t(label)}</Typography.Text>
+        <Typography.Text>{label}</Typography.Text>
         <DropDownIcon className="align-middle" height={16} width={16} />
       </Space>
     </Dropdown>
