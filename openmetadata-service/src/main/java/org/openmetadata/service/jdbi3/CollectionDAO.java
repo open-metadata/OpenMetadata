@@ -6648,6 +6648,7 @@ public interface CollectionDAO {
             + "  AND eets.timestamp <= :endTs "
             + "  <pipelineFqnFilter> "
             + "  <serviceTypeFilter> "
+            + "  <serviceFilter> "
             + "  <statusFilter> "
             + "  <domainFilter> "
             + "  <ownerFilter> "
@@ -6660,6 +6661,7 @@ public interface CollectionDAO {
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
         @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
         @Define("statusFilter") String statusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
@@ -6682,6 +6684,7 @@ public interface CollectionDAO {
             + "  AND JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL "
             + "  <pipelineFqnFilter> "
             + "  <serviceTypeFilter> "
+            + "  <serviceFilter> "
             + "  <statusFilter> "
             + "  <domainFilter> "
             + "  <ownerFilter> "
@@ -6694,6 +6697,7 @@ public interface CollectionDAO {
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
         @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
         @Define("statusFilter") String statusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
@@ -6709,6 +6713,7 @@ public interface CollectionDAO {
             + "  AND eets.extension = 'pipeline.pipelineStatus' "
             + "WHERE pe.deleted = 0 "
             + "  <serviceTypeFilter> "
+            + "  <serviceFilter> "
             + "  <statusFilter> "
             + "  <domainFilter> "
             + "  <ownerFilter> "
@@ -6719,6 +6724,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(ServiceBreakdownRowMapper.class)
     List<ServiceBreakdownRow> getServiceBreakdown(
         @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
         @Define("statusFilter") String statusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
@@ -6738,6 +6744,7 @@ public interface CollectionDAO {
             + "  AND eets.extension = 'pipeline.pipelineStatus' "
             + "WHERE pe.deleted = 0 "
             + "  <serviceTypeFilter> "
+            + "  <serviceFilter> "
             + "  <statusFilter> "
             + "  <domainFilter> "
             + "  <ownerFilter> "
@@ -6747,6 +6754,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(PipelineMetricsRowMapper.class)
     PipelineMetricsRow getPipelineMetricsData(
         @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
         @Define("statusFilter") String statusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,

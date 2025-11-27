@@ -49,6 +49,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
+    conditions.add(getOwnerCondition(tableName));
+    conditions.add(getTierCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getDirectoryCondition(tableName));
@@ -208,9 +210,18 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null
-        ? ""
-        : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service), "service");
+    if (service == null || service.isEmpty()) {
+      return "";
+    }
+    // Special handling for pipeline_entity - use entity_relationship join
+    if (tableName != null && tableName.equals("pipeline_entity")) {
+      String safeService = service.replace("'", "''");
+      String entityIdColumn = tableName + ".id";
+      return String.format(
+          "(EXISTS (SELECT 1 FROM entity_relationship er JOIN pipeline_service_entity pse ON er.fromId = pse.id WHERE er.toId = %s AND er.fromEntity = 'pipelineService' AND er.toEntity = 'pipeline' AND er.relation = 0 AND pse.name = '%s'))",
+          entityIdColumn, safeService);
+    }
+    return getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service), "service");
   }
 
   public String getServiceTypeCondition(String tableName) {
@@ -263,6 +274,29 @@ public class ListFilter extends Filter<ListFilter> {
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainId);
+  }
+
+  private String getOwnerCondition(String tableName) {
+    String ownerId = getQueryParam("ownerId");
+    if (ownerId == null) {
+      return "";
+    }
+    String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+    return String.format(
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId = '%s' AND relation=8))",
+        entityIdColumn, ownerId);
+  }
+
+  private String getTierCondition(String tableName) {
+    String tier = getQueryParam("tier");
+    if (tier == null || tier.isEmpty()) {
+      return "";
+    }
+    String safeTier = tier.replace("'", "''");
+    String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+    return String.format(
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.tagFQN = '%s'))",
+        fqnHashColumn, safeTier);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {

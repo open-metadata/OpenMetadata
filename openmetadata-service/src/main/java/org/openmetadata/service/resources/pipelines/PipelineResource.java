@@ -751,6 +751,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
       @Parameter(
               description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
               schema = @Schema(type = "string"))
@@ -787,7 +790,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
       PipelineMetrics metrics =
           repository.getPipelineMetrics(
-              query, serviceType, status, domain, owner, tier, startTs, endTs);
+              query, service, serviceType, status, domain, owner, tier, startTs, endTs);
       return Response.ok(metrics).build();
     } catch (Exception e) {
       PipelineMetrics emptyMetrics =
@@ -896,6 +899,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
       @Parameter(
               description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
               schema = @Schema(type = "string"))
@@ -933,7 +939,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     try {
       PipelineExecutionTrendList trendList =
           repository.getPipelineExecutionTrend(
-              startTs, endTs, pipelineFqn, serviceType, status, domain, owner, tier, limit, offset);
+              startTs,
+              endTs,
+              pipelineFqn,
+              service,
+              serviceType,
+              status,
+              domain,
+              owner,
+              tier,
+              limit,
+              offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineExecutionTrendList emptyTrend =
@@ -985,6 +1001,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
       @Parameter(
               description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
               schema = @Schema(type = "string"))
@@ -1022,7 +1041,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     try {
       PipelineRuntimeTrendList trendList =
           repository.getPipelineRuntimeTrend(
-              startTs, endTs, pipelineFqn, serviceType, status, domain, owner, tier, limit, offset);
+              startTs,
+              endTs,
+              pipelineFqn,
+              service,
+              serviceType,
+              status,
+              domain,
+              owner,
+              tier,
+              limit,
+              offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineRuntimeTrendList emptyTrend =

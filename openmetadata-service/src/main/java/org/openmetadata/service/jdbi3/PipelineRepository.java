@@ -1142,13 +1142,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String startTsFilter = filter.getQueryParams().get("startTs");
     String endTsFilter = filter.getQueryParams().get("endTs");
 
-    // Create new filter with SQL-applicable filters (service, serviceType, domain, owner, tier)
+    // Convert domain and owner to IDs for database filtering
+    String domain = filter.getQueryParams().get("domain");
+    String domainId = domain != null ? resolveDomainToId(domain) : null;
+
+    String owner = filter.getQueryParams().get("owner");
+    String ownerId = owner != null ? resolveOwnerToId(owner) : null;
+
+    // Create new filter with SQL-applicable filters (service, serviceType, domainId, ownerId, tier)
     ListFilter entityFilter =
         new ListFilter(filter.getInclude())
             .addQueryParam("service", filter.getQueryParams().get("service"))
             .addQueryParam("serviceType", filter.getQueryParams().get("serviceType"))
-            .addQueryParam("domain", filter.getQueryParams().get("domain"))
-            .addQueryParam("owner", filter.getQueryParams().get("owner"))
+            .addQueryParam("domainId", domainId)
+            .addQueryParam("ownerId", ownerId)
             .addQueryParam("tier", filter.getQueryParams().get("tier"));
 
     // Use correct base method based on pagination direction
@@ -1333,6 +1340,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public PipelineMetrics getPipelineMetrics(
       String query,
+      String service,
       String serviceType,
       String status,
       String domain,
@@ -1342,7 +1350,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long endTs) {
     try {
       return getPipelineMetricsFromDB(
-          query, serviceType, status, domain, owner, tier, startTs, endTs);
+          query, service, serviceType, status, domain, owner, tier, startTs, endTs);
     } catch (Exception e) {
       LOG.warn("Failed to get metrics from database: {}", e.getMessage());
       return createEmptyMetrics("Database unavailable: " + e.getMessage());
@@ -1351,6 +1359,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private PipelineMetrics getPipelineMetricsFromDB(
       String query,
+      String service,
       String serviceType,
       String status,
       String domain,
@@ -1359,6 +1368,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long startTs,
       Long endTs) {
     try {
+      String serviceFilter = buildServiceFilter(service);
       String serviceTypeFilter = buildServiceTypeFilter(serviceType);
       String statusFilter = buildStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
@@ -1372,6 +1382,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .entityExtensionTimeSeriesDao()
               .getPipelineMetricsData(
                   serviceTypeFilter,
+                  serviceFilter,
                   statusFilter,
                   domainFilter,
                   ownerFilter,
@@ -1383,6 +1394,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .entityExtensionTimeSeriesDao()
               .getServiceBreakdown(
                   serviceTypeFilter,
+                  serviceFilter,
                   statusFilter,
                   domainFilter,
                   ownerFilter,
@@ -1436,6 +1448,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long startTs,
       Long endTs,
       String pipelineFqn,
+      String service,
       String serviceType,
       String status,
       String domain,
@@ -1445,7 +1458,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Integer offset) {
     try {
       return getPipelineExecutionTrendFromDB(
-          startTs, endTs, pipelineFqn, serviceType, status, domain, owner, tier, limit, offset);
+          startTs,
+          endTs,
+          pipelineFqn,
+          service,
+          serviceType,
+          status,
+          domain,
+          owner,
+          tier,
+          limit,
+          offset);
     } catch (Exception e) {
       LOG.warn("Failed to get execution trend from database: {}", e.getMessage());
       return createEmptyExecutionTrend("Database unavailable: " + e.getMessage());
@@ -1466,6 +1489,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long startTs,
       Long endTs,
       String pipelineFqn,
+      String service,
       String serviceType,
       String status,
       String domain,
@@ -1475,6 +1499,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Integer offset) {
     try {
       String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
+      String serviceFilter = buildServiceFilter(service);
       String serviceTypeFilter = buildServiceTypeFilter(serviceType);
       String statusFilter = buildStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
@@ -1489,6 +1514,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   endTs,
                   pipelineFqnFilter,
                   serviceTypeFilter,
+                  serviceFilter,
                   statusFilter,
                   domainFilter,
                   ownerFilter,
@@ -1591,6 +1617,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long startTs,
       Long endTs,
       String pipelineFqn,
+      String service,
       String serviceType,
       String status,
       String domain,
@@ -1600,7 +1627,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Integer offset) {
     try {
       return getPipelineRuntimeTrendFromDB(
-          startTs, endTs, pipelineFqn, serviceType, status, domain, owner, tier, limit, offset);
+          startTs,
+          endTs,
+          pipelineFqn,
+          service,
+          serviceType,
+          status,
+          domain,
+          owner,
+          tier,
+          limit,
+          offset);
     } catch (Exception e) {
       LOG.warn("Failed to get runtime trend from database: {}", e.getMessage());
       return createEmptyRuntimeTrend("Database unavailable: " + e.getMessage());
@@ -1618,6 +1655,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long startTs,
       Long endTs,
       String pipelineFqn,
+      String service,
       String serviceType,
       String status,
       String domain,
@@ -1627,6 +1665,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Integer offset) {
     try {
       String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
+      String serviceFilter = buildServiceFilter(service);
       String serviceTypeFilter = buildServiceTypeFilter(serviceType);
       String statusFilter = buildStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
@@ -1641,6 +1680,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   endTs,
                   pipelineFqnFilter,
                   serviceTypeFilter,
+                  serviceFilter,
                   statusFilter,
                   domainFilter,
                   ownerFilter,
@@ -1854,6 +1894,23 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           + safeTier
           + "')";
     }
+    return "";
+  }
+
+  private String buildServiceFilter(String service) {
+    if (service != null && !service.isEmpty()) {
+      String safeService = service.replace("'", "''");
+      return "AND EXISTS (SELECT 1 FROM entity_relationship er "
+          + "JOIN pipeline_service_entity pse ON er.fromId = pse.id "
+          + "WHERE er.toId = pe.id "
+          + "AND er.fromEntity = 'pipelineService' "
+          + "AND er.toEntity = 'pipeline' "
+          + "AND er.relation = 0 "
+          + "AND pse.name = '"
+          + safeService
+          + "')";
+    }
+    LOG.debug("buildServiceFilter: returning empty filter (service was null or empty)");
     return "";
   }
 
