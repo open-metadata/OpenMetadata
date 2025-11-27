@@ -163,8 +163,10 @@ const renderObjectValue = (
     return String(objVal.name || objVal.displayName);
   }
 
-  if (objVal.value) {
-    return String(objVal.value);
+  if (objVal.value !== undefined) {
+    return typeof objVal.value === 'object'
+      ? JSON.stringify(objVal.value)
+      : String(objVal.value);
   }
 
   return JSON.stringify(objVal);
@@ -214,5 +216,5 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
       return renderObjectValue(objVal, propertyTypeName, t);
     }
 
-    return <>{String(val)}</>;
+    return <>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</>;
   };

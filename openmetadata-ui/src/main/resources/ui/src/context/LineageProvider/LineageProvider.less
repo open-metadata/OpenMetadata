@@ -10,19 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../../enums/entity.enum';
+@import (reference) '../../styles/variables.less';
 
-export enum EntityRightPanelTab {
-  OVERVIEW = 'overview',
-  SCHEMA = 'schema',
-  LINEAGE = 'lineage',
-  DATA_QUALITY = 'data-quality',
-  CUSTOM_PROPERTIES = 'custom-properties',
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: @overlay-background-color;
+  z-index: 8;
 }
 
-export interface EntityRightPanelVerticalNavProps {
-  isSideDrawer?: boolean;
-  activeTab: EntityRightPanelTab;
-  entityType: EntityType;
-  onTabChange: (tab: EntityRightPanelTab) => void;
+.lineage-entity-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 576px;
+  height: 100%;
+  z-index: 999;
+  overflow: hidden;
 }

@@ -31,7 +31,7 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ isSideDrawer, activeTab, entityType, onTabChange }) => {
+  ({ isSideDrawer = false, activeTab, entityType, onTabChange }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {

@@ -149,6 +149,7 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
+import './LineageProvider.less';
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -1902,31 +1903,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           ) : (
             !isEmpty(selectedNode) && (
               <>
-                {/* Background overlay */}
                 <div
-                  style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-                    zIndex: 8,
-                  }}
+                  aria-label={t('label.close-panel')}
+                  className="drawer-overlay"
                   onClick={onCloseDrawer}
                 />
-                {/* Entity panel */}
-                <div
-                  className="lineage-entity-panel"
-                  style={{
-                    position: 'fixed',
-                    top: 0,
-                    right: 0,
-                    width: '576px',
-                    height: '100%',
-                    zIndex: 9,
-                    overflow: 'hidden',
-                  }}>
+                <div className="lineage-entity-panel">
                   <EntitySummaryPanel
                     isSideDrawer
                     entityDetails={{ details: selectedNode }}

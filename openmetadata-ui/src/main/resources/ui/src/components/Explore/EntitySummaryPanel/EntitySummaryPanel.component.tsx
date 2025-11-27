@@ -714,14 +714,11 @@ export default function EntitySummaryPanel({
     <div className="entity-summary-panel-container">
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
-          <div
-            className={`title-section ${
-              isSideDrawer ? 'drawer-title-section' : ''
-            }`}>
+          <div className="title-section drawer-title-section">
             <div className="title-container">
               <Tooltip
                 mouseEnterDelay={0.5}
-                placement="topLeft"
+                placement="bottomLeft"
                 title={entityDetails.details.name}
                 trigger="hover">
                 <div className="d-flex items-center">
