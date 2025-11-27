@@ -662,6 +662,36 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Fields requested in the returned resource") @QueryParam("fields")
           String fieldsParam,
       @Parameter(description = "Filter by service name") @QueryParam("service") String serviceParam,
+      @Parameter(description = "Search pipelines by name or FQN") @QueryParam("search")
+          String searchParam,
+      @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Filter results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Limit the number of results (1 to 1000, default = 10)")
           @DefaultValue("10")
           @Min(value = 1, message = "Limit must be at least 1")
@@ -679,7 +709,16 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     Fields fields = getFields(fieldsParam);
-    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("service", serviceParam)
+            .addQueryParam("search", searchParam)
+            .addQueryParam("status", status)
+            .addQueryParam("domain", domain)
+            .addQueryParam("owner", owner)
+            .addQueryParam("tier", tier)
+            .addQueryParam("startTs", startTs != null ? String.valueOf(startTs) : null)
+            .addQueryParam("endTs", endTs != null ? String.valueOf(endTs) : null);
 
     return repository.listPipelineSummaries(
         uriInfo, securityContext, fields, filter, limitParam, before, after);
@@ -691,7 +730,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "getPipelineMetrics",
       summary = "Get aggregated pipeline metrics",
       description =
-          "Get aggregated metrics about pipelines from Elasticsearch. Optionally filter results using the q parameter.",
+          "Get aggregated metrics about pipelines from the database. Optionally filter results using the q parameter.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -708,14 +747,47 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               description = "Search query to filter the aggregation results",
               schema = @Schema(type = "String"))
           @QueryParam("q")
-          String query) {
+          String query,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Filter results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs) {
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
 
     try {
       authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
-      PipelineMetrics metrics = repository.getPipelineMetrics(query);
+      PipelineMetrics metrics =
+          repository.getPipelineMetrics(
+              query, serviceType, status, domain, owner, tier, startTs, endTs);
       return Response.ok(metrics).build();
     } catch (Exception e) {
       PipelineMetrics emptyMetrics =
@@ -790,7 +862,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "getPipelineExecutionTrend",
       summary = "Get pipeline execution trend",
       description =
-          "Get day-wise pipeline execution trend showing succeeded and failed counts from Elasticsearch.",
+          "Get day-wise pipeline execution trend showing succeeded and failed counts from the database.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -825,6 +897,24 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("serviceType")
           String serviceType,
       @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
               description = "Maximum number of trend data points to return",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
@@ -843,7 +933,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     try {
       PipelineExecutionTrendList trendList =
           repository.getPipelineExecutionTrend(
-              startTs, endTs, pipelineFqn, serviceType, limit, offset);
+              startTs, endTs, pipelineFqn, serviceType, status, domain, owner, tier, limit, offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineExecutionTrendList emptyTrend =
@@ -861,7 +951,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "getPipelineRuntimeTrend",
       summary = "Get pipeline runtime trend",
       description =
-          "Get day-wise pipeline runtime trend showing max, min, and average runtime from Elasticsearch.",
+          "Get day-wise pipeline runtime trend showing max, min, and average runtime from the database.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -896,6 +986,24 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("serviceType")
           String serviceType,
       @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
               description = "Maximum number of trend data points to return",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
@@ -914,7 +1022,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     try {
       PipelineRuntimeTrendList trendList =
           repository.getPipelineRuntimeTrend(
-              startTs, endTs, pipelineFqn, serviceType, limit, offset);
+              startTs, endTs, pipelineFqn, serviceType, status, domain, owner, tier, limit, offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineRuntimeTrendList emptyTrend =

@@ -6492,6 +6492,125 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "entity_extension_time_series";
     }
+
+    @SqlQuery(
+        "SELECT "
+            + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
+            + "  JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) as status, "
+            + "  COUNT(*) as count "
+            + "FROM entity_extension_time_series eets "
+            + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+            + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+            + "  AND pe.deleted = 0 "
+            + "  AND eets.timestamp >= :startTs "
+            + "  AND eets.timestamp <= :endTs "
+            + "  <pipelineFqnFilter> "
+            + "  <serviceTypeFilter> "
+            + "  <statusFilter> "
+            + "  <domainFilter> "
+            + "  <ownerFilter> "
+            + "  <tierFilter> "
+            + "GROUP BY date_key, status "
+            + "ORDER BY date_key ASC")
+    @RegisterRowMapper(ExecutionTrendRowMapper.class)
+    List<ExecutionTrendRow> getExecutionTrendData(
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Define("pipelineFqnFilter") String pipelineFqnFilter,
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("statusFilter") String statusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter);
+
+    @SqlQuery(
+        "SELECT "
+            + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
+            + "  MIN(eets.timestamp) as first_timestamp, "
+            + "  MAX(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as max_runtime, "
+            + "  MIN(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as min_runtime, "
+            + "  AVG(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as avg_runtime, "
+            + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
+            + "FROM entity_extension_time_series eets "
+            + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+            + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+            + "  AND pe.deleted = 0 "
+            + "  AND eets.timestamp >= :startTs "
+            + "  AND eets.timestamp <= :endTs "
+            + "  AND JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL "
+            + "  <pipelineFqnFilter> "
+            + "  <serviceTypeFilter> "
+            + "  <statusFilter> "
+            + "  <domainFilter> "
+            + "  <ownerFilter> "
+            + "  <tierFilter> "
+            + "GROUP BY date_key "
+            + "ORDER BY date_key ASC")
+    @RegisterRowMapper(RuntimeTrendRowMapper.class)
+    List<RuntimeTrendRow> getRuntimeTrendData(
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Define("pipelineFqnFilter") String pipelineFqnFilter,
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("statusFilter") String statusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter);
+
+    @SqlQuery(
+        "SELECT "
+            + "  JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) as service_type, "
+            + "  COUNT(*) as pipeline_count "
+            + "FROM pipeline_entity pe "
+            + "LEFT JOIN entity_extension_time_series eets "
+            + "  ON pe.fqnHash = eets.entityFQNHash "
+            + "  AND eets.extension = 'pipeline.pipelineStatus' "
+            + "WHERE pe.deleted = 0 "
+            + "  <serviceTypeFilter> "
+            + "  <statusFilter> "
+            + "  <domainFilter> "
+            + "  <ownerFilter> "
+            + "  <tierFilter> "
+            + "  <startTsFilter> "
+            + "  <endTsFilter> "
+            + "GROUP BY service_type")
+    @RegisterRowMapper(ServiceBreakdownRowMapper.class)
+    List<ServiceBreakdownRow> getServiceBreakdown(
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("statusFilter") String statusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter,
+        @Define("startTsFilter") String startTsFilter,
+        @Define("endTsFilter") String endTsFilter);
+
+    @SqlQuery(
+        "SELECT "
+            + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines, "
+            + "  COUNT(DISTINCT CASE WHEN eets.entityFQNHash IS NOT NULL THEN pe.fqnHash END) as active_pipelines, "
+            + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Successful' THEN pe.fqnHash END) as successful_pipelines, "
+            + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Failed' THEN pe.fqnHash END) as failed_pipelines "
+            + "FROM pipeline_entity pe "
+            + "LEFT JOIN entity_extension_time_series eets "
+            + "  ON pe.fqnHash = eets.entityFQNHash "
+            + "  AND eets.extension = 'pipeline.pipelineStatus' "
+            + "WHERE pe.deleted = 0 "
+            + "  <serviceTypeFilter> "
+            + "  <statusFilter> "
+            + "  <domainFilter> "
+            + "  <ownerFilter> "
+            + "  <tierFilter> "
+            + "  <startTsFilter> "
+            + "  <endTsFilter>")
+    @RegisterRowMapper(PipelineMetricsRowMapper.class)
+    PipelineMetricsRow getPipelineMetricsData(
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("statusFilter") String statusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter,
+        @Define("startTsFilter") String startTsFilter,
+        @Define("endTsFilter") String endTsFilter);
   }
 
   interface AppsDataStore {
@@ -7845,5 +7964,244 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM recognizer_feedback_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+  }
+
+  class ExecutionTrendRow {
+    private String dateKey;
+    private String status;
+    private Integer count;
+
+    public ExecutionTrendRow() {}
+
+    public ExecutionTrendRow(String dateKey, String status, Integer count) {
+      this.dateKey = dateKey;
+      this.status = status;
+      this.count = count;
+    }
+
+    public String getDateKey() {
+      return dateKey;
+    }
+
+    public void setDateKey(String dateKey) {
+      this.dateKey = dateKey;
+    }
+
+    public String getStatus() {
+      return status;
+    }
+
+    public void setStatus(String status) {
+      this.status = status;
+    }
+
+    public Integer getCount() {
+      return count;
+    }
+
+    public void setCount(Integer count) {
+      this.count = count;
+    }
+  }
+
+  class ExecutionTrendRowMapper implements RowMapper<ExecutionTrendRow> {
+    @Override
+    public ExecutionTrendRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      ExecutionTrendRow row = new ExecutionTrendRow();
+      row.setDateKey(rs.getString("date_key"));
+      row.setStatus(rs.getString("status"));
+      row.setCount(rs.getInt("count"));
+      return row;
+    }
+  }
+
+  class RuntimeTrendRow {
+    private String dateKey;
+    private Long firstTimestamp;
+    private Double maxRuntime;
+    private Double minRuntime;
+    private Double avgRuntime;
+    private Integer totalPipelines;
+
+    public RuntimeTrendRow() {}
+
+    public RuntimeTrendRow(
+        String dateKey,
+        Long firstTimestamp,
+        Double maxRuntime,
+        Double minRuntime,
+        Double avgRuntime,
+        Integer totalPipelines) {
+      this.dateKey = dateKey;
+      this.firstTimestamp = firstTimestamp;
+      this.maxRuntime = maxRuntime;
+      this.minRuntime = minRuntime;
+      this.avgRuntime = avgRuntime;
+      this.totalPipelines = totalPipelines;
+    }
+
+    public String getDateKey() {
+      return dateKey;
+    }
+
+    public void setDateKey(String dateKey) {
+      this.dateKey = dateKey;
+    }
+
+    public Long getFirstTimestamp() {
+      return firstTimestamp;
+    }
+
+    public void setFirstTimestamp(Long firstTimestamp) {
+      this.firstTimestamp = firstTimestamp;
+    }
+
+    public Double getMaxRuntime() {
+      return maxRuntime;
+    }
+
+    public void setMaxRuntime(Double maxRuntime) {
+      this.maxRuntime = maxRuntime;
+    }
+
+    public Double getMinRuntime() {
+      return minRuntime;
+    }
+
+    public void setMinRuntime(Double minRuntime) {
+      this.minRuntime = minRuntime;
+    }
+
+    public Double getAvgRuntime() {
+      return avgRuntime;
+    }
+
+    public void setAvgRuntime(Double avgRuntime) {
+      this.avgRuntime = avgRuntime;
+    }
+
+    public Integer getTotalPipelines() {
+      return totalPipelines;
+    }
+
+    public void setTotalPipelines(Integer totalPipelines) {
+      this.totalPipelines = totalPipelines;
+    }
+  }
+
+  class RuntimeTrendRowMapper implements RowMapper<RuntimeTrendRow> {
+    @Override
+    public RuntimeTrendRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      RuntimeTrendRow row = new RuntimeTrendRow();
+      row.setDateKey(rs.getString("date_key"));
+      row.setFirstTimestamp(rs.getLong("first_timestamp"));
+      row.setMaxRuntime(rs.getDouble("max_runtime"));
+      row.setMinRuntime(rs.getDouble("min_runtime"));
+      row.setAvgRuntime(rs.getDouble("avg_runtime"));
+      row.setTotalPipelines(rs.getInt("total_pipelines"));
+      return row;
+    }
+  }
+
+  class ServiceBreakdownRow {
+    private String serviceType;
+    private Integer pipelineCount;
+
+    public ServiceBreakdownRow() {}
+
+    public ServiceBreakdownRow(String serviceType, Integer pipelineCount) {
+      this.serviceType = serviceType;
+      this.pipelineCount = pipelineCount;
+    }
+
+    public String getServiceType() {
+      return serviceType;
+    }
+
+    public void setServiceType(String serviceType) {
+      this.serviceType = serviceType;
+    }
+
+    public Integer getPipelineCount() {
+      return pipelineCount;
+    }
+
+    public void setPipelineCount(Integer pipelineCount) {
+      this.pipelineCount = pipelineCount;
+    }
+  }
+
+  class ServiceBreakdownRowMapper implements RowMapper<ServiceBreakdownRow> {
+    @Override
+    public ServiceBreakdownRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      ServiceBreakdownRow row = new ServiceBreakdownRow();
+      row.setServiceType(rs.getString("service_type"));
+      row.setPipelineCount(rs.getInt("pipeline_count"));
+      return row;
+    }
+  }
+
+  class PipelineMetricsRow {
+    private Integer totalPipelines;
+    private Integer activePipelines;
+    private Integer successfulPipelines;
+    private Integer failedPipelines;
+
+    public PipelineMetricsRow() {}
+
+    public PipelineMetricsRow(
+        Integer totalPipelines,
+        Integer activePipelines,
+        Integer successfulPipelines,
+        Integer failedPipelines) {
+      this.totalPipelines = totalPipelines;
+      this.activePipelines = activePipelines;
+      this.successfulPipelines = successfulPipelines;
+      this.failedPipelines = failedPipelines;
+    }
+
+    public Integer getTotalPipelines() {
+      return totalPipelines;
+    }
+
+    public void setTotalPipelines(Integer totalPipelines) {
+      this.totalPipelines = totalPipelines;
+    }
+
+    public Integer getActivePipelines() {
+      return activePipelines;
+    }
+
+    public void setActivePipelines(Integer activePipelines) {
+      this.activePipelines = activePipelines;
+    }
+
+    public Integer getSuccessfulPipelines() {
+      return successfulPipelines;
+    }
+
+    public void setSuccessfulPipelines(Integer successfulPipelines) {
+      this.successfulPipelines = successfulPipelines;
+    }
+
+    public Integer getFailedPipelines() {
+      return failedPipelines;
+    }
+
+    public void setFailedPipelines(Integer failedPipelines) {
+      this.failedPipelines = failedPipelines;
+    }
+  }
+
+  class PipelineMetricsRowMapper implements RowMapper<PipelineMetricsRow> {
+    @Override
+    public PipelineMetricsRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      PipelineMetricsRow row = new PipelineMetricsRow();
+      row.setTotalPipelines(rs.getInt("total_pipelines"));
+      row.setActivePipelines(rs.getInt("active_pipelines"));
+      row.setSuccessfulPipelines(rs.getInt("successful_pipelines"));
+      row.setFailedPipelines(rs.getInt("failed_pipelines"));
+      return row;
+    }
   }
 }
