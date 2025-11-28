@@ -7,7 +7,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 
 public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("assets", "inputPorts", "outputPorts");
+  // Only exclude assets - inputPorts and outputPorts are indexed
+  private static final Set<String> excludeFields = Set.of("assets");
 
   @Override
   public Object getEntity() {
