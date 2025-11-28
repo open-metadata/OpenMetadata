@@ -64,7 +64,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
       {
         key: 'domains',
         labelKey: 'label.domain-plural',
-        render: 'owners',
+        render: 'domains',
         getValue: getDomains,
       },
       {
@@ -75,7 +75,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
       },
       { key: 'experts', labelKey: 'label.expert-plural', render: 'owners' },
     ],
-    [getGlossaryTags, getClassificationTags]
+    [getGlossaryTags, getClassificationTags, getDomains]
   );
 
   const renderers: CellRenderer<DataProduct> = useMemo(() => ({}), []);
