@@ -182,7 +182,7 @@ public class ListFilter extends Filter<ListFilter> {
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
     if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" =%s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
+      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
     }
     return "";
   }
@@ -282,9 +282,10 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+    queryParams.put("ownerIdParam", ownerId);
     return String.format(
-        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId = '%s' AND relation=8))",
-        entityIdColumn, ownerId);
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId = :ownerIdParam AND relation=8))",
+        entityIdColumn);
   }
 
   private String getTierCondition(String tableName) {

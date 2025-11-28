@@ -445,14 +445,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String searchLower = search.toLowerCase();
       pipelineStatuses =
           pipelineStatuses.stream()
-              .filter(
-                  ps ->
-                      ps.getTaskStatus() != null
-                          && ps.getTaskStatus().stream()
-                              .anyMatch(
-                                  task ->
-                                      task.getName() != null
-                                          && task.getName().toLowerCase().contains(searchLower)))
+              .map(
+                  ps -> {
+                    if (ps.getTaskStatus() == null || ps.getTaskStatus().isEmpty()) {
+                      return ps;
+                    }
+                    List<org.openmetadata.schema.type.Status> filteredTasks =
+                        ps.getTaskStatus().stream()
+                            .filter(
+                                task ->
+                                    task.getName() != null
+                                        && task.getName().toLowerCase().contains(searchLower))
+                            .collect(java.util.stream.Collectors.toList());
+                    return ps.withTaskStatus(filteredTasks);
+                  })
+              .filter(ps -> ps.getTaskStatus() != null && !ps.getTaskStatus().isEmpty())
               .collect(java.util.stream.Collectors.toList());
     }
 
