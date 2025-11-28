@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.PIPELINE_EXECUTION;
 import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
@@ -131,7 +132,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
           TEST_CASE_RESOLUTION_STATUS,
           TEST_CASE_RESULT,
-          QUERY_COST_RECORD);
+          QUERY_COST_RECORD,
+          PIPELINE_EXECUTION);
 
   private BulkSink searchIndexSink;
   private RecreateIndexHandler recreateIndexHandler;

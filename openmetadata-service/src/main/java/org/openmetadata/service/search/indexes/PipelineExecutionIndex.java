@@ -1,7 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import lombok.Getter;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 
@@ -63,21 +66,32 @@ public record PipelineExecutionIndex(Pipeline pipeline, PipelineStatus pipelineS
         pipelineStatus.getTimestamp());
   }
 
-  public static class PipelineExecutionData {
-    private final Pipeline pipeline;
-    private final PipelineStatus pipelineStatus;
+  @JsonPropertyOrder({"id", "pipeline", "pipelineStatus", "timestamp"})
+  public static class PipelineExecutionData
+      implements org.openmetadata.schema.EntityTimeSeriesInterface {
+    @Getter private final Pipeline pipeline;
+    @Getter private final PipelineStatus pipelineStatus;
+    private UUID id;
 
     public PipelineExecutionData(Pipeline pipeline, PipelineStatus pipelineStatus) {
       this.pipeline = pipeline;
       this.pipelineStatus = pipelineStatus;
+      this.id = UUID.randomUUID();
     }
 
-    public Pipeline getPipeline() {
-      return pipeline;
+    @Override
+    public java.util.UUID getId() {
+      return id;
     }
 
-    public PipelineStatus getPipelineStatus() {
-      return pipelineStatus;
+    @Override
+    public void setId(java.util.UUID id) {
+      this.id = id;
+    }
+
+    @Override
+    public Long getTimestamp() {
+      return pipelineStatus != null ? pipelineStatus.getTimestamp() : null;
     }
   }
 }
