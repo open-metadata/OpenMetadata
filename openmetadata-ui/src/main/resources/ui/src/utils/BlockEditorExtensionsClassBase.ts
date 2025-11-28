@@ -139,7 +139,6 @@ export class BlockEditorExtensionsClassBase {
    * Override this in subclasses to add handlebars support
    * @param options - Extension configuration options
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected getHandlebarsExtensions(): Extensions {
     // Base class returns empty array - no handlebars support by default
     return [];
