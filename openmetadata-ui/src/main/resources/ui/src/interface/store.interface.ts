@@ -27,9 +27,6 @@ import { LoginConfiguration } from '../generated/configuration/loginConfiguratio
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
-import { Domain } from '../generated/entity/domains/domain';
-import { User } from '../generated/entity/teams/user';
-import { EntityReference } from '../generated/entity/type';
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
@@ -49,6 +46,7 @@ export interface ApplicationStore
   selectedPersona?: EntityReference;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
+
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
@@ -58,6 +56,7 @@ export interface ApplicationStore
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona?: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
+
   setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;

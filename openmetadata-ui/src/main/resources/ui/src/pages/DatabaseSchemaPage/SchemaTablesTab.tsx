@@ -96,7 +96,7 @@ function SchemaTablesTab({
     handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(25, 'assetListPageSize', 500);
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (

@@ -117,7 +117,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging(PAGE_SIZE_LARGE, 'contentListPageSize', 500);
 
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
