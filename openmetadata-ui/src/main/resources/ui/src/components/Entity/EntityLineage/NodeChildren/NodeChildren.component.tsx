@@ -44,11 +44,13 @@ import React from 'react';
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
   filteredColumns: EntityChildren;
+  nodeId?: string;
 }
 
 const CustomPaginatedList = ({
   items,
   filteredColumns,
+  nodeId,
 }: CustomPaginatedListProps) => {
   const ITEMS_PER_PAGE = 5;
   const [page, setPage] = useState(1);
@@ -56,7 +58,10 @@ const CustomPaginatedList = ({
   const [itemsOfCurrentPage, setItemsOfCurrentPage] = useState<string[]>([]);
 
   const { t } = useTranslation();
-  const { setColumnsInCurrentPages } = useLineageProvider();
+  const { setColumnsInCurrentPages, useUpdateNodeInternals } =
+    useLineageProvider();
+
+  const updateNodeInternals = useUpdateNodeInternals();
 
   const count = Math.ceil(items.length / ITEMS_PER_PAGE);
   const start = (page - 1) * ITEMS_PER_PAGE;
@@ -109,11 +114,17 @@ const CustomPaginatedList = ({
     e.stopPropagation();
     setItemsOfPreviousPage([...itemsOfCurrentPage]);
     setPage((p) => Math.max(p - 1, 1));
+    if (nodeId) {
+      updateNodeInternals(nodeId);
+    }
   };
   const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setItemsOfPreviousPage([...itemsOfCurrentPage]);
     setPage((p) => Math.min(p + 1, count));
+    if (nodeId) {
+      updateNodeInternals(nodeId);
+    }
   };
 
   return (
@@ -487,6 +498,7 @@ const NodeChildren = ({
                     <CustomPaginatedList
                       filteredColumns={filteredColumns}
                       items={renderedColumns}
+                      nodeId={node.id}
                     />
                   </div>
                 </section>

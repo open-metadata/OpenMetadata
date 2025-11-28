@@ -226,6 +226,7 @@ export const CustomEdge = ({
     sourceY,
     targetX,
     targetY,
+    columnsInCurrentPages,
   ]);
 
   // Calculate conditions for various component displays
