@@ -178,7 +178,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           <div className="test-case-status-section">
             <StatusBadgeV2
               label={status || 'Unknown'}
-              showIcon={!isIncidentMode}
+              showIcon={false}
               status={statusBadgeType}
             />
           </div>
@@ -216,7 +216,15 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
               <div className="assignee-info">{renderAssigneeInfo()}</div>
             ) : (
               <Typography.Text className="detail-value">
-                {testCase.incidentId ? 'ASSIGNED' : '--'}
+                {testCase.incidentId ? (
+                  <StatusBadgeV2
+                    label="Assigned"
+                    showIcon={false}
+                    status={StatusType.Warning}
+                  />
+                ) : (
+                  '--'
+                )}
               </Typography.Text>
             )}
           </div>

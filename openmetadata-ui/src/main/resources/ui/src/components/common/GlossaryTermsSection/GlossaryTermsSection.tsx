@@ -235,8 +235,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     return glossaryTermsDisplay;
   }, [isLoading, isEditing, loadingState, editingState, glossaryTermsDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!glossaryTerms?.length) {
     return (

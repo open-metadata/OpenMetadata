@@ -90,6 +90,7 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
@@ -1167,6 +1168,8 @@ public class UserRepository extends EntityRepository<User> {
           "allowImpersonation", original.getAllowImpersonation(), updated.getAllowImpersonation());
       updatePersonaPreferences(original, updated);
       updateAuthenticationMechanism(original, updated);
+      // Invalidate policy cache for this user when roles/teams change
+      SubjectCache.invalidateUser(updated.getName());
     }
 
     private void updateRoles(User original, User updated) {
