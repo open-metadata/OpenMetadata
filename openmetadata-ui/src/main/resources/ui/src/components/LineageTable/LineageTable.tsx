@@ -374,17 +374,24 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
         const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
         const downstreamEdges = map(res.downstreamEdges ?? [], (edge) => edge);
+        const upstreamNodes = prepareUpstreamColumnLevelNodesFromUpstreamEdges(
+          upstreamEdges,
+          res.nodes
+        ) as unknown as LineageNode[];
 
-        setColumnLineageNodes(
-          prepareUpstreamColumnLevelNodesFromUpstreamEdges(
-            upstreamEdges,
-            res.nodes
-          ) as unknown as LineageNode[],
+        const downstreamNodes =
           prepareDownstreamColumnLevelNodesFromDownstreamEdges(
             downstreamEdges,
             res.nodes
-          ) as unknown as LineageNode[]
-        );
+          ) as unknown as LineageNode[];
+
+        setColumnLineageNodes(upstreamNodes, downstreamNodes);
+        handlePagingChange({
+          total:
+            lineageDirection === LineageDirection.Upstream
+              ? upstreamNodes.length
+              : downstreamNodes.length,
+        } as Paging);
       } else {
         const res = await getLineageByEntityCount({
           fqn: fqn ?? '',
@@ -752,8 +759,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     } else {
       const source =
         lineageDirection === LineageDirection.Downstream
-          ? downstreamColumnLineageNodes
-          : upstreamColumnLineageNodes;
+          ? downstreamColumnLineageNodes.slice(
+              currentPage - 1,
+              currentPage - 1 + pageSize
+            )
+          : upstreamColumnLineageNodes.slice(
+              currentPage - 1,
+              currentPage - 1 + pageSize
+            );
 
       return {
         columns: columnImpactColumns,
@@ -768,6 +781,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     lineageDirection,
     downstreamColumnLineageNodes,
     upstreamColumnLineageNodes,
+    pageSize,
+    currentPage,
   ]);
 
   // Memoized paging props to avoid unnecessary re-renders
