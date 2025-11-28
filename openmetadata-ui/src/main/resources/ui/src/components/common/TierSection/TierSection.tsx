@@ -193,8 +193,7 @@ const TierSection: React.FC<TierSectionProps> = ({
     return tierDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tierDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   return (
     <div className="tier-section">

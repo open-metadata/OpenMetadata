@@ -42,6 +42,7 @@ interface Props {
   isFollowingLoading?: boolean;
   isFollowing?: boolean;
   showOnlyDisplayName?: boolean;
+  entityUrl?: string;
 }
 
 export const EntityHeader = ({
@@ -62,6 +63,7 @@ export const EntityHeader = ({
   handleFollowingClick,
   isFollowing,
   showOnlyDisplayName = false,
+  entityUrl,
 }: Props) => {
   return (
     <div className="w-full">
@@ -80,6 +82,7 @@ export const EntityHeader = ({
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         displayNameClassName={displayNameClassName}
+        entityUrl={entityUrl}
         handleFollowingClick={handleFollowingClick}
         icon={icon}
         isFollowing={isFollowing}
