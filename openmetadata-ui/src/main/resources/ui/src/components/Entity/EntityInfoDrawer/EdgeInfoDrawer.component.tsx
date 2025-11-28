@@ -253,7 +253,6 @@ const EdgeInfoDrawer = ({
         value: getEntityName(sourceData?.data?.node),
         url: entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
         isLink: true,
-        visible: [''],
       });
     }
 
@@ -261,7 +260,6 @@ const EdgeInfoDrawer = ({
       overviewData.push({
         name: t('label.source-column'),
         value: getNameFromFQN(sourceHandle),
-        visible: [''],
       });
     }
 
@@ -271,7 +269,6 @@ const EdgeInfoDrawer = ({
         value: getEntityName(targetData?.data?.node),
         url: entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
         isLink: true,
-        visible: [''],
       });
     }
 
@@ -279,7 +276,6 @@ const EdgeInfoDrawer = ({
       overviewData.push({
         name: t('label.target-column'),
         value: getNameFromFQN(targetHandle),
-        visible: [''],
       });
     }
 
@@ -292,7 +288,6 @@ const EdgeInfoDrawer = ({
           pipeline.fullyQualifiedName
         ),
         isLink: true,
-        visible: [''],
       });
     }
 
@@ -353,8 +348,7 @@ const EdgeInfoDrawer = ({
                     </span>
                     <MuiLink
                       className="edge-info-drawer-title"
-                      data-testid="edge-header-title"
-                      sx={{ cursor: 'default', textDecoration: 'none' }}>
+                      data-testid="edge-header-title">
                       {t('label.edge-information')}
                     </MuiLink>
                   </div>
@@ -362,6 +356,7 @@ const EdgeInfoDrawer = ({
               </div>
             </div>
             <Button
+              aria-label={t('label.close')}
               className="drawer-close-icon flex-center mr-2"
               data-testid="drawer-close-icon"
               icon={<CloseOutlined />}
