@@ -50,7 +50,6 @@ public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
       Set.of(
           "changeDescription",
-          "votes",
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
           "upstreamLineage.pipeline.incrementalChangeDescription",
@@ -112,6 +111,17 @@ public interface SearchIndex {
             ? 0
             : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
     map.put("totalVotes", totalVotes);
+
+    if (entity.getVotes() != null) {
+      Map<String, Object> votesMap = new HashMap<>();
+      votesMap.put(
+          "upVotes", entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0);
+      votesMap.put(
+          "downVotes",
+          entity.getVotes().getDownVotes() != null ? entity.getVotes().getDownVotes() : 0);
+      map.put("votes", votesMap);
+    }
+
     map.put("descriptionStatus", getDescriptionStatus(entity));
 
     Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
