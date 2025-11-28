@@ -636,28 +636,47 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
   void testSearchMetadataIncludesDeletedField() throws Exception {
     System.out.println("Testing deleted field presence in search responses...");
 
+    // Create a dedicated table for deletion testing to avoid interfering with other tests
+    String deletionTestTableName = "mcp_deletion_test_table_" + System.currentTimeMillis();
+    CreateTable createDeletionTestTable =
+        new CreateTable()
+            .withName(deletionTestTableName)
+            .withDescription("Test table for deletion testing")
+            .withDatabaseSchema(testSchema.getFullyQualifiedName())
+            .withColumns(testTable.getColumns());
+
+    Table deletionTestTable =
+        TestUtils.post(
+            getResource("tables"),
+            createDeletionTestTable,
+            Table.class,
+            201,
+            ADMIN_AUTH_HEADERS);
+
+    System.out.println("✓ Created dedicated deletion test table: " + deletionTestTableName);
+
     // Step 1: Verify active table has deleted field set to false
     Map<String, Object> searchActive =
-        McpTestUtils.createSearchMetadataToolCall("mcp_test_table", 5, Entity.TABLE);
+        McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
     JsonNode activeResult = executeToolCall(searchActive);
     validateDeletedFieldPresence(activeResult, false);
     System.out.println("✓ Active table has deleted=false");
 
-    // Step 2: Soft-delete the test table (following TableResourceTest pattern)
-    UUID tableId = testTable.getId();
+    // Step 2: Soft-delete the dedicated test table (following TableResourceTest pattern)
+    UUID tableId = deletionTestTable.getId();
     TestUtils.delete(getResource("tables/" + tableId), Table.class, ADMIN_AUTH_HEADERS);
-    System.out.println("✓ Soft-deleted test table");
+    System.out.println("✓ Soft-deleted dedicated test table");
 
     // Step 3: Search with include_deleted=true should return deleted table with deleted=true
     Map<String, Object> searchWithDeleted =
-        createSearchToolCallWithDeletedParam("mcp_test_table", 5, Entity.TABLE, true);
+        createSearchToolCallWithDeletedParam(deletionTestTableName, 5, Entity.TABLE, true);
     JsonNode deletedResult = executeToolCall(searchWithDeleted);
     validateDeletedFieldPresence(deletedResult, true);
     System.out.println("✓ Deleted table has deleted=true when include_deleted=true");
 
     // Step 4: Search without include_deleted should exclude deleted entities
     Map<String, Object> searchDefault =
-        McpTestUtils.createSearchMetadataToolCall("mcp_test_table", 5, Entity.TABLE);
+        McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
     JsonNode defaultResult = executeToolCall(searchDefault);
     validateNoDeletedEntities(defaultResult);
     System.out.println("✓ Default search excludes deleted entities");
