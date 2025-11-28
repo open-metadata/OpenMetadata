@@ -56,6 +56,8 @@ export enum DATA_CONTRACT_ACTION_DROPDOWN_KEY {
   EDIT = 'edit',
   RUN_NOW = 'run_now',
   EXPORT = 'export',
+  EXPORT_ODCS = 'export_odcs',
+  IMPORT_ODCS = 'import_odcs',
   DELETE = 'delete',
 }
 

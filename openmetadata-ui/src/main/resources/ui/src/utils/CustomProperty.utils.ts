@@ -16,6 +16,7 @@ import {
   DEFAULT_DATE_TIME_FORMAT,
   DEFAULT_TIME_FORMAT,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
+  SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
 import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
 import { CustomPropertyConfig } from '../generated/entity/type';
@@ -38,6 +39,20 @@ export const getCustomPropertyDateTimeDefaultFormat = (type: string) => {
     default:
       return '';
   }
+};
+
+export const getCustomPropertyLuxonFormat = (
+  type: string,
+  backendFormat: CustomPropertyConfig['config']
+) => {
+  const format =
+    SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING[
+      backendFormat as string as keyof typeof SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING
+    ] ??
+    backendFormat ??
+    getCustomPropertyDateTimeDefaultFormat(type);
+
+  return format;
 };
 
 export const getCustomPropertyMomentFormat = (
@@ -129,4 +144,27 @@ export const getCustomPropertyPageHeaderFromEntity = (entityType: string) => {
     default:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
   }
+};
+
+export const formatTableCellValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    const objVal = value as Record<string, unknown>;
+    if (objVal.name || objVal.displayName) {
+      return String(objVal.name || objVal.displayName);
+    }
+    if (objVal.value !== undefined) {
+      return String(objVal.value);
+    }
+
+    return JSON.stringify(value);
+  }
+
+  return String(value);
 };

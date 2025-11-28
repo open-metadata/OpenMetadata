@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from airflow import DAG
 
@@ -18,8 +18,6 @@ try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
 
 from metadata.workflow.usage import UsageWorkflow
 
@@ -94,8 +92,8 @@ with DAG(
     "sample_usage",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
-    schedule_interval=timedelta(days=1),
-    start_date=days_ago(1),
+    schedule=timedelta(days=1),
+    start_date=datetime(2024, 1, 1),
     is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
