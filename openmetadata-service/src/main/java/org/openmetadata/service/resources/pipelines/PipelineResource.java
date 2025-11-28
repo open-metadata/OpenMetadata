@@ -486,7 +486,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       description =
           "Get a list of pipeline status. Use `limit` and `before` or `after` query params for cursor-based pagination. "
               + "Filter by execution status using comma-separated values (e.g., 'Failed,Successful'). "
-              + "Search by execution ID using the `search` parameter.",
+              + "Search by task name using the `search` parameter.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -541,7 +541,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("status")
           String status,
       @Parameter(
-              description = "Search pipeline statuses by execution ID",
+              description = "Search pipeline statuses by task name",
               schema = @Schema(type = "string"))
           @QueryParam("search")
           String search) {

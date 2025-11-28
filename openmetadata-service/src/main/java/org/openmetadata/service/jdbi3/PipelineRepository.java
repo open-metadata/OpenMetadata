@@ -440,15 +440,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .collect(java.util.stream.Collectors.toList());
     }
 
-    // Apply search filter on executionId
+    // Apply search filter on taskStatus names
     if (search != null && !search.isEmpty()) {
       String searchLower = search.toLowerCase();
       pipelineStatuses =
           pipelineStatuses.stream()
               .filter(
                   ps ->
-                      ps.getExecutionId() != null
-                          && ps.getExecutionId().toLowerCase().contains(searchLower))
+                      ps.getTaskStatus() != null
+                          && ps.getTaskStatus().stream()
+                              .anyMatch(
+                                  task ->
+                                      task.getName() != null
+                                          && task.getName().toLowerCase().contains(searchLower)))
               .collect(java.util.stream.Collectors.toList());
     }
 
