@@ -24,7 +24,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
-import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
+import {
+  COLUMN_DROPDOWN_ITEMS,
+  LINEAGE_DROPDOWN_ITEMS,
+} from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
   NO_DATA,
@@ -442,11 +445,23 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   // Fetch Lineage data when dependencies change
   useEffect(() => {
     fetchNodes();
-  }, [queryFilter, nodeDepth, currentPage, pageSize, impactLevel]);
+  }, [nodeDepth, currentPage, pageSize, impactLevel]);
 
   useEffect(() => {
     if (impactLevel === EImpactLevel.TableLevel) {
       fetchNodes();
+    }
+  }, [queryFilter, impactLevel]);
+
+  useEffect(() => {
+    if (impactLevel === EImpactLevel.TableLevel) {
+      fetchNodes();
+    } else {
+      // Since setState is async, we show loading manually to avoid flicker
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
     }
   }, [lineageDirection, impactLevel]);
 
@@ -730,24 +745,26 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.map(
-      (selectedFilterItem) => {
-        const originalFilterItem = selectedQuickFilters?.find(
-          (filter) => filter.key === selectedFilterItem.key
-        );
+    const dropdownItems =
+      impactLevel === EImpactLevel.TableLevel
+        ? LINEAGE_DROPDOWN_ITEMS
+        : COLUMN_DROPDOWN_ITEMS;
+    const updatedQuickFilters = dropdownItems.map((selectedFilterItem) => {
+      const originalFilterItem = selectedQuickFilters?.find(
+        (filter) => filter.key === selectedFilterItem.key
+      );
 
-        return {
-          ...(originalFilterItem || selectedFilterItem),
-          // preserve original values if exists else set to empty array
-          value: originalFilterItem?.value || [],
-        };
-      }
-    );
+      return {
+        ...(originalFilterItem || selectedFilterItem),
+        // preserve original values if exists else set to empty array
+        value: originalFilterItem?.value || [],
+      };
+    });
 
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
-  }, []);
+  }, [impactLevel]);
 
   // Determine columns and dataSource based on impactLevel
   const { columns, dataSource } = useMemo(() => {

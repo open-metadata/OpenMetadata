@@ -32,10 +32,7 @@ import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exi
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
-import {
-  COLUMN_DROPDOWN_ITEMS,
-  LINEAGE_DROPDOWN_ITEMS,
-} from '../../../constants/AdvancedSearch.constants';
+import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
@@ -55,12 +52,10 @@ import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
-import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import {
   StyledIconButton,
   StyledMenu,
 } from '../../LineageTable/LineageTable.styled';
-import { useLineageTableState } from '../../LineageTable/useLineageTableState';
 import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
@@ -101,7 +96,6 @@ const CustomControls: FC<{
   const theme = useTheme();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const { impactLevel } = useLineageTableState();
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
@@ -164,25 +158,24 @@ const CustomControls: FC<{
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const updatedQuickFilters = (
-      impactLevel === EImpactLevel.ColumnLevel
-        ? COLUMN_DROPDOWN_ITEMS
-        : LINEAGE_DROPDOWN_ITEMS
-    ).map((selectedFilterItem) => {
-      const originalFilterItem = selectedQuickFilters?.find(
-        (filter) => filter.key === selectedFilterItem.key
-      );
+    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.map(
+      (selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
 
-      return {
-        ...(originalFilterItem || selectedFilterItem),
-        value: originalFilterItem?.value || [],
-      };
-    });
+        return {
+          ...(originalFilterItem || selectedFilterItem),
+          value: originalFilterItem?.value || [],
+        };
+      }
+    );
 
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
   }, []);
+
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
       ignoreQueryPrefix: true,
