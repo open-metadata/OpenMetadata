@@ -62,12 +62,12 @@ import { showErrorToast } from './ToastUtils';
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
  * their label
  * @param filters - Array<QueryFieldInterface>
- * @param {ExploreQuickFilterField[]} dataLookUp - This is an array of objects that contains the
+ * @param {SearchDropdownOption[]} dataLookUp - This is an array of objects that contains the
  * key and label for each filter.
  */
 export const getParseValueFromLocation = (
   filters: Array<QueryFieldInterface>,
-  dataLookUp: ExploreQuickFilterField[]
+  dataLookUp: SearchDropdownOption[]
 ): Record<string, SearchDropdownOption[]> => {
   const dataLookupMap = new Map(
     dataLookUp.map((option) => [option.key, option])
@@ -111,11 +111,11 @@ export const getParseValueFromLocation = (
 
 /**
  * It takes queryFilter object as input and returns a parsed array of search dropdown options with selected values
- * @param dropdownItems - ExploreQuickFilterField[]
+ * @param dropdownItems - SearchDropdownOption[]
  * @param queryFilter - QueryFilterInterface
  */
 export const getSelectedValuesFromQuickFilter = (
-  dropdownItems: ExploreQuickFilterField[],
+  dropdownItems: SearchDropdownOption[],
   queryFilter?: QueryFilterInterface
 ) => {
   if (!queryFilter) {
