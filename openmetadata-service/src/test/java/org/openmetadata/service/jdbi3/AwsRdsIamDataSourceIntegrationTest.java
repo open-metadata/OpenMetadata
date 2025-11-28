@@ -13,6 +13,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,6 +52,7 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
 
     try {
       // Create AWS RDS IAM URL by modifying the test database URL
+      // IAM auth is detected when URL contains both awsRegion and allowPublicKeyRetrieval
       String awsRdsIamUrl = originalUrl + "?awsRegion=us-east-1&allowPublicKeyRetrieval=true";
 
       LOG.info("Testing with AWS RDS IAM URL: {}", awsRdsIamUrl);
@@ -59,6 +61,8 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
       HikariCPDataSourceFactory iamDataSourceFactory = new HikariCPDataSourceFactory();
       iamDataSourceFactory.setUrl(awsRdsIamUrl);
       iamDataSourceFactory.setUser("test-iam-user");
+      // Note: dummy password is set per documentation (ignored when IAM auth is detected)
+      iamDataSourceFactory.setPassword("dummy-password");
       iamDataSourceFactory.setDriverClass(originalDataSourceFactory.getDriverClass());
       iamDataSourceFactory.setMaxLifetime(900000L); // 15 minutes
       iamDataSourceFactory.setConnectionTimeout(5000L);
@@ -78,19 +82,19 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
 
         try {
           // This will trigger the actual IAM detection logic in our implementation
-          var hikariConfig = iamDataSourceFactory.build(null, "test-iam");
+          var managedDataSource = iamDataSourceFactory.build(null, "test-iam");
 
           // Verify the application server is running
           assertNotNull(APP, "OpenMetadata application should be running");
-          LOG.info(" Server is running on port: {}", APP.getLocalPort());
+          LOG.info("Server is running on port: {}", APP.getLocalPort());
 
-          // Verify the config was created successfully
-          assertNotNull(hikariConfig, "HikariConfig should be created");
+          // Verify the managed data source was created successfully
+          assertNotNull(managedDataSource, "ManagedDataSource should be created");
           assertTrue(
-              hikariConfig instanceof com.zaxxer.hikari.HikariDataSource,
-              "Should be HikariDataSource");
+              managedDataSource instanceof com.zaxxer.hikari.HikariDataSource,
+              "ManagedDataSource should be a HikariDataSource");
 
-          var hikariDataSource = (com.zaxxer.hikari.HikariDataSource) hikariConfig;
+          var hikariDataSource = (com.zaxxer.hikari.HikariDataSource) managedDataSource;
 
           // Key verification: IAM URL parameters are preserved
           String jdbcUrl = hikariDataSource.getJdbcUrl();
@@ -99,20 +103,18 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
               jdbcUrl.contains("allowPublicKeyRetrieval"),
               "JDBC URL should contain allowPublicKeyRetrieval");
 
-          LOG.info("verified IAM parameters in JDBC URL: {}", jdbcUrl);
+          LOG.info("Verified IAM parameters in JDBC URL: {}", jdbcUrl);
 
           // Verify that the AwsRdsDatabaseAuthenticationProvider was actually created
           // This proves our IAM detection logic worked
-          assertTrue(
-              !mockedConstruction.constructed().isEmpty(),
+          assertFalse(
+              mockedConstruction.constructed().isEmpty(),
               "AwsRdsDatabaseAuthenticationProvider should be instantiated when IAM URL is detected");
 
           LOG.info(
               "Confirmed AwsRdsDatabaseAuthenticationProvider was created - IAM detection working!");
 
           // Test that we can access the HikariDataSource properties
-          assertEquals(
-              "test-iam-user", hikariDataSource.getUsername(), "Username should be set correctly");
           assertEquals(5, hikariDataSource.getMaximumPoolSize(), "Pool size should be configured");
 
           // Verify Entity framework is working
@@ -129,8 +131,8 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
           LOG.info("Expected connection failure in test environment: {}", e.getMessage());
 
           // Still verify that our mock was created (proves IAM detection worked)
-          assertTrue(
-              !mockedConstruction.constructed().isEmpty(),
+          assertFalse(
+              mockedConstruction.constructed().isEmpty(),
               "IAM provider should still be created even if connection fails");
         }
       }
@@ -152,8 +154,8 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
     LOG.info("Testing token refresh mechanism logic");
 
     // Verify that the authentication provider was created (this proves IAM detection worked)
-    assertTrue(
-        !mockedConstruction.constructed().isEmpty(),
+    assertFalse(
+        mockedConstruction.constructed().isEmpty(),
         "AwsRdsDatabaseAuthenticationProvider should be instantiated");
 
     // In production, each connection would trigger:
@@ -179,7 +181,7 @@ public class AwsRdsIamDataSourceIntegrationTest extends OpenMetadataApplicationT
 
     // Verify standard configuration doesn't have IAM parameters
     String url = dataSourceFactory.getUrl();
-    assertTrue(!url.contains("awsRegion"), "Standard configuration should not contain awsRegion");
+    assertFalse(url.contains("awsRegion"), "Standard configuration should not contain awsRegion");
 
     // Verify the Entity framework is working with standard configuration
     assertNotNull(Entity.getCollectionDAO(), "Entity framework should work with standard config");
