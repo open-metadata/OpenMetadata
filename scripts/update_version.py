@@ -118,7 +118,7 @@ def main():
         "--file-path", "-f", type=str, help="Dockerfile file to update."
     )
     parser_urv.add_argument(
-        "--version", "-v", type=str, help="Verision to set for the argument"
+        "--version", "-v", type=str, help="Version to set for the argument"
     )
     parser_urv.add_argument("--with-python-version", action="store_true")
     parser_urv.set_defaults(func=update_ri_version)
