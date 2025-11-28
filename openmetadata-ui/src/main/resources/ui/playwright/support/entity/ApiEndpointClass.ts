@@ -116,7 +116,7 @@ export class ApiEndpointClass extends EntityClass {
     };
 
     this.apiEndpointName = `pw-api-endpoint-${uuid()}`;
-    this.fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}`;
+    this.fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}.requestSchema`;
 
     this.children = [
       {
@@ -223,7 +223,7 @@ export class ApiEndpointClass extends EntityClass {
     this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
     this.childrenTabId = 'schema';
-    this.childrenSelectorId = this.children[0].name;
+    this.childrenSelectorId = this.children[0].fullyQualifiedName;
   }
 
   async create(apiContext: APIRequestContext) {

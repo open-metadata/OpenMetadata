@@ -22,7 +22,6 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMinToBeBetween import (
     BaseColumnValueMinToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -73,23 +72,30 @@ class ColumnValueMinToBeBetweenValidator(
         dimension_results = []
 
         try:
+            row_count_expr = Metrics.ROW_COUNT().fn()
+            min_expr = Metrics.MIN(column).fn()
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                Metrics.MIN.name: Metrics.MIN(column).fn(),
+                Metrics.MIN.name: min_expr,
             }
 
-            def build_min_final(cte):
-                return func.min(getattr(cte.c, Metrics.MIN.name))
+            failed_count_builder = (
+                lambda cte, row_count_expr: self._get_validation_checker(
+                    test_params
+                ).build_agg_level_violation_sqa(
+                    [getattr(cte.c, Metrics.MIN.name)], row_count_expr
+                )
+            )
 
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                self._get_validation_checker(test_params).get_sqa_failed_rows_builder(
-                    {Metrics.MIN.name: Metrics.MIN.name},
-                    DIMENSION_TOTAL_COUNT_KEY,
-                ),
-                final_metric_builders={Metrics.MIN.name: build_min_final},
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
+
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
+                failed_count_builder=failed_count_builder,
             )
 
             for row in result_rows:

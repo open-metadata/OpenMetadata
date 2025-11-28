@@ -919,6 +919,7 @@ class DbtSource(DbtServiceSource):
                 query_fqn = fqn._build(  # pylint: disable=protected-access
                     *source_elements[-3:]
                 )
+                query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
                 query = (
                     f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
                 )
@@ -953,6 +954,9 @@ class DbtSource(DbtServiceSource):
     def create_dbt_exposures_lineage(
         self, exposure_spec: dict
     ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to process dbt exposure lineage
+        """
         to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
         upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
         manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
@@ -1341,7 +1345,7 @@ class DbtSource(DbtServiceSource):
                         )
                     except APIError as err:
                         if err.code != 409:
-                            raise APIError(err) from err
+                            raise err
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

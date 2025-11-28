@@ -28,6 +28,8 @@ export interface ErrorPlaceholderProps {
   permission?: boolean;
   placeholderText?: ReactNode;
   permissionValue?: string;
+  buttonTitle?: string;
+  contentMaxWidth?: string;
 }
 
 export interface NoDataPlaceholderProps {

@@ -309,6 +309,10 @@ public class S3LogStorage implements LogStorageInterface {
 
   @Override
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) throws IOException {
+    if (nullOrEmpty(logContent)) {
+      return;
+    }
+
     Timer.Sample sample = null;
     if (metrics != null) {
       sample = metrics.startLogShipment();
@@ -842,6 +846,44 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
+  /**
+   * Apply SSE configuration to PutObjectRequest builders based on current settings.
+   * This centralizes the logic for applying server-side encryption consistently across all S3 writes.
+   *
+   * @param requestBuilder The PutObjectRequest.Builder to apply SSE configuration to
+   */
+  private void applySSEConfiguration(PutObjectRequest.Builder requestBuilder) {
+    if (enableSSE && !isCustomEndpoint) {
+      if (sseAlgorithm != null) {
+        requestBuilder.serverSideEncryption(sseAlgorithm);
+        if (sseAlgorithm == ServerSideEncryption.AWS_KMS && kmsKeyId != null) {
+          requestBuilder.ssekmsKeyId(kmsKeyId);
+        }
+      } else {
+        requestBuilder.serverSideEncryption(ServerSideEncryption.AES256);
+      }
+    }
+  }
+
+  /**
+   * Apply SSE configuration to CreateMultipartUploadRequest builders based on current settings.
+   * This centralizes the logic for applying server-side encryption consistently across multipart uploads.
+   *
+   * @param requestBuilder The CreateMultipartUploadRequest.Builder to apply SSE configuration to
+   */
+  private void applySSEConfiguration(CreateMultipartUploadRequest.Builder requestBuilder) {
+    if (enableSSE && !isCustomEndpoint) {
+      if (sseAlgorithm != null) {
+        requestBuilder.serverSideEncryption(sseAlgorithm);
+        if (sseAlgorithm == ServerSideEncryption.AWS_KMS && kmsKeyId != null) {
+          requestBuilder.ssekmsKeyId(kmsKeyId);
+        }
+      } else {
+        requestBuilder.serverSideEncryption(ServerSideEncryption.AES256);
+      }
+    }
+  }
+
   private void cleanupExpiredStreams() {
     long now = System.currentTimeMillis();
     Iterator<Map.Entry<String, StreamContext>> iterator = activeStreams.entrySet().iterator();
@@ -932,12 +974,13 @@ public class S3LogStorage implements LogStorageInterface {
       }
 
       // Write to S3
-      PutObjectRequest putRequest =
-          PutObjectRequest.builder()
-              .bucket(bucketName)
-              .key(partialKey)
-              .contentType("text/plain")
-              .build();
+      PutObjectRequest.Builder putRequestBuilder =
+          PutObjectRequest.builder().bucket(bucketName).key(partialKey).contentType("text/plain");
+
+      // Apply SSE configuration
+      applySSEConfiguration(putRequestBuilder);
+
+      PutObjectRequest putRequest = putRequestBuilder.build();
 
       s3Client.putObject(
           putRequest, software.amazon.awssdk.core.sync.RequestBody.fromString(newContent));
@@ -1009,6 +1052,11 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
+  @Override
+  public void closeStream(String pipelineFQN, UUID runId) throws IOException {
+    flush(pipelineFQN, runId);
+  }
+
   /**
    * Update metrics for all active streams. This provides visibility into:
    * - Number of active multipart uploads
@@ -1045,7 +1093,7 @@ public class S3LogStorage implements LogStorageInterface {
             getServerId());
 
     // Mark run as active asynchronously using S3AsyncClient
-    PutObjectRequest request =
+    PutObjectRequest.Builder requestBuilder =
         PutObjectRequest.builder()
             .bucket(bucketName)
             .key(markerKey)
@@ -1054,8 +1102,12 @@ public class S3LogStorage implements LogStorageInterface {
                 Map.of(
                     "server-id", getServerId(),
                     "timestamp", String.valueOf(System.currentTimeMillis()),
-                    "pipeline", pipelineFQN))
-            .build();
+                    "pipeline", pipelineFQN));
+
+    // Apply SSE configuration
+    applySSEConfiguration(requestBuilder);
+
+    PutObjectRequest request = requestBuilder.build();
 
     s3AsyncClient
         .putObject(request, AsyncRequestBody.fromString(String.valueOf(System.currentTimeMillis())))
@@ -1107,7 +1159,7 @@ public class S3LogStorage implements LogStorageInterface {
    * Custom OutputStream for streaming data to S3 using multipart uploads
    * This properly handles append operations without data loss
    */
-  private static class MultipartS3OutputStream extends OutputStream {
+  private class MultipartS3OutputStream extends OutputStream {
     private final S3AsyncClient s3AsyncClient;
     private final String bucketName;
     private final String key;
@@ -1164,16 +1216,8 @@ public class S3LogStorage implements LogStorageInterface {
           requestBuilder.storageClass(storageClass);
         }
 
-        if (enableSSE && !isCustomEndpoint) {
-          if (sseAlgorithm != null) {
-            requestBuilder.serverSideEncryption(sseAlgorithm);
-            if (sseAlgorithm == ServerSideEncryption.AWS_KMS && kmsKeyId != null) {
-              requestBuilder.ssekmsKeyId(kmsKeyId);
-            }
-          } else {
-            requestBuilder.serverSideEncryption(ServerSideEncryption.AES256);
-          }
-        }
+        // Apply SSE configuration using centralized logic
+        applySSEConfiguration(requestBuilder);
 
         CreateMultipartUploadResponse response =
             s3AsyncClient.createMultipartUpload(requestBuilder.build()).join();
@@ -1505,6 +1549,9 @@ public class S3LogStorage implements LogStorageInterface {
     }
 
     synchronized void append(String logContent) {
+      if (logContent == null || logContent.isEmpty()) {
+        return;
+      }
       String[] newLines = logContent.split("\n");
       for (String line : newLines) {
         // Truncate individual lines to prevent memory exhaustion

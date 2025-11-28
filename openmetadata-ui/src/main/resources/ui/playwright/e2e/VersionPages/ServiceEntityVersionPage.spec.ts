@@ -168,7 +168,7 @@ test.describe('Service Version pages', () => {
 
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
-        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
 
         await addMultiOwner({
           page,

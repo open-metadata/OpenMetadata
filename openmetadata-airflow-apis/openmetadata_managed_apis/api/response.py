@@ -73,10 +73,14 @@ class ResponseFormat:
         """
         Build the pipeline status
         """
+        # Airflow 3.x uses logical_date instead of execution_date
+        logical_date = getattr(dag_run, "logical_date", None) or getattr(
+            dag_run, "execution_date", None
+        )
         return PipelineStatus(
             pipelineState=dag_run.get_state(),
             runId=dag_run.run_id,
             startDate=datetime_to_ts(dag_run.start_date),
             endDate=datetime_to_ts(dag_run.end_date),
-            timestamp=datetime_to_ts(dag_run.execution_date),
+            timestamp=datetime_to_ts(logical_date),
         )

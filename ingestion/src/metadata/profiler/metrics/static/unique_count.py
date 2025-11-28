@@ -23,7 +23,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
-from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.orm.registry import NOT_COMPUTE, Dialects
 from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
@@ -63,6 +63,11 @@ class UniqueCount(QueryMetric):
 
         # Run all queries on top of the sampled data
         col = column(self.col.name, self.col.type)
+
+        # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for peformance
+        if session.bind.dialect.name == Dialects.BigQuery:
+            return func.countif(col == 1).label(self.name())
+
         unique_count_query = _unique_count_query_mapper[session.bind.dialect.name](
             col, session, sample
         )

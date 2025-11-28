@@ -42,6 +42,7 @@ export interface DomainDetailPageTabProps {
   activeTab: EntityTabs;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
+  onDeleteSubDomain: () => void;
   queryFilter?: string | Record<string, unknown>;
   assetTabRef: React.RefObject<AssetsTabRef>;
   dataProductsTabRef: React.RefObject<DataProductsTabRef>;

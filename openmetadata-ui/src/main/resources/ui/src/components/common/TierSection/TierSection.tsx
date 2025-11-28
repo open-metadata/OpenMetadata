@@ -172,7 +172,9 @@ const TierSection: React.FC<TierSectionProps> = ({
           </div>
         ) : (
           <span className="no-data-placeholder">
-            {t('label.no-data-found')}
+            {t('label.no-entity-assigned', {
+              entity: t('label.tier'),
+            })}
           </span>
         )}
       </div>
@@ -191,8 +193,7 @@ const TierSection: React.FC<TierSectionProps> = ({
     return tierDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tierDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   return (
     <div className="tier-section">

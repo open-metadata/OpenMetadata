@@ -195,10 +195,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 
 ### <span data-id="serverUrl">OIDC Server URL</span>
 
-- **Definition:** Base URL for Azure AD authentication server.
-- **Example:** https://login.microsoftonline.com
-- **Why it matters:** Specifies the Azure AD endpoint to use.
-- **Note:** Usually the standard Azure AD endpoint
+- **Definition:** Base URL for Collate server.
+- **Example:** https://yourapp.company.com
+- **Why it matters:** Specifies Collate endpoint
+- **Note:** Usually your collate API server
 
 ### <span data-id="callbackUrl">OIDC Callback URL</span>
 

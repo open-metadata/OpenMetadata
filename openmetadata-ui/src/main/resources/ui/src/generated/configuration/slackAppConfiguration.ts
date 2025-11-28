@@ -15,6 +15,10 @@
  */
 export interface SlackAppConfiguration {
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Id of the Application
      */
     clientId: string;
@@ -27,4 +31,8 @@ export interface SlackAppConfiguration {
      * verifying its unique signature.
      */
     signingSecret: string;
+    /**
+     * User Token
+     */
+    userToken?: string;
 }

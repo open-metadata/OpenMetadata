@@ -56,14 +56,34 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 # These variables are just here to validate elements in the local deployment
 OM_HOST_PORT = "http://localhost:8585/api"
 OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-AIRFLOW_HOST_API_ROOT = "http://localhost:8080/api/v1/"
+AIRFLOW_HOST = "http://localhost:8080"
+AIRFLOW_API_ROOT = f"{AIRFLOW_HOST}/api/v2/"
+AIRFLOW_USERNAME = "admin"
+AIRFLOW_PASSWORD = "admin"
 DEFAULT_OM_AIRFLOW_CONNECTION = "openmetadata_conn_id"
-DEFAULT_AIRFLOW_HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": "Basic YWRtaW46YWRtaW4=",
-}
 OM_LINEAGE_DAG_NAME = "lineage_tutorial_operator"
 PIPELINE_SERVICE_NAME = "airflow_lineage_op_service"
+
+
+def get_airflow_jwt_token() -> str:
+    """Get JWT token from Airflow 3.x auth endpoint"""
+    token_url = f"{AIRFLOW_HOST}/auth/token"
+    payload = {"username": AIRFLOW_USERNAME, "password": AIRFLOW_PASSWORD}
+    response = requests.post(token_url, json=payload, timeout=10)
+    if response.status_code in (200, 201):
+        return response.json().get("access_token")
+    raise RuntimeError(
+        f"Failed to get JWT token: {response.status_code} - {response.text}"
+    )
+
+
+def get_airflow_headers() -> dict:
+    """Get authentication headers for Airflow 3.x API requests"""
+    jwt_token = get_airflow_jwt_token()
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {jwt_token}",
+    }
 
 
 def get_task_status_type_by_name(pipeline: Pipeline, name: str) -> Optional[StatusType]:
@@ -159,33 +179,31 @@ class AirflowLineageTest(TestCase):
         Clean up
         """
 
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-table-lineage"
-            ).id.root
+        db_service = cls.metadata.get_by_name(
+            entity=DatabaseService, fqn="test-service-table-lineage"
         )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if db_service:
+            service_id = str(db_service.id.root)
+            cls.metadata.delete(
+                entity=DatabaseService,
+                entity_id=service_id,
+                recursive=True,
+                hard_delete=True,
+            )
 
         # Service ID created from the Airflow Lineage Operator in the
         # example DAG
-        pipeline_service_id = str(
-            cls.metadata.get_by_name(
-                entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-            ).id.root
+        pipeline_service = cls.metadata.get_by_name(
+            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
         )
-
-        cls.metadata.delete(
-            entity=PipelineService,
-            entity_id=pipeline_service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if pipeline_service:
+            pipeline_service_id = str(pipeline_service.id.root)
+            cls.metadata.delete(
+                entity=PipelineService,
+                entity_id=pipeline_service_id,
+                recursive=True,
+                hard_delete=True,
+            )
 
     def test_dag_runs(self) -> None:
         """
@@ -196,51 +214,63 @@ class AirflowLineageTest(TestCase):
         the task status afterward.
         """
 
+        headers = get_airflow_headers()
+
         # 1. Validate that the OpenMetadata connection exists
         res = requests.get(
-            AIRFLOW_HOST_API_ROOT + f"connections/{DEFAULT_OM_AIRFLOW_CONNECTION}",
-            headers=DEFAULT_AIRFLOW_HEADERS,
+            AIRFLOW_API_ROOT + f"connections/{DEFAULT_OM_AIRFLOW_CONNECTION}",
+            headers=headers,
         )
         if res.status_code != 200:
             raise RuntimeError(
-                f"Could not fetch {DEFAULT_OM_AIRFLOW_CONNECTION} connection"
+                f"Could not fetch {DEFAULT_OM_AIRFLOW_CONNECTION} connection: {res.status_code} - {res.text}"
             )
 
         # 2. Enable the DAG
         res = requests.patch(
-            AIRFLOW_HOST_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}",
+            AIRFLOW_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}",
             json={"is_paused": False},
-            headers=DEFAULT_AIRFLOW_HEADERS,
+            headers=headers,
         )
         if res.status_code != 200:
-            raise RuntimeError(f"Could not enable {OM_LINEAGE_DAG_NAME} DAG")
+            raise RuntimeError(
+                f"Could not enable {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}"
+            )
 
-        # 3. Trigger the DAG
+        # 3. Trigger the DAG (Airflow 3.x requires logical_date)
+        from datetime import datetime, timezone
+
         res = requests.post(
-            AIRFLOW_HOST_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns",
-            json={},
-            headers=DEFAULT_AIRFLOW_HEADERS,
+            AIRFLOW_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns",
+            json={"logical_date": datetime.now(timezone.utc).isoformat()},
+            headers=headers,
         )
         if res.status_code != 200:
-            raise RuntimeError(f"Could not trigger {OM_LINEAGE_DAG_NAME} DAG")
+            raise RuntimeError(
+                f"Could not trigger {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}"
+            )
         dag_run_id = res.json()["dag_run_id"]
 
-        # 4. Wait until the DAG is flagged as `successful`
+        # 4. Wait until the DAG is flagged as `successful` or `failed`
         state = "queued"
         tries = 0
-        while state != "success" and tries <= 5:
+        max_tries = 12  # 60 seconds total (12 * 5 seconds)
+        while state not in ("success", "failed") and tries < max_tries:
             tries += 1
             time.sleep(5)
 
             res = requests.get(
-                AIRFLOW_HOST_API_ROOT
-                + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns/{dag_run_id}",
-                headers=DEFAULT_AIRFLOW_HEADERS,
+                AIRFLOW_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns/{dag_run_id}",
+                headers=headers,
             )
-            state = res.json().get("state")
+            dag_run_data = res.json()
+            state = dag_run_data.get("state")
+            print(f"Try {tries}/{max_tries}: DAG state = {state}")
 
-        if state != "success":
-            raise RuntimeError(f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time.")
+        if state not in ("success", "failed"):
+            raise RuntimeError(
+                f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time. Last state: {state}"
+            )
 
     def test_pipeline_created(self) -> None:
         """
@@ -266,6 +296,9 @@ class AirflowLineageTest(TestCase):
         self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
 
         # Validate status
+        self.assertIsNotNone(
+            pipeline.pipelineStatus, "Pipeline status should be collected via REST API"
+        )
         self.assertEqual(
             get_task_status_type_by_name(pipeline, "print_date"), StatusType.Successful
         )

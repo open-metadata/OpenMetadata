@@ -15,9 +15,9 @@
   .data-products-header {
     padding-left: 14px;
     padding-right: 14px;
-    padding-bottom: 10px;
+    padding-bottom: 12px;
     display: flex;
-    gap: 4px;
+    gap: 8px;
     align-items: center;
 
     .data-products-title {
@@ -26,48 +26,15 @@
       color: @grey-900;
     }
   }
-  .edit-icon {
-    cursor: pointer;
-    height: 20px;
 
-    // Button reset styles for accessibility
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    color: inherit;
-    text-align: inherit;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
   .data-products-content {
     padding-left: 14px;
     padding-right: 14px;
     padding-bottom: 16px;
 
-    .inline-edit-container {
-      .ant-select {
-        width: 100%;
-      }
-      .data-products-selector {
-        min-height: 40px !important;
-        border-radius: 6px !important;
-        border: 1px solid @grey-22 !important;
-        background-color: @white !important;
-        padding: 4px 2px !important;
-        .ant-select-selector {
-          border: none !important;
-        }
-      }
-    }
-
     .no-data-placeholder {
-      color: @grey-700;
-      font-size: 13px;
+      color: @grey-500;
+      font-size: 12px;
     }
 
     .data-product-selector-trigger {

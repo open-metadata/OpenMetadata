@@ -37,6 +37,22 @@ export interface EditorSlotsRef {
 export interface BlockEditorRef {
   editor: Editor | null;
 }
+
+/**
+ * Configuration options for enabling/disabling specific extensions
+ * Add new optional properties here to make more extensions configurable
+ */
+export interface ExtensionOptions {
+  /**
+   * Enable handlebars extension for template variables and helpers
+   * @default false
+   */
+  enableHandlebars?: boolean;
+  // Future extensions can be added here, e.g.:
+  // enableCustomMentions?: boolean;
+  // enableAdvancedTables?: boolean;
+}
+
 export interface BlockEditorProps {
   content?: string;
   editable?: boolean;
@@ -45,6 +61,7 @@ export interface BlockEditorProps {
   autoFocus?: boolean;
   placeholder?: string;
   showInlineAlert?: boolean;
+  extensionOptions?: ExtensionOptions;
 }
 
 export interface BlockEditorAttachmentProps {

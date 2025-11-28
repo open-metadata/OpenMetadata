@@ -1,0 +1,294 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../../../styles/variables.less');
+
+.dimensionality-heatmap {
+  width: 100%;
+
+  &__layout {
+    display: flex;
+    gap: 0;
+    width: 100%;
+  }
+
+  &__labels-column {
+    flex-shrink: 0;
+    width: 150px;
+    background-color: @white;
+  }
+
+  &__scroll-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  &__scroll-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    &.is-scrolling {
+      .dimensionality-heatmap__cell,
+      .dimensionality-heatmap__dimension-label {
+        pointer-events: none;
+      }
+    }
+  }
+
+  &__header-corner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    height: 30px;
+    padding-bottom: 2px;
+    background-color: @white;
+  }
+
+  &__header-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  &__header-cell {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 30px;
+    padding-bottom: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  &__dimension-label {
+    display: block;
+    padding: 0;
+    padding-right: 20px;
+    height: 20px;
+    line-height: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #111827;
+    background-color: @white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 4px;
+  }
+
+  &__data-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__cell {
+    flex-shrink: 0;
+    width: 44px;
+    height: 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+
+    &:hover {
+      opacity: 0.85;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      z-index: 1;
+    }
+
+    &--placeholder {
+      border: 1px solid #e5e7eb;
+      background: repeating-linear-gradient(
+        135deg,
+        #e8ecf5,
+        #e8ecf5 2px,
+        #f5f7fb 2px,
+        #f5f7fb 4px
+      );
+      cursor: default;
+      pointer-events: none;
+
+      &:hover {
+        opacity: 1;
+        box-shadow: none;
+      }
+    }
+  }
+
+  &__scroll-indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    cursor: pointer;
+    z-index: 1;
+    pointer-events: auto;
+
+    &--left {
+      left: 0;
+      background: linear-gradient(
+        to left,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.8) 20%,
+        rgba(255, 255, 255, 0.95) 40%,
+        @white 60%
+      );
+
+      &::after {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 30px;
+        height: 30px;
+        background-color: @white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s ease;
+      }
+
+      &:hover::after {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transform: translateY(-50%) scale(1.05);
+      }
+
+      svg {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%) rotate(180deg);
+        width: 14px;
+        height: 14px;
+        color: @grey-7;
+        z-index: 1;
+      }
+    }
+
+    &--right {
+      right: 0;
+      background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.8) 20%,
+        rgba(255, 255, 255, 0.95) 40%,
+        @white 60%
+      );
+
+      &::after {
+        content: '';
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 30px;
+        height: 30px;
+        background-color: @white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s ease;
+      }
+
+      &:hover::after {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transform: translateY(-50%) scale(1.05);
+      }
+
+      svg {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        color: @grey-7;
+        z-index: 1;
+      }
+    }
+  }
+
+  &__legend {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 16px;
+    margin-left: 154px;
+    padding: 0;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  &__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: @grey-700;
+    font-weight: 500;
+  }
+
+  &__legend-box {
+    width: 11px;
+    height: 9px;
+    border-radius: 2px;
+  }
+
+  &__cell--success,
+  &__legend-box--success {
+    border: 1px solid @green-500;
+    background: @green-9;
+  }
+
+  &__cell--failed,
+  &__legend-box--failed {
+    border: 1px solid @red-22;
+    background: @alert-error-icon-bg-1;
+  }
+
+  &__cell--aborted,
+  &__legend-box--aborted {
+    border: 1px solid @warning-400;
+    background: @warning-100;
+  }
+
+  &__cell--no-data,
+  &__legend-box--no-data {
+    border: 1px solid @grey-400;
+    background: @grey-9;
+  }
+
+  &__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+}

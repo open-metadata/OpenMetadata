@@ -56,6 +56,7 @@ export const makeData = (
 export const getSearchIndexDetailsTabs = ({
   searchIndexDetails,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   activeTab,
   getEntityFeedCount,
@@ -171,7 +172,6 @@ export const getSearchIndexDetailsTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
@@ -194,7 +194,7 @@ export const getSearchIndexDetailsTabs = ({
         <CustomPropertyTable<EntityType.SEARCH_INDEX>
           entityType={EntityType.SEARCH_INDEX}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

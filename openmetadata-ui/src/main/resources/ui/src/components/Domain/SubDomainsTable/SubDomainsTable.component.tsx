@@ -12,8 +12,11 @@
  */
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
-import { useMemo } from 'react';
+import { isEmpty } from 'lodash';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -24,10 +27,17 @@ import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../../common/atoms/table/useCardView';
 import { useDataTable } from '../../common/atoms/table/useDataTable';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
-const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
+const SubDomainsTable = ({
+  domainFqn,
+  permissions,
+  onAddSubDomain,
+  subDomainsCount,
+  onDeleteSubDomain,
+}: SubDomainsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const subdomainListing = useSubdomainListingData({
@@ -103,8 +113,60 @@ const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
     onDeleteComplete: () => {
       subdomainListing.clearSelection();
       subdomainListing.refetch();
+      onDeleteSubDomain();
     },
   });
+
+  useEffect(() => {
+    if (subDomainsCount) {
+      subdomainListing.refetch();
+    }
+  }, [subDomainsCount]);
+
+  const content = useMemo(() => {
+    if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
+      return (
+        <ErrorPlaceHolder
+          buttonId="subdomain-add-button"
+          buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
+          className="border-none"
+          heading={t('message.no-data-message', {
+            entity: t('label.sub-domain-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={onAddSubDomain}
+        />
+      );
+    }
+
+    if (view === 'table') {
+      return (
+        <>
+          {dataTable}
+          {paginationControls}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cardView}
+        {paginationControls}
+      </>
+    );
+  }, [
+    subdomainListing.loading,
+    subdomainListing.entities,
+    view,
+    dataTable,
+    cardView,
+    paginationControls,
+    permissions.Create,
+    onAddSubDomain,
+    t,
+  ]);
 
   return (
     <>
@@ -129,10 +191,7 @@ const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
           </Box>
           {filterSelectionDisplay}
         </Box>
-
-        {view === 'table' ? dataTable : cardView}
-
-        {paginationControls}
+        {content}
       </TableContainer>
       {deleteModal}
     </>

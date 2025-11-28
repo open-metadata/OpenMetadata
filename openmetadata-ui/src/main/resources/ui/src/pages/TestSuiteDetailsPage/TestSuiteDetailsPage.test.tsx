@@ -164,6 +164,15 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   ));
 });
 
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('TestSuiteDetailsPage component', () => {
   it('component should render', async () => {
     render(<TestSuiteDetailsPage />);

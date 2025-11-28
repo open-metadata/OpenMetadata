@@ -25,6 +25,7 @@ import {
   ChangeDescription,
   Column,
 } from '../../../../generated/entity/data/worksheet';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../../../utils/CommonUtils';
 import {
@@ -34,6 +35,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../../utils/TableUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -138,6 +140,15 @@ const WorksheetVersion = ({
     [changeDescription]
   );
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -209,7 +220,7 @@ const WorksheetVersion = ({
             isVersionView
             entityType={EntityType.WORKSHEET}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -218,7 +229,7 @@ const WorksheetVersion = ({
       description,
       entityFqn,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
     ]

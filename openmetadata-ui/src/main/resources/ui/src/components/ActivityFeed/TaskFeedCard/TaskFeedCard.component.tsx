@@ -231,7 +231,6 @@ const TaskFeedCard = ({
                     </div>
                   </>
                 )}
-
                 <Typography.Text
                   className={classNames(
                     postLength > 0

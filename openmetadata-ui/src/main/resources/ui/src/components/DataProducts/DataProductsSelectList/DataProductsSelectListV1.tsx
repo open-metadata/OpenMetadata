@@ -23,6 +23,7 @@ import {
 import { EntitySelectableList } from '../../common/EntitySelectableList/EntitySelectableList.component';
 import { EntitySelectableListConfig } from '../../common/EntitySelectableList/EntitySelectableList.interface';
 import { DataProductsSelectListV1Props } from './DataProductsSelectListV1.interface';
+import './DataProductsSelectListV1.less';
 
 export const DataProductsSelectListV1 = ({
   selectedDataProducts = [],

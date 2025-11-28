@@ -42,7 +42,14 @@ public interface SearchClient
   String DEFAULT_UPDATE_SCRIPT =
       """
       for (k in params.keySet()) {
-        ctx._source.put(k, params.get(k))
+        if (k != 'fieldsToRemove') {
+          ctx._source.put(k, params.get(k))
+        }
+      }
+      if (params.containsKey('fieldsToRemove')) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field)
+        }
       }
       """;
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
@@ -386,6 +393,8 @@ public interface SearchClient
           "votes",
           "tier",
           "changeDescription");
+
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
 
   boolean isClientAvailable();
 

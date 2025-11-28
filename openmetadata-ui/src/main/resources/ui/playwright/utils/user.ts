@@ -565,16 +565,7 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('lineage-config').click();
-
-  await expect(
-    page.getByRole('menuitem', { name: 'Edit Lineage' })
-  ).not.toBeVisible();
-
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Cancel' })
-    .click();
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -671,11 +662,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 
   // Check if edit lineage option is available
-  await page.getByTestId('lineage-config').click();
-
-  await expect(
-    page.getByRole('menuitem', { name: 'Edit Lineage' })
-  ).toBeVisible();
+  await expect(page.getByTestId('edit-lineage')).toBeVisible();
 };
 
 export const addUser = async (

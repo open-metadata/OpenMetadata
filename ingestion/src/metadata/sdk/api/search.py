@@ -134,8 +134,23 @@ class Search:
         sort_field: Optional[str] = None,
         sort_order: Optional[str] = None,
         filters: Optional[Mapping[str, Any]] = None,
+        include_aggregations: bool = True,
     ) -> JsonDict:
-        """Perform a search query."""
+        """Perform a search query.
+
+        Args:
+            query: Search query text
+            index: Index to search in
+            from_: Starting offset for pagination
+            size: Number of results to return
+            sort_field: Field to sort by
+            sort_order: Sort order (asc/desc)
+            filters: Additional filters
+            include_aggregations: Include aggregations in response. Defaults to True.
+
+        Returns:
+            Search results as JSON dict
+        """
         client = cls._get_client()
         params: JsonDict = {
             "query_string": query,
@@ -160,6 +175,7 @@ class Search:
             "index": index,
             "sort_field": sort_field,
             "sort_order": sort_order,
+            "include_aggregations": str(include_aggregations).lower(),
         }
         if filters:
             http_params.update(filters)
@@ -262,10 +278,19 @@ class Search:
         sort_field: Optional[str] = None,
         sort_order: Optional[str] = None,
         filters: Optional[Mapping[str, Any]] = None,
+        include_aggregations: bool = True,
     ) -> JsonDict:
         """Async variant of :meth:`search`."""
         return await _run_async(
-            cls.search, query, index, from_, size, sort_field, sort_order, filters
+            cls.search,
+            query,
+            index,
+            from_,
+            size,
+            sort_field,
+            sort_order,
+            filters,
+            include_aggregations,
         )
 
     @classmethod
@@ -315,6 +340,7 @@ class SearchBuilder:
         self._sort_field: Optional[str] = None
         self._sort_order: Optional[str] = None
         self._filters: JsonDict = {}
+        self._include_aggregations: bool = True
 
     def query(self, query: str) -> "SearchBuilder":
         """Set search query."""
@@ -351,6 +377,11 @@ class SearchBuilder:
         self._filters[key] = value
         return self
 
+    def include_aggregations(self, include: bool = True) -> "SearchBuilder":
+        """Set whether to include aggregations. Defaults to True."""
+        self._include_aggregations = include
+        return self
+
     def execute(self) -> JsonDict:
         """Execute the search."""
         if not self._query:
@@ -364,6 +395,7 @@ class SearchBuilder:
             sort_field=self._sort_field,
             sort_order=self._sort_order,
             filters=self._filters,
+            include_aggregations=self._include_aggregations,
         )
 
     async def execute_async(self) -> JsonDict:
@@ -379,4 +411,5 @@ class SearchBuilder:
             sort_field=self._sort_field,
             sort_order=self._sort_order,
             filters=self._filters,
+            include_aggregations=self._include_aggregations,
         )

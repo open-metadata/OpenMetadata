@@ -196,10 +196,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 
 ### <span data-id="serverUrl">OIDC Server URL</span>
 
-- **Definition:** Base URL for Okta authentication server.
-- **Example:** https://dev-123456.okta.com
-- **Why it matters:** Specifies the Okta endpoint to use.
-- **Note:** Your full Okta domain URL
+- **Definition:** Base URL for Collate server.
+- **Example:** https://yourapp.company.com
+- **Why it matters:** Specifies Collate endpoint
+- **Note:** Usually your collate API server
 
 ### <span data-id="callbackUrl">OIDC Callback URL</span>
 

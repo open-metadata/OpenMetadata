@@ -55,6 +55,7 @@ from metadata.profiler.metrics.system.system import System
 from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.median import Median
 from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
+from metadata.profiler.metrics.window.value_rank import ValueRank
 from metadata.profiler.registry import MetricRegistry
 
 
@@ -101,6 +102,7 @@ class Metrics(MetricRegistry):
     MEDIAN = Median
     FIRST_QUARTILE = FirstQuartile
     THIRD_QUARTILE = ThirdQuartile
+    VALUE_RANK = ValueRank
 
     # System Metrics
     SYSTEM = System

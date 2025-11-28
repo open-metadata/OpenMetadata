@@ -14,7 +14,7 @@ Base Checker abstract class.
 Should be extended to implement different validation checkers that are used to define if a given data quality test passes or fails.
 """
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, List, Mapping
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ClauseElement
@@ -28,14 +28,12 @@ class BaseValidationChecker(ABC):
         """Return True if the provided Pandas metric values violate the condition."""
 
     @abstractmethod
-    def build_violation_sqa(
-        self, metrics: Mapping[str, "ClauseElement"]
-    ) -> "ClauseElement":
+    def build_violation_sqa(self, metrics: List["ClauseElement"]) -> "ClauseElement":
         """Build SQLAlchemy Failed Rows expression"""
 
-    def get_sqa_failed_rows_builder(
-        self, metric_col_names: Mapping[str, str], total_count_col_name: str
-    ) -> Callable[[Any], "ClauseElement"]:
+    def build_agg_level_violation_sqa(
+        self, metric_expressions: List["ClauseElement"], row_count_expr: str
+    ) -> "ClauseElement":
 
         """
         Default builder: map CTE columns to metric keys, use violation predicate, and
@@ -43,12 +41,7 @@ class BaseValidationChecker(ABC):
         """
         from sqlalchemy import case, literal
 
-        def build(cte):
-            cols = {
-                k: getattr(cte.c, col_name) for k, col_name in metric_col_names.items()
-            }
-            total_count = getattr(cte.c, total_count_col_name)
-            violation = self.build_violation_sqa(cols)
-            return case((violation, total_count), else_=literal(0))
-
-        return build
+        return case(
+            [(self.build_violation_sqa(metric_expressions), row_count_expr)],
+            else_=literal(0),
+        )

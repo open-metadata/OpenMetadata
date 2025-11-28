@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -108,7 +108,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
           const bucketItem = buckets.find(
-            (item) => item.key === option.fullyQualifiedName
+            (item) => toLower(item.key) === toLower(option.fullyQualifiedName)
           );
 
           return {

@@ -10,7 +10,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import com.google.common.collect.Lists;
@@ -110,7 +110,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (Container container : containers) {
       container.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList())));
     }
 

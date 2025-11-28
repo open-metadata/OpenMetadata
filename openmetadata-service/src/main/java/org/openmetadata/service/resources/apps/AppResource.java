@@ -38,6 +38,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -325,21 +327,24 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("endTs")
           Long endTs) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    ResultList<AppRunRecord> appRuns;
     if (installation.getAppType().equals(AppType.Internal)) {
-      return repository.listAppRuns(installation, limitParam, offset);
-    }
-    if (!installation.getPipelines().isEmpty()) {
+      appRuns = repository.listAppRuns(installation, limitParam, offset);
+    } else if (!installation.getPipelines().isEmpty()) {
       EntityReference pipelineRef = installation.getPipelines().get(0);
       IngestionPipelineRepository ingestionPipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       IngestionPipeline ingestionPipeline =
           ingestionPipelineRepository.get(
               uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
-      return ingestionPipelineRepository
-          .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
-          .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
+      appRuns =
+          ingestionPipelineRepository
+              .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
+              .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
+    } else {
+      throw new IllegalArgumentException("App does not have a scheduled deployment");
     }
-    throw new IllegalArgumentException("App does not have a scheduled deployment");
+    return sortRunsByStartTime(appRuns);
   }
 
   protected static AppRunRecord convertPipelineStatus(App app, PipelineStatus pipelineStatus) {
@@ -360,6 +365,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
               case RUNNING -> AppRunRecord.Status.RUNNING;
             })
         .withConfig(pipelineStatus.getConfig());
+  }
+
+  private ResultList<AppRunRecord> sortRunsByStartTime(ResultList<AppRunRecord> runs) {
+    if (runs == null || nullOrEmpty(runs.getData())) {
+      return runs;
+    }
+    List<AppRunRecord> sortedRuns = new ArrayList<>(runs.getData());
+    sortedRuns.sort(
+        Comparator.comparing(
+            AppRunRecord::getStartTime, Comparator.nullsLast(Comparator.reverseOrder())));
+    runs.setData(sortedRuns);
+    return runs;
   }
 
   @GET

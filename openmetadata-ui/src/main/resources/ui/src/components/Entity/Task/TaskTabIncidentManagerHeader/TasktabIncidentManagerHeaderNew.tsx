@@ -163,7 +163,6 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             </div>
           ) : (
             <OwnerLabel
-              avatarSize={24}
               isCompactView={false}
               owners={thread?.task?.assignees}
               showLabel={false}

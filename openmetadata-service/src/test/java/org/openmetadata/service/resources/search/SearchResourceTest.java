@@ -1452,6 +1452,84 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     assertTrue(hasTableNames, "Should find fallback table names with test prefix in DESC");
   }
 
+  @Test
+  void testSearchWithIncludeAggregationsParameter() throws IOException {
+    // Wait for indexing
+    TestUtils.simulateWork(2);
+
+    String query = "*";
+    String index = "table_search_index";
+
+    // Test search WITH aggregations (default behavior)
+    WebTarget targetWithAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "true");
+
+    String resultWithAggs = TestUtils.get(targetWithAggs, String.class, ADMIN_AUTH_HEADERS);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode responseWithAggs = mapper.readTree(resultWithAggs);
+
+    // Verify aggregations are present
+    assertTrue(
+        responseWithAggs.has("aggregations"),
+        "Response should contain aggregations when include_aggregations=true");
+    JsonNode aggregations = responseWithAggs.get("aggregations");
+    assertNotNull(aggregations, "Aggregations should not be null");
+    assertTrue(
+        aggregations.size() > 0, "Aggregations should contain at least one aggregation field");
+
+    // Test search WITHOUT aggregations
+    WebTarget targetWithoutAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "false");
+
+    String resultWithoutAggs = TestUtils.get(targetWithoutAggs, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode responseWithoutAggs = mapper.readTree(resultWithoutAggs);
+
+    // Verify aggregations are either absent or empty
+    if (responseWithoutAggs.has("aggregations")) {
+      JsonNode aggsWithout = responseWithoutAggs.get("aggregations");
+      assertEquals(
+          0, aggsWithout.size(), "Aggregations should be empty when include_aggregations=false");
+    }
+
+    // Verify both responses have hits
+    assertTrue(
+        responseWithAggs.has("hits") && responseWithAggs.get("hits").has("hits"),
+        "Response with aggregations should have hits");
+    assertTrue(
+        responseWithoutAggs.has("hits") && responseWithoutAggs.get("hits").has("hits"),
+        "Response without aggregations should have hits");
+
+    // Verify the same number of search results
+    int hitsWithAggs = responseWithAggs.get("hits").get("hits").size();
+    int hitsWithoutAggs = responseWithoutAggs.get("hits").get("hits").size();
+    assertEquals(
+        hitsWithAggs,
+        hitsWithoutAggs,
+        "Both responses should return the same number of search results");
+
+    // Verify response size is smaller without aggregations
+    int sizeWithAggs = resultWithAggs.length();
+    int sizeWithoutAggs = resultWithoutAggs.length();
+    assertTrue(
+        sizeWithoutAggs < sizeWithAggs,
+        "Response without aggregations should be smaller than response with aggregations");
+
+    LOG.info(
+        "Response size comparison: with aggregations={}KB, without aggregations={}KB",
+        sizeWithAggs / 1024,
+        sizeWithoutAggs / 1024);
+  }
+
   private void cleanupTestTables(List<Table> tables) {
     for (Table table : tables) {
       try {

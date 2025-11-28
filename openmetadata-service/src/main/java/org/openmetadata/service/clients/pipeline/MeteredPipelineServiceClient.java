@@ -151,8 +151,8 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   }
 
   @Override
-  public Boolean validServerClientVersions(String clientVersion) {
-    return decoratedClient.validServerClientVersions(clientVersion);
+  public Boolean validServerClientVersions(String clientVersion, String serverVersion) {
+    return decoratedClient.validServerClientVersions(clientVersion, serverVersion);
   }
 
   @Override

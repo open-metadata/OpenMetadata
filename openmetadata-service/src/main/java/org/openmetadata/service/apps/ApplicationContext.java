@@ -4,8 +4,10 @@ import java.util.HashMap;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 
 @Slf4j
 public class ApplicationContext {
@@ -31,7 +33,16 @@ public class ApplicationContext {
     LOG.info("Initializing Application Context");
 
     AppRepository appRepo = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    List<App> installedApps = appRepo.listAll();
+    ListFilter listFilter = new ListFilter(Include.ALL);
+    List<App> installedApps =
+        appRepo
+            .listAfter(
+                null,
+                appRepo.getFields("*"),
+                listFilter,
+                appRepo.getDao().listCount(listFilter),
+                "")
+            .getData();
     for (App app : installedApps) {
       try {
         // Initialize the apps. This will already load the context with Collate apps that require it

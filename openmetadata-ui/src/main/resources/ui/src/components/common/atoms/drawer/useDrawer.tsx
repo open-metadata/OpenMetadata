@@ -106,9 +106,7 @@ export const useDrawer = (config: DrawerConfig = {}) => {
       !config.anchor
     ) {
       sx['& .MuiDrawer-paper'] = {
-        width: config.width || 400,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
+        width: config.width || '40vw',
       };
     }
 

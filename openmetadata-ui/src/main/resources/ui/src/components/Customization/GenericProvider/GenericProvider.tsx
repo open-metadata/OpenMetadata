@@ -27,12 +27,14 @@ import {
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import {
@@ -72,6 +74,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
   muiTags: boolean;
+  entityRules: DataAssetRuleValidation;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -107,6 +110,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
     string | null
   >(null);
+
+  const { entityRules } = useEntityRules(type);
 
   useEffect(() => {
     setLayout(
@@ -222,6 +227,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const values = useMemo(
     () => ({
       data,
+      entityRules,
       type,
       onUpdate,
       isVersionView,
@@ -237,6 +243,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }),
     [
       data,
+      entityRules,
       type,
       onUpdate,
       isVersionView,

@@ -96,3 +96,6 @@ SET json = JSON_SET(
 )
 WHERE json->>'$.name' IN ('CollateAITierAgentApplication', 'CollateAIQualityAgentApplication')
   AND json->>'$.appType' = 'internal' AND json->>'$.sourcePythonClass' IS NULL;
+  
+-- Remove bot form App entity    
+UPDATE installed_apps SET json = JSON_REMOVE(json, '$.bot') WHERE JSON_CONTAINS_PATH(json, 'one', '$.bot');

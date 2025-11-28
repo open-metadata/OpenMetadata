@@ -43,6 +43,13 @@ def _(elements, compiler, **kwargs):
     return MedianFn.default_fn(elements, compiler, **kwargs)
 
 
+@compiles(MedianFn, Dialects.Snowflake)
+def _(elements, compiler, **kwargs):
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "approx_percentile(%s, %s)" % (col, percentile)
+
+
 @compiles(MedianFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
     col, _, percentile = [

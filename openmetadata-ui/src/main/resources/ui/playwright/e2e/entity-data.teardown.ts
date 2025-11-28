@@ -22,7 +22,7 @@ teardown('cleanup entity data prerequisites', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   try {
-    await EntityDataClass.postRequisitesForTests(apiContext, { all: true });
+    await EntityDataClass.postRequisitesForTests(apiContext);
 
     const filePath = path.join(
       __dirname,

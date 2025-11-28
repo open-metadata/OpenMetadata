@@ -71,6 +71,30 @@
 			"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 			"downstreamTasks": ["assert_table_exists"],
 			"taskType": "TrinoOperator"
+		},
+		{
+			"name": "metrics_aggregation_task",
+			"displayName": "Metrics Aggregation Task",
+			"description": "Airflow operator to aggregate streaming metrics in real-time",
+			"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=metrics_aggregation_task",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PythonOperator"
+		},
+		{
+			"name": "feature_engineering_task",
+			"displayName": "Feature Engineering Task",
+			"description": "Airflow operator to generate ML features from warehouse data",
+			"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=feature_engineering_task",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PythonOperator"
+		},
+		{
+			"name": "dim_product_task",
+			"displayName": "dim_product Task",
+			"description": "Airflow operator to perform ETL and generate dim_product table",
+			"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_product_task",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PrestoOperator"
 		}
 	]
 }

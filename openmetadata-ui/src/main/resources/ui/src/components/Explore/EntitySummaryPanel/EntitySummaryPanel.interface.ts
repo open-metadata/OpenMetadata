@@ -18,4 +18,5 @@ export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
   highlights?: SearchedDataProps['data'][number]['highlight'];
+  panelPath?: string;
 }

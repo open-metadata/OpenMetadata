@@ -384,6 +384,10 @@ def get_xlets_from_operator(
         raise ValueError(f"Missing attribute for {xlet_mode.value}")
 
     xlet = getattr(operator, attribute) or []
+
+    # Ensure xlet is always a list - if it's a dict, wrap it
+    if isinstance(xlet, dict):
+        xlet = [xlet]
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:

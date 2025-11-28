@@ -186,9 +186,13 @@ export class StoredProcedureClass extends EntityClass {
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.databaseResponseData = data.database;
+    this.schemaResponseData = data.schema;
   }
 
   async visitEntityPage(page: Page) {

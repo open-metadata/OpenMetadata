@@ -263,20 +263,20 @@ public class Auth0Validator {
         return null; // Success - Auth0 client ID validated
       } else if (responseCode == 400 || responseCode == 404) {
         return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
             "Invalid Auth0 client ID. Client does not exist or is not properly configured.");
       } else {
         // Warning case - treat as success since format appears valid
         LOG.warn("Could not fully validate Auth0 client ID. HTTP response: {}", responseCode);
         return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Could not validate client Id");
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Could not validate client Id");
       }
 
     } catch (Exception e) {
       // Warning case - treat as success since format appears valid
       LOG.warn("Auth0 client ID validation warning: {}", e.getMessage());
       return ValidationErrorBuilder.createFieldError(
-          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
           "Auth0 client ID validation warning: {}" + e.getMessage());
     }
   }

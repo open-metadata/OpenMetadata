@@ -170,7 +170,7 @@ class PiiProcessorTest(TestCase):
             serviceName="test",
             sourceConfig=SourceConfig(
                 config=DatabaseServiceAutoClassificationPipeline(
-                    confidence=85,
+                    confidence=80,
                     enableAutoClassification=True,
                 )
             ),

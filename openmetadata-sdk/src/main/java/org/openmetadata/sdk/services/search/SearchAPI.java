@@ -14,15 +14,27 @@ public class SearchAPI {
   }
 
   public String search(String query) throws OpenMetadataException {
-    return search(query, null, null, null, null, null);
+    return search(query, null, null, null, null, null, null);
   }
 
   public String search(String query, String index) throws OpenMetadataException {
-    return search(query, index, null, null, null, null);
+    return search(query, index, null, null, null, null, null);
   }
 
   public String search(
       String query, String index, Integer from, Integer size, String sortField, String sortOrder)
+      throws OpenMetadataException {
+    return search(query, index, from, size, sortField, sortOrder, null);
+  }
+
+  public String search(
+      String query,
+      String index,
+      Integer from,
+      Integer size,
+      String sortField,
+      String sortOrder,
+      Boolean includeAggregations)
       throws OpenMetadataException {
 
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
@@ -33,6 +45,8 @@ public class SearchAPI {
     if (size != null) optionsBuilder.queryParam("size", size.toString());
     if (sortField != null) optionsBuilder.queryParam("sort_field", sortField);
     if (sortOrder != null) optionsBuilder.queryParam("sort_order", sortOrder);
+    if (includeAggregations != null)
+      optionsBuilder.queryParam("include_aggregations", String.valueOf(includeAggregations));
 
     return httpClient.executeForString(
         HttpMethod.GET, "/v1/search/query", null, optionsBuilder.build());

@@ -37,6 +37,42 @@ jest.mock('../SectionWithEdit/SectionWithEdit', () => {
     ));
 });
 
+// Mock CommonEntitySummaryInfoV1 component
+jest.mock('./CommonEntitySummaryInfoV1', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ entityInfo, excludedItems = [], componentType }) => {
+      const filteredInfo = entityInfo.filter(
+        (item: { name: string; visible?: string[] }) => {
+          if (excludedItems.includes(item.name)) {
+            return false;
+          }
+
+          return !componentType || (item.visible ?? []).includes(componentType);
+        }
+      );
+
+      return (
+        <div className="overview-section">
+          {filteredInfo.map((info: { name: string; value: unknown }) => (
+            <div className="overview-row" key={info.name}>
+              <span
+                className="overview-label"
+                data-testid={`${info.name}-label`}>
+                {info.name}
+              </span>
+              <span
+                className="overview-value text-grey-body"
+                data-testid={`${info.name}-value`}>
+                {String(info.value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    });
+});
+
 const entityInfoV1 = [
   { name: 'Type', value: 'Table', visible: ['explore'] },
   { name: 'Rows', value: 1000, visible: ['explore'] },
@@ -116,12 +152,25 @@ describe('OverviewSection', () => {
       expect(values).toHaveLength(5);
     });
 
-    it('should hide when nothing visible for given componentType', () => {
+    it('should exclude Owners and Tier items via excludedItems prop', () => {
+      const infoWithExcluded = [
+        { name: 'Type', value: 'Table', visible: ['explore'] },
+        { name: 'Owners', value: 'John Doe', visible: ['explore'] },
+        { name: 'Tier', value: 'Gold', visible: ['explore'] },
+        { name: 'Rows', value: 1000, visible: ['explore'] },
+      ];
+
       render(
-        <OverviewSection componentType="other" entityInfoV1={entityInfoV1} />
+        <OverviewSection
+          componentType="explore"
+          entityInfoV1={infoWithExcluded}
+        />
       );
 
-      expect(screen.queryByTestId('section-with-edit')).toBeNull();
+      expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Rows-label')).toBeInTheDocument();
+      expect(screen.queryByTestId('Owners-label')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('Tier-label')).not.toBeInTheDocument();
     });
 
     it('should handle single item', () => {

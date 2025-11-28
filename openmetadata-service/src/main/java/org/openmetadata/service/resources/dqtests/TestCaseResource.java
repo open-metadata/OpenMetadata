@@ -642,10 +642,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     limits.enforceLimits(
         securityContext,
         new CreateResourceContext<>(entityType, test),
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE_TESTS));
 
     OperationContext tableOpContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+        new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS);
     ResourceContextInterface tableResourceContext =
         TestCaseResourceContext.builder().entityLink(entityLink).build();
     OperationContext testCaseOpContext =
@@ -691,13 +691,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
 
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    OperationContext tableOpContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS);
 
     entityLinks.forEach(
         link -> {
           EntityLink entityLink = EntityLink.parse(link);
+          ResourceContextInterface tableResourceContext =
+              TestCaseResourceContext.builder().entityLink(entityLink).build();
           ResourceContextInterface resourceContext =
               TestCaseResourceContext.builder().entityLink(entityLink).build();
-          authorizer.authorize(securityContext, operationContext, resourceContext);
+          authorizer.authorizeRequests(
+              securityContext,
+              List.of(
+                  new AuthRequest(tableOpContext, tableResourceContext),
+                  new AuthRequest(operationContext, resourceContext)),
+              AuthorizationLogic.ANY);
+          //          authorizer.authorize(securityContext, operationContext, resourceContext);
         });
 
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());

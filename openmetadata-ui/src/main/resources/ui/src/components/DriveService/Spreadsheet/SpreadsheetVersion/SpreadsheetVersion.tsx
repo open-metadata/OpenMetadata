@@ -27,6 +27,7 @@ import {
   EntityReference,
   Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDriveAssetByFqn } from '../../../../rest/driveAPI';
@@ -37,6 +38,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -160,6 +162,13 @@ const SpreadsheetVersion = ({
     []
   );
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -228,7 +237,7 @@ const SpreadsheetVersion = ({
             isVersionView
             entityType={EntityType.SPREADSHEET}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -237,7 +246,7 @@ const SpreadsheetVersion = ({
       description,
       entityFqn,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
       spreadsheetDetails,

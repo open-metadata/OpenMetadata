@@ -268,6 +268,27 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
     return create(uriInfo, securityContext, worksheet);
   }
 
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateWorksheets",
+      summary = "Bulk create or update worksheets",
+      description = "Create or update multiple worksheets in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateWorksheet> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(

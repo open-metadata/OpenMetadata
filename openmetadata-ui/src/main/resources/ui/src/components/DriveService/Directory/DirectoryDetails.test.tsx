@@ -579,4 +579,54 @@ describe('DirectoryDetails', () => {
       expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
     });
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should pass ViewCustomFields permission correctly when true', async () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderDirectoryDetails({
+        directoryPermissions: permissionsWithViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should pass ViewCustomFields permission correctly when false', async () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderDirectoryDetails({
+        directoryPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle undefined ViewCustomFields permission', async () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderDirectoryDetails({
+        directoryPermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+  });
 });

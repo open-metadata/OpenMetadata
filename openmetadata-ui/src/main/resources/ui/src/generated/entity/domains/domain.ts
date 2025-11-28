@@ -28,6 +28,10 @@ export interface Domain {
      */
     children?: EntityReference[];
     /**
+     * Count of all nested children domains under this domain
+     */
+    childrenCount?: number;
+    /**
      * Description of the Domain.
      */
     description: string;

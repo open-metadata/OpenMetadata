@@ -1,0 +1,19 @@
+{
+	"type": "dbtcloud",
+	"serviceName": "sample_dbtcloud",
+	"serviceConnection": {
+		"config": {
+			"type": "DBTCloud",
+			"host": "https://cloud.getdbt.com",
+			"discoveryAPI": "https://metadata.cloud.getdbt.com/graphql",
+			"accountId": "123456",
+			"jobIds": ["654321"],
+			"token": "sample_dbt_token_12345"
+		}
+	},
+	"sourceConfig": {
+		"config": {
+			"includeLineage": true
+		}
+	}
+}

@@ -32,7 +32,9 @@ import {
 } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
@@ -110,8 +112,10 @@ export const DEFAULT_SELECTED_RANGE = {
 };
 
 export const DEFAULT_RANGE_DATA = {
-  startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
-  endTs: getCurrentMillis(),
+  startTs: getStartOfDayInMillis(
+    getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days)
+  ),
+  endTs: getEndOfDayInMillis(getCurrentMillis()),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];

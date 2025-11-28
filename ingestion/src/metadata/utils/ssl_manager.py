@@ -43,6 +43,9 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -275,6 +278,29 @@ class SSLManager:
 
         return connection
 
+    @setup_ssl.register(MssqlConnection)
+    def _(self, connection):
+        connection = cast(MssqlConnection, connection)
+
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        # Handle driver-specific SSL configuration
+        if connection.scheme.value == "mssql+pyodbc":
+            # ODBC Driver SSL parameters
+            if connection.encrypt:
+                connection.connectionArguments.root["Encrypt"] = "yes"
+
+            if connection.trustServerCertificate:
+                connection.connectionArguments.root["TrustServerCertificate"] = "yes"
+
+        elif connection.scheme.value == "mssql+pytds":
+            # pytds driver SSL parameters
+            if self.ca_file_path:
+                connection.connectionArguments.root["cafile"] = self.ca_file_path
+
+        return connection
+
 
 @singledispatch
 def check_ssl_and_init(
@@ -325,6 +351,21 @@ def _(connection):
             key=ssl.root.sslKey,
         )
     return None
+
+
+@check_ssl_and_init.register(MssqlConnection)
+def _(connection):
+    service_connection = cast(MssqlConnection, connection)
+    ssl: Optional[
+        verifySSLConfig.SslConfig
+    ] = service_connection.sslConfig or verifySSLConfig.SslConfig(
+        **{"caCertificate": None}
+    )
+    return SSLManager(
+        ca=ssl.root.caCertificate,
+        cert=ssl.root.sslCertificate,
+        key=ssl.root.sslKey,
+    )
 
 
 @check_ssl_and_init.register(MongoDBConnection)

@@ -14,30 +14,19 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from sqlalchemy import Column, case, func, literal, literal_column, select
+from sqlalchemy import Column, case, func, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql import ColumnElement
-from sqlalchemy.sql.selectable import CTE
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_IMPACT_SCORE_KEY,
-    DIMENSION_NULL_LABEL,
-    DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
-    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    get_impact_score_expression,
-)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
-    DIMENSION_GROUP_LABEL,
     SQAValidatorMixin,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
@@ -46,14 +35,6 @@ from metadata.profiler.orm.functions.unique_count import _unique_count_dimension
 from metadata.profiler.orm.registry import Dialects
 
 logger = logging.getLogger(__name__)
-
-# CTE names for dimensional validation query chain
-CTE_VALUE_COUNTS = "value_counts"
-CTE_DIMENSION_STATS = "dimension_stats"
-CTE_STATS_WITH_IMPACT = "stats_with_impact"
-CTE_TOP_DIMENSIONS = "top_dimensions"
-CTE_CATEGORIZED = "categorized"
-CTE_OTHERS_VALUE_COUNTS = "others_value_counts"
 
 
 class ColumnValuesToBeUniqueValidator(
@@ -82,6 +63,12 @@ class ColumnValuesToBeUniqueValidator(
             column: column
         """
         count = Metrics.COUNT.value(column).fn()
+        grouped_cte = (
+            select(count.label(column.name))
+            .select_from(self.runner.dataset)
+            .group_by(column)
+            .cte("grouped_cte")
+        )
         unique_count = Metrics.UNIQUE_COUNT.value(column).query(
             sample=self.runner.dataset,
             session=self.runner._session,  # pylint: disable=protected-access
@@ -94,11 +81,12 @@ class ColumnValuesToBeUniqueValidator(
                 query_group_by_ = None
 
             self.value = dict(
-                self.runner.dispatch_query_select_first(
-                    count,
-                    unique_count.scalar_subquery().label("uniqueCount"),
+                self.runner._select_from_dataset(
+                    grouped_cte,
+                    func.sum(grouped_cte.c[column.name]).label(Metrics.COUNT.name),
+                    unique_count.label(Metrics.UNIQUE_COUNT.name),
                     query_group_by_=query_group_by_,
-                )
+                ).first()
             )  # type: ignore
             res = self.value.get(Metrics.COUNT.name)
         except Exception as exc:
@@ -152,20 +140,16 @@ class ColumnValuesToBeUniqueValidator(
         dimension_results = []
 
         try:
-            # ==================== PASS 1: Top N Dimensions ====================
-            table = self.runner.dataset.__table__
+            if hasattr(self.runner.dataset, "__table__"):
+                table = self.runner.dataset.__table__
+            else:
+
+                table = self.runner.dataset
+
             dialect = self.runner._session.bind.dialect.name
 
-            # Normalize dimension column for NULL handling
-            normalized_dimension = case(
-                [
-                    (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
-                    (
-                        func.upper(dimension_col) == "NULL",
-                        literal(DIMENSION_NULL_LABEL),
-                    ),
-                ],
-                else_=dimension_col,
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
             )
 
             # Build dialect-specific value_counts CTE for dimensional unique count
@@ -173,166 +157,25 @@ class ColumnValuesToBeUniqueValidator(
                 column, table, normalized_dimension, dialect
             )
 
-            # CTE 2: Aggregate unique counts per dimension from value_counts
-            # Use SUM(occurrence_count) to count non-NULL values only
-            # Use SUM(row_count) for actual row count (for impact scoring)
-            dimension_stats = (
-                select(
-                    value_counts_cte.c.dim_value.label(DIMENSION_VALUE_KEY),
-                    func.sum(value_counts_cte.c.occurrence_count).label(
-                        Metrics.COUNT.name
-                    ),
-                    unique_count_expr.label(Metrics.UNIQUE_COUNT.name),
-                    func.sum(value_counts_cte.c.row_count).label(
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ),
+            metric_expressions = {
+                DIMENSION_TOTAL_COUNT_KEY: func.sum(value_counts_cte.c.row_count),
+                Metrics.COUNT.name: func.sum(value_counts_cte.c.occurrence_count),
+                Metrics.UNIQUE_COUNT.name: unique_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.sum(
+                    value_counts_cte.c.occurrence_count
                 )
-                .select_from(value_counts_cte)
-                .group_by(value_counts_cte.c.dim_value)
-            ).cte(CTE_DIMENSION_STATS)
+                - unique_count_expr,
+            }
 
-            # Calculate failed count (values that are NOT unique)
-            failed_count_expr = getattr(
-                dimension_stats.c, Metrics.COUNT.name
-            ) - getattr(dimension_stats.c, Metrics.UNIQUE_COUNT.name)
-
-            # CTE 3: Add failed count and impact score
-            stats_with_impact = (
-                select(
-                    *[col for col in dimension_stats.c],
-                    failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY),
-                    get_impact_score_expression(
-                        failed_count_expr,
-                        getattr(dimension_stats.c, DIMENSION_TOTAL_COUNT_KEY),
-                    ).label(DIMENSION_IMPACT_SCORE_KEY),
-                ).select_from(dimension_stats)
-            ).cte(CTE_STATS_WITH_IMPACT)
-
-            # CTE 4: Top N dimensions by impact score
-            top_dimensions = (
-                select([getattr(stats_with_impact.c, DIMENSION_VALUE_KEY)])
-                .order_by(
-                    getattr(stats_with_impact.c, DIMENSION_IMPACT_SCORE_KEY).desc()
-                )
-                .limit(DEFAULT_TOP_DIMENSIONS)
-            ).cte(CTE_TOP_DIMENSIONS)
-
-            # CTE 5: Categorize as top N or "Others"
-            categorized = (
-                select(
-                    case(
-                        (
-                            getattr(stats_with_impact.c, DIMENSION_VALUE_KEY).in_(
-                                select([getattr(top_dimensions.c, DIMENSION_VALUE_KEY)])
-                            ),
-                            getattr(stats_with_impact.c, DIMENSION_VALUE_KEY),
-                        ),
-                        else_=DIMENSION_OTHERS_LABEL,
-                    ).label(DIMENSION_GROUP_LABEL),
-                    *[
-                        col
-                        for col in stats_with_impact.c
-                        if col.name != DIMENSION_VALUE_KEY
-                    ],
-                ).select_from(stats_with_impact)
-            ).cte(CTE_CATEGORIZED)
-
-            # Final query: Aggregate "Others" rows
-            # For top N dimensions: use original metrics
-            # For "Others": recalculate failed count and impact score from aggregated values
-            summed_count = func.sum(getattr(categorized.c, Metrics.COUNT.name))
-            summed_unique_count = func.sum(
-                getattr(categorized.c, Metrics.UNIQUE_COUNT.name)
-            )
-            summed_total_count = func.sum(
-                getattr(categorized.c, DIMENSION_TOTAL_COUNT_KEY)
+            result_rows = self._run_dimensional_validation_query(
+                source=value_counts_cte,
+                dimension_expr=value_counts_cte.c.dim_value,
+                metric_expressions=metric_expressions,
+                others_source_builder=self._get_others_source_builder(value_counts_cte),
+                others_metric_expressions_builder=self._get_others_metric_expressions_builder(),
             )
 
-            # Recalculated failed count for "Others"
-            recalculated_failed_count = summed_count - summed_unique_count
-
-            # Recalculated impact score for "Others"
-            recalculated_impact_score = get_impact_score_expression(
-                recalculated_failed_count, summed_total_count
-            )
-
-            final_query = (
-                select(
-                    getattr(categorized.c, DIMENSION_GROUP_LABEL).label(
-                        DIMENSION_VALUE_KEY
-                    ),
-                    summed_count.label(Metrics.COUNT.name),
-                    summed_unique_count.label(Metrics.UNIQUE_COUNT.name),
-                    summed_total_count.label(DIMENSION_TOTAL_COUNT_KEY),
-                    case(
-                        (
-                            getattr(categorized.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.sum(
-                                getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)
-                            ),
-                        ),
-                        else_=recalculated_failed_count,
-                    ).label(DIMENSION_FAILED_COUNT_KEY),
-                    case(
-                        (
-                            getattr(categorized.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.max(
-                                getattr(categorized.c, DIMENSION_IMPACT_SCORE_KEY)
-                            ),
-                        ),
-                        else_=recalculated_impact_score,
-                    ).label(DIMENSION_IMPACT_SCORE_KEY),
-                )
-                .select_from(categorized)
-                .group_by(getattr(categorized.c, DIMENSION_GROUP_LABEL))
-                .order_by(
-                    case(
-                        (
-                            getattr(categorized.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.max(
-                                getattr(categorized.c, DIMENSION_IMPACT_SCORE_KEY)
-                            ),
-                        ),
-                        else_=recalculated_impact_score,
-                    ).desc()
-                )
-            )
-
-            # Execute query and build dimension results
-            result_rows = self.runner._session.execute(final_query).fetchall()
-
-            # ==================== PASS 2: Recompute "Others" Unique Count ====================
-            # Convert immutable Row objects to mutable dicts for modification
-            result_dicts = [dict(row._mapping) for row in result_rows]
-
-            # Separate top N dimensions from "Others" row
-            top_n_rows = [
-                row
-                for row in result_dicts
-                if row[DIMENSION_VALUE_KEY] != DIMENSION_OTHERS_LABEL
-            ]
-
-            has_others = len(top_n_rows) < len(result_dicts)
-
-            # Recompute "Others" only if it existed in Pass 1
-            if has_others:
-                if recomputed_others := self._compute_others_unique_count(
-                    column,
-                    normalized_dimension,
-                    value_counts_cte,
-                    top_n_rows,
-                ):
-                    result_dicts = top_n_rows + [recomputed_others]
-                else:
-                    result_dicts = top_n_rows
-            else:
-                result_dicts = top_n_rows
-
-            # ==================== Process Results ====================
-            for row in result_dicts:
+            for row in result_rows:
                 metric_values = self._build_metric_values_from_row(
                     row, metrics_to_compute, test_params
                 )
@@ -348,44 +191,9 @@ class ColumnValuesToBeUniqueValidator(
 
         return dimension_results
 
-    def _compute_others_unique_count(
-        self,
-        column: Column,
-        normalized_dimension: ColumnElement,
-        value_counts_cte: CTE,
-        top_n_rows: List[Dict],
-    ) -> Optional[Dict]:
-        """Recompute unique count and metrics for "Others" dimension group.
-
-        Uses two-pass approach: Pass 1 computed top N dimensions, this computes
-        "Others" by going back to value_counts CTE and filtering for dimensions
-        NOT IN top N, then recalculating unique count.
-
-        This is necessary because unique_count is not additive - summing unique
-        counts from different dimensions gives incorrect results.
-
-        Args:
-            column: The column being validated
-            normalized_dimension: Normalized dimension column expression
-            value_counts_cte: The value_counts CTE from Pass 1
-            top_n_rows: Results from Pass 1 WITHOUT "Others" row (only top N dimensions)
-
-        Returns:
-            New "Others" row dict with recomputed metrics, or None if computation failed
-        """
-        # Extract top N dimension values
-        top_dimension_values = [row[DIMENSION_VALUE_KEY] for row in top_n_rows]
-
-        if not top_dimension_values:
-            logger.debug(
-                "No top dimension values found, skipping 'Others' recomputation"
-            )
-            return None
-
-        try:
-            # Filter value_counts CTE for "Others" dimensions
-            # Query: SELECT * FROM value_counts WHERE dim_value NOT IN (top_N)
-            others_value_counts = (
+    def _get_others_source_builder(self, value_counts_cte):
+        def build_others_source(top_values):
+            return (
                 select(
                     value_counts_cte.c.col_value,
                     func.sum(value_counts_cte.c.occurrence_count).label(
@@ -394,69 +202,23 @@ class ColumnValuesToBeUniqueValidator(
                     func.sum(value_counts_cte.c.row_count).label("row_count"),
                 )
                 .select_from(value_counts_cte)
-                .where(value_counts_cte.c.dim_value.notin_(top_dimension_values))
+                .where(value_counts_cte.c.dim_value.notin_(top_values))
                 .group_by(value_counts_cte.c.col_value)
-            ).cte(CTE_OTHERS_VALUE_COUNTS)
+            ).cte("others_source")
 
-            # Recalculate unique count for "Others"
-            # Count values that appear exactly once across all "Others" dimensions
+        return build_others_source
+
+    def _get_others_metric_expressions_builder(self):
+        def build_others_metric_expressions(others_source):
             unique_count_expr = func.sum(
-                case((others_value_counts.c.occurrence_count == 1, 1), else_=0)
+                case((others_source.c.occurrence_count == 1, 1), else_=0)
             )
+            return {
+                DIMENSION_TOTAL_COUNT_KEY: func.sum(others_source.c.row_count),
+                Metrics.COUNT.name: func.sum(others_source.c.occurrence_count),
+                Metrics.UNIQUE_COUNT.name: unique_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.sum(others_source.c.occurrence_count)
+                - unique_count_expr,
+            }
 
-            # Calculate total count (non-NULL values)
-            count_expr = func.sum(others_value_counts.c.occurrence_count)
-
-            # Calculate row count (for impact scoring) from baked-in row_count column
-            row_count_expr = func.sum(others_value_counts.c.row_count)
-
-            # Build final query
-            others_query = select(
-                count_expr.label(Metrics.COUNT.name),
-                unique_count_expr.label(Metrics.UNIQUE_COUNT.name),
-                row_count_expr.label(DIMENSION_TOTAL_COUNT_KEY),
-            ).select_from(others_value_counts)
-
-            result = self.runner._session.execute(others_query).fetchone()
-
-            if result:
-                count_val, unique_count_val, total_count = result
-
-                # Calculate failed count using helper method
-                failed_count = self._calculate_failed_count(count_val, unique_count_val)
-
-                # Calculate impact score
-                impact_score_result = self.runner._session.execute(
-                    select(
-                        get_impact_score_expression(
-                            literal(failed_count), literal(total_count)
-                        )
-                    )
-                ).scalar()
-
-                logger.debug(
-                    "Recomputed 'Others': count=%s, unique=%s, failed=%d/%d, impact=%.4f",
-                    count_val,
-                    unique_count_val,
-                    failed_count,
-                    total_count,
-                    impact_score_result or 0.0,
-                )
-
-                return {
-                    DIMENSION_VALUE_KEY: DIMENSION_OTHERS_LABEL,
-                    Metrics.COUNT.name: count_val,
-                    Metrics.UNIQUE_COUNT.name: unique_count_val,
-                    DIMENSION_TOTAL_COUNT_KEY: total_count,
-                    DIMENSION_FAILED_COUNT_KEY: failed_count,
-                    DIMENSION_IMPACT_SCORE_KEY: impact_score_result or 0.0,
-                }
-
-            return None
-
-        except Exception as exc:
-            logger.warning(
-                "Failed to recompute 'Others' unique count, will be excluded: %s", exc
-            )
-            logger.debug("Full error details: ", exc_info=True)
-            return None
+        return build_others_metric_expressions

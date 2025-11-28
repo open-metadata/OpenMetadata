@@ -51,11 +51,14 @@ const EntityHeaderTitle = ({
   nameClassName = '',
   displayNameClassName = '',
   isCustomizedView = false,
+  entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
-  const { onCopyToClipBoard } = useClipboard(window.location.href);
+  const { onCopyToClipBoard } = useClipboard(
+    entityUrl ?? globalThis.location.href
+  );
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();

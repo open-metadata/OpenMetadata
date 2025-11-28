@@ -59,6 +59,23 @@
       "type": "string",
       "default": "ODBC Driver 18 for SQL Server"
     },
+    "encrypt": {
+      "title": "Encrypt Connection",
+      "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+      "type": "boolean",
+      "default": false
+    },
+    "trustServerCertificate": {
+      "title": "Trust Server Certificate",
+      "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+      "type": "boolean",
+      "default": false
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL/TLS certificate configuration for client authentication. Provide CA certificate, client certificate, and private key for mutual TLS authentication.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "ingestAllDatabases": {
       "title": "Ingest All Databases",
       "description": "Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.",

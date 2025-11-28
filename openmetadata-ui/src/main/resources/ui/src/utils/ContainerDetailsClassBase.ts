@@ -40,6 +40,7 @@ export interface ContainerDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;

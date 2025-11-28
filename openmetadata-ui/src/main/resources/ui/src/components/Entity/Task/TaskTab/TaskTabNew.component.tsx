@@ -975,7 +975,6 @@ export const TaskTabNew = ({
                 ) : (
                   <OwnerLabel
                     isAssignee
-                    avatarSize={24}
                     hasPermission={shouldEditAssignee}
                     isCompactView={false}
                     owners={taskThread?.task?.assignees}

@@ -14,12 +14,14 @@ Cardinality Distribution Metric definition
 """
 from typing import Any, Dict, Optional
 
-from sqlalchemy import case, column, func, or_
+from sqlalchemy import case, column, desc, func, or_
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
+from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.metrics.window.value_rank import ValueRank
 from metadata.profiler.orm.registry import is_concatenable, is_enum
 from metadata.utils.logger import profiler_logger
 
@@ -82,58 +84,46 @@ class CardinalityDistribution(HybridMetric):
         threshold = self.threshold_percentage * total_count
 
         # Build a cross-database compatible query using CTEs
-        # Step 1: Get value counts
+        # Step 1: Get value counts and ranks
         value_counts_cte = (
             session.query(  # type: ignore
-                col.label("category"), func.count(col).label("category_count")
+                col.label("category"),
+                func.count(col).label("category_count"),
+                ValueRank(col).fn(),
             )
             .select_from(sample)
+            .where(col != None)
             .group_by(col)
             .cte("value_counts")
         )
 
-        # Step 2: Get top categories
-        top_categories_cte = (
-            session.query(value_counts_cte.c.category)  # type: ignore
-            .select_from(value_counts_cte)
-            .order_by(value_counts_cte.c.category_count.desc())
-            .limit(self.min_buckets)
-            .cte("top_categories")
-        )
-
-        # Step 3: Create categorization CTE to avoid complex GROUP BY
-        categorized_cte = (
-            session.query(  # type: ignore
-                case(
+        # step 2: Get categories
+        categories = session.query(  # type: ignore
+            case(
+                [
                     (
                         or_(
-                            value_counts_cte.c.category.in_(
-                                session.query(top_categories_cte.c.category)  # type: ignore
-                            ),
-                            value_counts_cte.c.category_count >= threshold,
+                            value_counts_cte.c["category_count"] >= threshold,
+                            value_counts_cte.c["valueRank"] <= self.min_buckets,
                         ),
-                        value_counts_cte.c.category,
-                    ),
-                    else_="Others",
-                ).label("category_group"),
-                value_counts_cte.c.category_count,
-            )
-            .select_from(value_counts_cte)
-            .cte("categorized")
-        )
+                        value_counts_cte.c["category"],
+                    )
+                ],
+                else_="Others",
+            ).label("category"),
+            value_counts_cte.c["category_count"],
+        ).cte("categories")
 
-        # Step 4: Final aggregation with simple GROUP BY
-        query = (
-            session.query(  # type: ignore
-                categorized_cte.c.category_group,
-                func.sum(categorized_cte.c.category_count).label("total_count"),
+        # Step 3: Final aggregation with simple GROUP BY
+        rows = (
+            session.query(
+                categories.c["category"],
+                Sum(categories.c["category_count"]).fn(),
             )
-            .select_from(categorized_cte)
-            .group_by(categorized_cte.c.category_group)
-            .order_by(func.sum(categorized_cte.c.category_count).desc())
-        )
-
-        rows = query.all()
+            .select_from(categories)
+            .group_by(categories.c["category"])
+            .order_by(desc("sum"))
+        ).all()
 
         if rows:
             return {

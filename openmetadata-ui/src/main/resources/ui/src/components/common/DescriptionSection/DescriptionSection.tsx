@@ -129,10 +129,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   }, [checkIfTextIsTruncated]);
 
   const canShowEditButton =
-    showEditButton &&
-    hasPermission &&
-    !isEditDescription &&
-    onDescriptionUpdate;
+    showEditButton && hasPermission && onDescriptionUpdate;
 
   if (!description?.trim()) {
     return (
@@ -155,7 +152,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         </div>
         <div className="description-content">
           <span className="no-data-placeholder">
-            {t('label.no-data-found')}
+            {t('label.no-entity-added', {
+              entity: t('label.description-lowercase'),
+            })}
           </span>
           <ModalWithMarkdownEditor
             header={t('label.edit-entity', { entity: t('label.description') })}

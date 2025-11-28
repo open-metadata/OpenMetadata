@@ -55,7 +55,7 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT = 'dataInsight',
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
-  ALERT = 'alert',
+  ALERTS = 'alerts',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',

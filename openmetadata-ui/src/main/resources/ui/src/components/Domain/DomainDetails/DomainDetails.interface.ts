@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTabs } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface DomainDetailsProps {
@@ -20,4 +21,22 @@ export interface DomainDetailsProps {
   isFollowing?: boolean;
   isFollowingLoading?: boolean;
   handleFollowingClick?: () => void;
+  /**
+   * Optional override for the active tab when embedding DomainDetails outside of routed pages.
+   */
+  activeTab?: EntityTabs;
+  /**
+   * Handler invoked when active tab changes in embedded scenarios.
+   */
+  onActiveTabChange?: (tab: EntityTabs) => void;
+  /**
+   * Optional override for the domain FQN when routing context is not available.
+   */
+  domainFqnOverride?: string;
+  /**
+   * Optional navigation handler to intercept internal navigations triggered by the component.
+   */
+  onNavigate?: (path: string) => void;
+  refreshDomains?: () => void;
+  isTreeView?: boolean;
 }

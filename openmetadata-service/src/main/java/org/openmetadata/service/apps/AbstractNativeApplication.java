@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
@@ -271,7 +272,11 @@ public class AbstractNativeApplication implements NativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
-    App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App jobApp =
+        appRepository.getByName(
+            null, appName, appRepository.getFields("bot"), Include.NON_DELETED, true);
+    ;
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(
