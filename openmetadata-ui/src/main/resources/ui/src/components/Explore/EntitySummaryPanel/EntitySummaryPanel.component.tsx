@@ -77,6 +77,10 @@ export default function EntitySummaryPanel({
   highlights,
   isSideDrawer = false,
   panelPath,
+  upstreamDepth,
+  downstreamDepth,
+  pipelineViewMode,
+  nodesPerLayer,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -255,10 +259,10 @@ export default function EntitySummaryPanel({
         fqn,
         entityType,
         config: {
-          upstreamDepth: 1,
-          downstreamDepth: 1,
-          nodesPerLayer: 50,
-          pipelineViewMode: PipelineViewMode.Node,
+          upstreamDepth: upstreamDepth ?? 1,
+          downstreamDepth: downstreamDepth ?? 1,
+          nodesPerLayer: nodesPerLayer ?? 50,
+          pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
         },
       });
       setLineageData(response);

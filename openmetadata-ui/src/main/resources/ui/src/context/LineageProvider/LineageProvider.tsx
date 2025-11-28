@@ -1074,6 +1074,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setIsEditMode((pre) => !pre);
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
+    setSelectedEdge(undefined);
     setIsDrawerOpen(false);
   }, []);
 
@@ -1923,8 +1924,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
                   })}>
                   <EntitySummaryPanel
                     isSideDrawer
+                    downstreamDepth={lineageConfig.downstreamDepth}
                     entityDetails={{ details: selectedNode }}
                     handleClosePanel={onCloseDrawer}
+                    nodesPerLayer={lineageConfig.nodesPerLayer}
+                    pipelineViewMode={lineageConfig.pipelineViewMode}
+                    upstreamDepth={lineageConfig.upstreamDepth}
                   />
                 </div>
               </>

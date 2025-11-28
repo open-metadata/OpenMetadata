@@ -172,6 +172,32 @@ const renderObjectValue = (
   return JSON.stringify(objVal);
 };
 
+const renderObjectPropertyValue = (
+  val: unknown,
+  propertyTypeName: string | undefined,
+  t: TFunction
+) => {
+  const objVal = val as Record<string, unknown>;
+
+  if (propertyTypeName === 'entityReferenceList' && Array.isArray(val)) {
+    return renderEntityReferenceList(val as EntityReference[]);
+  }
+
+  if (propertyTypeName === 'entityReference' && isEntityReference(objVal)) {
+    return renderEntityReferenceSingle(val as EntityReference);
+  }
+
+  if (propertyTypeName === 'enum' && Array.isArray(val)) {
+    return renderEnumValues(val as string[]);
+  }
+
+  if (Array.isArray(val)) {
+    return val.join(', ');
+  }
+
+  return renderObjectValue(objVal, propertyTypeName, t);
+};
+
 interface CustomPropertyValueRendererProps {
   value: unknown;
   property: CustomProperty;
@@ -195,32 +221,8 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
     }
 
     if (typeof val === 'object') {
-      const objVal = val as Record<string, unknown>;
-
-      if (propertyTypeName === 'entityReferenceList' && Array.isArray(val)) {
-        return renderEntityReferenceList(val as EntityReference[]);
-      }
-
-      if (propertyTypeName === 'entityReference' && isEntityReference(objVal)) {
-        return renderEntityReferenceSingle(val as EntityReference);
-      }
-
-      if (propertyTypeName === 'enum' && Array.isArray(val)) {
-        return renderEnumValues(val as string[]);
-      }
-
-      if (Array.isArray(val)) {
-        return val.join(', ');
-      }
-
-      return renderObjectValue(objVal, propertyTypeName, t);
+      return renderObjectPropertyValue(val, propertyTypeName, t);
     }
 
-    return (
-      <>
-        {typeof val === 'object' && val !== null
-          ? JSON.stringify(val)
-          : String(val)}
-      </>
-    );
+    return <>{String(val)}</>;
   };
