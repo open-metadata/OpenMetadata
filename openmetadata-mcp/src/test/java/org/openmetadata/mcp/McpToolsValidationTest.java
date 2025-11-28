@@ -496,6 +496,13 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
                 assertThat(r.has("name")).isTrue();
                 assertThat(r.has("fullyQualifiedName")).isTrue();
                 assertThat(r.has("entityType")).isTrue();
+
+                // Always validate deleted field is present
+                assertThat(r.has("deleted"))
+                    .withFailMessage(
+                        "Missing 'deleted' field in search result for: " + r.get("name"))
+                    .isTrue();
+
                 matchingEntities.add(r.get("name").asText());
               });
 
@@ -622,5 +629,114 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     assertThat(lineageData.has("upstreamEdges")).isTrue();
     assertThat(lineageData.has("downstreamEdges")).isTrue();
     System.out.println("✓ Lineage response contains proper lineage graph structure");
+  }
+
+  @Test
+  @Order(10)
+  void testSearchMetadataIncludesDeletedField() throws Exception {
+    System.out.println("Testing deleted field presence in search responses...");
+
+    // Step 1: Verify active table has deleted field set to false
+    Map<String, Object> searchActive =
+        McpTestUtils.createSearchMetadataToolCall("mcp_test_table", 5, Entity.TABLE);
+    JsonNode activeResult = executeToolCall(searchActive);
+    validateDeletedFieldPresence(activeResult, false);
+    System.out.println("✓ Active table has deleted=false");
+
+    // Step 2: Soft-delete the test table (following TableResourceTest pattern)
+    UUID tableId = testTable.getId();
+    TestUtils.delete(getResource("tables/" + tableId), Table.class, ADMIN_AUTH_HEADERS);
+    System.out.println("✓ Soft-deleted test table");
+
+    // Step 3: Search with include_deleted=true should return deleted table with deleted=true
+    Map<String, Object> searchWithDeleted =
+        createSearchToolCallWithDeletedParam("mcp_test_table", 5, Entity.TABLE, true);
+    JsonNode deletedResult = executeToolCall(searchWithDeleted);
+    validateDeletedFieldPresence(deletedResult, true);
+    System.out.println("✓ Deleted table has deleted=true when include_deleted=true");
+
+    // Step 4: Search without include_deleted should exclude deleted entities
+    Map<String, Object> searchDefault =
+        McpTestUtils.createSearchMetadataToolCall("mcp_test_table", 5, Entity.TABLE);
+    JsonNode defaultResult = executeToolCall(searchDefault);
+    validateNoDeletedEntities(defaultResult);
+    System.out.println("✓ Default search excludes deleted entities");
+
+    System.out.println("✓ deleted field correctly included in all search responses");
+  }
+
+  // Helper: Create search call with include_deleted parameter
+  private Map<String, Object> createSearchToolCallWithDeletedParam(
+      String query, int limit, String entityType, boolean includeDeleted) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("query", query);
+    arguments.put("limit", limit);
+    arguments.put("entity_type", entityType);
+    arguments.put("include_deleted", includeDeleted);
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+
+    return McpTestUtils.createToolCallRequest("search_metadata", arguments);
+  }
+
+  // Validate deleted field is present and has expected value
+  private void validateDeletedFieldPresence(JsonNode result, boolean expectedDeleted)
+      throws Exception {
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+
+    if (content.size() > 0) {
+      JsonNode firstResult = content.get(0);
+      JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+      JsonNode results = response.get("results");
+
+      assertThat(results).isNotNull();
+      assertThat(results.size()).isGreaterThan(0);
+
+      results.forEach(
+          entity -> {
+            // Critical assertion: deleted field must always be present
+            assertThat(entity.has("deleted"))
+                .withFailMessage(
+                    "Missing 'deleted' field for entity: %s (entityType: %s)",
+                    entity.has("name") ? entity.get("name").asText() : "unknown",
+                    entity.has("entityType") ? entity.get("entityType").asText() : "unknown")
+                .isTrue();
+
+            assertThat(entity.get("deleted").asBoolean())
+                .withFailMessage(
+                    "Expected deleted=%s but got deleted=%s for entity: %s",
+                    expectedDeleted,
+                    entity.get("deleted").asBoolean(),
+                    entity.get("name").asText())
+                .isEqualTo(expectedDeleted);
+          });
+    }
+  }
+
+  // Validate that no deleted entities are returned in default search
+  private void validateNoDeletedEntities(JsonNode result) throws Exception {
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+
+    if (content.size() > 0) {
+      JsonNode firstResult = content.get(0);
+      JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+      JsonNode results = response.get("results");
+
+      if (results != null && results.size() > 0) {
+        results.forEach(
+            entity -> {
+              // If deleted field exists, it should be false
+              if (entity.has("deleted")) {
+                assertThat(entity.get("deleted").asBoolean())
+                    .withFailMessage(
+                        "Found soft-deleted entity in default search: %s",
+                        entity.get("name").asText())
+                    .isFalse();
+              }
+            });
+      }
+    }
   }
 }
