@@ -6635,26 +6635,50 @@ public interface CollectionDAO {
       return "entity_extension_time_series";
     }
 
-    @SqlQuery(
-        "SELECT "
-            + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
-            + "  JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) as status, "
-            + "  COUNT(*) as count "
-            + "FROM entity_extension_time_series eets "
-            + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
-            + "WHERE eets.extension = 'pipeline.pipelineStatus' "
-            + "  AND pe.deleted = 0 "
-            + "  AND eets.timestamp >= :startTs "
-            + "  AND eets.timestamp <= :endTs "
-            + "  <pipelineFqnFilter> "
-            + "  <serviceTypeFilter> "
-            + "  <serviceFilter> "
-            + "  <statusFilter> "
-            + "  <domainFilter> "
-            + "  <ownerFilter> "
-            + "  <tierFilter> "
-            + "GROUP BY date_key, status "
-            + "ORDER BY date_key ASC")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
+                + "  JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) as status, "
+                + "  COUNT(*) as count "
+                + "FROM entity_extension_time_series eets "
+                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "  AND pe.deleted = 0 "
+                + "  AND eets.timestamp >= :startTs "
+                + "  AND eets.timestamp <= :endTs "
+                + "  <pipelineFqnFilter> "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "GROUP BY date_key, status "
+                + "ORDER BY date_key ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  DATE(TO_TIMESTAMP(eets.timestamp / 1000)) as date_key, "
+                + "  eets.json->>'executionStatus' as status, "
+                + "  COUNT(*) as count "
+                + "FROM entity_extension_time_series eets "
+                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "  AND pe.deleted = 0 "
+                + "  AND eets.timestamp >= :startTs "
+                + "  AND eets.timestamp <= :endTs "
+                + "  <pipelineFqnFilter> "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "GROUP BY date_key, status "
+                + "ORDER BY date_key ASC",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ExecutionTrendRowMapper.class)
     List<ExecutionTrendRow> getExecutionTrendData(
         @Bind("startTs") Long startTs,
@@ -6667,30 +6691,58 @@ public interface CollectionDAO {
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter);
 
-    @SqlQuery(
-        "SELECT "
-            + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
-            + "  MIN(eets.timestamp) as first_timestamp, "
-            + "  MAX(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as max_runtime, "
-            + "  MIN(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as min_runtime, "
-            + "  AVG(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as avg_runtime, "
-            + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
-            + "FROM entity_extension_time_series eets "
-            + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
-            + "WHERE eets.extension = 'pipeline.pipelineStatus' "
-            + "  AND pe.deleted = 0 "
-            + "  AND eets.timestamp >= :startTs "
-            + "  AND eets.timestamp <= :endTs "
-            + "  AND JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL "
-            + "  <pipelineFqnFilter> "
-            + "  <serviceTypeFilter> "
-            + "  <serviceFilter> "
-            + "  <statusFilter> "
-            + "  <domainFilter> "
-            + "  <ownerFilter> "
-            + "  <tierFilter> "
-            + "GROUP BY date_key "
-            + "ORDER BY date_key ASC")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
+                + "  MIN(eets.timestamp) as first_timestamp, "
+                + "  MAX(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as max_runtime, "
+                + "  MIN(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as min_runtime, "
+                + "  AVG(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as avg_runtime, "
+                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
+                + "FROM entity_extension_time_series eets "
+                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "  AND pe.deleted = 0 "
+                + "  AND eets.timestamp >= :startTs "
+                + "  AND eets.timestamp <= :endTs "
+                + "  AND JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL "
+                + "  <pipelineFqnFilter> "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "GROUP BY date_key "
+                + "ORDER BY date_key ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  DATE(TO_TIMESTAMP(eets.timestamp / 1000)) as date_key, "
+                + "  MIN(eets.timestamp) as first_timestamp, "
+                + "  MAX((eets.json->>'endTime')::bigint - eets.timestamp) as max_runtime, "
+                + "  MIN((eets.json->>'endTime')::bigint - eets.timestamp) as min_runtime, "
+                + "  AVG((eets.json->>'endTime')::bigint - eets.timestamp) as avg_runtime, "
+                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
+                + "FROM entity_extension_time_series eets "
+                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "  AND pe.deleted = 0 "
+                + "  AND eets.timestamp >= :startTs "
+                + "  AND eets.timestamp <= :endTs "
+                + "  AND eets.json->>'endTime' IS NOT NULL "
+                + "  <pipelineFqnFilter> "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "GROUP BY date_key "
+                + "ORDER BY date_key ASC",
+        connectionType = POSTGRES)
     @RegisterRowMapper(RuntimeTrendRowMapper.class)
     List<RuntimeTrendRow> getRuntimeTrendData(
         @Bind("startTs") Long startTs,
@@ -6703,24 +6755,46 @@ public interface CollectionDAO {
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter);
 
-    @SqlQuery(
-        "SELECT "
-            + "  JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) as service_type, "
-            + "  COUNT(*) as pipeline_count "
-            + "FROM pipeline_entity pe "
-            + "LEFT JOIN entity_extension_time_series eets "
-            + "  ON pe.fqnHash = eets.entityFQNHash "
-            + "  AND eets.extension = 'pipeline.pipelineStatus' "
-            + "WHERE pe.deleted = 0 "
-            + "  <serviceTypeFilter> "
-            + "  <serviceFilter> "
-            + "  <statusFilter> "
-            + "  <domainFilter> "
-            + "  <ownerFilter> "
-            + "  <tierFilter> "
-            + "  <startTsFilter> "
-            + "  <endTsFilter> "
-            + "GROUP BY service_type")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) as service_type, "
+                + "  COUNT(*) as pipeline_count "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter> "
+                + "GROUP BY service_type",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  pe.json->>'serviceType' as service_type, "
+                + "  COUNT(*) as pipeline_count "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter> "
+                + "GROUP BY service_type",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ServiceBreakdownRowMapper.class)
     List<ServiceBreakdownRow> getServiceBreakdown(
         @Define("serviceTypeFilter") String serviceTypeFilter,
@@ -6732,25 +6806,48 @@ public interface CollectionDAO {
         @Define("startTsFilter") String startTsFilter,
         @Define("endTsFilter") String endTsFilter);
 
-    @SqlQuery(
-        "SELECT "
-            + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines, "
-            + "  COUNT(DISTINCT CASE WHEN eets.entityFQNHash IS NOT NULL THEN pe.fqnHash END) as active_pipelines, "
-            + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Successful' THEN pe.fqnHash END) as successful_pipelines, "
-            + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Failed' THEN pe.fqnHash END) as failed_pipelines "
-            + "FROM pipeline_entity pe "
-            + "LEFT JOIN entity_extension_time_series eets "
-            + "  ON pe.fqnHash = eets.entityFQNHash "
-            + "  AND eets.extension = 'pipeline.pipelineStatus' "
-            + "WHERE pe.deleted = 0 "
-            + "  <serviceTypeFilter> "
-            + "  <serviceFilter> "
-            + "  <statusFilter> "
-            + "  <domainFilter> "
-            + "  <ownerFilter> "
-            + "  <tierFilter> "
-            + "  <startTsFilter> "
-            + "  <endTsFilter>")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.entityFQNHash IS NOT NULL THEN pe.fqnHash END) as active_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Successful' THEN pe.fqnHash END) as successful_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Failed' THEN pe.fqnHash END) as failed_pipelines "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.entityFQNHash IS NOT NULL THEN pe.fqnHash END) as active_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.json->>'executionStatus' = 'Successful' THEN pe.fqnHash END) as successful_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.json->>'executionStatus' = 'Failed' THEN pe.fqnHash END) as failed_pipelines "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <statusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter>",
+        connectionType = POSTGRES)
     @RegisterRowMapper(PipelineMetricsRowMapper.class)
     PipelineMetricsRow getPipelineMetricsData(
         @Define("serviceTypeFilter") String serviceTypeFilter,
