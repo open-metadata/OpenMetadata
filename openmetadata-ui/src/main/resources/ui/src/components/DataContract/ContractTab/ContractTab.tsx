@@ -20,6 +20,7 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
   deleteContractById,
   getContractByEntityId,
+  getContractByVersion,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -43,6 +44,9 @@ export const ContractTab = () => {
   const { id } = entityData ?? {};
 
   const fetchContract = async () => {
+    if (!id || !entityType) {
+      return;
+    }
     try {
       setIsLoading(true);
       const contract = await getContractByEntityId(id, entityType, [
@@ -82,6 +86,21 @@ export const ContractTab = () => {
     setIsDeleteModalVisible(false);
   };
 
+  const handleVersionChange = async (version: string) => {
+    try {
+      setIsLoading(true);
+      const contractResponse = await getContractByVersion(
+        contract?.id ?? '',
+        version
+      );
+      setContract(contractResponse);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchContract();
   }, [id]);
@@ -113,6 +132,7 @@ export const ContractTab = () => {
                 contract ? DataContractTabMode.EDIT : DataContractTabMode.ADD
               );
             }}
+            onVersionChange={handleVersionChange}
           />
         );
     }

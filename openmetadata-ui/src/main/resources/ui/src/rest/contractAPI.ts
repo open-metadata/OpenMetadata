@@ -23,6 +23,7 @@ import {
   EntityStatus,
 } from '../generated/entity/data/dataContract';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
@@ -137,6 +138,22 @@ export const getAllContractResults = async (
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const getAllContractVersion = async (id: string) => {
+  const response = await APIClient.get<EntityHistory>(
+    `/dataContracts/${id}/versions`
+  );
+
+  return response.data;
+};
+
+export const getContractByVersion = async (id: string, version: string) => {
+  const response = await APIClient.get<DataContract>(
+    `/dataContracts/${id}/versions/${version}`
   );
 
   return response.data;

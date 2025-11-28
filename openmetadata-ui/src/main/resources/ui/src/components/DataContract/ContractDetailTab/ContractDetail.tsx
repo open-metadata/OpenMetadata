@@ -28,6 +28,7 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
+import { ReactComponent as ArrowDownDropdownIcon } from '../../../assets/svg/arrow-down-dropdown.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
@@ -45,6 +46,7 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
+  getAllContractVersion,
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
@@ -78,12 +80,33 @@ const ContractDetail: React.FC<{
   contract?: DataContract | null;
   onEdit: () => void;
   onDelete: () => void;
-}> = ({ contract, onEdit, onDelete }) => {
+  onVersionChange: (version: string) => void;
+}> = ({ contract, onEdit, onDelete, onVersionChange }) => {
   const { t } = useTranslation();
   const [validateLoading, setValidateLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult>();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  const [allContractVersion, setAllContractVersion] = useState<string[]>([]);
+
+  const fetchAllContractVersion = useCallback(async () => {
+    if (!contract?.id) {
+      return;
+    }
+
+    try {
+      const res = await getAllContractVersion(contract.id);
+      const versionList: string[] = res.versions.map((item: string) => {
+        const data = JSON.parse(item);
+
+        return data.version;
+      });
+
+      setAllContractVersion(versionList);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [contract?.version]);
 
   const fetchLatestContractResults = async () => {
     try {
@@ -96,6 +119,15 @@ const ContractDetail: React.FC<{
       showErrorToast(err as AxiosError);
     }
   };
+
+  const versionItemsList = useMemo(() => {
+    return allContractVersion.map((item) => {
+      return {
+        label: item,
+        key: item,
+      };
+    });
+  }, [allContractVersion]);
 
   const schemaDetail = useMemo(() => {
     return pruneEmptyChildren(contract?.schema || []);
@@ -220,6 +252,13 @@ const ContractDetail: React.FC<{
     setMode(e.target.value);
   }, []);
 
+  const handleVersionChange = useCallback(
+    ({ key }: MenuInfo) => {
+      onVersionChange(key);
+    },
+    [onVersionChange]
+  );
+
   const renderDataContractHeader = useMemo(() => {
     if (!contract) {
       return null;
@@ -331,11 +370,22 @@ const ContractDetail: React.FC<{
                 {`${t('label.version')} : `}
               </Typography.Text>
 
-              <StatusBadgeV2
-                className="contract-version-badge"
-                label={String(contract.version)}
-                status={StatusType.Version}
-              />
+              <Dropdown
+                menu={{
+                  items: versionItemsList,
+                  onClick: handleVersionChange,
+                }}
+                trigger={['click']}>
+                <Button className="contract-version-badge" type="text">
+                  <StatusBadgeV2
+                    className="contract-version-badge"
+                    externalIcon={ArrowDownDropdownIcon}
+                    iconPlacement="right"
+                    label={String(contract.version)}
+                    status={StatusType.Version}
+                  />
+                </Button>
+              </Dropdown>
             </div>
 
             <Divider className="self-center vertical-divider" type="vertical" />
@@ -385,6 +435,12 @@ const ContractDetail: React.FC<{
       fetchLatestContractResults();
     }
   }, [contract]);
+
+  useEffect(() => {
+    if (contract?.id) {
+      fetchAllContractVersion();
+    }
+  }, [contract?.id]);
 
   if (!contract) {
     return (
