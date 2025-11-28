@@ -322,7 +322,9 @@ export const removeDomain = async (
     .fill(domain.name);
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
