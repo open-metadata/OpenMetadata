@@ -827,7 +827,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Create glossary term t12, t121, t1211 under t1
     GlossaryTerm t12 = createTerm(g1, t1, "t12");
     GlossaryTerm t121 = createTerm(g1, t12, "t121");
-    createTerm(g1, t121, "t121");
+    createTerm(g1, t121, "t1211");
 
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
