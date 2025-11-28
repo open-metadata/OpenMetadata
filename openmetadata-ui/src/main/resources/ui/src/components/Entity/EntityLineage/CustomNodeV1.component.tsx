@@ -157,7 +157,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     columnsInCurrentPages,
   } = useLineageProvider();
 
-  console.log('columnsInCurrentPages', columnsInCurrentPages);
+  // console.log('columnsInCurrentPages', columnsInCurrentPages);
 
   const {
     label,

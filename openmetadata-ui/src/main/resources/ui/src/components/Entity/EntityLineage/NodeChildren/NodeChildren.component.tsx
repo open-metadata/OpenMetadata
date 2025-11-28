@@ -54,6 +54,9 @@ const CustomPaginatedList = ({
 }: CustomPaginatedListProps) => {
   const ITEMS_PER_PAGE = 5;
   const [page, setPage] = useState(1);
+  const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
+  const [itemsOfCurrentPage, setItemsOfCurrentPage] = useState<string[]>([]);
+
   const { t } = useTranslation();
   const {
     useUpdateNodeInternals,
@@ -80,19 +83,30 @@ const CustomPaginatedList = ({
     (_item, i) => i >= start && i < start + ITEMS_PER_PAGE
   );
 
-  const insidePreviousPageFilteredItems = filteredColumns
-    .filter((_item, i) => i >= start - ITEMS_PER_PAGE && i < start)
-    .filter(Boolean)
-    .map((item) => item.fullyQualifiedName);
-  const insideCurrentPageFilteredItems = filteredColumns
-    .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
-    .filter(Boolean)
-    .map((item) => item.fullyQualifiedName);
+  useEffect(() => {
+    setItemsOfCurrentPage([
+      ...filteredColumns
+        .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
+        .filter(Boolean)
+        .map((item) => item.fullyQualifiedName ?? ''),
+    ]);
+  }, [page]);
 
-  console.log({
-    insidePreviousPageFilteredItems,
-    insideCurrentPageFilteredItems,
-  });
+  useEffect(() => {
+    console.log({
+      itemsOfPreviousPage,
+      itemsOfCurrentPage,
+    });
+  }, [itemsOfPreviousPage, itemsOfCurrentPage]);
+
+  // const itemsOfPreviousPage = filteredColumns
+  //   .filter((_item, i) => i >= start - ITEMS_PER_PAGE && i < start)
+  //   .filter(Boolean)
+  //   .map((item) => item.fullyQualifiedName);
+  // const itemsOfCurrentPage = filteredColumns
+  //   .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
+  //   .filter(Boolean)
+  //   .map((item) => item.fullyQualifiedName);
 
   const outsideCurrentPageItems = paginatedItemsMapped.filter(
     (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
@@ -100,10 +114,12 @@ const CustomPaginatedList = ({
 
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    setItemsOfPreviousPage([...itemsOfCurrentPage]);
     setPage((p) => Math.max(p - 1, 1));
   };
   const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    setItemsOfPreviousPage([...itemsOfCurrentPage]);
     setPage((p) => Math.min(p + 1, count));
   };
 
@@ -111,7 +127,7 @@ const CustomPaginatedList = ({
     // whenever page changes, first remove the current page items from array
     setColumnsInCurrentPages((prevColumns) => {
       const updatedColumns = [...prevColumns].filter(
-        (item) => !insidePreviousPageFilteredItems.includes(item ?? '')
+        (item) => !itemsOfPreviousPage.includes(item ?? '')
       );
 
       return updatedColumns;
@@ -120,7 +136,7 @@ const CustomPaginatedList = ({
     // then add the new page items
     setColumnsInCurrentPages((prevColumns) => {
       const updatedColumns = [...prevColumns];
-      insideCurrentPageFilteredItems.filter(Boolean).forEach((item) => {
+      itemsOfCurrentPage.filter(Boolean).forEach((item) => {
         const column = item ?? '';
         if (!updatedColumns.includes(column)) {
           updatedColumns.push(column);
@@ -139,7 +155,7 @@ const CustomPaginatedList = ({
     // whenever page changes, first remove the current page items from array
     setColumnsInCurrentPages((prevColumns) => {
       const updatedColumns = [...prevColumns].filter(
-        (item) => !insidePreviousPageFilteredItems.includes(item ?? '')
+        (item) => !itemsOfPreviousPage.includes(item ?? '')
       );
 
       return updatedColumns;
@@ -148,7 +164,7 @@ const CustomPaginatedList = ({
     // then add the new page items
     setColumnsInCurrentPages((prevColumns) => {
       const updatedColumns = [...prevColumns];
-      insideCurrentPageFilteredItems.filter(Boolean).forEach((item) => {
+      itemsOfCurrentPage.filter(Boolean).forEach((item) => {
         const column = item ?? '';
         if (!updatedColumns.includes(column)) {
           updatedColumns.push(column);
