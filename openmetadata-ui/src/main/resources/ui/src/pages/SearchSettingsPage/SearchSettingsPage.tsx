@@ -341,7 +341,7 @@ const SearchSettingsPage = () => {
             {globalSettings.map(({ key, label, max, min }) => (
               <Col className="global-setting-card" key={key}>
                 <GlobalSettingItem
-                  label={label}
+                  label={t(label)}
                   max={max}
                   min={min}
                   value={searchConfig?.globalSettings?.[key] ?? 0}

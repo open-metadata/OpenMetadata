@@ -14,14 +14,12 @@
 import { Steps } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
-import { translateLabel } from '../../../../../utils/i18next/LocalUtil';
 import './ingestion-stepper.style.less';
 
 type Props = {
   steps: Array<{
     name: string;
     step: number;
-    nameData?: Record<string, string | number | boolean>;
   }>;
   activeStep: number;
   excludeSteps?: Array<number>;
@@ -52,7 +50,7 @@ const IngestionStepper = ({
               />
             ),
             key: step.name,
-            title: translateLabel(step.name, step.nameData),
+            title: step.name,
           };
         }),
     [steps, activeStep, excludeSteps]

@@ -30,6 +30,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import { translateLabel } from '../../../../utils/i18next/LocalUtil';
 import {
   getDefaultFilterPropertyValues,
   getSuccessMessage,
@@ -101,6 +102,15 @@ const AddIngestion = ({
         isEditMode,
       }),
     [pipelineType, serviceCategory, data, serviceData, isEditMode]
+  );
+
+  const translatedSteps = useMemo(
+    () =>
+      STEPS_FOR_ADD_INGESTION.map((step) => ({
+        ...step,
+        name: translateLabel(step.name, step.nameData),
+      })),
+    []
   );
 
   // lazy initialization to initialize the data only once
@@ -317,7 +327,7 @@ const AddIngestion = ({
       <IngestionStepper
         activeStep={activeIngestionStep}
         excludeSteps={[]}
-        steps={STEPS_FOR_ADD_INGESTION}
+        steps={translatedSteps}
       />
 
       <div className="p-t-lg">

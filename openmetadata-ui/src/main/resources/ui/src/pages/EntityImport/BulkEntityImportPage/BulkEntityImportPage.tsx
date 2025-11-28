@@ -83,6 +83,15 @@ const BulkEntityImportPage = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
+
+  const translatedSteps = useMemo(
+    () =>
+      ENTITY_IMPORT_STEPS.map((step) => ({
+        ...step,
+        name: t(step.name),
+      })),
+    [t]
+  );
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
     []
@@ -513,7 +522,7 @@ const BulkEntityImportPage = () => {
               <TitleBreadcrumb titleLinks={breadcrumbList} />
             </Col>
             <Col span={24}>
-              <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
+              <Stepper activeStep={activeStep} steps={translatedSteps} />
             </Col>
             <Col span={24}>
               {activeAsyncImportJob?.jobId && (
