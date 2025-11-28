@@ -54,7 +54,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
-import { t, translateLabel } from './i18next/LocalUtil';
+import { t, translateWithNestedKeys } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -97,7 +97,7 @@ export const getParseValueFromLocation = (
         label: !customLabel
           ? value
           : t('label.no-entity', {
-              entity: translateLabel(
+              entity: translateWithNestedKeys(
                 dataCategory.label,
                 dataCategory.labelKeyOptions
               ),

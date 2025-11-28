@@ -29,7 +29,7 @@ import { OpenMetadataBaseURLConfiguration } from '../../../generated/configurati
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
-import { translateLabel } from '../../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const UrlConfigurationPage = () => {
@@ -92,7 +92,7 @@ const UrlConfigurationPage = () => {
             <Col>
               <PageHeader
                 data={{
-                  header: translateLabel(
+                  header: translateWithNestedKeys(
                     PAGE_HEADERS.OM_URL_CONFIG.header,
                     PAGE_HEADERS.OM_URL_CONFIG.headerParams
                   ),

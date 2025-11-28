@@ -38,7 +38,7 @@ import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -142,7 +142,7 @@ const CustomEntityDetailV1 = () => {
 
     return {
       header: t(pageHeader.header),
-      subHeader: translateLabel(
+      subHeader: translateWithNestedKeys(
         pageHeader.subHeader,
         pageHeader.subHeaderParams
       ),

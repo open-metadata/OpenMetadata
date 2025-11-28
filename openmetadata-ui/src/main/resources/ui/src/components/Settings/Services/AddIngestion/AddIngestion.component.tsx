@@ -30,7 +30,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
-import { translateLabel } from '../../../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import {
   getDefaultFilterPropertyValues,
   getSuccessMessage,
@@ -108,7 +108,7 @@ const AddIngestion = ({
     () =>
       STEPS_FOR_ADD_INGESTION.map((step) => ({
         ...step,
-        name: translateLabel(step.name, step.nameData),
+        name: translateWithNestedKeys(step.name, step.nameData),
       })),
     []
   );

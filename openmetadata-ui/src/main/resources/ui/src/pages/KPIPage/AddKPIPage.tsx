@@ -47,7 +47,7 @@ import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -176,7 +176,7 @@ const AddKPIPage = () => {
     () =>
       ADD_KPI_BREADCRUMB.map((option) => ({
         ...option,
-        name: translateLabel(option.name, option.nameData),
+        name: translateWithNestedKeys(option.name, option.nameData),
       })),
     [t]
   );

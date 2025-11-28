@@ -30,7 +30,7 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
-import { translateLabel } from '../../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
@@ -121,7 +121,7 @@ const AddRolePage = () => {
     () =>
       ADD_ROLE_PAGE_BREADCRUMB.map((option) => ({
         ...option,
-        name: translateLabel(option.name, option.nameData),
+        name: translateWithNestedKeys(option.name, option.nameData),
       })),
     [t]
   );

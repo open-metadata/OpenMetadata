@@ -57,10 +57,10 @@ export const t = (key: string, options?: Record<string, unknown>): string => {
  * @returns The translated string with all nested translations resolved
  *
  * @example
- * translateLabel('label.entity-type-plural', { entity: 'label.table' })
+ * translateWithNestedKeys('label.entity-type-plural', { entity: 'label.table' })
  * // Translates 'label.table' first, then uses it as parameter for 'label.entity-type-plural'
  */
-export const translateLabel = (
+export const translateWithNestedKeys = (
   label: string,
   params?: Record<string, string | number | boolean>
 ): string => {

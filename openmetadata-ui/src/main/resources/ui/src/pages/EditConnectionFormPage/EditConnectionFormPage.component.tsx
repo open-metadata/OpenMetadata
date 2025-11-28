@@ -42,7 +42,7 @@ import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError, getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
@@ -79,7 +79,7 @@ function EditConnectionFormPage() {
     () =>
       STEPS_FOR_EDIT_SERVICE.map((step) => ({
         ...step,
-        name: translateLabel(step.name, step.nameData),
+        name: translateWithNestedKeys(step.name, step.nameData),
       })),
     []
   );

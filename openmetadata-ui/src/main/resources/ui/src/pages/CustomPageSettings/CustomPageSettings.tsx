@@ -43,7 +43,7 @@ import {
   getCustomizePagePath,
   getSettingPageEntityBreadCrumb,
 } from '../../utils/GlobalSettingsUtils';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';
@@ -176,7 +176,7 @@ export const CustomPageSettings = () => {
         <Col span={18}>
           <PageHeader
             data={{
-              header: translateLabel(
+              header: translateWithNestedKeys(
                 PAGE_HEADERS.CUSTOM_PAGE.header,
                 PAGE_HEADERS.CUSTOM_PAGE.headerParams
               ),

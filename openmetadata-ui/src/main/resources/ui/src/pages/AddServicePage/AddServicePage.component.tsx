@@ -42,7 +42,7 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
-import { translateLabel } from '../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getAddServicePath,
   getServiceDetailsPath,
@@ -88,7 +88,7 @@ const AddServicePage = () => {
     () =>
       STEPS_FOR_ADD_SERVICE.map((step) => ({
         ...step,
-        name: translateLabel(step.name, step.nameData),
+        name: translateWithNestedKeys(step.name, step.nameData),
       })),
     []
   );

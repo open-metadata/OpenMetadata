@@ -82,7 +82,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
-import { translateLabel } from '../../../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
@@ -189,7 +189,7 @@ const AssetsTabs = forwardRef(
     const filterMenu: ItemType[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
-        label: translateLabel(filter.label, filter.labelKeyOptions),
+        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
         onClick: handleMenuClick,
       }));
     }, [filters]);

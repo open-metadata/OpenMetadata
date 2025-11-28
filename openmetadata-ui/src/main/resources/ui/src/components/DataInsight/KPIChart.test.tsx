@@ -24,7 +24,7 @@ jest.mock('../../rest/KpiAPI', () => ({
 
 jest.mock('../../utils/i18next/LocalUtil', () => ({
   t: jest.fn((key: string) => key),
-  translateLabel: jest.fn((key: string, nestedKey?: string) => {
+  translateWithNestedKeys: jest.fn((key: string, nestedKey?: string) => {
     return nestedKey ? `${key}.${nestedKey}` : key;
   }),
   detectBrowserLanguage: jest.fn(() => 'en-US'),
