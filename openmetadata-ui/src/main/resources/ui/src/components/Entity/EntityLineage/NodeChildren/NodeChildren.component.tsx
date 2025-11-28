@@ -33,7 +33,11 @@ import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils'
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getColumnContent } from '../CustomNode.utils';
-import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
+import {
+  EntityChildren,
+  EntityChildrenItem,
+  NodeChildrenProps,
+} from './NodeChildren.interface';
 
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -81,12 +85,34 @@ const CustomPaginatedList = ({
     (_item, i) => i >= start && i < start + ITEMS_PER_PAGE
   );
 
+  const getAllNestedChildrenInFlatArray = (
+    item: EntityChildrenItem
+  ): string[] => {
+    const result: string[] = [];
+
+    if (item.fullyQualifiedName) {
+      result.push(item.fullyQualifiedName);
+    }
+
+    if (
+      'children' in item &&
+      Array.isArray(item.children) &&
+      item.children.length > 0
+    ) {
+      for (const child of item.children) {
+        result.push(...getAllNestedChildrenInFlatArray(child));
+      }
+    }
+
+    return result;
+  };
+
   useEffect(() => {
     setItemsOfCurrentPage([
       ...filteredColumns
         .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
         .filter(Boolean)
-        .map((item) => item.fullyQualifiedName ?? ''),
+        .flatMap((item) => getAllNestedChildrenInFlatArray(item)),
     ]);
   }, [page]);
 
