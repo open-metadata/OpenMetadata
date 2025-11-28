@@ -275,4 +275,4 @@ export const PAGE_HEADERS = {
     subHeader: 'message.define-custom-property-for-entity',
     subHeaderParams: { entity: 'label.worksheet-plural' },
   },
-} as const;
+};

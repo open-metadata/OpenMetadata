@@ -12,7 +12,7 @@
  */
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -88,7 +88,7 @@ const BulkEntityImportPage = () => {
     () =>
       ENTITY_IMPORT_STEPS.map((step) => ({
         ...step,
-        name: t(step.name),
+        name: startCase(t(step.name)),
       })),
     [t]
   );
