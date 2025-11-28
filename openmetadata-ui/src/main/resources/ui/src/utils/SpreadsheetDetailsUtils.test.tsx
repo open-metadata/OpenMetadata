@@ -64,7 +64,7 @@ jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {
 });
 
 jest.mock('./i18next/LocalUtil', () => ({
-  t: jest.fn((key: string) => key),
+  t: (key: string) => key,
 }));
 
 const mockProps: SpreadsheetDetailPageTabProps = {

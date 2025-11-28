@@ -60,7 +60,7 @@ jest.mock(
 );
 
 jest.mock('./i18next/LocalUtil', () => ({
-  t: jest.fn((key: string) => key),
+  t: (key: string) => key,
 }));
 
 const mockProps: WorksheetDetailPageTabProps = {

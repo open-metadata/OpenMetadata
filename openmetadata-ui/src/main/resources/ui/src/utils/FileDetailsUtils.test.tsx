@@ -49,7 +49,7 @@ jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
 }));
 
 jest.mock('./i18next/LocalUtil', () => ({
-  t: jest.fn((key: string) => key),
+  t: (key: string) => key,
 }));
 
 jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {

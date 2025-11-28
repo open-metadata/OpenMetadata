@@ -20,7 +20,6 @@ jest.mock('../../utils/i18next/LocalUtil', () => ({
   default: {
     t: (key: string) => key,
   },
-  t: jest.fn((key: string) => key),
 }));
 
 jest.mock('../Domain/DomainDetailPage/DomainDetailPage.component', () => {
