@@ -41,7 +41,7 @@ const DataAssetsTab = () => {
             type: t('label.data-asset'),
           })}
           subHeader={t('message.field-insight', {
-            field: 'label.description-lowercase',
+            field: t('label.description-lowercase'),
           })}
           type={SystemChartType.PercentageOfDataAssetWithDescription}
         />

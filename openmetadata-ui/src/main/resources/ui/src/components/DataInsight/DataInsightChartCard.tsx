@@ -25,7 +25,7 @@ import {
   startCase,
   toLower,
 } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
@@ -65,8 +65,8 @@ import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface DataInsightChartCardProps {
   type: SystemChartType;
-  header: string;
-  subHeader: string;
+  header: ReactNode;
+  subHeader: ReactNode;
   listAssets?: boolean;
 }
 
@@ -454,7 +454,9 @@ export const DataInsightChartCard = ({
           <PageHeader
             data={{
               header,
-              subHeader,
+              subHeader: t('message.field-insight', {
+                field: t('label.description-lowercase'),
+              }),
             }}
           />
         }>
