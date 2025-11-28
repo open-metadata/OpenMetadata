@@ -97,6 +97,7 @@ export const CustomEdge = ({
     dataQualityLineage,
     dqHighlightedEdges,
     selectedColumn,
+    columnsInCurrentPages,
   } = useLineageProvider();
 
   const theme = useTheme();
@@ -153,6 +154,18 @@ export const CustomEdge = ({
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
+  const areBothColumnHandlesPresentInCurrentPages = useMemo(() => {
+    const decodedHandles = getColumnSourceTargetHandles({
+      sourceHandle,
+      targetHandle,
+    });
+
+    return (
+      columnsInCurrentPages.includes(decodedHandles.sourceHandle ?? '') &&
+      columnsInCurrentPages.includes(decodedHandles.targetHandle ?? '')
+    );
+  }, [columnsInCurrentPages, sourceHandle, targetHandle]);
+
   // Calculate edge style with memoization
   const updatedStyle = useMemo(() => {
     const isNodeTraced =
@@ -182,7 +195,7 @@ export const CustomEdge = ({
         }
       } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
         display = 'block';
-        if (sourceX < 0 || sourceY < 0 || targetX < 0 || targetY < 0) {
+        if (!areBothColumnHandlesPresentInCurrentPages) {
           display = 'none';
         }
       } else {
