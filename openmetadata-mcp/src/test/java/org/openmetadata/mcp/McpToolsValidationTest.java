@@ -647,11 +647,7 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
 
     Table deletionTestTable =
         TestUtils.post(
-            getResource("tables"),
-            createDeletionTestTable,
-            Table.class,
-            201,
-            ADMIN_AUTH_HEADERS);
+            getResource("tables"), createDeletionTestTable, Table.class, 201, ADMIN_AUTH_HEADERS);
 
     System.out.println("✓ Created dedicated deletion test table: " + deletionTestTableName);
 
