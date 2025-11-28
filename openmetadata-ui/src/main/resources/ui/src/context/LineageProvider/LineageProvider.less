@@ -44,9 +44,11 @@
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+  visibility: hidden;
 
   &.panel-open {
     transform: translateX(0);
     pointer-events: auto;
+    visibility: visible;
   }
 }
