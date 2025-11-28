@@ -414,7 +414,9 @@ class OMetaESTest(TestCase):
                                 "must": [
                                     {
                                         "term": {
-                                            "service.name.keyword": self.service_entity.name.root
+                                            "service.name.keyword": (
+                                                self.service_entity.name.root
+                                            )
                                         }
                                     },
                                 ]
@@ -463,7 +465,13 @@ class OMetaESTest(TestCase):
             "paginating_table_4",
         ]
 
-        # sorting by _score should be supported.
+        # Sorting by _score should be supported without deserialization
+        # errors. This tests the fix for the _score bug where ES returns
+        # [float_score, fqn_value] instead of [fqn_value], which caused
+        # the HitsModel.sort field to fail validation.
+        # Note: With a term filter (not a search query), all items have
+        # the same _score, so we verify the operation succeeds and returns
+        # all items, not score ordering.
         assets = list(
             self.metadata.paginate_es(
                 entity=Table, query_filter=query_filter, size=2, sort_field="_score"
@@ -474,10 +482,39 @@ class OMetaESTest(TestCase):
             for asset in assets
             if asset.name.root.startswith("paginating_table_")
         ]
-        assert returned_table_names == [
-            "paginating_table_0",
-            "paginating_table_1",
-            "paginating_table_2",
-            "paginating_table_3",
-            "paginating_table_4",
-        ]
+        # Verify all 5 tables are returned (operation didn't crash)
+        assert len(returned_table_names) == 5
+
+    def test_paginate_invalid_sort_order(self):
+        """Test that invalid sort_order raises ValueError"""
+        query_filter_obj = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "term": {
+                                            "service.name.keyword": (
+                                                self.service_entity.name.root
+                                            )
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+        query_filter = json.dumps(query_filter_obj)
+
+        with pytest.raises(ValueError, match="sort_order must be 'asc' or 'desc'"):
+            list(
+                self.metadata.paginate_es(
+                    entity=Table,
+                    query_filter=query_filter,
+                    sort_order="invalid",
+                )
+            )

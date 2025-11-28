@@ -356,7 +356,27 @@ class ESMixin(Generic[T]):
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
     ) -> Iterator[ESResponse]:
-        """Paginate through the ES results, ignoring individual errors"""
+        """
+        Paginate through the ES results, ignoring individual errors.
+
+        Args:
+            entity: The entity type to paginate
+            query_filter: Optional ES query filter in JSON format
+            size: Number of results per page (default: 100)
+            include_fields: Optional list of fields to include in ES response (optimization)
+            sort_field: Field to sort by (default: "fullyQualifiedName").
+                       Special field "_score" is supported for relevance sorting.
+            sort_order: Sort order, either "asc" or "desc" (default: "desc")
+
+        Yields:
+            ESResponse objects containing paginated results
+
+        Raises:
+            ValueError: If sort_order is not "asc" or "desc"
+        """
+        if sort_order not in ("asc", "desc"):
+            raise ValueError(f"sort_order must be 'asc' or 'desc', got '{sort_order}'")
+
         after: Optional[str] = None
         error_pages = 0
         query = functools.partial(
@@ -400,6 +420,22 @@ class ESMixin(Generic[T]):
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
     ) -> Iterator[T]:
+        """
+        Paginate through Elasticsearch results and fetch full entities from the API.
+
+        Args:
+            entity: The entity type to paginate
+            query_filter: Optional ES query filter in JSON format
+            size: Number of results per page (default: 100)
+            fields: Optional list of fields to fetch from the API for each entity
+            sort_field: Field to sort by (default: "fullyQualifiedName").
+                       Must be an indexed ES field. Special field "_score" is supported
+                       for relevance-based sorting.
+            sort_order: Sort order, either "asc" or "desc" (default: "desc")
+
+        Yields:
+            Full entity objects fetched from the OpenMetadata API
+        """
         for response in self._paginate_es_internal(
             entity, query_filter, size, sort_order=sort_order, sort_field=sort_field
         ):
