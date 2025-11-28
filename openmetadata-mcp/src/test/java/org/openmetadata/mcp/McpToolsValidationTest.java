@@ -706,9 +706,7 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
             assertThat(entity.get("deleted").asBoolean())
                 .withFailMessage(
                     "Expected deleted=%s but got deleted=%s for entity: %s",
-                    expectedDeleted,
-                    entity.get("deleted").asBoolean(),
-                    entity.get("name").asText())
+                    expectedDeleted, entity.get("deleted").asBoolean(), entity.get("name").asText())
                 .isEqualTo(expectedDeleted);
           });
     }
