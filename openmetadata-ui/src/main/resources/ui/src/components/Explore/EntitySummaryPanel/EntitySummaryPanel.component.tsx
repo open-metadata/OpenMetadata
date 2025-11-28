@@ -259,6 +259,7 @@ export default function EntitySummaryPanel({
         fqn,
         entityType,
         config: {
+          // When called from lineage view, the parent component passes the user's configured depths.
           upstreamDepth: upstreamDepth ?? 1,
           downstreamDepth: downstreamDepth ?? 1,
           nodesPerLayer: nodesPerLayer ?? 50,

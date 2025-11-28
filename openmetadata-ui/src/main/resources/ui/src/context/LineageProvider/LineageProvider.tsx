@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Drawer } from '@mui/material';
 import { Home02 } from '@untitledui/icons';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
@@ -149,7 +150,6 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
-import './LineageProvider.less';
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -1890,51 +1890,42 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
-        {!isEditMode &&
-          (selectedEdge ? (
-            <EdgeInfoDrawer
-              hasEditAccess
-              edge={selectedEdge} // handle this access
-              nodes={nodes}
-              visible={isDrawerOpen}
-              onClose={onCloseDrawer}
-              onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+        {!isEditMode && selectedEdge && (
+          <EdgeInfoDrawer
+            hasEditAccess
+            edge={selectedEdge}
+            nodes={nodes}
+            visible={isDrawerOpen}
+            onClose={onCloseDrawer}
+            onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+          />
+        )}
+
+        {!isEditMode && !isEmpty(selectedNode) && (
+          <Drawer
+            anchor="right"
+            className="lineage-entity-panel"
+            data-testid="lineage-entity-panel"
+            open={isDrawerOpen && !selectedEdge}
+            sx={{
+              zIndex: 999,
+              '& .MuiDrawer-paper': {
+                width: 576,
+              },
+            }}
+            transitionDuration={300}
+            onClose={onCloseDrawer}>
+            <EntitySummaryPanel
+              isSideDrawer
+              downstreamDepth={lineageConfig.downstreamDepth}
+              entityDetails={{ details: selectedNode }}
+              handleClosePanel={onCloseDrawer}
+              nodesPerLayer={lineageConfig.nodesPerLayer}
+              pipelineViewMode={lineageConfig.pipelineViewMode}
+              upstreamDepth={lineageConfig.upstreamDepth}
             />
-          ) : (
-            !isEmpty(selectedNode) && (
-              <>
-                {isDrawerOpen && (
-                  <div
-                    aria-label={t('label.close-panel')}
-                    className="drawer-overlay"
-                    role="button"
-                    tabIndex={0}
-                    onClick={onCloseDrawer}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onCloseDrawer();
-                      }
-                    }}
-                  />
-                )}
-                <div
-                  className={classNames('lineage-entity-panel', {
-                    'panel-open': isDrawerOpen,
-                  })}>
-                  <EntitySummaryPanel
-                    isSideDrawer
-                    downstreamDepth={lineageConfig.downstreamDepth}
-                    entityDetails={{ details: selectedNode }}
-                    handleClosePanel={onCloseDrawer}
-                    nodesPerLayer={lineageConfig.nodesPerLayer}
-                    pipelineViewMode={lineageConfig.pipelineViewMode}
-                    upstreamDepth={lineageConfig.upstreamDepth}
-                  />
-                </div>
-              </>
-            )
-          ))}
+          </Drawer>
+        )}
 
         {showDeleteModal && (
           <Modal
