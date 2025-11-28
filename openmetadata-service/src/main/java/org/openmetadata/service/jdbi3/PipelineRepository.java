@@ -33,6 +33,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
@@ -409,14 +410,90 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
-  public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) {
+  public ResultList<PipelineStatus> getPipelineStatuses(
+      String fqn,
+      Long starTs,
+      Long endTs,
+      Integer limit,
+      String before,
+      String after,
+      String status,
+      String search) {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
             getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
             PipelineStatus.class);
-    return new ResultList<>(
-        pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
+
+    // Apply multi-value status filter
+    if (status != null && !status.isEmpty()) {
+      List<String> statusValues =
+          Arrays.asList(status.split(",")).stream()
+              .map(String::trim)
+              .collect(java.util.stream.Collectors.toList());
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(
+                  ps ->
+                      ps.getExecutionStatus() != null
+                          && statusValues.contains(ps.getExecutionStatus().value()))
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Apply search filter on executionId
+    if (search != null && !search.isEmpty()) {
+      String searchLower = search.toLowerCase();
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(
+                  ps ->
+                      ps.getExecutionId() != null
+                          && ps.getExecutionId().toLowerCase().contains(searchLower))
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Sort by timestamp (descending - newest first)
+    pipelineStatuses.sort((a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
+
+    // Store total count before pagination
+    int total = pipelineStatuses.size();
+
+    // Apply cursor-based pagination
+    if (before != null) {
+      // Pagination going backwards: get records with timestamp < before
+      Long beforeTs = Long.parseLong(before);
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(ps -> ps.getTimestamp() < beforeTs)
+              .collect(java.util.stream.Collectors.toList());
+    } else if (after != null) {
+      // Pagination going forward: get records with timestamp > after
+      Long afterTs = Long.parseLong(after);
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(ps -> ps.getTimestamp() > afterTs)
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Apply limit only if provided
+    List<PipelineStatus> paginatedResults;
+    if (limit != null && limit > 0 && pipelineStatuses.size() > limit) {
+      paginatedResults = pipelineStatuses.subList(0, limit);
+    } else {
+      paginatedResults = pipelineStatuses;
+    }
+
+    // Build cursors for pagination
+    String beforeCursor = null;
+    String afterCursor = null;
+
+    if (!paginatedResults.isEmpty()) {
+      beforeCursor = String.valueOf(paginatedResults.get(0).getTimestamp());
+      afterCursor =
+          String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getTimestamp());
+    }
+
+    return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
   }
 
   // Validate if a given task exists in the pipeline
@@ -1254,8 +1331,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         new ListFilter(filter.getInclude())
             .addQueryParam("service", filter.getQueryParams().get("service"))
             .addQueryParam("serviceType", filter.getQueryParams().get("serviceType"))
-            .addQueryParam("domainId", domainId)
-            .addQueryParam("ownerId", ownerId)
+            .addQueryParam("domainId", domainId != null ? String.format("'%s'", domainId) : null)
+            .addQueryParam("ownerId", ownerId != null ? String.format("'%s'", ownerId) : null)
             .addQueryParam("tier", filter.getQueryParams().get("tier"));
 
     // Use correct base method based on pagination direction

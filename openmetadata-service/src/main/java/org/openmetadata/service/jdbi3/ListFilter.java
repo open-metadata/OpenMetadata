@@ -266,12 +266,12 @@ public class ListFilter extends Filter<ListFilter> {
       // allow passing entities with no domains
       return String.format(
           "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN ('%s') AND er2.relation=10))",
+              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
           entityIdColumn, entityIdColumn, domainId);
     }
 
     return String.format(
-        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN ('%s') AND "
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainId);
   }
