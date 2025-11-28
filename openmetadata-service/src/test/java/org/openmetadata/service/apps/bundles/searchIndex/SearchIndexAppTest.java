@@ -362,7 +362,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     contextData.put("entityType", "table");
     contextData.put("recreateIndex", false);
 
-    lenient().doThrow(searchIndexException).when(mockSink).write(eq(entities), eq(contextData));
+    lenient().doThrow(searchIndexException).when(mockSink).write(any(), any());
 
     SearchIndexApp.IndexingTask<EntityInterface> task =
         new SearchIndexApp.IndexingTask<>("table", resultList, 0);
@@ -1050,6 +1050,206 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertEquals(1000000L, jobData.getPayLoadSize());
   }
 
+  @Test
+  void testProcessedRecordsTracking() throws Exception {
+    searchIndexApp.init(
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+
+    // Initialize stats
+    Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
+
+    Field searchIndexStatsField = SearchIndexApp.class.getDeclaredField("searchIndexStats");
+    searchIndexStatsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    AtomicReference<Stats> searchIndexStats =
+        (AtomicReference<Stats>) searchIndexStatsField.get(searchIndexApp);
+    searchIndexStats.set(initialStats);
+
+    // Create stats with processedRecords
+    StepStats batch1 =
+        new StepStats().withProcessedRecords(12).withSuccessRecords(10).withFailedRecords(2);
+    StepStats batch2 =
+        new StepStats().withProcessedRecords(16).withSuccessRecords(15).withFailedRecords(1);
+
+    searchIndexApp.updateStats("table", batch1);
+    searchIndexApp.updateStats("table", batch2);
+
+    Stats jobStats = searchIndexApp.getJobData().getStats();
+    assertNotNull(jobStats);
+
+    StepStats tableStats = jobStats.getEntityStats().getAdditionalProperties().get("table");
+    assertNotNull(tableStats);
+
+    // Verify processedRecords is tracked
+    assertEquals(28, tableStats.getProcessedRecords()); // 12 + 16
+    assertEquals(25, tableStats.getSuccessRecords()); // 10 + 15
+    assertEquals(3, tableStats.getFailedRecords()); // 2 + 1
+
+    // Verify job-level stats also have processedRecords
+    StepStats overallStats = jobStats.getJobStats();
+    assertNotNull(overallStats);
+    assertEquals(28, overallStats.getProcessedRecords());
+    assertEquals(25, overallStats.getSuccessRecords());
+    assertEquals(3, overallStats.getFailedRecords());
+  }
+
+  @Test
+  void testSyncFinalStatsFromSink() throws Exception {
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+    searchIndexApp.init(testApp);
+    injectMockSink();
+
+    // Initialize job stats with some values (simulating stats accumulated during processing)
+    Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
+    StepStats jobStats = initialStats.getJobStats();
+    jobStats.setProcessedRecords(100);
+    jobStats.setSuccessRecords(100); // Initially all marked as success on submit
+    jobStats.setFailedRecords(0);
+
+    Field searchIndexStatsField = SearchIndexApp.class.getDeclaredField("searchIndexStats");
+    searchIndexStatsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    AtomicReference<Stats> searchIndexStats =
+        (AtomicReference<Stats>) searchIndexStatsField.get(searchIndexApp);
+    searchIndexStats.set(initialStats);
+
+    // Mock sink to return actual stats (some failures occurred async)
+    StepStats sinkStats = new StepStats().withSuccessRecords(95).withFailedRecords(5);
+    when(mockSink.getStats()).thenReturn(sinkStats);
+
+    // Call syncFinalStatsFromSink via reflection
+    var syncMethod = SearchIndexApp.class.getDeclaredMethod("syncFinalStatsFromSink");
+    syncMethod.setAccessible(true);
+    syncMethod.invoke(searchIndexApp);
+
+    // Verify stats were synced from sink
+    Stats finalStats = searchIndexApp.getJobData().getStats();
+    assertNotNull(finalStats);
+    assertEquals(95, finalStats.getJobStats().getSuccessRecords());
+    assertEquals(5, finalStats.getJobStats().getFailedRecords());
+  }
+
+  @Test
+  void testFinalizeReindexRemovesAliasesBeforeDeletion() {
+    // Track the order of operations
+    java.util.List<String> operationOrder = new java.util.ArrayList<>();
+
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "table_search_index_rebuild_old",
+        Set.of("table", "table_search_index", "all", "dataAsset"));
+    aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+    SearchClient client = mock(SearchClient.class);
+
+    lenient().when(client.isClientAvailable()).thenReturn(true);
+    lenient()
+        .when(client.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    when(client.indexExists(anyString()))
+        .thenAnswer(invocation -> aliasState.indexAliases.containsKey(invocation.getArgument(0)));
+    lenient()
+        .when(client.getAliases(anyString()))
+        .thenAnswer(
+            invocation ->
+                new HashSet<>(
+                    aliasState.indexAliases.getOrDefault(invocation.getArgument(0), Set.of())));
+    when(client.listIndicesByPrefix(anyString()))
+        .thenAnswer(
+            invocation -> {
+              String prefix = invocation.getArgument(0);
+              return aliasState.indexAliases.keySet().stream()
+                  .filter(k -> k.startsWith(prefix))
+                  .collect(Collectors.toSet());
+            });
+
+    // Track removeAliases calls
+    doAnswer(
+            invocation -> {
+              String index = invocation.getArgument(0);
+              operationOrder.add("removeAliases:" + index);
+              @SuppressWarnings("unchecked")
+              Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+              aliasState.indexAliases.computeIfPresent(
+                  index,
+                  (k, v) -> {
+                    v.removeAll(aliases);
+                    return v;
+                  });
+              return null;
+            })
+        .when(client)
+        .removeAliases(anyString(), anySet());
+
+    // Track deleteIndex calls
+    doAnswer(
+            invocation -> {
+              String index = invocation.getArgument(0);
+              operationOrder.add("deleteIndex:" + index);
+              aliasState.indexAliases.remove(index);
+              aliasState.deletedIndices.add(index);
+              return null;
+            })
+        .when(client)
+        .deleteIndex(anyString());
+
+    doAnswer(
+            invocation -> {
+              String index = invocation.getArgument(0);
+              operationOrder.add("addAliases:" + index);
+              @SuppressWarnings("unchecked")
+              Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+              aliasState.indexAliases.computeIfAbsent(index, k -> new HashSet<>()).addAll(aliases);
+              return null;
+            })
+        .when(client)
+        .addAliases(anyString(), anySet());
+
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old")
+              .activeIndex("table_search_index_rebuild_old")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(Set.of("all", "dataAsset"))
+              .build();
+
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
+    }
+
+    // Verify removeAliases was called BEFORE deleteIndex for the old index
+    int removeAliasesIndex = -1;
+    int deleteIndexIndex = -1;
+    for (int i = 0; i < operationOrder.size(); i++) {
+      if (operationOrder.get(i).equals("removeAliases:table_search_index_rebuild_old")) {
+        removeAliasesIndex = i;
+      }
+      if (operationOrder.get(i).equals("deleteIndex:table_search_index_rebuild_old")) {
+        deleteIndexIndex = i;
+      }
+    }
+
+    assertTrue(removeAliasesIndex >= 0, "removeAliases should have been called for old index");
+    assertTrue(deleteIndexIndex >= 0, "deleteIndex should have been called for old index");
+    assertTrue(
+        removeAliasesIndex < deleteIndexIndex,
+        "removeAliases should be called BEFORE deleteIndex to prevent alias conflicts");
+  }
+
   private static class AliasState {
     final Map<String, Set<String>> indexAliases = new HashMap<>();
     final Set<String> deletedIndices = new HashSet<>();
@@ -1067,8 +1267,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
           .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
       when(client.indexExists(anyString()))
           .thenAnswer(invocation -> indexAliases.containsKey(invocation.getArgument(0)));
-      lenient()
-          .when(client.getAliases(anyString()))
+      when(client.getAliases(anyString()))
           .thenAnswer(
               invocation ->
                   new HashSet<>(indexAliases.getOrDefault(invocation.getArgument(0), Set.of())));
@@ -1080,6 +1279,15 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
                       .filter(e -> e.getValue().contains(invocation.getArgument(0)))
                       .map(Map.Entry::getKey)
                       .collect(Collectors.toSet()));
+      // Add listIndicesByPrefix mock - needed for alias removal before deletion
+      when(client.listIndicesByPrefix(anyString()))
+          .thenAnswer(
+              invocation -> {
+                String prefix = invocation.getArgument(0);
+                return indexAliases.keySet().stream()
+                    .filter(k -> k.startsWith(prefix))
+                    .collect(Collectors.toSet());
+              });
 
       doAnswer(
               invocation -> {

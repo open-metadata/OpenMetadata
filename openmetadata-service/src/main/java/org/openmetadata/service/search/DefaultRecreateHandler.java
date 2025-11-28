@@ -79,7 +79,40 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         // Remove any null or blank aliases
         aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
 
+        // IMPORTANT: Remove aliases from all old indices BEFORE deleting them
+        // This prevents alias conflicts when OpenSearch still has references to deleted indices
         Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
+        for (String oldIndex : allEntityIndices) {
+          if (oldIndex.equals(stagedIndex)) {
+            LOG.debug(
+                "Skipping alias removal from staged index '{}' for entity '{}'.",
+                stagedIndex,
+                entityType);
+            continue;
+          }
+
+          try {
+            if (searchClient.indexExists(oldIndex)) {
+              Set<String> oldIndexAliases = searchClient.getAliases(oldIndex);
+              if (!oldIndexAliases.isEmpty()) {
+                searchClient.removeAliases(oldIndex, oldIndexAliases);
+                LOG.info(
+                    "Removed aliases {} from old index '{}' for entity '{}'.",
+                    oldIndexAliases,
+                    oldIndex,
+                    entityType);
+              }
+            }
+          } catch (Exception aliasEx) {
+            LOG.warn(
+                "Failed to remove aliases from old index '{}' for entity '{}': {}",
+                oldIndex,
+                entityType,
+                aliasEx.getMessage());
+          }
+        }
+
+        // Now delete old indices (aliases have been removed)
         for (String oldIndex : allEntityIndices) {
           if (oldIndex.equals(stagedIndex)) {
             LOG.debug(
@@ -106,12 +139,14 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
+        // Delete the previously active index (aliases already removed above)
         if (activeIndex != null && searchClient.indexExists(activeIndex)) {
           searchClient.deleteIndex(activeIndex);
           LOG.info(
               "Deleted previously active index '{}' for entity '{}'.", activeIndex, entityType);
         }
 
+        // Now add aliases to the new staged index
         if (!aliasesToAttach.isEmpty()) {
           searchClient.addAliases(stagedIndex, aliasesToAttach);
         }

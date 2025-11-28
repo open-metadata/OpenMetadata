@@ -234,15 +234,19 @@ export interface Stats {
  */
 export interface StepStats {
     /**
-     * Count of Total Failed Records
+     * Count of Records Failed to Index
      */
     failedRecords?: number;
     /**
-     * Count of Total Successfully Records
+     * Count of Records Read from Source and Submitted for Indexing
+     */
+    processedRecords?: number;
+    /**
+     * Count of Records Successfully Indexed
      */
     successRecords?: number;
     /**
-     * Count of Total Failed Records
+     * Count of Total Records in Source (from database)
      */
     totalRecords?: number;
 }
