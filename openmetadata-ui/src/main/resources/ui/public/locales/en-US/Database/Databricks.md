@@ -69,7 +69,7 @@ GRANT SELECT ON TABLE system.access.column_lineage TO `<user_or_service_principa
 ```
 
 $$note
-Access to `system.access` tables typically requires account admin privileges or explicit grants from an account admin.
+Access to `system.access` tables is restricted by default. These grants must be executed by an **account administrator** in the Databricks account console. Regular workspace admins cannot grant access to system tables.
 $$
 
 ### Usage & Lineage from Query History
@@ -80,9 +80,13 @@ $$
 
 The user or service principal needs appropriate permissions to access the SQL History API:
 
-- Access to SQL Warehouses
-- Permission to view query history
-- API access enabled for the authentication method (PAT or OAuth)
+- **SQL Warehouse Access**: The user must have **CAN USE** or higher permission level on the SQL Warehouse (assigned via Databricks UI, API, or Terraform - not via SQL GRANT commands)
+- **Query History Access**: Permission to view query history via the `/api/2.0/sql/history/queries` endpoint
+- **API Authentication**: Valid authentication token (Personal Access Token) or OAuth credentials with API access enabled
+
+$$note
+SQL warehouse permissions are managed through the Databricks UI (SQL Warehouses → Permissions), REST API, or infrastructure-as-code tools. They cannot be granted using SQL GRANT statements.
+$$
 
 
 ### Profiler & Data Quality

@@ -69,7 +69,7 @@ GRANT SELECT ON TABLE system.access.column_lineage TO `<user_or_service_principa
 ```
 
 $$note
-Access to `system.access` tables typically requires account admin privileges or explicit grants from an account admin.
+Access to `system.access` tables is restricted by default. These grants must be executed by an **account administrator** in the Databricks account console. Regular workspace admins cannot grant access to system tables.
 $$
 
 ### Usage & Lineage
@@ -78,13 +78,11 @@ $$note
 To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
-You can find further information on the Unity Catalog connector in the <a href="https://docs.open-metadata.org/connectors/database/unity-catalog" target="_blank">docs</a>.
-
 ### Profiler & Data Quality
 
 Executing the profiler workflow or data quality tests requires the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
-You can find further information on the Databricks connector in the <a href="https://docs.open-metadata.org/connectors/database/databricks" target="_blank">docs</a>.
+You can find further information on the Unity Catalog connector in the <a href="https://docs.open-metadata.org/connectors/database/unity-catalog" target="_blank">docs</a>.
 
 ## Connection Details
 
