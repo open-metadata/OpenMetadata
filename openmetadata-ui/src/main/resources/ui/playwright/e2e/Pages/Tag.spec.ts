@@ -479,12 +479,6 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     try {
       await redirectToHomePage(limitedAccessPage);
 
-      await limitedAccessPage.reload();
-      await limitedAccessPage.waitForLoadState('networkidle');
-      await limitedAccessPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
       await test.step('Add Asset ', async () => {
         await addAssetsToTag(limitedAccessPage, assets, tag, otherAsset);
       });
