@@ -22,11 +22,7 @@ def regex_sub(file_path: str, pattern: str, substitution: str):
     with open(file_path, "r") as f:
         content = f.read()
 
-    updated_content = re.sub(
-        pattern,
-        substitution,
-        content
-    )
+    updated_content = re.sub(pattern, substitution, content)
 
     with open(file_path, "w") as f:
         f.write(updated_content)
@@ -41,7 +37,6 @@ def update_dockerfile_arg(arg, file_path, value):
         file_path,
         rf"(ARG\s+{arg}=).+",
         rf'\1"{value}"',
-
     )
 
 
@@ -55,8 +50,8 @@ def update_docker_tag(args):
 
     regex_sub(
         file_path,
-        r'(image: docker\.getcollate\.io/openmetadata/.*?):.+',
-        rf'\1:{tag}',
+        r"(image: docker\.getcollate\.io/openmetadata/.*?):.+",
+        rf"\1:{tag}",
     )
 
 
@@ -70,11 +65,7 @@ def update_ri_version(args):
     if with_python_version:
         version = get_python_version(version)
 
-    update_dockerfile_arg(
-        arg="RI_VERSION",
-        file_path=file_path,
-        value=version
-    )
+    update_dockerfile_arg(arg="RI_VERSION", file_path=file_path, value=version)
 
 
 def update_pyproject_version(args):
@@ -85,7 +76,6 @@ def update_pyproject_version(args):
 
     version = get_python_version(version)
 
-
     logger.info(f"Updating {file_path} version to {version}\n")
 
     regex_sub(
@@ -95,28 +85,56 @@ def update_pyproject_version(args):
     )
 
 
+def update_openapi_version(args):
+    """Updates OpenAPI version in OpenMetadataApplication.java."""
+
+    version = args.version
+    file_path = "openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication.java"
+
+    logger.info(f"Updating OpenAPI version in {file_path} to {version}\n")
+
+    regex_sub(
+        file_path,
+        r'(version = ")\d+\.\d+\.\d+(")',
+        rf"\g<1>{version}\g<2>",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Update files for release.")
     subparsers = parser.add_subparsers(required=True)
 
     # Update Docker tag
     parser_udt = subparsers.add_parser("update_docker_tag")
-    parser_udt.add_argument("--file-path", "-f", type=str, help="Docker compose file to update.")
+    parser_udt.add_argument(
+        "--file-path", "-f", type=str, help="Docker compose file to update."
+    )
     parser_udt.add_argument("--tag", "-t", type=str, help="Tag to update the file to.")
     parser_udt.set_defaults(func=update_docker_tag)
 
     # Update Dockerfile ARG
     parser_urv = subparsers.add_parser("update_ri_version")
-    parser_urv.add_argument("--file-path", "-f", type=str, help="Dockerfile file to update.")
-    parser_urv.add_argument("--version", "-v", type=str, help="Verision to set for the argument")
+    parser_urv.add_argument(
+        "--file-path", "-f", type=str, help="Dockerfile file to update."
+    )
+    parser_urv.add_argument(
+        "--version", "-v", type=str, help="Verision to set for the argument"
+    )
     parser_urv.add_argument("--with-python-version", action="store_true")
     parser_urv.set_defaults(func=update_ri_version)
 
     # Update pyproject.toml Version
     parser_upv = subparsers.add_parser("update_pyproject_version")
-    parser_upv.add_argument("--file-path", "-f", type=str, help="pyproject.toml file to update.")
+    parser_upv.add_argument(
+        "--file-path", "-f", type=str, help="pyproject.toml file to update."
+    )
     parser_upv.add_argument("--version", "-v", type=str, help="Version to update to")
     parser_upv.set_defaults(func=update_pyproject_version)
+
+    # Update OpenAPI version in OpenMetadataApplication.java
+    parser_uoav = subparsers.add_parser("update_openapi_version")
+    parser_uoav.add_argument("--version", "-v", type=str, help="Version to update to")
+    parser_uoav.set_defaults(func=update_openapi_version)
 
     args = parser.parse_args()
     args.func(args)
