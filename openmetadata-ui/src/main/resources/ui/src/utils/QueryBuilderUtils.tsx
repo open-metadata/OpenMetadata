@@ -853,7 +853,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
