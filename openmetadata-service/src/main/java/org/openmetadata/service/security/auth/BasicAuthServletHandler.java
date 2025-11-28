@@ -17,6 +17,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class BasicAuthServletHandler implements AuthServeletHandler {
@@ -175,6 +176,11 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
     try {
       HttpSession session = req.getSession(false);
       if (session != null) {
+        // Invalidate policy cache for the user before invalidating session
+        String userId = (String) session.getAttribute(SESSION_USER_ID);
+        if (userId != null) {
+          SubjectCache.invalidateUser(userId);
+        }
         session.invalidate();
       }
 
