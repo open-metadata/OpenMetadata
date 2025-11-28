@@ -193,7 +193,9 @@ export const assignDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
 
   await page
@@ -234,7 +236,9 @@ export const assignSingleSelectDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
 
   await page
@@ -275,7 +279,9 @@ export const updateDomain = async (
     .clear();
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -314,7 +320,9 @@ export const removeDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -356,7 +364,9 @@ export const removeSingleSelectDomain = async (
     .clear();
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -397,7 +407,9 @@ export const assignDataProduct = async (
 
   for (const dataProduct of dataProducts) {
     const searchDataProduct = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(dataProduct.name))
     );
 
     await page
