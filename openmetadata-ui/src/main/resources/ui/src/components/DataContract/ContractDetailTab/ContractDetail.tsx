@@ -302,7 +302,7 @@ const ContractDetail: React.FC<{
                   onClick: handleContractAction,
                 }}
                 overlayClassName="contract-action-dropdown"
-                overlayStyle={{ width: 150 }}
+                overlayStyle={{ width: 180 }}
                 placement="bottomRight"
                 trigger={['click']}>
                 <Button
