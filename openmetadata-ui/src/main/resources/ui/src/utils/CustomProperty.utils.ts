@@ -16,6 +16,7 @@ import {
   DEFAULT_DATE_TIME_FORMAT,
   DEFAULT_TIME_FORMAT,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
+  SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
 import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
 import { CustomPropertyConfig } from '../generated/entity/type';
@@ -38,6 +39,20 @@ export const getCustomPropertyDateTimeDefaultFormat = (type: string) => {
     default:
       return '';
   }
+};
+
+export const getCustomPropertyLuxonFormat = (
+  type: string,
+  backendFormat: CustomPropertyConfig['config']
+) => {
+  const format =
+    SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING[
+      backendFormat as string as keyof typeof SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING
+    ] ??
+    backendFormat ??
+    getCustomPropertyDateTimeDefaultFormat(type);
+
+  return format;
 };
 
 export const getCustomPropertyMomentFormat = (
