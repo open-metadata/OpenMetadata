@@ -163,7 +163,7 @@ const EdgeInfoDrawer = ({
 
       return (
         <SectionWithEdit
-          className="summary-panel-card"
+          className="summary-panel-card sql-function-section"
           showEditButton={hasEditAccess}
           title={t('label.sql-function')}
           onEdit={() => {

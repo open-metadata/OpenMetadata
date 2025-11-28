@@ -385,10 +385,11 @@ const verifyPipelineDataInDrawer = async (
     .filter({ hasText: pipelineName });
 
   if (bVisitPipelinePageFromDrawer) {
-    await page.locator('.edge-info-drawer [data-testid="Edge"] a').click();
-    await page.click('[data-testid="lineage"]');
+    await page.getByTestId('edge-header-title').getByText('Edge Information');
+    await page.getByTestId('Source-value').getByText(fromNodeFqn);
+    await page.getByTestId('Target-value').getByText(toNodeFqn);
+
     await fromNode.visitEntityPage(page);
-    await page.click('[data-testid="lineage"]');
   } else {
     await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
   }
