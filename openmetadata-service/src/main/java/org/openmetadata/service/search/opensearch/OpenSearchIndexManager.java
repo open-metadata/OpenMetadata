@@ -309,16 +309,20 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     if (aliases == null || aliases.isEmpty()) {
       return;
     }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               updateBuilder -> {
-                for (String alias : aliases) {
-                  updateBuilder.actions(
-                      actionBuilder ->
-                          actionBuilder.add(
-                              addBuilder -> addBuilder.index(indexName).alias(alias)));
-                }
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
                 return updateBuilder;
               });
 
