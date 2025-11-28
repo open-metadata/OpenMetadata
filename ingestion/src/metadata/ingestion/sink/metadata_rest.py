@@ -23,9 +23,11 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -90,7 +92,6 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.routes import CreateContainerRequest
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import (
@@ -202,6 +203,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateDataContractRequest,
                     CreateTeamRequest,
                     CreateContainerRequest,
+                    CreatePipelineRequest,
                 ),
             )
         ):
@@ -280,7 +282,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return Either(right=result, left=None)
 
         self.status.scanned_all(result.successRequest)
-        self.status.fail(
+        self.status.failed(
             [
                 StackTraceError(
                     name="Entity Buffer",
