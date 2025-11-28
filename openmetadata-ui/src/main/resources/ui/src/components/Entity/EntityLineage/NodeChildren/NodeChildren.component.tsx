@@ -44,13 +44,11 @@ import React from 'react';
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
   filteredColumns: EntityChildren;
-  nodeId?: string;
 }
 
 const CustomPaginatedList = ({
   items,
   filteredColumns,
-  nodeId,
 }: CustomPaginatedListProps) => {
   const ITEMS_PER_PAGE = 5;
   const [page, setPage] = useState(1);
@@ -58,12 +56,7 @@ const CustomPaginatedList = ({
   const [itemsOfCurrentPage, setItemsOfCurrentPage] = useState<string[]>([]);
 
   const { t } = useTranslation();
-  const {
-    useUpdateNodeInternals,
-    columnsInCurrentPages,
-    setColumnsInCurrentPages,
-  } = useLineageProvider();
-  const updateNodeInternals = useUpdateNodeInternals();
+  const { setColumnsInCurrentPages } = useLineageProvider();
 
   const count = Math.ceil(items.length / ITEMS_PER_PAGE);
   const start = (page - 1) * ITEMS_PER_PAGE;
@@ -93,20 +86,20 @@ const CustomPaginatedList = ({
   }, [page]);
 
   useEffect(() => {
-    console.log({
-      itemsOfPreviousPage,
-      itemsOfCurrentPage,
+    setColumnsInCurrentPages((prev) => {
+      const columnsInCurrentPagesUpdated = [...prev].filter(
+        (item) => !itemsOfPreviousPage.includes(item)
+      );
+
+      itemsOfCurrentPage.forEach((item) => {
+        if (!columnsInCurrentPagesUpdated.includes(item)) {
+          columnsInCurrentPagesUpdated.push(item);
+        }
+      });
+
+      return columnsInCurrentPagesUpdated;
     });
   }, [itemsOfPreviousPage, itemsOfCurrentPage]);
-
-  // const itemsOfPreviousPage = filteredColumns
-  //   .filter((_item, i) => i >= start - ITEMS_PER_PAGE && i < start)
-  //   .filter(Boolean)
-  //   .map((item) => item.fullyQualifiedName);
-  // const itemsOfCurrentPage = filteredColumns
-  //   .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
-  //   .filter(Boolean)
-  //   .map((item) => item.fullyQualifiedName);
 
   const outsideCurrentPageItems = paginatedItemsMapped.filter(
     (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
@@ -122,58 +115,6 @@ const CustomPaginatedList = ({
     setItemsOfPreviousPage([...itemsOfCurrentPage]);
     setPage((p) => Math.min(p + 1, count));
   };
-
-  useEffect(() => {
-    // whenever page changes, first remove the current page items from array
-    setColumnsInCurrentPages((prevColumns) => {
-      const updatedColumns = [...prevColumns].filter(
-        (item) => !itemsOfPreviousPage.includes(item ?? '')
-      );
-
-      return updatedColumns;
-    });
-
-    // then add the new page items
-    setColumnsInCurrentPages((prevColumns) => {
-      const updatedColumns = [...prevColumns];
-      itemsOfCurrentPage.filter(Boolean).forEach((item) => {
-        const column = item ?? '';
-        if (!updatedColumns.includes(column)) {
-          updatedColumns.push(column);
-        }
-      });
-
-      return updatedColumns;
-    });
-  }, []);
-
-  useEffect(() => {
-    if (nodeId) {
-      updateNodeInternals(nodeId);
-    }
-
-    // whenever page changes, first remove the current page items from array
-    setColumnsInCurrentPages((prevColumns) => {
-      const updatedColumns = [...prevColumns].filter(
-        (item) => !itemsOfPreviousPage.includes(item ?? '')
-      );
-
-      return updatedColumns;
-    });
-
-    // then add the new page items
-    setColumnsInCurrentPages((prevColumns) => {
-      const updatedColumns = [...prevColumns];
-      itemsOfCurrentPage.filter(Boolean).forEach((item) => {
-        const column = item ?? '';
-        if (!updatedColumns.includes(column)) {
-          updatedColumns.push(column);
-        }
-      });
-
-      return updatedColumns;
-    });
-  }, [page]);
 
   return (
     <>
@@ -544,9 +485,8 @@ const NodeChildren = ({
                 <section className="m-t-md" id="table-columns">
                   <div className="rounded-4 overflow-hidden">
                     <CustomPaginatedList
-                      items={renderedColumns}
                       filteredColumns={filteredColumns}
-                      nodeId={node.id}
+                      items={renderedColumns}
                     />
                   </div>
                 </section>

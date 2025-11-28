@@ -154,10 +154,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
     activeLayer,
     dataQualityLineage,
-    columnsInCurrentPages,
   } = useLineageProvider();
-
-  // console.log('columnsInCurrentPages', columnsInCurrentPages);
 
   const {
     label,
