@@ -147,15 +147,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      <SearchBarComponent
-        containerClassName="searchbar-container"
-        placeholder={t('label.search-for-type', {
-          type: t('label.entity-plural'),
-        })}
-        searchValue={searchText}
-        typingInterval={350}
-        onSearch={setSearchText}
-      />
       <div className="lineage-filter-buttons">
         <Button
           className={`lineage-filter-button ${
@@ -200,7 +191,15 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           </span>
         </Button>
       </div>
-
+      <SearchBarComponent
+        containerClassName="searchbar-container"
+        placeholder={t('label.search-for-type', {
+          type: t('label.entity-plural'),
+        })}
+        searchValue={searchText}
+        typingInterval={350}
+        onSearch={setSearchText}
+      />
       {/* Lineage Items */}
       <div className="lineage-items-list">
         {filteredLineageItems.length > 0 ? (
