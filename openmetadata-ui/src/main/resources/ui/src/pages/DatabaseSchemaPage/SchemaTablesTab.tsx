@@ -107,6 +107,7 @@ function SchemaTablesTab({
     handlePageSizeChange,
     handlePageChange,
     pagingCursor,
+    pageSizeOptions,
   } = usePaging(25, 'assetListPageSize', 500);
 
   const allowEditDisplayNamePermission = useMemo(() => {
@@ -368,6 +369,7 @@ function SchemaTablesTab({
         isNumberBased: Boolean(searchValue),
         pagingHandler: tablePaginationHandler,
         onShowSizeChange: handlePageSizeChange,
+        pageSizeOptions,
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}

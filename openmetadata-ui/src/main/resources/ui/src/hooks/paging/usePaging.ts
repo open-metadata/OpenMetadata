@@ -74,10 +74,7 @@ export const usePaging = (
     const defaultSize = defaultPageSize || PAGE_SIZE_BASE;
 
     // Generate options based on maxPageSize
-    const baseOptions = [10, 15, 25, 50];
-    if (maxPageSize > 50) {
-      baseOptions.push(100);
-    }
+    const baseOptions = [15, 25, 50];
     if (maxPageSize >= 250) {
       baseOptions.push(250);
     }
