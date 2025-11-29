@@ -409,7 +409,7 @@ export const assignDataProduct = async (
     const searchDataProduct = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(dataProduct.name))
+        response.url().includes(encodeURIComponent(domain.name))
     );
 
     await page
