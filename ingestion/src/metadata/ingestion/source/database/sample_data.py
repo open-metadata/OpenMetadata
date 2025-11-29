@@ -1852,6 +1852,7 @@ class SampleDataSource(
         """
         Ingest sample pipeline status records with timestamps evenly distributed across 15 days.
         Maintains original execution durations and ensures valid runtime calculations.
+        Generates executionId if not present in the sample data.
         """
         all_statuses = []
         for status_data in self.pipeline_status:
@@ -1891,12 +1892,18 @@ class SampleDataSource(
                 if duration > 0:
                     status["endTime"] = new_timestamp + duration
                 else:
-                    status["endTime"] = new_timestamp + 300000
+                    status["endTime"] = new_timestamp + random.randint(600000, 16200000)
             elif original_end_time is None and status.get("executionStatus") not in [
                 "Pending",
                 "Skipped",
             ]:
-                status["endTime"] = new_timestamp + 300000
+                status["endTime"] = new_timestamp + random.randint(600000, 16200000)
+
+            if not status.get("executionId"):
+                random_suffix = "".join(
+                    random.choices(string.ascii_lowercase + string.digits, k=6)
+                )
+                status["executionId"] = f"run_{index + 1:03d}_{random_suffix}"
 
             yield Either(
                 right=OMetaPipelineStatus(

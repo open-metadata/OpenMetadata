@@ -87,6 +87,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -99,6 +100,7 @@ import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
@@ -142,6 +144,8 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
@@ -159,6 +163,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -5503,5 +5508,357 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         mapper.convertValue(newestStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
     assertNull(
         retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportExport_TableLevel(TestInfo test) throws IOException {
+    // Create a table with columns
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    Column c2 = new Column().withName("c2").withDataType(BIGINT);
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(listOf(c1, c2))
+            .withTableConstraints(null);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    String tableFqn = table.getFullyQualifiedName();
+
+    // Get test definitions by name
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+    TestDefinition columnUniquenessDef =
+        Entity.getEntityByName(TEST_DEFINITION, "columnValuesToBeUnique", "", Include.NON_DELETED);
+
+    // Create test cases for the table
+    CreateTestCase createTableTest =
+        createRequest(getEntityName(test, 1))
+            .withEntityLink(String.format("<#E::table::%s>", tableFqn))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withDisplayName("Table Row Count Test")
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("10"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    CreateTestCase createColumnTest =
+        createRequest(getEntityName(test, 2))
+            .withEntityLink(String.format("<#E::table::%s::columns::c1>", tableFqn))
+            .withTestDefinition(columnUniquenessDef.getFullyQualifiedName())
+            .withDisplayName("Column Uniqueness Test")
+            .withDescription("Column uniqueness test description");
+
+    TestCase tableTest = createEntity(createTableTest, ADMIN_AUTH_HEADERS);
+    TestCase columnTest = createEntity(createColumnTest, ADMIN_AUTH_HEADERS);
+
+    // Export test cases for the table
+    String exportedCsv = exportCsv(tableFqn);
+    assertNotNull(exportedCsv);
+    assertTrue(exportedCsv.contains(tableTest.getName()));
+    assertTrue(exportedCsv.contains(columnTest.getName()));
+    // CSV quote-escapes values by doubling quotes, so "x" becomes ""x""
+    String csvEscapedTableFqn = tableFqn.replace("\"", "\"\"");
+    String csvEscapedColumnFqn = (tableFqn + ".c1").replace("\"", "\"\"");
+    assertTrue(exportedCsv.contains(csvEscapedTableFqn)); // Should contain table FQN
+    assertTrue(exportedCsv.contains(csvEscapedColumnFqn)); // Should contain column FQN
+
+    // Verify CSV format uses FQN instead of EntityLink
+    assertFalse(exportedCsv.contains("<#E::table::")); // Should not contain EntityLink format
+
+    // Modify the CSV and import it back
+    String modifiedCsv =
+        exportedCsv
+            .replace(tableTest.getDisplayName(), "Modified Table Test")
+            .replace(columnTest.getDescription(), "Modified column test description");
+
+    CsvImportResult result = importCsv(tableFqn, modifiedCsv, false);
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(3, result.getNumberOfRowsPassed() + result.getNumberOfRowsFailed());
+
+    // Verify the changes were applied
+    TestCase updatedTableTest = getEntity(tableTest.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Modified Table Test", updatedTableTest.getDisplayName());
+
+    TestCase updatedColumnTest = getEntity(columnTest.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Modified column test description", updatedColumnTest.getDescription());
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportExport_TestSuiteLevel(TestInfo test) throws IOException {
+    // Create resource test instances
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TableResourceTest tableResourceTest = new TableResourceTest();
+
+    // Create a logical test suite
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest
+            .createRequest(getEntityName(test))
+            .withDescription("Logical test suite for import/export test");
+    TestSuite testSuite = testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // Create tables and test cases
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable1 =
+        tableResourceTest.createRequest(test, 1).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableResourceTest.createRequest(test, 2).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Create test cases in the logical test suite
+    CreateTestCase createTest1 =
+        createRequest(getEntityName(test, 1))
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("10"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    CreateTestCase createTest2 =
+        createRequest(getEntityName(test, 2))
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("5"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("50")));
+
+    TestCase test1 = createEntity(createTest1, ADMIN_AUTH_HEADERS);
+    TestCase test2 = createEntity(createTest2, ADMIN_AUTH_HEADERS);
+
+    // Add test cases to logical test suite using the existing endpoint
+    addTestCasesToLogicalTestSuiteViaAPI(testSuite.getId(), listOf(test1.getId(), test2.getId()));
+
+    // Export test cases from the test suite
+    String exportedCsv = exportCsv(testSuite.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+    assertTrue(exportedCsv.contains(test1.getName()));
+    assertTrue(exportedCsv.contains(test2.getName()));
+
+    // Import modified CSV
+    String modifiedCsv = exportedCsv.replace("10", "20").replace("100", "200");
+    CsvImportResult result = importCsv(testSuite.getFullyQualifiedName(), modifiedCsv, false);
+    LOG.info("Import result status: {}", result.getStatus());
+    LOG.info("Import result CSV:\n{}", result.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, result.getStatus());
+
+    // Verify parameter values were updated
+    TestCase updatedTest1 = getEntity(test1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "20",
+        updatedTest1.getParameterValues().stream()
+            .filter(p -> p.getName().equals("minValue"))
+            .findFirst()
+            .get()
+            .getValue());
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportExport_PlatformWide(TestInfo test) throws IOException {
+    // Create multiple tables and test cases
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable1 =
+        tableResourceTest.createRequest(test, 1).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableResourceTest.createRequest(test, 2).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Create test cases
+    CreateTestCase createTest1 =
+        createRequest(getEntityName(test, 1))
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("10"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    CreateTestCase createTest2 =
+        createRequest(getEntityName(test, 2))
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("5"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("50")));
+
+    TestCase test1 = createEntity(createTest1, ADMIN_AUTH_HEADERS);
+    TestCase test2 = createEntity(createTest2, ADMIN_AUTH_HEADERS);
+
+    // Export all test cases platform-wide using "*"
+    String exportedCsv = exportCsv("*");
+    assertNotNull(exportedCsv);
+
+    // Verify exported CSV contains test cases from multiple tables
+    assertTrue(exportedCsv.contains(test1.getName()));
+    assertTrue(exportedCsv.contains(test2.getName()));
+
+    // Count number of test cases in export (excluding header)
+    long testCaseCount = exportedCsv.lines().count() - 1;
+    assertTrue(testCaseCount >= 2, "Should export at least 2 test cases");
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportCsv_CreateAndUpdate(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable =
+        tableResourceTest.createRequest(test).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Escape quotes in FQN for CSV format (double the quotes and wrap in quotes)
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+
+    // Test 1: Create a new test case via CSV import with tags
+    // Properly escape parameter values for CSV - double the quotes and wrap in quotes
+    String paramValues1 =
+        "\"{\"\"name\"\":\"\"minValue\"\",\"\"value\"\":10};{\"\"name\"\":\"\"maxValue\"\",\"\"value\"\":100}\"";
+    String createCsv =
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n"
+            + String.format(
+                "%s,New Test Case,Initial description,%s,%s,,%s,false,false,,PII.Sensitive,",
+                getEntityName(test),
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN,
+                paramValues1);
+
+    CsvImportResult createResult = importCsv(table.getFullyQualifiedName(), createCsv, false);
+    LOG.info("Create import status: {}", createResult.getStatus());
+    LOG.info("Create import result:\n{}", createResult.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, createResult.getStatus());
+    // Note: NumberOfRowsPassed includes the header row, so 1 data row = 2 total
+    assertEquals(2, createResult.getNumberOfRowsPassed());
+
+    // Verify test case was created with tags
+    String testCaseFqn =
+        FullyQualifiedName.add(
+            table.getFullyQualifiedName(), EntityInterfaceUtil.quoteName(getEntityName(test)));
+    TestCase created = getEntityByName(testCaseFqn, "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(created);
+    assertEquals("New Test Case", created.getDisplayName());
+    assertEquals("Initial description", created.getDescription());
+    assertEquals(2, created.getParameterValues().size());
+    assertNotNull(created.getTags());
+    assertEquals(1, created.getTags().size());
+    assertEquals("PII.Sensitive", created.getTags().get(0).getTagFQN());
+
+    // Test 2: Update the existing test case via CSV import with different tags
+    String paramValues2 =
+        "\"{\"\"name\"\":\"\"minValue\"\",\"\"value\"\":5};{\"\"name\"\":\"\"maxValue\"\",\"\"value\"\":50}\"";
+    String updateCsv =
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n"
+            + String.format(
+                "%s,Updated Test Case,Updated description,%s,%s,,%s,true,false,SELECT * FROM table,PersonalData.Personal,",
+                getEntityName(test),
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN,
+                paramValues2);
+
+    CsvImportResult updateResult = importCsv(table.getFullyQualifiedName(), updateCsv, false);
+    LOG.info("Update import status: {}", updateResult.getStatus());
+    LOG.info("Update import result:\n{}", updateResult.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, updateResult.getStatus());
+    // Note: NumberOfRowsPassed includes the header row, so 1 data row = 2 total
+    assertEquals(2, updateResult.getNumberOfRowsPassed());
+
+    // Verify test case was updated with new tags
+    TestCase updated = getEntityByName(testCaseFqn, "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(updated);
+    assertEquals("Updated Test Case", updated.getDisplayName());
+    assertEquals("Updated description", updated.getDescription());
+    assertEquals(2, updated.getParameterValues().size());
+    assertEquals("5", updated.getParameterValues().get(0).getValue());
+    assertEquals(true, updated.getComputePassedFailedRowCount());
+    assertEquals("SELECT * FROM table", updated.getInspectionQuery());
+    assertNotNull(updated.getTags());
+    assertEquals(1, updated.getTags().size());
+    assertEquals("PersonalData.Personal", updated.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportCsv_DryRun(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable =
+        tableResourceTest.createRequest(test).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Escape quotes in FQN for CSV format (double the quotes and wrap in quotes)
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+    // Headers with * for required fields (name, testDefinition, entityFQN are required)
+    String csv =
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n"
+            + String.format(
+                "%s,Dry run test,Test description,%s,%s,,,false,false,,,",
+                getEntityName(test), tableRowCountDef.getFullyQualifiedName(), entityFQN);
+
+    // Dry run should not create the entity
+    CsvImportResult dryRunResult = importCsv(table.getFullyQualifiedName(), csv, true);
+    if (dryRunResult.getStatus() != org.openmetadata.schema.type.ApiStatus.SUCCESS) {
+      LOG.info("Dry run import status: {}", dryRunResult.getStatus());
+      LOG.info("Dry run abort reason: {}", dryRunResult.getAbortReason());
+      LOG.info("Dry run import result:\n{}", dryRunResult.getImportResultsCsv());
+    }
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, dryRunResult.getStatus());
+    assertTrue(dryRunResult.getDryRun());
+
+    // Verify entity was not created - use FQN which includes entityFQN + test case name
+    String testCaseFqn =
+        FullyQualifiedName.add(
+            table.getFullyQualifiedName(), EntityInterfaceUtil.quoteName(getEntityName(test)));
+    assertThrows(
+        HttpResponseException.class, () -> getEntityByName(testCaseFqn, ADMIN_AUTH_HEADERS));
+
+    // Actual import should create the entity
+    CsvImportResult actualResult = importCsv(table.getFullyQualifiedName(), csv, false);
+    LOG.info("Actual import status: {}", actualResult.getStatus());
+    LOG.info("Actual import result:\n{}", actualResult.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, actualResult.getStatus());
+    assertFalse(actualResult.getDryRun());
+
+    // Verify entity was created
+    TestCase created = getEntityByName(testCaseFqn, ADMIN_AUTH_HEADERS);
+    assertNotNull(created);
+    assertEquals("Dry run test", created.getDisplayName());
+  }
+
+  private void addTestCasesToLogicalTestSuiteViaAPI(UUID testSuiteId, List<UUID> testCaseIds)
+      throws HttpResponseException {
+    CreateLogicalTestCases createLogicalTestCases =
+        new CreateLogicalTestCases().withTestSuiteId(testSuiteId).withTestCaseIds(testCaseIds);
+    WebTarget target = getCollection().path("/logicalTestCases");
+    org.openmetadata.service.util.TestUtils.put(
+        target, createLogicalTestCases, TestSuite.class, OK, ADMIN_AUTH_HEADERS);
   }
 }

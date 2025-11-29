@@ -369,6 +369,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   .id(docId)
                   .refresh(Refresh.True)
                   .scriptedUpsert(true)
+                  .upsert(params)
                   .script(
                       s ->
                           s.inline(
@@ -381,7 +382,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
-    } catch (IOException | OpenSearchException e) {
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        LOG.warn(
+            "Document not found during update for index: {}, docId: {}. The document may not have been indexed yet.",
+            indexName,
+            docId);
+      } else {
+        LOG.error(
+            "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
+      }
+    } catch (IOException e) {
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }

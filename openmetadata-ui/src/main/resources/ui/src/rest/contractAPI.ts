@@ -141,3 +141,240 @@ export const getAllContractResults = async (
 
   return response.data;
 };
+
+// ODCS (Open Data Contract Standard) Import/Export APIs
+
+export interface ODCSDataContract {
+  apiVersion: string;
+  kind: string;
+  id: string;
+  name?: string;
+  version: string;
+  status: string;
+  tenant?: string;
+  domain?: string;
+  dataProduct?: string;
+  tags?: string[];
+  description?: {
+    purpose?: string;
+    limitations?: string;
+    usage?: string;
+  };
+  schema?: ODCSSchemaElement[];
+  quality?: ODCSQualityRule[];
+  support?: ODCSSupportChannel[];
+  price?: ODCSPricing;
+  team?: ODCSTeamMember[];
+  roles?: ODCSRole[];
+  slaProperties?: ODCSSlaProperty[];
+  servers?: ODCSServer[];
+  customProperties?: ODCSCustomProperty[];
+  contractCreatedTs?: string;
+}
+
+export interface ODCSSchemaElement {
+  name: string;
+  physicalName?: string;
+  physicalType?: string;
+  description?: string;
+  businessName?: string;
+  tags?: string[];
+  logicalType?: string;
+  logicalTypeOptions?: Record<string, unknown>;
+  primaryKey?: boolean;
+  primaryKeyPosition?: number;
+  required?: boolean;
+  unique?: boolean;
+  partitioned?: boolean;
+  classification?: string;
+  properties?: ODCSSchemaElement[];
+}
+
+export interface ODCSQualityRule {
+  type?: string;
+  name?: string;
+  description?: string;
+  rule?: string;
+  column?: string;
+  query?: string;
+  engine?: string;
+  dimension?: string;
+  severity?: string;
+}
+
+export interface ODCSSupportChannel {
+  channel: string;
+  url: string;
+  description?: string;
+  tool?: string;
+  scope?: string;
+}
+
+export interface ODCSPricing {
+  priceAmount?: number;
+  priceCurrency?: string;
+  priceUnit?: string;
+}
+
+export interface ODCSTeamMember {
+  username?: string;
+  name?: string;
+  description?: string;
+  role?: string;
+  dateIn?: string;
+  dateOut?: string;
+}
+
+export interface ODCSRole {
+  role: string;
+  description?: string;
+  access?: string;
+  firstLevelApprovers?: string[];
+  secondLevelApprovers?: string[];
+}
+
+export interface ODCSSlaProperty {
+  property: string;
+  value: string;
+  valueExt?: string;
+  unit?: string;
+  element?: string;
+  driver?: string;
+}
+
+export interface ODCSServer {
+  server: string;
+  type: string;
+  description?: string;
+  environment?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  schema?: string;
+}
+
+export interface ODCSCustomProperty {
+  property?: string;
+  value?: string;
+}
+
+/**
+ * Export a data contract to ODCS v3.0.2 JSON format
+ */
+export const exportContractToODCS = async (
+  contractId: string,
+  fields?: string
+): Promise<ODCSDataContract> => {
+  const response = await APIClient.get<ODCSDataContract>(
+    `${BASE_URL}/${contractId}/odcs`,
+    { params: { fields } }
+  );
+
+  return response.data;
+};
+
+/**
+ * Export a data contract to ODCS v3.0.2 YAML format
+ */
+export const exportContractToODCSYaml = async (
+  contractId: string,
+  fields?: string
+): Promise<string> => {
+  const response = await APIClient.get<string>(
+    `${BASE_URL}/${contractId}/odcs/yaml`,
+    {
+      params: { fields },
+      headers: { Accept: 'application/yaml' },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
+
+/**
+ * Export a data contract by FQN to ODCS v3.0.2 JSON format
+ */
+export const exportContractToODCSByFqn = async (
+  fqn: string,
+  fields?: string
+): Promise<ODCSDataContract> => {
+  const response = await APIClient.get<ODCSDataContract>(
+    `${BASE_URL}/name/${fqn}/odcs`,
+    { params: { fields } }
+  );
+
+  return response.data;
+};
+
+/**
+ * Import a data contract from ODCS v3.0.2 JSON format
+ */
+export const importContractFromODCS = async (
+  odcs: ODCSDataContract,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.post<DataContract>(
+    `${BASE_URL}/odcs`,
+    odcs,
+    { params: { entityId, entityType } }
+  );
+
+  return response.data;
+};
+
+/**
+ * Import a data contract from ODCS v3.0.2 YAML format
+ */
+export const importContractFromODCSYaml = async (
+  yamlContent: string,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.post<DataContract>(
+    `${BASE_URL}/odcs/yaml`,
+    yamlContent,
+    {
+      params: { entityId, entityType },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};
+
+/**
+ * Create or update a data contract from ODCS v3.0.2 JSON format
+ */
+export const createOrUpdateContractFromODCS = async (
+  odcs: ODCSDataContract,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.put<DataContract>(`${BASE_URL}/odcs`, odcs, {
+    params: { entityId, entityType },
+  });
+
+  return response.data;
+};
+
+/**
+ * Create or update a data contract from ODCS v3.0.2 YAML format
+ */
+export const createOrUpdateContractFromODCSYaml = async (
+  yamlContent: string,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.put<DataContract>(
+    `${BASE_URL}/odcs/yaml`,
+    yamlContent,
+    {
+      params: { entityId, entityType },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};

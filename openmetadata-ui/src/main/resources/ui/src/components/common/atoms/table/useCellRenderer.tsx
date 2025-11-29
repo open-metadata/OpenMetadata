@@ -12,6 +12,7 @@
  */
 
 import { AvatarGroup, Box, Typography, useTheme } from '@mui/material';
+import { Globe01 } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -156,6 +157,33 @@ export const useCellRenderer = <
           <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
             {EMPTY_VALUE_INDICATOR}
           </Typography>
+        );
+      },
+      domains: (entity: T, column?: ColumnConfig<T>) => {
+        const domains = column?.getValue
+          ? column.getValue(entity)
+          : (entity as Record<string, unknown>)[column?.key || 'domains'];
+
+        if (!domains || domains.length === 0) {
+          return (
+            <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+              {EMPTY_VALUE_INDICATOR}
+            </Typography>
+          );
+        }
+
+        const domain = domains[0];
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Globe01 size={16} style={{ flexShrink: 0 }} />
+            <Typography
+              sx={{
+                fontSize: '0.875rem',
+              }}>
+              {domain.displayName || domain.name}
+            </Typography>
+          </Box>
         );
       },
     }),

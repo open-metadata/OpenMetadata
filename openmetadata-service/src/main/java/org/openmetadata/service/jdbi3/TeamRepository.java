@@ -94,6 +94,7 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1115,6 +1116,8 @@ public class TeamRepository extends EntityRepository<Team> {
       updateParents(original, updated);
       updateChildren(original, updated);
       updatePolicies(original, updated);
+      // Invalidate policy cache when team roles/policies/hierarchy changes
+      SubjectCache.invalidateAll();
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {

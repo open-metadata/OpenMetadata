@@ -8,7 +8,9 @@
     "dbtConfigType": {
       "description": "DBT Config Pipeline type",
       "type": "string",
-      "enum": ["DBT"],
+      "enum": [
+        "DBT"
+      ],
       "default": "DBT"
     }
   },
@@ -44,27 +46,31 @@
       ]
     },
     "searchAcrossDatabases": {
+      "title": "Search Across Database Services",
       "description": "Optional configuration to search across databases for tables or not",
       "type": "boolean",
       "default": false
     },
     "dbtUpdateDescriptions": {
+      "title": "Update Descriptions",
       "description": "Optional configuration to update the description from DBT or not",
       "type": "boolean",
       "default": false
     },
     "dbtUpdateOwners": {
+      "title": "Update Owners",
       "description": "Optional configuration to update the owners from DBT or not",
       "type": "boolean",
       "default": false
     },
     "includeTags": {
+      "title": "Include Tags",
       "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
       "default": true
     },
     "dbtClassificationName": {
-      "title": "dbt Classification Name",
+      "title": "DBT Classification Name",
       "description": "Custom OpenMetadata Classification name for dbt tags.",
       "type": "string",
       "default": "dbtTags"
@@ -73,7 +79,6 @@
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Schema Filter Pattern"
-
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
@@ -98,5 +103,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtConfigSource"]
+  "required": [
+    "dbtConfigSource"
+  ]
 }

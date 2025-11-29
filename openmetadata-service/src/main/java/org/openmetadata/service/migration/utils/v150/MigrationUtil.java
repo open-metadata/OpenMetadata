@@ -109,7 +109,7 @@ public class MigrationUtil {
                 }
               });
     } catch (Exception ex) {
-      LOG.warn("Error running the automator migration ", ex);
+      LOG.warn("Error running the automator migration: {} ", ex.getMessage());
     }
   }
 
@@ -201,7 +201,7 @@ public class MigrationUtil {
                 }
               });
     } catch (Exception e) {
-      LOG.warn("Error running the policy migration ", e);
+      LOG.warn("Error running the policy migration, Message: {} ", e.getMessage());
     }
   }
 
@@ -265,30 +265,29 @@ public class MigrationUtil {
                 }
               });
     } catch (Exception e) {
-      LOG.warn("Error running the test case resolution migration ", e);
+      LOG.warn("Error running the test case resolution migration: {} ", e.getMessage());
     }
   }
 
   static DataInsightSystemChartRepository dataInsightSystemChartRepository;
 
   private static void createChart(String chartName, Object chartObject) {
-    DataInsightCustomChart chart =
-        new DataInsightCustomChart()
-            .withId(UUID.randomUUID())
-            .withName(chartName)
-            .withChartDetails(chartObject)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withUpdatedBy("ingestion-bot")
-            .withDeleted(false)
-            .withIsSystemChart(true);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart()
+              .withId(UUID.randomUUID())
+              .withName(chartName)
+              .withChartDetails(chartObject)
+              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedBy("ingestion-bot")
+              .withDeleted(false)
+              .withIsSystemChart(true);
+      dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(ex.toString());
-      LOG.warn(String.format("Chart %s exists", chart));
+      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
     }
   }
 

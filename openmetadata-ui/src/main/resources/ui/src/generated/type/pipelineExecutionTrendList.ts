@@ -69,6 +69,10 @@ export interface PipelineExecutionTrend {
      */
     pendingCount?: number;
     /**
+     * Number of running pipeline executions on this date
+     */
+    runningCount?: number;
+    /**
      * Number of skipped pipeline executions on this date
      */
     skippedCount?: number;

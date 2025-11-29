@@ -190,7 +190,27 @@ public record SubjectContext(User user, String impersonatedBy) {
 
   // Iterate over all the policies of the team hierarchy the user belongs to
   public Iterator<PolicyContext> getPolicies(List<EntityReference> resourceOwners) {
-    return new UserPolicyIterator(user, resourceOwners, new ArrayList<>());
+    // Get cached user policies (roles + team hierarchy)
+    List<PolicyContext> cachedPolicies = SubjectCache.getPolicies(user.getName());
+
+    // If no resource owners, return cached policies directly
+    if (nullOrEmpty(resourceOwners)) {
+      return cachedPolicies.iterator();
+    }
+
+    // Add resource owner team policies (not cached - resource specific)
+    List<PolicyContext> allPolicies = new ArrayList<>(cachedPolicies);
+
+    // Get all teams visited during user policy loading to avoid duplicates
+    List<UUID> teamsVisited = SubjectCache.getVisitedTeams(user.getName());
+
+    for (EntityReference owner : resourceOwners) {
+      if (owner.getType().equals(Entity.TEAM)) {
+        allPolicies.addAll(SubjectCache.getTeamPoliciesForResource(owner.getId(), teamsVisited));
+      }
+    }
+
+    return allPolicies.iterator();
   }
 
   public List<EntityReference> getTeams() {

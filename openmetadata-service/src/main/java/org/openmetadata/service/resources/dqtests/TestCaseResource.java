@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
@@ -1153,6 +1154,144 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           "You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTestCases",
+      summary = "Export test cases in CSV format",
+      description =
+          "Export test cases in CSV format. You can export test cases at different levels:\n"
+              + "- Table level: Provide table FQN to export test cases for that table\n"
+              + "- Test suite level: Provide test suite FQN to export test cases in that test suite\n"
+              + "- Platform-wide: Use '*' to export all test cases across the platform",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported CSV with test cases",
+            content =
+                @Content(mediaType = "text/plain", schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Name can be table FQN, test suite FQN, or '*' for platform-wide export",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name, false);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportTestCasesAsync",
+      summary = "Export test cases in CSV format asynchronously",
+      description =
+          "Export test cases in CSV format asynchronously. You can export test cases at different levels:\n"
+              + "- Table level: Provide table FQN to export test cases for that table\n"
+              + "- Test suite level: Provide test suite FQN to export test cases in that test suite\n"
+              + "- Platform-wide: Use '*' to export all test cases across the platform",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Export initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Response.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Name can be table FQN, test suite FQN, or '*' for platform-wide export",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importTestCases",
+      summary = "Import test cases from CSV",
+      description =
+          "Import test cases from CSV to create or update test cases. The CSV should follow the test case CSV format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name parameter (currently not used, reserved for future use)",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importTestCasesAsync",
+      summary = "Import test cases from CSV asynchronously",
+      description =
+          "Import test cases from CSV asynchronously to create or update test cases. The CSV should follow the test case CSV format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Response.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name parameter (currently not used, reserved for future use)",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 
   protected static ResourceContextInterface getResourceContext(

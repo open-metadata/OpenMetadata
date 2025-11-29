@@ -338,7 +338,7 @@ $$
 
 
 $$section
-### Search Tables Across Databases $(id="searchAcrossDatabases")
+### Search Tables Across Databases Services $(id="searchAcrossDatabases")
 
 Option to search across database services for tables or not for processing dbt metadata ingestion.
 If this option is enabled, OpenMetadata will first search for tables within the same database service if tables are not found it will search across all database services.

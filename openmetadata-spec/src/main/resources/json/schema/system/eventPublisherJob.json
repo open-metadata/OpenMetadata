@@ -40,6 +40,14 @@
           "description": "Stats for the job",
           "$ref": "#/definitions/stepStats"
         },
+        "readerStats": {
+          "description": "Stats for the reader step (reading from database)",
+          "$ref": "#/definitions/stepStats"
+        },
+        "sinkStats": {
+          "description": "Stats for the sink step (writing to search index)",
+          "$ref": "#/definitions/stepStats"
+        },
         "entityStats": {
           "javaType": "org.openmetadata.schema.system.EntityStats",
           "description": "Stats for different entities. Keys should match entity types",

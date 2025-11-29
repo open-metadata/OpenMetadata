@@ -270,24 +270,23 @@ public class MigrationUtil {
 
   public static void createChart(
       String chartName, Object chartObject, DataInsightCustomChart.ChartType chartType) {
-    DataInsightCustomChart chart =
-        new DataInsightCustomChart()
-            .withId(UUID.randomUUID())
-            .withName(chartName)
-            .withChartDetails(chartObject)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withUpdatedBy("ingestion-bot")
-            .withDeleted(false)
-            .withChartType(chartType)
-            .withIsSystemChart(true);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart()
+              .withId(UUID.randomUUID())
+              .withName(chartName)
+              .withChartDetails(chartObject)
+              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedBy("ingestion-bot")
+              .withDeleted(false)
+              .withChartType(chartType)
+              .withIsSystemChart(true);
+      dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(ex.toString());
-      LOG.warn(String.format("Chart %s exists", chart));
+      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
     }
   }
 

@@ -1,0 +1,814 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/odcs/odcsDataContract.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ODCSDataContract",
+  "description": "Open Data Contract Standard (ODCS) v3.0.2 data contract representation for import/export.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract",
+  "definitions": {
+    "odcsApiVersion": {
+      "description": "ODCS API version.",
+      "type": "string",
+      "enum": ["v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1", "v2.2.0"],
+      "default": "v3.0.2"
+    },
+    "odcsKind": {
+      "description": "Kind of ODCS document.",
+      "type": "string",
+      "enum": ["DataContract"],
+      "default": "DataContract"
+    },
+    "odcsStatus": {
+      "description": "Status of the ODCS data contract.",
+      "type": "string",
+      "enum": ["proposed", "draft", "active", "deprecated", "retired"]
+    },
+    "odcsDescription": {
+      "description": "ODCS description object.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription",
+      "properties": {
+        "purpose": {
+          "description": "Purpose of the data contract.",
+          "type": "string"
+        },
+        "limitations": {
+          "description": "Limitations of the data.",
+          "type": "string"
+        },
+        "usage": {
+          "description": "Usage guidelines for the data.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsAuthoritativeDefinition": {
+      "description": "External reference link.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition",
+      "properties": {
+        "url": {
+          "description": "URL to the authoritative definition.",
+          "type": "string",
+          "format": "uri"
+        },
+        "name": {
+          "description": "Name of the authoritative definition.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type of the reference (e.g., documentation, specification).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsLogicalTypeOptions": {
+      "description": "Type-specific options for schema properties.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions",
+      "properties": {
+        "format": {
+          "description": "Format specification (e.g., date format, string pattern).",
+          "type": "string"
+        },
+        "minimum": {
+          "description": "Minimum value for numeric types or minimum date.",
+          "type": "number"
+        },
+        "maximum": {
+          "description": "Maximum value for numeric types or maximum date.",
+          "type": "number"
+        },
+        "exclusiveMinimum": {
+          "description": "Exclusive minimum value.",
+          "type": "number"
+        },
+        "exclusiveMaximum": {
+          "description": "Exclusive maximum value.",
+          "type": "number"
+        },
+        "minLength": {
+          "description": "Minimum string length.",
+          "type": "integer"
+        },
+        "maxLength": {
+          "description": "Maximum string length.",
+          "type": "integer"
+        },
+        "pattern": {
+          "description": "Regex pattern for string validation.",
+          "type": "string"
+        },
+        "minItems": {
+          "description": "Minimum array items.",
+          "type": "integer"
+        },
+        "maxItems": {
+          "description": "Maximum array items.",
+          "type": "integer"
+        },
+        "uniqueItems": {
+          "description": "Whether array items must be unique.",
+          "type": "boolean"
+        },
+        "multipleOf": {
+          "description": "Value must be multiple of this number.",
+          "type": "number"
+        },
+        "minProperties": {
+          "description": "Minimum object properties.",
+          "type": "integer"
+        },
+        "maxProperties": {
+          "description": "Maximum object properties.",
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsSchemaElement": {
+      "description": "Schema element (object or property).",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement",
+      "properties": {
+        "name": {
+          "description": "Element identifier (required).",
+          "type": "string"
+        },
+        "physicalName": {
+          "description": "Physical storage name.",
+          "type": "string"
+        },
+        "physicalType": {
+          "description": "Database-specific type.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Element documentation.",
+          "type": "string"
+        },
+        "businessName": {
+          "description": "Business terminology.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Categorical assignments.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "authoritativeDefinitions": {
+          "description": "External documentation links.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsAuthoritativeDefinition"
+          }
+        },
+        "customProperties": {
+          "description": "Non-standard attributes.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataGranularityDescription": {
+          "description": "Aggregation level details (for objects).",
+          "type": "string"
+        },
+        "primaryKey": {
+          "description": "Whether this is a primary key (for properties).",
+          "type": "boolean",
+          "default": false
+        },
+        "primaryKeyPosition": {
+          "description": "Position in composite primary key (starts from 1).",
+          "type": "integer",
+          "default": -1
+        },
+        "logicalType": {
+          "description": "Logical data type.",
+          "type": "string",
+          "enum": ["string", "date", "number", "integer", "object", "array", "boolean"]
+        },
+        "logicalTypeOptions": {
+          "description": "Type-specific options.",
+          "$ref": "#/definitions/odcsLogicalTypeOptions"
+        },
+        "required": {
+          "description": "Whether null values are allowed.",
+          "type": "boolean",
+          "default": false
+        },
+        "unique": {
+          "description": "Uniqueness constraint.",
+          "type": "boolean",
+          "default": false
+        },
+        "partitioned": {
+          "description": "Partitioning indicator.",
+          "type": "boolean"
+        },
+        "partitionKeyPosition": {
+          "description": "Partition order.",
+          "type": "integer",
+          "default": -1
+        },
+        "classification": {
+          "description": "Security level.",
+          "type": "string",
+          "enum": ["public", "internal", "restricted", "confidential", "sensitive"]
+        },
+        "encryptedName": {
+          "description": "Encrypted column reference.",
+          "type": "string"
+        },
+        "transformSourceObjects": {
+          "description": "Source objects list.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transformLogic": {
+          "description": "Transformation SQL/logic.",
+          "type": "string"
+        },
+        "transformDescription": {
+          "description": "Business transformation summary.",
+          "type": "string"
+        },
+        "examples": {
+          "description": "Sample values.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "criticalDataElement": {
+          "description": "CDE designation.",
+          "type": "boolean"
+        },
+        "properties": {
+          "description": "Nested properties for object types.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsSchemaElement"
+          }
+        },
+        "items": {
+          "description": "Array element schema.",
+          "$ref": "#/definitions/odcsSchemaElement"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": true
+    },
+    "odcsQualityRule": {
+      "description": "Data quality rule definition.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule",
+      "properties": {
+        "type": {
+          "description": "Quality rule type.",
+          "type": "string",
+          "enum": ["text", "library", "sql", "custom"],
+          "default": "library"
+        },
+        "name": {
+          "description": "Rule identifier.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Rule documentation.",
+          "type": "string"
+        },
+        "rule": {
+          "description": "Library rule name.",
+          "type": "string"
+        },
+        "column": {
+          "description": "Column to apply the rule to.",
+          "type": "string"
+        },
+        "query": {
+          "description": "SQL for type=sql.",
+          "type": "string"
+        },
+        "engine": {
+          "description": "Vendor name (soda, greatExpectations, etc.).",
+          "type": "string"
+        },
+        "implementation": {
+          "description": "Vendor-specific configuration.",
+          "type": "string"
+        },
+        "dimension": {
+          "description": "KPI classification.",
+          "type": "string",
+          "enum": ["accuracy", "completeness", "conformity", "consistency", "coverage", "timeliness", "uniqueness", "ac", "cp", "cf", "cs", "cv", "tm", "uq"]
+        },
+        "severity": {
+          "description": "Impact level designation.",
+          "type": "string"
+        },
+        "businessImpact": {
+          "description": "Failure consequences.",
+          "type": "string"
+        },
+        "unit": {
+          "description": "Measurement unit (rows, percent).",
+          "type": "string"
+        },
+        "mustBe": {
+          "description": "Value must equal.",
+          "type": "number"
+        },
+        "mustNotBe": {
+          "description": "Value must not equal.",
+          "type": "number"
+        },
+        "mustBeGreaterThan": {
+          "description": "Value must be greater than.",
+          "type": "number"
+        },
+        "mustBeGreaterOrEqualTo": {
+          "description": "Value must be greater than or equal to.",
+          "type": "number"
+        },
+        "mustBeLessThan": {
+          "description": "Value must be less than.",
+          "type": "number"
+        },
+        "mustBeLessOrEqualTo": {
+          "description": "Value must be less than or equal to.",
+          "type": "number"
+        },
+        "mustBeBetween": {
+          "description": "Value must be between [min, max].",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "mustNotBeBetween": {
+          "description": "Value must not be between [min, max].",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "validValues": {
+          "description": "Static value list.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scheduler": {
+          "description": "Cron or tool name.",
+          "type": "string"
+        },
+        "schedule": {
+          "description": "Schedule expression.",
+          "type": "string"
+        },
+        "customProperties": {
+          "description": "Additional execution properties.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "authoritativeDefinitions": {
+          "description": "External rule documentation.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsAuthoritativeDefinition"
+          }
+        },
+        "tags": {
+          "description": "Rule categorization.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsSupportChannel": {
+      "description": "Support and communication channel.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSSupportChannel",
+      "properties": {
+        "channel": {
+          "description": "Channel identifier (required).",
+          "type": "string"
+        },
+        "url": {
+          "description": "Access URL (required).",
+          "type": "string",
+          "format": "uri"
+        },
+        "description": {
+          "description": "Channel purpose.",
+          "type": "string"
+        },
+        "tool": {
+          "description": "Channel tool type.",
+          "type": "string",
+          "enum": ["email", "slack", "teams", "discord", "ticket", "other"]
+        },
+        "scope": {
+          "description": "Channel scope.",
+          "type": "string",
+          "enum": ["interactive", "announcements", "issues"]
+        },
+        "invitationUrl": {
+          "description": "Subscription/request URL.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["channel", "url"],
+      "additionalProperties": true
+    },
+    "odcsPricing": {
+      "description": "Pricing information.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSPricing",
+      "properties": {
+        "priceAmount": {
+          "description": "Cost per unit.",
+          "type": "number"
+        },
+        "priceCurrency": {
+          "description": "Currency code.",
+          "type": "string"
+        },
+        "priceUnit": {
+          "description": "Unit of measurement (megabyte, gigabyte, etc.).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsTeamMember": {
+      "description": "Team member information.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember",
+      "properties": {
+        "username": {
+          "description": "User identifier/email.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Full name.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Role context.",
+          "type": "string"
+        },
+        "role": {
+          "description": "Job title.",
+          "type": "string"
+        },
+        "dateIn": {
+          "description": "Join date.",
+          "type": "string",
+          "format": "date"
+        },
+        "dateOut": {
+          "description": "Departure date.",
+          "type": "string",
+          "format": "date"
+        },
+        "replacedByUsername": {
+          "description": "Successor identifier.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsRole": {
+      "description": "IAM role definition.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSRole",
+      "properties": {
+        "role": {
+          "description": "IAM role name (required).",
+          "type": "string"
+        },
+        "description": {
+          "description": "Permissions summary.",
+          "type": "string"
+        },
+        "access": {
+          "description": "Access type.",
+          "type": "string",
+          "enum": ["read", "write"]
+        },
+        "firstLevelApprovers": {
+          "description": "Initial approval authority.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "secondLevelApprovers": {
+          "description": "Secondary approval authority.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "customProperties": {
+          "description": "Additional role attributes.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["role"],
+      "additionalProperties": true
+    },
+    "odcsSlaProperty": {
+      "description": "SLA property definition.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty",
+      "properties": {
+        "property": {
+          "description": "SLA attribute name (required).",
+          "type": "string"
+        },
+        "value": {
+          "description": "Agreement specification (required).",
+          "type": "string"
+        },
+        "valueExt": {
+          "description": "Extended value.",
+          "type": "string"
+        },
+        "unit": {
+          "description": "Time unit (d/day/days, y/yr/years).",
+          "type": "string"
+        },
+        "element": {
+          "description": "Target element path.",
+          "type": "string"
+        },
+        "driver": {
+          "description": "SLA driver.",
+          "type": "string",
+          "enum": ["regulatory", "analytics", "operational"]
+        }
+      },
+      "required": ["property", "value"],
+      "additionalProperties": true
+    },
+    "odcsServer": {
+      "description": "Server/infrastructure definition.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSServer",
+      "properties": {
+        "server": {
+          "description": "Server identifier (required).",
+          "type": "string"
+        },
+        "type": {
+          "description": "Technology platform (required).",
+          "type": "string"
+        },
+        "description": {
+          "description": "Server details.",
+          "type": "string"
+        },
+        "environment": {
+          "description": "Environment type.",
+          "type": "string",
+          "enum": ["prod", "preprod", "dev", "uat"]
+        },
+        "roles": {
+          "description": "Access role list.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "host": {
+          "description": "Server hostname.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Server port.",
+          "type": "integer"
+        },
+        "database": {
+          "description": "Database name.",
+          "type": "string"
+        },
+        "schema": {
+          "description": "Schema name.",
+          "type": "string"
+        },
+        "catalog": {
+          "description": "Catalog name.",
+          "type": "string"
+        },
+        "project": {
+          "description": "Cloud project (BigQuery, etc.).",
+          "type": "string"
+        },
+        "dataset": {
+          "description": "Dataset name.",
+          "type": "string"
+        },
+        "account": {
+          "description": "Account identifier.",
+          "type": "string"
+        },
+        "region": {
+          "description": "Cloud region.",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "Data warehouse name.",
+          "type": "string"
+        },
+        "topic": {
+          "description": "Kafka/messaging topic.",
+          "type": "string"
+        },
+        "stream": {
+          "description": "Stream name.",
+          "type": "string"
+        },
+        "location": {
+          "description": "File location/path.",
+          "type": "string"
+        },
+        "format": {
+          "description": "Data format.",
+          "type": "string"
+        },
+        "delimiter": {
+          "description": "File delimiter.",
+          "type": "string"
+        },
+        "customProperties": {
+          "description": "Non-standard attributes.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["server", "type"],
+      "additionalProperties": true
+    },
+    "odcsCustomProperty": {
+      "description": "Custom property key-value pair.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty",
+      "properties": {
+        "property": {
+          "description": "Property name (camelCase).",
+          "type": "string"
+        },
+        "value": {
+          "description": "Property value.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "properties": {
+    "apiVersion": {
+      "description": "ODCS standard version.",
+      "$ref": "#/definitions/odcsApiVersion"
+    },
+    "kind": {
+      "description": "Document type (always 'DataContract').",
+      "$ref": "#/definitions/odcsKind"
+    },
+    "id": {
+      "description": "Unique identifier (UUID recommended).",
+      "type": "string"
+    },
+    "name": {
+      "description": "Contract name.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Current version number.",
+      "type": "string"
+    },
+    "status": {
+      "description": "Contract status.",
+      "$ref": "#/definitions/odcsStatus"
+    },
+    "tenant": {
+      "description": "Primary property association.",
+      "type": "string"
+    },
+    "domain": {
+      "description": "Logical data domain name.",
+      "type": "string"
+    },
+    "dataProduct": {
+      "description": "Data product name.",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Categorical labels.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "description": {
+      "description": "Purpose, limitations, usage details.",
+      "$ref": "#/definitions/odcsDescription"
+    },
+    "authoritativeDefinitions": {
+      "description": "External reference links.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsAuthoritativeDefinition"
+      }
+    },
+    "schema": {
+      "description": "Schema definition with objects and properties.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsSchemaElement"
+      }
+    },
+    "quality": {
+      "description": "Data quality rules.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsQualityRule"
+      }
+    },
+    "support": {
+      "description": "Support channels.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsSupportChannel"
+      }
+    },
+    "price": {
+      "description": "Pricing information.",
+      "$ref": "#/definitions/odcsPricing"
+    },
+    "team": {
+      "description": "Team members.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsTeamMember"
+      }
+    },
+    "roles": {
+      "description": "IAM roles.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsRole"
+      }
+    },
+    "slaDefaultElement": {
+      "description": "Default element for SLA checks.",
+      "type": "string"
+    },
+    "slaProperties": {
+      "description": "SLA specifications.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsSlaProperty"
+      }
+    },
+    "servers": {
+      "description": "Infrastructure and server definitions.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsServer"
+      }
+    },
+    "customProperties": {
+      "description": "Non-standard key-value pairs.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsCustomProperty"
+      }
+    },
+    "contractCreatedTs": {
+      "description": "ISO 8601 UTC creation timestamp.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["apiVersion", "kind", "id", "version", "status"],
+  "additionalProperties": true
+}
