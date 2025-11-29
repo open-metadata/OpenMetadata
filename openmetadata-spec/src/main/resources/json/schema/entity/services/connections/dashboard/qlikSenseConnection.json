@@ -53,6 +53,22 @@
             "required": [
                 "sslConfig"
             ]
+        },
+        "qlikJWT": {
+            "description": "Qlik Authentication using JWT Token",
+            "title": "Qlik JWT Authentication",
+            "type": "object",
+            "properties": {
+                "token": {
+                    "title": "JWT Token",
+                    "description": "JWT token to authenticate to Qlik Sense.",
+                    "type": "string",
+                    "format": "password"
+                }
+            },
+            "required": [
+                "token"
+            ]
         }
     },
     "properties": {
@@ -83,6 +99,9 @@
                 },
                 {
                     "$ref": "#/definitions/qlikCertificatePath"
+                },
+                {
+                    "$ref": "#/definitions/qlikJWT"
                 }
             ]
         },

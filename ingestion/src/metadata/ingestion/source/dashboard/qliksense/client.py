@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikCertificatePath,
     QlikCertificateValues,
+    QlikJWT,
     QlikSenseConnection,
 )
 from metadata.ingestion.source.dashboard.qliksense.constants import (
@@ -68,6 +69,10 @@ class QlikSenseClient:
             file.write(data)
 
     def _get_ssl_context(self) -> Optional[dict]:
+        # For JWT authentication, we don't need SSL certificates
+        if isinstance(self.config.certificates, QlikJWT):
+            return None
+
         if isinstance(self.config.certificates, QlikCertificatePath):
             context = {
                 "ca_certs": self.config.certificates.rootCertificate,
@@ -97,15 +102,27 @@ class QlikSenseClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-        ssl_conext = self._get_ssl_context()
-        ssl.match_hostname = lambda cert, hostname: True
-        self.socket_connection = create_connection(
-            f"{clean_uri(self.config.hostPort)}/app/{app_id or ''}",
-            sslopt=ssl_conext,
-            header={
+        # Prepare headers based on authentication type
+        if isinstance(self.config.certificates, QlikJWT):
+            # JWT authentication uses Bearer token in Authorization header
+            headers = {
+                "Authorization": f"Bearer {self.config.certificates.token.get_secret_value()}"
+            }
+            # For JWT, use basic SSL context
+            ssl_context = {"cert_reqs": ssl.CERT_NONE}
+        else:
+            # Certificate authentication uses X-Qlik-User header
+            headers = {
                 f"{QLIK_USER_HEADER}: "
                 f"UserDirectory={self.config.userDirectory}; UserId={self.config.userId}"
-            },
+            }
+            ssl_context = self._get_ssl_context()
+            ssl.match_hostname = lambda cert, hostname: True
+
+        self.socket_connection = create_connection(
+            f"{clean_uri(self.config.hostPort)}/app/{app_id or ''}",
+            sslopt=ssl_context,
+            header=headers,
         )
         if app_id:
             # get doc list needs to be executed before extracting data from app
@@ -115,7 +132,10 @@ class QlikSenseClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-        if isinstance(self.config.certificates, QlikCertificateValues):
+        # Only clean up SSL manager for certificate-based auth
+        if isinstance(self.config.certificates, QlikCertificateValues) and hasattr(
+            self, "ssl_manager"
+        ):
             self.ssl_manager.cleanup_temp_files()
 
     def __init__(

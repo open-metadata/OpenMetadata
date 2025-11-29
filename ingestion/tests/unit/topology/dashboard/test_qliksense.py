@@ -271,3 +271,56 @@ class QlikSenseUnitTest(TestCase):
         # Test with includeOwners = False
         self.qliksense.source_config.includeOwners = False
         self.assertFalse(self.qliksense.source_config.includeOwners)
+
+
+class QlikSenseJWTAuthTest(TestCase):
+    """
+    Test JWT authentication for QlikSense
+    """
+
+    def test_jwt_authentication_config(self):
+        """
+        Test that JWT authentication can be configured properly
+        """
+        from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
+            QlikJWT,
+            QlikSenseConnection,
+        )
+        from pydantic import AnyUrl, SecretStr
+
+        # Create a connection with JWT authentication
+        jwt_config = QlikSenseConnection(
+            hostPort=AnyUrl("wss://test:4747"),
+            certificates=QlikJWT(token=SecretStr("test_jwt_token")),
+        )
+
+        # Verify the configuration is valid
+        assert jwt_config.hostPort == AnyUrl("wss://test:4747")
+        assert isinstance(jwt_config.certificates, QlikJWT)
+        assert jwt_config.certificates.token.get_secret_value() == "test_jwt_token"
+
+    def test_jwt_client_initialization(self):
+        """
+        Test that QlikSenseClient can be initialized with JWT auth
+        """
+        from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
+            QlikJWT,
+            QlikSenseConnection,
+        )
+        from metadata.ingestion.source.dashboard.qliksense.client import (
+            QlikSenseClient,
+        )
+        from pydantic import AnyUrl, SecretStr
+
+        # Create a connection with JWT authentication
+        jwt_config = QlikSenseConnection(
+            hostPort=AnyUrl("wss://test:4747"),
+            certificates=QlikJWT(token=SecretStr("test_jwt_token")),
+        )
+
+        # Create client
+        client = QlikSenseClient(jwt_config)
+
+        # Verify client was created successfully
+        assert client.config == jwt_config
+        assert isinstance(client.config.certificates, QlikJWT)
