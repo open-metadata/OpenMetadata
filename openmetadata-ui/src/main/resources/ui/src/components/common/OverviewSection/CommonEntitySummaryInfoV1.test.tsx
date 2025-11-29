@@ -283,4 +283,66 @@ describe('CommonEntitySummaryInfoV1', () => {
     expect(screen.getByTestId('Type-label')).toBeInTheDocument();
     expect(screen.queryByTestId('label.domain-plural-label')).toBeNull();
   });
+
+  describe('when componentType is empty string', () => {
+    it('shows items without visible field when componentType is empty', () => {
+      const items: EntityInfoItemV1[] = [
+        { name: 'Source', value: 'Table A' },
+        { name: 'Target', value: 'Table B' },
+        { name: 'Edge', value: 'Pipeline', isLink: true },
+      ];
+
+      render(<CommonEntitySummaryInfoV1 componentType="" entityInfo={items} />);
+
+      expect(screen.getByTestId('Source-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Source-value')).toHaveTextContent('Table A');
+      expect(screen.getByTestId('Target-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Target-value')).toHaveTextContent('Table B');
+      expect(screen.getByTestId('Edge-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Edge-value')).toHaveTextContent('Pipeline');
+    });
+
+    it('shows items with empty visible array when componentType is empty', () => {
+      const items: EntityInfoItemV1[] = [
+        { name: 'Source', value: 'Table A', visible: [] },
+        { name: 'Target', value: 'Table B', visible: [] },
+      ];
+
+      render(<CommonEntitySummaryInfoV1 componentType="" entityInfo={items} />);
+
+      expect(screen.getByTestId('Source-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Target-label')).toBeInTheDocument();
+    });
+
+    it('still filters items with visible field when componentType is empty', () => {
+      const items: EntityInfoItemV1[] = [
+        { name: 'NoVisible', value: 'Table A' },
+        { name: 'WithVisible', value: 'Table B', visible: ['explore'] },
+        { name: 'WithOtherVisible', value: 'Table C', visible: ['other'] },
+      ];
+
+      render(<CommonEntitySummaryInfoV1 componentType="" entityInfo={items} />);
+
+      // Item without visible field should be shown
+      expect(screen.getByTestId('NoVisible-label')).toBeInTheDocument();
+
+      // Items with visible field should be filtered (empty string not in their visible array)
+      expect(screen.queryByTestId('WithVisible-label')).toBeNull();
+      expect(screen.queryByTestId('WithOtherVisible-label')).toBeNull();
+    });
+
+    it('shows items without visible field mixed with items that have visible field containing empty string', () => {
+      const items: EntityInfoItemV1[] = [
+        { name: 'NoVisible', value: 'Table A' },
+        { name: 'WithEmptyVisible', value: 'Table B', visible: [''] },
+        { name: 'WithOtherVisible', value: 'Table C', visible: ['explore'] },
+      ];
+
+      render(<CommonEntitySummaryInfoV1 componentType="" entityInfo={items} />);
+
+      expect(screen.getByTestId('NoVisible-label')).toBeInTheDocument();
+      expect(screen.getByTestId('WithEmptyVisible-label')).toBeInTheDocument();
+      expect(screen.queryByTestId('WithOtherVisible-label')).toBeNull();
+    });
+  });
 });

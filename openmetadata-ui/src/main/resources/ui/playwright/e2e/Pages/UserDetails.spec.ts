@@ -156,6 +156,21 @@ test.describe('User with different Roles', () => {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    const searchDomain = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill(domain.responseData.displayName);
+    await searchDomain;
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await adminPage.getByText(domain.responseData.displayName).click();
 
     const teamsResponse = adminPage.waitForResponse(
