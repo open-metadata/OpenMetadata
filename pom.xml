@@ -64,16 +64,7 @@
     </developer>
   </developers>
 
-  <distributionManagement>
-    <snapshotRepository>
-      <id>central</id>
-      <url>https://central.sonatype.com/api/v1/publisher/upload</url>
-    </snapshotRepository>
-    <repository>
-      <id>central</id>
-      <url>https://central.sonatype.com/api/v1/publisher/upload</url>
-    </repository>
-  </distributionManagement>
+  <!-- distributionManagement section removed - not needed with central-publishing-maven-plugin -->
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
