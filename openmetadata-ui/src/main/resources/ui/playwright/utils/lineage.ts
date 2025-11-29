@@ -390,10 +390,13 @@ const verifyPipelineDataInDrawer = async (
     );
     await expect(
       page.locator('.overview-section').getByTestId('Source-value')
-    ).toHaveText(fromNodeFqn);
+    ).toHaveText(fromNode.entity.displayName);
     await expect(
       page.locator('.overview-section').getByTestId('Target-value')
-    ).toHaveText(toNodeFqn);
+    ).toHaveText(toNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Edge-value')
+    ).toHaveText(pipelineName);
 
     await fromNode.visitEntityPage(page);
   } else {
