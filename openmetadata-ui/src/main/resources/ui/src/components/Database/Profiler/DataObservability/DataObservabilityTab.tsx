@@ -63,6 +63,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
     const tabComponents = profilerClassBase.getProfilerTabs();
     const ActiveComponent = tabComponents[activeTab];
 
+    if (!ActiveComponent) {
+      return null;
+    }
+
     return <ActiveComponent />;
   }, [activeTab]);
 
