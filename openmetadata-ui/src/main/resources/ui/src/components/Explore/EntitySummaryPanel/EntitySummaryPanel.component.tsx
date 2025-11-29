@@ -746,6 +746,7 @@ export default function EntitySummaryPanel({
             </div>
           </div>
           <Button
+            aria-label={t('label.close')}
             className="drawer-close-icon flex-center mr-2"
             data-testid="drawer-close-icon"
             icon={<CloseOutlined />}
