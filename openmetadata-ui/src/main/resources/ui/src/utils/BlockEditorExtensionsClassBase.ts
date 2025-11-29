@@ -225,11 +225,9 @@ export class BlockEditorExtensionsClassBase {
     } = options ?? {};
 
     return [
-      // Placeholder,
       Document,
       Paragraph,
       Text,
-      // History,
       ...(coreExtensions ? this.getCoreExtensions() : []),
       ...(enableHandlebars ? this.getHandlebarsExtensions() : []),
       ...(utilityExtensions ? this.getUtilityExtensions() : []),
