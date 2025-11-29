@@ -385,9 +385,9 @@ const verifyPipelineDataInDrawer = async (
     .filter({ hasText: pipelineName });
 
   if (bVisitPipelinePageFromDrawer) {
-    await expect(
-      page.locator('.overview-section').getByTestId('edge-header-title')
-    ).toHaveText('Edge Information');
+    await expect(page.getByTestId('edge-header-title')).toHaveText(
+      'Edge Information'
+    );
     await expect(
       page.locator('.overview-section').getByTestId('Source-value')
     ).toHaveText(fromNodeFqn);
