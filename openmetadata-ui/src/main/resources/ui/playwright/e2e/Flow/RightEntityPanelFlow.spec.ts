@@ -301,6 +301,41 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(domainsSection).toBeVisible();
 
+    const dataProductItems = adminPage.locator(
+      '[data-testid="data-product-item"]'
+    );
+    const dataProductCount = await dataProductItems.count();
+
+    if (dataProductCount >= 1) {
+      const editDataProductsButton = adminPage.locator(
+        '[data-testid="edit-data-products"]'
+      );
+      if (await editDataProductsButton.isVisible()) {
+        await editDataProductsButton.click();
+        await adminPage.waitForTimeout(500);
+
+        const clearAllButton = adminPage.locator(
+          '[data-testid="clear-all-button"]'
+        );
+        if (await clearAllButton.isVisible()) {
+          await clearAllButton.click();
+
+          const updateButton = adminPage.getByRole('button', {
+            name: 'Update',
+          });
+          await updateButton.click();
+          await waitForPatchResponse(adminPage);
+          await adminPage.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await expect(
+            adminPage.getByText(/Data products updated successfully/i)
+          ).toBeVisible();
+        }
+      }
+    }
+
     await domainsSection
       .locator('[data-testid="add-domain"]')
       .scrollIntoViewIfNeeded();
@@ -323,7 +358,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await searchDomain;
 
-    // Wait for the tag element to be visible and ensure page is still valid
     const tagSelector = adminPage.getByTestId('tag-TestDomain');
     await tagSelector.waitFor({ state: 'visible' });
 
