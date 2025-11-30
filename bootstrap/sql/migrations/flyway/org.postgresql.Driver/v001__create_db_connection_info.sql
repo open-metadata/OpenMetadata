@@ -428,3 +428,38 @@ CREATE TABLE IF NOT EXISTS glossary_term_entity (
     UNIQUE (fullyQualifiedName)
 );
 
+--
+-- Add REPLICA IDENTITY to tables for PostgreSQL logical replication support
+-- This allows UPDATE and DELETE operations to work when logical replication is enabled
+-- Adding immediately after table creation to ensure replica identity is set before any UPDATE/DELETE operations in later migrations
+--
+
+-- Set replica identity for all tables with unique constraints that may have UPDATE/DELETE operations
+ALTER TABLE bot_entity REPLICA IDENTITY USING INDEX bot_entity_name_key;
+ALTER TABLE chart_entity REPLICA IDENTITY USING INDEX chart_entity_fullyqualifiedname_key;
+ALTER TABLE dashboard_entity REPLICA IDENTITY USING INDEX dashboard_entity_fullyqualifiedname_key;
+ALTER TABLE dashboard_service_entity REPLICA IDENTITY USING INDEX dashboard_service_entity_name_key;
+ALTER TABLE database_entity REPLICA IDENTITY USING INDEX database_entity_fullyqualifiedname_key;
+ALTER TABLE database_schema_entity REPLICA IDENTITY USING INDEX database_schema_entity_fullyqualifiedname_key;
+ALTER TABLE dbservice_entity REPLICA IDENTITY USING INDEX dbservice_entity_name_key;
+ALTER TABLE glossary_entity REPLICA IDENTITY USING INDEX glossary_entity_name_key;
+ALTER TABLE glossary_term_entity REPLICA IDENTITY USING INDEX glossary_term_entity_fullyqualifiedname_key;
+ALTER TABLE ingestion_pipeline_entity REPLICA IDENTITY USING INDEX ingestion_pipeline_entity_fullyqualifiedname_key;
+ALTER TABLE messaging_service_entity REPLICA IDENTITY USING INDEX messaging_service_entity_name_key;
+ALTER TABLE metric_entity REPLICA IDENTITY USING INDEX metric_entity_fullyqualifiedname_key;
+ALTER TABLE ml_model_entity REPLICA IDENTITY USING INDEX ml_model_entity_fullyqualifiedname_key;
+ALTER TABLE pipeline_entity REPLICA IDENTITY USING INDEX pipeline_entity_fullyqualifiedname_key;
+ALTER TABLE pipeline_service_entity REPLICA IDENTITY USING INDEX pipeline_service_entity_name_key;
+ALTER TABLE policy_entity REPLICA IDENTITY USING INDEX policy_entity_fullyqualifiedname_key;
+ALTER TABLE report_entity REPLICA IDENTITY USING INDEX report_entity_fullyqualifiedname_key;
+ALTER TABLE role_entity REPLICA IDENTITY USING INDEX role_entity_name_key;
+ALTER TABLE storage_service_entity REPLICA IDENTITY USING INDEX storage_service_entity_name_key;
+ALTER TABLE table_entity REPLICA IDENTITY USING INDEX table_entity_fullyqualifiedname_key;
+ALTER TABLE tag_category REPLICA IDENTITY USING INDEX tag_category_name_key;
+ALTER TABLE tag REPLICA IDENTITY USING INDEX tag_fullyqualifiedname_key;
+ALTER TABLE tag_usage REPLICA IDENTITY USING INDEX tag_usage_source_tagfqn_targetfqn_key;
+ALTER TABLE team_entity REPLICA IDENTITY USING INDEX team_entity_name_key;
+ALTER TABLE topic_entity REPLICA IDENTITY USING INDEX topic_entity_fullyqualifiedname_key;
+ALTER TABLE user_entity REPLICA IDENTITY USING INDEX user_entity_name_key;
+ALTER TABLE webhook_entity REPLICA IDENTITY USING INDEX webhook_entity_name_key;
+

@@ -1,0 +1,4 @@
+--
+-- MySQL does not require REPLICA IDENTITY configuration
+-- This file is intentionally empty
+--
