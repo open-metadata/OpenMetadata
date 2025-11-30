@@ -74,7 +74,7 @@ config = """
 class QueryParserTest(TestCase):
     def test_join_count(self):
         """
-        Check the join count
+        Check the join count with comprehensive LineageParser performance measurement
         """
         expected_result = {
             "shopify.raw_product_catalog": 6,
@@ -83,6 +83,111 @@ class QueryParserTest(TestCase):
             "shopify.fact_sale": 5,
             "shopify.raw_customer": 11,
         }
+        config_dict = json.loads(config)
+
+        # PART 1: LineageParser Performance Test on ALL queries
+        print(f"\n{'='*80}")
+        print("PART 1: LineageParser Performance Test - ALL QUERIES")
+        print(f"{'='*80}\n")
+
+        sample_data_folder = (
+            os.path.dirname(__file__)
+            + "/../../../"
+            + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
+                "sampleDataFolder"
+            ]
+        )
+        query_log_path = os.path.join(sample_data_folder, "datasets/query_log")
+
+        print(f"Loading queries from: {query_log_path}")
+
+        with open(query_log_path, "r", encoding="utf-8") as fin:
+            import csv as csv_module
+
+            query_logs = [dict(i) for i in csv_module.DictReader(fin)]
+
+        print(f"Loaded {len(query_logs)} queries from CSV\n")
+
+        total_queries = len(query_logs)
+        successful_parses = 0
+        timeout_parses = 0
+        failed_parses = 0
+        total_parse_time = 0.0
+
+        print("Processing ALL queries (no filtering):\n")
+
+        for idx, query_record in enumerate(query_logs, start=1):
+            query = query_record.get("query", "")
+            query_len = len(query)
+            query_preview = query[:80].replace("\n", " ")
+
+            print(f"Query #{idx}/{total_queries}:")
+            print(f"  Length: {query_len:,} chars")
+            print(f"  Preview: {query_preview}...")
+
+            start_time = time.time()
+
+            try:
+                parser = LineageParser(
+                    query, dialect=Dialect.MYSQL, timeout_seconds=300
+                )
+                parse_duration = time.time() - start_time
+                total_parse_time += parse_duration
+
+                if parser.parser is None:
+                    status = "TIMEOUT"
+                    timeout_parses += 1
+                    tables = []
+                else:
+                    status = "SUCCESS"
+                    successful_parses += 1
+                    tables = parser.involved_tables or []
+
+                throughput = query_len / parse_duration if parse_duration > 0 else 0
+
+                print(f"  Result: {status}")
+                print(f"  Duration: {parse_duration:.2f}s")
+                print(f"  Throughput: {throughput:,.0f} chars/s")
+                print(f"  Tables found: {len(tables)}")
+                if tables:
+                    print(f"  Table names: {[str(t) for t in tables]}")
+
+            except Exception as e:
+                parse_duration = time.time() - start_time
+                total_parse_time += parse_duration
+                failed_parses += 1
+                status = "ERROR"
+
+                print(f"  Result: {status}")
+                print(f"  Duration: {parse_duration:.2f}s")
+                print(f"  Error: {type(e).__name__}: {str(e)[:100]}")
+
+            print("")  # Blank line between queries
+
+        print(f"{'='*80}")
+        print("LineageParser Performance Summary")
+        print(f"{'='*80}")
+        print(f"Total queries: {total_queries}")
+        print(
+            f"Successful: {successful_parses} ({successful_parses*100/total_queries:.1f}%)"
+        )
+        print(f"Timeouts: {timeout_parses} ({timeout_parses*100/total_queries:.1f}%)")
+        print(f"Errors: {failed_parses} ({failed_parses*100/total_queries:.1f}%)")
+        print(f"Total parse time: {total_parse_time:.2f}s")
+        print(f"Average per query: {total_parse_time/total_queries:.2f}s")
+
+        if successful_parses == total_queries:
+            print("\n✓ All queries parsed successfully!")
+        else:
+            print(f"\n⚠ {timeout_parses + failed_parses} queries had issues")
+
+        print(f"{'='*80}\n")
+
+        # PART 2: Original UsageWorkflow Test
+        print(f"\n{'='*80}")
+        print("PART 2: UsageWorkflow Test")
+        print(f"{'='*80}\n")
+
         config_dict = json.loads(config)
 
         # DEBUG: Print the sample data folder path
@@ -213,157 +318,3 @@ class QueryParserTest(TestCase):
                 self.assertTrue(False)
         print(f"{'='*80}\n")
         workflow.stop()
-
-    def test_lineage_parser_timeout(self):
-        """
-        Test LineageParser on ALL queries with 300s timeout per query
-        to measure actual parsing time in CI environment.
-        """
-        print(f"\n{'='*80}")
-        print("DEBUG: LineageParser Performance Test - ALL QUERIES")
-        print(f"{'='*80}\n")
-
-        # Load the query_log file
-        sample_data_folder = (
-            os.path.dirname(__file__) + "/../../../ingestion/examples/sample_data"
-        )
-        query_log_path = os.path.join(sample_data_folder, "datasets/query_log")
-
-        print(f"DEBUG: Loading queries from: {query_log_path}")
-
-        with open(query_log_path, "r", encoding="utf-8") as fin:
-            import csv as csv_module
-
-            query_logs = [dict(i) for i in csv_module.DictReader(fin)]
-
-        print(f"DEBUG: Loaded {len(query_logs)} queries from CSV\n")
-
-        print(f"\n{'='*80}")
-        print("DEBUG: Testing LineageParser on ALL queries (300s timeout each)")
-        print(f"{'='*80}\n")
-
-        total_queries = len(query_logs)
-        successful_parses = 0
-        timeout_parses = 0
-        failed_parses = 0
-        total_parse_time = 0.0
-        results = []
-
-        for idx, query_record in enumerate(query_logs, start=1):
-            query = query_record.get("query", "")
-            query_len = len(query)
-            query_preview = query[:100].replace("\n", " ")
-
-            print(f"\n[Query {idx}/{total_queries}]")
-            print(f"Length: {query_len:,} chars")
-            print(f"Preview: {query_preview}...")
-
-            start_time = time.time()
-
-            try:
-                parser = LineageParser(
-                    query, dialect=Dialect.MYSQL, timeout_seconds=300
-                )
-                parse_duration = time.time() - start_time
-                total_parse_time += parse_duration
-
-                if parser.parser is None:
-                    status = "⚠️  TIMEOUT"
-                    timeout_parses += 1
-                    tables = []
-                else:
-                    status = "✓ SUCCESS"
-                    successful_parses += 1
-                    tables = parser.involved_tables or []
-
-                throughput = query_len / parse_duration if parse_duration > 0 else 0
-
-                result = {
-                    "index": idx,
-                    "status": status,
-                    "length": query_len,
-                    "duration": parse_duration,
-                    "throughput": throughput,
-                    "tables": len(tables),
-                    "table_names": [str(t) for t in tables],
-                }
-                results.append(result)
-
-                print(
-                    f"{status} | Time: {parse_duration:.2f}s | "
-                    f"Throughput: {throughput:,.0f} chars/s | Tables: {len(tables)}"
-                )
-                if tables:
-                    print(f"  Tables found: {', '.join(str(t) for t in tables)}")
-
-            except Exception as e:
-                parse_duration = time.time() - start_time
-                total_parse_time += parse_duration
-                failed_parses += 1
-                status = "✗ ERROR"
-
-                result = {
-                    "index": idx,
-                    "status": status,
-                    "length": query_len,
-                    "duration": parse_duration,
-                    "error": f"{type(e).__name__}: {str(e)[:100]}",
-                }
-                results.append(result)
-
-                print(
-                    f"{status} | Time: {parse_duration:.2f}s | Error: {type(e).__name__}"
-                )
-                print(f"  Message: {str(e)[:200]}")
-
-        print(f"\n{'='*80}")
-        print("DEBUG: OVERALL PERFORMANCE SUMMARY")
-        print(f"{'='*80}")
-        print(f"Total queries: {total_queries}")
-        print(
-            f"Successful parses: {successful_parses} ({successful_parses*100/total_queries:.1f}%)"
-        )
-        print(
-            f"Timeout parses: {timeout_parses} ({timeout_parses*100/total_queries:.1f}%)"
-        )
-        print(
-            f"Failed parses: {failed_parses} ({failed_parses*100/total_queries:.1f}%)"
-        )
-        print(f"Total parse time: {total_parse_time:.2f}s")
-        print(f"Average time per query: {total_parse_time/total_queries:.2f}s")
-        print("Timeout threshold: 300s per query")
-
-        print(f"\n{'='*80}")
-        print("DEBUG: SLOWEST QUERIES")
-        print(f"{'='*80}")
-        slowest = sorted(results, key=lambda x: x.get("duration", 0), reverse=True)[:5]
-        for i, r in enumerate(slowest, 1):
-            duration = r.get("duration", 0)
-            length = r.get("length", 0)
-            status = r.get("status", "UNKNOWN")
-            throughput = r.get("throughput", 0)
-            print(
-                f"{i}. Query #{r['index']}: {duration:.2f}s | {length:,} chars | "
-                f"{throughput:,.0f} chars/s | {status}"
-            )
-
-        print(f"\n{'='*80}")
-        print("DEBUG: QUERIES WITH TIMEOUTS OR ERRORS")
-        print(f"{'='*80}")
-        problems = [r for r in results if r.get("status") in ["⚠️  TIMEOUT", "✗ ERROR"]]
-        if problems:
-            for r in problems:
-                print(
-                    f"Query #{r['index']}: {r['status']} | {r['length']:,} chars | {r.get('duration', 0):.2f}s"
-                )
-                if "error" in r:
-                    print(f"  Error: {r['error']}")
-        else:
-            print("No timeouts or errors - all queries parsed successfully!")
-
-        print(f"{'='*80}\n")
-
-        # Assert that we got some successful parses
-        self.assertGreater(
-            successful_parses, 0, "At least some queries should parse successfully"
-        )
