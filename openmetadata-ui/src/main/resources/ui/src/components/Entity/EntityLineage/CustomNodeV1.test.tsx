@@ -76,6 +76,29 @@ const mockNodeDataProps2 = {
   zIndex: 0,
 };
 
+const mockNodeDataPropsWithLineage = {
+  id: 'node2',
+  type: 'table',
+  data: {
+    node: {
+      fullyQualifiedName: 'dim_orders',
+      type: 'table',
+      entityType: 'table',
+      id: 'node2-id',
+      columns: [...Array(5)].map((_, i) => ({
+        fullyQualifiedName: `order_col${i}`,
+        name: `order_col${i}`,
+      })),
+    },
+  },
+  selected: false,
+  isConnectable: false,
+  xPos: 100,
+  yPos: 0,
+  dragging: false,
+  zIndex: 0,
+};
+
 const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
 const updateNodeInternalsMock = jest.fn();
@@ -466,7 +489,7 @@ describe('CustomNodeV1', () => {
       expect(onMockColumnClick).toHaveBeenCalledWith('col0');
     });
 
-    it('should render the selected column at the bottom of page when page changes', () => {
+    it('should keep the traced column(s) visible when page changes', () => {
       isColumnLayerActive = true;
 
       const { rerender } = render(
@@ -528,9 +551,45 @@ describe('CustomNodeV1', () => {
         'col9',
       ]);
     });
-    it('should keep the traced column(s) visible when columns dropdown is collapsed', () => {});
+
+    it('should keep the traced column visible when columns dropdown is collapsed', () => {
+      isColumnLayerActive = true;
+      tracedColumns = ['col3'];
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const col3Expanded = screen.getByTestId('column-col3');
+
+      expect(col3Expanded).toBeInTheDocument();
+
+      const toggleButton = screen.getByTestId('children-info-dropdown-btn');
+
+      fireEvent.click(toggleButton);
+
+      const expandedContainer = screen.queryByTestId('column-container');
+
+      expect(expandedContainer).not.toBeInTheDocument();
+
+      const col3Collapsed = screen.getByTestId('column-col3');
+
+      expect(col3Collapsed).toBeInTheDocument();
+
+      const allColumns = screen.queryAllByTestId(/^column-/);
+
+      expect(allColumns).toHaveLength(1);
+      expect(allColumns[0]).toHaveAttribute('data-testid', 'column-col3');
+
+      expect(screen.queryByTestId('column-col0')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('column-col1')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('column-col2')).not.toBeInTheDocument();
+    });
+
     it('should show column level lineage when a column is clicked and hide all other edges', () => {});
-    it('should keep the traced column(s) visible when page changes', () => {});
+
     it('should show the edges for columns in current pages only and hide all other column to column edges', () => {});
     it('', () => {});
   });
