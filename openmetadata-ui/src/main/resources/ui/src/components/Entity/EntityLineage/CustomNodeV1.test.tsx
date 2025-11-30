@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
@@ -26,11 +26,10 @@ const mockNodeDataProps = {
       type: 'table',
       entityType: 'table',
       id: 'khjahjfja',
-      columns: [
-        { fullyQualifiedName: 'col1', name: 'col1' },
-        { fullyQualifiedName: 'col2', name: 'col2' },
-        { fullyQualifiedName: 'col3', name: 'col3' },
-      ],
+      columns: [...Array(12)].map((_, i) => ({
+        fullyQualifiedName: `col${i}`,
+        name: `col${i}`,
+      })),
       testSuite: {
         deleted: false,
         description: 'This is an executable test suite linked to an entity',
@@ -60,11 +59,10 @@ const mockNodeDataProps2 = {
       type: 'table',
       entityType: 'table',
       id: 'khjahjfja',
-      columns: [
-        { fullyQualifiedName: 'col1', name: 'col1' },
-        { fullyQualifiedName: 'col2', name: 'col2' },
-        { fullyQualifiedName: 'col3', name: 'col3' },
-      ],
+      columns: [...Array(3)].map((_, i) => ({
+        fullyQualifiedName: `col${i}`,
+        name: `col${i}`,
+      })),
       dataModel: {
         modelType: ModelType.Dbt,
       },
@@ -80,6 +78,9 @@ const mockNodeDataProps2 = {
 
 const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
+const updateNodeInternalsMock = jest.fn();
+const useUpdateNodeInternalsMock = jest.fn(() => updateNodeInternalsMock);
+const setColumnsInCurrentPagesMock = jest.fn();
 let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
 
@@ -110,6 +111,8 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
     loadChildNodesHandler: loadChildNodesHandlerMock,
+    useUpdateNodeInternals: useUpdateNodeInternalsMock,
+    setColumnsInCurrentPages: setColumnsInCurrentPagesMock,
   })),
 }));
 
@@ -158,9 +161,6 @@ describe('CustomNodeV1', () => {
         <CustomNodeV1Component {...mockNodeDataProps} />
       </ReactFlowProvider>
     );
-
-    screen.debug(undefined, Infinity);
-    screen.logTestingPlaygroundURL();
 
     expect(
       screen.getByTestId('children-info-dropdown-btn')
@@ -251,7 +251,6 @@ describe('CustomNodeV1', () => {
         <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
       </ReactFlowProvider>
     );
-    screen.debug(undefined, Infinity);
 
     expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
   });
@@ -341,10 +340,98 @@ describe('CustomNodeV1', () => {
       jest.runAllTimers(); // or jest.advanceTimersByTime(1000);
     });
 
-    screen.debug(undefined, Infinity);
-
     expect(screen.getByTestId('test-passed')).toBeInTheDocument();
     expect(screen.getByTestId('test-aborted')).toBeInTheDocument();
     expect(screen.getByTestId('test-failed')).toBeInTheDocument();
+  });
+
+  describe('New tests', () => {
+    it.only('should have pagination in column level lineage', () => {
+      isColumnLayerActive = true;
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const columnsContainer = screen.getByTestId('column-container');
+
+      const getInsidePageColumns = () => {
+        const insidePageContainer = columnsContainer.querySelector(
+          '.inside-current-page-items'
+        );
+
+        return insidePageContainer
+          ? Array.from(
+              insidePageContainer.querySelectorAll('.inside-current-page')
+            ).map((el) => el.textContent?.trim())
+          : [];
+      };
+
+      expect(screen.getByText('1 label.slash-symbol 3')).toBeInTheDocument();
+
+      let visibleColumns = getInsidePageColumns();
+
+      expect(visibleColumns).toHaveLength(5);
+      expect(visibleColumns).toEqual(['col0', 'col1', 'col2', 'col3', 'col4']);
+
+      const buttons = screen.getAllByRole('button');
+      const prevButton = buttons.find((btn) =>
+        btn.querySelector('[data-testid="ChevronLeftIcon"]')
+      ) as HTMLElement;
+      const nextButton = buttons.find((btn) =>
+        btn.querySelector('[data-testid="ChevronRightIcon"]')
+      ) as HTMLElement;
+
+      expect(prevButton).toBeDisabled();
+
+      fireEvent.click(nextButton);
+
+      expect(screen.getByText('2 label.slash-symbol 3')).toBeInTheDocument();
+
+      visibleColumns = getInsidePageColumns();
+
+      expect(visibleColumns).toHaveLength(5);
+      expect(visibleColumns).toEqual(['col5', 'col6', 'col7', 'col8', 'col9']);
+
+      fireEvent.click(nextButton);
+
+      expect(screen.getByText('3 label.slash-symbol 3')).toBeInTheDocument();
+
+      visibleColumns = getInsidePageColumns();
+
+      expect(visibleColumns).toHaveLength(2);
+      expect(visibleColumns).toEqual(['col10', 'col11']);
+
+      expect(nextButton).toBeDisabled();
+
+      fireEvent.click(prevButton);
+
+      expect(screen.getByText('2 label.slash-symbol 3')).toBeInTheDocument();
+
+      visibleColumns = getInsidePageColumns();
+
+      expect(visibleColumns).toHaveLength(5);
+      expect(visibleColumns).toEqual(['col5', 'col6', 'col7', 'col8', 'col9']);
+
+      fireEvent.click(prevButton);
+
+      expect(screen.getByText('1 label.slash-symbol 3')).toBeInTheDocument();
+
+      visibleColumns = getInsidePageColumns();
+
+      expect(visibleColumns).toHaveLength(5);
+      expect(visibleColumns).toEqual(['col0', 'col1', 'col2', 'col3', 'col4']);
+
+      expect(prevButton).toBeDisabled();
+    });
+    it('should select a column when it is clicked', () => {});
+    it('should render the selected column at the bottom of page when page changes', () => {});
+    it('should show column level lineage when a column is clicked and hide all other edges', () => {});
+    it('should keep the traced column(s) visible when columns dropdown is collapsed', () => {});
+    it('should keep the traced column(s) visible when page changes', () => {});
+    it('should show the edges for columns in current pages only and hide all other column to column edges', () => {});
+    it('', () => {});
   });
 });
