@@ -18,7 +18,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -85,7 +84,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging(50, 'contentListPageSize', 500);
   const { fqn: tableFqn } = useFqn();
   const [searchText, setSearchText] = useState('');
   // Pagination state for columns
