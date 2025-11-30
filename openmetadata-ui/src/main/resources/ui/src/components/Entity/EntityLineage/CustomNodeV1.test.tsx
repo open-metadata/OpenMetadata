@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
@@ -126,10 +126,23 @@ jest.mock('../../../rest/testAPI', () => ({
   ),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      if (key === 'label.slash-symbol') {
+        return '/';
+      }
+
+      return key;
+    },
+  }),
+}));
+
 describe('CustomNodeV1', () => {
   beforeEach(() => {
     isColumnLayerActive = false;
     isDataObservabilityLayerActive = false;
+    jest.clearAllMocks();
   });
 
   it('renders node correctly', () => {
@@ -346,7 +359,7 @@ describe('CustomNodeV1', () => {
   });
 
   describe('New tests', () => {
-    it.only('should have pagination in column level lineage', () => {
+    it('should have pagination in column level lineage', () => {
       isColumnLayerActive = true;
 
       render(
@@ -369,7 +382,7 @@ describe('CustomNodeV1', () => {
           : [];
       };
 
-      expect(screen.getByText('1 label.slash-symbol 3')).toBeInTheDocument();
+      expect(screen.getByText('1 / 3')).toBeInTheDocument();
 
       let visibleColumns = getInsidePageColumns();
 
@@ -388,7 +401,7 @@ describe('CustomNodeV1', () => {
 
       fireEvent.click(nextButton);
 
-      expect(screen.getByText('2 label.slash-symbol 3')).toBeInTheDocument();
+      expect(screen.getByText('2 / 3')).toBeInTheDocument();
 
       visibleColumns = getInsidePageColumns();
 
@@ -397,7 +410,7 @@ describe('CustomNodeV1', () => {
 
       fireEvent.click(nextButton);
 
-      expect(screen.getByText('3 label.slash-symbol 3')).toBeInTheDocument();
+      expect(screen.getByText('3 / 3')).toBeInTheDocument();
 
       visibleColumns = getInsidePageColumns();
 
@@ -408,7 +421,7 @@ describe('CustomNodeV1', () => {
 
       fireEvent.click(prevButton);
 
-      expect(screen.getByText('2 label.slash-symbol 3')).toBeInTheDocument();
+      expect(screen.getByText('2 / 3')).toBeInTheDocument();
 
       visibleColumns = getInsidePageColumns();
 
@@ -417,7 +430,7 @@ describe('CustomNodeV1', () => {
 
       fireEvent.click(prevButton);
 
-      expect(screen.getByText('1 label.slash-symbol 3')).toBeInTheDocument();
+      expect(screen.getByText('1 / 3')).toBeInTheDocument();
 
       visibleColumns = getInsidePageColumns();
 
@@ -426,7 +439,22 @@ describe('CustomNodeV1', () => {
 
       expect(prevButton).toBeDisabled();
     });
-    it('should select a column when it is clicked', () => {});
+
+    it('should select a column when it is clicked', () => {
+      isColumnLayerActive = true;
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const column = screen.getByTestId('column-col0');
+
+      fireEvent.click(column);
+
+      expect(onMockColumnClick).toHaveBeenCalledWith('col0');
+    });
     it('should render the selected column at the bottom of page when page changes', () => {});
     it('should show column level lineage when a column is clicked and hide all other edges', () => {});
     it('should keep the traced column(s) visible when columns dropdown is collapsed', () => {});
