@@ -80,14 +80,22 @@ const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
 const updateNodeInternalsMock = jest.fn();
 const useUpdateNodeInternalsMock = jest.fn(() => updateNodeInternalsMock);
-const setColumnsInCurrentPagesMock = jest.fn();
+let columnsInCurrentPages: string[] = [];
+const setColumnsInCurrentPagesMock = jest.fn((updater) => {
+  if (typeof updater === 'function') {
+    columnsInCurrentPages = updater(columnsInCurrentPages);
+  } else {
+    columnsInCurrentPages = updater;
+  }
+});
 let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
+let tracedColumns: string[] = [];
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
-    tracedColumns: [],
+    tracedColumns,
     pipelineStatus: {},
     nodes: [
       {
@@ -142,6 +150,8 @@ describe('CustomNodeV1', () => {
   beforeEach(() => {
     isColumnLayerActive = false;
     isDataObservabilityLayerActive = false;
+    columnsInCurrentPages = [];
+    tracedColumns = [];
     jest.clearAllMocks();
   });
 
@@ -455,9 +465,71 @@ describe('CustomNodeV1', () => {
 
       expect(onMockColumnClick).toHaveBeenCalledWith('col0');
     });
-    it('should render the selected column at the bottom of page when page changes', () => {});
-    it('should show column level lineage when a column is clicked and hide all other edges', () => {});
+
+    it('should render the selected column at the bottom of page when page changes', () => {
+      isColumnLayerActive = true;
+
+      const { rerender } = render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const col3 = screen.getByTestId('column-col3');
+
+      fireEvent.click(col3);
+
+      expect(onMockColumnClick).toHaveBeenCalledWith('col3');
+
+      tracedColumns = ['col3'];
+
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      expect(screen.getByTestId('column-col3')).toBeInTheDocument();
+
+      const buttons = screen.getAllByRole('button');
+      const nextButton = buttons.find((btn) =>
+        btn.querySelector('[data-testid="ChevronRightIcon"]')
+      ) as HTMLElement;
+
+      fireEvent.click(nextButton);
+
+      expect(screen.getByText('2 / 3')).toBeInTheDocument();
+
+      const columnsContainer = screen.getByTestId('column-container');
+      const outsidePageContainer = columnsContainer.querySelector(
+        '.outside-current-page-items'
+      );
+
+      const col3AfterPageChange = screen.getByTestId('column-col3');
+
+      expect(col3AfterPageChange).toBeInTheDocument();
+
+      expect(outsidePageContainer).toContainElement(col3AfterPageChange);
+
+      const insidePageContainer = columnsContainer.querySelector(
+        '.inside-current-page-items'
+      );
+      const insidePageColumns = insidePageContainer
+        ? Array.from(
+            insidePageContainer.querySelectorAll('.inside-current-page')
+          ).map((el) => el.textContent?.trim())
+        : [];
+
+      expect(insidePageColumns).toEqual([
+        'col5',
+        'col6',
+        'col7',
+        'col8',
+        'col9',
+      ]);
+    });
     it('should keep the traced column(s) visible when columns dropdown is collapsed', () => {});
+    it('should show column level lineage when a column is clicked and hide all other edges', () => {});
     it('should keep the traced column(s) visible when page changes', () => {});
     it('should show the edges for columns in current pages only and hide all other column to column edges', () => {});
     it('', () => {});
