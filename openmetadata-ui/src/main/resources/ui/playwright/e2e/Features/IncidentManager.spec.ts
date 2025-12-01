@@ -489,13 +489,12 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(page.getByTestId('Incidents-label')).toBeVisible();
     await expect(page.getByTestId('Incidents-value')).toContainText('3');
 
-    await page.getByTestId('Incidents-value').click();
-
-    await page.waitForURL('**/profiler/incidents**');
-
     const incidentTabResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
+
+    await page.getByTestId('Incidents-value').locator('a').click();
+
     await incidentTabResponse;
 
     for (const testCase of testCases) {
