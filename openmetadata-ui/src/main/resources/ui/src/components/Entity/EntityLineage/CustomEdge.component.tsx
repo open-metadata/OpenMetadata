@@ -213,21 +213,21 @@ export const CustomEdge = ({
       display,
     };
   }, [
-    style,
     tracedNodes,
     edge.fromEntity.id,
     edge.toEntity.id,
-    isColumnHighlighted,
-    isColumnLineage,
     tracedColumns.length,
+    isColumnLineage,
     showDqTracing,
-    isEditMode,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    columnsInCurrentPages,
+    style,
+    theme.palette.primary.main,
+    theme.palette.allShades.purple,
+    isColumnHighlighted,
+    selectedColumn,
+    areBothColumnHandlesPresentInCurrentPages,
   ]);
+
+  const shouldShowEdgeIcon = updatedStyle.display === 'block';
 
   // Calculate conditions for various component displays
   const isPipelineEdgeAllowed = useMemo(() => {
@@ -444,13 +444,9 @@ export const CustomEdge = ({
 
     return icons;
   }, [
-    selected,
-    tracedNodes.length,
-    tracedColumns.length,
     isColumnLineageAllowed,
     hasLabel,
     isSelectedEditMode,
-    isSelected,
     data?.columnFunctionValue,
     data?.isExpanded,
     edge.fromEntity.fullyQualifiedName,
@@ -476,7 +472,7 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={updatedStyle}
       />
-      {renderIcons}
+      {shouldShowEdgeIcon && renderIcons}
     </Fragment>
   );
 };
