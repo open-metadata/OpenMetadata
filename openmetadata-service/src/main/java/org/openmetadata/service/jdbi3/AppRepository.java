@@ -185,7 +185,7 @@ public class AppRepository extends EntityRepository<App> {
             .relationshipDAO()
             .findToBatch(entityListToStrings(apps), Relationship.CONTAINS.ordinal(), Entity.BOT);
 
-    // Group experts by domain ID
+    // Group bots by ID
     records.forEach(
         record -> {
           var appId = UUID.fromString(record.getFromId());
