@@ -12,14 +12,10 @@
 """
 Query parser utils tests
 """
-import csv
 import json
 import os.path
-import time
 from unittest import TestCase
 
-from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser
 from metadata.workflow.usage import UsageWorkflow
 
 config = """
@@ -93,31 +89,6 @@ class QueryParserTest(TestCase):
                 "sampleDataFolder"
             ]
         )
-        query_log_path = os.path.join(sample_data_folder, "datasets/query_log")
-
-        # Parse queries with timing
-        print(f"\n{'='*60}")
-        print("Query Parse Timing Debug")
-        print(f"{'='*60}")
-        with open(query_log_path, "r", encoding="utf-8") as fin:
-            query_logs = [dict(i) for i in csv.DictReader(fin)]
-
-        for idx, query_record in enumerate(query_logs, start=1):
-            query = query_record.get("query", "")
-            query_len = len(query)
-
-            start_time = time.time()
-            parser = LineageParser(query, dialect=Dialect.MYSQL, timeout_seconds=300)
-            parse_duration = time.time() - start_time
-
-            tables = parser.involved_tables or []
-            query_preview = query[:80].replace("\n", " ")
-            print(
-                f"Query #{idx}: {parse_duration:.2f}s | {query_len:,} chars | "
-                f"Tables: {[str(t) for t in tables]}"
-            )
-            print(f"  Preview: {query_preview}...")
-        print(f"{'='*60}\n")
 
         config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
             "sampleDataFolder"
@@ -136,3 +107,68 @@ class QueryParserTest(TestCase):
             except KeyError:
                 self.assertTrue(False)
         workflow.stop()
+
+    def test_query_parse_timing_debug(self):
+        """
+        Debug test to measure query parse timing and verify table extraction.
+        This test is intentionally set to fail to ensure debug output is visible in CI logs.
+        """
+        import csv
+        import time
+
+        from metadata.ingestion.lineage.models import Dialect
+        from metadata.ingestion.lineage.parser import LineageParser
+
+        config_dict = json.loads(config)
+
+        # Get query log path
+        sample_data_folder = (
+            os.path.dirname(__file__)
+            + "/../../../"
+            + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
+                "sampleDataFolder"
+            ]
+        )
+        query_log_path = os.path.join(sample_data_folder, "datasets/query_log")
+
+        # Parse queries with timing
+        print(f"\n{'='*60}")
+        print("Query Parse Timing Debug")
+        print(f"{'='*60}")
+        with open(query_log_path, "r", encoding="utf-8") as fin:
+            query_logs = [dict(i) for i in csv.DictReader(fin)]
+
+        parsed_queries = []
+        for idx, query_record in enumerate(query_logs, start=1):
+            query = query_record.get("query", "")
+            query_len = len(query)
+
+            start_time = time.time()
+            parser = LineageParser(query, dialect=Dialect.MYSQL, timeout_seconds=300)
+            parse_duration = time.time() - start_time
+
+            tables = parser.involved_tables or []
+            query_preview = query[:80].replace("\n", " ")
+
+            parsed_queries.append(
+                {
+                    "idx": idx,
+                    "duration": parse_duration,
+                    "length": query_len,
+                    "tables": [str(t) for t in tables],
+                    "preview": query_preview,
+                }
+            )
+
+            print(
+                f"Query #{idx}: {parse_duration:.2f}s | {query_len:,} chars | "
+                f"Tables: {[str(t) for t in tables]}"
+            )
+            print(f"  Preview: {query_preview}...")
+        print(f"{'='*60}\n")
+
+        # Intentionally fail to ensure debug output is visible
+        self.fail(
+            f"Debug test intentionally failed. Parsed {len(parsed_queries)} queries. "
+            "Check output above for timing details."
+        )
