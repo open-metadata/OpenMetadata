@@ -1358,10 +1358,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String ownerId = owner != null ? resolveOwnerToId(owner) : null;
 
     // Build filter strings for database query
-    String serviceFilterSql =
-        service != null
-            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.service.name')) = '" + service + "'"
-            : "";
+    String serviceFilterSql = buildServiceFilter(service);
     String serviceTypeFilterSql =
         serviceType != null
             ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
