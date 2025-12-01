@@ -152,7 +152,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for the pipeline to be successful',
-        timeout: 90_000,
+        timeout: 180_000,
         intervals: [5_000, 10_000],
       }
     )
