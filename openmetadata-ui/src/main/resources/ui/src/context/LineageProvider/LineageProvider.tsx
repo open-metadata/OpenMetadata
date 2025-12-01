@@ -1161,7 +1161,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         loading: false,
       }));
     }
-  }, [selectedEdge, setShowDeleteModal]);
+  }, [removeColumnEdge, removeEdgeHandler, selectedEdge]);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
@@ -1179,6 +1179,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       if (columnConnection) {
         params.sourceHandle = decodeLineageHandles(params.sourceHandle);
         params.targetHandle = decodeLineageHandles(params.targetHandle);
+
+        if (!tracedColumns.includes(params.sourceHandle as string)) {
+          setTracedColumns((prev) => [...prev, params.sourceHandle as string]);
+        }
+
+        if (!tracedColumns.includes(params.targetHandle as string)) {
+          setTracedColumns((prev) => [...prev, params.targetHandle as string]);
+        }
       }
 
       setStatus('waiting');
@@ -1281,22 +1289,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           .finally(() => {
             setStatus('initial');
             setLoading(false);
-            if (!tracedColumns.includes(params.sourceHandle as string)) {
-              setTracedColumns((prev) => [
-                ...prev,
-                params.sourceHandle as string,
-              ]);
-            }
-            if (!tracedColumns.includes(params.targetHandle as string)) {
-              setTracedColumns((prev) => [
-                ...prev,
-                params.targetHandle as string,
-              ]);
-            }
           });
       }
     },
-    [entityLineage, nodes, entityFqn]
+    [
+      nodes,
+      entityLineage,
+      updateLineageData,
+      setNodes,
+      entityFqn,
+      activeLayer,
+      setEdges,
+      tracedColumns,
+    ]
   );
 
   const onConnectStart = useCallback(() => {
