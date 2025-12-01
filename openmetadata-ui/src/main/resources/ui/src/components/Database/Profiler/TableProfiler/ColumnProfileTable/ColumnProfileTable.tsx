@@ -13,7 +13,7 @@
 
 import { Grid, Stack, Typography, useTheme } from '@mui/material';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isUndefined, round } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +39,7 @@ import {
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
 import {
+  calculatePercentage,
   formatNumberWithComma,
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
@@ -176,7 +177,7 @@ const ColumnProfileTable = () => {
         width: 200,
         render: (profile: ColumnProfile) => {
           return profile?.nullProportion
-            ? `${round(profile?.nullProportion, 2) * 100}%`
+            ? calculatePercentage(profile.nullProportion, 1, 2, true)
             : '--';
         },
         sorter: (col1, col2) =>
@@ -190,7 +191,7 @@ const ColumnProfileTable = () => {
         width: 200,
         render: (profile: ColumnProfile) =>
           profile?.uniqueProportion
-            ? `${round(profile?.uniqueProportion, 2) * 100}%`
+            ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.uniqueProportion || 0) -
@@ -203,7 +204,7 @@ const ColumnProfileTable = () => {
         width: 200,
         render: (profile: ColumnProfile) =>
           profile?.distinctProportion
-            ? `${round(profile?.distinctProportion, 2) * 100}%`
+            ? calculatePercentage(profile.distinctProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.distinctProportion || 0) -
