@@ -331,7 +331,12 @@ const NotificationListPage = () => {
         </Col>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.NOTIFICATION.header),
+                subHeader: t(PAGE_HEADERS.NOTIFICATION.subHeader),
+              }}
+            />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
