@@ -416,7 +416,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String before,
       String after,
       String status,
-      String search) {
+      String search,
+      Long minDuration,
+      Long maxDuration) {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
@@ -458,6 +460,23 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                     return ps.withTaskStatus(filteredTasks);
                   })
               .filter(ps -> ps.getTaskStatus() != null && !ps.getTaskStatus().isEmpty())
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Apply duration filters
+    if (minDuration != null || maxDuration != null) {
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(
+                  ps -> {
+                    if (ps.getEndTime() == null || ps.getTimestamp() == null) {
+                      return false;
+                    }
+                    long duration = ps.getEndTime() - ps.getTimestamp();
+                    boolean meetsMin = minDuration == null || duration >= minDuration;
+                    boolean meetsMax = maxDuration == null || duration <= maxDuration;
+                    return meetsMin && meetsMax;
+                  })
               .collect(java.util.stream.Collectors.toList());
     }
 
