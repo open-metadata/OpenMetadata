@@ -317,7 +317,9 @@ function ServiceMainTabContent({
   const searchProps = useMemo(
     () => ({
       placeholder: t('label.search-for-type', {
-        type: servicesDisplayName[serviceCategory],
+        type: t(servicesDisplayName[serviceCategory].key, {
+          entity: t(servicesDisplayName[serviceCategory].entity),
+        }),
       }),
       typingInterval: 500,
       searchValue: searchValue,

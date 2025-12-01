@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { CloseOutlined } from '@mui/icons-material';
 import { Link } from '@mui/material';
-import { Card, Tooltip } from 'antd';
+import { Button, Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -72,7 +73,14 @@ import { LineageTabContent } from './LineageTab';
 
 export default function EntitySummaryPanel({
   entityDetails,
+  handleClosePanel,
   highlights,
+  isSideDrawer = false,
+  panelPath,
+  upstreamDepth,
+  downstreamDepth,
+  pipelineViewMode,
+  nodesPerLayer,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -251,10 +259,11 @@ export default function EntitySummaryPanel({
         fqn,
         entityType,
         config: {
-          upstreamDepth: 2,
-          downstreamDepth: 1,
-          nodesPerLayer: 50,
-          pipelineViewMode: PipelineViewMode.Node,
+          // When called from lineage view, the parent component passes the user's configured depths.
+          upstreamDepth: upstreamDepth ?? 1,
+          downstreamDepth: downstreamDepth ?? 1,
+          nodesPerLayer: nodesPerLayer ?? 50,
+          pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
         },
       });
       setLineageData(response);
@@ -446,6 +455,7 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
@@ -510,7 +520,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.OVERVIEW:
         return (
           <>
-            {viewPermission && (
+            {viewPermission && !isSideDrawer && (
               <div className="title-section">
                 <div className="title-container">
                   <Tooltip
@@ -544,7 +554,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.SCHEMA:
         return (
           <>
-            {viewPermission && (
+            {viewPermission && !isSideDrawer && (
               <div className="title-section">
                 <div className="title-container">
                   <Tooltip
@@ -585,7 +595,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.LINEAGE:
         return (
           <>
-            {viewPermission && (
+            {viewPermission && !isSideDrawer && (
               <div className="title-section">
                 <div className="title-container">
                   <Tooltip
@@ -621,7 +631,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.DATA_QUALITY:
         return (
           <>
-            {viewPermission && (
+            {viewPermission && !isSideDrawer && (
               <div className="title-section">
                 <div className="title-container">
                   <Tooltip
@@ -658,7 +668,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.CUSTOM_PROPERTIES: {
         return (
           <>
-            {viewPermission && (
+            {viewPermission && !isSideDrawer && (
               <div className="title-section">
                 <div className="title-container">
                   <Tooltip
@@ -707,10 +717,54 @@ export default function EntitySummaryPanel({
 
   return (
     <div className="entity-summary-panel-container">
+      {isSideDrawer && (
+        <div className="d-flex items-center justify-between">
+          <div className="title-section drawer-title-section">
+            <div className="title-container">
+              <Tooltip
+                mouseEnterDelay={0.5}
+                placement="bottomLeft"
+                title={entityDetails.details.name}
+                trigger="hover">
+                <div className="d-flex items-center">
+                  <span className="entity-icon">
+                    {searchClassBase.getEntityIcon(
+                      entityDetails.details.entityType ?? ''
+                    )}
+                  </span>
+                  <Link
+                    className="entity-title-link"
+                    data-testid="entity-header-title"
+                    href={entityLink as string}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    underline="hover">
+                    {stringToHTML(getEntityName(entityDetails.details))}
+                  </Link>
+                </div>
+              </Tooltip>
+            </div>
+          </div>
+          <Button
+            aria-label={t('label.close')}
+            className="drawer-close-icon flex-center mr-2"
+            data-testid="drawer-close-icon"
+            icon={<CloseOutlined />}
+            size="small"
+            onClick={handleClosePanel}
+          />
+        </div>
+      )}
       <div className="d-flex gap-2 w-full">
-        <Card bordered={false} className="summary-panel-container">
+        <Card
+          bordered={false}
+          className={`summary-panel-container ${
+            isSideDrawer ? 'drawer-summary-panel-container' : ''
+          }`}>
           <Card
-            className="content-area"
+            className={`content-area ${
+              isSideDrawer ? 'drawer-content-area' : ''
+            }`}
             style={{ width: '80%', display: 'block' }}>
             {renderTabContent()}
           </Card>
@@ -718,6 +772,7 @@ export default function EntitySummaryPanel({
         <EntityRightPanelVerticalNav
           activeTab={activeTab}
           entityType={entityType}
+          isSideDrawer={isSideDrawer}
           onTabChange={handleTabChange}
         />
       </div>
