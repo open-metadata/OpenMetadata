@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Menu } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-vertical-nav-icons/custom-prop.svg';
@@ -30,7 +31,7 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ activeTab, entityType, onTabChange }) => {
+  ({ isSideDrawer = false, activeTab, entityType, onTabChange }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {
@@ -86,7 +87,10 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
     };
 
     return (
-      <div className="entity-right-panel-vertical-nav">
+      <div
+        className={classNames('entity-right-panel-vertical-nav', {
+          'drawer-entity-right-panel-vertical-nav': isSideDrawer,
+        })}>
         <Menu
           className="vertical-nav-menu"
           items={getTabItems()}

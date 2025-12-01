@@ -484,9 +484,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
       description =
-          "Get a list of pipeline status."
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of pipeline status. Use `limit` and `before` or `after` query params for cursor-based pagination. "
+              + "Filter by execution status using comma-separated values (e.g., 'Failed,Successful'). "
+              + "Search by task name using the `search` parameter.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -515,8 +515,38 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "number"))
           @NotNull
           @QueryParam("endTs")
-          Long endTs) {
-    return repository.getPipelineStatuses(fqn, startTs, endTs);
+          Long endTs,
+      @Parameter(
+              description =
+                  "Limit the number of pipeline statuses returned. If not provided, returns all results.",
+              schema = @Schema(type = "integer"))
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          Integer limitParam,
+      @Parameter(
+              description = "Returns list of pipeline statuses before this cursor (timestamp)",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of pipeline statuses after this cursor (timestamp)",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after,
+      @Parameter(
+              description =
+                  "Filter by execution status. Supports multiple comma-separated values (e.g., 'Failed,Successful')",
+              schema = @Schema(type = "string", example = "Failed,Successful"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Search pipeline statuses by task name",
+              schema = @Schema(type = "string"))
+          @QueryParam("search")
+          String search) {
+    return repository.getPipelineStatuses(
+        fqn, startTs, endTs, limitParam, before, after, status, search);
   }
 
   @DELETE
