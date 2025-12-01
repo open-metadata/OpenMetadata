@@ -239,7 +239,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
   public void testWorkflowInstancesApiWithSpecialCharacters() throws Exception {
     // Test for the specific bug fix - glossary terms with single quotes in the name
     // This test verifies the API can handle entityLink parameters with special characters
-    
+
     // Create glossary with stable name
     CreateGlossary createGlossary =
         new CreateGlossary()
@@ -267,7 +267,8 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     try {
       UUID workflowInstanceId = waitForWorkflowInstanceByEntityLink(entityLink);
       // If we get here, a workflow instance was created - that's fine, continue testing
-      LOG.info("Workflow instance created for term with special characters: {}", workflowInstanceId);
+      LOG.info(
+          "Workflow instance created for term with special characters: {}", workflowInstanceId);
     } catch (AssertionError e) {
       // If no workflow instance is created, that's also fine - the main point is testing the API
       LOG.info("No automatic workflow instance created, testing API call directly");
@@ -277,35 +278,34 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     // This should NOT throw a SQL exception after our fix
     long now = System.currentTimeMillis();
     long oneHourAgo = now - 3600_000L;
-    
-    String url = String.format(
-        "governance/workflowInstances?startTs=%d&endTs=%d&entityLink=%s&workflowDefinitionName=GlossaryTermApprovalWorkflow",
-        oneHourAgo, 
-        now, 
-        URLEncoder.encode(entityLink, StandardCharsets.UTF_8)
-    );
-    
+
+    String url =
+        String.format(
+            "governance/workflowInstances?startTs=%d&endTs=%d&entityLink=%s&workflowDefinitionName=GlossaryTermApprovalWorkflow",
+            oneHourAgo, now, URLEncoder.encode(entityLink, StandardCharsets.UTF_8));
+
     WebTarget target = getResource(url);
     Invocation.Builder builder = target.request();
     for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
       builder = builder.header(entry.getKey(), entry.getValue());
     }
-    
+
     // This should succeed without throwing UnableToCreateStatementException
     String rawJson = builder.get(String.class);
     assertNotNull(rawJson, "API response should not be null");
-    
+
     // Parse the response to ensure it's valid JSON
-    ResultList<WorkflowInstance> result = JsonUtils.readValue(
-        rawJson, 
-        new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {}
-    );
+    ResultList<WorkflowInstance> result =
+        JsonUtils.readValue(
+            rawJson,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
     assertNotNull(result, "Parsed result should not be null");
-    
+
     // The result may be empty (no workflow instances) or contain instances - both are valid
     // The important thing is that the API call succeeded without SQL errors
-    LOG.info("Successfully called workflow instances API with special character entityLink. Found {} instances.", 
-             result.getData().size());
+    LOG.info(
+        "Successfully called workflow instances API with special character entityLink. Found {} instances.",
+        result.getData().size());
   }
 
   @Test
