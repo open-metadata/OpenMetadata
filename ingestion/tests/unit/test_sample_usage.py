@@ -12,10 +12,14 @@
 """
 Query parser utils tests
 """
+import csv
 import json
 import os.path
+import time
 from unittest import TestCase
 
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.workflow.usage import UsageWorkflow
 
 config = """
@@ -80,15 +84,44 @@ class QueryParserTest(TestCase):
             "shopify.raw_customer": 11,
         }
         config_dict = json.loads(config)
-        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
-            "sampleDataFolder"
-        ] = (
+
+        # Get query log path
+        sample_data_folder = (
             os.path.dirname(__file__)
             + "/../../../"
             + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
                 "sampleDataFolder"
             ]
         )
+        query_log_path = os.path.join(sample_data_folder, "datasets/query_log")
+
+        # Parse queries with timing
+        print(f"\n{'='*60}")
+        print("Query Parse Timing Debug")
+        print(f"{'='*60}")
+        with open(query_log_path, "r", encoding="utf-8") as fin:
+            query_logs = [dict(i) for i in csv.DictReader(fin)]
+
+        for idx, query_record in enumerate(query_logs, start=1):
+            query = query_record.get("query", "")
+            query_len = len(query)
+
+            start_time = time.time()
+            parser = LineageParser(query, dialect=Dialect.MYSQL, timeout_seconds=300)
+            parse_duration = time.time() - start_time
+
+            tables = parser.involved_tables or []
+            query_preview = query[:80].replace("\n", " ")
+            print(
+                f"Query #{idx}: {parse_duration:.2f}s | {query_len:,} chars | "
+                f"Tables: {[str(t) for t in tables]}"
+            )
+            print(f"  Preview: {query_preview}...")
+        print(f"{'='*60}\n")
+
+        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
+            "sampleDataFolder"
+        ] = sample_data_folder
         workflow = UsageWorkflow.create(config_dict)
         workflow.execute()
         table_usage_map = {}
