@@ -514,8 +514,6 @@ services:
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
       # AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: true
-      AIRFLOW__DAG_PROCESSOR__MIN_FILE_PROCESS_INTERVAL: 0
-      AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: 0
 
     entrypoint: /bin/bash
     command:
