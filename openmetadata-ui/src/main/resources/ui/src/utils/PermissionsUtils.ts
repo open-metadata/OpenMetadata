@@ -38,19 +38,10 @@ export const checkPermission = (
 ) => {
   const allResource = permissions?.all;
   const entityResource = permissions?.[resourceType];
-  let hasPermission = false;
 
-  /**
-   * If allResource is present then check for permission and return it
-   */
-  if (allResource && !hasPermission) {
-    hasPermission = allResource.All || allResource[operation];
-  }
-
-  hasPermission =
-    hasPermission || (entityResource && entityResource[operation]);
-
-  return hasPermission;
+  return (
+    entityResource?.[operation] ?? allResource?.[operation] ?? allResource?.All
+  );
 };
 
 /**
