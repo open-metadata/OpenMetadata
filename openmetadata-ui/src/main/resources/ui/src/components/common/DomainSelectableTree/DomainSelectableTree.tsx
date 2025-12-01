@@ -15,7 +15,9 @@ import AddIcon from '@mui/icons-material/Add';
 import { Button as MUIButton, useTheme } from '@mui/material';
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
+import { AntTreeNodeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, isEmpty, uniqBy } from 'lodash';
 import {
   FC,
@@ -29,9 +31,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import type { EntityReference } from '../../../generated/type/entityReference';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
   getDomainChildrenPaginated,
   searchDomains,
@@ -52,12 +57,6 @@ import {
   DomainSelectableTreeProps,
   TreeListItem,
 } from './DomainSelectableTree.interface';
-
-import { AntTreeNodeProps } from 'antd/lib/tree';
-import classNames from 'classnames';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
-import { useDomainStore } from '../../../hooks/useDomainStore';
 
 const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
@@ -470,13 +469,14 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             }
           });
 
+          const uniqueData = uniqBy(combinedData, 'fullyQualifiedName');
           const updatedTreeData = convertDomainsToTreeOptions(
-            combinedData,
+            uniqueData,
             0,
             isMultiple
           );
           setTreeData(updatedTreeData);
-          setDomains(combinedData);
+          setDomains(uniqueData);
         } finally {
           setIsLoading(false);
         }
@@ -638,7 +638,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       <Search
         autoFocus
         data-testid="searchbar"
-        placeholder="Search"
+        placeholder={t('label.search')}
         style={{ marginBottom: 8 }}
         onChange={onSearch}
       />

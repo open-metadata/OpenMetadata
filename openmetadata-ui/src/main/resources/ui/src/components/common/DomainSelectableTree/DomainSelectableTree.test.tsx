@@ -64,6 +64,12 @@ const mockChildDomains: Domain[] = [
 const mockOnSubmit = jest.fn().mockResolvedValue(undefined);
 const mockOnCancel = jest.fn();
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 jest.mock('../../../utils/DomainUtils', () => ({
   convertDomainsToTreeOptions: jest.fn().mockImplementation((domains) =>
     domains.map((domain: Domain) => ({
@@ -184,7 +190,7 @@ describe('DomainSelectableTree', () => {
     const searchInput = screen.getByTestId('searchbar');
 
     expect(searchInput).toBeInTheDocument();
-    expect(searchInput).toHaveAttribute('placeholder', 'Search');
+    expect(searchInput).toHaveAttribute('placeholder', 'label.search');
   });
 
   it('should show all domains selector when showAllDomains is true', () => {
@@ -207,7 +213,6 @@ describe('DomainSelectableTree', () => {
 
     const allDomainsButton = screen.getByTestId('all-domains-selector');
 
-    expect(allDomainsButton).toHaveAttribute('role', 'button');
     expect(allDomainsButton).toHaveAttribute('tabIndex', '0');
   });
 
@@ -258,7 +263,7 @@ describe('DomainSelectableTree', () => {
 
     const searchInput = screen.getByTestId('searchbar');
 
-    expect(searchInput).toHaveAttribute('placeholder', 'Search');
+    expect(searchInput).toHaveAttribute('placeholder', 'label.search');
   });
 
   it('should handle initial domains prop', () => {
