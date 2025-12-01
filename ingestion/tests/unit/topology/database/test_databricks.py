@@ -955,8 +955,12 @@ class DatabricksConnectionTest(TestCase):
         )
         self.assertEqual(result, ["view1", "view2"])
 
-    @patch("metadata.ingestion.source.database.databricks.metadata.get_table_comment_result")
-    def test_get_table_names_forwards_kwargs_to_get_view_names(self, mock_get_table_comment_result):
+    @patch(
+        "metadata.ingestion.source.database.databricks.metadata.get_table_comment_result"
+    )
+    def test_get_table_names_forwards_kwargs_to_get_view_names(
+        self, mock_get_table_comment_result
+    ):
         """Test that get_table_names forwards **kw to get_view_names"""
         from metadata.ingestion.source.database.databricks.metadata import (
             get_table_names,
@@ -984,7 +988,7 @@ class DatabricksConnectionTest(TestCase):
         # Mock get_table_comment_result to return iterable rows
         mock_get_table_comment_result.return_value = [
             {"col_name": "Type", "data_type": "MANAGED"},
-            {"col_name": "Provider", "data_type": "hive"}
+            {"col_name": "Provider", "data_type": "hive"},
         ]
 
         # Call get_table_names with db_name
