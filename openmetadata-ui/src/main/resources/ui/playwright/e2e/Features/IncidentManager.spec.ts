@@ -486,8 +486,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
     await incidentCountResponse;
 
-    await page.waitForSelector("[role='dialog']", { state: 'visible' });
-
     await expect(page.getByTestId('Incidents-label')).toBeVisible();
     await expect(page.getByTestId('Incidents-value')).toContainText('3');
 

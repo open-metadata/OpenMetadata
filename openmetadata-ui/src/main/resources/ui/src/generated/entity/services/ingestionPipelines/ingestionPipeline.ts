@@ -630,6 +630,9 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -3689,6 +3692,9 @@ export interface ConfigObject {
     /**
      * SSL Configuration details.
      *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -4081,6 +4087,16 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
+    /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -5811,6 +5827,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -5937,6 +5956,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -5956,7 +5980,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  ConsumerConfigSSLClass;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -5969,6 +5998,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -6470,6 +6504,9 @@ export enum SpaceType {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.

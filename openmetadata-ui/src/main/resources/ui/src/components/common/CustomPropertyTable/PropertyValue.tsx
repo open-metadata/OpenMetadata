@@ -57,7 +57,7 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Config } from '../../../generated/type/customProperty';
-import { getCustomPropertyMomentFormat } from '../../../utils/CustomProperty.utils';
+import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -273,7 +273,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'date-cp':
       case 'dateTime-cp': {
-        const format = getCustomPropertyMomentFormat(
+        const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
         );
@@ -322,7 +322,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'time-cp': {
-        const format = getCustomPropertyMomentFormat(
+        const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
         );

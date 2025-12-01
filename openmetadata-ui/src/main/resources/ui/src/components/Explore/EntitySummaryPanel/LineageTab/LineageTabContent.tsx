@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@mui/material';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -146,23 +147,21 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      <SearchBarComponent
-        containerClassName="searchbar-container"
-        placeholder={t('label.search-for-type', {
-          type: t('label.entity-plural'),
-        })}
-        searchValue={searchText}
-        typingInterval={350}
-        onSearch={setSearchText}
-      />
       <div className="lineage-filter-buttons">
         <Button
           className={`lineage-filter-button ${
             filter === 'upstream' ? 'active' : ''
           }`}
+          data-testid={`upstream-button-${
+            filter === 'upstream' ? 'active' : ''
+          }`}
           size="small"
           onClick={() => onFilterChange('upstream')}>
-          {t('label.upstream')}
+          <span
+            className="lineage-filter-button-text"
+            data-testid="upstream-button-text">
+            {t('label.upstream')}
+          </span>
           <span
             className={`lineage-filter-button-count ${
               filter === 'upstream' ? 'active' : ''
@@ -174,9 +173,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'downstream' ? 'active' : ''
           }`}
+          data-testid={`downstream-button-${
+            filter === 'downstream' ? 'active' : ''
+          }`}
           size="small"
           onClick={() => onFilterChange('downstream')}>
-          {t('label.downstream')}
+          <span
+            className="lineage-filter-button-text"
+            data-testid="downstream-button-text">
+            {t('label.downstream')}
+          </span>
           <span
             className={`lineage-filter-button-count ${
               filter === 'downstream' ? 'active' : ''
@@ -185,7 +191,15 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           </span>
         </Button>
       </div>
-
+      <SearchBarComponent
+        containerClassName="searchbar-container"
+        placeholder={t('label.search-for-type', {
+          type: t('label.entity-plural'),
+        })}
+        searchValue={searchText}
+        typingInterval={350}
+        onSearch={setSearchText}
+      />
       {/* Lineage Items */}
       <div className="lineage-items-list">
         {filteredLineageItems.length > 0 ? (
@@ -227,9 +241,23 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <UpstreamIcon height={18} width={18} />
+                      <Tooltip
+                        arrow
+                        placement="top"
+                        title={t('label.upstream')}>
+                        <span>
+                          <UpstreamIcon height={18} width={18} />
+                        </span>
+                      </Tooltip>
                     ) : (
-                      <DownstreamIcon height={18} width={18} />
+                      <Tooltip
+                        arrow
+                        placement="top"
+                        title={t('label.downstream')}>
+                        <span>
+                          <DownstreamIcon height={18} width={18} />
+                        </span>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
