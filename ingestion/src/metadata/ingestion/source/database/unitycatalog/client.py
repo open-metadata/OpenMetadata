@@ -87,11 +87,14 @@ class UnityCatalogClient(DatabricksClient):
                 timeout=API_TIMEOUT,
             ).json()
             if response:
+                logger.debug(f"Successfully retrieved table lineage for: {table_name}")
                 return LineageTableStreams(**response)
 
         except Exception as exc:
+            logger.error(
+                f"Failed to fetch table lineage for table: {table_name}. Error: {exc}"
+            )
             logger.debug(traceback.format_exc())
-            logger.error(exc)
 
         return LineageTableStreams()
 
@@ -115,11 +118,16 @@ class UnityCatalogClient(DatabricksClient):
             ).json()
 
             if response:
+                logger.debug(
+                    f"Successfully retrieved column lineage for table: {table_name}, column: {column_name}"
+                )
                 return LineageColumnStreams(**response)
 
         except Exception as exc:
+            logger.error(
+                f"Failed to fetch column lineage for table: {table_name}, column: {column_name}. Error: {exc}"
+            )
             logger.debug(traceback.format_exc())
-            logger.error(exc)
 
         return LineageColumnStreams()
 

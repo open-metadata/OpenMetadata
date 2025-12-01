@@ -91,6 +91,40 @@ class UnitycatalogLineageSource(Source):
             )
         return cls(config, metadata)
 
+    def _validate_table_info(
+        self, table_info, source_table_fqn: str, direction: str
+    ) -> bool:
+        """
+        Validates that all required fields (catalog_name, schema_name, name) are present.
+        Logs warning with available info if any field is missing.
+
+        Args:
+            table_info: DatabricksTable object to validate
+            source_table_fqn: FQN of the source table being processed
+            direction: "upstream" or "downstream" for logging context
+
+        Returns:
+            True if all fields are valid, False otherwise
+        """
+        required_fields = {
+            "catalog_name": table_info.catalog_name,
+            "schema_name": table_info.schema_name,
+            "name": table_info.name,
+        }
+
+        for field_name, field_value in required_fields.items():
+            if not field_value:
+                logger.warning(
+                    f"Missing {field_name} for {direction} table of {source_table_fqn}. "
+                    f"Available {direction} table info: "
+                    f"catalog_name={table_info.catalog_name or 'None'}, "
+                    f"schema_name={table_info.schema_name or 'None'}, "
+                    f"name={table_info.name or 'None'}"
+                )
+                return False
+
+        return True
+
     def _get_data_model_column_fqn(
         self, data_model_entity: ContainerDataModel, column: str
     ) -> Optional[str]:
@@ -231,6 +265,7 @@ class UnitycatalogLineageSource(Source):
         databricks_table_fqn: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         for upstream_entity in table_streams.upstreams:
+            upstream_table_identifier = None
             try:
                 if upstream_entity.fileInfo:
                     yield from self._handle_external_location_lineage(
@@ -239,9 +274,25 @@ class UnitycatalogLineageSource(Source):
                     continue
 
                 if not upstream_entity.tableInfo or not upstream_entity.tableInfo.name:
+                    logger.debug(
+                        f"Skipping upstream entity with missing tableInfo for table: {databricks_table_fqn}"
+                    )
                     continue
 
                 upstream_table = upstream_entity.tableInfo
+
+                # Validate required fields before building FQN
+                if not self._validate_table_info(
+                    upstream_table, databricks_table_fqn, "upstream"
+                ):
+                    continue
+
+                upstream_table_identifier = f"{upstream_table.catalog_name}.{upstream_table.schema_name}.{upstream_table.name}"
+
+                logger.debug(
+                    f"Processing upstream lineage: {upstream_table_identifier} -> {databricks_table_fqn}"
+                )
+
                 from_entity_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
@@ -275,13 +326,13 @@ class UnitycatalogLineageSource(Source):
                 else:
                     logger.debug(
                         f"Unable to find upstream entity for "
-                        f"{upstream_table.catalog_name}.{upstream_table.schema_name}.{upstream_table.name}"
-                        f" -> {databricks_table_fqn}"
+                        f"{upstream_table_identifier} -> {databricks_table_fqn}"
                     )
-            except Exception:
-                logger.debug(
-                    "Error while processing upstream lineage for "
-                    f"{databricks_table_fqn}"
+            except Exception as exc:
+                logger.error(
+                    f"Error while processing upstream lineage for {databricks_table_fqn}. "
+                    f"Upstream table: {upstream_table_identifier if upstream_table_identifier else 'UNKNOWN'}. "
+                    f"Error: {exc}"
                 )
                 logger.debug(traceback.format_exc())
 
@@ -292,6 +343,7 @@ class UnitycatalogLineageSource(Source):
         databricks_table_fqn: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         for downstream_entity in table_streams.downstreams:
+            downstream_table_identifier = None
             try:
                 if downstream_entity.fileInfo:
                     yield from self._handle_external_location_lineage(
@@ -303,9 +355,25 @@ class UnitycatalogLineageSource(Source):
                     not downstream_entity.tableInfo
                     or not downstream_entity.tableInfo.name
                 ):
+                    logger.debug(
+                        f"Skipping downstream entity with missing tableInfo for table: {databricks_table_fqn}"
+                    )
                     continue
 
                 downstream_table = downstream_entity.tableInfo
+
+                # Validate required fields before building FQN
+                if not self._validate_table_info(
+                    downstream_table, databricks_table_fqn, "downstream"
+                ):
+                    continue
+
+                downstream_table_identifier = f"{downstream_table.catalog_name}.{downstream_table.schema_name}.{downstream_table.name}"
+
+                logger.debug(
+                    f"Processing downstream lineage: {databricks_table_fqn} -> {downstream_table_identifier}"
+                )
+
                 to_entity_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
@@ -317,7 +385,7 @@ class UnitycatalogLineageSource(Source):
 
                 to_entity = self.metadata.get_by_name(entity=Table, fqn=to_entity_fqn)
                 if to_entity:
-                    downstream_table_fqn = f"{downstream_table.catalog_name}.{downstream_table.schema_name}.{downstream_table.name}"
+                    downstream_table_fqn = downstream_table_identifier
                     lineage_details = self._get_lineage_details(
                         from_table=table,
                         to_table=to_entity,
@@ -336,13 +404,13 @@ class UnitycatalogLineageSource(Source):
                 else:
                     logger.debug(
                         f"Unable to find downstream entity for "
-                        f"{databricks_table_fqn} -> "
-                        f"{downstream_table.catalog_name}.{downstream_table.schema_name}.{downstream_table.name}"
+                        f"{databricks_table_fqn} -> {downstream_table_identifier}"
                     )
-            except Exception:
-                logger.debug(
-                    "Error while processing downstream lineage for "
-                    f"{databricks_table_fqn}"
+            except Exception as exc:
+                logger.error(
+                    f"Error while processing downstream lineage for {databricks_table_fqn}. "
+                    f"Downstream table: {downstream_table_identifier if downstream_table_identifier else 'UNKNOWN'}. "
+                    f"Error: {exc}"
                 )
                 logger.debug(traceback.format_exc())
 
@@ -388,22 +456,36 @@ class UnitycatalogLineageSource(Source):
                         )
                         continue
 
-                    databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
-                    logger.debug(f"Processing table: {databricks_table_fqn}")
-                    table_streams: LineageTableStreams = self.client.get_table_lineage(
-                        databricks_table_fqn
-                    )
+                    try:
+                        databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
+                        logger.debug(
+                            f"Processing lineage for table: {databricks_table_fqn}"
+                        )
 
-                    # Process upstream lineage
-                    yield from self._handle_upstream_table(
-                        table_streams, table, databricks_table_fqn
-                    )
+                        table_streams: LineageTableStreams = (
+                            self.client.get_table_lineage(databricks_table_fqn)
+                        )
 
-                    # Disabling downstream lineage for now as it causes slowness
-                    # Process downstream lineage
-                    # yield from self._handle_downstream_table(
-                    #     table_streams, table, databricks_table_fqn
-                    # )
+                        # Process upstream lineage
+                        yield from self._handle_upstream_table(
+                            table_streams, table, databricks_table_fqn
+                        )
+
+                        # Disabling downstream lineage for now as it causes slowness
+                        # Process downstream lineage
+                        # yield from self._handle_downstream_table(
+                        #     table_streams, table, databricks_table_fqn
+                        # )
+                        logger.debug(
+                            f"Successfully processed lineage for table: {databricks_table_fqn}"
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            f"Error processing lineage for table: "
+                            f"{databricks_table_fqn if 'databricks_table_fqn' in locals() else 'UNKNOWN'}. "
+                            f"Error: {exc}"
+                        )
+                        logger.debug(traceback.format_exc())
 
     def test_connection(self) -> None:
         test_connection_common(
