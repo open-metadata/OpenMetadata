@@ -107,6 +107,9 @@ jest.mock('utils/i18next/LocalUtil', () => ({
   }),
   detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
   t: (key) => key,
+  translateWithNestedKeys: jest.fn((key, params) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
   dir: jest.fn().mockReturnValue('ltr'),
 }));
 /**
