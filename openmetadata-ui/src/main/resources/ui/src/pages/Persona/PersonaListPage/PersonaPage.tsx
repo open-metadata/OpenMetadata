@@ -175,7 +175,12 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           </div>
           <div className="d-flex justify-between align-center">
             <div className="flex-1">
-              <PageHeader data={PAGE_HEADERS.PERSONAS} />
+              <PageHeader
+                data={{
+                  header: t(PAGE_HEADERS.PERSONAS.header),
+                  subHeader: t(PAGE_HEADERS.PERSONAS.subHeader),
+                }}
+              />
             </div>
             <div>
               <Button
