@@ -76,29 +76,6 @@ const mockNodeDataProps2 = {
   zIndex: 0,
 };
 
-const mockNodeDataPropsWithLineage = {
-  id: 'node2',
-  type: 'table',
-  data: {
-    node: {
-      fullyQualifiedName: 'dim_orders',
-      type: 'table',
-      entityType: 'table',
-      id: 'node2-id',
-      columns: [...Array(5)].map((_, i) => ({
-        fullyQualifiedName: `order_col${i}`,
-        name: `order_col${i}`,
-      })),
-    },
-  },
-  selected: false,
-  isConnectable: false,
-  xPos: 100,
-  yPos: 0,
-  dragging: false,
-  zIndex: 0,
-};
-
 const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
 const updateNodeInternalsMock = jest.fn();
@@ -114,6 +91,7 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
 let tracedColumns: string[] = [];
+let columnsHavingLineage: string[] = [];
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
@@ -131,7 +109,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
-    columnsHavingLineage: [],
+    columnsHavingLineage,
     activeLayer: [
       ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
       ...(isDataObservabilityLayerActive
@@ -175,6 +153,7 @@ describe('CustomNodeV1', () => {
     isDataObservabilityLayerActive = false;
     columnsInCurrentPages = [];
     tracedColumns = [];
+    columnsHavingLineage = [];
     jest.clearAllMocks();
   });
 
@@ -391,8 +370,8 @@ describe('CustomNodeV1', () => {
     expect(screen.getByTestId('test-failed')).toBeInTheDocument();
   });
 
-  describe('New tests', () => {
-    it('should have pagination in column level lineage', () => {
+  describe('CustomNodeV1 Column Pagination', () => {
+    it('should have pagination in columns', () => {
       isColumnLayerActive = true;
 
       render(
@@ -489,7 +468,7 @@ describe('CustomNodeV1', () => {
       expect(onMockColumnClick).toHaveBeenCalledWith('col0');
     });
 
-    it('should keep the traced column(s) visible when page changes', () => {
+    it('should keep the traced column visible when page changes', () => {
       isColumnLayerActive = true;
 
       const { rerender } = render(
@@ -587,10 +566,5 @@ describe('CustomNodeV1', () => {
       expect(screen.queryByTestId('column-col1')).not.toBeInTheDocument();
       expect(screen.queryByTestId('column-col2')).not.toBeInTheDocument();
     });
-
-    it('should show column level lineage when a column is clicked and hide all other edges', () => {});
-
-    it('should show the edges for columns in current pages only and hide all other column to column edges', () => {});
-    it('', () => {});
   });
 });
