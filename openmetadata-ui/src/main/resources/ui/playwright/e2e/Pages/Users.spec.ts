@@ -28,6 +28,7 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -89,6 +90,26 @@ const policy = new PolicyClass();
 const role = new RolesClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
+
+const entityCreationConfig: EntityDataClassCreationConfig = {
+  apiEndpoint: true,
+  table: true,
+  storedProcedure: true,
+  dashboard: true,
+  pipeline: true,
+  topic: true,
+  mlModel: true,
+  container: true,
+  searchIndex: true,
+  dashboardDataModel: true,
+  entityDetails: true,
+  directory: true,
+  file: true,
+  spreadsheet: true,
+  worksheet: true,
+  metric: true,
+  chart: true,
+};
 
 const entities = [
   EntityDataClass.table1,
@@ -1270,6 +1291,10 @@ base.describe(
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      await EntityDataClass.preRequisitesForTests(
+        apiContext,
+        entityCreationConfig
+      );
       await user.create(apiContext);
 
       await Promise.all([
@@ -1323,6 +1348,10 @@ base.describe(
 
     base.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await EntityDataClass.postRequisitesForTests(
+        apiContext,
+        entityCreationConfig
+      );
       await Promise.all([
         policy.delete(apiContext),
         role.delete(apiContext),
