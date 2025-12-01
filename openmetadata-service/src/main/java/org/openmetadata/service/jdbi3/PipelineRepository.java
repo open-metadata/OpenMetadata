@@ -1387,26 +1387,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       }
     }
 
-    // Build conditional status filter clause
-    String statusFilterClause = "";
-    if (startTs != null || endTs != null || statusFilter != null) {
-      // Only add EXISTS clause if there are status/timestamp filters
-      statusFilterClause =
-          "AND EXISTS ( "
-              + "  SELECT 1 FROM entity_extension_time_series eets_filter "
-              + "  WHERE eets_filter.entityFQNHash = pe.fqnHash "
-              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
-              + (startTs != null ? "  AND eets_filter.timestamp >= " + startTs + " " : "")
-              + (endTs != null ? "  AND eets_filter.timestamp <= " + endTs + " " : "")
-              + (statusFilter != null
-                  ? "  AND JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) = '"
-                      + statusFilter
-                      + "' "
-                  : "")
-              + ")";
-    }
-
     // Call database-level filtered query
+    // The SQL query handles conditional filtering based on NULL parameter values
     List<CollectionDAO.PipelineSummaryRow> rows =
         daoCollection
             .entityExtensionTimeSeriesDao()
@@ -1416,7 +1398,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
-                statusFilterClause,
                 searchFilter,
                 startTs,
                 endTs,
@@ -1434,7 +1415,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
-                statusFilterClause,
                 searchFilter,
                 startTs,
                 endTs,
