@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { IconButton, Pagination, Stack, Typography } from '@mui/material';
 import { Collapse, Input } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
 import {
@@ -39,12 +43,6 @@ import {
   NodeChildrenProps,
 } from './NodeChildren.interface';
 
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { IconButton, Pagination, Stack, Typography } from '@mui/material';
-import classNames from 'classnames';
-import React from 'react';
-
 interface CustomPaginatedListProps {
   items: React.ReactNode[];
   filteredColumns: EntityChildren;
@@ -60,11 +58,9 @@ const CustomPaginatedList = ({
   const [page, setPage] = useState(1);
   const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
   const [itemsOfCurrentPage, setItemsOfCurrentPage] = useState<string[]>([]);
-
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
-
   const updateNodeInternals = useUpdateNodeInternals();
 
   const count = Math.ceil(items.length / ITEMS_PER_PAGE);
@@ -85,27 +81,32 @@ const CustomPaginatedList = ({
     (_item, i) => i >= start && i < start + ITEMS_PER_PAGE
   );
 
-  const getAllNestedChildrenInFlatArray = (
-    item: EntityChildrenItem
-  ): string[] => {
-    const result: string[] = [];
+  const outsideCurrentPageItems = paginatedItemsMapped.filter(
+    (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
+  );
 
-    if (item.fullyQualifiedName) {
-      result.push(item.fullyQualifiedName);
-    }
+  const getAllNestedChildrenInFlatArray = useCallback(
+    (item: EntityChildrenItem): string[] => {
+      const result: string[] = [];
 
-    if (
-      'children' in item &&
-      Array.isArray(item.children) &&
-      item.children.length > 0
-    ) {
-      for (const child of item.children) {
-        result.push(...getAllNestedChildrenInFlatArray(child));
+      if (item.fullyQualifiedName) {
+        result.push(item.fullyQualifiedName);
       }
-    }
 
-    return result;
-  };
+      if (
+        'children' in item &&
+        Array.isArray(item.children) &&
+        item.children.length > 0
+      ) {
+        for (const child of item.children) {
+          result.push(...getAllNestedChildrenInFlatArray(child));
+        }
+      }
+
+      return result;
+    },
+    []
+  );
 
   useEffect(() => {
     setItemsOfCurrentPage([
@@ -114,7 +115,7 @@ const CustomPaginatedList = ({
         .filter(Boolean)
         .flatMap((item) => getAllNestedChildrenInFlatArray(item)),
     ]);
-  }, [page]);
+  }, [filteredColumns, getAllNestedChildrenInFlatArray, page, start]);
 
   useEffect(() => {
     setColumnsInCurrentPages((prev) => {
@@ -130,11 +131,7 @@ const CustomPaginatedList = ({
 
       return columnsInCurrentPagesUpdated;
     });
-  }, [itemsOfPreviousPage, itemsOfCurrentPage]);
-
-  const outsideCurrentPageItems = paginatedItemsMapped.filter(
-    (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
-  );
+  }, [itemsOfPreviousPage, itemsOfCurrentPage, setColumnsInCurrentPages]);
 
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -256,11 +253,11 @@ const NodeChildren = ({
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
-  }, [node.id]);
+  }, [node]);
 
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
   );
 
   const handleSearchChange = useCallback(
@@ -322,7 +319,7 @@ const NodeChildren = ({
     if (node.id) {
       updateNodeInternals?.(node.id);
     }
-  }, [selectedColumn, updateNodeInternals, tracedColumns]);
+  }, [selectedColumn, updateNodeInternals, tracedColumns, node.id]);
 
   const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
     setIsLoading(true);
@@ -425,15 +422,17 @@ const NodeChildren = ({
       );
     },
     [
-      isConnectable,
       tracedColumns,
+      getColumnSummary,
+      selectedColumn,
+      isConnectable,
       onColumnClick,
       onColumnMouseEnter,
       onColumnMouseLeave,
-      isColumnVisible,
       showDataObservabilitySummary,
       isLoading,
-      summary,
+      Panel,
+      isColumnVisible,
     ]
   );
   const renderColumnsData = useCallback(
@@ -464,13 +463,17 @@ const NodeChildren = ({
       }
     },
     [
-      isConnectable,
-      selectedColumn,
+      getColumnSummary,
+      renderRecord,
       tracedColumns,
       isColumnVisible,
+      selectedColumn,
+      isConnectable,
+      onColumnClick,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       showDataObservabilitySummary,
       isLoading,
-      summary,
     ]
   );
 
@@ -481,7 +484,7 @@ const NodeChildren = ({
       )
       .filter(Boolean)
       .map((column) => renderColumnsData(column as Column));
-  }, [filteredColumns, renderColumnsData]);
+  }, [filteredColumns, renderColumnsData, tracedColumns]);
 
   // Pre-render column data outside of the return statement
   const renderedColumns = useMemo(() => {

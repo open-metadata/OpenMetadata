@@ -154,7 +154,7 @@ export const CustomEdge = ({
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
-  const areBothColumnHandlesPresentInCurrentPages = useMemo(() => {
+  const areBothColumnHandlesPresentInCurrentPage = useMemo(() => {
     const decodedHandles = getColumnSourceTargetHandles({
       sourceHandle,
       targetHandle,
@@ -195,7 +195,7 @@ export const CustomEdge = ({
         }
       } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
         display = 'block';
-        if (!areBothColumnHandlesPresentInCurrentPages) {
+        if (!areBothColumnHandlesPresentInCurrentPage) {
           display = 'none';
         }
       } else {
@@ -224,7 +224,7 @@ export const CustomEdge = ({
     theme.palette.allShades.purple,
     isColumnHighlighted,
     selectedColumn,
-    areBothColumnHandlesPresentInCurrentPages,
+    areBothColumnHandlesPresentInCurrentPage,
   ]);
 
   const shouldShowEdgeIcon = updatedStyle.display === 'block';
