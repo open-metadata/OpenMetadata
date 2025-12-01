@@ -1891,14 +1891,28 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
         {!isEditMode && selectedEdge && (
-          <EdgeInfoDrawer
-            hasEditAccess
-            edge={selectedEdge}
-            nodes={nodes}
-            visible={isDrawerOpen}
-            onClose={onCloseDrawer}
-            onEdgeDetailsUpdate={onEdgeDetailsUpdate}
-          />
+          <Drawer
+            anchor="right"
+            className="lineage-entity-panel"
+            data-testid="lineage-entity-panel"
+            open={isDrawerOpen}
+            sx={{
+              zIndex: 999,
+              '& .MuiDrawer-paper': {
+                width: 576,
+              },
+            }}
+            transitionDuration={300}
+            onClose={onCloseDrawer}>
+            <EdgeInfoDrawer
+              hasEditAccess
+              edge={selectedEdge}
+              nodes={nodes}
+              visible={isDrawerOpen}
+              onClose={onCloseDrawer}
+              onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+            />
+          </Drawer>
         )}
 
         {!isEditMode && !isEmpty(selectedNode) && (
