@@ -53,6 +53,7 @@ import {
   TreeListItem,
 } from './DomainSelectableTree.interface';
 
+import { AntTreeNodeProps } from 'antd/lib/tree';
 import classNames from 'classnames';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
@@ -486,9 +487,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     [fetchAPI, initialDomains, isMultiple]
   );
 
-  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
-    return expanded ? <IconDown /> : <IconRight />;
-  }, []);
+  const switcherIcon = useCallback(
+    ({ expanded }: AntTreeNodeProps) =>
+      expanded ? <IconDown /> : <IconRight />,
+    []
+  );
 
   const onLoadData = useCallback(
     async (node: TreeListItem) => {
@@ -641,9 +644,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       />
 
       {showAllDomains && (
-        <div
+        <Button
           className={classNames(
-            'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer',
+            'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer w-full',
             {
               'selected-node':
                 activeDomain === DEFAULT_DOMAIN_VALUE &&
@@ -651,8 +654,8 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             }
           )}
           data-testid="all-domains-selector"
-          role="button"
           tabIndex={0}
+          type="text"
           onClick={handleMyDomainsClick}
           onKeyDown={handleAllDomainKeyPress}>
           <DomainIcon height={20} name="domain" width={20} />
@@ -664,7 +667,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             })}>
             {t('label.all-domain-plural')}
           </Typography.Text>
-        </div>
+        </Button>
       )}
 
       {treeContent}
