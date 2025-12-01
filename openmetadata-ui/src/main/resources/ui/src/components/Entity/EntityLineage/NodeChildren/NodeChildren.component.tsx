@@ -13,7 +13,7 @@
 import { SearchOutlined } from '@ant-design/icons';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { IconButton, Pagination, Stack, Typography } from '@mui/material';
+import { IconButton, Stack, Typography } from '@mui/material';
 import { Collapse, Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -57,33 +57,10 @@ const CustomPaginatedList = ({
   const ITEMS_PER_PAGE = 5;
   const [page, setPage] = useState(1);
   const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
-  const [itemsOfCurrentPage, setItemsOfCurrentPage] = useState<string[]>([]);
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
   const updateNodeInternals = useUpdateNodeInternals();
-
-  const count = Math.ceil(items.length / ITEMS_PER_PAGE);
-  const start = (page - 1) * ITEMS_PER_PAGE;
-  const paginatedItemsMapped = items.map((item, i) => (
-    <div
-      className={
-        i >= start && i < start + ITEMS_PER_PAGE
-          ? 'inside-current-page'
-          : 'outside-current-page'
-      }
-      key={i}>
-      {item}
-    </div>
-  ));
-
-  const insideCurrentPageItems = paginatedItemsMapped.filter(
-    (_item, i) => i >= start && i < start + ITEMS_PER_PAGE
-  );
-
-  const outsideCurrentPageItems = paginatedItemsMapped.filter(
-    (_item, i) => i < start || i >= start + ITEMS_PER_PAGE
-  );
 
   const getAllNestedChildrenInFlatArray = useCallback(
     (item: EntityChildrenItem): string[] => {
@@ -108,47 +85,91 @@ const CustomPaginatedList = ({
     []
   );
 
-  useEffect(() => {
-    setItemsOfCurrentPage([
-      ...filteredColumns
-        .filter((_item, i) => i >= start && i < start + ITEMS_PER_PAGE)
-        .filter(Boolean)
-        .flatMap((item) => getAllNestedChildrenInFlatArray(item)),
-    ]);
-  }, [filteredColumns, getAllNestedChildrenInFlatArray, page, start]);
+  const {
+    totalPages,
+    insideCurrentPageItems,
+    outsideCurrentPageItems,
+    itemsOfCurrentPage,
+  } = useMemo(() => {
+    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+    const startIdx = (page - 1) * ITEMS_PER_PAGE;
+    const endIdx = startIdx + ITEMS_PER_PAGE;
+
+    const insideCurrentPageItems: React.ReactNode[] = [];
+    const outsideCurrentPageItems: React.ReactNode[] = [];
+
+    items.forEach((item, i) => {
+      const wrappedItem = (
+        <div
+          className={
+            i >= startIdx && i < endIdx
+              ? 'inside-current-page'
+              : 'outside-current-page'
+          }
+          key={i}>
+          {item}
+        </div>
+      );
+
+      if (i >= startIdx && i < endIdx) {
+        insideCurrentPageItems.push(wrappedItem);
+      } else {
+        outsideCurrentPageItems.push(wrappedItem);
+      }
+    });
+
+    const itemsOfCurrentPage = filteredColumns
+      .slice(startIdx, endIdx)
+      .filter(Boolean)
+      .flatMap((item) => getAllNestedChildrenInFlatArray(item));
+
+    return {
+      totalPages,
+      insideCurrentPageItems,
+      outsideCurrentPageItems,
+      itemsOfCurrentPage,
+    };
+  }, [items, page, filteredColumns, getAllNestedChildrenInFlatArray]);
 
   useEffect(() => {
     setColumnsInCurrentPages((prev) => {
-      const columnsInCurrentPagesUpdated = [...prev].filter(
+      const filtered = prev.filter(
         (item) => !itemsOfPreviousPage.includes(item)
       );
 
-      itemsOfCurrentPage.forEach((item) => {
-        if (!columnsInCurrentPagesUpdated.includes(item)) {
-          columnsInCurrentPagesUpdated.push(item);
-        }
-      });
+      const updated = new Set(filtered);
+      itemsOfCurrentPage.forEach((item) => updated.add(item));
 
-      return columnsInCurrentPagesUpdated;
+      return Array.from(updated);
     });
   }, [itemsOfPreviousPage, itemsOfCurrentPage, setColumnsInCurrentPages]);
 
-  const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setItemsOfPreviousPage([...itemsOfCurrentPage]);
-    setPage((p) => Math.max(p - 1, 1));
-    if (nodeId) {
-      updateNodeInternals(nodeId);
-    }
-  };
-  const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setItemsOfPreviousPage([...itemsOfCurrentPage]);
-    setPage((p) => Math.min(p + 1, count));
-    if (nodeId) {
-      updateNodeInternals(nodeId);
-    }
-  };
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setItemsOfPreviousPage(itemsOfCurrentPage);
+      setPage(newPage);
+      if (nodeId) {
+        updateNodeInternals(nodeId);
+      }
+    },
+    [itemsOfCurrentPage, nodeId, updateNodeInternals]
+  );
+
+  const handlePrev = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      handlePageChange(Math.max(page - 1, 1));
+    },
+    [page, handlePageChange]
+  );
+
+  const handleNext = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      handlePageChange(Math.min(page + 1, totalPages));
+    },
+    [page, totalPages, handlePageChange]
+  );
 
   return (
     <>
@@ -170,20 +191,16 @@ const CustomPaginatedList = ({
         </IconButton>
 
         <Typography variant="body2">
-          {page} {t('label.slash-symbol')} {count}
+          {page} {t('label.slash-symbol')} {totalPages}
         </Typography>
 
-        <IconButton disabled={page === count} size="small" onClick={handleNext}>
+        <IconButton
+          disabled={page === totalPages}
+          size="small"
+          onClick={handleNext}>
           <ChevronRightIcon />
         </IconButton>
       </Stack>
-
-      <Pagination
-        count={count}
-        page={page}
-        sx={{ display: 'none' }}
-        onChange={(_e, value) => setPage(value)}
-      />
     </>
   );
 };
