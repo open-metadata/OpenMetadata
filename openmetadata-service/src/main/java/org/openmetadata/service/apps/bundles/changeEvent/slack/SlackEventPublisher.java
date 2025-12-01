@@ -17,7 +17,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,6 +25,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -42,6 +43,9 @@ import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class SlackEventPublisher implements Destination<ChangeEvent> {
@@ -78,15 +82,24 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
 
       // Convert to JSON and apply snake_case transformation
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
-      json = convertCamelCaseToSnakeCase(json);
+      String transformedJson = convertCamelCaseToSnakeCase(json);
 
-      // Send using existing webhook utilities
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
+
+      // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(webhook, subscriptionDestination, client, event, json);
-      targets.add(getTarget(client, webhook, json));
+          recipients.stream()
+              .filter(r -> r instanceof WebhookRecipient)
+              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, transformedJson))
+              .filter(Objects::nonNull)
+              .toList();
 
+      // Send Slack message to each webhook target
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, json);
+        postWebhookMessage(this, actionTarget, transformedJson);
       }
     } catch (Exception e) {
       String message =
