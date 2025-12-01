@@ -31,10 +31,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1324,11 +1322,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     requiredFieldSet.addAll(Set.of("service", "serviceType", "scheduleInterval", "pipelineStatus"));
     Fields requiredFields = new Fields(requiredFieldSet);
 
-    // Extract client-side filters that don't apply to pipeline_entity table
+    // Extract all filter parameters
     String statusFilter = filter.getQueryParams().get("status");
     String searchFilter = filter.getQueryParams().get("search");
     String startTsFilter = filter.getQueryParams().get("startTs");
     String endTsFilter = filter.getQueryParams().get("endTs");
+    String service = filter.getQueryParams().get("service");
+    String serviceType = filter.getQueryParams().get("serviceType");
+    String tier = filter.getQueryParams().get("tier");
 
     // Convert domain and owner to IDs for database filtering
     String domain = filter.getQueryParams().get("domain");
@@ -1337,120 +1338,142 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String owner = filter.getQueryParams().get("owner");
     String ownerId = owner != null ? resolveOwnerToId(owner) : null;
 
-    // Create new filter with SQL-applicable filters (service, serviceType, domainId, ownerId, tier)
-    ListFilter entityFilter =
-        new ListFilter(filter.getInclude())
-            .addQueryParam("service", filter.getQueryParams().get("service"))
-            .addQueryParam("serviceType", filter.getQueryParams().get("serviceType"))
-            .addQueryParam("domainId", domainId != null ? String.format("'%s'", domainId) : null)
-            .addQueryParam("ownerId", ownerId != null ? String.format("'%s'", ownerId) : null)
-            .addQueryParam("tier", filter.getQueryParams().get("tier"));
+    // Build filter strings for database query
+    String serviceFilterSql =
+        service != null
+            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.service.name')) = '" + service + "'"
+            : "";
+    String serviceTypeFilterSql =
+        serviceType != null
+            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
+            : "";
+    String domainFilterSql =
+        domainId != null
+            ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
+                + domainId
+                + "' AND relation = 8 AND toEntity = 'pipeline')"
+            : "";
+    String ownerFilterSql =
+        ownerId != null
+            ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
+                + ownerId
+                + "' AND relation IN (8,1) AND toEntity = 'pipeline')"
+            : "";
+    String tierFilterSql =
+        tier != null ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.tier')) = '" + tier + "'" : "";
 
-    // Use correct base method based on pagination direction
-    ResultList<Pipeline> pipelines;
-    if (before != null) {
-      pipelines = listBefore(uriInfo, requiredFields, entityFilter, limit, before);
-    } else {
-      pipelines = listAfter(uriInfo, requiredFields, entityFilter, limit, after);
+    // Parse timestamp filters
+    Long startTs = null;
+    Long endTs = null;
+    try {
+      if (startTsFilter != null && !startTsFilter.isEmpty()) {
+        startTs = Long.parseLong(startTsFilter);
+      }
+      if (endTsFilter != null && !endTsFilter.isEmpty()) {
+        endTs = Long.parseLong(endTsFilter);
+      }
+    } catch (NumberFormatException e) {
+      LOG.warn("Invalid timestamp filter value: {}", e.getMessage());
     }
 
-    List<PipelineSummary> summaries = new ArrayList<>();
-    for (Pipeline pipeline : pipelines.getData()) {
+    // Calculate offset for pagination
+    int offset = 0;
+    if (after != null && !after.isEmpty()) {
       try {
+        String decodedAfter = RestUtil.decodeCursor(after);
+        offset = Integer.parseInt(decodedAfter);
+      } catch (Exception e) {
+        LOG.warn("Invalid after cursor: {}", after);
+      }
+    }
+
+    // Build conditional status filter clause
+    String statusFilterClause = "";
+    if (startTs != null || endTs != null || statusFilter != null) {
+      // Only add EXISTS clause if there are status/timestamp filters
+      statusFilterClause =
+          "AND EXISTS ( "
+              + "  SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "  WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
+              + (startTs != null ? "  AND eets_filter.timestamp >= " + startTs + " " : "")
+              + (endTs != null ? "  AND eets_filter.timestamp <= " + endTs + " " : "")
+              + (statusFilter != null
+                  ? "  AND JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) = '"
+                      + statusFilter
+                      + "' "
+                  : "")
+              + ")";
+    }
+
+    // Call database-level filtered query
+    List<CollectionDAO.PipelineSummaryRow> rows =
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .listPipelineSummariesFiltered(
+                serviceFilterSql,
+                serviceTypeFilterSql,
+                domainFilterSql,
+                ownerFilterSql,
+                tierFilterSql,
+                statusFilterClause,
+                searchFilter,
+                startTs,
+                endTs,
+                statusFilter,
+                limit,
+                offset);
+
+    // Get total count for pagination
+    int total =
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .countPipelineSummariesFiltered(
+                serviceFilterSql,
+                serviceTypeFilterSql,
+                domainFilterSql,
+                ownerFilterSql,
+                tierFilterSql,
+                statusFilterClause,
+                searchFilter,
+                startTs,
+                endTs,
+                statusFilter);
+
+    // Convert rows to Pipeline objects and build summaries
+    List<PipelineSummary> summaries = new ArrayList<>();
+    for (CollectionDAO.PipelineSummaryRow row : rows) {
+      try {
+        // Parse pipeline JSON
+        Pipeline pipeline = JsonUtils.readValue(row.getJson(), Pipeline.class);
+
+        // Parse and attach latest status if available
+        if (row.getLatestStatus() != null && !row.getLatestStatus().isEmpty()) {
+          PipelineStatus status = JsonUtils.readValue(row.getLatestStatus(), PipelineStatus.class);
+          pipeline.setPipelineStatus(status);
+        }
+
+        // Build summary
         PipelineSummary summary = buildPipelineSummary(pipeline);
         summaries.add(summary);
       } catch (Exception e) {
-        LOG.error(
-            "Failed to build summary for pipeline {}: {}",
-            pipeline.getFullyQualifiedName(),
-            e.getMessage());
-        summaries.add(buildFallbackSummary(pipeline));
+        LOG.error("Failed to build summary for pipeline from row: {}", e.getMessage());
       }
     }
 
-    // Apply client-side filters
-    // Apply search filter if provided
-    if (searchFilter != null && !searchFilter.isEmpty()) {
-      String searchLower = searchFilter.toLowerCase();
-      summaries =
-          summaries.stream()
-              .filter(
-                  summary ->
-                      (summary.getPipelineName() != null
-                              && summary.getPipelineName().toLowerCase().contains(searchLower))
-                          || (summary.getPipelineFqn() != null
-                              && summary.getPipelineFqn().toLowerCase().contains(searchLower)))
-              .collect(java.util.stream.Collectors.toList());
+    // Calculate pagination cursors
+    String beforeCursor = null;
+    String afterCursor = null;
+
+    if (offset > 0) {
+      beforeCursor = RestUtil.encodeCursor(String.valueOf(Math.max(0, offset - limit)));
     }
 
-    // Apply status filter if provided
-    if (statusFilter != null && !statusFilter.isEmpty()) {
-      summaries =
-          summaries.stream()
-              .filter(
-                  summary ->
-                      summary.getLastRunStatus() != null
-                          && summary.getLastRunStatus().value().equals(statusFilter))
-              .collect(java.util.stream.Collectors.toList());
+    if (offset + summaries.size() < total) {
+      afterCursor = RestUtil.encodeCursor(String.valueOf(offset + limit));
     }
 
-    // Apply timestamp filters if provided
-    if (startTsFilter != null && !startTsFilter.isEmpty()) {
-      try {
-        Long startTs = Long.parseLong(startTsFilter);
-        summaries =
-            summaries.stream()
-                .filter(
-                    summary ->
-                        summary.getLastRunTime() != null && summary.getLastRunTime() >= startTs)
-                .collect(java.util.stream.Collectors.toList());
-      } catch (NumberFormatException e) {
-        LOG.warn("Invalid startTs filter value: {}", startTsFilter);
-      }
-    }
-
-    if (endTsFilter != null && !endTsFilter.isEmpty()) {
-      try {
-        Long endTs = Long.parseLong(endTsFilter);
-        summaries =
-            summaries.stream()
-                .filter(
-                    summary ->
-                        summary.getLastRunTime() != null && summary.getLastRunTime() <= endTs)
-                .collect(java.util.stream.Collectors.toList());
-      } catch (NumberFormatException e) {
-        LOG.warn("Invalid endTs filter value: {}", endTsFilter);
-      }
-    }
-
-    // Extract pagination info correctly
-    String beforeCursor = pipelines.getPaging() != null ? pipelines.getPaging().getBefore() : null;
-    String afterCursor = pipelines.getPaging() != null ? pipelines.getPaging().getAfter() : null;
-    Integer total = pipelines.getPaging() != null ? pipelines.getPaging().getTotal() : 0;
-
-    // Decode the cursors before passing to ResultList constructor to avoid double-encoding
-    // The cursors from pipelines.getPaging() are already Base64-encoded
-    // ResultList constructor will encode them again, so we need to decode first
-    String decodedBefore = null;
-    String decodedAfter = null;
-
-    try {
-      if (beforeCursor != null) {
-        decodedBefore =
-            new String(Base64.getUrlDecoder().decode(beforeCursor), StandardCharsets.UTF_8);
-      }
-      if (afterCursor != null) {
-        decodedAfter =
-            new String(Base64.getUrlDecoder().decode(afterCursor), StandardCharsets.UTF_8);
-      }
-    } catch (IllegalArgumentException e) {
-      LOG.warn("Failed to decode pagination cursors: {}", e.getMessage());
-      // If decoding fails, use the cursors as-is (they might not be encoded)
-      decodedBefore = beforeCursor;
-      decodedAfter = afterCursor;
-    }
-
-    return new ResultList<>(summaries, decodedBefore, decodedAfter, total != null ? total : 0);
+    return new ResultList<>(summaries, beforeCursor, afterCursor, total);
   }
 
   private PipelineSummary buildPipelineSummary(Pipeline pipeline) {
