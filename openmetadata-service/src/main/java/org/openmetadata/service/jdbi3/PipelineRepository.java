@@ -1483,15 +1483,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     // Calculate pagination cursors
+    // Note: ResultList constructor handles Base64 encoding, so pass raw offset strings
     String beforeCursor = null;
     String afterCursor = null;
 
     if (offset > 0) {
-      beforeCursor = RestUtil.encodeCursor(String.valueOf(Math.max(0, offset - limit)));
+      beforeCursor = String.valueOf(Math.max(0, offset - limit));
     }
 
     if (offset + summaries.size() < total) {
-      afterCursor = RestUtil.encodeCursor(String.valueOf(offset + limit));
+      afterCursor = String.valueOf(offset + limit);
     }
 
     return new ResultList<>(summaries, beforeCursor, afterCursor, total);
