@@ -16,7 +16,7 @@ import { Button as MUIButton, useTheme } from '@mui/material';
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
-import { debounce, isEmpty } from 'lodash';
+import { debounce, isEmpty, uniqBy } from 'lodash';
 import {
   FC,
   Key,
@@ -36,7 +36,10 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import {
+  convertDomainsToTreeOptions,
+  isDomainExist,
+} from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import {
   escapeESReservedCharacters,
@@ -374,10 +377,22 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           combinedData = [...domains, ...fetchedData];
         } else {
           combinedData = [...fetchedData];
+
+          // Ensure initialDomains are included
+          initialDomains?.forEach((selectedDomain) => {
+            const exists = combinedData.some((domain: Domain) =>
+              isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+            );
+            if (!exists) {
+              combinedData.unshift(selectedDomain as unknown as Domain);
+            }
+          });
         }
 
-        setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
-        setDomains(combinedData);
+        const uniqueData = uniqBy(combinedData, 'fullyQualifiedName');
+
+        setTreeData(convertDomainsToTreeOptions(uniqueData, 0, isMultiple));
+        setDomains(uniqueData);
 
         setPaging({
           offset: currentOffset,
@@ -392,7 +407,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setLoadingState(false);
       }
     },
-    [domains, isMultiple]
+    [domains, isMultiple, initialDomains]
   );
 
   const onSelect = (selectedKeys: React.Key[]) => {
@@ -432,30 +447,44 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   };
 
-  const onSearch = debounce(async (value: string) => {
-    setSearchTerm(value);
-    if (value) {
-      try {
-        setIsLoading(true);
-        const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
-        const results: Domain[] = await searchDomains(encodedValue);
+  const onSearch = useCallback(
+    debounce(async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      setSearchTerm(value);
+      if (value) {
+        try {
+          setIsLoading(true);
+          const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+          const results: Domain[] = await searchDomains(encodedValue);
 
-        const combinedData = [...results];
+          const combinedData = [...results];
 
-        const updatedTreeData = convertDomainsToTreeOptions(
-          combinedData,
-          0,
-          isMultiple
-        );
-        setTreeData(updatedTreeData);
-        setDomains(combinedData);
-      } finally {
-        setIsLoading(false);
+          // Ensure initialDomains are included
+          initialDomains?.forEach((selectedDomain) => {
+            const exists = combinedData.some((domain: Domain) =>
+              isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+            );
+            if (!exists) {
+              combinedData.push(selectedDomain as unknown as Domain);
+            }
+          });
+
+          const updatedTreeData = convertDomainsToTreeOptions(
+            combinedData,
+            0,
+            isMultiple
+          );
+          setTreeData(updatedTreeData);
+          setDomains(combinedData);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        fetchAPI();
       }
-    } else {
-      fetchAPI();
-    }
-  }, 300);
+    }, 300),
+    [fetchAPI, initialDomains, isMultiple]
+  );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
@@ -608,7 +637,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         data-testid="searchbar"
         placeholder="Search"
         style={{ marginBottom: 8 }}
-        onChange={(e) => onSearch(e.target.value)}
+        onChange={onSearch}
       />
 
       {showAllDomains && (
