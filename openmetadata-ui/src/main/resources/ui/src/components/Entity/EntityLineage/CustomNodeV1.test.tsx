@@ -91,7 +91,6 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
 let tracedColumns: string[] = [];
-let columnsHavingLineage: string[] = [];
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
@@ -109,7 +108,6 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
-    columnsHavingLineage,
     activeLayer: [
       ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
       ...(isDataObservabilityLayerActive
@@ -151,9 +149,7 @@ describe('CustomNodeV1', () => {
   beforeEach(() => {
     isColumnLayerActive = false;
     isDataObservabilityLayerActive = false;
-    columnsInCurrentPages = [];
     tracedColumns = [];
-    columnsHavingLineage = [];
     jest.clearAllMocks();
   });
 
