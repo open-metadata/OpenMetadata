@@ -1,0 +1,106 @@
+{
+  "summary": "Test Case CSV file is used for importing and exporting test case metadata. Users can export test cases at table level, test suite level, or platform-wide.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name that identifies the test case.",
+      "examples": [
+        "table_row_count_to_be_between", "column_values_to_be_unique"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name that identifies this test case.",
+      "examples": [
+        "Table Row Count Check", "Column Uniqueness Check"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the test case in Markdown format.",
+      "examples": [
+        "This test case validates that the table row count is within the expected range."
+      ]
+    },
+    {
+      "name": "testDefinition",
+      "required": true,
+      "description": "Fully qualified name of the test definition.",
+      "examples": [
+        "tableRowCountToBeBetween", "columnValuesToBeUnique"
+      ]
+    },
+    {
+      "name": "entityFQN",
+      "required": true,
+      "description": "Fully qualified name of the entity (table or column) being tested. For table tests use table FQN, for column tests use column FQN.",
+      "examples": [
+        "service.database.schema.table",
+        "service.database.schema.table.column"
+      ]
+    },
+    {
+      "name": "testSuite",
+      "required": false,
+      "description": "Fully qualified name of the test suite. If not provided, the default basic test suite for the entity will be used.",
+      "examples": [
+        "service.database.schema.table.testSuite",
+        "MyLogicalTestSuite"
+      ]
+    },
+    {
+      "name": "parameterValues",
+      "required": false,
+      "description": "Parameter values for the test case in JSON format. Each parameter is defined as {\"name\":\"paramName\",\"value\":value}. Multiple parameters are separated by ';'.",
+      "examples": [
+        "{\"name\":\"minValue\",\"value\":100};{\"name\":\"maxValue\",\"value\":1000}",
+        "{\"name\":\"columnNames\",\"value\":[\"col1\",\"col2\"]}"
+      ]
+    },
+    {
+      "name": "computePassedFailedRowCount",
+      "required": false,
+      "description": "Flag to indicate if the test should compute passed and failed row counts. Valid values: true, false.",
+      "examples": [
+        "true", "false"
+      ]
+    },
+    {
+      "name": "useDynamicAssertion",
+      "required": false,
+      "description": "Flag to indicate if the test uses dynamic assertion. Valid values: true, false.",
+      "examples": [
+        "true", "false"
+      ]
+    },
+    {
+      "name": "inspectionQuery",
+      "required": false,
+      "description": "SQL query for inspecting failed test results.",
+      "examples": [
+        "SELECT * FROM table WHERE condition_failed"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the test case separated by ';'.",
+      "examples": [
+        "PII.Sensitive",
+        "PII.Sensitive;PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the test case separated by ';'.",
+      "examples": [
+        "Glossary.Term1",
+        "Glossary.Term1;Glossary.Term2"
+      ]
+    }
+  ]
+}
