@@ -206,7 +206,7 @@ describe('addEntityTypeFilter', () => {
         must: [
           {
             term: {
-              entityType: EntityType.TABLE,
+              'entityType.keyword': EntityType.TABLE,
             },
           },
         ],

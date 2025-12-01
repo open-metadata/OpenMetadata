@@ -438,7 +438,7 @@ test.describe('Mention notifications in Notification Box', () => {
         // Poll the activity feed tab count from the page until it's a valid non-negative number
         let count = NaN;
         const maxRetries = 10;
-        for (let i = 0; i < maxRetries && (isNaN(count) || count < 0); i++) {
+        for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
           const countText = await adminPage
             .getByRole('tab', { name: 'Activity Feeds & Tasks' })
             .getByTestId('count')

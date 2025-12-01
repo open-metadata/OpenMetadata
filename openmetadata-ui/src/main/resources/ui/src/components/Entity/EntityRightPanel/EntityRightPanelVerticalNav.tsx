@@ -31,7 +31,13 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ activeTab, entityType, onTabChange, verticalNavConatinerclassName }) => {
+  ({
+    activeTab,
+    entityType,
+    onTabChange,
+    verticalNavConatinerclassName,
+    isSideDrawer = false,
+  }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {
@@ -93,7 +99,8 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       <div
         className={classNames(
           'entity-right-panel-vertical-nav',
-          verticalNavConatinerclassName
+          verticalNavConatinerclassName,
+          { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
         )}>
         <Menu
           className="vertical-nav-menu"

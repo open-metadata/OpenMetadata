@@ -45,11 +45,13 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
+  exportContractToODCSYaml,
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import {
+  downloadContractAsODCSYaml,
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
@@ -158,6 +160,18 @@ const ContractDetail: React.FC<{
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT,
       },
       {
+        label: (
+          <div
+            className="contract-action-dropdown-item"
+            data-testid="export-odcs-contract-button">
+            <ExportIcon className="anticon" />
+
+            {t('label.export-odcs')}
+          </div>
+        ),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS,
+      },
+      {
         type: 'divider',
       },
       {
@@ -183,6 +197,24 @@ const ContractDetail: React.FC<{
     downloadContractYamlFile(contract);
   }, [contract]);
 
+  const handleExportODCSContract = useCallback(async () => {
+    if (!contract?.id) {
+      return;
+    }
+
+    try {
+      const yamlContent = await exportContractToODCSYaml(contract.id);
+      downloadContractAsODCSYaml(yamlContent, contract.name ?? 'contract');
+      showSuccessToast(
+        t('message.export-entity-successfully', {
+          entity: t('label.odcs-contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [contract]);
+
   const handleRunNow = async () => {
     if (contract?.id) {
       try {
@@ -206,6 +238,9 @@ const ContractDetail: React.FC<{
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT:
           return handleExportContract();
 
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS:
+          return handleExportODCSContract();
+
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE:
           return onDelete();
 
@@ -213,7 +248,13 @@ const ContractDetail: React.FC<{
           return onEdit();
       }
     },
-    [onDelete, onEdit, handleRunNow, handleExportContract]
+    [
+      onDelete,
+      onEdit,
+      handleRunNow,
+      handleExportContract,
+      handleExportODCSContract,
+    ]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
@@ -261,7 +302,7 @@ const ContractDetail: React.FC<{
                   onClick: handleContractAction,
                 }}
                 overlayClassName="contract-action-dropdown"
-                overlayStyle={{ width: 150 }}
+                overlayStyle={{ width: 180 }}
                 placement="bottomRight"
                 trigger={['click']}>
                 <Button
