@@ -490,10 +490,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(page.getByTestId('Incidents-value')).toContainText('3');
 
     const incidentResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `/api/v1/dataQuality/testCases?*entityLink=*${encodeURIComponent(
+        table1.entityResponseData?.['fullyQualifiedName'] ?? ''
+      )}*includeAllTests=true*limit=100*fields=testCaseResult*incidentId*`
     );
-    await page.getByTestId('Incidents-value').click();
-    await incidentResponse;
+
+    await Promise.all([
+      page.getByTestId('Incidents-value').click(),
+      incidentResponse,
+    ]);
 
     for (const testCase of testCases) {
       await expect(
