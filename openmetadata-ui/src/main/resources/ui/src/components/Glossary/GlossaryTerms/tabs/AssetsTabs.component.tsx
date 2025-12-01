@@ -85,6 +85,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
@@ -191,7 +192,7 @@ const AssetsTabs = forwardRef(
     const filterMenu: ItemType[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
-        label: filter.label,
+        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
         onClick: handleMenuClick,
       }));
     }, [filters]);

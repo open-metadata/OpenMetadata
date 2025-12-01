@@ -86,6 +86,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -163,7 +164,7 @@ export const useAssetSelectionContent = ({
   const filterMenu: ItemType[] = useMemo(() => {
     return filters.map((filter) => ({
       key: filter.key,
-      label: filter.label,
+      label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
       onClick: handleMenuClick,
     }));
   }, [filters]);
