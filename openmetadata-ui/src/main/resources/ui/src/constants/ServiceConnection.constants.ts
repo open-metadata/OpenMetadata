@@ -21,6 +21,7 @@ export const SERVICE_FILTER_PATTERN_FIELDS = Object.values(
 export const FILTER_PATTERN_BY_SERVICE_TYPE = {
   [EntityType.API_SERVICE]: [
     ServiceConnectionFilterPatternFields.API_COLLECTION_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.API_ENDPOINT_FILTER_PATTERN,
   ],
   [EntityType.DASHBOARD_SERVICE]: [
     ServiceConnectionFilterPatternFields.DASHBOARD_FILTER_PATTERN,
