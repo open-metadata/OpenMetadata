@@ -534,7 +534,12 @@ const NodeChildren = ({
         )}
 
         {!isChildrenListExpanded && (
-          <div className={classNames('column-container', 'columns-collapsed')}>
+          <div
+            className={classNames(
+              'column-container',
+              'columns-collapsed',
+              selectedColumn && 'any-column-selected'
+            )}>
             {tracedColumnsForThisNode}
           </div>
         )}

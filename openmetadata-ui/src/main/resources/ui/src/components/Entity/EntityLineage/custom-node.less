@@ -177,7 +177,6 @@
 
       &.columns-collapsed {
         min-height: 0px;
-        padding: 0px;
       }
 
       .inside-current-page {
@@ -208,10 +207,6 @@
           padding: 4px;
           font-size: 12px;
           display: inherit; // to fix the overflow issue of parent column node, which has children.
-
-          .custom-node-column-container {
-            background-color: @lineage-collapse-header;
-          }
         }
 
         .ant-collapse-content-box {
@@ -358,48 +353,42 @@
     }
   }
 
-  &.columns-expanded {
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          .entity-label-container {
-            &::after {
-              content: none;
-            }
-          }
-          .entity-footer {
-            background-color: @grey-1;
+  .lineage-node-content {
+    .label-container {
+      .custom-node-label-container {
+        .entity-label-container {
+          &::after {
+            content: none;
           }
         }
-      }
-      .column-container {
-        .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: @primary-1;
-          border-color: #1570ef;
-          &:hover {
-            background-color: @primary-1;
-          }
-        }
-        &.creating-edge {
-          .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
-            background-color: @primary-1;
-            border-color: #1570ef;
-          }
+        .entity-footer {
+          background-color: @grey-1;
         }
       }
     }
-  }
-
-  .lineage-node-content {
     .column-container {
       .custom-node-column-container.custom-node-header-column-tracing {
         background-color: @primary-1;
         border-color: #1570ef;
+        &:hover {
+          background-color: @primary-1;
+        }
       }
       &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
           background-color: #ebe9fe;
           border-color: #5925dc;
+          &:hover {
+            background-color: #ebe9fe;
+            border-color: #5925dc;
+          }
+        }
+      }
+
+      &.creating-edge {
+        .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
+          background-color: @primary-1;
+          border-color: #1570ef;
         }
       }
     }
