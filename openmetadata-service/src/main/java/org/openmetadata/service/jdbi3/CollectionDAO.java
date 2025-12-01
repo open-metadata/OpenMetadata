@@ -6874,15 +6874,7 @@ public interface CollectionDAO {
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
-                + "  AND (:startTs IS NULL AND :endTs IS NULL AND :status IS NULL "
-                + "       OR EXISTS ( "
-                + "         SELECT 1 FROM entity_extension_time_series eets_filter "
-                + "         WHERE eets_filter.entityFQNHash = pe.fqnHash "
-                + "         AND eets_filter.extension = 'pipeline.pipelineStatus' "
-                + "         AND (:startTs IS NULL OR eets_filter.timestamp >= :startTs) "
-                + "         AND (:endTs IS NULL OR eets_filter.timestamp <= :endTs) "
-                + "         AND (:status IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) = :status) "
-                + "       )) "
+                + "  <mysqlStatusFilter> "
                 + "ORDER BY pe.name "
                 + "LIMIT :limit OFFSET :offset",
         connectionType = MYSQL)
@@ -6901,15 +6893,7 @@ public interface CollectionDAO {
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
-                + "  AND (:startTs IS NULL AND :endTs IS NULL AND :status IS NULL "
-                + "       OR EXISTS ( "
-                + "         SELECT 1 FROM entity_extension_time_series eets_filter "
-                + "         WHERE eets_filter.entityFQNHash = pe.fqnHash "
-                + "         AND eets_filter.extension = 'pipeline.pipelineStatus' "
-                + "         AND (:startTs IS NULL OR eets_filter.timestamp >= :startTs) "
-                + "         AND (:endTs IS NULL OR eets_filter.timestamp <= :endTs) "
-                + "         AND (:status IS NULL OR eets_filter.json->>'executionStatus' = :status) "
-                + "       )) "
+                + "  <postgresStatusFilter> "
                 + "ORDER BY pe.name "
                 + "LIMIT :limit OFFSET :offset",
         connectionType = POSTGRES)
@@ -6920,10 +6904,9 @@ public interface CollectionDAO {
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search,
-        @Bind("startTs") Long startTs,
-        @Bind("endTs") Long endTs,
-        @Bind("status") String status,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
 
@@ -6938,15 +6921,7 @@ public interface CollectionDAO {
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
-                + "  AND (:startTs IS NULL AND :endTs IS NULL AND :status IS NULL "
-                + "       OR EXISTS ( "
-                + "         SELECT 1 FROM entity_extension_time_series eets_filter "
-                + "         WHERE eets_filter.entityFQNHash = pe.fqnHash "
-                + "         AND eets_filter.extension = 'pipeline.pipelineStatus' "
-                + "         AND (:startTs IS NULL OR eets_filter.timestamp >= :startTs) "
-                + "         AND (:endTs IS NULL OR eets_filter.timestamp <= :endTs) "
-                + "         AND (:status IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) = :status) "
-                + "       ))",
+                + "  <mysqlStatusFilter>",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -6959,15 +6934,7 @@ public interface CollectionDAO {
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
-                + "  AND (:startTs IS NULL AND :endTs IS NULL AND :status IS NULL "
-                + "       OR EXISTS ( "
-                + "         SELECT 1 FROM entity_extension_time_series eets_filter "
-                + "         WHERE eets_filter.entityFQNHash = pe.fqnHash "
-                + "         AND eets_filter.extension = 'pipeline.pipelineStatus' "
-                + "         AND (:startTs IS NULL OR eets_filter.timestamp >= :startTs) "
-                + "         AND (:endTs IS NULL OR eets_filter.timestamp <= :endTs) "
-                + "         AND (:status IS NULL OR eets_filter.json->>'executionStatus' = :status) "
-                + "       ))",
+                + "  <postgresStatusFilter>",
         connectionType = POSTGRES)
     int countPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
@@ -6975,10 +6942,9 @@ public interface CollectionDAO {
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
-        @Bind("search") String search,
-        @Bind("startTs") Long startTs,
-        @Bind("endTs") Long endTs,
-        @Bind("status") String status);
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Bind("search") String search);
   }
 
   interface AppsDataStore {

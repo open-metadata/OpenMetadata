@@ -1387,8 +1387,51 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       }
     }
 
+    // Build MySQL-specific status filter
+    String mysqlStatusFilter = "";
+    if (startTs != null || endTs != null || statusFilter != null) {
+      mysqlStatusFilter =
+          "AND EXISTS ( "
+              + "  SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "  WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
+      }
+      if (statusFilter != null) {
+        mysqlStatusFilter +=
+            "  AND JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) = '"
+                + statusFilter
+                + "' ";
+      }
+      mysqlStatusFilter += ")";
+    }
+
+    // Build PostgreSQL-specific status filter
+    String postgresStatusFilter = "";
+    if (startTs != null || endTs != null || statusFilter != null) {
+      postgresStatusFilter =
+          "AND EXISTS ( "
+              + "  SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "  WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
+      }
+      if (statusFilter != null) {
+        postgresStatusFilter +=
+            "  AND eets_filter.json->>'executionStatus' = '" + statusFilter + "' ";
+      }
+      postgresStatusFilter += ")";
+    }
+
     // Call database-level filtered query
-    // The SQL query handles conditional filtering based on NULL parameter values
     List<CollectionDAO.PipelineSummaryRow> rows =
         daoCollection
             .entityExtensionTimeSeriesDao()
@@ -1398,10 +1441,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
+                mysqlStatusFilter,
+                postgresStatusFilter,
                 searchFilter,
-                startTs,
-                endTs,
-                statusFilter,
                 limit,
                 offset);
 
@@ -1415,10 +1457,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
-                searchFilter,
-                startTs,
-                endTs,
-                statusFilter);
+                mysqlStatusFilter,
+                postgresStatusFilter,
+                searchFilter);
 
     // Convert rows to Pipeline objects and build summaries
     List<PipelineSummary> summaries = new ArrayList<>();
