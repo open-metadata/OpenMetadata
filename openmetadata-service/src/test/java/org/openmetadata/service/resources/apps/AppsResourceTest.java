@@ -6,6 +6,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -763,7 +764,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
           appMarketPlaceResourceTest
               .createRequest(appName1)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.COLATE_AI);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
       AppMarketPlaceDefinition marketPlaceDef1 =
           appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq1, ADMIN_AUTH_HEADERS);
 
@@ -771,7 +772,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
           appMarketPlaceResourceTest
               .createRequest(appName2)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.METADATA);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
       AppMarketPlaceDefinition marketPlaceDef2 =
           appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq2, ADMIN_AUTH_HEADERS);
 
@@ -821,11 +822,11 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     } finally {
       // Clean up created apps
       try {
-        deleteEntity(appName1, ADMIN_AUTH_HEADERS);
+        deleteEntityByName(appName1, true, true, ADMIN_AUTH_HEADERS);
       } catch (Exception ignored) {
       }
       try {
-        deleteEntity(appName2, ADMIN_AUTH_HEADERS);
+        deleteEntityByName(appName2, true, true, ADMIN_AUTH_HEADERS);
       } catch (Exception ignored) {
       }
     }
@@ -845,15 +846,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
           appMarketPlaceResourceTest
               .createRequest(appName1)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.COLATE_AI);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
       CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
           appMarketPlaceResourceTest
               .createRequest(appName2)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.METADATA);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
       CreateAppMarketPlaceDefinitionReq marketPlaceReq3 =
           appMarketPlaceResourceTest
               .createRequest(appName3)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.COLATE_AI_TIER_AGENT);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAITierAgent);
 
       AppMarketPlaceDefinition marketPlaceDef1 =
           appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq1, ADMIN_AUTH_HEADERS);
@@ -912,15 +913,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     } finally {
       // Clean up created apps
       try {
-        deleteEntity(appName1, ADMIN_AUTH_HEADERS);
+        deleteEntityByName(appName1, true, true, ADMIN_AUTH_HEADERS);
       } catch (Exception ignored) {
       }
       try {
-        deleteEntity(appName2, ADMIN_AUTH_HEADERS);
+        deleteEntityByName(appName2, true, true, ADMIN_AUTH_HEADERS);
       } catch (Exception ignored) {
       }
       try {
-        deleteEntity(appName3, ADMIN_AUTH_HEADERS);
+        deleteEntityByName(appName3, true, true, ADMIN_AUTH_HEADERS);
       } catch (Exception ignored) {
       }
     }
