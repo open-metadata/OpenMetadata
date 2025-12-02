@@ -930,7 +930,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     });
 
     // Select the second persona as default
-    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
+    await adminPage.getByTitle(persona2.data.displayName).click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -1179,8 +1179,8 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.waitForLoadState('networkidle');
 
       // Select specific persona for default - try test ID first, fallback to role selector
-      const defaultPersonaOptionTestId = adminPage.getByTestId(
-        `${persona1.responseData.displayName}-option`
+      const defaultPersonaOptionTestId = adminPage.getByTitle(
+        persona1.responseData.displayName
       );
 
       await defaultPersonaOptionTestId.click();

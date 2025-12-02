@@ -200,7 +200,7 @@ export const setUserDefaultPersona = async (
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   // Click on the persona option by text within the dropdown
-  await page.locator(`[data-testid="${personaName}-option"]`).click();
+  await page.getByTitle(personaName).click();
 
   await page
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
