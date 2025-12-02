@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from '../../../../utils/i18next/LocalUtil';
-
 export const DATA_ASSETS_SORT_BY_KEYS = {
   LAST_7_DAYS: 'last_7_days',
   LAST_14_DAYS: 'last_14_days',
@@ -20,10 +18,10 @@ export const DATA_ASSETS_SORT_BY_KEYS = {
 export const DATA_ASSETS_SORT_BY_OPTIONS = [
   {
     key: DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS,
-    label: t('label.last-7-days'),
+    label: 'label.last-7-days',
   },
   {
     key: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS,
-    label: t('label.last-14-days'),
+    label: 'label.last-14-days',
   },
 ];

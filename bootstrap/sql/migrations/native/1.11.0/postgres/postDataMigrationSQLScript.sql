@@ -103,3 +103,6 @@ WHERE json->>'name' IN ('CollateAIQualityAgentApplication', 'CollateAITierAgentA
   
 -- Remove bot form App entity  
 UPDATE installed_apps SET json = json - 'bot';
+
+-- Remove SearchIndexingApplication past runs
+delete from apps_extension_time_series where appname = 'SearchIndexingApplication';
