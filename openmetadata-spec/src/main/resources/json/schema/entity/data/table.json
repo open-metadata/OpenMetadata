@@ -173,7 +173,8 @@
         "MEASURE VISIBLE",
         "MEASURE",
         "KPI",
-        "HEIRARCHY"
+        "HEIRARCHY",
+        "HIERARCHYID"
       ]
     },
     "constraint": {
@@ -679,6 +680,10 @@
               "items": {
                 "type": "number"
               }
+            },
+            "allValuesUnique": {
+              "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1065,6 +1070,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this table resource.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -1194,6 +1203,54 @@
       "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
+    "compressionEnabled": {
+      "description": "Indicates whether compression is enabled on this table. Applicable for databases that support compression like Snowflake, TimescaleDB, ClickHouse, BigQuery, Redshift, etc.",
+      "type": "boolean",
+      "default": null
+    },
+    "compressionCodec": {
+      "description": "Compression algorithm/codec used. Examples: LZ4, ZSTD, Snappy, Gorilla, Delta, etc. Database-specific values allowed.",
+      "type": "string",
+      "default": null
+    },
+    "compressionStrategy": {
+      "description": "Compression strategy configuration including segment/partition/order keys",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.CompressionStrategy",
+      "properties": {
+        "compressionType": {
+          "description": "Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED (TimescaleDB)",
+          "type": "string",
+          "enum": ["AUTOMATIC", "MANUAL", "POLICY_BASED"],
+          "default": null
+        },
+        "segmentColumns": {
+          "description": "Columns used for segmenting/partitioning compressed data (TimescaleDB segment-by, ClickHouse partition key)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "orderColumns": {
+          "description": "Columns defining sort order within compressed blocks (TimescaleDB order-by, ClickHouse order by)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "compressionLevel": {
+          "description": "Compression level (1-9) for codecs that support it",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9,
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "default": null
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
@@ -1237,17 +1294,24 @@
       "default": false
     },
     "queries": {
-      "description": "List of queries that are used to create this table.", 
+      "description": "List of queries that are used to create this table.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
       },
       "default": null
     },
+    "pipelineObservability": {
+      "description": "Pipeline observability information for the table. Multiple pipelines can process the same table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/pipelineObservability.json"
+      },
+      "default": null
+    },
     "entityStatus": {
       "description": "Status of the Table.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

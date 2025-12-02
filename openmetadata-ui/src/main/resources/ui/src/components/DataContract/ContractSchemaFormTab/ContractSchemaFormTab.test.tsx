@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { Column } from '../../../generated/entity/data/table';
 import { useFqn } from '../../../hooks/useFqn';
+import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { ContractSchemaFormTab } from './ContractScehmaFormTab';
 
@@ -48,6 +49,14 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
 
 jest.mock('../../../utils/TableUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
+  getTableExpandableConfig: jest.fn(),
+  getAllRowKeysByKeyName: jest.fn(),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTableData,
+  })),
 }));
 
 jest.mock('../../common/Table/Table', () => {
@@ -118,10 +127,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockOnChange = jest.fn();
-const mockOnNext = jest.fn();
-const mockOnPrev = jest.fn();
-
 const mockColumns: Column[] = [
   {
     name: 'id',
@@ -147,6 +152,21 @@ const mockColumns: Column[] = [
   },
 ] as any;
 
+const mockOnChange = jest.fn();
+const mockOnNext = jest.fn();
+const mockOnPrev = jest.fn();
+
+const commonProps = {
+  onChange: mockOnChange,
+  onPrev: mockOnPrev,
+  onNext: mockOnNext,
+  buttonProps: {
+    nextLabel: 'Next',
+    prevLabel: 'Previous',
+    isNextVisible: true,
+  },
+};
+
 describe('ContractSchemaFormTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -158,14 +178,7 @@ describe('ContractSchemaFormTab', () => {
 
   describe('Basic Rendering', () => {
     it('should render the component with default props', () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       expect(screen.getByText('Schema')).toBeInTheDocument();
       expect(
@@ -178,9 +191,7 @@ describe('ContractSchemaFormTab', () => {
       render(
         <ContractSchemaFormTab
           selectedSchema={[mockColumns[0], mockColumns[1]]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -188,32 +199,16 @@ describe('ContractSchemaFormTab', () => {
     });
 
     it('should render with custom labels', () => {
-      render(
-        <ContractSchemaFormTab
-          nextLabel="Custom Next"
-          prevLabel="Custom Previous"
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
-      expect(screen.getByText('Custom Next')).toBeInTheDocument();
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText('Next')).toBeInTheDocument();
+      expect(screen.getByText('Previous')).toBeInTheDocument();
     });
   });
 
   describe('Column Selection', () => {
     it('should handle column selection', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       expect(getTableColumnsByFQN).toHaveBeenCalled();
 
@@ -236,9 +231,7 @@ describe('ContractSchemaFormTab', () => {
       render(
         <ContractSchemaFormTab
           selectedSchema={[mockColumns[0]]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -248,14 +241,7 @@ describe('ContractSchemaFormTab', () => {
     });
 
     it('should handle multiple column selection', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('select-row-id')).toBeInTheDocument();
@@ -279,14 +265,7 @@ describe('ContractSchemaFormTab', () => {
 
   describe('Table Rendering', () => {
     it('should display columns in table', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(screen.getByText('Data Source Length: 3')).toBeInTheDocument();
@@ -303,14 +282,7 @@ describe('ContractSchemaFormTab', () => {
         paging: { total: 0 },
       });
 
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(screen.getByText('Data Source Length: 0')).toBeInTheDocument();
@@ -320,28 +292,14 @@ describe('ContractSchemaFormTab', () => {
 
   describe('Navigation', () => {
     it('should display navigation buttons', () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       expect(screen.getByText('Previous')).toBeInTheDocument();
       expect(screen.getByText('Next')).toBeInTheDocument();
     });
 
     it('should call onNext when next button is clicked', () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       const nextButton = screen.getByText('Next');
       fireEvent.click(nextButton);
@@ -350,14 +308,7 @@ describe('ContractSchemaFormTab', () => {
     });
 
     it('should call onPrev when previous button is clicked', () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       const prevButton = screen.getByText('Previous');
       fireEvent.click(prevButton);
@@ -368,18 +319,11 @@ describe('ContractSchemaFormTab', () => {
 
   describe('Table Columns Configuration', () => {
     it('should configure table columns correctly', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       await waitFor(() => {
         // Check that table is rendered with correct columns
-        expect(screen.getByText('Columns: 5')).toBeInTheDocument();
+        expect(screen.getByText('Columns: 4')).toBeInTheDocument();
       });
     });
   });
@@ -390,28 +334,14 @@ describe('ContractSchemaFormTab', () => {
       mockUseFqn.mockReturnValueOnce({ fqn: '' });
 
       expect(() => {
-        render(
-          <ContractSchemaFormTab
-            selectedSchema={[]}
-            onChange={mockOnChange}
-            onNext={mockOnNext}
-            onPrev={mockOnPrev}
-          />
-        );
+        render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
       }).not.toThrow();
     });
   });
 
   describe('Accessibility', () => {
     it('should have proper button roles and attributes', () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       const nextButton = screen.getByText('Next');
       const prevButton = screen.getByText('Previous');
@@ -423,14 +353,7 @@ describe('ContractSchemaFormTab', () => {
 
   describe('Data Fetching', () => {
     it('should fetch table columns on component mount', async () => {
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(getTableColumnsByFQN).toHaveBeenCalledWith(
@@ -445,14 +368,7 @@ describe('ContractSchemaFormTab', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       expect(screen.getByText('Loading: true')).toBeInTheDocument();
     });
@@ -462,14 +378,7 @@ describe('ContractSchemaFormTab', () => {
         fqn: undefined,
       }));
 
-      render(
-        <ContractSchemaFormTab
-          selectedSchema={[]}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       expect(getTableColumnsByFQN).not.toHaveBeenCalled();
     });

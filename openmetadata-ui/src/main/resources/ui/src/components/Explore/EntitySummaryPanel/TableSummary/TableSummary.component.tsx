@@ -13,7 +13,6 @@
 
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +25,7 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import './table-summary.less';
 import { TableSummaryProps } from './TableSummary.interface';
 
@@ -69,16 +68,14 @@ function TableSummary({
   };
 
   const handleDqRedirection = () => {
-    navigate({
-      pathname: getEntityDetailsPath(
+    navigate(
+      getEntityDetailsPath(
         EntityType.TABLE,
         tableDetails.fullyQualifiedName ?? '',
-        EntityTabs.PROFILER
-      ),
-      search: QueryString.stringify({
-        activeTab: TableProfilerTab.DATA_QUALITY,
-      }),
-    });
+        EntityTabs.PROFILER,
+        ProfilerTabPath.DATA_QUALITY
+      )
+    );
   };
 
   const testCasesSummary = useMemo(() => {

@@ -1,7 +1,14 @@
 package org.openmetadata.service.migration.utils.v1100;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
@@ -9,6 +16,9 @@ public class MigrationUtil {
   private static final int BATCH_SIZE = 500;
   private final Handle handle;
   private final ConnectionType connectionType;
+
+  private static final String ADMIN_USER_NAME = "admin";
+  private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
 
   public MigrationUtil(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
@@ -303,5 +313,88 @@ public class MigrationUtil {
     }
 
     return totalMigrated;
+  }
+
+  public void cleanupOrphanedDataContracts() {
+    LOG.info("Starting cleanup of orphaned data contracts...");
+
+    try {
+      DataContractRepository dataContractRepository =
+          (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+
+      List<DataContract> allDataContracts =
+          dataContractRepository.listAll(
+              dataContractRepository.getFields("id,entity"), new ListFilter(Include.ALL));
+
+      if (allDataContracts.isEmpty()) {
+        LOG.info("✓ No data contracts found - cleanup complete");
+        return;
+      }
+
+      int deletedCount = 0;
+      int totalContracts = allDataContracts.size();
+
+      LOG.info("Found {} data contracts to validate", totalContracts);
+
+      for (DataContract dataContract : allDataContracts) {
+        try {
+          // Try to get the associated entity
+          Entity.getEntityReferenceById(
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId(),
+              Include.NON_DELETED);
+
+        } catch (EntityNotFoundException e) {
+          LOG.info(
+              "Deleting orphaned data contract '{}' - associated {} entity with ID {} not found",
+              dataContract.getFullyQualifiedName(),
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId());
+
+          try {
+            dataContractRepository.delete(Entity.ADMIN_USER_NAME, dataContract.getId(), true, true);
+            deletedCount++;
+          } catch (Exception deleteException) {
+            LOG.warn(
+                "Failed to delete orphaned data contract '{}': {}",
+                dataContract.getFullyQualifiedName(),
+                deleteException.getMessage());
+          }
+        }
+      }
+
+      LOG.info(
+          "✓ Cleanup complete: {} orphaned data contracts deleted out of {} total",
+          deletedCount,
+          totalContracts);
+
+    } catch (Exception e) {
+      LOG.error("✗ FAILED cleanup of orphaned data contracts: {}", e.getMessage(), e);
+    }
+  }
+
+  public void removeStoredProcedureIndex() {
+    if (connectionType == ConnectionType.MYSQL) {
+      try {
+        boolean indexExists =
+            handle
+                .createQuery("SHOW INDEX FROM stored_procedure_entity WHERE Key_name = :keyName")
+                .bind("keyName", "idx_stored_procedure_entity_deleted_name_id")
+                .mapToMap()
+                .findFirst()
+                .isPresent();
+
+        if (indexExists) {
+          handle
+              .createUpdate(
+                  "ALTER TABLE stored_procedure_entity DROP INDEX idx_stored_procedure_entity_deleted_name_id")
+              .execute();
+        }
+      } catch (Exception ex) {
+        LOG.warn(
+            "Issue in remove Store Procedure Index. Index Might Already be Removed. message : {}",
+            ex.getMessage());
+      }
+    }
   }
 }

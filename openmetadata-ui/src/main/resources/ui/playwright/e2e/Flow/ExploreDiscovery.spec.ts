@@ -11,33 +11,58 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
 const table1 = new TableClass();
+const user = new UserClass();
+const domain = new Domain();
 
 test.describe('Explore Assets Discovery', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
+    await user.create(apiContext);
+    await domain.create(apiContext);
     await table.create(apiContext);
     await table1.create(apiContext);
+    await table.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          value: {
+            type: 'user',
+            id: user.responseData.id,
+          },
+          path: '/owners/0',
+        },
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        },
+      ],
+    });
     await table.delete(apiContext, false);
-    // await table1.delete(apiContext, false);
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await table.delete(apiContext);
-    await table1.delete(apiContext);
 
     await afterAction();
   });
@@ -216,6 +241,9 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('confirm-button').click();
 
     await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(page.getByTestId('deleted-badge')).toBeVisible();
 
@@ -228,5 +256,145 @@ test.describe('Explore Assets Discovery', () => {
     expect(
       page.locator('.ant-popover-inner-content').textContent()
     ).not.toContain(table1.entityResponseData.name);
+  });
+
+  test('Should not display domain and owner of deleted asset in suggestions when showDeleted is off', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // The user should not be visible in the owners filter when the deleted switch is off
+    await page.click('[data-testid="search-dropdown-Owners"]');
+    const searchResOwner = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=owners.displayName.keyword*deleted=false*`
+    );
+
+    await page.fill(
+      '[data-testid="search-input"]',
+      user.responseData.displayName
+    );
+    await searchResOwner;
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('drop-down-menu')
+        .getByTestId(user.responseData.displayName)
+    ).not.toBeAttached();
+
+    await page.getByTestId('close-btn').click();
+
+    // The domain should not be visible in the domains filter when the deleted switch is off
+    await page.click('[data-testid="search-dropdown-Domains"]');
+
+    const searchResDomain = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=false*`
+    );
+
+    await page.fill(
+      '[data-testid="search-input"]',
+      domain.responseData.displayName
+    );
+    await searchResDomain;
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('drop-down-menu')
+        .getByTestId(domain.responseData.displayName)
+    ).not.toBeAttached();
+
+    await page.getByTestId('close-btn').click();
+  });
+
+  test('Should display domain and owner of deleted asset in suggestions when showDeleted is on', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Click on the show deleted toggle button
+    await page.getByTestId('show-deleted').click();
+
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // The user should be visible in the owners filter when the deleted switch is on
+    const ownerSearchText = user.responseData.displayName.toLowerCase();
+    await page.click('[data-testid="search-dropdown-Owners"]');
+
+    const searchResOwner = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=owners.displayName.keyword*deleted=true*`
+    );
+
+    await page.fill('[data-testid="search-input"]', ownerSearchText);
+    await searchResOwner;
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page.getByTestId('drop-down-menu').getByTestId(ownerSearchText)
+    ).toBeAttached();
+
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(ownerSearchText)
+      .click();
+
+    const fetchWithOwner = page.waitForResponse(
+      `/api/v1/search/query?*deleted=true*owners.displayName.keyword*${ownerSearchText}*`
+    );
+    await page.getByTestId('update-btn').click();
+    await fetchWithOwner;
+
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // The domain should be visible in the domains filter when the deleted switch is on
+    const domainSearchText = domain.responseData.displayName.toLowerCase();
+    await page.click('[data-testid="search-dropdown-Domains"]');
+
+    const searchResDomain = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=true*`
+    );
+
+    await page.fill('[data-testid="search-input"]', domainSearchText);
+    await searchResDomain;
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page.getByTestId('drop-down-menu').getByTestId(domainSearchText)
+    ).toBeAttached();
+
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .click();
+
+    const fetchWithDomain = page.waitForResponse(
+      `/api/v1/search/query?*deleted=true*domains.displayName.keyword*${getEncodedFqn(
+        domainSearchText,
+        true
+      )}*`
+    );
+    await page.getByTestId('update-btn').click();
+    await fetchWithDomain;
+
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Only the table option should be visible for the data assets filter when the deleted switch is on
+    // with the owner and domain filter applied
+    await page.click('[data-testid="search-dropdown-Data Assets"]');
+
+    await expect(
+      page.getByTestId('drop-down-menu').getByTestId('table')
+    ).toBeAttached();
   });
 });

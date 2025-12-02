@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-entity-default",
+  "fullyQualifiedName": "system-notification-entity-default",
+  "displayName": "Default Entity Notification",
+  "description": "System default fallback template for any unhandled eventTypes",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> performed <strong>{{camelCaseToTitle event.eventType}}</strong> operation on <strong>{{camelCaseToTitle event.entityType}}</strong>: <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
+}

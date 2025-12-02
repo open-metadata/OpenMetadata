@@ -460,8 +460,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             glossaryTermResourceTest.moveGlossaryTerm(
                 g.getEntityReference(), t11.getEntityReference(), t1),
         Status.BAD_REQUEST,
-        CatalogExceptionMessage.invalidGlossaryTermMove(
-            t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
+        "Circular reference detected: Cannot set parent relationship as it would create a cycle. Term '"
+            + t1.getFullyQualifiedName()
+            + "' (or one of its descendants) already exists in the parent chain.");
 
     EntityUpdater.setSessionTimeout(10 * 60 * 1000); // Turn consolidation of changes back on
   }
@@ -830,6 +831,52 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       if (val != null) customPropValue = val.toString();
     }
     assertEquals("test value", customPropValue);
+  }
+
+  @Test
+  void test_importCsvSelfReferenceValidation() throws IOException {
+    String glossaryName = "selfRefTest";
+    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+
+    String termName = "testTerm";
+    String termCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf("," + termName + "," + termName + ",Description,,,,,,,,,,"),
+            null);
+    CsvImportResult result = importCsv(glossaryName, termCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    String selfRefCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                glossaryName
+                    + "."
+                    + termName
+                    + ","
+                    + termName
+                    + ","
+                    + termName
+                    + ",Description,,,,,,,,,,"),
+            null);
+
+    // Test dryRun=true - should detect the error without persisting
+    result = importCsv(glossaryName, selfRefCsv, true);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    String expectedError =
+        String.format(
+            "Invalid hierarchy: Term '%s.%s' cannot be its own parent", glossaryName, termName);
+    assertTrue(
+        result.getImportResultsCsv().contains(expectedError),
+        "Dry run should fail with error: " + expectedError);
+
+    // Test dryRun=false - should also fail with the same error
+    result = importCsv(glossaryName, selfRefCsv, false);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    assertTrue(
+        result.getImportResultsCsv().contains(expectedError),
+        "Actual import should fail with error: " + expectedError);
   }
 
   @Test
@@ -1276,7 +1323,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   public static void waitForTaskToBeCreated(String fullyQualifiedName) {
-    waitForTaskToBeCreated(fullyQualifiedName, 60000L * 2);
+    waitForTaskToBeCreated(fullyQualifiedName, 90000L * 2);
   }
 
   public static void waitForTaskToBeCreated(String fullyQualifiedName, long timeout) {

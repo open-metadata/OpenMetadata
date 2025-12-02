@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Grid } from '@mui/material';
+import { Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
@@ -26,32 +27,48 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import {
+  PAGE_SIZE_LARGE,
+  ROUTES,
+  VALIDATION_MESSAGES,
+} from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  NotificationTemplate,
+  ProviderType,
+} from '../../generated/entity/events/notificationTemplate';
+import { Operation } from '../../generated/entity/policies/policy';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
   EventSubscription,
-  ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
   getResourceFunctions,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
-import {
-  getModifiedAlertDataForForm,
-  handleAlertSave,
-} from '../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -61,6 +78,7 @@ function AddObservabilityPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
+  const { getResourcePermission } = usePermissionProvider();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
@@ -71,31 +89,39 @@ function AddObservabilityPage() {
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
-  const [fetching, setFetching] = useState<number>(0);
+  const [loadingState, setLoadingState] = useState<AddAlertPageLoadingState>({
+    alerts: false,
+    functions: false,
+    templates: false,
+  });
   const [saving, setSaving] = useState<boolean>(false);
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [templateResourcePermission, setTemplateResourcePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
   const { getResourceLimit } = useLimitStore();
 
   const fetchAlert = async () => {
     try {
-      setFetching((prev) => prev + 1);
+      setLoadingState((state) => ({ ...state, alerts: true }));
 
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
-      const modifiedAlertData = getModifiedAlertDataForForm(observabilityAlert);
+      const modifiedAlertData =
+        alertsClassBase.getModifiedAlertDataForForm(observabilityAlert);
 
       setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
     } catch (error) {
       // Error handling
     } finally {
-      setFetching((prev) => prev - 1);
+      setLoadingState((state) => ({ ...state, alerts: false }));
     }
   };
 
   const fetchFunctions = async () => {
     try {
-      setFetching((prev) => prev + 1);
+      setLoadingState((state) => ({ ...state, functions: true }));
       const filterResources = await getResourceFunctions();
 
       setFilterResources(filterResources.data);
@@ -104,7 +130,7 @@ function AddObservabilityPage() {
         t('server.entity-fetch-error', { entity: t('label.config') })
       );
     } finally {
-      setFetching((prev) => prev - 1);
+      setLoadingState((state) => ({ ...state, functions: false }));
     }
   };
 
@@ -141,7 +167,7 @@ function AddObservabilityPage() {
       try {
         setSaving(true);
 
-        await handleAlertSave({
+        await alertsClassBase.handleAlertSave({
           data,
           fqn,
           initialData,
@@ -191,7 +217,54 @@ function AddObservabilityPage() {
     [selectedTrigger, supportedTriggers]
   );
 
-  if (fetching || (isEditMode && isEmpty(alert))) {
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
+  );
+
+  const extraFormButtons = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraButtons(),
+    []
+  );
+
+  const fetchTemplates = useCallback(async () => {
+    setLoadingState((state) => ({ ...state, templates: true }));
+    try {
+      const permission = await getResourcePermission(
+        ResourceEntity.NOTIFICATION_TEMPLATE
+      );
+
+      setTemplateResourcePermission(permission);
+
+      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+        const { data } = await getAllNotificationTemplates({
+          limit: PAGE_SIZE_LARGE,
+          provider: ProviderType.User,
+        });
+
+        setTemplates(data);
+      }
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.template-plural') })
+      );
+    } finally {
+      setLoadingState((state) => ({ ...state, templates: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isEmpty(extraFormWidgets)) {
+      fetchTemplates();
+    }
+  }, [extraFormWidgets]);
+
+  const isLoading = useMemo(
+    () => Object.values(loadingState).some((val) => val),
+    [loadingState]
+  );
+
+  if (isLoading || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
 
@@ -289,6 +362,31 @@ function AddObservabilityPage() {
                         <Col span={24}>
                           <DestinationFormItem />
                         </Col>
+
+                        {!isEmpty(extraFormWidgets) && (
+                          <>
+                            {Object.entries(extraFormWidgets).map(
+                              ([name, Widget]) => (
+                                <Fragment key={name}>
+                                  <Col>
+                                    <Divider dashed type="vertical" />
+                                  </Col>
+                                  <Col span={24}>
+                                    <Widget
+                                      alertDetails={alert}
+                                      formRef={form}
+                                      loading={isLoading}
+                                      templateResourcePermission={
+                                        templateResourcePermission
+                                      }
+                                      templates={templates}
+                                    />
+                                  </Col>
+                                </Fragment>
+                              )
+                            )}
+                          </>
+                        )}
                       </Row>
                     </Col>
                     <Form.Item
@@ -308,22 +406,38 @@ function AddObservabilityPage() {
                       </Col>
                     )}
 
-                    <Col flex="auto" />
-                    <Col flex="300px" pull="right">
-                      <Button
-                        className="m-l-sm float-right"
-                        data-testid="save-button"
-                        htmlType="submit"
-                        loading={saving}
-                        type="primary">
-                        {t('label.save')}
-                      </Button>
-                      <Button
-                        className="float-right"
-                        data-testid="cancel-button"
-                        onClick={() => navigate(-1)}>
-                        {t('label.cancel')}
-                      </Button>
+                    <Col span={24}>
+                      <Grid container justifyContent="end" spacing={2}>
+                        <Button
+                          className="float-right"
+                          data-testid="cancel-button"
+                          variant="text"
+                          onClick={() => navigate(-1)}>
+                          {t('label.cancel')}
+                        </Button>
+
+                        {Object.entries(extraFormButtons).map(
+                          ([name, ButtonComponent]) => (
+                            <ButtonComponent
+                              alertDetails={alert}
+                              formRef={form}
+                              key={name}
+                              templateResourcePermission={
+                                templateResourcePermission
+                              }
+                              templates={templates}
+                            />
+                          )
+                        )}
+                        <Button
+                          className="float-right"
+                          data-testid="save-button"
+                          loading={saving}
+                          type="submit"
+                          variant="contained">
+                          {t('label.save')}
+                        </Button>
+                      </Grid>
                     </Col>
                   </Row>
                 </Form>

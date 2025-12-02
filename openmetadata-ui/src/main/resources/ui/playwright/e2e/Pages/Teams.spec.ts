@@ -36,10 +36,14 @@ import {
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
-import { addMultiOwner } from '../../utils/entity';
+import {
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
   addEmailTeam,
+  addTeamHierarchy,
   addTeamOwnerToEntity,
   addUserInTeam,
   addUserTeam,
@@ -47,6 +51,7 @@ import {
   createTeam,
   executionOnOwnerGroupTeam,
   executionOnOwnerTeam,
+  getNewTeamDetails,
   hardDeleteTeam,
   searchTeam,
   softDeleteTeam,
@@ -160,7 +165,7 @@ test.describe('Teams Page', () => {
 
       await addMultiOwner({
         page,
-        ownerNames: [user.getUserName()],
+        ownerNames: [user.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.Teams,
         type: 'Users',
@@ -188,7 +193,7 @@ test.describe('Teams Page', () => {
       // Select the user to remove
       await page
         .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
         )
         .click();
 
@@ -391,10 +396,19 @@ test.describe('Teams Page', () => {
 
     await page.getByRole('link', { name: publicTeam.displayName }).click();
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page
       .getByTestId('team-details-collapse')
       .getByTestId('manage-button')
       .click();
+
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).toBeVisible();
 
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
@@ -635,17 +649,17 @@ test.describe('Teams Page', () => {
     // Search and select the user
     await page
       .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-      .fill(user.getUserName());
+      .fill(user.getUserDisplayName());
 
     await page
       .locator(
-        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
       )
       .click();
 
     await expect(
       page.locator(
-        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
       )
     ).toHaveClass(/active/);
 
@@ -673,6 +687,70 @@ test.describe('Teams Page', () => {
     await expect(
       page.locator(`[data-row-key="${userName.toLowerCase()}"]`)
     ).not.toBeVisible();
+
+    await afterAction();
+  });
+
+  test('Verify breadcrumb navigation for a team with a dot in its name', async ({
+    page,
+  }) => {
+    const team1Details = getNewTeamDetails(`test.department-${uuid()}`);
+    const team2Details = getNewTeamDetails(`test.team-${uuid()}`);
+
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+    await addTeamHierarchy(page, team1Details, 0);
+
+    await page.getByRole('link', { name: team1Details.displayName }).click();
+    await waitForAllLoadersToDisappear(page);
+    await addTeamHierarchy(page, team2Details, 1, true);
+
+    await page.getByRole('link', { name: team2Details.displayName }).click();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('team-heading')).toContainText(
+      team2Details.displayName
+    );
+
+    await page.getByRole('link', { name: team1Details.displayName }).click();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('team-heading')).toContainText(
+      team1Details.displayName
+    );
+    await expect(
+      page.getByTestId('team-hierarchy-table').getByRole('link')
+    ).toContainText(team2Details.displayName);
+
+    await hardDeleteTeam(page);
+  });
+
+  test('Total User Count should be rendered', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+    const user2 = new UserClass();
+    const user3 = new UserClass();
+
+    await user.create(apiContext);
+    await user2.create(apiContext);
+    await user3.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw%percent-${id}`,
+      displayName: `pw team percent ${id}`,
+      description: 'playwright team with percent description',
+      teamType: 'Group',
+      users: [
+        user.responseData.id,
+        user2.responseData.id,
+        user3.responseData.id,
+      ],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+
+    await expect(page.getByTestId('team-user-count')).toContainText('3');
 
     await afterAction();
   });
@@ -781,6 +859,8 @@ test.describe('Teams Page with Data Consumer User', () => {
     await dataConsumerUser.delete(apiContext);
     await user.delete(apiContext);
     await team.delete(apiContext);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
     await team2.delete(apiContext);
     await afterAction();
   });
@@ -798,7 +878,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('edit-team-name')
     ).not.toBeVisible();
     await expect(dataConsumerPage.getByTestId('add-domain')).not.toBeVisible();
-    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
     await expect(dataConsumerPage.getByTestId('edit-email')).not.toBeVisible();
     await expect(
       dataConsumerPage.getByTestId('edit-team-subscription')
@@ -952,6 +1032,13 @@ test.describe('Teams Page action as Owner of Team', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach('Visit Home Page', async ({ ownerUserPage }) => {
     await redirectToHomePage(ownerUserPage);
   });
@@ -969,11 +1056,11 @@ test.describe('Teams Page action as Owner of Team', () => {
       state: 'detached',
     });
 
+    await expect(ownerUserPage.getByTestId('edit-owner')).toBeVisible();
+
     await expect(ownerUserPage.getByTestId('manage-button')).not.toBeVisible();
 
     await expect(ownerUserPage.getByTestId('add-domain')).not.toBeVisible();
-
-    await expect(ownerUserPage.getByTestId('edit-owner')).not.toBeVisible();
 
     await expect(ownerUserPage.getByTestId('edit-email')).not.toBeVisible();
 
@@ -986,6 +1073,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 
@@ -993,6 +1081,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team2, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 
@@ -1000,6 +1089,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team3, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 

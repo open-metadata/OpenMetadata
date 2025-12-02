@@ -17,12 +17,20 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -32,6 +40,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.CloseTask;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -42,10 +52,12 @@ import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
@@ -53,12 +65,16 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -67,15 +83,20 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -170,6 +191,26 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
+    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
+        closeApprovalTask(updated, "Approved the data contract");
+      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
+        closeApprovalTask(updated, "Rejected the data contract");
+      }
+    }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
+    // Data Contract goes back to DRAFT.
+    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+      try {
+        closeApprovalTask(updated, "Closed due to data contract going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+
     postCreateOrUpdate(updated);
   }
 
@@ -656,7 +697,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       try {
         deployAndTriggerDQValidation(dataContract);
-        compileResult(result, ContractExecutionStatus.Running);
+        // Don't compile result yet - keep status as "Running"
+        // Final compilation will happen in updateContractDQResults() with complete data
       } catch (Exception e) {
         LOG.error(
             "Failed to trigger DQ validation for data contract {}: {}",
@@ -861,7 +903,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   public DataContractResult updateContractDQResults(
       EntityReference contractReference, TestSuite testSuite) {
-    DataContract dataContract = Entity.getEntity(contractReference, "", Include.NON_DELETED);
+    DataContract dataContract =
+        Entity.getEntity(contractReference, "entity,owners,reviewers", Include.NON_DELETED);
     if (dataContract == null) {
       throw EntityNotFoundException.byMessage(
           String.format("Data contract not found for Test Suite %s", testSuite.getName()));
@@ -883,6 +926,29 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     compileResult(result, ContractExecutionStatus.Success);
     // Update the last result in the data contract
     addContractResult(dataContract, result);
+
+    // Sync the in-memory latestResult to reflect the updated status
+    dataContract.setLatestResult(
+        new LatestResult()
+            .withTimestamp(result.getTimestamp())
+            .withStatus(result.getContractExecutionStatus())
+            .withMessage(result.getResult())
+            .withResultId(result.getId()));
+
+    // Enrich the entity reference with fullyQualifiedName for notification template URL building
+    if (dataContract.getEntity() != null) {
+      EntityReference fullEntityRef =
+          Entity.getEntityReferenceById(
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId(),
+              Include.NON_DELETED);
+      dataContract.setEntity(fullEntityRef);
+    }
+
+    ChangeEvent changeEvent =
+        FormatterUtil.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(dataContract));
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     return result;
   }
@@ -919,6 +985,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         Operation operation,
         ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      // adding the reviewer should add the person as assignee to the task
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
     }
 
     @Override
@@ -1065,6 +1142,120 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           String.format(
               "A data contract already exists for entity '%s' with ID %s",
               entity.getType(), entity.getId()));
+    }
+  }
+
+  @Override
+  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
+    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      DataContract dataContract = (DataContract) threadContext.getAboutEntity();
+      DataContractRepository.checkUpdatedByReviewer(dataContract, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      return dataContract;
+    }
+  }
+
+  @Override
+  protected void preDelete(DataContract entity, String deletedBy) {
+    // A data contract in `Draft` state can only be deleted by the reviewers
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  public static void checkUpdatedByReviewer(DataContract dataContract, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = dataContract.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void closeApprovalTask(DataContract entity, String comment) {
+    EntityLink about = new EntityLink(DATA_CONTRACT, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+    // Close User Tasks
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info("No approval task found for data contract {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  protected void updateTaskWithNewReviewers(DataContract dataContract) {
+    try {
+      EntityLink about = new EntityLink(DATA_CONTRACT, dataContract.getFullyQualifiedName());
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      dataContract =
+          Entity.getEntityByName(
+              Entity.DATA_CONTRACT,
+              dataContract.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
+
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(dataContract.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for data contract {}",
+          TaskType.RequestApproval,
+          dataContract.getFullyQualifiedName());
     }
   }
 }

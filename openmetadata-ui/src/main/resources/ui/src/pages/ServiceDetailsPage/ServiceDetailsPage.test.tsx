@@ -17,6 +17,7 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 
 import { noop } from 'lodash';
 import { act } from 'react';
+import { TestConnectionProps } from '../../components/common/TestConnection/TestConnection.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -27,6 +28,7 @@ import { WorkflowStatus } from '../../generated/governance/workflows/workflowIns
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { getDashboards, getDataModels } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
 import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
@@ -42,6 +44,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -94,6 +97,15 @@ jest.mock('../../rest/serviceAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ version: 2 })),
 }));
+
+jest.mock(
+  '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: jest.fn().mockReturnValue([]) },
+    }),
+  })
+);
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
@@ -227,6 +239,13 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: () => ({
+    pathname: '/mock-path',
+    search: '',
+    state: undefined,
+    key: '',
+    hash: '',
+  }),
   MemoryRouter: ({ children }: any) => (
     <div data-testid="memory-router">{children}</div>
   ),
@@ -238,16 +257,28 @@ jest.mock('../../hooks/useFqn', () => ({
   })),
 }));
 
-jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn().mockImplementation(() => ({
-    paging: { total: 10, pageSize: 10, currentPage: 1 },
+jest.mock('../../hooks/paging/usePaging', () => {
+  const mockPaging = { total: 10 };
+  const mockPagingCursor = {
+    cursorType: undefined,
+    cursorValue: undefined,
+    currentPage: '1',
     pageSize: 10,
-    currentPage: 1,
-    pagingCursor: { before: null, after: null },
-    handlePageChange: jest.fn(),
-    handlePagingChange: jest.fn(),
-  })),
-}));
+  };
+
+  return {
+    usePaging: jest.fn().mockImplementation(() => ({
+      paging: mockPaging,
+      pageSize: 10,
+      currentPage: 1,
+      pagingCursor: mockPagingCursor,
+      showPagination: true,
+      handlePageChange: jest.fn(),
+      handlePagingChange: jest.fn(),
+      handlePageSizeChange: jest.fn(),
+    })),
+  };
+});
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
@@ -287,6 +318,7 @@ jest.mock(
       onDisplayNameUpdate,
       onRestoreDataAsset,
       disableRunAgentsButton,
+      disableRunAgentsButtonMessage,
     }: any) => (
       <div data-testid="data-assets-header">
         <button data-testid="follow-button" onClick={onFollowClick}>
@@ -300,7 +332,10 @@ jest.mock(
         <button data-testid="restore-button" onClick={onRestoreDataAsset}>
           Restore
         </button>
-        <button data-testid="run-agents" disabled={disableRunAgentsButton}>
+        <button
+          data-testid="run-agents"
+          disabled={disableRunAgentsButton}
+          title={disableRunAgentsButtonMessage}>
           Run Agents
         </button>
       </div>
@@ -357,11 +392,16 @@ jest.mock(
 );
 
 jest.mock('../../components/common/TestConnection/TestConnection', () =>
-  jest.fn().mockImplementation(({ serviceCategory }: any) => (
-    <div data-testid="test-connection">
-      <span data-testid="test-connection-category">{serviceCategory}</span>
-    </div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(
+      ({ serviceCategory, extraInfo }: TestConnectionProps) => (
+        <div data-testid="test-connection">
+          <span data-testid="test-connection-category">{serviceCategory}</span>
+          <span data-testid="test-connection-extra-info">{extraInfo}</span>
+        </div>
+      )
+    )
 );
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -478,6 +518,8 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest
     .fn()
     .mockImplementation((days) => 1715404800000 - days * 24 * 60 * 60 * 1000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -488,6 +530,14 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 jest.mock('../../utils/StringsUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
   getEncodedFqn: jest.fn().mockImplementation((text) => text),
+}));
+
+const mockSetFilters = jest.fn();
+jest.mock('../../hooks/useTableFilters', () => ({
+  useTableFilters: jest.fn().mockImplementation(() => ({
+    filters: {},
+    setFilters: mockSetFilters,
+  })),
 }));
 
 describe('ServiceDetailsPage', () => {
@@ -850,6 +900,10 @@ describe('ServiceDetailsPage', () => {
         deleted: true,
       };
       (getServiceByFQN as jest.Mock).mockResolvedValue(deletedService);
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: { showDeletedTables: true },
+        setFilters: jest.fn(),
+      });
 
       // Re-render component to trigger the showDeleted change
       await renderComponent();
@@ -877,6 +931,11 @@ describe('ServiceDetailsPage', () => {
         });
       });
 
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: { showDeletedTables: false },
+        setFilters: jest.fn(),
+      });
+
       await renderComponent();
 
       // Wait for initial fetch (non-deleted by default)
@@ -900,6 +959,10 @@ describe('ServiceDetailsPage', () => {
         deleted: true,
       };
       (getServiceByFQN as jest.Mock).mockResolvedValue(deletedService);
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: { showDeletedTables: true },
+        setFilters: jest.fn(),
+      });
 
       // Re-render component to trigger the showDeleted change
       await renderComponent();
@@ -1089,6 +1152,136 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       expect(screen.getByTestId('run-agents')).toBeEnabled();
+    });
+
+    it('Should return disableRunAgentsButton as true and disableRunAgentsButtonMessage as undefined when workflow is loading', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        () => new Promise(noop)
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeDisabled();
+        expect(runAgentsButton).not.toHaveAttribute('title');
+      });
+    });
+
+    it('Should return disableRunAgentsButton as false and disableRunAgentsButtonMessage as undefined when workflow status is empty', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({})
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeEnabled();
+        expect(runAgentsButton).not.toHaveAttribute('title');
+      });
+    });
+
+    it('Should return disableRunAgentsButton as true and disableRunAgentsButtonMessage with message when workflow is running', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          data: [{ id: 'workflow1', status: WorkflowStatus.Running }],
+        })
+      );
+      (getWorkflowInstanceStateById as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          mainInstanceState: { status: WorkflowStatus.Running },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeDisabled();
+        expect(runAgentsButton).toHaveAttribute(
+          'title',
+          'message.auto-pilot-already-running'
+        );
+      });
+    });
+
+    it('Should return disableRunAgentsButton as false and disableRunAgentsButtonMessage with message as undefined when workflow has failed', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          data: [{ id: 'workflow1', status: WorkflowStatus.Failure }],
+        })
+      );
+      (getWorkflowInstanceStateById as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          mainInstanceState: { status: WorkflowStatus.Failure },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeEnabled();
+        expect(runAgentsButton).not.toHaveAttribute('title');
+      });
+    });
+
+    it('Should return disableRunAgentsButton as false when workflow has completed', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          data: [{ id: 'workflow1', status: WorkflowStatus.Finished }],
+        })
+      );
+      (getWorkflowInstanceStateById as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          mainInstanceState: { status: WorkflowStatus.Finished },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        const runAgentsButton = screen.getByTestId('run-agents');
+
+        expect(runAgentsButton).toBeEnabled();
+      });
+    });
+  });
+
+  describe('Test connection tab', () => {
+    const mockServiceUtil = serviceUtilClassBase as jest.Mocked<
+      typeof serviceUtilClassBase
+    >;
+
+    it('should pass ingestion runner name to TestConnection component', async () => {
+      const ingestionRunnerName = 'IngestionRunner1';
+      (mockServiceUtil.getServiceExtraInfo as jest.Mock).mockReturnValue({
+        name: ingestionRunnerName,
+      });
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+      (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ...mockServiceDetails,
+          ingestionRunnerName,
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-connection')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('test-connection-extra-info')
+        ).toHaveTextContent(ingestionRunnerName);
+      });
     });
   });
 

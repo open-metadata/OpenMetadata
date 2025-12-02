@@ -90,6 +90,11 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -105,6 +110,7 @@ public class TeamRepository extends EntityRepository<Team> {
       "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TeamRepository() {
     super(
@@ -124,6 +130,10 @@ public class TeamRepository extends EntityRepository<Team> {
     this.fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
     this.fieldFetchers.put("userCount", this::fetchAndSetUserCount);
     this.fieldFetchers.put("owns", this::fetchAndSetOwns);
+
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
   }
 
   @Override
@@ -403,6 +413,34 @@ public class TeamRepository extends EntityRepository<Team> {
         throw new IllegalArgumentException("Only users can be added to a Team");
       }
     }
+  }
+
+  public ResultList<EntityReference> getTeamAssets(UUID teamId, int limit, int offset) {
+    Team team = get(null, teamId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for team assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for team {} assets. Returning empty list.",
+                  team.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getTeamAssetsByName(String teamName, int limit, int offset) {
+    Team team = getByName(null, teamName, getFields("id,fullyQualifiedName"));
+    return getTeamAssets(team.getId(), limit, offset);
   }
 
   @Override
@@ -1078,6 +1116,8 @@ public class TeamRepository extends EntityRepository<Team> {
       updateParents(original, updated);
       updateChildren(original, updated);
       updatePolicies(original, updated);
+      // Invalidate policy cache when team roles/policies/hierarchy changes
+      SubjectCache.invalidateAll();
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {

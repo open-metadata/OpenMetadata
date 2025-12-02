@@ -1,13 +1,12 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.RecreateIndexHandler.ReindexContext;
 
 /**
  * Default implementation of RecreateHandler that provides zero-downtime index recreation.
@@ -20,12 +19,9 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     ReindexContext context = new ReindexContext();
     SearchRepository searchRepository = Entity.getSearchRepository();
 
-    if (CommonUtil.nullOrEmpty(entities)) {
+    if (nullOrEmpty(entities)) {
       return context;
     }
-
-    String clusterAlias = searchRepository.getClusterAlias();
-    SearchClient<?> searchClient = searchRepository.getSearchClient();
 
     for (String entityType : entities) {
       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
@@ -35,153 +31,185 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         continue;
       }
 
-      String canonicalIndexName = indexMapping.getIndexName(clusterAlias);
-      String activeIndexName = canonicalIndexName;
-
-      if (!searchClient.indexExists(canonicalIndexName)) {
-        Set<String> aliasTargets =
-            searchClient.getIndicesByAlias(indexMapping.getAlias(clusterAlias));
-        if (!aliasTargets.isEmpty()) {
-          activeIndexName = aliasTargets.iterator().next();
-          LOG.debug(
-              "Resolved active index '{}' for entity '{}' via alias '{}'.",
-              activeIndexName,
-              entityType,
-              indexMapping.getAlias(clusterAlias));
-        } else {
-          LOG.debug(
-              "No existing index or alias found for entity '{}'. Rebuilding from scratch.",
-              entityType);
-          activeIndexName = null;
-        }
-      }
-
-      String mappingContent = searchRepository.readIndexMapping(indexMapping);
-      if (mappingContent == null) {
-        LOG.warn(
-            "Unable to read index mapping content for '{}'. Skipping staged recreation.",
-            canonicalIndexName);
-        continue;
-      }
-
-      String stagedIndexName = buildStagedIndexName(canonicalIndexName);
-      searchClient.createIndex(stagedIndexName, mappingContent);
-
-      Set<String> existingAliases =
-          activeIndexName != null ? searchClient.getAliases(activeIndexName) : Set.of();
-
-      context.add(
-          entityType,
-          canonicalIndexName,
-          activeIndexName,
-          stagedIndexName,
-          existingAliases,
-          indexMapping.getAlias(clusterAlias),
-          indexMapping.getParentAliases(clusterAlias));
-      LOG.info(
-          "Created staged index '{}' for entity '{}' to support zero-downtime recreation.",
-          stagedIndexName,
-          entityType);
+      recreateIndexFromMapping(context, indexMapping, entityType);
     }
 
     return context;
   }
 
   @Override
-  public void finalizeReindex(ReindexContext context, boolean success) {
-    if (context == null || context.isEmpty()) {
+  public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
+    String entityType = context.getEntityType();
+    String canonicalIndex = context.getCanonicalIndex();
+    String activeIndex = context.getActiveIndex();
+    String stagedIndex = context.getStagedIndex();
+    Set<String> existingAliases = context.getExistingAliases();
+    String canonicalAlias = context.getCanonicalAliases();
+    Set<String> parentAliases = context.getParentAliases();
+
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    SearchClient searchClient = searchRepository.getSearchClient();
+
+    if (canonicalIndex == null || stagedIndex == null) {
+      LOG.error(
+          "Cannot finalize reindex for entity '{}'. Missing canonical or staged index name.",
+          entityType);
+      return;
+    }
+
+    if (reindexSuccess) {
+      try {
+        Set<String> aliasesToAttach = new HashSet<>();
+
+        // Existing Aliases
+        existingAliases.stream()
+            .filter(alias -> alias != null && !alias.isBlank())
+            .forEach(aliasesToAttach::add);
+
+        // Canonical Alias
+        if (!nullOrEmpty(canonicalAlias)) {
+          aliasesToAttach.add(canonicalAlias);
+        }
+
+        // Parent Aliases
+        parentAliases.stream()
+            .filter(alias -> alias != null && !alias.isBlank())
+            .forEach(aliasesToAttach::add);
+
+        // Remove any null or blank aliases
+        aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
+
+        Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
+        for (String oldIndex : allEntityIndices) {
+          if (oldIndex.equals(stagedIndex)) {
+            LOG.debug(
+                "Skipping deletion of staged index '{}' for entity '{}'.", stagedIndex, entityType);
+            continue;
+          }
+
+          if (activeIndex != null && oldIndex.equals(activeIndex)) {
+            LOG.debug(
+                "Skipping deletion of currently active index '{}' for entity '{}' (will be deleted after alias swap).",
+                activeIndex,
+                entityType);
+            continue;
+          }
+
+          try {
+            if (searchClient.indexExists(oldIndex)) {
+              searchClient.deleteIndex(oldIndex);
+              LOG.info("Cleaned up old index '{}' for entity '{}'.", oldIndex, entityType);
+            }
+          } catch (Exception deleteEx) {
+            LOG.warn(
+                "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
+          }
+        }
+
+        if (activeIndex != null && searchClient.indexExists(activeIndex)) {
+          searchClient.deleteIndex(activeIndex);
+          LOG.info(
+              "Deleted previously active index '{}' for entity '{}'.", activeIndex, entityType);
+        }
+
+        if (!aliasesToAttach.isEmpty()) {
+          searchClient.addAliases(stagedIndex, aliasesToAttach);
+        }
+        LOG.info(
+            "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+            stagedIndex,
+            entityType,
+            aliasesToAttach);
+      } catch (Exception ex) {
+        LOG.error(
+            "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
+      }
+    } else {
+      try {
+        if (searchClient.indexExists(stagedIndex)) {
+          searchClient.deleteIndex(stagedIndex);
+          LOG.info(
+              "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
+              stagedIndex,
+              entityType);
+        }
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to delete staged index '{}' for entity '{}' after failure.",
+            stagedIndex,
+            entityType,
+            ex);
+      }
+    }
+  }
+
+  protected void recreateIndexFromMapping(
+      ReindexContext context, IndexMapping indexMapping, String entityType) {
+    if (indexMapping == null) {
+      LOG.warn("IndexMapping is null for entityType '{}'. Cannot recreate index.", entityType);
+      return;
+    }
+
+    if (context == null) {
+      LOG.warn("ReindexContext is null for entityType '{}'. Cannot recreate index.", entityType);
       return;
     }
 
     SearchRepository searchRepository = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepository.getSearchClient();
+    String clusterAlias = searchRepository.getClusterAlias();
+    SearchClient searchClient = searchRepository.getSearchClient();
 
-    for (String entityType : context.getEntities()) {
-      String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
-      String activeIndex = context.getOriginalIndex(entityType).orElse(null);
-      String stagedIndex = context.getStagedIndex(entityType).orElse(null);
+    String canonicalIndexName = indexMapping.getIndexName(clusterAlias);
+    String activeIndexName = canonicalIndexName;
 
-      if (canonicalIndex == null || stagedIndex == null) {
-        continue;
-      }
-
-      if (success) {
-        try {
-          Set<String> aliasesToAttach = new HashSet<>();
-          aliasesToAttach.addAll(context.getExistingAliases(entityType));
-          context.getCanonicalAlias(entityType).ifPresent(aliasesToAttach::add);
-          aliasesToAttach.add(canonicalIndex);
-          List<String> parentAliases = context.getParentAliases(entityType);
-          if (parentAliases != null) {
-            parentAliases.stream()
-                .filter(alias -> alias != null && !alias.isBlank())
-                .forEach(aliasesToAttach::add);
-          }
-          aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
-
-          for (String alias : aliasesToAttach) {
-            Set<String> targets = searchClient.getIndicesByAlias(alias);
-            for (String target : targets) {
-              if (target.equals(stagedIndex)) {
-                continue;
-              }
-
-              boolean belongsToEntity =
-                  target.equals(canonicalIndex) || target.startsWith(canonicalIndex + "_rebuild_");
-
-              if (!belongsToEntity) {
-                LOG.debug(
-                    "Skipping alias '{}' removal from index '{}' as it does not belong to entity '{}'.",
-                    alias,
-                    target,
-                    entityType);
-                continue;
-              }
-
-              searchClient.removeAliases(target, Set.of(alias));
-              LOG.info(
-                  "Removed alias '{}' from index '{}' during promotion for entity '{}'.",
-                  alias,
-                  target,
-                  entityType);
-            }
-          }
-
-          if (activeIndex != null && searchClient.indexExists(activeIndex)) {
-            searchClient.deleteIndex(activeIndex);
-            LOG.debug("Replaced old index '{}' for entity '{}'.", activeIndex, entityType);
-          }
-
-          if (!aliasesToAttach.isEmpty()) {
-            searchClient.addAliases(stagedIndex, aliasesToAttach);
-          }
-          LOG.info(
-              "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
-              stagedIndex,
-              entityType,
-              aliasesToAttach);
-        } catch (Exception ex) {
-          LOG.error(
-              "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
-        }
+    if (!searchClient.indexExists(canonicalIndexName)) {
+      Set<String> aliasTargets =
+          searchClient.getIndicesByAlias(indexMapping.getAlias(clusterAlias));
+      if (!aliasTargets.isEmpty()) {
+        activeIndexName = aliasTargets.iterator().next();
+        LOG.debug(
+            "Resolved active index '{}' for entity '{}' via alias '{}'.",
+            activeIndexName,
+            entityType,
+            indexMapping.getAlias(clusterAlias));
       } else {
-        try {
-          if (searchClient.indexExists(stagedIndex)) {
-            searchClient.deleteIndex(stagedIndex);
-            LOG.info(
-                "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
-                stagedIndex,
-                entityType);
-          }
-        } catch (Exception ex) {
-          LOG.warn(
-              "Failed to delete staged index '{}' for entity '{}' after failure.",
-              stagedIndex,
-              entityType,
-              ex);
-        }
+        LOG.debug(
+            "No existing index or alias found for entity '{}'. Rebuilding from scratch.",
+            entityType);
+        activeIndexName = null;
       }
     }
+
+    String mappingContent = searchRepository.readIndexMapping(indexMapping);
+    if (mappingContent == null) {
+      LOG.warn(
+          "Unable to read index mapping content for '{}'. Cannot recreate index.",
+          canonicalIndexName);
+      return;
+    }
+
+    String stagedIndexName = buildStagedIndexName(canonicalIndexName);
+    searchClient.createIndex(stagedIndexName, mappingContent);
+
+    Set<String> existingAliases =
+        activeIndexName != null ? searchClient.getAliases(activeIndexName) : new HashSet<>();
+
+    // Add the default index
+    existingAliases.add(indexMapping.getAlias(clusterAlias));
+    existingAliases.add(indexMapping.getIndexName(clusterAlias));
+    context.add(
+        entityType,
+        canonicalIndexName,
+        activeIndexName,
+        stagedIndexName,
+        existingAliases,
+        indexMapping.getAlias(clusterAlias),
+        indexMapping.getParentAliases(clusterAlias));
+
+    LOG.info(
+        "Created staged index '{}' for entity '{}' using provided IndexMapping.",
+        stagedIndexName,
+        entityType);
   }
 
   private String buildStagedIndexName(String originalIndexName) {

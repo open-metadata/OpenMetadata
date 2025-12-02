@@ -175,7 +175,12 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           </div>
           <div className="d-flex justify-between align-center">
             <div className="flex-1">
-              <PageHeader data={PAGE_HEADERS.PERSONAS} />
+              <PageHeader
+                data={{
+                  header: t(PAGE_HEADERS.PERSONAS.header),
+                  subHeader: t(PAGE_HEADERS.PERSONAS.subHeader),
+                }}
+              />
             </div>
             <div>
               <Button
@@ -194,7 +199,10 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           <div className="persona-cards-grid">
             {isLoading
               ? [1, 2, 3].map((key) => (
-                  <div className="skeleton-card-item" key={key}>
+                  <div
+                    className="skeleton-card-item"
+                    data-testid="skeleton-card-loader"
+                    key={key}>
                     <Card>
                       <Skeleton active paragraph title />
                     </Card>

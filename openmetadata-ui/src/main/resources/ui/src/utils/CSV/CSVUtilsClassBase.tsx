@@ -55,6 +55,8 @@ class CSVUtilsClassBase {
       'column.tags',
       'column.glossaryTerms',
       'storedProcedure.code',
+      'column.name*',
+      'name*',
     ];
   }
 
@@ -448,6 +450,11 @@ class CSVUtilsClassBase {
           const handleChange = (typeValue: string) => {
             onRowChange({ ...row, [column.key]: typeValue });
           };
+          const translatedEntityTypeOptions = () =>
+            ENTITY_TYPE_OPTIONS.map((opt) => ({
+              ...opt,
+              label: t(opt.label),
+            }));
 
           return (
             <KeyDownStopPropagationWrapper>
@@ -458,7 +465,7 @@ class CSVUtilsClassBase {
                   autoFocus
                   open
                   data-testid="entity-type-select"
-                  options={ENTITY_TYPE_OPTIONS}
+                  options={translatedEntityTypeOptions()}
                   size="small"
                   style={{ width: '155px' }}
                   value={value}

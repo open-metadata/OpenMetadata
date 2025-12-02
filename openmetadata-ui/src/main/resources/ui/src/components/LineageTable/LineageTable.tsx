@@ -10,41 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SettingOutlined } from '@ant-design/icons';
-import { ListItemIcon, ListItemText } from '@mui/material';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
-import { useTheme } from '@mui/material/styles';
 import ToggleButton from '@mui/material/ToggleButton';
-import Tooltip from '@mui/material/Tooltip';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
-import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
-import { ReactComponent as FilterLinesIcon } from '../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import {
+  FULLSCREEN_QUERY_PARAM_KEY,
   NO_DATA,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
-import { ExportTypes } from '../../constants/Export.constants';
 import {
   IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
+import { SIZE } from '../../enums/common.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
 import { Paging } from '../../generated/type/paging';
@@ -54,7 +48,6 @@ import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
-  exportLineageByEntityCountAsync,
   getLineageByEntityCount,
   getLineagePagingData,
 } from '../../rest/lineageAPI';
@@ -77,33 +70,28 @@ import {
 import { stringToHTML } from '../../utils/StringsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
+import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
-import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
-import LineageConfigModal from '../Entity/EntityLineage/LineageConfigModal';
-import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
-import ExploreQuickFilters from '../Explore/ExploreQuickFilters';
+import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageNode } from '../Lineage/Lineage.interface';
-import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
-import { EImpactLevel } from './LineageTable.interface';
 import {
-  StyledIconButton,
-  StyledMenu,
-  StyledToggleButtonGroup,
-} from './LineageTable.styled';
+  SearchedDataProps,
+  SourceType,
+} from '../SearchedData/SearchedData.interface';
+import { EImpactLevel } from './LineageTable.interface';
+import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
-const LineageTable = () => {
+const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const {
     selectedQuickFilters,
     setSelectedQuickFilters,
     lineageConfig,
-    onExportClick,
-    onLineageConfigUpdate,
+    updateEntityData,
   } = useLineageProvider();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
@@ -113,9 +101,7 @@ const LineageTable = () => {
   const {
     filterNodes,
     loading,
-    filterSelectionActive,
     searchValue,
-    dialogVisible,
     impactLevel,
     upstreamColumnLineageNodes,
     downstreamColumnLineageNodes,
@@ -123,11 +109,9 @@ const LineageTable = () => {
     setFilterNodes,
     setLoading,
     setSearchValue,
-    setDialogVisible,
     setImpactLevel: setSelectedImpactLevel,
     setColumnLineageNodes,
     setLineagePagingInfo,
-    toggleFilterSelection,
   } = useLineageTableState();
   const {
     currentPage,
@@ -138,76 +122,63 @@ const LineageTable = () => {
     handlePagingChange,
     handlePageSizeChange,
   } = usePaging(PAGE_SIZE_LARGE);
-  const theme = useTheme();
 
   const [impactOnEl, setImpactOnEl] = useState<null | HTMLElement>(null);
-  const [nodeDepthAnchorEl, setNodeDepthAnchorEl] =
-    useState<null | HTMLElement>(null);
 
   const { isFullScreen, nodeDepth, lineageDirection } = useMemo(() => {
-    const queryParams = QueryString.parse(
-      location.search.endsWith('?')
-        ? location.search.slice(0, -1)
-        : location.search
-    );
+    const queryParams = QueryString.parse(location.search, {
+      ignoreQueryPrefix: true,
+    });
+
+    const lineageDirection =
+      (queryParams['dir'] as LineageDirection) || LineageDirection.Downstream;
+
+    const directionalDepth =
+      lineageDirection === LineageDirection.Downstream
+        ? lineageConfig.downstreamDepth
+        : lineageConfig.upstreamDepth;
+
+    const nodeDepth = Number.isNaN(Number(queryParams['depth']))
+      ? directionalDepth
+      : Number(queryParams['depth']);
 
     return {
-      isFullScreen: queryParams['fullscreen'] === 'true',
-      nodeDepth: Number(queryParams['depth']) || 1,
-      lineageDirection:
-        (queryParams['dir'] as LineageDirection) || LineageDirection.Downstream,
+      isFullScreen: queryParams[FULLSCREEN_QUERY_PARAM_KEY] === 'true',
+      nodeDepth,
+      lineageDirection,
     };
-  }, [location.search]);
-
-  const defaultQueryFilter = useMemo(() => {
-    const nodeIds = (filterNodes ?? [])
-      .map((node) => node?.id ?? '')
-      .filter(Boolean);
-
-    return {
-      query: {
-        bool: {
-          must: {
-            terms: {
-              'id.keyword': nodeIds,
-            },
-          },
-        },
-      },
-    };
-  }, [filterNodes]);
-
-  const handleDialogSave = (newConfig: LineageConfig) => {
-    // Implement save logic here
-    onLineageConfigUpdate?.(newConfig);
-    setDialogVisible(false);
-  };
+  }, [
+    location.search,
+    lineageConfig.downstreamDepth,
+    lineageConfig.upstreamDepth,
+  ]);
 
   const updateURLParams = useCallback(
     (
       data: Partial<{
         dir: LineageDirection;
         depth: number;
-        fullscreen: boolean;
+        [FULLSCREEN_QUERY_PARAM_KEY]: boolean;
       }>
     ) => {
-      const search = location.search.endsWith('?')
-        ? location.search.slice(0, -1)
-        : location.search;
-      const params = QueryString.parse(search);
-      Object.entries(data).forEach(([key, value]) => {
+      const params = QueryString.parse(location.search, {
+        ignoreQueryPrefix: true,
+      });
+      for (const [key, value] of Object.entries(data)) {
         if (value !== undefined) {
           params[key] = String(value);
         }
-      });
+      }
 
       navigate(
-        `${location.pathname}${QueryString.stringify(params, {
-          encode: false,
-        })}`,
+        {
+          search: QueryString.stringify(params, {
+            encode: false,
+            addQueryPrefix: true,
+          }),
+        },
         { replace: true }
       );
-      setNodeDepthAnchorEl(null);
     },
     [location.search]
   );
@@ -215,6 +186,13 @@ const LineageTable = () => {
   // Get upstream and downstream count when fqn, entityType, lineageDirection or nodeDepth changes
   const { upstreamCount, downstreamCount } = useMemo(() => {
     if (impactLevel === EImpactLevel.ColumnLevel) {
+      handlePagingChange({
+        total:
+          lineageDirection === LineageDirection.Upstream
+            ? upstreamColumnLineageNodes.length
+            : downstreamColumnLineageNodes.length,
+      } as Paging);
+
       return {
         upstreamCount: upstreamColumnLineageNodes.length,
         downstreamCount: downstreamColumnLineageNodes.length,
@@ -330,27 +308,6 @@ const LineageTable = () => {
     return JSON.stringify(query);
   }, [selectedQuickFilters, searchValue]);
 
-  // Function to handle export click
-  const handleExportClick = useCallback(
-    () =>
-      exportLineageByEntityCountAsync({
-        fqn: fqn ?? '',
-        type: entityType ?? '',
-        direction: lineageDirection,
-        nodeDepth: nodeDepth,
-        query_filter: queryFilter,
-      }),
-    [
-      fqn,
-      entityType,
-      lineageDirection,
-      nodeDepth,
-      currentPage,
-      pageSize,
-      queryFilter,
-    ]
-  );
-
   // Define table columns
   const extraTableFilters = useMemo(() => {
     return (
@@ -364,10 +321,18 @@ const LineageTable = () => {
           endIcon={<DropdownIcon />}
           id="impact-on-dropdown"
           startIcon={<TrendDownIcon />}
+          sx={{
+            fontWeight: 500,
+            '& .MuiButton-endIcon': {
+              svg: {
+                height: 12,
+              },
+            },
+          }}
           onClick={(event) => setImpactOnEl(event.currentTarget)}>
           <Transi18next
             i18nKey="label.impact-on-area"
-            renderElement={<span className="text-primary" />}
+            renderElement={<span className="m-l-xss text-primary" />}
             values={{ area: t(`label.${impactLevel}`) }}
           />
         </Button>
@@ -384,32 +349,14 @@ const LineageTable = () => {
                 handlePageChange(currentPage);
                 setImpactOnEl(null);
               }}>
-              <ListItemIcon>{option.icon}</ListItemIcon>
-              <ListItemText>{option.label}</ListItemText>
+              {option.icon}
+              {option.label}
             </MenuItem>
           ))}
         </StyledMenu>
       </div>
     );
-  }, [navigate, streamButtonGroup, impactOnEl, impactLevel, handleExportClick]);
-
-  // Function to handle quick filter value selection
-  const handleQuickFiltersValueSelect = useCallback(
-    (field: ExploreQuickFilterField) => {
-      setSelectedQuickFilters((pre) => {
-        const data = pre.map((preField) => {
-          if (preField.key === field.key) {
-            return field;
-          } else {
-            return preField;
-          }
-        });
-
-        return data;
-      });
-    },
-    [setSelectedQuickFilters]
-  );
+  }, [navigate, streamButtonGroup, impactOnEl, impactLevel]);
 
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
@@ -477,162 +424,37 @@ const LineageTable = () => {
     fetchNodes();
   }, [queryFilter, nodeDepth, currentPage, lineageDirection, pageSize]);
 
-  const handleClearAllFilters = useCallback(() => {
-    setSelectedQuickFilters([]);
-  }, [setSelectedQuickFilters]);
+  useEffect(() => {
+    updateEntityData(entityType, entity, false);
+  }, [entityType, entity]);
+
+  const nodeDepthOptions = useMemo(() => {
+    return (
+      (lineageDirection === LineageDirection.Downstream
+        ? lineagePagingInfo?.downstreamDepthInfo
+        : lineagePagingInfo?.upstreamDepthInfo) ?? []
+    ).map((info) => info.depth);
+  }, [
+    lineageDirection,
+    lineagePagingInfo?.downstreamDepthInfo,
+    lineagePagingInfo?.upstreamDepthInfo,
+  ]);
+
+  const filterNodeIds = useMemo(() => {
+    return filterNodes.map((node) => node.id ?? '');
+  }, [filterNodes]);
 
   // Card header with search and filter options
   const cardHeader = useMemo(() => {
     return (
-      <>
-        <div className="d-flex justify-between items-center p-x-xss">
-          <div className="d-flex gap-2">
-            <StyledIconButton
-              color={filterSelectionActive ? 'primary' : 'default'}
-              size="large"
-              title={t('label.filter-plural')}
-              onClick={toggleFilterSelection}>
-              <FilterLinesIcon />
-            </StyledIconButton>
-
-            <Searchbar
-              removeMargin
-              inputClassName="w-80"
-              placeholder={t('label.search-for-type', {
-                type: t('label.asset-or-column'),
-              })}
-              searchValue={searchValue}
-              typingInterval={0}
-              onSearch={setSearchValue}
-            />
-          </div>
-          <div className="d-flex gap-2">
-            <Button
-              className="font-semibold"
-              variant="outlined"
-              onClick={() => navigate({ search: '?mode=lineage' })}>
-              {t('label.lineage')}
-            </Button>
-            <Button
-              className="font-semibold"
-              sx={{
-                outlineColor: theme.palette.allShades.blue[700],
-                backgroundColor: theme.palette.allShades.blue[50],
-                color: theme.palette.allShades.blue[700],
-                outline: '1px solid',
-                boxShadow: 'none',
-
-                '&:hover': {
-                  outlineColor: theme.palette.allShades.blue[100],
-                  backgroundColor: theme.palette.allShades.blue[100],
-                  color: theme.palette.allShades.blue[700],
-                  boxShadow: 'none',
-                },
-              }}
-              variant="outlined"
-              onClick={() => navigate({ search: '?mode=impact_analysis' })}>
-              {t('label.impact-analysis')}
-            </Button>
-            <Tooltip title="Export as CSV">
-              <StyledIconButton
-                size="large"
-                onClick={() =>
-                  onExportClick([ExportTypes.CSV], handleExportClick)
-                }>
-                <DownloadIcon />
-              </StyledIconButton>
-            </Tooltip>
-            <StyledIconButton
-              size="large"
-              onClick={() => setDialogVisible(true)}>
-              <SettingOutlined />
-            </StyledIconButton>
-          </div>
-        </div>
-        {filterSelectionActive ? (
-          <div className="m-t-sm d-flex items-center justify-between">
-            <div>
-              <Button
-                endIcon={<DropdownIcon />}
-                sx={{
-                  '& .MuiButton-endIcon': {
-                    svg: {
-                      height: 12,
-                    },
-                  },
-                }}
-                variant="text"
-                onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
-                {`${t('label.node-depth')}:`}{' '}
-                <span className="text-primary m-l-xss">{nodeDepth}</span>
-              </Button>
-              <StyledMenu
-                anchorEl={nodeDepthAnchorEl}
-                open={Boolean(nodeDepthAnchorEl)}
-                slotProps={{
-                  paper: {
-                    style: {
-                      maxHeight: 48 * 4.5,
-                      width: '10ch',
-                    },
-                  },
-                  list: {
-                    'aria-labelledby': 'long-button',
-                  },
-                }}
-                onClose={() => setNodeDepthAnchorEl(null)}>
-                {lineagePagingInfo?.downstreamDepthInfo.map(({ depth }) => (
-                  <MenuItem
-                    key={depth}
-                    selected={depth === nodeDepth}
-                    onClick={() => {
-                      handlePageChange(1);
-                      updateURLParams({ depth });
-                    }}>
-                    {depth}
-                  </MenuItem>
-                ))}
-              </StyledMenu>
-              <ExploreQuickFilters
-                independent
-                aggregations={{}}
-                defaultQueryFilter={defaultQueryFilter}
-                fields={selectedQuickFilters}
-                index={SearchIndex.ALL}
-                showDeleted={false}
-                onFieldValueSelect={handleQuickFiltersValueSelect}
-              />
-            </div>
-            <Button
-              className="m-l-auto"
-              size="small"
-              variant="text"
-              onClick={handleClearAllFilters}>
-              {t('label.clear-entity', { entity: t('label.all') })}
-            </Button>
-          </div>
-        ) : (
-          <></>
-        )}
-      </>
+      <CustomControlsComponent
+        nodeDepthOptions={nodeDepthOptions}
+        queryFilterNodeIds={filterNodeIds}
+        searchValue={searchValue}
+        onSearchValueChange={setSearchValue}
+      />
     );
-  }, [
-    searchValue,
-    defaultQueryFilter,
-    selectedQuickFilters,
-    filterSelectionActive,
-    handleQuickFiltersValueSelect,
-    toggleFilterSelection,
-    handleExportClick,
-    onExportClick,
-    updateURLParams,
-    nodeDepth,
-    lineagePagingInfo,
-    nodeDepthAnchorEl,
-    navigate,
-    handleClearAllFilters,
-    t,
-  ]);
+  }, [searchValue, lineagePagingInfo, nodeDepthOptions, filterNodeIds]);
 
   // Render function for column names with search highlighting
   const renderName = useCallback(
@@ -653,26 +475,30 @@ const LineageTable = () => {
   const tableColumns: ColumnsType<SearchSourceAlias> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         sorter: true,
         render: renderName,
       },
       {
-        title: 'Node Depth',
+        title: t('label.node-depth'),
         dataIndex: 'nodeDepth',
         key: 'nodeDepth',
+        render: (depth: number) => (
+          // Keep a fallback to 0 if depth is NaN for any unexpected reason
+          <span>{Number.isNaN(Math.abs(depth)) ? 0 : Math.abs(depth)}</span>
+        ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         ellipsis: true,
         render: (text: string) => <span>{text}</span>,
       },
       {
-        title: 'Domain',
+        title: t('label.domain-plural'),
         dataIndex: 'domains',
         key: 'domains',
         render: (domains: EntityReference[]) => (
@@ -687,16 +513,11 @@ const LineageTable = () => {
         ),
       },
       {
-        title: 'Owners',
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel
-            avatarSize={24}
-            isCompactView={false}
-            owners={owners}
-            showLabel={false}
-          />
+          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {
@@ -712,7 +533,7 @@ const LineageTable = () => {
         },
       },
       {
-        title: 'Tags',
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         render: (
@@ -735,6 +556,33 @@ const LineageTable = () => {
               showInlineEditTagButton={false}
               tags={tags}
               type={TagSource.Classification}
+            />
+          ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'glossary-terms',
+        render: (
+          tags: TagLabel[],
+          record: SearchedDataProps['data'][number]['_source'],
+          index: number
+        ) =>
+          isEmpty(tags) ? (
+            NO_DATA
+          ) : (
+            <TableTags
+              isReadOnly
+              newLook
+              entityFqn=""
+              entityType={record.entityType as EntityType}
+              handleTagSelection={() => Promise.resolve()}
+              hasTagEditAccess={false}
+              index={index}
+              record={record}
+              showInlineEditTagButton={false}
+              tags={tags}
+              type={TagSource.Glossary}
             />
           ),
       },
@@ -766,7 +614,7 @@ const LineageTable = () => {
   const columnImpactColumns: ColumnsType<SearchSourceAlias> = useMemo(
     () => [
       {
-        title: 'Source Table',
+        title: t('label.source'),
         dataIndex:
           lineageDirection === LineageDirection.Downstream
             ? 'fromEntity'
@@ -776,11 +624,11 @@ const LineageTable = () => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record?: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias & { type: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              record?.entityType as EntityType,
+              record?.type as EntityType,
               record
             )}>
             {stringToHTML(
@@ -795,7 +643,7 @@ const LineageTable = () => {
         ),
       },
       {
-        title: 'Source Column',
+        title: t('label.source-column-plural'),
         dataIndex:
           lineageDirection === LineageDirection.Downstream
             ? ['column', 'fromColumns']
@@ -808,7 +656,7 @@ const LineageTable = () => {
         render: columnNameRender,
       },
       {
-        title: 'Impacted Table',
+        title: t('label.impacted'),
         dataIndex:
           lineageDirection === LineageDirection.Upstream
             ? 'fromEntity'
@@ -818,11 +666,11 @@ const LineageTable = () => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record?: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias & { type?: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              record?.entityType as EntityType,
+              record?.type as EntityType,
               record
             )}>
             {stringToHTML(
@@ -837,7 +685,7 @@ const LineageTable = () => {
         ),
       },
       {
-        title: 'Impacted Columns',
+        title: t('label.impacted-column-plural'),
         dataIndex:
           lineageDirection === LineageDirection.Upstream
             ? ['column', 'fromColumns']
@@ -862,23 +710,17 @@ const LineageTable = () => {
           (filter) => filter.key === selectedFilterItem.key
         );
 
-        return { ...(originalFilterItem || selectedFilterItem), value: [] };
+        return {
+          ...(originalFilterItem || selectedFilterItem),
+          // preserve original values if exists else set to empty array
+          value: originalFilterItem?.value || [],
+        };
       }
     );
 
-    const newItems = updatedQuickFilters.filter(
-      (item) =>
-        !selectedQuickFilters.some(
-          (existingItem) => item.key === existingItem.key
-        )
-    );
-
-    if (newItems.length > 0) {
-      setSelectedQuickFilters(newItems);
+    if (updatedQuickFilters.length > 0) {
+      setSelectedQuickFilters(updatedQuickFilters);
     }
-
-    // Toggle fullscreen view based on filter selection
-    updateURLParams({ fullscreen: filterSelectionActive });
   }, []);
 
   // Determine columns and dataSource based on impactLevel
@@ -941,9 +783,12 @@ const LineageTable = () => {
   }, [fqn, entityType, queryFilter]);
 
   return (
-    <Card className={classNames({ isFullScreen })} title={cardHeader}>
+    <Card
+      className={classNames({ isFullScreen }, 'lineage-card')}
+      title={cardHeader}>
       <Table
         bordered
+        className="h-full"
         columns={columns}
         customPaginationProps={pagingProps}
         dataSource={dataSource}
@@ -952,6 +797,9 @@ const LineageTable = () => {
         extraTableFilters={extraTableFilters}
         key={`lineage-table-${impactLevel}`}
         loading={loading}
+        locale={{
+          emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+        }}
         pagination={false}
         rowKey={
           impactLevel === EImpactLevel.TableLevel
@@ -959,13 +807,6 @@ const LineageTable = () => {
             : 'docUniqueId'
         }
         staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
-      />
-
-      <LineageConfigModal
-        config={lineageConfig}
-        visible={dialogVisible}
-        onCancel={() => setDialogVisible(false)}
-        onSave={handleDialogSave}
       />
     </Card>
   );

@@ -10,11 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 .breadcrumb-container {
   ol,
   ul {
     list-style: none;
     padding: 0;
     margin: 0;
+  }
+
+  .custom-separator {
+    margin: 0 @size-xs @size-xxs @size-xs;
+    width: 5px;
+    color: @navigation-text-color;
+
+    svg {
+      vertical-align: middle;
+    }
   }
 }

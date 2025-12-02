@@ -2,6 +2,7 @@ package org.openmetadata.service.search.opensearch.aggregations;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -9,20 +10,23 @@ import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-import os.org.opensearch.script.Script;
-import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
-import os.org.opensearch.search.aggregations.PipelineAggregatorBuilders;
-import os.org.opensearch.search.aggregations.pipeline.BucketSelectorPipelineAggregationBuilder;
+import os.org.opensearch.client.opensearch._types.Script;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.BucketSelectorAggregation;
 
 @Setter
 @Getter
 public class OpenBucketSelectorAggregations implements OpenAggregations {
   private final String aggregationType = "bucket_selector";
-  PipelineAggregationBuilder elasticPipelineAggregationBuilder;
+  private String aggregationName;
+  private Aggregation aggregation;
+  private Map<String, Aggregation> subAggregations = new HashMap<>();
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
+    this.aggregationName = node.getName();
+
     String[] pathValues = Optional.ofNullable(params.get("pathValues")).orElse("").split(",");
     String[] pathKeys = Optional.ofNullable(params.get("pathKeys")).orElse("").split(",");
     String scriptStr = params.get("script");
@@ -34,15 +38,25 @@ public class OpenBucketSelectorAggregations implements OpenAggregations {
     }
 
     Map<String, String> bucketsPaths = getBucketsPaths(pathKeys, pathValues);
-    Script script = new Script(scriptStr);
-    BucketSelectorPipelineAggregationBuilder bucketSelectorPipelineAggregationBuilder =
-        PipelineAggregatorBuilders.bucketSelector(node.getName(), bucketsPaths, script);
-    setElasticPipelineAggregationBuilder(bucketSelectorPipelineAggregationBuilder);
+
+    this.aggregation =
+        Aggregation.of(
+            a ->
+                a.bucketSelector(
+                    BucketSelectorAggregation.of(
+                        bs ->
+                            bs.bucketsPath(bp -> bp.dict(bucketsPaths))
+                                .script(Script.of(s -> s.inline(i -> i.source(scriptStr)))))));
   }
 
   @Override
   public Boolean isPipelineAggregation() {
     return true;
+  }
+
+  @Override
+  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
+    this.subAggregations = subAggregations;
   }
 
   private Map<String, String> getBucketsPaths(String[] pathKeys, String[] pathValues) {

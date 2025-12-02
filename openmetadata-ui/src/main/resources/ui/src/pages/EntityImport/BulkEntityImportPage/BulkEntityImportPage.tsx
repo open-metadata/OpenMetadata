@@ -12,7 +12,7 @@
  */
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -83,6 +83,15 @@ const BulkEntityImportPage = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
+
+  const translatedSteps = useMemo(
+    () =>
+      ENTITY_IMPORT_STEPS.map((step) => ({
+        ...step,
+        name: startCase(t(step.name)),
+      })),
+    [t]
+  );
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
     []
@@ -130,7 +139,7 @@ const BulkEntityImportPage = () => {
         entityType,
         fqn
       );
-      setEntity(response);
+      setEntity(response as DataAssetsHeaderProps['dataAsset']);
     } catch {
       // not show error here
     }
@@ -513,7 +522,7 @@ const BulkEntityImportPage = () => {
               <TitleBreadcrumb titleLinks={breadcrumbList} />
             </Col>
             <Col span={24}>
-              <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
+              <Stepper activeStep={activeStep} steps={translatedSteps} />
             </Col>
             <Col span={24}>
               {activeAsyncImportJob?.jobId && (

@@ -97,6 +97,35 @@ You can download the ODBC driver from <a href="https://learn.microsoft.com/en-us
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$
 
+$$section
+### Encrypt Connection $(id="encrypt")
+
+Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.
+
+**Important:**
+- Can be configured along with Trust Server Certificate option
+- May require additional connection arguments for fine-grained control
+- Default value is `false`
+$$
+
+$$section
+### Trust Server Certificate $(id="trustServerCertificate")
+
+Trust the server certificate without validation When using **pyodbc** scheme.
+
+**Important:**
+- Can be combined with Encrypt Connection option
+- Default value is `false`
+$$
+
+$$section
+### SSL Configuration $(id="sslConfig")
+
+SSL/TLS certificate configuration for client authentication. Provide CA certificate for mutual TLS authentication.
+
+**Important:**
+- For certificate-based authentication with **pytds** scheme, provide the CA certificate file path in the SSL Configuration
+$$
 
 $$section
 ### Ingest All Databases $(id="ingestAllDatabases")
@@ -115,5 +144,7 @@ $$section
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
-When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes.
+When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes. You can also configure these through the corresponding fields.
+
+When using the pytds connection scheme with a CA certificate, you might need to specify validate_host: false in the connection arguments.
 $$

@@ -29,11 +29,19 @@ export interface ElasticSearchConfiguration {
     /**
      * Elastic Search Host
      */
-    host: string;
+    host?: string;
     /**
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
     /**
      * Configuration for natural language search capabilities
      */
@@ -49,7 +57,7 @@ export interface ElasticSearchConfiguration {
     /**
      * Elastic Search port
      */
-    port: number;
+    port?: number;
     /**
      * Http/Https connection scheme
      */
@@ -89,6 +97,10 @@ export interface NaturalLanguageSearch {
      * AWS Bedrock configuration for natural language processing
      */
     bedrock?: Bedrock;
+    /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
     /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
@@ -135,6 +147,16 @@ export interface Bedrock {
      * Set to true to use IAM role based authentication instead of access/secret keys.
      */
     useIamRole?: boolean;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
 }
 
 /**

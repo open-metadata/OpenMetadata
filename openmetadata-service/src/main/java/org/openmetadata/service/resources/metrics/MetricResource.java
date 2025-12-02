@@ -76,7 +76,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
   private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS =
-      "owners,relatedMetrics,followers,tags,extension,domains,dataProducts";
+      "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
     super(Entity.METRIC, authorizer, limits);
@@ -311,6 +311,27 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, metric);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateMetrics",
+      summary = "Bulk create or update metrics",
+      description = "Create or update multiple metrics in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateMetric> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

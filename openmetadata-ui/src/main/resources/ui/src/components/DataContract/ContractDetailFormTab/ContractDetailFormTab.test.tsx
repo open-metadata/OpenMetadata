@@ -45,6 +45,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 const mockOnNext = jest.fn();
 const mockOnChange = jest.fn();
 
@@ -56,6 +65,16 @@ const mockInitialValues: Partial<DataContract> = {
   ] as EntityReference[],
 };
 
+const commonProps = {
+  onChange: mockOnChange,
+  onNext: mockOnNext,
+  buttonProps: {
+    nextLabel: 'Custom Next',
+    prevLabel: 'Custom Previous',
+    isNextVisible: true,
+  },
+};
+
 describe('ContractDetailFormTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -63,9 +82,7 @@ describe('ContractDetailFormTab', () => {
 
   describe('Basic Rendering', () => {
     it('should render the component with default props', () => {
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByText('Enter contract details')).toBeInTheDocument();
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
@@ -74,13 +91,7 @@ describe('ContractDetailFormTab', () => {
     });
 
     it('should render with custom nextLabel', () => {
-      render(
-        <ContractDetailFormTab
-          nextLabel="Custom Next"
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-        />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByText('Custom Next')).toBeInTheDocument();
     });
@@ -89,8 +100,7 @@ describe('ContractDetailFormTab', () => {
       render(
         <ContractDetailFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
+          {...commonProps}
         />
       );
 
@@ -101,9 +111,7 @@ describe('ContractDetailFormTab', () => {
 
   describe('Form Fields', () => {
     it('should display all required form fields', () => {
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
@@ -114,8 +122,7 @@ describe('ContractDetailFormTab', () => {
       const { container } = render(
         <ContractDetailFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
+          {...commonProps}
         />
       );
 
@@ -125,9 +132,7 @@ describe('ContractDetailFormTab', () => {
 
   describe('Form Interactions', () => {
     it('should handle form submission', async () => {
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       const nextButton = screen.getByRole('button', { name: /next/i });
 
@@ -141,17 +146,13 @@ describe('ContractDetailFormTab', () => {
 
   describe('Navigation', () => {
     it('should display the correct navigation buttons', () => {
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
     });
 
     it('should call onNext when next button is clicked', async () => {
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       const nextButton = screen.getByRole('button', { name: /next/i });
 
@@ -163,24 +164,17 @@ describe('ContractDetailFormTab', () => {
     });
 
     it('should display custom next label when provided', () => {
-      const customLabel = 'Go to Schema';
-      render(
-        <ContractDetailFormTab
-          nextLabel={customLabel}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-        />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
-      expect(screen.getByText(customLabel)).toBeInTheDocument();
+      expect(
+        screen.getByText(commonProps.buttonProps.nextLabel)
+      ).toBeInTheDocument();
     });
   });
 
   describe('Form Layout', () => {
     it('should have correct CSS classes', () => {
-      const { container } = render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      const { container } = render(<ContractDetailFormTab {...commonProps} />);
 
       expect(container.querySelector('.new-form-style')).toBeInTheDocument();
       expect(
@@ -192,9 +186,7 @@ describe('ContractDetailFormTab', () => {
     });
 
     it('should have vertical form layout', () => {
-      const { container } = render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      const { container } = render(<ContractDetailFormTab {...commonProps} />);
 
       const form = container.querySelector('.ant-form-vertical');
 
@@ -206,33 +198,21 @@ describe('ContractDetailFormTab', () => {
     it('should handle undefined initial values', () => {
       expect(() => {
         render(
-          <ContractDetailFormTab
-            initialValues={undefined}
-            onChange={mockOnChange}
-            onNext={mockOnNext}
-          />
+          <ContractDetailFormTab initialValues={undefined} {...commonProps} />
         );
       }).not.toThrow();
     });
 
     it('should handle empty initial values', () => {
       expect(() => {
-        render(
-          <ContractDetailFormTab
-            initialValues={{}}
-            onChange={mockOnChange}
-            onNext={mockOnNext}
-          />
-        );
+        render(<ContractDetailFormTab initialValues={{}} {...commonProps} />);
       }).not.toThrow();
     });
   });
 
   describe('Accessibility', () => {
     it('should have proper button roles', () => {
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       const nextButton = screen.getByRole('button', { name: /next/i });
 
@@ -241,9 +221,7 @@ describe('ContractDetailFormTab', () => {
     });
 
     it('should have proper form structure', () => {
-      const { container } = render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      const { container } = render(<ContractDetailFormTab {...commonProps} />);
 
       const form = container.querySelector('form');
 
@@ -257,9 +235,7 @@ describe('ContractDetailFormTab', () => {
         '../../../utils/formUtils'
       ).generateFormFields;
 
-      render(
-        <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
-      );
+      render(<ContractDetailFormTab {...commonProps} />);
 
       expect(generateFormFields).toHaveBeenCalledWith(
         expect.arrayContaining([

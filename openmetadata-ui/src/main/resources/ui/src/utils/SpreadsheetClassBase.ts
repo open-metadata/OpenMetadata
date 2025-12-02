@@ -31,19 +31,8 @@ import i18n from './i18next/LocalUtil';
 import {
   getSpreadsheetDetailsPageTabs,
   getSpreadsheetWidgetsFromKey,
+  SpreadsheetDetailPageTabProps,
 } from './SpreadsheetDetailsUtils';
-
-export interface SpreadsheetDetailPageTabProps {
-  childrenCount: number;
-  activityFeedTab: JSX.Element;
-  lineageTab: JSX.Element;
-  customPropertiesTab: JSX.Element;
-  activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
-  labelMap?: Record<EntityTabs, string>;
-}
 
 type SpreadsheetWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
@@ -78,6 +67,7 @@ class SpreadsheetClassBase {
       EntityTabs.WORKSHEETS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
@@ -210,3 +200,4 @@ class SpreadsheetClassBase {
 const spreadsheetClassBase = new SpreadsheetClassBase();
 
 export default spreadsheetClassBase;
+export { SpreadsheetClassBase };

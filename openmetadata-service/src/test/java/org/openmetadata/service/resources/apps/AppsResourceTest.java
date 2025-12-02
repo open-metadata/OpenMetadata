@@ -4,6 +4,8 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -72,6 +74,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
@@ -369,7 +372,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertEventually(
         "triggerCustomConfig",
         () ->
-            Assertions.assertEquals(
+            assertEquals(
                 1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
   }
 
@@ -380,6 +383,42 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),
         BAD_REQUEST,
         "Unrecognized field \"thisShouldFail\"");
+  }
+
+  @Test
+  void list_app_runs_returns_newest_run_first() throws IOException {
+    String appName = "AppRunOrderingTest" + System.currentTimeMillis();
+    App app = createAndCheckEntity(createRequest(appName), ADMIN_AUTH_HEADERS);
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+    Entity.getCollectionDAO()
+        .appExtensionTimeSeriesDao()
+        .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
+
+    long baseTime = System.currentTimeMillis();
+    AppRunRecord newerRun =
+        new AppRunRecord()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(baseTime + 2000)
+            .withStartTime(baseTime + 2000)
+            .withStatus(AppRunRecord.Status.SUCCESS);
+    AppRunRecord olderRun =
+        new AppRunRecord()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(baseTime + 1000)
+            .withStartTime(baseTime + 1000)
+            .withStatus(AppRunRecord.Status.FAILED);
+
+    // Insert in reverse chronological order to ensure API reorders by startTime.
+    appRepository.addAppStatus(newerRun);
+    appRepository.addAppStatus(olderRun);
+
+    ResultList<AppRunRecord> runList = listAppRuns(appName, ADMIN_AUTH_HEADERS);
+    assertEquals(2, runList.getData().size());
+    assertEquals(newerRun.getStartTime(), runList.getData().get(0).getStartTime());
+    assertEquals(olderRun.getStartTime(), runList.getData().get(1).getStartTime());
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
@@ -493,7 +532,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             () -> {
               BaseCallbackResource.EventDetails<ChangeEvent> result =
                   webhookCallbackResource.getEventDetails(subscriptionName);
-              Assertions.assertNotNull(result);
+              assertNotNull(result);
               Assertions.assertTrue(
                   result.getEvents().stream()
                       .anyMatch(
@@ -521,6 +560,31 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                 ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         String.format("eventsubscription instance for %s not found", subscriptionName));
+  }
+
+  @Test
+  void test_list_apps_returns_bot_field() throws IOException {
+    String appName = "TestAppWithBot" + System.currentTimeMillis();
+    App app = createAndCheckEntity(createRequest(appName), ADMIN_AUTH_HEADERS);
+
+    // Get the app by name to ensure it has bot field populated
+    App retrievedApp = getEntityByName(appName, "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedApp.getBot(), "Bot field should be populated");
+
+    // Test list API with bot field
+    Map<String, String> queryParams = Map.of("fields", "*", "limit", "1000");
+    ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Find our app in the list
+    App appFromList =
+        apps.getData().stream().filter(a -> a.getName().equals(appName)).findFirst().orElse(null);
+
+    assertNotNull(appFromList, "App should be found in list");
+    assertNotNull(appFromList.getBot(), "Bot field should be present in list API response");
+    assertEquals(
+        retrievedApp.getBot().getId(),
+        appFromList.getBot().getId(),
+        "Bot field should match between get and list APIs");
   }
 
   @Test
@@ -591,10 +655,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // Get the latest run record to check statistics
     AppRunRecord latestRun = getLatestAppRun("DataRetentionApplication", ADMIN_AUTH_HEADERS);
-    Assertions.assertNotNull(latestRun);
+    assertNotNull(latestRun);
 
     // Check whether successContext is not null
-    Assertions.assertNotNull(latestRun.getSuccessContext());
+    assertNotNull(latestRun.getSuccessContext());
 
     // Clean up - delete the test entities
     tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -663,6 +727,12 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     WebTarget target = getResource("apps/stop").path(appName);
     Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
     readResponse(response, OK.getStatusCode());
+  }
+
+  private ResultList<AppRunRecord> listAppRuns(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("apps/name/%s/status", appName));
+    return TestUtils.get(target, AppResource.AppRunList.class, authHeaders);
   }
 
   private AppRunRecord getLatestAppRun(String appName, Map<String, String> authHeaders)

@@ -28,12 +28,13 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
@@ -42,14 +43,12 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -134,20 +133,17 @@ const GlossaryTermsV1 = ({
   const fetchGlossaryTermAssets = async () => {
     if (glossaryTerm) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
-        );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(tags.tagFQN:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'tags.tagFQN': glossaryTerm.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.ALL,
+        });
 
-        setAssetCount(res.data.hits.total.value ?? 0);
+        setAssetCount(res.hits.total.value ?? 0);
       } catch {
         setAssetCount(0);
       }
@@ -178,6 +174,11 @@ const GlossaryTermsV1 = ({
       getEntityFeedCount();
     }
   };
+
+  const viewCustomPropertiesPermission = useMemo(
+    () => getPrioritizedViewPermission(permissions, Operation.ViewCustomFields),
+    [permissions]
+  );
 
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
@@ -282,7 +283,7 @@ const GlossaryTermsV1 = ({
                     !isVersionView &&
                     (permissions.EditAll || permissions.EditCustomFields)
                   }
-                  hasPermission={permissions.ViewAll}
+                  hasPermission={viewCustomPropertiesPermission}
                   isVersionView={isVersionView}
                 />
               ),
@@ -300,7 +301,7 @@ const GlossaryTermsV1 = ({
   }, [
     customizedPage?.tabs,
     glossaryTerm,
-    permissions,
+    viewCustomPropertiesPermission,
     activeTab,
     assetCount,
     feedCount.conversationCount,

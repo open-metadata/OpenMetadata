@@ -10,6 +10,8 @@ public class SearchConstants {
   public static final String DATABASE_ID = "database.id";
 
   public static final String DATABASE_SCHEMA_ID = "databaseSchema.id";
+  public static final String PARENT_ID = "parent.id";
+  public static final String DOMAINS_ID = "domains.id";
   public static final String SENDING_REQUEST_TO_ELASTIC_SEARCH =
       "Sending request to ElasticSearch {}";
   public static final String TAGS_FQN = "tags.tagFQN";
@@ -34,4 +36,8 @@ public class SearchConstants {
       "Failed to Create Index for entity {} due to ";
 
   public static final String DATA_ASSET = "dataAsset";
+
+  // Default sorting configuration
+  public static final String DEFAULT_SORT_FIELD = "_score";
+  public static final String DEFAULT_SORT_ORDER = "desc";
 }

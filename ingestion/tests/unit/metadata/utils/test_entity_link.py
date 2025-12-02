@@ -171,3 +171,124 @@ def test_invalid_get_table_or_column_fqn(entity_link, error):
 )
 def test_get_table_fqn(entity_link, expected):
     assert get_table_fqn(entity_link) == expected
+
+
+@pytest.mark.parametrize(
+    "entity_link,expected_fqn",
+    [
+        # ENTITY_TYPE keywords as column names
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::topic>",
+            "rds.dev.dbt_jaffle.customers.topic",
+            id="entity_type_keyword_topic",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::user>",
+            "rds.dev.dbt_jaffle.customers.user",
+            id="entity_type_keyword_user",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::database>",
+            "rds.dev.dbt_jaffle.customers.database",
+            id="entity_type_keyword_database",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::role>",
+            "rds.dev.dbt_jaffle.customers.role",
+            id="entity_type_keyword_role",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::chart>",
+            "rds.dev.dbt_jaffle.customers.chart",
+            id="entity_type_keyword_chart",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::dashboard>",
+            "rds.dev.dbt_jaffle.customers.dashboard",
+            id="entity_type_keyword_dashboard",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::pipeline>",
+            "rds.dev.dbt_jaffle.customers.pipeline",
+            id="entity_type_keyword_pipeline",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::team>",
+            "rds.dev.dbt_jaffle.customers.team",
+            id="entity_type_keyword_team",
+        ),
+        # ENTITY_FIELD keywords as column names
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::description>",
+            "rds.dev.dbt_jaffle.customers.description",
+            id="entity_field_keyword_description",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::owner>",
+            "rds.dev.dbt_jaffle.customers.owner",
+            id="entity_field_keyword_owner",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::tags>",
+            "rds.dev.dbt_jaffle.customers.tags",
+            id="entity_field_keyword_tags",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::name>",
+            "rds.dev.dbt_jaffle.customers.name",
+            id="entity_field_keyword_name",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::tests>",
+            "rds.dev.dbt_jaffle.customers.tests",
+            id="entity_field_keyword_tests",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::displayName>",
+            "rds.dev.dbt_jaffle.customers.displayName",
+            id="entity_field_keyword_displayName",
+        ),
+    ],
+)
+def test_reserved_keywords_get_table_or_column_fqn(entity_link, expected_fqn):
+    """Test that reserved keywords (ENTITY_TYPE and ENTITY_FIELD) can be used as column names.
+
+    This verifies that the EntityLink grammar correctly allows reserved keywords to be used
+    as column names in entity links, which is important for real-world scenarios where
+    column names might coincidentally match reserved words.
+
+    Args:
+        entity_link (str): Entity link with reserved keyword as column name
+        expected_fqn (str): Expected fully qualified name
+    """
+    assert get_table_or_column_fqn(entity_link) == expected_fqn
+
+
+@pytest.mark.parametrize(
+    "entity_link,expected_decoded_column",
+    [
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::topic>",
+            "topic",
+            id="decode_entity_type_keyword_topic",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::description>",
+            "description",
+            id="decode_entity_field_keyword_description",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::owner>",
+            "owner",
+            id="decode_entity_field_keyword_owner",
+        ),
+    ],
+)
+def test_reserved_keywords_get_decoded_column(entity_link, expected_decoded_column):
+    """Test that reserved keywords can be decoded as column names.
+
+    Args:
+        entity_link: Entity link with reserved keyword as column name
+        expected_decoded_column: Expected decoded column name
+    """
+    assert get_decoded_column(entity_link) == expected_decoded_column

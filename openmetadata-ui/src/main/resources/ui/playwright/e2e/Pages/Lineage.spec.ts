@@ -37,6 +37,7 @@ import {
   deleteEdge,
   deleteNode,
   editLineage,
+  editLineageClick,
   performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
@@ -114,14 +115,20 @@ for (const EntityClass of entities) {
         }
 
         await page.reload();
+        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        await lineageRes;
         await page.waitForLoadState('networkidle');
-        await page.click('[data-testid="edit-lineage"]');
+        await page.waitForSelector('[data-testid="edit-lineage"]', {
+          state: 'visible',
+        });
+        await editLineageClick(page);
         await page.getByTestId('fit-screen').click();
+        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
 
         // Check the Entity Drawer
         await performZoomOut(page);
@@ -132,27 +139,27 @@ for (const EntityClass of entities) {
             'entityResponseData.fullyQualifiedName'
           );
           await page
-            .locator(
-              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
-            )
+            .locator(`[data-testid="lineage-node-${toNodeFqn}"]`)
             .click();
 
           await expect(
-            page.locator('.ant-drawer [data-testid="entity-header-title"]')
+            page
+              .locator('.lineage-entity-panel')
+              .getByTestId('entity-header-title')
           ).toHaveText(get(entity, 'entityResponseData.displayName'));
 
-          await page.getByTestId('entity-panel-close-icon').click();
+          await page.getByTestId('drawer-close-icon').click();
 
-          // Drawer should not open after closing it
-          await expect(
-            page.locator('.ant-drawer-content-wrapper')
-          ).not.toBeVisible();
+          // Panel should not be visible after closing it
+          await expect(page.locator('.lineage-entity-panel')).not.toBeVisible();
         }
       });
 
       await test.step('Should create pipeline between entities', async () => {
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
+        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+        await page.waitForTimeout(500); // wait for the nodes to settle
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
@@ -160,7 +167,7 @@ for (const EntityClass of entities) {
       });
 
       await test.step('Verify Lineage Export CSV', async () => {
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
@@ -181,7 +188,7 @@ for (const EntityClass of entities) {
       );
 
       await test.step('Verify Lineage Config', async () => {
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineageClick(page);
         await verifyLineageConfig(page);
       });
     } finally {
@@ -215,10 +222,10 @@ test('Verify column lineage between tables', async ({ browser }) => {
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, table2);
   await table1.delete(apiContext);
@@ -267,7 +274,6 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="lineage-export"]');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
@@ -286,10 +292,10 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await activateColumnLayer(page);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, topic);
   await table.delete(apiContext);
@@ -323,10 +329,10 @@ test('Verify column lineage between topic and api endpoint', async ({
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, apiEndpoint);
   await topic.delete(apiContext);
@@ -359,9 +365,9 @@ test('Verify column lineage between table and api endpoint', async ({
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
   await removeColumnLineage(page, sourceCol, targetCol);
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineageClick(page);
 
   await deleteNode(page, apiEndpoint);
   await table.delete(apiContext);
@@ -410,11 +416,14 @@ test('Verify function data in edge drawer', async ({ browser }) => {
       )
       .dispatchEvent('click');
 
-    await page.getByTestId('edit-function').click();
+    await page.waitForSelector('.sql-function-section', {
+      state: 'visible',
+    });
 
-    // wait for the modal to be visible
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
+    await page
+      .locator('.sql-function-section')
+      .getByTestId('edit-button')
+      .click();
     await page.getByTestId('sql-function-input').fill('count');
     const saveRes = page.waitForResponse('/api/v1/lineage');
     await page.getByTestId('save').click();
@@ -512,8 +521,11 @@ test('Verify table search with special characters as handled', async ({
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
     await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+    await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('.ant-drawer-wrapper-body')).toBeVisible();
+    await expect(
+      page.locator('.lineage-entity-panel').getByTestId('entity-header-title')
+    ).toBeVisible();
   } finally {
     // Cleanup
     await table.delete(apiContext);
@@ -661,7 +673,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await expect(
       page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).not.toBeVisible();
+    ).toBeVisible();
   } finally {
     await Promise.all([
       table.delete(apiContext),

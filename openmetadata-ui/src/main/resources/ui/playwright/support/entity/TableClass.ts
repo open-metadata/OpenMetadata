@@ -27,124 +27,35 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class TableClass extends EntityClass {
-  service = {
-    name: `pw-database-service-${uuid()}`,
-    serviceType: 'Mysql',
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Mysql',
-        scheme: 'mysql+pymysql',
-        username: 'username',
-        authType: {
-          password: 'password',
-        },
-        hostPort: 'mysql:3306',
-        supportsMetadataExtraction: true,
-        supportsDBTExtraction: true,
-        supportsProfiler: true,
-        supportsQueryComment: true,
-      },
-    },
+        type: string;
+        scheme: string;
+        username: string;
+        authType: { password: string };
+        hostPort: string;
+        supportsMetadataExtraction: boolean;
+        supportsDBTExtraction: boolean;
+        supportsProfiler: boolean;
+        supportsQueryComment: boolean;
+      };
+    };
   };
-  database = {
-    name: `pw-database-${uuid()}`,
-    service: this.service.name,
-  };
-  schema = {
-    name: `pw-database-schema-${uuid()}`,
-    database: `${this.service.name}.${this.database.name}`,
-  };
-  columnsName = [
-    `user_id${uuid()}`,
-    `shop_id${uuid()}`,
-    `name${uuid()}`,
-    `first_name${uuid()}`,
-    `last_name${uuid()}`,
-    `address${uuid()}`,
-    `mail${uuid()}`,
-    `email${uuid()}`,
-  ];
-  entityLinkColumnsName = [
-    this.columnsName[0],
-    this.columnsName[1],
-    this.columnsName[2],
-    `${this.columnsName[2]}.${this.columnsName[3]}`,
-    `${this.columnsName[2]}.${this.columnsName[4]}`,
-    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
-    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
-    this.columnsName[7],
-  ];
-
-  children = [
-    {
-      name: this.columnsName[0],
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
-      description:
-        'Unique identifier for the user of your Shopify POS or your Shopify admin.',
-    },
-    {
-      name: this.columnsName[1],
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
-      description:
-        'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-    },
-    {
-      name: this.columnsName[2],
-      dataType: 'VARCHAR',
-      dataLength: 100,
-      dataTypeDisplay: 'varchar',
-      description: 'Name of the staff member.',
-      children: [
-        {
-          name: this.columnsName[3],
-          dataType: 'STRUCT',
-          dataLength: 100,
-          dataTypeDisplay:
-            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
-          description: 'First name of the staff member.',
-        },
-        {
-          name: this.columnsName[4],
-          dataType: 'ARRAY',
-          dataLength: 100,
-          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
-          children: [
-            {
-              name: this.columnsName[5],
-              dataType: 'STRUCT',
-              dataLength: 100,
-              dataTypeDisplay:
-                'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
-              description: 'First name of the staff member.',
-            },
-            {
-              name: this.columnsName[6],
-              dataType: 'ARRAY',
-              dataLength: 100,
-              dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: this.columnsName[7],
-      dataType: 'VARCHAR',
-      dataLength: 100,
-      dataTypeDisplay: 'varchar',
-      description: 'Email address of the staff member.',
-    },
-  ];
-
-  entity = {
-    name: `pw-table-${fullUuid()}`,
-    displayName: `pw table ${fullUuid()}`,
-    description: 'description',
-    columns: this.children,
-    tableType: 'SecureView',
-    databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+  database: { name: string; service: string };
+  schema: { name: string; database: string };
+  columnsName: string[];
+  entityLinkColumnsName: string[];
+  children: unknown[];
+  entity: {
+    name: string;
+    displayName: string;
+    description: string;
+    columns: unknown[];
+    tableType: string;
+    databaseSchema: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -162,13 +73,141 @@ export class TableClass extends EntityClass {
 
   constructor(name?: string, tableType?: string) {
     super(EntityTypeEndpoint.Table);
-    this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
-    this.entity.tableType = tableType ?? this.entity.tableType;
-    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
+
+    const serviceName = name ?? `pw-database-service-${uuid()}`;
+    const databaseName = `pw-database-${uuid()}`;
+    const schemaName = `pw-database-schema-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Mysql',
+      connection: {
+        config: {
+          type: 'Mysql',
+          scheme: 'mysql+pymysql',
+          username: 'username',
+          authType: {
+            password: 'password',
+          },
+          hostPort: 'mysql:3306',
+          supportsMetadataExtraction: true,
+          supportsDBTExtraction: true,
+          supportsProfiler: true,
+          supportsQueryComment: true,
+        },
+      },
+    };
+
+    this.database = {
+      name: databaseName,
+      service: this.service.name,
+    };
+
+    this.schema = {
+      name: schemaName,
+      database: `${this.service.name}.${this.database.name}`,
+    };
+
+    this.columnsName = [
+      `user_id${uuid()}`,
+      `shop_id${uuid()}`,
+      `name${uuid()}`,
+      `first_name${uuid()}`,
+      `last_name${uuid()}`,
+      `address${uuid()}`,
+      `mail${uuid()}`,
+      `email${uuid()}`,
+    ];
+
+    this.entityLinkColumnsName = [
+      this.columnsName[0],
+      this.columnsName[1],
+      this.columnsName[2],
+      `${this.columnsName[2]}.${this.columnsName[3]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
+      this.columnsName[7],
+    ];
+
+    this.children = [
+      {
+        name: this.columnsName[0],
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+      },
+      {
+        name: this.columnsName[1],
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+      },
+      {
+        name: this.columnsName[2],
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the staff member.',
+        children: [
+          {
+            name: this.columnsName[3],
+            dataType: 'STRUCT',
+            dataLength: 100,
+            dataTypeDisplay:
+              'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+            description: 'First name of the staff member.',
+          },
+          {
+            name: this.columnsName[4],
+            dataType: 'ARRAY',
+            dataLength: 100,
+            dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+            children: [
+              {
+                name: this.columnsName[5],
+                dataType: 'STRUCT',
+                dataLength: 100,
+                dataTypeDisplay:
+                  'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+                description: 'First name of the staff member.',
+              },
+              {
+                name: this.columnsName[6],
+                dataType: 'ARRAY',
+                dataLength: 100,
+                dataTypeDisplay:
+                  'array<struct<type:string,provider:array<int>>>',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: this.columnsName[7],
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Email address of the staff member.',
+      },
+    ];
+
+    this.entity = {
+      name: `pw-table-${fullUuid()}`,
+      displayName: `pw table ${fullUuid()}`,
+      description: 'description',
+      columns: this.children,
+      tableType: tableType ?? 'SecureView',
+      databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+    };
+
+    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0]['name']}`;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -246,11 +285,25 @@ export class TableClass extends EntityClass {
     };
   }
 
+  set(entityData: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
+  }) {
+    this.serviceResponseData = entityData.service;
+    this.databaseResponseData = entityData.database;
+    this.schemaResponseData = entityData.schema;
+    this.entityResponseData = entityData.entity;
+  }
+
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
@@ -340,14 +393,14 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (isEmpty(this.testSuiteResponseData)) {
-      await this.createTestSuiteAndPipelines(apiContext);
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
     }
 
     const testCase = await apiContext
       .post('/api/v1/dataQuality/testCases', {
         data: {
-          name: `pw-test-case-${uuid()}`,
+          name: `pw%test$case#${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
           parameterValues: [
@@ -358,6 +411,10 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
 
     this.testCasesResponseData.push(testCase);
 
@@ -370,7 +427,9 @@ export class TableClass extends EntityClass {
     testCaseResult: unknown
   ) {
     const testCaseResultResponse = await apiContext.post(
-      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
+      `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+        testCaseFqn
+      )}`,
       { data: testCaseResult }
     );
 

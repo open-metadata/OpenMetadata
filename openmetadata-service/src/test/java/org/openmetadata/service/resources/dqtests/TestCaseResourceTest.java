@@ -58,6 +58,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
@@ -67,6 +68,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -75,6 +77,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -84,6 +87,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -96,6 +100,7 @@ import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
@@ -116,13 +121,16 @@ import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
@@ -136,6 +144,8 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
@@ -152,9 +162,12 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -168,19 +181,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   protected boolean supportsSearchIndex = true;
   private final String testCaseResultsCollectionName;
 
-  // We’ll define some static references for convenience
+  // We'll define some static references for convenience
   private static Policy POLICY_TABLE_EDIT_TESTS;
+  private static Policy POLICY_TABLE_CREATE_TESTS;
   private static Policy POLICY_TEST_CASE_CREATE;
   private static Policy POLICY_TEST_CASE_UPDATE;
   private static Policy POLICY_NO_PERMS;
   private static Policy POLICY_TABLE_OWNER_EDIT_TESTS;
 
   private static Role ROLE_TABLE_EDIT_TESTS;
+  private static Role ROLE_TABLE_CREATE_TESTS;
   private static Role ROLE_TEST_CASE_CREATE;
   private static Role ROLE_TEST_CASE_UPDATE;
   private static Role ROLE_NO_PERMS;
 
   private static User USER_TABLE_EDIT_TESTS;
+  private static User USER_TABLE_CREATE_TESTS;
   private static User USER_TEST_CASE_CREATE;
   private static User USER_TEST_CASE_UPDATE;
   private static User USER_NO_PERMISSIONS;
@@ -258,6 +274,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withOperations(List.of(MetadataOperation.EDIT_TESTS))
             .withResources(List.of(TABLE));
 
+    Rule tableCreateTestsRule =
+        new Rule()
+            .withName("AllowTableCreateTests")
+            .withDescription("Allow CREATE_TESTS on TABLE entities")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.CREATE_TESTS))
+            .withResources(List.of(TABLE));
+
     Rule testCaseCreateRule =
         new Rule()
             .withName("AllowTestCaseCreate")
@@ -310,6 +334,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withRules(List.of(tableEditTestsRule)),
             ADMIN_AUTH_HEADERS);
 
+    POLICY_TABLE_CREATE_TESTS =
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TableCreateTests")
+                .withDescription("Policy that allows TABLE:CREATE_TESTS")
+                .withRules(List.of(tableCreateTestsRule)),
+            ADMIN_AUTH_HEADERS);
+
     POLICY_TEST_CASE_CREATE =
         policyResourceTest.createEntity(
             new CreatePolicy()
@@ -357,6 +389,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withPolicies(List.of(POLICY_TABLE_EDIT_TESTS.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
 
+    ROLE_TABLE_CREATE_TESTS =
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TableCreateTests")
+                .withDescription("Role that references POLICY_TABLE_CREATE_TESTS")
+                .withPolicies(List.of(POLICY_TABLE_CREATE_TESTS.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
     ROLE_TEST_CASE_CREATE =
         roleResourceTest.createEntity(
             new CreateRole()
@@ -399,6 +439,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withName("user-table-edit-tests")
                 .withEmail("user-table-edit-tests@open-metadata.org")
                 .withRoles(List.of(ROLE_TABLE_EDIT_TESTS.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    USER_TABLE_CREATE_TESTS =
+        userResourceTest.createEntity(
+            new CreateUser()
+                .withName("user-table-create-tests")
+                .withEmail("user-table-create-tests@open-metadata.org")
+                .withRoles(List.of(ROLE_TABLE_CREATE_TESTS.getId())),
             ADMIN_AUTH_HEADERS);
 
     USER_TEST_CASE_CREATE =
@@ -1631,7 +1679,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Get the test case resolution by FQN
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("testCaseFQN", TEST_TABLE1.getFullyQualifiedName());
+    queryParams.put("testCaseFQN", testCaseEntity2.getFullyQualifiedName());
     storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
     assertTrue(
         storedTestCaseResolutions.getData().stream()
@@ -1639,7 +1687,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 t ->
                     t.getTestCaseReference()
                         .getFullyQualifiedName()
-                        .equals(testCaseEntity1.getFullyQualifiedName())));
+                        .equals(testCaseEntity2.getFullyQualifiedName())));
 
     // Get the test case resolution by origin entity FQN
     queryParams.clear();
@@ -1654,8 +1702,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     queryParams.put("originEntityFQN", "IDONOTEXIST123");
-    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
-    assertEquals(0, storedTestCaseResolutions.getData().size());
+    assertResponse(
+        () -> getTestCaseFailureStatus(startTs, endTs, null, null, queryParams),
+        NOT_FOUND,
+        "table instance for IDONOTEXIST123 not found");
 
     // Delete test case recursively and check that the test case resolution status is also deleted
     // 1. soft delete - should not delete the test case resolution status
@@ -1744,32 +1794,91 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void patch_TestCaseResultFailure(TestInfo test) throws HttpResponseException {
-    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+  void patch_TestCaseResultFailure(TestInfo test) throws IOException {
+    // Create a table owned by USER_TABLE_OWNER to test owner permissions
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("ownerAuthTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)))
+            .withOwners(List.of(USER_TABLE_OWNER.getEntityReference()));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase = createRequest(test);
+    createTestCase
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")))
+        .withOwners(List.of(USER_TABLE_OWNER.getEntityReference()));
+    TestCase testCaseEntity = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
     CreateTestCaseResolutionStatus createTestCaseFailureStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)
             .withSeverity(Severity.Severity2)
             .withTestCaseResolutionStatusDetails(null);
+
+    // Test 1: Admin can create incident status
     TestCaseResolutionStatus testCaseFailureStatus =
         createTestCaseFailureStatus(createTestCaseFailureStatus);
+
+    // Test 2: USER_TABLE_OWNER (owner with EDIT_TESTS via isOwner() policy) can patch
     String original = JsonUtils.pojoToJson(testCaseFailureStatus);
     String updated =
         JsonUtils.pojoToJson(
             testCaseFailureStatus
                 .withUpdatedAt(System.currentTimeMillis())
-                .withUpdatedBy(USER1_REF)
+                .withUpdatedBy(USER_TABLE_OWNER.getEntityReference())
                 .withSeverity(Severity.Severity1));
     JsonNode patch = TestUtils.getJsonPatch(original, updated);
     TestCaseResolutionStatus patched =
-        patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch);
+        patchTestCaseResultFailureStatus(
+            testCaseFailureStatus.getId(), patch, authHeaders(USER_TABLE_OWNER.getName()));
     TestCaseResolutionStatus stored = getTestCaseFailureStatus(testCaseFailureStatus.getId());
 
     // check our patch fields have been updated
     assertEquals(patched.getUpdatedAt(), stored.getUpdatedAt());
     assertEquals(patched.getUpdatedBy(), stored.getUpdatedBy());
-    assertEquals(patched.getSeverity(), stored.getSeverity());
+    assertEquals(Severity.Severity1, stored.getSeverity());
+
+    // Test 3: USER_NO_PERMISSIONS cannot patch (not owner, no EDIT_ALL)
+    String updatedForNoPerms =
+        JsonUtils.pojoToJson(
+            stored
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_NO_PERMISSIONS.getEntityReference())
+                .withSeverity(Severity.Severity3));
+    JsonNode patchForNoPerms =
+        TestUtils.getJsonPatch(JsonUtils.pojoToJson(stored), updatedForNoPerms);
+    assertResponse(
+        () ->
+            patchTestCaseResultFailureStatus(
+                stored.getId(), patchForNoPerms, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+
+    // Test 4: CREATE_ALL_OPS_USER (with EDIT_ALL on TEST_CASE) can patch even if not owner
+    String updatedForAllOps =
+        JsonUtils.pojoToJson(
+            stored
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(CREATE_ALL_OPS_USER.getEntityReference())
+                .withSeverity(Severity.Severity4));
+    JsonNode patchForAllOps =
+        TestUtils.getJsonPatch(
+            JsonUtils.pojoToJson(
+                stored.withSeverity(
+                    Severity.Severity3)), // restore to previous state as modified ln 1823
+            updatedForAllOps);
+    TestCaseResolutionStatus patchedByAllOps =
+        patchTestCaseResultFailureStatus(
+            stored.getId(), patchForAllOps, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertEquals(Severity.Severity4, patchedByAllOps.getSeverity());
   }
 
   @Test
@@ -2138,6 +2247,216 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       MessageParser.EntityLink.parse(t.getEntityLink());
                   return entityLink.getFieldName() == null; // should be empty for table test cases
                 }));
+  }
+
+  @Test
+  void test_incidentStatusPermissions(TestInfo test) throws IOException, ParseException {
+    // Create a table without specific ownership for testing permissions
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("permissionTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for the table
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a failed test result to create an incident
+    postTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    CreateTestCaseResolutionStatus createIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
+
+    // Test 1: User with EDIT_TESTS permission on Table should be able to create incident
+    TestCaseResolutionStatus incident1 =
+        createTestCaseFailureStatus(createIncident, authHeaders(USER_TABLE_EDIT_TESTS.getName()));
+    assertNotNull(incident1);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned, incident1.getTestCaseResolutionStatusType());
+
+    // Test 2: User with EDIT_TESTS permission on Table should be able to update incident
+    String original1 = JsonUtils.pojoToJson(incident1);
+    String updated1 =
+        JsonUtils.pojoToJson(
+            incident1
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_TABLE_EDIT_TESTS.getEntityReference())
+                .withSeverity(Severity.Severity1));
+    JsonNode patch1 = TestUtils.getJsonPatch(original1, updated1);
+    TestCaseResolutionStatus patched1 =
+        patchTestCaseResultFailureStatus(
+            incident1.getId(), patch1, authHeaders(USER_TABLE_EDIT_TESTS.getName()));
+    assertEquals(Severity.Severity1, patched1.getSeverity());
+
+    // Test 3: User with EDIT_ALL permission on TestCase should be able to create incident
+    CreateTestCaseResolutionStatus createIncident2 =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(new Resolved());
+
+    TestCaseResolutionStatus incident2 =
+        createTestCaseFailureStatus(createIncident2, authHeaders(USER_TEST_CASE_UPDATE.getName()));
+    assertNotNull(incident2);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Resolved, incident2.getTestCaseResolutionStatusType());
+
+    // Test 4: User with EDIT_ALL permission on TestCase should be able to update incident
+    String original2 = JsonUtils.pojoToJson(incident2);
+    String updated2 =
+        JsonUtils.pojoToJson(
+            incident2
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_TEST_CASE_UPDATE.getEntityReference())
+                .withSeverity(Severity.Severity2));
+    JsonNode patch2 = TestUtils.getJsonPatch(original2, updated2);
+    TestCaseResolutionStatus patched2 =
+        patchTestCaseResultFailureStatus(
+            incident2.getId(), patch2, authHeaders(USER_TEST_CASE_UPDATE.getName()));
+    assertEquals(Severity.Severity2, patched2.getSeverity());
+
+    // Test 5: User with ALL permissions should be able to create incident
+    TestCaseResolutionStatus incident3 =
+        createTestCaseFailureStatus(createIncident, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertNotNull(incident3);
+
+    // Test 6: User with ALL permissions should be able to update incident
+    String original3 = JsonUtils.pojoToJson(incident3);
+    String updated3 =
+        JsonUtils.pojoToJson(
+            incident3
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(CREATE_ALL_OPS_USER.getEntityReference())
+                .withSeverity(Severity.Severity3));
+    JsonNode patch3 = TestUtils.getJsonPatch(original3, updated3);
+    TestCaseResolutionStatus patched3 =
+        patchTestCaseResultFailureStatus(
+            incident3.getId(), patch3, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertEquals(Severity.Severity3, patched3.getSeverity());
+
+    // Test 7: User without required permissions should NOT be able to create incident
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            createTestCaseFailureStatus(createIncident, authHeaders(USER_NO_PERMISSIONS.getName())),
+        "User without permissions should not be able to create incident status");
+
+    // Test 8: User without required permissions should NOT be able to update incident
+    String originalNoPerms = JsonUtils.pojoToJson(incident1);
+    String updatedNoPerms =
+        JsonUtils.pojoToJson(
+            incident1
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_NO_PERMISSIONS.getEntityReference())
+                .withSeverity(Severity.Severity4));
+    JsonNode patchNoPerms = TestUtils.getJsonPatch(originalNoPerms, updatedNoPerms);
+
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            patchTestCaseResultFailureStatus(
+                incident1.getId(), patchNoPerms, authHeaders(USER_NO_PERMISSIONS.getName())),
+        "User without permissions should not be able to update incident status");
+  }
+
+  @Test
+  void test_getTestCaseResolutionStatusPermissions(TestInfo test)
+      throws IOException, ParseException {
+    // Create a test case to test TestCaseResolutionStatus GET permissions
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(TABLE_LINK)
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a failed test result to create an incident
+    postTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Create a test case resolution status (incident)
+    CreateTestCaseResolutionStatus createIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
+    TestCaseResolutionStatus incident =
+        createTestCaseFailureStatus(createIncident, ADMIN_AUTH_HEADERS);
+
+    // Test GET by ID endpoint permissions for TestCaseResolutionStatus
+    // Admin should be able to retrieve test case resolution status
+    TestCaseResolutionStatus retrievedIncident1 =
+        getTestCaseFailureStatus(incident.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedIncident1);
+
+    // Data consumer should be able to view test case resolution status (has VIEW permissions)
+    TestCaseResolutionStatus retrievedIncident2 =
+        getTestCaseFailureStatus(incident.getId(), authHeaders(DATA_CONSUMER.getName()));
+    assertNotNull(retrievedIncident2);
+
+    // Data steward should be able to view test case resolution status (has VIEW permissions)
+    TestCaseResolutionStatus retrievedIncident3 =
+        getTestCaseFailureStatus(incident.getId(), authHeaders(DATA_STEWARD.getName()));
+    assertNotNull(retrievedIncident3);
+
+    // Test GET list endpoint permissions for TestCaseResolutionStatus with testCaseFQN parameter
+    // Admin should be able to list test case resolution statuses
+    ResultList<TestCaseResolutionStatus> listResult1 =
+        listTestCaseFailureStatusWithFQN(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertNotNull(listResult1);
+
+    // Data consumer should be able to list test case resolution statuses
+    ResultList<TestCaseResolutionStatus> listResult2 =
+        listTestCaseFailureStatusWithFQN(
+            testCase.getFullyQualifiedName(), authHeaders(DATA_CONSUMER.getName()));
+    assertNotNull(listResult2);
+
+    // Data steward should be able to list test case resolution statuses
+    ResultList<TestCaseResolutionStatus> listResult3 =
+        listTestCaseFailureStatusWithFQN(
+            testCase.getFullyQualifiedName(), authHeaders(DATA_STEWARD.getName()));
+    assertNotNull(listResult3);
+
+    // Test GET list endpoint permissions for TestCaseResolutionStatus with testCaseId parameter
+    // Admin should be able to list test case resolution statuses by test case ID
+    ResultList<TestCaseResolutionStatus> listResult4 =
+        listTestCaseFailureStatusWithId(testCase.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(listResult4);
+
+    // Data consumer should be able to list test case resolution statuses by test case ID
+    ResultList<TestCaseResolutionStatus> listResult5 =
+        listTestCaseFailureStatusWithId(testCase.getId(), authHeaders(DATA_CONSUMER.getName()));
+    assertNotNull(listResult5);
+
+    // Data steward should be able to list test case resolution statuses by test case ID
+    ResultList<TestCaseResolutionStatus> listResult6 =
+        listTestCaseFailureStatusWithId(testCase.getId(), authHeaders(DATA_STEWARD.getName()));
+    assertNotNull(listResult6);
   }
 
   @Test
@@ -2997,8 +3316,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(TABLE_LINK);
 
-    // 1) user-table-edit-tests -> Allowed
-    TestCase testCase1 = createEntity(createReq, authHeaders("user-table-edit-tests"));
+    // 1) user-table-create-tests (has TABLE:CREATE_TESTS) -> Allowed
+    TestCase testCase1 = createEntity(createReq, authHeaders("user-table-create-tests"));
     assertNotNull(testCase1);
 
     // 2) user-test-case-create -> Allowed
@@ -3137,6 +3456,164 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> deleteAndCheckEntity(testCase, authHeaders("user-test-case-create")),
         FORBIDDEN,
         permissionNotAllowed("user-test-case-create", List.of(DELETE)));
+  }
+
+  @Test
+  void test_createTestCase_withCreateTestsPermission() throws Exception {
+    CreateTestCase createReq =
+        new CreateTestCase()
+            .withName("TestCase_CreateTests_Perm")
+            .withDescription("Test case with CREATE_TESTS permission")
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(TABLE_LINK);
+
+    // 1) user-table-create-tests (has TABLE:CREATE_TESTS) -> Allowed
+    TestCase testCase1 = createEntity(createReq, authHeaders("user-table-create-tests"));
+    assertNotNull(testCase1);
+
+    // 2) user-test-case-create (has TEST_CASE:CREATE) -> Allowed
+    CreateTestCase createReq2 = createReq.withName("TestCase_CreateTests_Perm_2");
+    TestCase testCase2 = createEntity(createReq2, authHeaders("user-test-case-create"));
+    assertNotNull(testCase2);
+
+    // 3) user-table-edit-tests (has TABLE:EDIT_TESTS but not CREATE_TESTS) -> Forbidden
+    CreateTestCase createReq3 = createReq.withName("TestCase_CreateTests_ShouldFail");
+    TestUtils.assertResponse(
+        () -> createEntity(createReq3, authHeaders("user-table-edit-tests")),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+
+    // 4) user-no-perms -> Forbidden
+    CreateTestCase createReq4 = createReq.withName("TestCase_CreateTests_NoPerms");
+    TestUtils.assertResponse(
+        () -> createEntity(createReq4, authHeaders("user-no-perms")),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+  }
+
+  @Test
+  void test_createManyTestCases_withCreateTestsPermission() throws Exception {
+    List<CreateTestCase> createReqs =
+        List.of(
+            new CreateTestCase()
+                .withName("BulkTestCase_1")
+                .withDescription("Bulk test case 1")
+                .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+                .withEntityLink(TABLE_LINK),
+            new CreateTestCase()
+                .withName("BulkTestCase_2")
+                .withDescription("Bulk test case 2")
+                .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+                .withEntityLink(TABLE_LINK));
+
+    // 1) user-table-create-tests (has TABLE:CREATE_TESTS) -> Allowed
+    WebTarget target = getCollection().path("/createMany");
+    List<Map<String, Object>> testCases =
+        TestUtils.post(
+            target,
+            createReqs,
+            List.class,
+            OK.getStatusCode(),
+            authHeaders("user-table-create-tests"));
+    assertEquals(2, testCases.size());
+
+    // 2) user-test-case-create (has TEST_CASE:CREATE) -> Allowed
+    List<CreateTestCase> createReqs2 =
+        List.of(
+            new CreateTestCase()
+                .withName("BulkTestCase_3")
+                .withDescription("Bulk test case 3")
+                .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+                .withEntityLink(TABLE_LINK),
+            new CreateTestCase()
+                .withName("BulkTestCase_4")
+                .withDescription("Bulk test case 4")
+                .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+                .withEntityLink(TABLE_LINK));
+    List<Map<String, Object>> testCases2 =
+        TestUtils.post(
+            target,
+            createReqs2,
+            List.class,
+            OK.getStatusCode(),
+            authHeaders("user-test-case-create"));
+    assertEquals(2, testCases2.size());
+
+    // 3) user-table-edit-tests (has TABLE:EDIT_TESTS but not CREATE_TESTS) -> Forbidden
+    List<CreateTestCase> createReqs3 =
+        List.of(
+            new CreateTestCase()
+                .withName("BulkTestCase_ShouldFail_1")
+                .withDescription("Should fail")
+                .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+                .withEntityLink(TABLE_LINK));
+    TestUtils.assertResponse(
+        () ->
+            TestUtils.post(
+                target,
+                createReqs3,
+                List.class,
+                OK.getStatusCode(),
+                authHeaders("user-table-edit-tests")),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+
+    // 4) user-no-perms -> Forbidden
+    List<CreateTestCase> createReqs4 =
+        List.of(
+            new CreateTestCase()
+                .withName("BulkTestCase_NoPerms")
+                .withDescription("Should fail")
+                .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+                .withEntityLink(TABLE_LINK));
+    TestUtils.assertResponse(
+        () ->
+            TestUtils.post(
+                target, createReqs4, List.class, OK.getStatusCode(), authHeaders("user-no-perms")),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+  }
+
+  @Test
+  void test_patchTestCase_withEditTestsPermission() throws Exception {
+    // First create a test case as admin
+    CreateTestCase createReq =
+        new CreateTestCase()
+            .withName("TestCase_PatchTest")
+            .withDescription("Initial description")
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(TABLE_LINK);
+    TestCase testCase = createEntity(createReq, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(testCase);
+    testCase.setDescription("Updated by user-table-edit-tests");
+
+    // 1) user-table-edit-tests (has TABLE:EDIT_TESTS) -> Allowed
+    TestCase patched =
+        patchEntity(testCase.getId(), originalJson, testCase, authHeaders("user-table-edit-tests"));
+    assertEquals("Updated by user-table-edit-tests", patched.getDescription());
+
+    // 2) user-test-case-update (has TEST_CASE:EDIT_ALL) -> Allowed
+    String json2 = JsonUtils.pojoToJson(patched);
+    patched.setDescription("Updated by user-test-case-update");
+    TestCase patched2 =
+        patchEntity(testCase.getId(), json2, patched, authHeaders("user-test-case-update"));
+    assertEquals("Updated by user-test-case-update", patched2.getDescription());
+
+    // 3) user-table-create-tests (has TABLE:CREATE_TESTS but not EDIT_TESTS) -> Forbidden
+    String json3 = JsonUtils.pojoToJson(patched2);
+    patched2.setDescription("Should fail");
+    TestUtils.assertResponse(
+        () ->
+            patchEntity(testCase.getId(), json3, patched2, authHeaders("user-table-create-tests")),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+
+    // 4) user-no-perms -> Forbidden
+    TestUtils.assertResponse(
+        () -> patchEntity(testCase.getId(), json3, patched2, authHeaders("user-no-perms")),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
   }
 
   // Test utils methods
@@ -3280,11 +3757,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void deleteLogicalTestCase(TestSuite testSuite, UUID testCaseId) throws IOException {
+    deleteLogicalTestCase(testSuite, testCaseId, ADMIN_AUTH_HEADERS);
+  }
+
+  private void deleteLogicalTestCase(
+      TestSuite testSuite, UUID testCaseId, Map<String, String> authHeaders) throws IOException {
     WebTarget target =
         getCollection()
             .path(
                 "/logicalTestCases/" + testSuite.getId().toString() + "/" + testCaseId.toString());
-    TestUtils.delete(target, ADMIN_AUTH_HEADERS);
+    TestUtils.delete(target, authHeaders);
   }
 
   private boolean assertTestCaseIdNotInList(
@@ -3324,21 +3806,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void getAndValidateTestSummary(String testSuiteId) throws IOException {
-    // Retry logic to handle ES async operations
-    int maxRetries = 5;
-    int retries = 0;
-
-    while (true) {
-      try {
-        TestSummary testSummary = getTestSummary(testSuiteId);
-        validateTestSummary(testSummary, testSuiteId);
-        break;
-      } catch (Exception e) {
-        if (retries++ >= maxRetries) {
-          throw e;
-        }
-      }
-    }
+    // With synchronous search updates, we can directly validate
+    TestSummary testSummary = getTestSummary(testSuiteId);
+    validateTestSummary(testSummary, testSuiteId);
   }
 
   private void validateTestSummary(TestSummary testSummary, String testSuiteId)
@@ -3670,19 +4140,27 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private TestCaseResolutionStatus createTestCaseFailureStatus(
       CreateTestCaseResolutionStatus createTestCaseFailureStatus) throws HttpResponseException {
+    return createTestCaseFailureStatus(createTestCaseFailureStatus, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus createTestCaseFailureStatus(
+      CreateTestCaseResolutionStatus createTestCaseFailureStatus, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus");
     return TestUtils.post(
-        target,
-        createTestCaseFailureStatus,
-        TestCaseResolutionStatus.class,
-        200,
-        ADMIN_AUTH_HEADERS);
+        target, createTestCaseFailureStatus, TestCaseResolutionStatus.class, 200, authHeaders);
   }
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
       UUID testCaseFailureStatusId, JsonNode patch) throws HttpResponseException {
+    return patchTestCaseResultFailureStatus(testCaseFailureStatusId, patch, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
+      UUID testCaseFailureStatusId, JsonNode patch, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
-    return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, authHeaders);
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatus(UUID testCaseFailureStatusId)
@@ -4073,6 +4551,159 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void test_testCaseDimensionalResults(TestInfo test) throws IOException, ParseException {
+    // Create a test case that will have dimensional results
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(TABLE_COLUMN_LINK)
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create test case results with dimensional data
+    for (int day = 1; day <= 3; day++) {
+      UUID testCaseResultId = UUID.randomUUID(); // Create parent result ID
+      List<TestCaseDimensionResult> dimensionResults = new ArrayList<>();
+
+      // Add dimensional results for different columns
+      for (String column : List.of("address", "email", "phone")) {
+        List<DimensionValue> dimensionValues =
+            List.of(new DimensionValue().withName("column").withValue(column));
+
+        TestCaseDimensionResult dimResult =
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(testCaseResultId) // Link to parent result
+                .withDimensionValues(dimensionValues)
+                .withDimensionKey("column=" + column)
+                .withTestCaseStatus(
+                    column.equals("email") && day == 2
+                        ? TestCaseStatus.Failed
+                        : TestCaseStatus.Success)
+                .withTimestamp(dateToTimestamp("2024-01-0" + day))
+                .withTestResultValue(
+                    List.of(
+                        new TestResultValue()
+                            .withName("missingCount")
+                            .withValue(column.equals("email") && day == 2 ? "10" : "0")))
+                .withPassedRows(column.equals("email") && day == 2 ? 90 : 100)
+                .withFailedRows(column.equals("email") && day == 2 ? 10 : 0);
+        dimensionResults.add(dimResult);
+      }
+
+      CreateTestCaseResult createResult =
+          new CreateTestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(day == 2 ? TestCaseStatus.Failed : TestCaseStatus.Success)
+              .withTimestamp(dateToTimestamp("2024-01-0" + day))
+              .withTestResultValue(
+                  List.of(
+                      new TestResultValue()
+                          .withName("missingCount")
+                          .withValue(day == 2 ? "10" : "0")))
+              .withDimensionResults(dimensionResults);
+
+      postTestCaseResult(testCase.getFullyQualifiedName(), createResult, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test 1: List all dimensional results
+    WebTarget target =
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName());
+    jakarta.ws.rs.core.Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    String json = response.readEntity(String.class);
+    ResultList<TestCaseDimensionResult> allResults =
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
+
+    assertNotNull(allResults);
+    assertEquals(9, allResults.getData().size()); // 3 days × 3 columns
+
+    // Test 2: Filter by time range
+    target =
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .queryParam("startTs", dateToTimestamp("2024-01-02"))
+            .queryParam("endTs", dateToTimestamp("2024-01-02"));
+    response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    json = response.readEntity(String.class);
+    ResultList<TestCaseDimensionResult> filteredResults =
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
+
+    assertEquals(3, filteredResults.getData().size()); // Only day 2 results
+
+    // Test 3: Filter by specific dimension
+    target =
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .queryParam("dimensionalityKey", "column=email");
+    response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    json = response.readEntity(String.class);
+    ResultList<TestCaseDimensionResult> emailResults =
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
+
+    assertEquals(3, emailResults.getData().size()); // 3 days for email column
+    assertTrue(
+        emailResults.getData().stream().allMatch(r -> r.getDimensionKey().equals("column=email")));
+
+    // Test 4: List available dimensions
+    target =
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .path("/dimensions");
+    response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    json = response.readEntity(String.class);
+    Map<String, List<String>> dimensions =
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<Map<String, List<String>>>() {});
+
+    assertNotNull(dimensions);
+    assertEquals(1, dimensions.size());
+    assertTrue(dimensions.containsKey("column"));
+    assertEquals(3, dimensions.get("column").size());
+    assertTrue(dimensions.get("column").containsAll(List.of("address", "email", "phone")));
+
+    // Test 5: Filter by dimension name (all column results regardless of value)
+    target =
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .queryParam("dimensionName", "column");
+    response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    json = response.readEntity(String.class);
+    ResultList<TestCaseDimensionResult> columnDimensionResults =
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
+
+    assertEquals(9, columnDimensionResults.getData().size()); // All 3 days × 3 columns
+    assertTrue(
+        columnDimensionResults.getData().stream()
+            .allMatch(r -> r.getDimensionKey().startsWith("column=")));
+  }
+
+  @Test
   void test_testCaseResult_64bitIntegerFields(TestInfo testInfo)
       throws IOException, ParseException {
     CreateTestCase create =
@@ -4154,6 +4785,56 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     assertNull(nullValueResult.getPassedRows(), "Passed rows should be null when not set");
     assertNull(nullValueResult.getFailedRows(), "Failed rows should be null when not set");
+  }
+
+  @Test
+  @Order(999)
+  void delete_testCaseResults_verifyDeletionByTimestamp(TestInfo testInfo)
+      throws IOException, ParseException {
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(TABLE_LINK)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    long baseTimestamp = dateToTimestamp("2024-03-01");
+    long dayInMs = 24 * 60 * 60 * 1000L;
+
+    for (int i = 0; i < 5; i++) {
+      CreateTestCaseResult createTestCaseResult =
+          new CreateTestCaseResult()
+              .withResult("result " + i)
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(baseTimestamp + (i * dayInMs));
+      postTestCaseResult(
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    long cutoffTs = baseTimestamp + (3 * dayInMs);
+    int limit = 10000;
+
+    int deletedCount =
+        org.openmetadata.service.Entity.getCollectionDAO()
+            .testCaseResultTimeSeriesDao()
+            .deleteRecordsBeforeCutOff(cutoffTs, limit);
+
+    ResultList<TestCaseResult> remainingResults =
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            baseTimestamp,
+            baseTimestamp + (5 * dayInMs),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(remainingResults);
+
+    for (TestCaseResult result : remainingResults.getData()) {
+      long resultTimestamp = result.getTimestamp();
+      assertTrue(
+          resultTimestamp >= cutoffTs,
+          "All remaining test case results should have timestamps >= cutoff");
+    }
   }
 
   @Test
@@ -4491,6 +5172,82 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void test_bundleTestSuiteEditAllPermission(TestInfo test) throws Exception {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite =
+        testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    String testSuiteOwnerUsername = "test-suite-owner";
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser =
+        userResourceTest
+            .createRequest(testSuiteOwnerUsername)
+            .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    User testSuiteOwner = userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    String originalTestSuiteJson = JsonUtils.pojoToJson(logicalTestSuite);
+    logicalTestSuite.setOwners(List.of(testSuiteOwner.getEntityReference()));
+    testSuiteResourceTest.patchEntity(
+        logicalTestSuite.getId(), originalTestSuiteJson, logicalTestSuite, ADMIN_AUTH_HEADERS);
+
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    Rule testSuiteEditAllRule =
+        new Rule()
+            .withName("testSuiteEditAllRule")
+            .withDescription("Allow EDIT_ALL on TEST_SUITE entities owned by user")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withResources(List.of(Entity.TEST_SUITE))
+            .withCondition("isOwner()");
+
+    Policy testSuiteEditAllPolicy =
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TestSuiteEditAll_" + test.getDisplayName())
+                .withDescription("Policy that allows TEST_SUITE:EDIT_ALL for owners")
+                .withRules(List.of(testSuiteEditAllRule)),
+            ADMIN_AUTH_HEADERS);
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role testSuiteEditAllRole =
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TestSuiteEditAll_" + test.getDisplayName())
+                .withPolicies(List.of(testSuiteEditAllPolicy.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    String testSuiteOwnerJson = JsonUtils.pojoToJson(testSuiteOwner);
+    testSuiteOwner.setRoles(
+        List.of(
+            DATA_CONSUMER_ROLE.getEntityReference(), testSuiteEditAllRole.getEntityReference()));
+    userResourceTest.patchEntity(
+        testSuiteOwner.getId(), testSuiteOwnerJson, testSuiteOwner, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> ownerAuthHeaders = authHeaders(testSuiteOwnerUsername);
+
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+        logicalTestSuite, List.of(testCase.getId()), ownerAuthHeaders);
+
+    UUID testCaseIdToDelete = testCase.getId();
+    deleteLogicalTestCase(logicalTestSuite, testCaseIdToDelete, ownerAuthHeaders);
+
+    Map<String, String> unauthorizedUserHeaders = authHeaders(USER2.getName());
+    TestCase anotherTestCase =
+        createAndCheckEntity(createRequest("another_test"), ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () ->
+            testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+                logicalTestSuite, List.of(anotherTestCase.getId()), unauthorizedUserHeaders),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+  }
+
+  @Test
   void test_reviewerInheritanceFromTestSuite(TestInfo test) throws IOException {
     // Create a test suite first without reviewers
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
@@ -4644,5 +5401,464 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         USER1.getId(),
         retrievedExplicitTestCase.getReviewers().getFirst().getId(),
         "TestCase should still have USER1 as reviewer");
+  }
+
+  private ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusWithFQN(
+      String testCaseFQN, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target =
+        getResource("dataQuality/testCases/testCaseIncidentStatus")
+            .queryParam("testCaseFQN", testCaseFQN)
+            .queryParam("startTs", 0)
+            .queryParam("endTs", System.currentTimeMillis());
+    return TestUtils.get(
+        target,
+        TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
+        authHeaders);
+  }
+
+  private ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusWithId(
+      UUID testCaseId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target =
+        getResource("dataQuality/testCases/testCaseIncidentStatus")
+            .queryParam("testCaseId", testCaseId)
+            .queryParam("startTs", 0)
+            .queryParam("endTs", System.currentTimeMillis());
+    return TestUtils.get(
+        target,
+        TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
+        authHeaders);
+  }
+
+  private ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusWithOriginFQN(
+      String originEntityFQN, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target =
+        getResource("dataQuality/testCases/testCaseIncidentStatus")
+            .queryParam("originEntityFQN", originEntityFQN)
+            .queryParam("startTs", 0)
+            .queryParam("endTs", System.currentTimeMillis());
+    return TestUtils.get(
+        target,
+        TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
+        authHeaders);
+  }
+
+  private TestCaseResolutionStatus getTestCaseFailureStatus(
+      UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("dataQuality/testCases/testCaseIncidentStatus/" + id);
+    return TestUtils.get(target, TestCaseResolutionStatus.class, authHeaders);
+  }
+
+  @Test
+  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test)
+      throws IOException, ParseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
+    User testUser = userResourceTest.createAndCheckEntity(createUser, ADMIN_AUTH_HEADERS);
+    EntityReference testUserRef = testUser.getEntityReference();
+
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+
+    postTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("test failure result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    CreateTestCaseResolutionStatus createAssignedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(testUserRef));
+
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
+
+    assertNotNull(assignedIncident.getTestCaseResolutionStatusDetails());
+    ObjectMapper mapper = new ObjectMapper();
+    Assigned assignedDetails =
+        mapper.convertValue(assignedIncident.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertEquals(testUserRef.getId(), assignedDetails.getAssignee().getId());
+    assertEquals(testUserRef.getName(), assignedDetails.getAssignee().getName());
+
+    userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+
+    // we should have 3 status when the update has been completed
+    // update is done async, ensure we proceed with the right state
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ResultList<TestCaseResolutionStatus> resultList =
+                  getTestCaseFailureStatusByStateId(assignedIncident.getStateId());
+              assertEquals(3, resultList.getData().size());
+            });
+
+    ResultList<TestCaseResolutionStatus> resultList =
+        getTestCaseFailureStatusByStateId(assignedIncident.getStateId());
+    List<TestCaseResolutionStatus> testCaseResolutionStatuses = resultList.getData();
+    assertNotNull(testCaseResolutionStatuses);
+
+    // We get the newest incident created as deletion the user should have created a new assigned
+    // incident with no assignee
+    testCaseResolutionStatuses.sort(
+        Comparator.comparing(TestCaseResolutionStatus::getTimestamp).reversed());
+    TestCaseResolutionStatus newestStatus = testCaseResolutionStatuses.get(0);
+    Assigned retrievedAssignedDetails =
+        mapper.convertValue(newestStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertNull(
+        retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportExport_TableLevel(TestInfo test) throws IOException {
+    // Create a table with columns
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    Column c2 = new Column().withName("c2").withDataType(BIGINT);
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(listOf(c1, c2))
+            .withTableConstraints(null);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    String tableFqn = table.getFullyQualifiedName();
+
+    // Get test definitions by name
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+    TestDefinition columnUniquenessDef =
+        Entity.getEntityByName(TEST_DEFINITION, "columnValuesToBeUnique", "", Include.NON_DELETED);
+
+    // Create test cases for the table
+    CreateTestCase createTableTest =
+        createRequest(getEntityName(test, 1))
+            .withEntityLink(String.format("<#E::table::%s>", tableFqn))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withDisplayName("Table Row Count Test")
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("10"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    CreateTestCase createColumnTest =
+        createRequest(getEntityName(test, 2))
+            .withEntityLink(String.format("<#E::table::%s::columns::c1>", tableFqn))
+            .withTestDefinition(columnUniquenessDef.getFullyQualifiedName())
+            .withDisplayName("Column Uniqueness Test")
+            .withDescription("Column uniqueness test description");
+
+    TestCase tableTest = createEntity(createTableTest, ADMIN_AUTH_HEADERS);
+    TestCase columnTest = createEntity(createColumnTest, ADMIN_AUTH_HEADERS);
+
+    // Export test cases for the table
+    String exportedCsv = exportCsv(tableFqn);
+    assertNotNull(exportedCsv);
+    assertTrue(exportedCsv.contains(tableTest.getName()));
+    assertTrue(exportedCsv.contains(columnTest.getName()));
+    // CSV quote-escapes values by doubling quotes, so "x" becomes ""x""
+    String csvEscapedTableFqn = tableFqn.replace("\"", "\"\"");
+    String csvEscapedColumnFqn = (tableFqn + ".c1").replace("\"", "\"\"");
+    assertTrue(exportedCsv.contains(csvEscapedTableFqn)); // Should contain table FQN
+    assertTrue(exportedCsv.contains(csvEscapedColumnFqn)); // Should contain column FQN
+
+    // Verify CSV format uses FQN instead of EntityLink
+    assertFalse(exportedCsv.contains("<#E::table::")); // Should not contain EntityLink format
+
+    // Modify the CSV and import it back
+    String modifiedCsv =
+        exportedCsv
+            .replace(tableTest.getDisplayName(), "Modified Table Test")
+            .replace(columnTest.getDescription(), "Modified column test description");
+
+    CsvImportResult result = importCsv(tableFqn, modifiedCsv, false);
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(3, result.getNumberOfRowsPassed() + result.getNumberOfRowsFailed());
+
+    // Verify the changes were applied
+    TestCase updatedTableTest = getEntity(tableTest.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Modified Table Test", updatedTableTest.getDisplayName());
+
+    TestCase updatedColumnTest = getEntity(columnTest.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Modified column test description", updatedColumnTest.getDescription());
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportExport_TestSuiteLevel(TestInfo test) throws IOException {
+    // Create resource test instances
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TableResourceTest tableResourceTest = new TableResourceTest();
+
+    // Create a logical test suite
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest
+            .createRequest(getEntityName(test))
+            .withDescription("Logical test suite for import/export test");
+    TestSuite testSuite = testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // Create tables and test cases
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable1 =
+        tableResourceTest.createRequest(test, 1).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableResourceTest.createRequest(test, 2).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Create test cases in the logical test suite
+    CreateTestCase createTest1 =
+        createRequest(getEntityName(test, 1))
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("10"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    CreateTestCase createTest2 =
+        createRequest(getEntityName(test, 2))
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("5"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("50")));
+
+    TestCase test1 = createEntity(createTest1, ADMIN_AUTH_HEADERS);
+    TestCase test2 = createEntity(createTest2, ADMIN_AUTH_HEADERS);
+
+    // Add test cases to logical test suite using the existing endpoint
+    addTestCasesToLogicalTestSuiteViaAPI(testSuite.getId(), listOf(test1.getId(), test2.getId()));
+
+    // Export test cases from the test suite
+    String exportedCsv = exportCsv(testSuite.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+    assertTrue(exportedCsv.contains(test1.getName()));
+    assertTrue(exportedCsv.contains(test2.getName()));
+
+    // Import modified CSV
+    String modifiedCsv = exportedCsv.replace("10", "20").replace("100", "200");
+    CsvImportResult result = importCsv(testSuite.getFullyQualifiedName(), modifiedCsv, false);
+    LOG.info("Import result status: {}", result.getStatus());
+    LOG.info("Import result CSV:\n{}", result.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, result.getStatus());
+
+    // Verify parameter values were updated
+    TestCase updatedTest1 = getEntity(test1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "20",
+        updatedTest1.getParameterValues().stream()
+            .filter(p -> p.getName().equals("minValue"))
+            .findFirst()
+            .get()
+            .getValue());
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportExport_PlatformWide(TestInfo test) throws IOException {
+    // Create multiple tables and test cases
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable1 =
+        tableResourceTest.createRequest(test, 1).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableResourceTest.createRequest(test, 2).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Create test cases
+    CreateTestCase createTest1 =
+        createRequest(getEntityName(test, 1))
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("10"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    CreateTestCase createTest2 =
+        createRequest(getEntityName(test, 2))
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withTestDefinition(tableRowCountDef.getFullyQualifiedName())
+            .withParameterValues(
+                listOf(
+                    new TestCaseParameterValue().withName("minValue").withValue("5"),
+                    new TestCaseParameterValue().withName("maxValue").withValue("50")));
+
+    TestCase test1 = createEntity(createTest1, ADMIN_AUTH_HEADERS);
+    TestCase test2 = createEntity(createTest2, ADMIN_AUTH_HEADERS);
+
+    // Export all test cases platform-wide using "*"
+    String exportedCsv = exportCsv("*");
+    assertNotNull(exportedCsv);
+
+    // Verify exported CSV contains test cases from multiple tables
+    assertTrue(exportedCsv.contains(test1.getName()));
+    assertTrue(exportedCsv.contains(test2.getName()));
+
+    // Count number of test cases in export (excluding header)
+    long testCaseCount = exportedCsv.lines().count() - 1;
+    assertTrue(testCaseCount >= 2, "Should export at least 2 test cases");
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportCsv_CreateAndUpdate(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable =
+        tableResourceTest.createRequest(test).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Escape quotes in FQN for CSV format (double the quotes and wrap in quotes)
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+
+    // Test 1: Create a new test case via CSV import with tags
+    // Properly escape parameter values for CSV - double the quotes and wrap in quotes
+    String paramValues1 =
+        "\"{\"\"name\"\":\"\"minValue\"\",\"\"value\"\":10};{\"\"name\"\":\"\"maxValue\"\",\"\"value\"\":100}\"";
+    String createCsv =
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n"
+            + String.format(
+                "%s,New Test Case,Initial description,%s,%s,,%s,false,false,,PII.Sensitive,",
+                getEntityName(test),
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN,
+                paramValues1);
+
+    CsvImportResult createResult = importCsv(table.getFullyQualifiedName(), createCsv, false);
+    LOG.info("Create import status: {}", createResult.getStatus());
+    LOG.info("Create import result:\n{}", createResult.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, createResult.getStatus());
+    // Note: NumberOfRowsPassed includes the header row, so 1 data row = 2 total
+    assertEquals(2, createResult.getNumberOfRowsPassed());
+
+    // Verify test case was created with tags
+    String testCaseFqn =
+        FullyQualifiedName.add(
+            table.getFullyQualifiedName(), EntityInterfaceUtil.quoteName(getEntityName(test)));
+    TestCase created = getEntityByName(testCaseFqn, "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(created);
+    assertEquals("New Test Case", created.getDisplayName());
+    assertEquals("Initial description", created.getDescription());
+    assertEquals(2, created.getParameterValues().size());
+    assertNotNull(created.getTags());
+    assertEquals(1, created.getTags().size());
+    assertEquals("PII.Sensitive", created.getTags().get(0).getTagFQN());
+
+    // Test 2: Update the existing test case via CSV import with different tags
+    String paramValues2 =
+        "\"{\"\"name\"\":\"\"minValue\"\",\"\"value\"\":5};{\"\"name\"\":\"\"maxValue\"\",\"\"value\"\":50}\"";
+    String updateCsv =
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n"
+            + String.format(
+                "%s,Updated Test Case,Updated description,%s,%s,,%s,true,false,SELECT * FROM table,PersonalData.Personal,",
+                getEntityName(test),
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN,
+                paramValues2);
+
+    CsvImportResult updateResult = importCsv(table.getFullyQualifiedName(), updateCsv, false);
+    LOG.info("Update import status: {}", updateResult.getStatus());
+    LOG.info("Update import result:\n{}", updateResult.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, updateResult.getStatus());
+    // Note: NumberOfRowsPassed includes the header row, so 1 data row = 2 total
+    assertEquals(2, updateResult.getNumberOfRowsPassed());
+
+    // Verify test case was updated with new tags
+    TestCase updated = getEntityByName(testCaseFqn, "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(updated);
+    assertEquals("Updated Test Case", updated.getDisplayName());
+    assertEquals("Updated description", updated.getDescription());
+    assertEquals(2, updated.getParameterValues().size());
+    assertEquals("5", updated.getParameterValues().get(0).getValue());
+    assertEquals(true, updated.getComputePassedFailedRowCount());
+    assertEquals("SELECT * FROM table", updated.getInspectionQuery());
+    assertNotNull(updated.getTags());
+    assertEquals(1, updated.getTags().size());
+    assertEquals("PersonalData.Personal", updated.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  @Tag("ImportExport")
+  void testImportCsv_DryRun(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(BIGINT);
+    CreateTable createTable =
+        tableResourceTest.createRequest(test).withColumns(listOf(c1)).withTableConstraints(null);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Get test definition
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    // Escape quotes in FQN for CSV format (double the quotes and wrap in quotes)
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+    // Headers with * for required fields (name, testDefinition, entityFQN are required)
+    String csv =
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n"
+            + String.format(
+                "%s,Dry run test,Test description,%s,%s,,,false,false,,,",
+                getEntityName(test), tableRowCountDef.getFullyQualifiedName(), entityFQN);
+
+    // Dry run should not create the entity
+    CsvImportResult dryRunResult = importCsv(table.getFullyQualifiedName(), csv, true);
+    if (dryRunResult.getStatus() != org.openmetadata.schema.type.ApiStatus.SUCCESS) {
+      LOG.info("Dry run import status: {}", dryRunResult.getStatus());
+      LOG.info("Dry run abort reason: {}", dryRunResult.getAbortReason());
+      LOG.info("Dry run import result:\n{}", dryRunResult.getImportResultsCsv());
+    }
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, dryRunResult.getStatus());
+    assertTrue(dryRunResult.getDryRun());
+
+    // Verify entity was not created - use FQN which includes entityFQN + test case name
+    String testCaseFqn =
+        FullyQualifiedName.add(
+            table.getFullyQualifiedName(), EntityInterfaceUtil.quoteName(getEntityName(test)));
+    assertThrows(
+        HttpResponseException.class, () -> getEntityByName(testCaseFqn, ADMIN_AUTH_HEADERS));
+
+    // Actual import should create the entity
+    CsvImportResult actualResult = importCsv(table.getFullyQualifiedName(), csv, false);
+    LOG.info("Actual import status: {}", actualResult.getStatus());
+    LOG.info("Actual import result:\n{}", actualResult.getImportResultsCsv());
+    assertEquals(org.openmetadata.schema.type.ApiStatus.SUCCESS, actualResult.getStatus());
+    assertFalse(actualResult.getDryRun());
+
+    // Verify entity was created
+    TestCase created = getEntityByName(testCaseFqn, ADMIN_AUTH_HEADERS);
+    assertNotNull(created);
+    assertEquals("Dry run test", created.getDisplayName());
+  }
+
+  private void addTestCasesToLogicalTestSuiteViaAPI(UUID testSuiteId, List<UUID> testCaseIds)
+      throws HttpResponseException {
+    CreateLogicalTestCases createLogicalTestCases =
+        new CreateLogicalTestCases().withTestSuiteId(testSuiteId).withTestCaseIds(testCaseIds);
+    WebTarget target = getCollection().path("/logicalTestCases");
+    org.openmetadata.service.util.TestUtils.put(
+        target, createLogicalTestCases, TestSuite.class, OK, ADMIN_AUTH_HEADERS);
   }
 }

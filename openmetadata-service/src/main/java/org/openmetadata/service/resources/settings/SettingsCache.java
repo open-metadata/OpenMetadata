@@ -230,10 +230,12 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
     if (storedAuthConfig == null) {
       AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
-      Settings setting =
-          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
+      if (authConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
 
-      Entity.getSystemRepository().createNewSetting(setting);
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
     }
 
     // Initialize Authorizer Configuration
@@ -241,19 +243,23 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
     if (storedAuthzConfig == null) {
       AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
-      Settings setting =
-          new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
+      if (authzConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
 
-      Entity.getSystemRepository().createNewSetting(setting);
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
     }
 
     Settings storedScimConfig =
         Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
     if (storedScimConfig == null) {
       ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
-      Settings setting =
-          new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
-      Entity.getSystemRepository().createNewSetting(setting);
+      if (scimConfiguration != null) {
+        Settings setting =
+            new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
     }
 
     Settings entityRulesSettings =

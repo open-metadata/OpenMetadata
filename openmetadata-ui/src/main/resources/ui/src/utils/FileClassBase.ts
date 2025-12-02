@@ -26,20 +26,10 @@ import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import {
+  FileDetailPageTabProps,
   getFileDetailsPageTabs,
   getFileWidgetsFromKey,
 } from './FileDetailsUtils';
-
-export interface FileDetailPageTabProps {
-  activityFeedTab: JSX.Element;
-  lineageTab: JSX.Element;
-  customPropertiesTab: JSX.Element;
-  activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
-  labelMap?: Record<EntityTabs, string>;
-}
 
 type FileWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
@@ -72,6 +62,7 @@ class FileClassBase {
       EntityTabs.OVERVIEW,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

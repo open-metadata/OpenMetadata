@@ -37,6 +37,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -47,7 +48,6 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.ValidationResponse;
-import org.openmetadata.schema.system.ValidationResult;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
@@ -58,6 +58,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -176,7 +177,20 @@ public class SystemResource {
   public ResultList<Settings> list(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.listAllConfigs();
+    ResultList<Settings> allConfigs = systemRepository.listAllConfigs();
+
+    // Filter out authenticationConfiguration and authorizerConfiguration
+    List<Settings> filteredSettings = new ArrayList<>();
+    if (allConfigs != null && allConfigs.getData() != null) {
+      for (Settings setting : allConfigs.getData()) {
+        if (setting.getConfigType() != AUTHENTICATION_CONFIGURATION
+            && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
+          filteredSettings.add(setting);
+        }
+      }
+    }
+
+    return new ResultList<>(filteredSettings, null, null, filteredSettings.size());
   }
 
   @GET
@@ -200,6 +214,13 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    // Restrict access to authentication and authorizer configurations
+    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
+        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
       authorizer.authorizeAdmin(securityContext);
     }
@@ -331,6 +352,13 @@ public class SystemResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid Settings settingName) {
+    // Restrict updating authentication and authorizer configurations
+    if (settingName.getConfigType() == AUTHENTICATION_CONFIGURATION
+        || settingName.getConfigType() == AUTHORIZER_CONFIGURATION) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     authorizer.authorizeAdmin(securityContext);
     if (SettingsType.SEARCH_SETTINGS
         .value()
@@ -370,6 +398,13 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    // Restrict resetting authentication and authorizer configurations
+    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
+        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     authorizer.authorizeAdmin(securityContext);
 
     if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
@@ -441,6 +476,13 @@ public class SystemResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    // Restrict patching authentication and authorizer configurations
+    if (settingName.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
+        || settingName.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.patchSetting(settingName, patch);
   }
@@ -671,31 +713,23 @@ public class SystemResource {
       SecurityValidationResponse validationResponse =
           systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
 
-      boolean isValidConfig = validationResponse.getStatus().equalsIgnoreCase("success");
+      boolean isValidConfig =
+          validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
 
       if (!isValidConfig) {
-        // Consolidate all failed messages into the overall message for better user experience
+        // Consolidate all error messages for logging
         List<String> failedMessages = new ArrayList<>();
-        if (validationResponse.getResults() != null) {
-          for (ValidationResult result : validationResponse.getResults()) {
-            if ("failed".equals(result.getStatus()) && result.getMessage() != null) {
-              failedMessages.add(result.getMessage());
-            }
+        if (validationResponse.getErrors() != null) {
+          for (var error : validationResponse.getErrors()) {
+            failedMessages.add(error.getField() + ": " + error.getError());
           }
         }
 
-        // Build a comprehensive error message
-        String consolidatedMessage;
+        // Log the errors
         if (!failedMessages.isEmpty()) {
-          consolidatedMessage =
-              "Security configuration validation failed: " + String.join("; ", failedMessages);
-        } else {
-          // Fallback to original message if no specific failures found
-          consolidatedMessage = validationResponse.getMessage();
+          LOG.error(
+              "Security configuration validation failed: {}", String.join("; ", failedMessages));
         }
-
-        // Update the validation response with the consolidated message
-        validationResponse.setMessage(consolidatedMessage);
 
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
@@ -742,5 +776,22 @@ public class SystemResource {
       @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
+  }
+
+  @GET
+  @Path("/cache/stats")
+  @Operation(
+      operationId = "getCacheStats",
+      summary = "Get cache statistics",
+      description = "Get cache statistics including hit rates and sizes",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Cache statistics"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response getCacheStats(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+
+    Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
+    return Response.ok(stats).build();
   }
 }

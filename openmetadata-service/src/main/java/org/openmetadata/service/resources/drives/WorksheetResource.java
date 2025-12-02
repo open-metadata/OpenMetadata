@@ -73,7 +73,7 @@ import org.openmetadata.service.security.Authorizer;
 public class WorksheetResource extends EntityResource<Worksheet, WorksheetRepository> {
   public static final String COLLECTION_PATH = "v1/drives/worksheets/";
   static final String FIELDS =
-      "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers";
+      "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,rowCount";
   private final WorksheetMapper mapper = new WorksheetMapper();
 
   @Override
@@ -266,6 +266,27 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
     Worksheet worksheet =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, worksheet);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateWorksheets",
+      summary = "Bulk create or update worksheets",
+      description = "Create or update multiple worksheets in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateWorksheet> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH
