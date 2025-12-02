@@ -393,8 +393,8 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (isEmpty(this.testSuiteResponseData)) {
-      await this.createTestSuiteAndPipelines(apiContext);
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
     }
 
     const testCase = await apiContext
@@ -411,6 +411,10 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
 
     this.testCasesResponseData.push(testCase);
 
