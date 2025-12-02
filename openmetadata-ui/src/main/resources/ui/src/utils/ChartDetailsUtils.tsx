@@ -42,6 +42,7 @@ export const getChartDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,
   activeTab,
@@ -133,7 +134,7 @@ export const getChartDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CHART>
           entityType={EntityType.CHART}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

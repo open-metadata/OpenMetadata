@@ -41,8 +41,9 @@ class ImportChecker(BaseChecker):
     def visit_import(self, node: nodes.Import) -> None:
         """Check for direct imports of ingestion.src.metadata"""
         for name_tuple in node.names:
-            if isinstance(name_tuple, tuple) and name_tuple[0].startswith(
-                "ingestion.src.metadata"
+            if isinstance(name_tuple, tuple) and (
+                name_tuple[0].startswith("ingestion.src.metadata")
+                or name_tuple[0].startswith("ingestion.build.lib")
             ):
                 self.add_message(self._symbol, node=node)
 
@@ -52,7 +53,10 @@ class ImportChecker(BaseChecker):
         if (
             node.modname
             and isinstance(node.modname, str)
-            and node.modname.startswith("ingestion.src.metadata")
+            and (
+                node.modname.startswith("ingestion.src.metadata")
+                or node.modname.startswith("ingestion.build.lib")
+            )
         ):
             self.add_message(self._symbol, node=node)
 

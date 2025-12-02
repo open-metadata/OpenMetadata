@@ -23,6 +23,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -272,6 +273,41 @@ test.describe('Domains', () => {
       ).not.toContainText(dataProduct1.data.displayName);
     });
 
+    await test.step(
+      'Verify empty assets message and Add Asset button',
+      async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(
+          page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
+        ).not.toBeVisible();
+
+        await page.getByTestId('assets').getByText('Assets').click();
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('no-data-placeholder')).toContainText(
+          "Looks like you haven't added any data assets yet."
+        );
+
+        await page.getByTestId('data-assets-add-button').click();
+
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('form-heading')).toContainText(
+          'Add Assets'
+        );
+
+        await expect(page.getByTestId('cancel-btn')).toBeVisible();
+        await expect(page.getByTestId('save-btn')).toBeDisabled();
+      }
+    );
+
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -289,6 +325,7 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
       await page.reload();
+      await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
       await checkAssetsCount(page, 0);
     });
@@ -401,12 +438,24 @@ test.describe('Domains', () => {
     await page.reload();
 
     await redirectToExplorePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
 
+    const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
     await page.getByTestId('domain-dropdown').click();
+    await domainsResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const searchDomainResponse = page.waitForResponse(
+      'api/v1/search/query?q=*&index=domain_search_index*'
+    );
+    await page.getByTestId('searchbar').fill(domain.responseData.displayName);
+    await searchDomainResponse;
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+    await waitForAllLoadersToDisappear(page);
 
     await page.waitForLoadState('networkidle');
 
@@ -1453,14 +1502,14 @@ test.describe('Domain Access with noDomain() Rule', () => {
 });
 
 test.describe('Domain Tree View Functionality', () => {
-  const domain = new Domain();
   let subDomain: SubDomain;
+  const domain = EntityDataClass.domain1;
+  const domainDisplayName = domain.responseData.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await domain.create(apiContext);
     subDomain = new SubDomain(domain);
     await subDomain.create(apiContext);
     await afterAction();
@@ -1471,7 +1520,6 @@ test.describe('Domain Tree View Functionality', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await subDomain.delete(apiContext);
-    await domain.delete(apiContext);
     await afterAction();
   });
 
@@ -1488,15 +1536,33 @@ test.describe('Domain Tree View Functionality', () => {
     await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
 
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .clear();
+
+    const searchDomain = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(domainDisplayName)}*`
+    );
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .fill(domainDisplayName);
+    await searchDomain;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
     await expect(
       page
-        .getByRole('treeitem', { name: domain.data.displayName })
+        .getByRole('treeitem', {
+          name: domainDisplayName,
+        })
         .locator('div')
         .nth(2)
     ).toBeVisible();
 
     await page
-      .getByRole('treeitem', { name: domain.data.displayName })
+      .getByRole('treeitem', { name: domainDisplayName })
       .locator('div')
       .nth(2)
       .click();
@@ -1510,14 +1576,14 @@ test.describe('Domain Tree View Functionality', () => {
     await expect(
       page
         .getByRole('listitem')
-        .filter({ hasText: domain.data.fullyQualifiedName })
+        .filter({ hasText: domain.responseData.fullyQualifiedName })
         .getByTestId('breadcrumb-link')
     ).toBeVisible();
     await expect(page.getByTestId('entity-header-display-name')).toContainText(
-      domain.data.displayName
+      domainDisplayName
     );
     await expect(page.getByTestId('entity-header-name')).toContainText(
-      domain.data.name
+      domain.responseData.name
     );
     await expect(
       page.getByTestId('documentation').getByText('Documentation')
@@ -1538,18 +1604,9 @@ test.describe('Domain Tree View Functionality', () => {
     await expect(
       page
         .getByTestId('asset-description-container')
-        .getByText(domain.data.description)
+        .getByText(domain.responseData.description)
     ).toBeVisible();
     await expect(page.getByTestId('domain-details-add-button')).toBeVisible();
-
-    await page.getByTestId('data_products').getByText('Data Products').click();
-    await page.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(
-      page.getByTestId('no-data-placeholder').getByRole('paragraph')
-    ).toContainText("Looks like you haven't added any data products yet.");
-    await expect(page.getByTestId('data-product-add-button')).toBeVisible();
 
     await expect(
       page.getByTestId('subdomains').getByTestId('count')

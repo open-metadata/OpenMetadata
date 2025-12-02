@@ -13,7 +13,6 @@
 
 import { format } from 'date-fns';
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
-import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 import {
   DimensionResultWithTimestamp,
   HeatmapCellData,
@@ -22,22 +21,22 @@ import {
 } from './DimensionalityHeatmap.interface';
 
 /**
- * Generates an array of dates in reverse chronological order (newest first)
+ * Generates an array of dates in chronological order (oldest first, newest last)
  * Used to create the horizontal axis of the heatmap
  *
  * @param startTs - Start timestamp in milliseconds
  * @param endTs - End timestamp in milliseconds
- * @returns Array of date strings in 'yyyy-MM-dd' format, reversed (newest first)
+ * @returns Array of date strings in 'yyyy-MM-dd' format, chronological order (oldest to newest)
  * @throws {Error} If startTs is greater than endTs or if either timestamp is invalid
  */
 export const generateDateRange = (startTs: number, endTs: number): string[] => {
   // Validate timestamps
   if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
-    throw new Error('Invalid timestamp: timestamps must be finite numbers');
+    throw new TypeError('Invalid timestamp: timestamps must be finite numbers');
   }
 
   if (startTs > endTs) {
-    throw new Error(
+    throw new TypeError(
       `Invalid date range: start date (${new Date(
         startTs
       ).toISOString()}) must be before or equal to end date (${new Date(
@@ -52,7 +51,7 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
 
   // Validate that dates are valid
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    throw new Error('Invalid timestamp: unable to create valid dates');
+    throw new TypeError('Invalid timestamp: unable to create valid dates');
   }
 
   const currentDate = new Date(startDate);
@@ -62,8 +61,7 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Reverse to show newest dates first (right to left)
-  return dates.reverse();
+  return dates;
 };
 
 export const mapStatusToHeatmapStatus = (
@@ -162,36 +160,4 @@ export const getStatusLabel = (
   };
 
   return statusMap[status];
-};
-
-/**
- * Calculates how many placeholder cells are needed to fill the visible area
- * This ensures the heatmap always fills the container width when data is sparse
- *
- * @param actualCellCount - Number of actual data cells (date columns)
- * @param containerWidth - Total width of the container in pixels
- * @returns Number of placeholder cells to add (0 if container is full or not yet measured)
- */
-export const calculatePlaceholderCells = (
-  actualCellCount: number,
-  containerWidth: number
-): number => {
-  if (containerWidth === 0) {
-    return 0;
-  }
-
-  // Calculate available width for cells (excluding label column and padding)
-  const availableWidth =
-    containerWidth -
-    HEATMAP_CONSTANTS.DIMENSION_LABEL_WIDTH -
-    HEATMAP_CONSTANTS.CONTAINER_PADDING_RIGHT;
-
-  // Each cell occupies its width plus the gap to the next cell
-  const cellWithGap = HEATMAP_CONSTANTS.CELL_WIDTH + HEATMAP_CONSTANTS.CELL_GAP;
-  const maxCellsInView = Math.floor(availableWidth / cellWithGap);
-
-  // Only add placeholders if we have fewer cells than can fit in the view
-  const placeholderCount = Math.max(0, maxCellsInView - actualCellCount);
-
-  return placeholderCount;
 };

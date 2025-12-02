@@ -4,6 +4,7 @@ import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.g
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
@@ -368,6 +369,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   .id(docId)
                   .refresh(Refresh.True)
                   .scriptedUpsert(true)
+                  .upsert(params)
                   .script(
                       s ->
                           s.inline(
@@ -380,7 +382,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
-    } catch (IOException | OpenSearchException e) {
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        LOG.warn(
+            "Document not found during update for index: {}, docId: {}. The document may not have been indexed yet.",
+            indexName,
+            docId);
+      } else {
+        LOG.error(
+            "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
+      }
+    } catch (IOException e) {
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -1025,9 +1037,26 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
-    return JsonUtils.getMap(map).entrySet().stream()
-        .filter(entry -> entry.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+    List<String> fieldsToRemove = new ArrayList<>();
+
+    Map<String, JsonData> result =
+        JsonUtils.getMap(map).entrySet().stream()
+            .filter(
+                entry -> {
+                  if (entry.getValue() == null
+                      && FIELDS_TO_REMOVE_WHEN_NULL.contains(entry.getKey())) {
+                    fieldsToRemove.add(entry.getKey());
+                    return false;
+                  }
+                  return entry.getValue() != null;
+                })
+            .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+
+    if (!fieldsToRemove.isEmpty()) {
+      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+    }
+
+    return result;
   }
 
   private JsonData toJsonData(String doc) {

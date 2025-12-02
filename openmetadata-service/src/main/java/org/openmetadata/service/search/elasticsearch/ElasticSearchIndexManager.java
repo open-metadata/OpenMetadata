@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
@@ -190,14 +191,22 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     if (aliases == null || aliases.isEmpty()) {
       return;
     }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
+
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
-              u -> {
-                for (String alias : aliases) {
-                  u.actions(a -> a.add(add -> add.index(indexName).alias(alias)));
-                }
-                return u;
+              updateBuilder -> {
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
+                return updateBuilder;
               });
 
       UpdateAliasesResponse response = client.indices().updateAliases(request);
@@ -276,12 +285,31 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
+
+      boolean isAliasExist = client.indices().existsAlias(b -> b.name(aliasName)).value();
+      if (!isAliasExist) {
+        LOG.warn("Alias '{}' does not exist. Returning empty index set.", aliasName);
+        return indices;
+      }
+
       GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
       GetAliasResponse response = client.indices().getAlias(request);
 
       indices.addAll(response.result().keySet());
 
       LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
+    } catch (ElasticsearchException esEx) {
+      if (esEx.status() == 404) {
+        LOG.warn("Alias '{}' not found (404). Returning empty set.", aliasName);
+        return indices;
+      }
+
+      // Other errors should not be masked
+      LOG.error(
+          "Unexpected ElasticsearchException while getting alias {}: {}",
+          aliasName,
+          esEx.getMessage(),
+          esEx);
     } catch (Exception e) {
       LOG.error("Failed to get indices for alias {} due to", aliasName, e);
     }
