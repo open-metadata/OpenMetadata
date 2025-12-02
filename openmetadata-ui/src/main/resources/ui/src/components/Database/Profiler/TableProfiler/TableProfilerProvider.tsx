@@ -138,10 +138,7 @@ export const TableProfilerProvider = ({
           entity: t('label.row'),
         }),
         key: 'row-count',
-        value:
-          profile?.rowCount !== undefined && profile?.rowCount !== null
-            ? formatNumberWithComma(profile.rowCount)
-            : '--',
+        value: formatNumberWithComma(profile?.rowCount ?? 0),
         icon: RowCountIcon,
       },
       {
@@ -149,13 +146,9 @@ export const TableProfilerProvider = ({
           entity: t('label.count'),
         }),
         key: 'column-count',
-        value:
-          profile?.columnCount !== undefined && profile?.columnCount !== null
-            ? formatNumberWithComma(profile.columnCount)
-            : tableProfiler?.columns?.length !== undefined &&
-              tableProfiler?.columns?.length !== null
-            ? formatNumberWithComma(tableProfiler.columns.length)
-            : '--',
+        value: formatNumberWithComma(
+          profile?.columnCount ?? tableProfiler?.columns?.length ?? 0
+        ),
         icon: ColumnCountIcon,
       },
       {
@@ -167,10 +160,7 @@ export const TableProfilerProvider = ({
       {
         title: t('label.size'),
         key: 'size',
-        value:
-          profile?.sizeInByte !== undefined && profile?.sizeInByte !== null
-            ? bytesToSize(profile.sizeInByte)
-            : '--',
+        value: bytesToSize(profile?.sizeInByte ?? 0),
         icon: TotalSizeIcon,
       },
       {

@@ -176,7 +176,8 @@ const ColumnProfileTable = () => {
         key: 'nullProportion',
         width: 200,
         render: (profile: ColumnProfile) => {
-          return profile?.nullProportion
+          return profile?.nullProportion !== undefined &&
+            profile?.nullProportion !== null
             ? calculatePercentage(profile.nullProportion, 1, 2, true)
             : '--';
         },
@@ -190,7 +191,8 @@ const ColumnProfileTable = () => {
         key: 'uniqueProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.uniqueProportion
+          profile?.uniqueProportion !== undefined &&
+          profile?.uniqueProportion !== null
             ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
@@ -203,7 +205,8 @@ const ColumnProfileTable = () => {
         key: 'distinctProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.distinctProportion
+          profile?.distinctProportion !== undefined &&
+          profile?.distinctProportion !== null
             ? calculatePercentage(profile.distinctProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
@@ -216,8 +219,8 @@ const ColumnProfileTable = () => {
         key: 'valuesCount',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.valuesCount
-            ? formatNumberWithComma(profile?.valuesCount)
+          profile?.valuesCount !== undefined && profile?.valuesCount !== null
+            ? formatNumberWithComma(profile.valuesCount)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
