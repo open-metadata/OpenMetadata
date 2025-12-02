@@ -149,6 +149,7 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -1206,7 +1207,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
-    // Revert to original implementation without optimization logic
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setCertification(
@@ -1231,129 +1231,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFields(entity, fields);
     return entity;
   }
-
-  /**
-   * Optimized version that fetches ALL relationships in a SINGLE database query
-   * and then filters them in memory. This completely solves the N+1 query problem.
-   */
-  // Commented out - using original setFieldsInternal instead to fix test failures
-  // TODO: Investigate why optimized version causes test failures with dataProducts field
-  /*
-  private void setFieldsInternalOptimized(T entity, Fields fields) {
-    // Fetch ALL relationships for this entity in ONE query
-    List<CollectionDAO.EntityRelationshipObject> allRelationships =
-        daoCollection.relationshipDAO().findAllRelationshipsForEntity(entity.getId(), entityType);
-    LOG.debug(
-        "Retrieved {} total relationships for entity {}:{}",
-        allRelationships.size(),
-        entityType,
-        entity.getId());
-
-    // Group relationships by type and direction for efficient processing
-    Map<Integer, List<EntityReference>> fromRelationships = new HashMap<>();
-    Map<Integer, List<EntityReference>> toRelationships = new HashMap<>();
-
-    // Process all relationships and group them
-    for (CollectionDAO.EntityRelationshipObject rel : allRelationships) {
-      int relationOrdinal = rel.getRelation();
-
-      // Check if this is a FROM relationship (entity -> other)
-      if (rel.getFromId().equals(entity.getId().toString())) {
-        // This entity points TO another entity
-        UUID targetId = UUID.fromString(rel.getToId());
-        EntityReference ref = Entity.getEntityReferenceById(rel.getToEntity(), targetId, ALL);
-        if (ref != null) {
-          fromRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
-        }
-      } else {
-        // Another entity points TO this entity
-        UUID sourceId = UUID.fromString(rel.getFromId());
-        EntityReference ref = Entity.getEntityReferenceById(rel.getFromEntity(), sourceId, ALL);
-        if (ref != null) {
-          toRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
-        }
-      }
-    }
-
-    // Now set all the fields from the grouped relationships - NO additional queries!
-    // IMPORTANT: Only set fields that are requested to avoid overwriting existing values
-    if (fields.contains(FIELD_OWNERS)) {
-      entity.setOwners(
-          toRelationships.getOrDefault(Relationship.OWNS.ordinal(), Collections.emptyList()));
-    }
-
-    if (fields.contains(FIELD_FOLLOWERS)) {
-      entity.setFollowers(
-          toRelationships.getOrDefault(Relationship.FOLLOWS.ordinal(), Collections.emptyList()));
-    }
-
-    // Handle domains and data products - both use HAS relationship but are stored as
-    // "domain/dataProduct HAS entity"
-    // So we need to look in toRelationships (where this entity is the target of HAS)
-    List<EntityReference> hasRelationships =
-        toRelationships.getOrDefault(Relationship.HAS.ordinal(), Collections.emptyList());
-
-    if (fields.contains(FIELD_DOMAINS)) {
-      // Filter HAS relationships for DOMAIN type
-      List<EntityReference> domains =
-          hasRelationships.stream()
-              .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
-              .collect(Collectors.toList());
-      entity.setDomains(domains);
-    }
-    // Don't set domains if not requested - leave existing value
-
-    if (fields.contains(FIELD_DATA_PRODUCTS)) {
-      // Filter HAS relationships for DATA_PRODUCT type
-      List<EntityReference> dataProducts =
-          hasRelationships.stream()
-              .filter(ref -> Entity.DATA_PRODUCT.equals(ref.getType()))
-              .collect(Collectors.toList());
-      entity.setDataProducts(dataProducts);
-    }
-    // Don't set dataProducts if not requested - leave existing value
-
-    if (fields.contains(FIELD_CHILDREN)) {
-      List<EntityReference> children = new ArrayList<>();
-      children.addAll(
-          fromRelationships.getOrDefault(Relationship.CONTAINS.ordinal(), Collections.emptyList()));
-      children.addAll(
-          fromRelationships.getOrDefault(
-              Relationship.PARENT_OF.ordinal(), Collections.emptyList()));
-      entity.setChildren(children);
-    }
-
-    if (fields.contains(FIELD_EXPERTS)) {
-      entity.setExperts(
-          fromRelationships.getOrDefault(Relationship.EXPERT.ordinal(), Collections.emptyList()));
-    }
-
-    if (fields.contains(FIELD_REVIEWERS)) {
-      entity.setReviewers(
-          toRelationships.getOrDefault(Relationship.REVIEWS.ordinal(), Collections.emptyList()));
-    }
-
-    // Handle votes separately as it needs special processing
-    if (fields.contains(FIELD_VOTES)) {
-      entity.setVotes(getVotes(entity)); // This one still needs special handling
-    }
-
-    // Handle tags separately as they come from tag_usage table
-    if (fields.contains(FIELD_TAGS)) {
-      entity.setTags(getTags(entity));
-    }
-
-    // Handle certification
-    if (fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)) {
-      entity.setCertification(getCertification(entity));
-    }
-
-    // Handle extension if needed
-    if (fields.contains(FIELD_EXTENSION)) {
-      entity.setExtension(getExtension(entity));
-    }
-  }
-  */
 
   /**
    * Invalidate cache entries when entity is deleted
@@ -5986,7 +5863,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal(), ALL);
 
-    LOG.info(
+    LOG.debug(
         "batchFetchOwners: Found {} owner relationships for {} entities",
         records.size(),
         entities.size());
@@ -6121,12 +5998,76 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
     var result = new HashMap<UUID, AssetCertification>();
-    if (entities == null || entities.isEmpty()) {
+    if (entities == null || entities.isEmpty() || !supportsCertification) {
       return result;
     }
+
+    long startTime = System.currentTimeMillis();
+
+    // Collect all certification tag FQNs and map to entity IDs
+    Map<String, List<UUID>> entityIdsByTagFqn = new HashMap<>();
+    Map<UUID, AssetCertification> entityCertifications = new HashMap<>();
+
     for (T entity : entities) {
-      result.put(entity.getId(), getCertification(entity));
+      AssetCertification cert = entity.getCertification();
+      if (cert != null && cert.getTagLabel() != null && cert.getTagLabel().getTagFQN() != null) {
+        String tagFqn = cert.getTagLabel().getTagFQN();
+        entityIdsByTagFqn.computeIfAbsent(tagFqn, k -> new ArrayList<>()).add(entity.getId());
+        entityCertifications.put(entity.getId(), cert);
+      }
     }
+
+    if (entityIdsByTagFqn.isEmpty()) {
+      LOG.debug(
+          "batchFetchCertification: {} entities, 0 certifications in {}ms",
+          entities.size(),
+          System.currentTimeMillis() - startTime);
+      return result;
+    }
+
+    // Batch fetch all certification tags at once
+    List<String> tagFqns = new ArrayList<>(entityIdsByTagFqn.keySet());
+    Map<String, Tag> tagsByFqn = new HashMap<>();
+
+    try {
+      List<Tag> tags = TagLabelUtil.getTags(tagFqns);
+      for (Tag tag : tags) {
+        tagsByFqn.put(tag.getFullyQualifiedName(), tag);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Batch fetch of certification tags failed, falling back to individual fetch: {}",
+          e.getMessage());
+      // Fallback to original behavior
+      for (T entity : entities) {
+        result.put(entity.getId(), getCertification(entity));
+      }
+      return result;
+    }
+
+    // Map tags back to entities
+    for (Map.Entry<String, List<UUID>> entry : entityIdsByTagFqn.entrySet()) {
+      String tagFqn = entry.getKey();
+      Tag tag = tagsByFqn.get(tagFqn);
+
+      if (tag != null) {
+        TagLabel tagLabel = EntityUtil.toTagLabel(tag);
+        for (UUID entityId : entry.getValue()) {
+          AssetCertification cert = entityCertifications.get(entityId);
+          if (cert != null) {
+            cert.setTagLabel(tagLabel);
+            result.put(entityId, cert);
+          }
+        }
+      }
+    }
+
+    LOG.debug(
+        "batchFetchCertification: {} entities, {} cert tags, 1 batch query in {}ms",
+        entities.size(),
+        tagFqns.size(),
+        System.currentTimeMillis() - startTime);
+
     return result;
   }
 

@@ -1816,18 +1816,31 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    // Fetch ALL relationships for a single entity (both FROM and TO) - fixes N+1 problem
+    // Fetch relationships for specific relation types (TO direction: others -> entity)
+    // Used for owners, followers, domains, dataProducts, reviewers
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'from' as direction "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
-            + "WHERE fromId = :entityId AND fromEntity = :entityType AND deleted = FALSE "
-            + "UNION ALL "
-            + "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'to' as direction "
-            + "FROM entity_relationship "
-            + "WHERE toId = :entityId AND toEntity = :entityType AND deleted = FALSE")
+            + "WHERE toId = :entityId AND toEntity = :entityType "
+            + "AND relation IN (<relations>)")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findAllRelationshipsForEntity(
-        @BindUUID("entityId") UUID entityId, @Bind("entityType") String entityType);
+    List<EntityRelationshipObject> findToRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("entityType") String entityType,
+        @BindList("relations") List<Integer> relations);
+
+    // Fetch relationships for specific relation types (FROM direction: entity -> others)
+    // Used for children, experts
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :entityId AND fromEntity = :entityType "
+            + "AND relation IN (<relations>)")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("entityType") String entityType,
+        @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "

@@ -618,6 +618,12 @@ public final class Entity {
     return entityRepository;
   }
 
+  /** Check if an entity type has a registered repository */
+  public static boolean hasEntityRepository(@NonNull String entityType) {
+    return ENTITY_REPOSITORY_MAP.containsKey(entityType)
+        || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
+  }
+
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
       getEntityTimeSeriesRepository(@NonNull String entityType) {
     EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
