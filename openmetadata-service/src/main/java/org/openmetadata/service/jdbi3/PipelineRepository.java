@@ -1632,7 +1632,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     try {
       String serviceFilter = buildServiceFilter(service);
       String serviceTypeFilter = buildServiceTypeFilter(serviceType);
-      String statusFilter = buildStatusFilter(status);
+      String mysqlStatusFilter = buildMysqlStatusFilter(status);
+      String postgresStatusFilter = buildPostgresStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
@@ -1645,7 +1646,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .getPipelineMetricsData(
                   serviceTypeFilter,
                   serviceFilter,
-                  statusFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
                   tierFilter,
@@ -1657,7 +1659,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .getServiceBreakdown(
                   serviceTypeFilter,
                   serviceFilter,
-                  statusFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
                   tierFilter,
@@ -1763,7 +1766,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
       String serviceFilter = buildServiceFilter(service);
       String serviceTypeFilter = buildServiceTypeFilter(serviceType);
-      String statusFilter = buildStatusFilter(status);
+      String mysqlStatusFilter = buildMysqlStatusFilter(status);
+      String postgresStatusFilter = buildPostgresStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
@@ -1777,7 +1781,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   pipelineFqnFilter,
                   serviceTypeFilter,
                   serviceFilter,
-                  statusFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
                   tierFilter);
@@ -1929,7 +1934,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
       String serviceFilter = buildServiceFilter(service);
       String serviceTypeFilter = buildServiceTypeFilter(serviceType);
-      String statusFilter = buildStatusFilter(status);
+      String mysqlStatusFilter = buildMysqlStatusFilter(status);
+      String postgresStatusFilter = buildPostgresStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
@@ -1943,7 +1949,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   pipelineFqnFilter,
                   serviceTypeFilter,
                   serviceFilter,
-                  statusFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
                   tierFilter);
@@ -2062,12 +2069,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return "";
   }
 
-  private String buildStatusFilter(String status) {
+  private String buildMysqlStatusFilter(String status) {
     if (status != null && !status.isEmpty()) {
       String safeStatus = status.replace("'", "''");
       return "AND eets.json IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = '"
           + safeStatus
           + "'";
+    }
+    return "";
+  }
+
+  private String buildPostgresStatusFilter(String status) {
+    if (status != null && !status.isEmpty()) {
+      String safeStatus = status.replace("'", "''");
+      return "AND eets.json IS NOT NULL AND eets.json->>'executionStatus' = '" + safeStatus + "'";
     }
     return "";
   }

@@ -6650,7 +6650,7 @@ public interface CollectionDAO {
                 + "  <pipelineFqnFilter> "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6672,7 +6672,7 @@ public interface CollectionDAO {
                 + "  <pipelineFqnFilter> "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6686,7 +6686,8 @@ public interface CollectionDAO {
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
         @Define("serviceTypeFilter") String serviceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
-        @Define("statusFilter") String statusFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter);
@@ -6710,7 +6711,7 @@ public interface CollectionDAO {
                 + "  <pipelineFqnFilter> "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6736,7 +6737,7 @@ public interface CollectionDAO {
                 + "  <pipelineFqnFilter> "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6750,7 +6751,8 @@ public interface CollectionDAO {
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
         @Define("serviceTypeFilter") String serviceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
-        @Define("statusFilter") String statusFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter);
@@ -6767,7 +6769,7 @@ public interface CollectionDAO {
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6787,7 +6789,7 @@ public interface CollectionDAO {
                 + "WHERE pe.deleted = false "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6799,7 +6801,8 @@ public interface CollectionDAO {
     List<ServiceBreakdownRow> getServiceBreakdown(
         @Define("serviceTypeFilter") String serviceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
-        @Define("statusFilter") String statusFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -6820,7 +6823,7 @@ public interface CollectionDAO {
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6841,7 +6844,7 @@ public interface CollectionDAO {
                 + "WHERE pe.deleted = false "
                 + "  <serviceTypeFilter> "
                 + "  <serviceFilter> "
-                + "  <statusFilter> "
+                + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -6852,7 +6855,8 @@ public interface CollectionDAO {
     PipelineMetricsRow getPipelineMetricsData(
         @Define("serviceTypeFilter") String serviceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
-        @Define("statusFilter") String statusFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
