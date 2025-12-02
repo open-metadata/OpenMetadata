@@ -6,6 +6,8 @@ import static org.flowable.common.engine.api.delegate.event.FlowableEngineEventT
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
@@ -18,12 +20,16 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class WorkflowFailureListener implements FlowableEventListener {
+
+  public static final String WORKFLOW_FAILURE_LISTENER_STAGE = "workflowFailureListener";
 
   @Override
   public void onEvent(FlowableEvent event) {
@@ -105,8 +111,11 @@ public class WorkflowFailureListener implements FlowableEventListener {
       }
 
       UUID workflowInstanceId = UUID.fromString(businessKey);
+      String workflowTriggerName =
+          WorkflowHandler.getProcessDefinitionKeyFromId(processInstance.getProcessDefinitionId())
+              .split("-")[0];
       String workflowName =
-          WorkflowHandler.getProcessDefinitionKeyFromId(processInstance.getProcessDefinitionId());
+          TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(workflowTriggerName);
       String errorMessage = getErrorMessage(event);
 
       runtimeService.setVariable(processInstanceId, EXCEPTION_VARIABLE, errorMessage);
@@ -115,7 +124,8 @@ public class WorkflowFailureListener implements FlowableEventListener {
           workflowInstanceId, processInstanceId, failureType, errorMessage);
 
       if (isStageStatusEnabled(workflowName)) {
-        addFailureStage(workflowInstanceId, processInstanceId, workflowName, failureType);
+        addFailureStage(
+            workflowInstanceId, processInstanceId, workflowName, failureType, errorMessage);
       }
 
       LOG.warn(
@@ -155,7 +165,7 @@ public class WorkflowFailureListener implements FlowableEventListener {
           (WorkflowInstanceRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
 
-      java.util.Map<String, Object> failureVariables = new java.util.HashMap<>();
+      Map<String, Object> failureVariables = new HashMap<>();
       failureVariables.put("status", "EXCEPTION");
       failureVariables.put("failureType", failureType);
       failureVariables.put("error", errorMessage);
@@ -179,7 +189,11 @@ public class WorkflowFailureListener implements FlowableEventListener {
   }
 
   private void addFailureStage(
-      UUID workflowInstanceId, String processInstanceId, String workflowName, String failureType) {
+      UUID workflowInstanceId,
+      String processInstanceId,
+      String workflowName,
+      String failureType,
+      String errorMessage) {
     try {
       WorkflowInstanceStateRepository stateRepository =
           (WorkflowInstanceStateRepository)
@@ -189,16 +203,17 @@ public class WorkflowFailureListener implements FlowableEventListener {
 
       UUID stageId =
           stateRepository.addNewStageToInstance(
-              "WORKFLOW_FAILURE",
+              WORKFLOW_FAILURE_LISTENER_STAGE,
               executionId,
               workflowInstanceId,
               workflowName,
               System.currentTimeMillis());
 
-      java.util.Map<String, Object> stageData = new java.util.HashMap<>();
+      Map<String, Object> stageData = new HashMap<>();
       stageData.put("status", "FAILED");
       stageData.put("failureType", failureType);
       stageData.put("processInstanceId", processInstanceId);
+      stageData.put("exception", errorMessage);
 
       stateRepository.updateStage(stageId, System.currentTimeMillis(), stageData);
 
@@ -222,7 +237,8 @@ public class WorkflowFailureListener implements FlowableEventListener {
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
       WorkflowDefinition workflowDef =
-          workflowDefRepository.getByName(null, workflowDefinitionKey, null);
+          workflowDefRepository.getByName(
+              null, workflowDefinitionKey, EntityUtil.Fields.EMPTY_FIELDS);
 
       if (workflowDef != null && workflowDef.getConfig() != null) {
         boolean storeStageStatus = workflowDef.getConfig().getStoreStageStatus();
