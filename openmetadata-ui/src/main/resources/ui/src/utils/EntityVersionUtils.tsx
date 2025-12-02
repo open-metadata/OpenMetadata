@@ -662,11 +662,18 @@ export const getOwnerDiff = (
     })),
   ];
 
+  const ownerDisplayName = new Map<string, ReactNode>();
+
+  allItems.forEach(({ item, operation }) => {
+    const displayName = getOwnerLabelName(item, operation);
+    if (item.name) {
+      ownerDisplayName.set(item.name, displayName);
+    }
+  });
+
   return {
     owners: allItems.map(({ item }) => item),
-    ownerDisplayName: allItems.map(({ item, operation }) =>
-      getOwnerLabelName(item, operation)
-    ),
+    ownerDisplayName: ownerDisplayName,
   };
 };
 
@@ -1353,12 +1360,28 @@ export const getOwnerVersionLabel = (
   }
 
   if (defaultItems.length > 0) {
+    const ownerDisplayName = new Map<string, ReactNode>();
+
+    defaultItems.forEach((item: EntityReference) => {
+      const displayName = getOwnerLabelName(
+        item,
+        EntityChangeOperations.NORMAL
+      );
+      if (item.name) {
+        ownerDisplayName.set(item.name, displayName);
+      }
+    });
+
     return (
       <OwnerLabel
-        ownerDisplayName={defaultItems.map((item: EntityReference) =>
-          getOwnerLabelName(item, EntityChangeOperations.NORMAL)
-        )}
+        ownerDisplayName={ownerDisplayName}
         owners={defaultItems}
+        {...(ownerField === TabSpecificField.OWNERS
+          ? {
+              isCompactView: false,
+              showLabel: false,
+            }
+          : {})}
       />
     );
   }

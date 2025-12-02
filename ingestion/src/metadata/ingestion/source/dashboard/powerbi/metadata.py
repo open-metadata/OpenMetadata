@@ -51,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -1251,6 +1252,70 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
+    def _get_downstream_data_model_column_fqn(
+        self, data_model_entity: DashboardDataModel, table_name: str, column: str
+    ) -> Optional[str]:
+        """
+        Get the FQN of the column if it exists in the
+        downstream data model entity's table and column.
+        """
+        try:
+            if not data_model_entity:
+                return None
+            for table in data_model_entity.columns:
+                if table.name.root != table_name:
+                    continue
+                for child_column in table.children or []:
+                    if column.lower() == child_column.name.root.lower():
+                        return child_column.fullyQualifiedName.root
+        except Exception as exc:
+            logger.error(
+                f"Error to get downstream data_model_column_fqn for data_model_entity="
+                f"{data_model_entity.name.root}, table_name={table_name}, column={column}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _create_dataset_upstream_dataset_column_lineage(
+        self,
+        datamodel_entity: DashboardDataModel,
+        upstream_dataset_entity: DashboardDataModel,
+    ) -> Optional[List[ColumnLineage]]:
+        """
+        Create column lineage between powerbi dataset/datamodel and
+        its upstream dataset/datamodel
+        """
+        try:
+            target_tables = [table.name.root for table in datamodel_entity.columns]
+            if not target_tables:
+                return []
+            column_lineage = []
+            for table in upstream_dataset_entity.columns:
+                if table.name.root not in target_tables:
+                    continue
+                for column in table.children or []:
+                    source_column = column.fullyQualifiedName.root
+                    target_column = self._get_downstream_data_model_column_fqn(
+                        data_model_entity=datamodel_entity,
+                        table_name=table.name.root,
+                        column=column.name.root,
+                    )
+                    if source_column and target_column:
+                        column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[source_column], toColumn=target_column
+                            )
+                        )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                "Error while creating column lineage between dataset = "
+                f"{datamodel_entity.name.root} and upstream dataset = "
+                f"{upstream_dataset_entity.name.root}: {exc}"
+            )
+        return []
+
     def create_dataset_upstream_dataset_lineage(
         self, datamodel: Dataset, datamodel_entity: DashboardDataModel
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -1277,9 +1342,17 @@ class PowerbiSource(DashboardServiceSource):
                     fqn=upstream_dataset_fqn,
                 )
                 if upstream_dataset_entity and datamodel_entity:
+                    # create column lineage between current dataset/datamodel
+                    # and its upstream dataset.
+                    column_lineage = (
+                        self._create_dataset_upstream_dataset_column_lineage(
+                            datamodel_entity, upstream_dataset_entity
+                        )
+                    )
                     yield self._get_add_lineage_request(
                         from_entity=upstream_dataset_entity,
                         to_entity=datamodel_entity,
+                        column_lineage=column_lineage,
                     )
                 else:
                     logger.debug(

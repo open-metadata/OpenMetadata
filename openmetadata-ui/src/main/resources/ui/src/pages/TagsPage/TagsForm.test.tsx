@@ -26,6 +26,15 @@ jest.mock('../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn().mockReturnValue(''),
 }));
 
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
 

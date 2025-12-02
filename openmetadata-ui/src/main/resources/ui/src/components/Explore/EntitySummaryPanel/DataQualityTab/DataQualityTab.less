@@ -54,12 +54,13 @@
 .data-quality-tab-content {
   padding-left: 16px;
   height: 100vh;
+  background-color: @white;
 }
 .dotted-row {
   border-bottom: 1px dashed @grey-15;
   padding-bottom: 10px;
 }
-.vertical-divider {
+.stat-card-vertical-divider {
   margin-top: 12px !important;
   margin-bottom: 12px !important;
 }
@@ -69,20 +70,25 @@
   .tab-header-container {
     display: flex;
     align-items: center;
-    gap: 6px;
-
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 400;
+    &.active {
+      font-weight: 600;
+    }
     .data-quality-tab-count {
-      border-radius: 6px;
+      border-radius: 4px;
       background-color: @grey-9;
       border: 1px solid @grey-38;
-      color: @grey-700;
-      font-size: 10px;
+      color: @grey-600;
+      font-size: 11px;
       font-weight: 500;
-
+      padding: 0px 4px;
       &.active {
-        background-color: @primary-1;
+        font-weight: 600;
+        background-color: @primary-6;
         border-color: @primary-7;
-        color: @primary-7;
+        color: @primary-6;
       }
     }
   }
@@ -109,16 +115,16 @@
             padding: 10px 0px !important;
 
             &.ant-tabs-tab-active {
-              color: @primary-7;
+              color: @primary-6;
             }
 
             &:hover {
-              color: @primary-7;
+              color: @primary-6;
             }
           }
 
           .ant-tabs-ink-bar {
-            background-color: @primary-7;
+            background-color: @primary-6;
             height: 2px;
           }
         }
@@ -137,6 +143,7 @@
   .incidents-tab-content {
     padding-left: 16px;
     padding-right: 16px;
+    background-color: @white;
     .incidents-stats-container {
       display: flex;
       border: 1px solid @grey-15;
@@ -188,53 +195,98 @@
 
         &.new-card {
           width: 25%;
+
+          &:hover {
+            border-radius: 6px;
+            .stat-count.new {
+              color: @purple-2;
+            }
+            .stat-label.new {
+              color: @purple-2;
+            }
+          }
           .stat-count.new {
-            color: @purple-2;
+            color: @grey-600;
             font-weight: 600;
           }
 
           .stat-label.new {
-            color: @purple-2;
+            color: @grey-600;
             font-weight: 400;
           }
 
           &.active {
             background-color: @purple-1;
             border-radius: 6px;
+            .stat-count.new {
+              color: @purple-2;
+            }
+            .stat-label.new {
+              color: @purple-2;
+            }
           }
         }
 
         &.ack-card {
           width: 50%;
+          &:hover {
+            border-radius: 6px;
+            .stat-count.ack {
+              color: @blue-3;
+            }
+            .stat-label.ack {
+              color: @blue-3;
+            }
+          }
           .stat-count.ack {
-            color: @blue-3;
+            color: @grey-600;
             font-weight: 600;
           }
 
           .stat-label.ack {
-            color: @blue-3;
+            color: @grey-600;
           }
 
           &.active {
-            background-color: @blue-1;
+            background-color: @blue-22;
             border-radius: 6px;
+            .stat-count.ack {
+              color: @blue-3;
+            }
+            .stat-label.ack {
+              color: @blue-3;
+            }
           }
         }
 
         &.assigned-card {
           width: 25%;
           .stat-count.assigned {
-            color: @yellow-11;
+            color: @grey-600;
             font-weight: 600;
           }
-
+          &:hover {
+            border-radius: 6px;
+            .stat-count.assigned {
+              color: @yellow-11;
+            }
+            .stat-label.assigned {
+              color: @yellow-11;
+            }
+          }
           .stat-label.assigned {
-            color: @yellow-11;
+            color: @grey-600;
           }
 
           &.active {
             background-color: @yellow-10;
             border-radius: 6px;
+            .stat-count.assigned {
+              color: @yellow-11;
+            }
+            .stat-label.assigned {
+              color: @yellow-11;
+            }
           }
         }
       }
@@ -245,6 +297,8 @@
       position: relative;
       align-items: center;
       gap: 8px;
+      width: 100%;
+      border: none;
       padding-top: 6px;
       padding-bottom: 6px;
       padding-left: 12px;
@@ -330,12 +384,24 @@
           .status-badge {
             border-radius: 16px;
             &.failure {
-              font-size: 10px;
-              background-color: #fbf3f0;
-              color: @failed-color;
-              border: 1px solid @white;
+              background-color: @red-9;
+              color: @red-10;
+              border: 1px solid @grey-15;
+            }
+            &.success {
+              background-color: @green-9;
+              color: @green-17;
+              border: 1px solid @grey-15;
+            }
+            &.aborted {
+              background-color: @yellow-10;
+              color: @yellow-11;
+              border: 1px solid @grey-15;
             }
           }
+        }
+        .status-badge.status-badge-v2 {
+          border-color: @grey-15;
         }
       }
 
@@ -400,25 +466,11 @@
     padding: 32px 16px;
     color: @grey-10;
   }
-
-  .text-success {
-    color: #52c41a;
+  .no-data-placeholder {
+    color: @grey-500 !important;
+    font-size: 13px;
   }
-
-  .text-failed {
-    color: #ff4d4f;
-  }
-
-  .text-aborted {
-    color: #faad14;
-  }
-
-  .text-lg {
-    font-size: 18px;
-    line-height: 1.2;
-  }
-
-  .font-semibold {
-    font-weight: 600;
+  .searchbar-container {
+    margin-bottom: 4px !important;
   }
 }

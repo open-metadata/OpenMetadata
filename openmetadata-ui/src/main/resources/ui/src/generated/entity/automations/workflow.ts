@@ -501,6 +501,9 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -595,13 +598,43 @@ export interface TestServiceConnectionRequest {
      */
     type?: ReverseIngestionType;
     /**
+     * Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth,
+     * etc.). Used to determine which credential field to use from user config.
+     */
+    authType?: string;
+    /**
+     * Optional database/dataset to use for query execution (selected by user in QueryRunner
+     * Studio). Service-specific name (e.g., Snowflake database).
+     */
+    database?: string;
+    /**
+     * Optional database schema to use for query execution (selected by user in QueryRunner
+     * Studio). Service-specific name (e.g., Snowflake schema). Named 'databaseSchema' instead
+     * of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.
+     */
+    databaseSchema?: string;
+    /**
      * Query to be executed.
      */
     query?: string;
     /**
+     * Optional role to use for query execution (selected by user in QueryRunner Studio).
+     * Service-specific (e.g., Snowflake role).
+     */
+    role?: string;
+    /**
      * Optional value to indicate if the query should be transpiled.
      */
     transpile?: boolean;
+    /**
+     * UUID of the user's QueryRunner config for this specific service (looked up by backend
+     * using userId + serviceName)
+     */
+    userConfigId?: string;
+    /**
+     * UUID of the user executing the query (extracted from JWT token in backend)
+     */
+    userId?: string;
     /**
      * Spark Engine Configuration.
      */
@@ -1504,6 +1537,9 @@ export interface ConfigObject {
     /**
      * SSL Configuration details.
      *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -1518,6 +1554,16 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
+    /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -3744,6 +3790,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -3870,6 +3919,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -3894,7 +3948,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  ConsumerConfigSSLClass;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -3907,6 +3966,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -4425,6 +4489,9 @@ export enum SpaceType {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.

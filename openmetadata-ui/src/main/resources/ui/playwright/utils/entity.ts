@@ -347,14 +347,15 @@ export const addMultiOwner = async (data: {
   );
 
   const isClearButtonVisible = await page
-    .locator("[data-testid='select-owner-tabs']")
+    .getByTestId('select-owner-tabs')
+    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
     .getByTestId('clear-all-button')
     .isVisible();
 
   // If the user is not in the Users tab, switch to it
   if (!isClearButtonVisible) {
     await page
-      .locator("[data-testid='select-owner-tabs']")
+      .getByTestId('select-owner-tabs')
       .getByRole('tab', { name: 'Users' })
       .click();
 
@@ -365,7 +366,11 @@ export const addMultiOwner = async (data: {
   }
 
   if (clearAll && isMultipleOwners) {
-    await page.click('[data-testid="clear-all-button"]');
+    const clearButton = page
+      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .getByTestId('clear-all-button');
+
+    await clearButton.click();
   }
 
   for (const ownerName of owners) {
@@ -402,7 +407,9 @@ export const addMultiOwner = async (data: {
   }
 
   if (isMultipleOwners) {
-    const updateButton = page.getByTestId('selectable-list-update-btn');
+    const updateButton = page
+      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .getByTestId('selectable-list-update-btn');
 
     if (isSelectableInsideForm) {
       await updateButton.click();
@@ -1537,24 +1544,11 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
-    await page.getByTestId('lineage-config').click();
-
     await expect(
-      page.getByRole('menuitem', { name: 'Edit Lineage' })
+      page.locator('[data-testid="edit-lineage"]')
     ).not.toBeVisible();
-
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Cancel' })
-      .click();
   } else {
-    await page.getByTestId('lineage-config').click();
-
-    await expect(
-      page.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).toBeVisible();
-
-    await clickOutside(page);
+    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
   }
 };
 

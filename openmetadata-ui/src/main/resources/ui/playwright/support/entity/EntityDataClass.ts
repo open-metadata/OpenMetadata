@@ -31,7 +31,6 @@ import { DashboardDataModelClass } from './DashboardDataModelClass';
 import { DatabaseClass } from './DatabaseClass';
 import { DatabaseSchemaClass } from './DatabaseSchemaClass';
 import { DirectoryClass } from './DirectoryClass';
-import { EntityDataClassCreationConfig } from './EntityDataClass.interface';
 import { FileClass } from './FileClass';
 import { MetricClass } from './MetricClass';
 import { MlModelClass } from './MlModelClass';
@@ -62,21 +61,21 @@ export class EntityDataClass {
   static readonly glossaryTerm1 = new GlossaryTerm(this.glossary1);
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
   static readonly user1 = new UserClass({
-    email: `pw.user.one${randomUUID}@example.com`,
-    firstName: 'PWUser',
-    lastName: `One`,
+    email: `pw.user.one-${randomUUID}@example.com`,
+    firstName: 'PW.User.',
+    lastName: `One-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly user2 = new UserClass({
-    email: `pw.user.two${randomUUID}@example.com`,
-    firstName: 'PWUser',
-    lastName: `Two`,
+    email: `pw.user.two-${randomUUID}@example.com`,
+    firstName: 'PW.User.',
+    lastName: `Two-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly user3 = new UserClass({
-    email: `pw.user.three${randomUUID}@example.com`,
-    firstName: 'PWUser',
-    lastName: `Three`,
+    email: `pw.user.three-${randomUUID}@example.com`,
+    firstName: 'PW.User.',
+    lastName: `Three-${randomUUID}`,
     password: 'User@OMD123',
   });
   static readonly team1 = new TeamClass({
@@ -158,283 +157,148 @@ export class EntityDataClass {
   static readonly worksheet1 = new WorksheetClass();
   static readonly worksheet2 = new WorksheetClass();
 
-  static async preRequisitesForTests(
-    apiContext: APIRequestContext,
-    creationConfig: EntityDataClassCreationConfig = {
-      entityDetails: true,
-    }
-  ) {
+  static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
-    const promises =
-      creationConfig.entityDetails || creationConfig.all
-        ? [
-            this.domain1.create(apiContext),
-            this.domain2.create(apiContext),
-            this.glossary1.create(apiContext),
-            this.glossary2.create(apiContext),
-            this.user1.create(apiContext),
-            this.user2.create(apiContext),
-            this.user3.create(apiContext),
-            this.team1.create(apiContext),
-            this.team2.create(apiContext),
-            this.certificationTag1.create(apiContext),
-            this.certificationTag2.create(apiContext),
-            this.tierTag1.create(apiContext),
-            this.classification1.create(apiContext),
-          ]
-        : [];
-
-    if (creationConfig?.all || creationConfig?.tier) {
-      promises.push(this.tierTag1.create(apiContext));
-    }
-
-    if (creationConfig?.all || creationConfig?.table) {
-      promises.push(this.table1.create(apiContext));
-      promises.push(this.table2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.topic) {
-      promises.push(this.topic1.create(apiContext));
-      promises.push(this.topic2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.dashboard) {
-      promises.push(this.dashboard1.create(apiContext));
-      promises.push(this.dashboard2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.mlModel) {
-      promises.push(this.mlModel1.create(apiContext));
-      promises.push(this.mlModel2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.pipeline) {
-      promises.push(this.pipeline1.create(apiContext));
-      promises.push(this.pipeline2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.dashboardDataModel) {
-      promises.push(this.dashboardDataModel1.create(apiContext));
-      promises.push(this.dashboardDataModel2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.apiCollection) {
-      promises.push(this.apiCollection1.create(apiContext));
-      promises.push(this.apiCollection2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.apiEndpoint) {
-      promises.push(this.apiEndpoint1.create(apiContext));
-      promises.push(this.apiEndpoint2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.storedProcedure) {
-      promises.push(this.storedProcedure1.create(apiContext));
-      promises.push(this.storedProcedure2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.searchIndex) {
-      promises.push(this.searchIndex1.create(apiContext));
-      promises.push(this.searchIndex2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.container) {
-      promises.push(this.container1.create(apiContext));
-      promises.push(this.container2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.databaseService) {
-      promises.push(this.databaseService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.database) {
-      promises.push(this.database.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.databaseSchema) {
-      promises.push(this.databaseSchema.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.apiService) {
-      promises.push(this.apiService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.dashboardService) {
-      promises.push(this.dashboardService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.messagingService) {
-      promises.push(this.messagingService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.mlmodelService) {
-      promises.push(this.mlmodelService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.pipelineService) {
-      promises.push(this.pipelineService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.searchIndexService) {
-      promises.push(this.searchIndexService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.storageService) {
-      promises.push(this.storageService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.metric) {
-      promises.push(this.metric1.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.chart) {
-      promises.push(this.chart1.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.driveService) {
-      promises.push(this.driveService.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.directory) {
-      promises.push(this.directory1.create(apiContext));
-      promises.push(this.directory2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.file) {
-      promises.push(this.file1.create(apiContext));
-      promises.push(this.file2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.spreadsheet) {
-      promises.push(this.spreadsheet1.create(apiContext));
-      promises.push(this.spreadsheet2.create(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.worksheet) {
-      promises.push(this.worksheet1.create(apiContext));
-      promises.push(this.worksheet2.create(apiContext));
-    }
+    const promises = [
+      this.domain1.create(apiContext),
+      this.domain2.create(apiContext),
+      this.glossary1.create(apiContext),
+      this.glossary2.create(apiContext),
+      this.user1.create(apiContext),
+      this.user2.create(apiContext),
+      this.user3.create(apiContext),
+      this.team1.create(apiContext),
+      this.team2.create(apiContext),
+      this.certificationTag1.create(apiContext),
+      this.certificationTag2.create(apiContext),
+      this.tierTag1.create(apiContext),
+      this.classification1.create(apiContext),
+      this.table1.create(apiContext),
+      this.table2.create(apiContext),
+      this.topic1.create(apiContext),
+      this.topic2.create(apiContext),
+      this.dashboard1.create(apiContext),
+      this.dashboard2.create(apiContext),
+      this.mlModel1.create(apiContext),
+      this.mlModel2.create(apiContext),
+      this.pipeline1.create(apiContext),
+      this.pipeline2.create(apiContext),
+      this.dashboardDataModel1.create(apiContext),
+      this.dashboardDataModel2.create(apiContext),
+      this.apiCollection1.create(apiContext),
+      this.apiCollection2.create(apiContext),
+      this.apiEndpoint1.create(apiContext),
+      this.apiEndpoint2.create(apiContext),
+      this.storedProcedure1.create(apiContext),
+      this.storedProcedure2.create(apiContext),
+      this.searchIndex1.create(apiContext),
+      this.searchIndex2.create(apiContext),
+      this.container1.create(apiContext),
+      this.container2.create(apiContext),
+      this.databaseService.create(apiContext),
+      this.database.create(apiContext),
+      this.databaseSchema.create(apiContext),
+      this.apiService.create(apiContext),
+      this.dashboardService.create(apiContext),
+      this.messagingService.create(apiContext),
+      this.mlmodelService.create(apiContext),
+      this.pipelineService.create(apiContext),
+      this.searchIndexService.create(apiContext),
+      this.storageService.create(apiContext),
+      this.metric1.create(apiContext),
+      this.chart1.create(apiContext),
+      this.driveService.create(apiContext),
+      this.directory1.create(apiContext),
+      this.directory2.create(apiContext),
+      this.file1.create(apiContext),
+      this.file2.create(apiContext),
+      this.spreadsheet1.create(apiContext),
+      this.spreadsheet2.create(apiContext),
+      this.worksheet1.create(apiContext),
+      this.worksheet2.create(apiContext),
+    ];
 
     await Promise.allSettled(promises);
 
-    if (creationConfig?.all || creationConfig?.entityDetails) {
-      await Promise.allSettled([
-        this.glossaryTerm1.create(apiContext),
-        this.glossaryTerm2.create(apiContext),
-        this.dataProduct1.create(apiContext),
-        this.dataProduct2.create(apiContext),
-        this.dataProduct3.create(apiContext),
-        this.tag1.create(apiContext),
-      ]);
-    }
+    // Keeping these creations separate as they depend on
+    // Entity creation above
+    const dependentEntityCreationPromises = [
+      this.glossaryTerm1.create(apiContext),
+      this.glossaryTerm2.create(apiContext),
+      this.dataProduct1.create(apiContext),
+      this.dataProduct2.create(apiContext),
+      this.dataProduct3.create(apiContext),
+      this.tag1.create(apiContext),
+    ];
+
+    await Promise.allSettled(dependentEntityCreationPromises);
   }
 
-  static async postRequisitesForTests(
-    apiContext: APIRequestContext,
-    creationConfig: EntityDataClassCreationConfig = {
-      entityDetails: true,
-    }
-  ) {
-    const promises =
-      creationConfig?.entityDetails || creationConfig?.all
-        ? [
-            this.domain1.delete(apiContext),
-            this.domain2.delete(apiContext),
-            // deleting glossary will also delete the glossary terms
-            this.glossary1.delete(apiContext),
-            this.glossary2.delete(apiContext),
-            this.user1.delete(apiContext),
-            this.user2.delete(apiContext),
-            this.user3.delete(apiContext),
-            this.team1.delete(apiContext),
-            this.team2.delete(apiContext),
-            this.certificationTag1.delete(apiContext),
-            this.certificationTag2.delete(apiContext),
-            this.tierTag1.delete(apiContext),
-            this.classification1.delete(apiContext),
-            this.tag1.delete(apiContext),
-            this.dataProduct1.delete(apiContext),
-            this.dataProduct2.delete(apiContext),
-            this.dataProduct3.delete(apiContext),
-          ]
-        : [];
-
-    if (creationConfig?.all || creationConfig?.tier) {
-      promises.push(this.tierTag1.delete(apiContext));
-    }
-
-    if (creationConfig?.all || creationConfig?.table) {
-      promises.push(this.table1.delete(apiContext));
-      promises.push(this.table2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.topic) {
-      promises.push(this.topic1.delete(apiContext));
-      promises.push(this.topic2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.dashboard) {
-      promises.push(this.dashboard1.delete(apiContext));
-      promises.push(this.dashboard2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.mlModel) {
-      promises.push(this.mlModel1.delete(apiContext));
-      promises.push(this.mlModel2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.pipeline) {
-      promises.push(this.pipeline1.delete(apiContext));
-      promises.push(this.pipeline2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.dashboardDataModel) {
-      promises.push(this.dashboardDataModel1.delete(apiContext));
-      promises.push(this.dashboardDataModel2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.apiCollection) {
-      promises.push(this.apiCollection1.delete(apiContext));
-      promises.push(this.apiCollection2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.apiEndpoint) {
-      promises.push(this.apiEndpoint1.delete(apiContext));
-      promises.push(this.apiEndpoint2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.storedProcedure) {
-      promises.push(this.storedProcedure1.delete(apiContext));
-      promises.push(this.storedProcedure2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.searchIndex) {
-      promises.push(this.searchIndex1.delete(apiContext));
-      promises.push(this.searchIndex2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.container) {
-      promises.push(this.container1.delete(apiContext));
-      promises.push(this.container2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.databaseService) {
-      promises.push(this.databaseService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.database) {
-      promises.push(this.database.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.databaseSchema) {
-      promises.push(this.databaseSchema.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.apiService) {
-      promises.push(this.apiService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.dashboardService) {
-      promises.push(this.dashboardService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.messagingService) {
-      promises.push(this.messagingService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.mlmodelService) {
-      promises.push(this.mlmodelService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.pipelineService) {
-      promises.push(this.pipelineService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.searchIndexService) {
-      promises.push(this.searchIndexService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.storageService) {
-      promises.push(this.storageService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.metric) {
-      promises.push(this.metric1.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.chart) {
-      promises.push(this.chart1.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.driveService) {
-      promises.push(this.driveService.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.directory) {
-      promises.push(this.directory1.delete(apiContext));
-      promises.push(this.directory2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.file) {
-      promises.push(this.file1.delete(apiContext));
-      promises.push(this.file2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.spreadsheet) {
-      promises.push(this.spreadsheet1.delete(apiContext));
-      promises.push(this.spreadsheet2.delete(apiContext));
-    }
-    if (creationConfig?.all || creationConfig?.worksheet) {
-      promises.push(this.worksheet1.delete(apiContext));
-      promises.push(this.worksheet2.delete(apiContext));
-    }
+  static async postRequisitesForTests(apiContext: APIRequestContext) {
+    const promises = [
+      this.domain1.delete(apiContext),
+      this.domain2.delete(apiContext),
+      this.glossary1.delete(apiContext),
+      this.glossary2.delete(apiContext),
+      this.user1.delete(apiContext),
+      this.user2.delete(apiContext),
+      this.user3.delete(apiContext),
+      this.team1.delete(apiContext),
+      this.team2.delete(apiContext),
+      this.certificationTag1.delete(apiContext),
+      this.certificationTag2.delete(apiContext),
+      this.tierTag1.delete(apiContext),
+      this.classification1.delete(apiContext),
+      this.glossaryTerm1.delete(apiContext),
+      this.glossaryTerm2.delete(apiContext),
+      this.dataProduct1.delete(apiContext),
+      this.dataProduct2.delete(apiContext),
+      this.dataProduct3.delete(apiContext),
+      this.tag1.delete(apiContext),
+      this.table1.delete(apiContext),
+      this.table2.delete(apiContext),
+      this.topic1.delete(apiContext),
+      this.topic2.delete(apiContext),
+      this.dashboard1.delete(apiContext),
+      this.dashboard2.delete(apiContext),
+      this.mlModel1.delete(apiContext),
+      this.mlModel2.delete(apiContext),
+      this.pipeline1.delete(apiContext),
+      this.pipeline2.delete(apiContext),
+      this.dashboardDataModel1.delete(apiContext),
+      this.dashboardDataModel2.delete(apiContext),
+      this.apiCollection1.delete(apiContext),
+      this.apiCollection2.delete(apiContext),
+      this.apiEndpoint1.delete(apiContext),
+      this.apiEndpoint2.delete(apiContext),
+      this.storedProcedure1.delete(apiContext),
+      this.storedProcedure2.delete(apiContext),
+      this.searchIndex1.delete(apiContext),
+      this.searchIndex2.delete(apiContext),
+      this.container1.delete(apiContext),
+      this.container2.delete(apiContext),
+      this.databaseService.delete(apiContext),
+      this.database.delete(apiContext),
+      this.databaseSchema.delete(apiContext),
+      this.apiService.delete(apiContext),
+      this.dashboardService.delete(apiContext),
+      this.messagingService.delete(apiContext),
+      this.mlmodelService.delete(apiContext),
+      this.pipelineService.delete(apiContext),
+      this.searchIndexService.delete(apiContext),
+      this.storageService.delete(apiContext),
+      this.metric1.delete(apiContext),
+      this.chart1.delete(apiContext),
+      this.driveService.delete(apiContext),
+      this.directory1.delete(apiContext),
+      this.directory2.delete(apiContext),
+      this.file1.delete(apiContext),
+      this.file2.delete(apiContext),
+      this.spreadsheet1.delete(apiContext),
+      this.spreadsheet2.delete(apiContext),
+      this.worksheet1.delete(apiContext),
+      this.worksheet2.delete(apiContext),
+    ];
 
     return await Promise.allSettled(promises);
   }

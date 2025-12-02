@@ -14,7 +14,11 @@
 @import (reference) '../../../styles/variables.less';
 
 .entity-right-panel-vertical-nav {
-  width: 70px;
+  &.drawer-entity-right-panel-vertical-nav {
+    max-height: calc(100vh - 70px);
+    margin-right: 8px;
+  }
+  width: 62px;
   right: 0px;
   position: relative;
   height: 100vh;
@@ -44,7 +48,6 @@
       border: none;
       padding: 0;
       margin-top: 0px;
-      width: fit-content;
       background: transparent;
       .ant-menu-item-icon {
         height: 16px;

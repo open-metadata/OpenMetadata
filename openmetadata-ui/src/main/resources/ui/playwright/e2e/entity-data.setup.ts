@@ -20,7 +20,7 @@ setup('create entity data prerequisites', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   try {
-    await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
+    await EntityDataClass.preRequisitesForTests(apiContext);
     EntityDataClass.saveResponseData();
   } finally {
     await afterAction();
