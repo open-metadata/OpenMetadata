@@ -15,6 +15,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
+import { makeRetryRequest } from './serviceIngestion';
 import { sidebarClick } from './sidebar';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
@@ -103,19 +104,33 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
-  // wait for 2s before the pipeline to be run
-  await page.waitForTimeout(2000);
-  await apiContext
-    .post(`/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`)
-    .then((res) => {
-      if (res.status() !== 200) {
-        return apiContext.post(
-          `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
-        );
-      }
+  // wait for 5s before the pipeline to be run
+  await page.waitForTimeout(5000);
+  const response = await apiContext.post(
+    `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
+  );
 
-      return res;
+  if (response.status() !== 200) {
+    // re-deploy the pipeline then trigger it
+    await makeRetryRequest({
+      page,
+      fn: () =>
+        apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${pipeline?.['id']}`
+        ),
     });
+
+    // wait for 5s before the pipeline to be run
+    await page.waitForTimeout(5000);
+
+    await makeRetryRequest({
+      page,
+      fn: () =>
+        apiContext.post(
+          `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
+        ),
+    });
+  }
 
   // Wait for the run to complete
   await page.waitForTimeout(2000);

@@ -60,7 +60,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     for (const user of users) {
       await user.create(apiContext);
     }
-    const { pipeline } = await table1.createTestSuiteAndPipelines(apiContext);
+
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
         parameterValues: [
@@ -70,6 +70,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testDefinition: 'tableColumnCountToBeBetween',
       });
     }
+
+    const pipeline = await table1.createTestSuitePipeline(apiContext);
 
     await makeRetryRequest({
       page,
