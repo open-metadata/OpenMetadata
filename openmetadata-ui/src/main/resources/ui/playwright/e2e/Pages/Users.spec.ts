@@ -1084,7 +1084,10 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step(
       'Navigate to persona page by clicking on persona chip',
       async () => {
-        const personaChip = adminPage
+        const personaCard = adminPage.locator(
+          '[data-testid="persona-details-card"]'
+        );
+        const personaChip = personaCard
           .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
           .first();
         const personaLink = personaChip.locator('a').first();
