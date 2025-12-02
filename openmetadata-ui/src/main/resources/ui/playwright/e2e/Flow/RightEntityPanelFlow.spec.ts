@@ -462,14 +462,18 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         adminPage.locator('[data-testid="selectable-list"]')
       ).toBeVisible();
 
-      const searchBarAfterDelete = adminPage
-        .locator('[data-testid="selectable-list"]')
-        .locator('input[type="search"]');
-      if (await searchBarAfterDelete.isVisible()) {
-        await searchBarAfterDelete.fill(deletedTagDisplayName);
-        await adminPage.waitForTimeout(1000);
-      }
-
+      const searchBarAfterDelete = await adminPage.waitForSelector(
+        '[data-testid="tag-select-search-bar"]'
+      );
+      const searchTagResponseAfterDelete = adminPage.waitForResponse(
+        `/api/v1/search/query?q=*${deletedTagDisplayName}*index=tag_search_index*`
+      );
+      await searchBarAfterDelete.fill(deletedTagDisplayName);
+      await searchTagResponseAfterDelete;
+      await adminPage.waitForTimeout(1000);
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       const deletedTagItem = adminPage.getByTitle(deletedTagDisplayName);
 
       await expect(deletedTagItem).not.toBeVisible();
