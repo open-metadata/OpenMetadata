@@ -180,7 +180,7 @@ const IncidentManagerDetailPage = ({
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = location.state
       ?.breadcrumbData
-      ? location.state.breadcrumbData
+      ? [...location.state.breadcrumbData]
       : [
           {
             name: t('label.incident-manager'),
@@ -196,7 +196,7 @@ const IncidentManagerDetailPage = ({
         activeTitle: true,
       },
     ];
-  }, [testCase]);
+  }, [testCase, location.state]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

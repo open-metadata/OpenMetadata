@@ -250,7 +250,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             pathname: getTestCaseDetailPagePath(
               record.fullyQualifiedName ?? ''
             ),
-            state: { breadcrumbData },
           };
 
           return (
@@ -258,7 +257,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="m-0"
               data-testid={name}
               style={{ maxWidth: 280 }}>
-              <Link to={urlData}>{getEntityName(record)}</Link>
+              <Link state={{ breadcrumbData }} to={urlData}>
+                {getEntityName(record)}
+              </Link>
             </Typography.Paragraph>
           );
         },
