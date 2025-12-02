@@ -148,10 +148,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    await setUserDefaultPersona(
-      page,
-      persona.responseData.fullyQualifiedName ?? persona.responseData.name ?? ''
-    );
+    await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 
   test.beforeEach(async ({ page }) => {
