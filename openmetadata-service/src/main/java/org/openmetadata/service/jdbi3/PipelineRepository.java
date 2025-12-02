@@ -1359,10 +1359,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Build filter strings for database query
     String serviceFilterSql = buildServiceFilter(service);
-    String serviceTypeFilterSql =
+
+    // Build database-specific serviceType filters
+    String mysqlServiceTypeFilter =
         serviceType != null
             ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
             : "";
+    String postgresServiceTypeFilter =
+        serviceType != null ? "AND pe.json->>'serviceType' = '" + serviceType + "'" : "";
+
     String domainFilterSql =
         domainId != null
             ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
@@ -1375,8 +1380,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 + ownerId
                 + "' AND relation IN (8,1) AND toEntity = 'pipeline')"
             : "";
-    String tierFilterSql =
+
+    // Build database-specific tier filters
+    String mysqlTierFilter =
         tier != null ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.tier')) = '" + tier + "'" : "";
+    String postgresTierFilter = tier != null ? "AND pe.json->>'tier' = '" + tier + "'" : "";
 
     // Parse timestamp filters
     Long startTs = null;
@@ -1453,10 +1461,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             .entityExtensionTimeSeriesDao()
             .listPipelineSummariesFiltered(
                 serviceFilterSql,
-                serviceTypeFilterSql,
+                mysqlServiceTypeFilter,
+                postgresServiceTypeFilter,
                 domainFilterSql,
                 ownerFilterSql,
-                tierFilterSql,
+                mysqlTierFilter,
+                postgresTierFilter,
                 mysqlStatusFilter,
                 postgresStatusFilter,
                 searchFilter,
@@ -1469,10 +1479,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             .entityExtensionTimeSeriesDao()
             .countPipelineSummariesFiltered(
                 serviceFilterSql,
-                serviceTypeFilterSql,
+                mysqlServiceTypeFilter,
+                postgresServiceTypeFilter,
                 domainFilterSql,
                 ownerFilterSql,
-                tierFilterSql,
+                mysqlTierFilter,
+                postgresTierFilter,
                 mysqlStatusFilter,
                 postgresStatusFilter,
                 searchFilter);

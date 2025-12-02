@@ -6869,10 +6869,10 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <tierFilter> "
+                + "  <mysqlTierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
                 + "  <mysqlStatusFilter> "
                 + "ORDER BY pe.name "
@@ -6888,10 +6888,10 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <tierFilter> "
+                + "  <postgresTierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
                 + "  <postgresStatusFilter> "
                 + "ORDER BY pe.name "
@@ -6900,10 +6900,12 @@ public interface CollectionDAO {
     @RegisterRowMapper(PipelineSummaryRowMapper.class)
     List<PipelineSummaryRow> listPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("tierFilter") String tierFilter,
+        @Define("mysqlTierFilter") String mysqlTierFilter,
+        @Define("postgresTierFilter") String postgresTierFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search,
@@ -6916,10 +6918,10 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <tierFilter> "
+                + "  <mysqlTierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
                 + "  <mysqlStatusFilter>",
         connectionType = MYSQL)
@@ -6929,19 +6931,21 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <tierFilter> "
+                + "  <postgresTierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
                 + "  <postgresStatusFilter>",
         connectionType = POSTGRES)
     int countPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("tierFilter") String tierFilter,
+        @Define("mysqlTierFilter") String mysqlTierFilter,
+        @Define("postgresTierFilter") String postgresTierFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search);
