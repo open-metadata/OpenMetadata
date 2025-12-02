@@ -489,14 +489,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Apply cursor-based pagination
     if (before != null) {
       // Pagination going backwards: get records with timestamp < before
-      Long beforeTs = Long.parseLong(before);
+      // Decode base64-encoded cursor before parsing
+      String decodedBefore = RestUtil.decodeCursor(before);
+      Long beforeTs = Long.parseLong(decodedBefore);
       pipelineStatuses =
           pipelineStatuses.stream()
               .filter(ps -> ps.getTimestamp() < beforeTs)
               .collect(java.util.stream.Collectors.toList());
     } else if (after != null) {
       // Pagination going forward: get records with timestamp > after
-      Long afterTs = Long.parseLong(after);
+      // Decode base64-encoded cursor before parsing
+      String decodedAfter = RestUtil.decodeCursor(after);
+      Long afterTs = Long.parseLong(decodedAfter);
       pipelineStatuses =
           pipelineStatuses.stream()
               .filter(ps -> ps.getTimestamp() > afterTs)
@@ -511,11 +515,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       paginatedResults = pipelineStatuses;
     }
 
-    // Build cursors for pagination
+    // Build cursors for pagination - only when limit is provided
     String beforeCursor = null;
     String afterCursor = null;
 
-    if (!paginatedResults.isEmpty()) {
+    // Only generate cursors if pagination is active (limit was provided)
+    if (limit != null && !paginatedResults.isEmpty()) {
       beforeCursor = String.valueOf(paginatedResults.get(0).getTimestamp());
       afterCursor =
           String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getTimestamp());
