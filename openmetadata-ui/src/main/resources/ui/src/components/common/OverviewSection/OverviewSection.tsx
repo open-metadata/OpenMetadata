@@ -24,6 +24,7 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
   entityInfoV1,
   componentType = '',
   isDomainVisible = false,
+  onLinkClick,
 }) => {
   const { t } = useTranslation();
 
@@ -41,6 +42,7 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
         entityInfo={entityInfoV1}
         excludedItems={EXCLUDED_ITEMS}
         isDomainVisible={isDomainVisible}
+        onLinkClick={onLinkClick}
       />
     </SectionWithEdit>
   );
