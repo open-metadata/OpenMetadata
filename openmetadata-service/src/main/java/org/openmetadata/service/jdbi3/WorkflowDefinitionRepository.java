@@ -184,6 +184,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateUpdatedByNamespace(workflowDefinition);
     // 5. Node input/output validations
     validateNodeInputOutputMapping(workflowDefinition);
+    // 6. Conditional task validations
+    validateConditionalTasks(workflowDefinition);
   }
 
   /**
@@ -749,5 +751,64 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
             e.getMessage());
       }
     }
+  }
+
+  private void validateConditionalTasks(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
+      return;
+    }
+
+    String workflowName = workflowDefinition.getName();
+
+    // Build outgoing edges map for each node
+    Map<String, List<EdgeDefinition>> outgoingEdgesMap = new java.util.HashMap<>();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      outgoingEdgesMap.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
+    }
+
+    // Check each conditional task node
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (isConditionalTask(node)) {
+        List<EdgeDefinition> outgoingEdges = outgoingEdgesMap.get(node.getName());
+
+        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have outgoing sequence flows for both TRUE and FALSE conditions",
+                  workflowName, node.getNodeDisplayName()));
+        }
+
+        // Check if we have both TRUE and FALSE conditions
+        boolean hasTrueCondition = false;
+        boolean hasFalseCondition = false;
+
+        for (EdgeDefinition edge : outgoingEdges) {
+          String condition = edge.getCondition();
+          if (condition != null) {
+            if ("true".equals(condition.trim())) {
+              hasTrueCondition = true;
+            } else if ("false".equals(condition.trim())) {
+              hasFalseCondition = true;
+            }
+          }
+        }
+
+        if (!hasTrueCondition || !hasFalseCondition) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have both TRUE and FALSE outgoing sequence flows. "
+                      + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+                  workflowName, node.getNodeDisplayName()));
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if a node is a conditional task that requires TRUE/FALSE outputs.
+   */
+  private boolean isConditionalTask(WorkflowNodeDefinitionInterface node) {
+    String nodeType = node.getSubType();
+    return "checkEntityAttributesTask".equals(nodeType) || "userApprovalTask".equals(nodeType);
   }
 }
