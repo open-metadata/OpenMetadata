@@ -37,7 +37,10 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getDomainIcon } from '../../../../utils/DomainUtils';
+import {
+  getDomainIcon,
+  getQueryFilterForDomain,
+} from '../../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -50,6 +53,10 @@ import {
   DOMAIN_SORT_BY_OPTIONS,
 } from './DomainsWidget.constants';
 
+interface DomainWithAssetCount extends Domain {
+  assetCount?: number;
+}
+
 const DomainsWidget = ({
   isEditView = false,
   handleRemoveWidget,
@@ -58,13 +65,29 @@ const DomainsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const [domains, setDomains] = useState<Domain[]>([]);
+  const [domains, setDomains] = useState<DomainWithAssetCount[]>([]);
   const navigate = useNavigate();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DOMAIN_SORT_BY_KEYS.LATEST
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchDomainAssetCount = useCallback(async (domainFqn: string) => {
+    try {
+      const res = await searchQuery({
+        query: '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: getQueryFilterForDomain(domainFqn),
+        searchIndex: SearchIndex.DATA_ASSET,
+      });
+
+      return res?.hits?.total.value ?? 0;
+    } catch {
+      return 0;
+    }
+  }, []);
 
   const fetchDomains = useCallback(async () => {
     setLoading(true);
@@ -73,7 +96,7 @@ const DomainsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
 
-      const res = await searchQuery({
+      const domainsRes = await searchQuery({
         query: '',
         pageNumber: INITIAL_PAGING_VALUE,
         pageSize: PAGE_SIZE_MEDIUM,
@@ -82,16 +105,31 @@ const DomainsWidget = ({
         searchIndex: SearchIndex.DOMAIN,
       });
 
-      const domains = res?.hits?.hits.map((hit) => hit._source);
-      const sortedDomains = applySortToData(domains, selectedSortBy);
-      setDomains(sortedDomains as Domain[]);
+      const domainsData =
+        domainsRes?.hits?.hits.map((hit) => hit._source) ?? [];
+
+      const domainsWithCounts = await Promise.all(
+        domainsData.map(async (domain) => {
+          const assetCount = await fetchDomainAssetCount(
+            domain.fullyQualifiedName ?? ''
+          );
+
+          return {
+            ...domain,
+            assetCount,
+          };
+        })
+      );
+
+      const sortedDomains = applySortToData(domainsWithCounts, selectedSortBy);
+      setDomains(sortedDomains as DomainWithAssetCount[]);
     } catch {
       setError(t('message.fetch-domain-list-error'));
       setDomains([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
+  }, [selectedSortBy, fetchDomainAssetCount]);
 
   const handleDomainClick = useCallback(
     (domain: Domain) => {
@@ -169,7 +207,7 @@ const DomainsWidget = ({
                         {domain.displayName || domain.name}
                       </Typography.Text>
                       <span className="domain-card-full-count">
-                        {domain.assets?.length || 0}
+                        {domain.assetCount ?? 0}
                       </span>
                     </div>
                   </div>
@@ -190,7 +228,7 @@ const DomainsWidget = ({
                       </Typography.Text>
                     </span>
                     <span className="domain-card-count">
-                      {domain.assets?.length || 0}
+                      {domain.assetCount ?? 0}
                     </span>
                   </div>
                 </div>

@@ -46,8 +46,8 @@ const mockDomains: Domain[] = [
   {
     id: '1',
     name: 'clients',
+    fullyQualifiedName: 'clients',
     displayName: 'Clients',
-    assets: [{ id: 'a1', type: 'table' }],
     style: { color: '#4F8CFF', iconURL: 'icon1.svg' },
     domainType: DomainType.Aggregate,
     description: 'Client domain',
@@ -55,11 +55,8 @@ const mockDomains: Domain[] = [
   {
     id: '2',
     name: 'marketing',
+    fullyQualifiedName: 'marketing',
     displayName: 'Marketing',
-    assets: [
-      { id: 'a2', type: 'table' },
-      { id: 'a3', type: 'table' },
-    ],
     style: { color: '#A259FF', iconURL: 'icon2.svg' },
     domainType: DomainType.Aggregate,
     description: 'Marketing domain',
@@ -83,14 +80,19 @@ jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+jest.mock('../../../../utils/DomainUtils', () => ({
+  getDomainIcon: jest.fn().mockReturnValue(<div data-testid="domain-icon" />),
+  getQueryFilterForDomain: jest.fn().mockImplementation((fqn) => ({
+    query: {
+      bool: { must: [{ term: { 'domains.fullyQualifiedName': fqn } }] },
+    },
+  })),
+}));
+
 jest.mock('../../../../constants/Widgets.constant', () => ({
   getSortField: jest.fn(),
   getSortOrder: jest.fn(),
   applySortToData: jest.fn(),
-}));
-
-jest.mock('../../../../utils/DomainUtils', () => ({
-  getDomainIcon: jest.fn().mockReturnValue(<div data-testid="domain-icon" />),
 }));
 
 const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
@@ -107,6 +109,14 @@ const mockApplySortToData = applySortToData as jest.MockedFunction<
   typeof applySortToData
 >;
 
+const mockAssetCountResponse = {
+  hits: {
+    hits: [],
+    total: { value: 5 },
+  },
+  aggregations: {},
+};
+
 describe('DomainsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -115,7 +125,14 @@ describe('DomainsWidget', () => {
     mockGetSortField.mockReturnValue('updatedAt');
     mockGetSortOrder.mockReturnValue('desc');
     mockApplySortToData.mockImplementation((data) => data);
-    mockSearchQuery.mockResolvedValue(mockSearchResponse);
+    // Mock searchQuery to return domains first, then asset counts
+    mockSearchQuery.mockImplementation((params) => {
+      if (params.searchIndex === 'domain_search_index') {
+        return Promise.resolve(mockSearchResponse);
+      }
+
+      return Promise.resolve(mockAssetCountResponse);
+    });
   });
 
   const renderDomainsWidget = (props = {}) => {
@@ -149,9 +166,10 @@ describe('DomainsWidget', () => {
       expect(screen.getByText('Marketing')).toBeInTheDocument();
     });
 
-    // Check that asset counts are displayed
-    expect(screen.getByText('1')).toBeInTheDocument(); // Clients has 1 asset
-    expect(screen.getByText('2')).toBeInTheDocument(); // Marketing has 2 assets
+    // Check that asset counts are displayed (both domains have 5 assets from mock)
+    const assetCounts = screen.getAllByText('5');
+
+    expect(assetCounts.length).toBeGreaterThanOrEqual(2);
   });
 
   it('renders empty state when no domains', async () => {
@@ -363,22 +381,31 @@ describe('DomainsWidget', () => {
   it('handles domain with no assets', async () => {
     const domainWithNoAssets = {
       ...mockDomains[0],
-      assets: undefined,
+      fullyQualifiedName: 'no-assets-domain',
     };
 
-    mockSearchQuery.mockResolvedValue({
-      ...mockSearchResponse,
-      hits: {
-        hits: [
-          {
-            _source: domainWithNoAssets,
-            _index: 'domain_search_index',
-            _id: domainWithNoAssets.id,
+    mockSearchQuery.mockImplementation((params) => {
+      if (params.searchIndex === 'domain_search_index') {
+        return Promise.resolve({
+          ...mockSearchResponse,
+          hits: {
+            hits: [
+              {
+                _source: domainWithNoAssets,
+                _index: 'domain_search_index',
+                _id: domainWithNoAssets.id,
+              },
+            ],
+            total: { value: 1 },
           },
-        ],
-        total: { value: 1 },
-      },
-      aggregations: {},
+          aggregations: {},
+        });
+      }
+
+      return Promise.resolve({
+        hits: { hits: [], total: { value: 0 } },
+        aggregations: {},
+      });
     });
 
     renderDomainsWidget();
@@ -397,7 +424,14 @@ describe('DomainsWidget', () => {
     await waitFor(() => {
       expect(mockGetSortField).toHaveBeenCalledWith('latest');
       expect(mockGetSortOrder).toHaveBeenCalledWith('latest');
-      expect(mockApplySortToData).toHaveBeenCalledWith(mockDomains, 'latest');
+      // Data now includes assetCount from searchQuery calls
+      expect(mockApplySortToData).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'clients', assetCount: 5 }),
+          expect.objectContaining({ name: 'marketing', assetCount: 5 }),
+        ]),
+        'latest'
+      );
     });
   });
 });

@@ -38,9 +38,11 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityTypeExploreQueryFilter } from '../../../../utils/CommonUtils';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -52,6 +54,10 @@ import {
   DATA_PRODUCTS_SORT_BY_OPTIONS,
 } from './DataProductsWidget.constants';
 
+interface DataProductWithAssetCount extends DataProduct {
+  assetCount?: number;
+}
+
 const DataProductsWidget = ({
   isEditView = false,
   handleRemoveWidget,
@@ -60,13 +66,37 @@ const DataProductsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
+  const [dataProducts, setDataProducts] = useState<DataProductWithAssetCount[]>(
+    []
+  );
   const navigate = useNavigate();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DATA_PRODUCTS_SORT_BY_KEYS.LATEST
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchDataProductAssetCount = useCallback(
+    async (dataProductFqn: string) => {
+      try {
+        const queryFilter = getTermQuery({
+          'dataProducts.fullyQualifiedName': dataProductFqn,
+        });
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 0,
+          pageSize: 0,
+          queryFilter,
+          searchIndex: SearchIndex.DATA_ASSET,
+        });
+
+        return res?.hits?.total.value ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    []
+  );
 
   const fetchDataProducts = useCallback(async () => {
     setLoading(true);
@@ -75,7 +105,7 @@ const DataProductsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
 
-      const res = await searchData(
+      const dataProductsRes = await searchData(
         '',
         INITIAL_PAGING_VALUE,
         PAGE_SIZE_MEDIUM,
@@ -85,16 +115,34 @@ const DataProductsWidget = ({
         SearchIndex.DATA_PRODUCT
       );
 
-      const dataProducts = res?.data?.hits?.hits.map((hit) => hit._source);
-      const sortedDataProducts = applySortToData(dataProducts, selectedSortBy);
-      setDataProducts(sortedDataProducts as DataProduct[]);
+      const dataProductsData =
+        dataProductsRes?.data?.hits?.hits.map((hit) => hit._source) ?? [];
+
+      const dataProductsWithCounts = await Promise.all(
+        dataProductsData.map(async (dataProduct) => {
+          const assetCount = await fetchDataProductAssetCount(
+            dataProduct.fullyQualifiedName ?? ''
+          );
+
+          return {
+            ...dataProduct,
+            assetCount,
+          };
+        })
+      );
+
+      const sortedDataProducts = applySortToData(
+        dataProductsWithCounts,
+        selectedSortBy
+      );
+      setDataProducts(sortedDataProducts as DataProductWithAssetCount[]);
     } catch {
       setError(t('message.fetch-data-product-list-error'));
       setDataProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
+  }, [selectedSortBy, fetchDataProductAssetCount]);
 
   const handleDataProductClick = useCallback(
     (dataProduct: DataProduct) => {
@@ -182,7 +230,7 @@ const DataProductsWidget = ({
                       <span
                         className="data-product-card-full-count"
                         data-testid="data-product-asset-count">
-                        {dataProduct.assets?.length || 0}
+                        {dataProduct.assetCount ?? 0}
                       </span>
                     </div>
                   </div>
@@ -208,7 +256,7 @@ const DataProductsWidget = ({
                     <span
                       className="data-product-card-count"
                       data-testid="data-product-asset-count">
-                      {dataProduct.assets?.length || 0}
+                      {dataProduct.assetCount ?? 0}
                     </span>
                   </div>
                 </div>

@@ -102,4 +102,32 @@ export class SubDomain {
       entity: this.responseData,
     };
   }
+
+  async addAssets(
+    apiContext: APIRequestContext,
+    assets: Array<{ id: string; type: string }>
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/domains/${this.responseData?.id}/assets/add`,
+      {
+        data: assets,
+      }
+    );
+
+    return response.json();
+  }
+
+  async removeAssets(
+    apiContext: APIRequestContext,
+    assets: Array<{ id: string; type: string }>
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/domains/${this.responseData?.id}/assets/remove`,
+      {
+        data: assets,
+      }
+    );
+
+    return response.json();
+  }
 }

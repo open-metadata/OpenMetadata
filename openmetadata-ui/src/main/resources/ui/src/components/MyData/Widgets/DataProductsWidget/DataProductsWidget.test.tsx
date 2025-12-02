@@ -24,6 +24,7 @@ import {
 } from '../../../../constants/Widgets.constant';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import DataProductsWidget from './DataProductsWidget.component';
 
 const mockProps = {
@@ -49,7 +50,6 @@ const mockDataProducts: DataProduct[] = [
     name: 'customer-360',
     displayName: 'Customer 360',
     fullyQualifiedName: 'customer-360',
-    assets: [{ id: 'a1', type: 'table' }],
     style: { color: '#4F8CFF', iconURL: 'icon1.svg' },
     description: 'Customer data product',
   },
@@ -58,10 +58,6 @@ const mockDataProducts: DataProduct[] = [
     name: 'sales-analytics',
     displayName: 'Sales Analytics',
     fullyQualifiedName: 'sales-analytics',
-    assets: [
-      { id: 'a2', type: 'dashboard' },
-      { id: 'a3', type: 'table' },
-    ],
     style: { color: '#A259FF', iconURL: 'icon2.svg' },
     description: 'Sales analytics data product',
   },
@@ -70,14 +66,15 @@ const mockDataProducts: DataProduct[] = [
     name: 'marketing-insights',
     displayName: 'Marketing Insights',
     fullyQualifiedName: 'marketing-insights',
-    assets: [
-      { id: 'a4', type: 'dashboard' },
-      { id: 'a5', type: 'pipeline' },
-      { id: 'a6', type: 'table' },
-    ],
     style: { color: '#FF5959', iconURL: 'icon3.svg' },
     description: 'Marketing insights data product',
   },
+];
+
+const mockAssetCountResponses = [
+  { hits: { hits: [], total: { value: 1 } }, aggregations: {} },
+  { hits: { hits: [], total: { value: 2 } }, aggregations: {} },
+  { hits: { hits: [], total: { value: 3 } }, aggregations: {} },
 ];
 
 const mockSearchResponse = {
@@ -103,6 +100,16 @@ jest.mock('../../../../rest/miscAPI', () => ({
   searchData: jest.fn(),
 }));
 
+jest.mock('../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
+
+jest.mock('../../../../utils/SearchUtils', () => ({
+  getTermQuery: jest.fn().mockImplementation((terms) => ({
+    query: { bool: { must: [{ term: terms }] } },
+  })),
+}));
+
 jest.mock('../../../../constants/Widgets.constant', () => ({
   getSortField: jest.fn(),
   getSortOrder: jest.fn(),
@@ -124,9 +131,22 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('DataProductsWidget', () => {
+  let assetCountCallIndex = 0;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    assetCountCallIndex = 0;
     (searchData as jest.Mock).mockResolvedValue(mockSearchResponse);
+    // Mock asset count responses for each data product
+    (searchQuery as jest.Mock).mockImplementation(() => {
+      const response = mockAssetCountResponses[assetCountCallIndex] ?? {
+        hits: { hits: [], total: { value: 0 } },
+        aggregations: {},
+      };
+      assetCountCallIndex++;
+
+      return Promise.resolve(response);
+    });
     (getSortField as jest.Mock).mockReturnValue('updatedAt');
     (getSortOrder as jest.Mock).mockReturnValue('desc');
     (applySortToData as jest.Mock).mockImplementation((data) => data);
