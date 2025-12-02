@@ -66,7 +66,10 @@ test.describe('Customize Landing Page Flow', () => {
     test.slow(true);
 
     await redirectToHomePage(adminPage);
-    await setUserDefaultPersona(adminPage, persona.responseData.displayName);
+    await setUserDefaultPersona(
+      adminPage,
+      persona.responseData.fullyQualifiedName ?? persona.responseData.name ?? ''
+    );
 
     await test.step('Remove widget', async () => {
       test.slow(true);
