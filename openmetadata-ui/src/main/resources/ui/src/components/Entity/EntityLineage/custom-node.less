@@ -175,22 +175,19 @@
       padding-top: 0;
       background-color: @grey-1;
 
-      &.columns-collapsed {
-        min-height: 0px;
-      }
-
-      .inside-current-page {
+      .inside-current-page-item {
         margin-top: 0px;
         display: block;
         .custom-node-header-column-tracing {
           display: block;
         }
       }
-      .outside-current-page:has(.custom-node-column-container) {
+      .outside-current-page-item:has(.custom-node-column-container) {
         display: none;
       }
-      .outside-current-page:has(.custom-node-header-column-tracing) {
+      .outside-current-page-item:has(.custom-node-header-column-tracing) {
         display: block;
+        margin-top: 0px;
       }
 
       .outside-current-page-items:has(.custom-node-header-column-tracing) {
@@ -224,7 +221,7 @@
         position: relative;
         font-size: 12px;
         font-weight: 400;
-        border: 1px solid transparent;
+        border: 1px solid @grey-1;
         border-left: 6px solid transparent;
         border-radius: 4px;
         border-top-left-radius: 6px;
@@ -262,8 +259,8 @@
       &:not(.any-column-selected) {
         .custom-node-column-container {
           &:hover {
-            background-color: @primary-1;
-            border-left-color: @primary-color;
+            background-color: #d1e9ff;
+            border-left-color: #1570ef;
           }
         }
       }
@@ -368,27 +365,27 @@
     }
     .column-container {
       .custom-node-column-container.custom-node-header-column-tracing {
-        background-color: @primary-1;
-        border-color: #1570ef;
+        background-color: #d1e9ff;
+        border-left-color: #1570ef;
         &:hover {
-          background-color: @primary-1;
+          background-color: #d1e9ff;
         }
       }
       &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: #ebe9fe;
-          border-color: #5925dc;
+          background-color: #e0eaff;
+          border-left-color: #444ce7;
           &:hover {
-            background-color: #ebe9fe;
-            border-color: #5925dc;
+            background-color: #e0eaff;
+            border-left-color: #444ce7;
           }
         }
       }
 
       &.creating-edge {
         .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
-          background-color: @primary-1;
-          border-color: #1570ef;
+          background-color: #d1e9ff;
+          border-left-color: #1570ef;
         }
       }
     }
