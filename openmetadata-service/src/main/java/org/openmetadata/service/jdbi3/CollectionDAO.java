@@ -4666,6 +4666,34 @@ public interface CollectionDAO {
     List<TagLabelWithFQNHash> getTagsInternalBatch(
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
 
+    /**
+     * Batch fetch derived tags for multiple glossary term FQNs. Returns a map from glossary term
+     * FQN to its derived tags (tags that target that glossary term).
+     */
+    default Map<String, List<TagLabel>> getDerivedTagsBatch(List<String> glossaryTermFqns) {
+      if (glossaryTermFqns == null || glossaryTermFqns.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      List<TagLabelWithFQNHash> tagUsages = getTagsInternalBatch(glossaryTermFqns);
+      Map<String, List<TagLabel>> result = new HashMap<>();
+
+      for (TagLabelWithFQNHash usage : tagUsages) {
+        String targetFqn = usage.getTargetFQNHash();
+        TagLabel tagLabel =
+            new TagLabel()
+                .withSource(TagLabel.TagSource.values()[usage.getSource()])
+                .withTagFQN(usage.getTagFQN())
+                .withLabelType(TagLabel.LabelType.DERIVED)
+                .withState(TagLabel.State.values()[usage.getState()]);
+        if (usage.getReason() != null) {
+          tagLabel.withReason(usage.getReason());
+        }
+        TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
+        result.computeIfAbsent(targetFqn, k -> new ArrayList<>()).add(tagLabel);
+      }
+      return result;
+    }
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
