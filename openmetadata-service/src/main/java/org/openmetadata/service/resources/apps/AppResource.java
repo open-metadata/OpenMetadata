@@ -246,7 +246,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(description = "Filter by agent type(s). Can be a single value or comma-separated values", schema = @Schema(type = "string"))
+      @Parameter(
+              description =
+                  "Filter by agent type(s). Can be a single value or comma-separated values",
+              schema = @Schema(type = "string"))
           @QueryParam("agentType")
           String agentTypes,
       @Parameter(
