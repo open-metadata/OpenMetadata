@@ -97,7 +97,6 @@ export const UserTeamSelect = ({
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.USER,
-        includeDeleted: false,
       });
 
       const data = getEntityReferenceListFromEntities(
@@ -135,7 +134,6 @@ export const UserTeamSelect = ({
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,
-        includeDeleted: false,
       });
 
       const data = getEntityReferenceListFromEntities(

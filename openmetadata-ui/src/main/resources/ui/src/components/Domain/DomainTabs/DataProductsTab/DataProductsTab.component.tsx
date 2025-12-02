@@ -67,7 +67,6 @@ const DataProductsTab = forwardRef(
             'domains.fullyQualifiedName': urlDomainFqn || domainFqn || '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
-          includeDeleted: false,
         });
 
         const data = formatDataProductResponse(res.hits.hits);

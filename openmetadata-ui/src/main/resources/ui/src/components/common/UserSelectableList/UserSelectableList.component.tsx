@@ -55,7 +55,6 @@ export const UserSelectableList = ({
           pageSize: PAGE_SIZE_MEDIUM,
           queryFilter: getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
-          includeDeleted: false,
         });
 
         const data = getEntityReferenceListFromEntities(

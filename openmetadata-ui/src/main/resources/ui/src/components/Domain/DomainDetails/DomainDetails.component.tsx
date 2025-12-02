@@ -247,7 +247,6 @@ const DomainDetails = ({
             'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
-          includeDeleted: false,
         });
 
         setDataProductsCount(res.hits.total.value ?? 0);

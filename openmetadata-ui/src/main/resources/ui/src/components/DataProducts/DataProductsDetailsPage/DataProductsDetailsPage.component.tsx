@@ -282,7 +282,6 @@ const DataProductsDetailsPage = ({
           pageSize: 0,
           queryFilter,
           searchIndex: SearchIndex.ALL,
-          includeDeleted: false,
         });
 
         setAssetCount(res.hits.total.value ?? 0);

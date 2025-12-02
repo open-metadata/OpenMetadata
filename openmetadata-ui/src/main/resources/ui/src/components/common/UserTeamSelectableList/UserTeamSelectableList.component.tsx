@@ -106,7 +106,6 @@ export const UserTeamSelectableList = ({
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.USER,
-        includeDeleted: false,
       });
 
       const data = getEntityReferenceListFromEntities(
@@ -141,7 +140,6 @@ export const UserTeamSelectableList = ({
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,
-        includeDeleted: false,
       });
 
       const data = getEntityReferenceListFromEntities(
@@ -206,7 +204,6 @@ export const UserTeamSelectableList = ({
       pageSize: 0,
       queryFilter: getTermQuery({ isBot: 'false' }),
       searchIndex: SearchIndex.USER,
-      includeDeleted: false,
     });
 
     setCount((pre) => ({ ...pre, user: res.hits.total.value }));
@@ -220,7 +217,6 @@ export const UserTeamSelectableList = ({
         matchTerms: { teamType: 'Group' },
       }),
       searchIndex: SearchIndex.TEAM,
-      includeDeleted: false,
     });
 
     setCount((pre) => ({ ...pre, team: res.hits.total.value }));
