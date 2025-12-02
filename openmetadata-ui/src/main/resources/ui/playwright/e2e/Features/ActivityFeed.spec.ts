@@ -32,7 +32,7 @@ const entity = new TableClass();
 const extraEntity = new TableClass();
 const testPersona = new PersonaClass();
 
-test.describe.skip('FeedWidget on landing page', () => {
+test.describe('FeedWidget on landing page', () => {
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
     async ({ browser }) => {
