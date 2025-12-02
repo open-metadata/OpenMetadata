@@ -15,15 +15,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
-jest.mock('../../../../../../common/FieldCard', () => {
-  return {
-    FieldCard: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="field-card" />),
-  };
-});
-
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Progress: jest
     .fn()
     .mockImplementation(() => (
