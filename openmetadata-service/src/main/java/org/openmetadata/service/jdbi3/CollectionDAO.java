@@ -6872,7 +6872,7 @@ public interface CollectionDAO {
                 + "  <mysqlServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <mysqlTierFilter> "
+                + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
                 + "  <mysqlStatusFilter> "
                 + "ORDER BY pe.name "
@@ -6891,7 +6891,7 @@ public interface CollectionDAO {
                 + "  <postgresServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <postgresTierFilter> "
+                + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
                 + "  <postgresStatusFilter> "
                 + "ORDER BY pe.name "
@@ -6904,8 +6904,7 @@ public interface CollectionDAO {
         @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("mysqlTierFilter") String mysqlTierFilter,
-        @Define("postgresTierFilter") String postgresTierFilter,
+        @Define("tierFilter") String tierFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search,
@@ -6921,7 +6920,7 @@ public interface CollectionDAO {
                 + "  <mysqlServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <mysqlTierFilter> "
+                + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
                 + "  <mysqlStatusFilter>",
         connectionType = MYSQL)
@@ -6934,7 +6933,7 @@ public interface CollectionDAO {
                 + "  <postgresServiceTypeFilter> "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
-                + "  <postgresTierFilter> "
+                + "  <tierFilter> "
                 + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
                 + "  <postgresStatusFilter>",
         connectionType = POSTGRES)
@@ -6944,8 +6943,7 @@ public interface CollectionDAO {
         @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("mysqlTierFilter") String mysqlTierFilter,
-        @Define("postgresTierFilter") String postgresTierFilter,
+        @Define("tierFilter") String tierFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search);

@@ -1372,7 +1372,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         domainId != null
             ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
                 + domainId
-                + "' AND relation = 8 AND toEntity = 'pipeline')"
+                + "' AND relation = 10 AND toEntity = 'pipeline')"
             : "";
     String ownerFilterSql =
         ownerId != null
@@ -1381,10 +1381,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 + "' AND relation IN (8,1) AND toEntity = 'pipeline')"
             : "";
 
-    // Build database-specific tier filters
-    String mysqlTierFilter =
-        tier != null ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.tier')) = '" + tier + "'" : "";
-    String postgresTierFilter = tier != null ? "AND pe.json->>'tier' = '" + tier + "'" : "";
+    // Build tier filter using tag_usage table (works on both MySQL and PostgreSQL)
+    String tierFilterSql =
+        tier != null
+            ? "AND EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = pe.fqnHash AND tu.tagFQN = '"
+                + tier.replace("'", "''")
+                + "')"
+            : "";
 
     // Parse timestamp filters
     Long startTs = null;
@@ -1465,8 +1468,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 postgresServiceTypeFilter,
                 domainFilterSql,
                 ownerFilterSql,
-                mysqlTierFilter,
-                postgresTierFilter,
+                tierFilterSql,
                 mysqlStatusFilter,
                 postgresStatusFilter,
                 searchFilter,
@@ -1483,8 +1485,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 postgresServiceTypeFilter,
                 domainFilterSql,
                 ownerFilterSql,
-                mysqlTierFilter,
-                postgresTierFilter,
+                tierFilterSql,
                 mysqlStatusFilter,
                 postgresStatusFilter,
                 searchFilter);
