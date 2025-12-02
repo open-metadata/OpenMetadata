@@ -195,7 +195,7 @@ export const rawSearchQuery = <
       index: getSearchIndexParam(searchIndex),
       from: (pageNumber - 1) * pageSize,
       size: pageSize,
-      deleted: includeDeleted,
+      deleted: includeDeleted ?? false,
       query_filter: JSON.stringify(queryFilter),
       post_filter: JSON.stringify(postFilter),
       sort_field: sortField,
