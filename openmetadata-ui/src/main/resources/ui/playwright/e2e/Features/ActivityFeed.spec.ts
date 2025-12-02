@@ -445,6 +445,8 @@ test.describe('Mention notifications in Notification Box', () => {
             .textContent();
           count = Number(countText ?? '0');
           if (isNaN(count) || count <= 0) {
+            // wait for 2s before quering again
+            await adminPage.waitForTimeout(1000);
             await adminPage.reload();
             await adminPage.waitForLoadState('networkidle');
             await waitForAllLoadersToDisappear(adminPage);
