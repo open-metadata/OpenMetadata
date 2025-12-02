@@ -33,8 +33,8 @@ const LeftSidebarItem = ({
         <Badge
           className="service-beta-tag"
           count={t('label.beta')}
-          offset={[10, 0]}
           size="small"
+          style={{ marginLeft: 8 }}
         />
       )}
     </NavLink>

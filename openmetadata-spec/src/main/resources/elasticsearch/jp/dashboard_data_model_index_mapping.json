@@ -312,6 +312,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "owners": {
         "properties": {
           "id": {

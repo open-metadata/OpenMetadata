@@ -115,7 +115,12 @@ for (const EntityClass of entities) {
         }
 
         await page.reload();
+        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        await lineageRes;
         await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="edit-lineage"]', {
+          state: 'visible',
+        });
         await editLineageClick(page);
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
@@ -134,21 +139,19 @@ for (const EntityClass of entities) {
             'entityResponseData.fullyQualifiedName'
           );
           await page
-            .locator(
-              `[data-testid="lineage-node-${toNodeFqn}"] .entity-service-icon`
-            )
+            .locator(`[data-testid="lineage-node-${toNodeFqn}"]`)
             .click();
 
           await expect(
-            page.locator('.ant-drawer [data-testid="entity-header-title"]')
+            page
+              .locator('.lineage-entity-panel')
+              .getByTestId('entity-header-title')
           ).toHaveText(get(entity, 'entityResponseData.displayName'));
 
-          await page.getByTestId('entity-panel-close-icon').click();
+          await page.getByTestId('drawer-close-icon').click();
 
-          // Drawer should not open after closing it
-          await expect(
-            page.locator('.ant-drawer-content-wrapper')
-          ).not.toBeVisible();
+          // Panel should not be visible after closing it
+          await expect(page.locator('.lineage-entity-panel')).not.toBeVisible();
         }
       });
 
@@ -413,11 +416,14 @@ test('Verify function data in edge drawer', async ({ browser }) => {
       )
       .dispatchEvent('click');
 
-    await page.getByTestId('edit-function').click();
+    await page.waitForSelector('.sql-function-section', {
+      state: 'visible',
+    });
 
-    // wait for the modal to be visible
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
+    await page
+      .locator('.sql-function-section')
+      .getByTestId('edit-button')
+      .click();
     await page.getByTestId('sql-function-input').fill('count');
     const saveRes = page.waitForResponse('/api/v1/lineage');
     await page.getByTestId('save').click();
@@ -515,8 +521,11 @@ test('Verify table search with special characters as handled', async ({
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
     await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+    await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('.ant-drawer-wrapper-body')).toBeVisible();
+    await expect(
+      page.locator('.lineage-entity-panel').getByTestId('entity-header-title')
+    ).toBeVisible();
   } finally {
     // Cleanup
     await table.delete(apiContext);

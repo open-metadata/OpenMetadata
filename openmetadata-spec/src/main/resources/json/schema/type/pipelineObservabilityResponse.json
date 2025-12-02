@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineObservabilityResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PipelineObservabilityResponse",
+  "description": "Response containing pipeline observability data grouped by tables",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineObservabilityResponse",
+  "properties": {
+    "pipelineId": {
+      "$ref": "../type/basic.json#/definitions/uuid",
+      "description": "Pipeline ID for which observability data is requested"
+    },
+    "pipelineFqn": {
+      "description": "Pipeline fully qualified name",
+      "type": "string"
+    },
+    "tableObservabilityData": {
+      "description": "List of table observability data associated with this pipeline",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableObservabilityData"
+      }
+    },
+    "paging": {
+      "$ref": "../type/paging.json",
+      "description": "Pagination information for table observability data"
+    }
+  },
+  "required": ["pipelineId", "pipelineFqn", "tableObservabilityData"],
+  "definitions": {
+    "tableObservabilityData": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.TableObservabilityData",
+      "description": "Observability data for a specific table related to the pipeline",
+      "properties": {
+        "tableId": {
+          "$ref": "../type/basic.json#/definitions/uuid",
+          "description": "Table ID"
+        },
+        "tableFqn": {
+          "description": "Table fully qualified name",
+          "type": "string"
+        },
+        "observabilityData": {
+          "description": "Pipeline observability data entries for this table",
+          "type": "array",
+          "items": {
+            "$ref": "pipelineObservability.json"
+          }
+        }
+      },
+      "required": ["tableId", "tableFqn", "observabilityData"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -13,12 +13,23 @@
 @import (reference) '../../styles/variables.less';
 
 .domain-details-page-tabs {
-  .ant-tabs-tabpane {
-    min-height: 70vh;
-  }
-
   .announcement-card {
     margin-top: 4px;
+  }
+
+  .ant-tabs.tabs-new {
+    .ant-tabs-nav {
+      padding-right: 0;
+
+      .ant-tabs-nav-list {
+        > div.ant-tabs-tab:nth-last-of-type(2) {
+          margin-right: 36px;
+        }
+      }
+    }
+  }
+  .ant-tabs-extra-content {
+    padding-right: 12px;
   }
 }
 
@@ -54,4 +65,34 @@
 .add-data-product-modal .form-item-horizontal,
 .add-subdomain-modal .form-item-horizontal {
   margin-bottom: 8px;
+}
+
+.domain-tree-view-variant.domain-tree-view-variant {
+  margin: 0;
+  .entity-header {
+    margin-left: 0;
+    margin-right: 0;
+    align-items: center;
+  }
+
+  .domain-header-action-container {
+    padding: 0;
+  }
+
+  .ant-tabs-extra-content {
+    padding-right: 12px;
+  }
+
+  .domain-details-page-tabs > .MuiBox-root {
+    padding: 0;
+  }
+}
+
+.domain-tree-panel,
+.domain-details-panel {
+  .reflex-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
 }
