@@ -76,6 +76,7 @@ export const DataAssetSummaryPanelV1 = ({
   onDataProductsUpdate,
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
+  onLinkClick,
   isSideDrawer = false,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
@@ -426,6 +427,7 @@ export const DataAssetSummaryPanelV1 = ({
               componentType={componentType}
               entityInfoV1={entityInfo}
               isDomainVisible={isDomainVisible}
+              onLinkClick={onLinkClick}
             />
             {isTestCaseLoading ? (
               <Loader size="small" />
@@ -668,6 +670,7 @@ export const DataAssetSummaryPanelV1 = ({
               componentType={componentType}
               entityInfoV1={entityInfo}
               isDomainVisible={isDomainVisible}
+              onLinkClick={onLinkClick}
             />
             {dataAsset.owners && (
               <div>
