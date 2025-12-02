@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import Document from '@tiptap/extension-document';
+import Paragraph from '@tiptap/extension-paragraph';
 import Placeholder from '@tiptap/extension-placeholder';
 import Table from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
@@ -18,6 +20,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
+import Text from '@tiptap/extension-text';
 import { Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
@@ -136,8 +139,7 @@ export class BlockEditorExtensionsClassBase {
    * Override this in subclasses to add handlebars support
    * @param options - Extension configuration options
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected getHandlebarsExtensions(options?: ExtensionOptions): Extensions {
+  protected getHandlebarsExtensions(): Extensions {
     // Base class returns empty array - no handlebars support by default
     return [];
   }
@@ -214,12 +216,23 @@ export class BlockEditorExtensionsClassBase {
    * @param options - Configuration options for enabling/disabling specific extensions
    */
   public getExtensions(options?: ExtensionOptions): Extensions {
+    const {
+      enableHandlebars = false,
+      coreExtensions = true,
+      utilityExtensions = true,
+      tableExtensions = true,
+      advancedContextExtensions = true,
+    } = options ?? {};
+
     return [
-      ...this.getCoreExtensions(),
-      ...this.getHandlebarsExtensions(options),
-      ...this.getUtilityExtensions(),
-      ...this.getTableExtensions(),
-      ...this.getAdvancedContentExtensions(),
+      Document,
+      Paragraph,
+      Text,
+      ...(coreExtensions ? this.getCoreExtensions() : []),
+      ...(enableHandlebars ? this.getHandlebarsExtensions() : []),
+      ...(utilityExtensions ? this.getUtilityExtensions() : []),
+      ...(tableExtensions ? this.getTableExtensions() : []),
+      ...(advancedContextExtensions ? this.getAdvancedContentExtensions() : []),
     ];
   }
 

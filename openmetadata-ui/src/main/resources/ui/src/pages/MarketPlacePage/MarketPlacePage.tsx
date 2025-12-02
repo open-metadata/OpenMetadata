@@ -135,7 +135,12 @@ const MarketPlacePage = () => {
           <Row className="marketplace-header-row" justify="center">
             <Col span={18}>
               <div className="d-flex items-center justify-between h-full">
-                <PageHeader data={PAGE_HEADERS.APPLICATION} />
+                <PageHeader
+                  data={{
+                    header: t(PAGE_HEADERS.APPLICATION.header),
+                    subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+                  }}
+                />
                 <HeadingIcon />
               </div>
             </Col>

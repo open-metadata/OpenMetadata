@@ -30,6 +30,7 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
@@ -116,6 +117,15 @@ const AddRolePage = () => {
     fetchPolicies();
   }, []);
 
+  const translatedRoleBreadcrumb = useMemo(
+    () =>
+      ADD_ROLE_PAGE_BREADCRUMB.map((option) => ({
+        ...option,
+        name: translateWithNestedKeys(option.name, option.nameData),
+      })),
+    [t]
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -125,7 +135,7 @@ const AddRolePage = () => {
         allowScroll: true,
         children: (
           <div data-testid="add-role-container">
-            <TitleBreadcrumb titleLinks={ADD_ROLE_PAGE_BREADCRUMB} />
+            <TitleBreadcrumb titleLinks={translatedRoleBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"

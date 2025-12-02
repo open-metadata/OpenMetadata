@@ -261,6 +261,15 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      FOLLOWING_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -270,7 +279,7 @@ function FollowingWidget({
         icon={<FollowingAssetsIcon height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
-        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
         onSortChange={(key) => handleEntityFilterChange({ key })}
@@ -289,6 +298,7 @@ function FollowingWidget({
       widgetKey,
       widgetData?.w,
       handleEntityFilterChange,
+      translatedSortOptions,
     ]
   );
 

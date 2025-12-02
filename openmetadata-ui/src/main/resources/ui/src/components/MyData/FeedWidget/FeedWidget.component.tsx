@@ -147,6 +147,15 @@ const MyFeedWidgetInternal = ({
     isFullSizeWidget,
   ]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      FEED_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -156,7 +165,7 @@ const MyFeedWidgetInternal = ({
         icon={<ActivityFeedIcon height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
-        sortOptions={FEED_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.activity-feed')}
         widgetKey={widgetKey}
         onSortChange={(key) => handleFilterChange(key)}
@@ -173,6 +182,7 @@ const MyFeedWidgetInternal = ({
       widgetKey,
       widgetData?.w,
       handleFilterChange,
+      translatedSortOptions,
     ]
   );
 

@@ -151,7 +151,12 @@ const ApplicationPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={16}>
-          <PageHeader data={PAGE_HEADERS.APPLICATION} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.APPLICATION.header),
+              subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+            }}
+          />
         </Col>
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">

@@ -29,6 +29,7 @@ import { OpenMetadataBaseURLConfiguration } from '../../../generated/configurati
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const UrlConfigurationPage = () => {
@@ -89,7 +90,15 @@ const UrlConfigurationPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.OM_URL_CONFIG} />
+              <PageHeader
+                data={{
+                  header: translateWithNestedKeys(
+                    PAGE_HEADERS.OM_URL_CONFIG.header,
+                    PAGE_HEADERS.OM_URL_CONFIG.headerParams
+                  ),
+                  subHeader: t(PAGE_HEADERS.OM_URL_CONFIG.subHeader),
+                }}
+              />
             </Col>
             <Col>
               <Button

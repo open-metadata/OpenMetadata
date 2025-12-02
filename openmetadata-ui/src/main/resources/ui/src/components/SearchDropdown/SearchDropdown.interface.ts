@@ -36,5 +36,6 @@ export interface SearchDropdownProps {
 export interface SearchDropdownOption {
   key: string;
   label: string;
+  labelKeyOptions?: Record<string, string | number | boolean>;
   count?: number;
 }

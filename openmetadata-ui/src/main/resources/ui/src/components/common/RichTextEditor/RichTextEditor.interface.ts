@@ -40,6 +40,7 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   onTextChange?: (value: string) => void;
   placeHolder?: string;
   extensionOptions?: ExtensionOptions;
+  showMenu?: boolean;
 }
 
 export interface EditorContentRef {

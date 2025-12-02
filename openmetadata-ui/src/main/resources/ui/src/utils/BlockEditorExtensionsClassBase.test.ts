@@ -591,7 +591,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       }
 
       const extended = new ExtendedClass();
-      const extensions = extended.getExtensions();
+      const extensions = extended.getExtensions({ enableHandlebars: true });
       const customHandlebars = extensions.find(
         (ext: MockExtension) => ext.name === 'CustomHandlebars'
       );

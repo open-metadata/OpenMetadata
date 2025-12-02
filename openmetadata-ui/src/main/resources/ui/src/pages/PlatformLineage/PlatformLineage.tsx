@@ -338,10 +338,10 @@ const PlatformLineage = () => {
               <Card>
                 <PageHeader
                   data={{
-                    ...PAGE_HEADERS.PLATFORM_LINEAGE,
                     header: t('label.platform-type-lineage', {
                       platformType: startCase(platformView),
                     }),
+                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
                   }}
                 />
               </Card>

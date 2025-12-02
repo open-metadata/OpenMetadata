@@ -139,7 +139,7 @@ const TaskFeedCard = ({
             <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
-              {TASK_TYPES[taskDetails.type]}
+              {t(TASK_TYPES[taskDetails.type])}
             </Typography.Text>
 
             {taskColumnName}

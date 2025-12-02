@@ -81,16 +81,20 @@ const AppInstall = () => {
     ) ?? {};
 
   const stepperList = useMemo(() => {
+    let steps = STEPS_FOR_APP_INSTALL;
     if (appData?.scheduleType === ScheduleType.NoSchedule) {
-      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 3);
+      steps = steps.filter((item) => item.step !== 3);
     }
 
     if (!appData?.allowConfiguration) {
-      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2);
+      steps = steps.filter((item) => item.step !== 2);
     }
 
-    return STEPS_FOR_APP_INSTALL;
-  }, [appData]);
+    return steps.map((step) => ({
+      ...step,
+      name: t(step.name),
+    }));
+  }, [appData, t]);
 
   const { initialOptions, defaultValue } = useMemo(() => {
     if (!appData) {

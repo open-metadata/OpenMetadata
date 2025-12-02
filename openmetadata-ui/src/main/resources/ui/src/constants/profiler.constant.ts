@@ -298,12 +298,11 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   {
-    name: t('label.configure-entity', {
-      entity: t('label.test-case-lowercase'),
-    }),
+    name: 'label.configure-entity',
+    nameData: { entity: 'label.test-case-lowercase' },
     step: 1,
   },
-  { name: t('label.success'), step: 2 },
+  { name: 'label.success', step: 2 },
 ];
 
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [

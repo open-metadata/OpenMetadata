@@ -57,9 +57,17 @@
     }
   }
 }
-.all-domain-container.selected-node {
-  background-color: @primary-1;
+
+.all-domain-container {
+  &.selected-node {
+    background-color: @primary-1;
+
+    &:hover {
+      background: @primary-1;
+    }
+  }
 }
+
 .custom-domain-edit-select .ant-select-selection-placeholder,
 .custom-domain-edit-select .ant-select-selection-search-input::placeholder {
   padding-left: @size-xs;

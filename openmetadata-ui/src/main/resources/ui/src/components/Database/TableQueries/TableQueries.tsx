@@ -126,6 +126,15 @@ const TableQueries: FC<TableQueriesProp> = ({
     [sortQuery.order]
   );
 
+  const translatedQuerySortOptions = useMemo(
+    () =>
+      QUERY_SORT_OPTIONS.map((option) => ({
+        ...option,
+        name: t(option.name),
+      })),
+    [t]
+  );
+
   const {
     currentPage,
     handlePageChange,
@@ -614,7 +623,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                     </Space>
                     <Space size={16}>
                       <SortingDropDown
-                        fieldList={QUERY_SORT_OPTIONS}
+                        fieldList={translatedQuerySortOptions}
                         handleFieldDropDown={handleSortFieldChange}
                         sortField={sortQuery.field}
                       />

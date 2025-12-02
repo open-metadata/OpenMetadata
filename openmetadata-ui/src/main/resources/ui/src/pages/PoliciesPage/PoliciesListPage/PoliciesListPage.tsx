@@ -290,7 +290,12 @@ const PoliciesListPage = () => {
         </Col>
         <Col span={24}>
           <Space className="w-full justify-between">
-            <PageHeader data={PAGE_HEADERS.POLICIES} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.POLICIES.header),
+                subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
+              }}
+            />
 
             {addPolicyPermission && (
               <Button
