@@ -17,6 +17,7 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
 import {
@@ -183,6 +184,69 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
           ).toBeVisible();
         }
       }
+    }
+  });
+
+  test('Admin - Overview Tab - Owners Section - Deleted Users Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedUser = new UserClass();
+
+    try {
+      await deletedUser.create(apiContext);
+
+      const deletedUserDisplayName = deletedUser.getUserDisplayName();
+
+      await deletedUser.delete(apiContext, false);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
+      await ownersSection.scrollIntoViewIfNeeded();
+
+      await expect(ownersSection).toBeVisible();
+
+      const editButton = ownersSection.getByTestId('edit-owners');
+      if (await editButton.isVisible()) {
+        await editButton.click();
+
+        const popover = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popover).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+
+        await adminPage.waitForSelector(
+          '[data-testid="owner-select-users-search-bar"]'
+        );
+
+        const searchUserResponse = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${deletedUserDisplayName}*index=user_search_index*`
+        );
+        await adminPage.fill(
+          '[data-testid="owner-select-users-search-bar"]',
+          deletedUserDisplayName
+        );
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        await searchUserResponse;
+
+        const deletedUserItem = await adminPage.getByTitle(
+          deletedUserDisplayName
+        );
+
+        await expect(deletedUserItem).not.toBeVisible();
+
+        await adminPage.waitForSelector('.ant-list-empty-text', {
+          state: 'visible',
+        });
+        await adminPage.getByRole('button', { name: 'Cancel' }).click();
+      }
+    } finally {
+      await afterAction();
     }
   });
 
