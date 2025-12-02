@@ -360,10 +360,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return false;
   }
 
-  /**
-   * Suspends a workflow by pausing all active instances in Flowable engine.
-   * @param workflow The workflow definition to suspend
-   */
   public void suspendWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
 
@@ -371,7 +367,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
 
-      // Log the suspension
+      workflow.setSuspended(true);
+      dao.update(workflow);
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -386,16 +383,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     }
   }
 
-  /**
-   * Resumes a suspended workflow by activating all paused instances in Flowable engine.
-   * @param workflow The workflow definition to resume
-   */
   public void resumeWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
 
     try {
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
+
+      workflow.setSuspended(false);
+      dao.update(workflow);
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
