@@ -40,7 +40,7 @@ import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getTermQuery } from './SearchUtils';
 
-// eslint-disable-next-line max-len
+ 
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const getDataBaseSchemaPageBaseTabs = ({
