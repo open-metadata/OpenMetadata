@@ -487,23 +487,26 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     int total = pipelineStatuses.size();
 
     // Apply cursor-based pagination
+    // Note: With DESCENDING sort (newest first), cursor semantics are:
+    // - "before" cursor: get newer records (previous page, higher timestamps)
+    // - "after" cursor: get older records (next page, lower timestamps)
     if (before != null) {
-      // Pagination going backwards: get records with timestamp < before
+      // Pagination BACKWARDS: get newer/previous page records (higher timestamps)
       // Decode base64-encoded cursor before parsing
       String decodedBefore = RestUtil.decodeCursor(before);
       Long beforeTs = Long.parseLong(decodedBefore);
       pipelineStatuses =
           pipelineStatuses.stream()
-              .filter(ps -> ps.getTimestamp() < beforeTs)
+              .filter(ps -> ps.getTimestamp() > beforeTs)
               .collect(java.util.stream.Collectors.toList());
     } else if (after != null) {
-      // Pagination going forward: get records with timestamp > after
+      // Pagination FORWARD: get older/next page records (lower timestamps)
       // Decode base64-encoded cursor before parsing
       String decodedAfter = RestUtil.decodeCursor(after);
       Long afterTs = Long.parseLong(decodedAfter);
       pipelineStatuses =
           pipelineStatuses.stream()
-              .filter(ps -> ps.getTimestamp() > afterTs)
+              .filter(ps -> ps.getTimestamp() < afterTs)
               .collect(java.util.stream.Collectors.toList());
     }
 
