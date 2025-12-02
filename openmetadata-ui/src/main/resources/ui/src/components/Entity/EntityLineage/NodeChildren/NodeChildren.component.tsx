@@ -514,20 +514,18 @@ const NodeChildren = ({
           )}
           data-testid="column-container">
           <div className="search-box">
-            {isChildrenListExpanded && (
-              <Input
-                data-testid="search-column-input"
-                placeholder={t('label.search-entity', {
-                  entity: childrenHeading,
-                })}
-                suffix={<SearchOutlined color={BORDER_COLOR} />}
-                value={searchValue}
-                onChange={handleSearchChange}
-                onClick={(e) => e.stopPropagation()}
-              />
-            )}
+            <Input
+              data-testid="search-column-input"
+              placeholder={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              suffix={<SearchOutlined color={BORDER_COLOR} />}
+              value={searchValue}
+              onChange={handleSearchChange}
+              onClick={(e) => e.stopPropagation()}
+            />
 
-            {isChildrenListExpanded && !isEmpty(renderedColumns) && (
+            {!isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList
