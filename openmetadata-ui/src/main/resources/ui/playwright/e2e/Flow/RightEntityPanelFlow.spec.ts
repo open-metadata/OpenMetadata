@@ -417,7 +417,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await searchBar.fill(deletedTagDisplayName);
       await searchTagResponse;
-      await adminPage.waitForTimeout(1000);
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -470,7 +469,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
       await searchBarAfterDelete.fill(deletedTagDisplayName);
       await searchTagResponseAfterDelete;
-      await adminPage.waitForTimeout(1000);
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -528,7 +526,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
 
       await searchBar.fill(deletedTermDisplayName);
-      await adminPage.waitForTimeout(1000);
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -582,7 +579,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
 
       await searchBarAfterDelete.fill(deletedTermDisplayName);
-      await adminPage.waitForTimeout(1000);
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
