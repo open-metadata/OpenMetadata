@@ -191,7 +191,7 @@ export const CustomEdge = ({
         display = 'block';
         stroke = theme.palette.primary.main;
         if (selectedColumn) {
-          stroke = theme.palette.allShades.purple[400];
+          stroke = theme.palette.allShades.indigo[600];
         }
       } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
         display = 'block';
