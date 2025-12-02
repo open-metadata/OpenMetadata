@@ -36,7 +36,7 @@ import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getColumnContent } from '../CustomNode.utils';
+import { ColumnContent } from '../CustomNode.utils';
 import {
   EntityChildren,
   EntityChildrenItem,
@@ -367,17 +367,15 @@ const NodeChildren = ({
 
       const columnSummary = getColumnSummary(record);
 
-      const headerContent = getColumnContent(
-        record,
-        isColumnTraced,
-        selectedColumn,
-        isConnectable,
-        onColumnClick,
-        onColumnMouseEnter,
-        onColumnMouseLeave,
-        showDataObservabilitySummary,
-        isLoading,
-        columnSummary
+      const headerContent = (
+        <ColumnContent
+          column={record}
+          isColumnTraced={isColumnTraced}
+          isConnectable={isConnectable}
+          isLoading={isLoading}
+          showDataObservabilitySummary={showDataObservabilitySummary}
+          summary={columnSummary}
+        />
       );
 
       if (!record.children || record.children.length === 0) {
@@ -404,17 +402,15 @@ const NodeChildren = ({
             return null;
           }
 
-          return getColumnContent(
-            child,
-            isColumnTraced,
-            selectedColumn,
-            isConnectable,
-            onColumnClick,
-            onColumnMouseEnter,
-            onColumnMouseLeave,
-            showDataObservabilitySummary,
-            isLoading,
-            columnSummary
+          return (
+            <ColumnContent
+              column={child}
+              isColumnTraced={isColumnTraced}
+              isConnectable={isConnectable}
+              isLoading={isLoading}
+              showDataObservabilitySummary={showDataObservabilitySummary}
+              summary={columnSummary}
+            />
           );
         }
       });
@@ -465,17 +461,15 @@ const NodeChildren = ({
           return null;
         }
 
-        return getColumnContent(
-          column,
-          isColumnTraced,
-          selectedColumn,
-          isConnectable,
-          onColumnClick,
-          onColumnMouseEnter,
-          onColumnMouseLeave,
-          showDataObservabilitySummary,
-          isLoading,
-          columnSummary
+        return (
+          <ColumnContent
+            column={column}
+            isColumnTraced={isColumnTraced}
+            isConnectable={isConnectable}
+            isLoading={isLoading}
+            showDataObservabilitySummary={showDataObservabilitySummary}
+            summary={columnSummary}
+          />
         );
       }
     },

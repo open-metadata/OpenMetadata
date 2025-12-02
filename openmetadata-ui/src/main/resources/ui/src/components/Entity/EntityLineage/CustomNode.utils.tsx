@@ -24,6 +24,7 @@ import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -193,39 +194,55 @@ const getColumnNameContent = (column: Column, isLoading: boolean) => {
   );
 };
 
-export const getColumnContent = (
-  column: Column,
-  isColumnTraced: boolean,
-  selectedColumn: string | null,
-  isConnectable: boolean,
-  onColumnClick: (column: string) => void,
-  onColumnMouseEnter: (column: string) => void,
-  onColumnMouseLeave: () => void,
-  showDataObservabilitySummary: boolean,
-  isLoading: boolean,
-  summary?: ColumnTestSummaryDefinition
-) => {
+interface ColumnContentProps {
+  column: Column;
+  isColumnTraced: boolean;
+  isConnectable: boolean;
+  showDataObservabilitySummary: boolean;
+  isLoading: boolean;
+  summary?: ColumnTestSummaryDefinition;
+}
+
+export const ColumnContent = ({
+  column,
+  isColumnTraced,
+  isConnectable,
+  showDataObservabilitySummary,
+  isLoading,
+  summary,
+}: ColumnContentProps) => {
+  const {
+    onColumnClick,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
+    selectedColumn,
+  } = useLineageProvider();
+
   const { fullyQualifiedName } = column;
-  const columnNameContentRender = getColumnNameContent(column, isLoading);
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onColumnClick(fullyQualifiedName ?? '');
-  };
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onColumnClick(fullyQualifiedName ?? '');
+    },
+    [fullyQualifiedName, onColumnClick]
+  );
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = useCallback(() => {
     if (selectedColumn) {
       return;
     }
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  };
+  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {
       return;
     }
     onColumnMouseLeave();
-  };
+  }, [selectedColumn, onColumnMouseLeave]);
+
+  const columnNameContentRender = getColumnNameContent(column, isLoading);
 
   return (
     <div

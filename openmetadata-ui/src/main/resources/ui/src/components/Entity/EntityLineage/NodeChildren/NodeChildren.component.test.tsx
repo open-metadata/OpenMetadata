@@ -65,9 +65,9 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
 }));
 
 jest.mock('../CustomNode.utils', () => ({
-  getColumnContent: jest
+  ColumnContent: jest
     .fn()
-    .mockImplementation((column) => <p>{column.name}</p>),
+    .mockImplementation(({ column }) => <p>{column.name}</p>),
 }));
 
 jest.mock('../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () =>
