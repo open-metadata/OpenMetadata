@@ -42,7 +42,8 @@ public class SearchMetadataTool implements McpTool {
           "owners",
           "tier",
           "tableType",
-          "columnNames");
+          "columnNames",
+          "deleted");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
       List.of(
@@ -52,7 +53,6 @@ public class SearchMetadataTool implements McpTool {
           "updatedBy",
           "usageSummary",
           "followers",
-          "deleted",
           "votes",
           "lifeCycle",
           "sourceHash",

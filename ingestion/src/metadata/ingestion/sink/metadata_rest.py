@@ -13,7 +13,6 @@ This is the main used sink for all OM Workflows.
 It picks up the generated Entities and send them
 to the OM API.
 """
-import threading
 import traceback
 from functools import singledispatchmethod
 from typing import Any, Dict, Optional, TypeVar, Union
@@ -24,9 +23,11 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -35,6 +36,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -91,10 +93,12 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.routes import CreateContainerRequest
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    PipelineUsage,
+    TablePipelineObservability,
+)
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -200,6 +204,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateDataContractRequest,
                     CreateTeamRequest,
                     CreateContainerRequest,
+                    CreatePipelineRequest,
+                    CreateTestCaseRequest,
                 ),
             )
         ):
@@ -278,16 +284,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return Either(right=result, left=None)
 
         self.status.scanned_all(result.successRequest)
-        self.status.fail(
-            [
+        for err in result.failedRequest:
+            self.status.failed(
                 StackTraceError(
                     name="Entity Buffer",
                     error=f"Failed to flush entities to bulk API: {err}",
                     stackTrace=None,
                 )
-                for err in result.failedRequest
-            ]
-        )
+            )
         return Either(
             right=None,
             left=StackTraceError(
@@ -837,6 +841,64 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             pipeline_usage_request=pipeline_usage.usage,
         )
         return Either(right=pipeline_usage.pipeline)
+
+    @_run_dispatch.register
+    def write_table_pipeline_observability(
+        self, record: TablePipelineObservability
+    ) -> Either[Table]:
+        """
+        Send pipeline observability metrics to a table entity.
+
+        This handler processes observability data for tables that are processed by pipelines,
+        tracking metrics like last run status, execution times, and schedule intervals.
+
+        :param record: TablePipelineObservability with table and observability data
+        :return: Either with updated Table or error
+        """
+        try:
+            if not record.observability_data:
+                logger.debug(
+                    f"No pipeline observability data for "
+                    f"{record.table.fullyQualifiedName.root}"
+                )
+                return Either(right=record.table)
+
+            updated_table = self.metadata.add_pipeline_observability(
+                table_id=record.table.id,
+                pipeline_observability=record.observability_data,
+            )
+
+            if updated_table:
+                logger.debug(
+                    f"Successfully added {len(record.observability_data)} pipeline "
+                    f"observability records for {record.table.fullyQualifiedName.root}"
+                )
+                return Either(right=updated_table)
+            else:
+                error = (
+                    f"Failed to add pipeline observability for "
+                    f"{record.table.fullyQualifiedName.root} - API returned None"
+                )
+                return Either(
+                    left=StackTraceError(
+                        name=record.table.fullyQualifiedName.root,
+                        error=error,
+                        stackTrace=None,
+                    )
+                )
+
+        except Exception as exc:
+            error = (
+                f"Error adding pipeline observability for "
+                f"{record.table.fullyQualifiedName.root}: {exc}"
+            )
+            return Either(
+                left=StackTraceError(
+                    name=record.table.fullyQualifiedName.root,
+                    error=error,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _process_deferred_lifecycle_data(self):
         """Process all deferred lifecycle records - called after all tables exist"""

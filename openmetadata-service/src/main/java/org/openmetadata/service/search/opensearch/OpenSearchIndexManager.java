@@ -1,7 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
@@ -152,7 +151,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   private IndexSettings parseIndexSettings(JsonNode settingsNode) {
     // Transform Elasticsearch stemmer configuration to OpenSearch format
-    JsonNode transformedSettings = transformStemmerForOpenSearch(settingsNode);
+    JsonNode transformedSettings = OsUtils.transformStemmerForOpenSearch(settingsNode);
 
     JsonParser parser =
         client
@@ -161,51 +160,6 @@ public class OpenSearchIndexManager implements IndexManagementClient {
             .jsonProvider()
             .createParser(new StringReader(transformedSettings.toString()));
     return IndexSettings._DESERIALIZER.deserialize(parser, client._transport().jsonpMapper());
-  }
-
-  private JsonNode transformStemmerForOpenSearch(JsonNode settingsNode) {
-    try {
-      // Clone the settings to avoid modifying the original
-      ObjectNode transformedNode = (ObjectNode) JsonUtils.readTree(settingsNode.toString());
-
-      // Navigate to the filters section if it exists
-      JsonNode analysisNode = transformedNode.path("analysis");
-      if (!analysisNode.isMissingNode() && analysisNode.isObject()) {
-        ObjectNode analysisObj = (ObjectNode) analysisNode;
-
-        JsonNode filtersNode = analysisObj.path("filter");
-        if (!filtersNode.isMissingNode() && filtersNode.isObject()) {
-          ObjectNode filtersObj = (ObjectNode) filtersNode;
-
-          // Transform stemmer configuration from Elasticsearch to OpenSearch format
-          JsonNode omStemmerNode = filtersObj.path("om_stemmer");
-          if (!omStemmerNode.isMissingNode() && omStemmerNode.has("type")) {
-            String type = omStemmerNode.get("type").asText();
-            if ("stemmer".equals(type) && omStemmerNode.has("name")) {
-              String name = omStemmerNode.get("name").asText();
-              // OpenSearch uses "language" instead of "name" for stemmer configuration
-              ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
-              newStemmerNode.put("type", "stemmer");
-              newStemmerNode.put("language", name);
-
-              // Replace the om_stemmer configuration
-              filtersObj.set("om_stemmer", newStemmerNode);
-            }
-          } else {
-            LOG.debug("No om_stemmer filter found in settings");
-          }
-        } else {
-          LOG.debug("No filter section found in analysis settings");
-        }
-      } else {
-        LOG.debug("No analysis section found in settings");
-      }
-
-      return transformedNode;
-    } catch (Exception e) {
-      LOG.warn("Failed to transform stemmer settings for OpenSearch, using original settings", e);
-      return settingsNode;
-    }
   }
 
   @Override
@@ -309,16 +263,20 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     if (aliases == null || aliases.isEmpty()) {
       return;
     }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               updateBuilder -> {
-                for (String alias : aliases) {
-                  updateBuilder.actions(
-                      actionBuilder ->
-                          actionBuilder.add(
-                              addBuilder -> addBuilder.index(indexName).alias(alias)));
-                }
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
                 return updateBuilder;
               });
 

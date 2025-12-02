@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import ViewComfyOutlinedIcon from '@mui/icons-material/ViewComfyOutlined';
 import { Button, ButtonGroup, useTheme } from '@mui/material';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
+import { ReactComponent as WorkflowIcon } from '../../../../assets/svg/data-flow.svg';
 
 export type ViewMode = 'table' | 'card' | 'tree';
 
@@ -93,7 +93,7 @@ export const useViewToggle = ({
       case 'card':
         return <Grid01 size={16} />;
       case 'tree':
-        return <ViewComfyOutlinedIcon fontSize="small" />;
+        return <WorkflowIcon aria-label="Tree view" height={16} width={16} />;
       case 'table':
       default:
         return <Menu01 size={16} />;
