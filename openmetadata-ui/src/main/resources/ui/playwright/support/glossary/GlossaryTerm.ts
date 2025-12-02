@@ -125,6 +125,10 @@ export class GlossaryTerm extends EntityClass {
     return await response.json();
   }
 
+  getTermDisplayName() {
+    return this.responseData.displayName;
+  }
+
   rename(newTermName: string, newTermFqn: string) {
     this.responseData.name = newTermName;
     this.responseData.fullyQualifiedName = newTermFqn;
