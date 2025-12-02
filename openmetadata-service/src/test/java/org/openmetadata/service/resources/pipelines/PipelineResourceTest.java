@@ -1247,25 +1247,40 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // Pipeline 1: Failed (oldest) -> Successful (latest)
     PipelineStatus status1Old =
-        new PipelineStatus().withExecutionStatus(StatusType.Failed).withTimestamp(twoHoursAgo);
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withTimestamp(twoHoursAgo)
+            .withTaskStatus(Collections.emptyList());
     putPipelineStatusData(pipeline1.getFullyQualifiedName(), status1Old, ADMIN_AUTH_HEADERS);
 
     PipelineStatus status1New =
-        new PipelineStatus().withExecutionStatus(StatusType.Successful).withTimestamp(oneHourAgo);
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
     putPipelineStatusData(pipeline1.getFullyQualifiedName(), status1New, ADMIN_AUTH_HEADERS);
 
     // Pipeline 2: Successful (oldest) -> Failed (latest)
     PipelineStatus status2Old =
-        new PipelineStatus().withExecutionStatus(StatusType.Successful).withTimestamp(twoHoursAgo);
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(twoHoursAgo)
+            .withTaskStatus(Collections.emptyList());
     putPipelineStatusData(pipeline2.getFullyQualifiedName(), status2Old, ADMIN_AUTH_HEADERS);
 
     PipelineStatus status2New =
-        new PipelineStatus().withExecutionStatus(StatusType.Failed).withTimestamp(oneHourAgo);
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
     putPipelineStatusData(pipeline2.getFullyQualifiedName(), status2New, ADMIN_AUTH_HEADERS);
 
     // Pipeline 3: Successful (only status)
     PipelineStatus status3 =
-        new PipelineStatus().withExecutionStatus(StatusType.Successful).withTimestamp(oneHourAgo);
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
     putPipelineStatusData(pipeline3.getFullyQualifiedName(), status3, ADMIN_AUTH_HEADERS);
 
     // Test Case 1: Filter by status="Successful" only
