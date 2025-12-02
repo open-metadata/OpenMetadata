@@ -106,8 +106,8 @@ const CustomPaginatedList = ({
         <div
           className={
             i >= startIdx && i < endIdx
-              ? 'inside-current-page'
-              : 'outside-current-page'
+              ? 'inside-current-page-item'
+              : 'outside-current-page-item'
           }
           key={i}>
           {item}
