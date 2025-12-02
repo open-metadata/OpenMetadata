@@ -47,15 +47,18 @@ interface CustomPaginatedListProps {
   items: React.ReactNode[];
   filteredColumns: EntityChildren;
   nodeId?: string;
+  page: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const CustomPaginatedList = ({
   items,
   filteredColumns,
   nodeId,
+  page,
+  setPage,
 }: CustomPaginatedListProps) => {
   const ITEMS_PER_PAGE = 5;
-  const [page, setPage] = useState(1);
   const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
@@ -232,6 +235,7 @@ const NodeChildren = ({
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   const { isColumnLayerEnabled, showDataObservability } = useMemo(() => {
     return {
@@ -488,15 +492,6 @@ const NodeChildren = ({
     ]
   );
 
-  const tracedColumnsForThisNode = useMemo(() => {
-    return filteredColumns
-      .filter((record) =>
-        tracedColumns.includes(record.fullyQualifiedName ?? '')
-      )
-      .filter(Boolean)
-      .map((column) => renderColumnsData(column as Column));
-  }, [filteredColumns, renderColumnsData, tracedColumns]);
-
   // Pre-render column data outside of the return statement
   const renderedColumns = useMemo(() => {
     return filteredColumns
@@ -509,55 +504,45 @@ const NodeChildren = ({
     (isColumnLayerEnabled || showDataObservability || isChildrenListExpanded)
   ) {
     return (
-      <>
-        {isChildrenListExpanded && !isEmpty(children) && (
-          <div
-            className={classNames(
-              'column-container',
-              selectedColumn && 'any-column-selected',
-              isCreatingEdge && 'creating-edge'
+      isChildrenListExpanded &&
+      !isEmpty(children) && (
+        <div
+          className={classNames(
+            'column-container',
+            selectedColumn && 'any-column-selected',
+            isCreatingEdge && 'creating-edge'
+          )}
+          data-testid="column-container">
+          <div className="search-box">
+            {isChildrenListExpanded && (
+              <Input
+                data-testid="search-column-input"
+                placeholder={t('label.search-entity', {
+                  entity: childrenHeading,
+                })}
+                suffix={<SearchOutlined color={BORDER_COLOR} />}
+                value={searchValue}
+                onChange={handleSearchChange}
+                onClick={(e) => e.stopPropagation()}
+              />
             )}
-            data-testid="column-container">
-            <div className="search-box">
-              {isChildrenListExpanded && (
-                <Input
-                  data-testid="search-column-input"
-                  placeholder={t('label.search-entity', {
-                    entity: childrenHeading,
-                  })}
-                  suffix={<SearchOutlined color={BORDER_COLOR} />}
-                  value={searchValue}
-                  onChange={handleSearchChange}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              )}
 
-              {isChildrenListExpanded && !isEmpty(renderedColumns) && (
-                <section className="m-t-md" id="table-columns">
-                  <div className="rounded-4 overflow-hidden">
-                    <CustomPaginatedList
-                      filteredColumns={filteredColumns}
-                      items={renderedColumns}
-                      nodeId={node.id}
-                    />
-                  </div>
-                </section>
-              )}
-            </div>
+            {isChildrenListExpanded && !isEmpty(renderedColumns) && (
+              <section className="m-t-md" id="table-columns">
+                <div className="rounded-4 overflow-hidden">
+                  <CustomPaginatedList
+                    filteredColumns={filteredColumns}
+                    items={renderedColumns}
+                    nodeId={node.id}
+                    page={page}
+                    setPage={setPage}
+                  />
+                </div>
+              </section>
+            )}
           </div>
-        )}
-
-        {!isChildrenListExpanded && (
-          <div
-            className={classNames(
-              'column-container',
-              'columns-collapsed',
-              selectedColumn && 'any-column-selected'
-            )}>
-            {tracedColumnsForThisNode}
-          </div>
-        )}
-      </>
+        </div>
+      )
     );
   } else {
     return null;
