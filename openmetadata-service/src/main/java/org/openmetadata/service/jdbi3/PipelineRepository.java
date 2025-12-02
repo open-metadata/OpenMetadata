@@ -1424,11 +1424,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Build MySQL-specific status filter
     String mysqlStatusFilter = "";
-    if (startTs != null || endTs != null || statusFilter != null) {
+    if (statusFilter != null && (startTs != null || endTs != null)) {
+      // Case 1: Status + timestamps = check latest status in time range
       mysqlStatusFilter =
-          "AND EXISTS ( "
-              + "  SELECT 1 FROM entity_extension_time_series eets_filter "
-              + "  WHERE eets_filter.entityFQNHash = pe.fqnHash "
+          "AND (SELECT JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
               + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
       if (startTs != null) {
         mysqlStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
@@ -1436,22 +1437,43 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (endTs != null) {
         mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
-      if (statusFilter != null) {
-        mysqlStatusFilter +=
-            "  AND JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) = '"
-                + statusFilter
-                + "' ";
+      mysqlStatusFilter +=
+          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (statusFilter != null) {
+      // Case 2: Status only = check overall latest status
+      mysqlStatusFilter =
+          "AND (SELECT JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (startTs != null || endTs != null) {
+      // Case 3: Timestamps only = check if pipeline ran in time range
+      mysqlStatusFilter =
+          "AND EXISTS (SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
       mysqlStatusFilter += ")";
     }
 
     // Build PostgreSQL-specific status filter
     String postgresStatusFilter = "";
-    if (startTs != null || endTs != null || statusFilter != null) {
+    if (statusFilter != null && (startTs != null || endTs != null)) {
+      // Case 1: Status + timestamps = check latest status in time range
       postgresStatusFilter =
-          "AND EXISTS ( "
-              + "  SELECT 1 FROM entity_extension_time_series eets_filter "
-              + "  WHERE eets_filter.entityFQNHash = pe.fqnHash "
+          "AND (SELECT eets_filter.json->>'executionStatus' "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
               + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
       if (startTs != null) {
         postgresStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
@@ -1459,9 +1481,31 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (endTs != null) {
         postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
-      if (statusFilter != null) {
-        postgresStatusFilter +=
-            "  AND eets_filter.json->>'executionStatus' = '" + statusFilter + "' ";
+      postgresStatusFilter +=
+          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (statusFilter != null) {
+      // Case 2: Status only = check overall latest status
+      postgresStatusFilter =
+          "AND (SELECT eets_filter.json->>'executionStatus' "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (startTs != null || endTs != null) {
+      // Case 3: Timestamps only = check if pipeline ran in time range
+      postgresStatusFilter =
+          "AND EXISTS (SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
       postgresStatusFilter += ")";
     }
