@@ -16,7 +16,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { TagChip } from '../TagChip';
 
 interface TagsCellProps {
-  tags: Array<{ id?: string; name?: string; tagFQN?: string }>;
+  tags: Array<{
+    id?: string;
+    name?: string;
+    tagFQN?: string;
+    displayName?: string;
+  }>;
   chipSize?: 'small' | 'large';
 }
 
@@ -115,7 +120,7 @@ const TagsCell = ({ tags, chipSize = 'small' }: TagsCellProps) => {
             return (
               <TagChip
                 key={tag.id || `${tag.tagFQN}-${index}`}
-                label={tag.name || tag.tagFQN || ''}
+                label={tag.displayName || tag.name || tag.tagFQN || ''}
                 maxWidth={
                   isSingleTag && hiddenCount > 0
                     ? 'calc(100% - 70px)'

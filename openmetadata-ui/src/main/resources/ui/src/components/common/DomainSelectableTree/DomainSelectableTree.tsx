@@ -377,22 +377,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           combinedData = [...domains, ...fetchedData];
         } else {
           combinedData = [...fetchedData];
-
-          // Ensure initialDomains are included
-          initialDomains?.forEach((selectedDomain) => {
-            const exists = combinedData.some((domain: Domain) =>
-              isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
-            );
-            if (!exists) {
-              combinedData.unshift(selectedDomain as unknown as Domain);
-            }
-          });
         }
 
-        const uniqueData = uniqBy(combinedData, 'fullyQualifiedName');
-
-        setTreeData(convertDomainsToTreeOptions(uniqueData, 0, isMultiple));
-        setDomains(uniqueData);
+        setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
+        setDomains(combinedData);
 
         setPaging({
           offset: currentOffset,
