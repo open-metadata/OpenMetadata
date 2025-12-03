@@ -256,7 +256,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         await adminPage.waitForSelector('.ant-list-empty-text', {
           state: 'visible',
         });
-        await adminPage.getByRole('button', { name: 'Cancel' }).click();
       }
     } finally {
       await afterAction();
@@ -365,7 +364,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         await adminPage.waitForSelector('.ant-list-empty-text', {
           state: 'visible',
         });
-        await adminPage.getByRole('button', { name: 'Cancel' }).click();
       }
     } finally {
       await afterAction();
