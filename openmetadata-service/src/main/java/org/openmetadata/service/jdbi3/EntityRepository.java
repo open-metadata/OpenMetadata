@@ -2083,18 +2083,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     LOG.debug("Processing batch of {} {} entities", entityIds.size(), entityType);
 
-    // First, collect all grandchildren that need to be deleted
-    List<EntityRelationshipRecord> allGrandchildren = new ArrayList<>();
-    for (UUID entityId : entityIds) {
-      List<EntityRelationshipRecord> grandchildren =
-          daoCollection
-              .relationshipDAO()
-              .findTo(
-                  entityId,
-                  entityType,
-                  List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
-      allGrandchildren.addAll(grandchildren);
-    }
+    // First, collect all grandchildren that need to be deleted in a SINGLE batch query
+    List<String> stringIds = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
+    List<CollectionDAO.EntityRelationshipObject> grandchildRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchWithRelations(
+                stringIds,
+                entityType,
+                List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
+
+    // Convert to EntityRelationshipRecord format
+    List<EntityRelationshipRecord> allGrandchildren =
+        grandchildRecords.stream()
+            .map(
+                rec ->
+                    new EntityRelationshipRecord(
+                        UUID.fromString(rec.getToId()), rec.getToEntity(), rec.getJson()))
+            .collect(Collectors.toList());
 
     // Recursively delete grandchildren first
     if (!allGrandchildren.isEmpty()) {
@@ -2102,9 +2108,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteChildren(allGrandchildren, hardDelete, updatedBy);
     }
 
-    // Now batch delete the entities at this level
-    List<String> stringIds = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
-
+    // Now batch delete the entities at this level (reuse stringIds from above)
     // Only delete relationships for hard delete
     // For soft delete, relationships must be preserved for restoration
     if (hardDelete) {
@@ -5873,35 +5877,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
         records.size(),
         entities.size());
 
-    // Group records by entity type to batch fetch entity references
-    var ownerIdsByType = new HashMap<String, List<UUID>>();
+    // Cache UUID conversions to avoid repeated parsing
+    Map<String, UUID> uuidCache = new HashMap<>();
+
+    // Group records by entity type to batch fetch entity references (with deduplication)
+    var ownerIdsByType = new HashMap<String, Set<UUID>>();
     records.forEach(
         rec -> {
           var fromEntity = rec.getFromEntity();
-          var fromId = UUID.fromString(rec.getFromId());
-          ownerIdsByType.computeIfAbsent(fromEntity, k -> new ArrayList<>()).add(fromId);
+          var fromId = uuidCache.computeIfAbsent(rec.getFromId(), UUID::fromString);
+          ownerIdsByType.computeIfAbsent(fromEntity, k -> new HashSet<>()).add(fromId);
         });
 
     // Batch fetch entity references for each entity type
     var ownerRefsByType = new HashMap<String, Map<UUID, EntityReference>>();
     ownerIdsByType.forEach(
         (entityType, ownerIds) -> {
-          var ownerRefs = Entity.getEntityReferencesByIds(entityType, ownerIds, ALL);
+          var ownerRefs =
+              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(ownerIds), ALL);
           var refMap =
-              ownerRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+              ownerRefs.stream()
+                  .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
           ownerRefsByType.put(entityType, refMap);
         });
 
-    // Map owners to entities
+    // Map owners to entities (reuse cached UUIDs)
     records.forEach(
         rec -> {
-          var toId = UUID.fromString(rec.getToId());
-          var fromId = UUID.fromString(rec.getFromId());
+          var toId = uuidCache.computeIfAbsent(rec.getToId(), UUID::fromString);
+          var fromId = uuidCache.get(rec.getFromId()); // Already cached
           var fromEntity = rec.getFromEntity();
 
-          var ownerRef = ownerRefsByType.get(fromEntity).get(fromId);
-          if (ownerRef != null) {
-            ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
+          var refMap = ownerRefsByType.get(fromEntity);
+          if (refMap != null) {
+            var ownerRef = refMap.get(fromId);
+            if (ownerRef != null) {
+              ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
+            }
           }
         });
 
@@ -6153,35 +6165,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     var reviewersMap = new HashMap<UUID, List<EntityReference>>();
 
-    // Group records by entity type to batch fetch entity references
-    var reviewerIdsByType = new HashMap<String, List<UUID>>();
+    // Cache UUID conversions to avoid repeated parsing
+    Map<String, UUID> uuidCache = new HashMap<>();
+
+    // Group records by entity type to batch fetch entity references (with deduplication)
+    var reviewerIdsByType = new HashMap<String, Set<UUID>>();
     records.forEach(
         rec -> {
           var fromEntity = rec.getFromEntity();
-          var fromId = UUID.fromString(rec.getFromId());
-          reviewerIdsByType.computeIfAbsent(fromEntity, k -> new ArrayList<>()).add(fromId);
+          var fromId = uuidCache.computeIfAbsent(rec.getFromId(), UUID::fromString);
+          reviewerIdsByType.computeIfAbsent(fromEntity, k -> new HashSet<>()).add(fromId);
         });
 
     // Batch fetch entity references for each entity type
     var reviewerRefsByType = new HashMap<String, Map<UUID, EntityReference>>();
     reviewerIdsByType.forEach(
         (entityType, reviewerIds) -> {
-          var reviewerRefs = Entity.getEntityReferencesByIds(entityType, reviewerIds, ALL);
+          var reviewerRefs =
+              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(reviewerIds), ALL);
           var refMap =
-              reviewerRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+              reviewerRefs.stream()
+                  .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
           reviewerRefsByType.put(entityType, refMap);
         });
 
-    // Map reviewers to entities
+    // Map reviewers to entities (reuse cached UUIDs)
     records.forEach(
         rec -> {
-          var entityId = UUID.fromString(rec.getToId());
-          var fromId = UUID.fromString(rec.getFromId());
+          var entityId = uuidCache.computeIfAbsent(rec.getToId(), UUID::fromString);
+          var fromId = uuidCache.get(rec.getFromId()); // Already cached
           var fromEntity = rec.getFromEntity();
 
-          var reviewerRef = reviewerRefsByType.get(fromEntity).get(fromId);
-          if (reviewerRef != null) {
-            reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
+          var refMap = reviewerRefsByType.get(fromEntity);
+          if (refMap != null) {
+            var reviewerRef = refMap.get(fromId);
+            if (reviewerRef != null) {
+              reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
+            }
           }
         });
 
@@ -6234,22 +6254,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
 
-    // Collect all expert user IDs
+    // Cache UUID conversions to avoid repeated parsing
+    Map<String, UUID> uuidCache = new HashMap<>();
+
+    // Collect all unique expert user IDs (with .distinct() to avoid duplicate fetches)
     List<UUID> expertIds =
         records.stream()
-            .map(record -> UUID.fromString(record.getFromId()))
+            .map(record -> uuidCache.computeIfAbsent(record.getFromId(), UUID::fromString))
+            .distinct()
             .collect(Collectors.toList());
 
     // Batch fetch all expert references
     Map<UUID, EntityReference> expertRefs =
         Entity.getEntityReferencesByIds(USER, expertIds, ALL).stream()
-            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
-    // Group experts by entity
+    // Group experts by entity (reuse cached UUIDs)
     records.forEach(
         record -> {
-          UUID entityId = UUID.fromString(record.getToId());
-          UUID expertId = UUID.fromString(record.getFromId());
+          UUID entityId = uuidCache.computeIfAbsent(record.getToId(), UUID::fromString);
+          UUID expertId = uuidCache.get(record.getFromId()); // Already cached above
           EntityReference expertRef = expertRefs.get(expertId);
           if (expertRef != null) {
             expertsMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(expertRef);
