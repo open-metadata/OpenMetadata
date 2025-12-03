@@ -117,17 +117,16 @@ const TagsCell = ({ tags, chipSize = 'small' }: TagsCellProps) => {
           {tags.slice(0, visibleCount).map((tag, index) => {
             const isSingleTag = visibleCount === 1;
 
+            let maxWidth = '200px';
+            if (isSingleTag) {
+              maxWidth = hiddenCount > 0 ? 'calc(100% - 70px)' : '100%';
+            }
+
             return (
               <TagChip
                 key={tag.id || `${tag.tagFQN}-${index}`}
                 label={tag.displayName || tag.name || tag.tagFQN || ''}
-                maxWidth={
-                  isSingleTag && hiddenCount > 0
-                    ? 'calc(100% - 70px)'
-                    : isSingleTag
-                    ? '100%'
-                    : '200px'
-                }
+                maxWidth={maxWidth}
                 size={chipSize}
               />
             );
