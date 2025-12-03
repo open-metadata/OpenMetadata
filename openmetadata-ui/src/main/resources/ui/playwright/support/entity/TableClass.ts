@@ -301,7 +301,9 @@ export class TableClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
@@ -391,8 +393,8 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (isEmpty(this.testSuiteResponseData)) {
-      await this.createTestSuiteAndPipelines(apiContext);
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
     }
 
     const testCase = await apiContext
@@ -409,6 +411,10 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
 
     this.testCasesResponseData.push(testCase);
 

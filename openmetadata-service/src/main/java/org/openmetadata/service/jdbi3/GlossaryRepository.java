@@ -257,6 +257,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      GlossaryTermRepository repository =
+          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       if (csvRecord == null) {
         return;
@@ -455,6 +457,17 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withEntityStatus(status)
           .withStyle(style)
           .withExtension(getExtension(printer, csvRecord, 13));
+
+      // Validate during dry run to catch logical errors early
+      if (processRecord && importResult.getDryRun()) {
+        try {
+          repository.validateForDryRun(glossaryTerm, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          processRecord = false;
+          return;
+        }
+      }
 
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, glossaryTerm);

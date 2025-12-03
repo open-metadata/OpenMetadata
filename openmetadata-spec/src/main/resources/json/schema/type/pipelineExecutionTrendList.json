@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineExecutionTrendList.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Execution Trend List",
+  "description": "List of pipeline execution trends over a time period",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineExecutionTrendList",
+  "properties": {
+    "data": {
+      "type": "array",
+      "description": "List of execution trend data points",
+      "items": {
+        "$ref": "pipelineExecutionTrend.json"
+      }
+    },
+    "paging": {
+      "$ref": "paging.json",
+      "description": "Pagination information"
+    },
+    "startDate": {
+      "type": "string",
+      "description": "Start date of the trend period"
+    },
+    "endDate": {
+      "type": "string",
+      "description": "End date of the trend period"
+    },
+    "totalSuccessful": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total successful executions in the period"
+    },
+    "totalFailed": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total failed executions in the period"
+    },
+    "totalExecutions": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total executions in the period"
+    },
+    "dataAvailable": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indicates if data is available from Elasticsearch"
+    },
+    "errorMessage": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Error message if data retrieval failed"
+    }
+  },
+  "required": ["data", "dataAvailable"],
+  "additionalProperties": false
+}

@@ -113,6 +113,7 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
+  formatNumberWithComma,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
@@ -409,7 +410,9 @@ const getTableOverview = (
     {
       name: i18next.t('label.row-plural'),
       value:
-        !isUndefined(profile) && profile?.rowCount ? profile.rowCount : NO_DATA,
+        !isUndefined(profile) && profile?.rowCount
+          ? formatNumberWithComma(profile.rowCount)
+          : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -621,7 +624,7 @@ export const getSearchIndexOverview = (
     },
     {
       name: i18next.t('label.service'),
-      value: service?.fullyQualifiedName ?? NO_DATA,
+      value: service.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
         ServiceCategory.SEARCH_SERVICES
@@ -1125,7 +1128,7 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? '',
+      value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
         service.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES

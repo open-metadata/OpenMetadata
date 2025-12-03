@@ -546,6 +546,92 @@ entities.forEach((EntityClass) => {
 
     // Add the data consumer test only for Table entity
     if (entityName === 'Table') {
+      test('Switch from Data Observability tab to Activity Feed tab and verify data appears', async ({
+        page,
+      }) => {
+        test.slow();
+
+        // Create a test case to ensure there's data in the profiler tab
+        const { apiContext, afterAction } = await getApiContext(page);
+        await tableEntity.createTestCase(apiContext);
+        await afterAction();
+
+        // Navigate to the table entity page
+        await entity.visitEntityPage(page);
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Step 1: Navigate to Data Observability tab and verify profiler tab is selected by default
+        await test.step('Navigate to Data Observability tab', async () => {
+          const profilerTab = page.getByTestId('profiler');
+
+          await expect(profilerTab).toBeVisible();
+
+          // Wait for profiler API call (profiler tab is selected by default, no need to click)
+          const profilerResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/tables/') &&
+              response.url().includes('/tableProfile')
+          );
+
+          await profilerTab.click();
+          await profilerResponse;
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+        });
+
+        // Step 2: Verify tabs UI component is rendered in Data Observability tab
+        await test.step(
+          'Verify tabs UI component is rendered in Data Observability tab',
+          async () => {
+            // Verify that the profiler sub-tabs are visible
+            // (Table Profile, Column Profile, Data Quality, or Incidents)
+            expect(page.getByTestId('table-profile')).toBeVisible();
+            expect(page.getByTestId('column-profile')).toBeVisible();
+            expect(page.getByTestId('data-quality')).toBeVisible();
+          }
+        );
+
+        // Step 3: Switch to Activity Feed tab (all tab is selected by default)
+        await test.step('Switch to Activity Feed tab', async () => {
+          const activityFeedTab = page.getByTestId('activity_feed');
+
+          await expect(activityFeedTab).toBeVisible();
+
+          // Wait for activity feed API call (all tab is selected by default)
+          const activityFeedResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/feed') &&
+              response.url().includes('entityLink')
+          );
+
+          await activityFeedTab.click();
+          await activityFeedResponse;
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+        });
+
+        // Step 4: Verify tabs or left component is rendered in Activity Feed tab
+        await test.step(
+          'Verify tabs or left component is rendered in Activity Feed tab',
+          async () => {
+            // Verify that activity feed tabs are visible (All, Mentions, Tasks)
+            // Check for the left panel menu or the tab navigation
+            await expect(
+              page.locator('[data-testid="global-setting-left-panel"]')
+            ).toBeVisible();
+          }
+        );
+      });
+
       test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
         page,
         dataConsumerPage,

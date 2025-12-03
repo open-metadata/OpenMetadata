@@ -657,4 +657,23 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           int offset) {
     return Response.ok(repository.getDataProductAssetsByName(fqn, limit, offset)).build();
   }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllDataProductsWithAssetsCount",
+      summary = "Get all data products with their asset counts",
+      description =
+          "Get a map of data product fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of data product FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllDataProductsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllDataProductsWithAssetsCount();
+    return Response.ok(result).build();
+  }
 }
