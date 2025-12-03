@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -185,6 +186,35 @@ public class DomainRepository extends EntityRepository<Domain> {
       String domainName, int limit, int offset) {
     Domain domain = getByName(null, domainName, getFields("id,fullyQualifiedName"));
     return getDomainAssets(domain.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllDomainsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for domain asset counts");
+      return new HashMap<>();
+    }
+
+    List<Domain> allDomains = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> domainAssetCounts = new LinkedHashMap<>();
+
+    for (Domain domain : allDomains) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for domain {} asset count. Returning 0.",
+                    domain.getFullyQualifiedName());
+                return 0;
+              });
+
+      domainAssetCounts.put(domain.getFullyQualifiedName(), count);
+    }
+
+    return domainAssetCounts;
   }
 
   @Transaction
