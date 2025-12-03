@@ -61,6 +61,16 @@ Specify the Salesforce Object Name in case you want to ingest a specific object.
 $$
 
 $$section
+### Object Names $(id="sobjectNames")
+
+Specify a list of Salesforce Object Names to ingest. Use this when you want to ingest metadata from specific objects (e.g., Contact, Account, Lead, Opportunity).
+
+If specified, only these objects will be ingested. Leave empty along with 'Object Name' to ingest all objects (which can then be filtered using Table Filter Pattern).
+
+This field takes priority over 'Object Name' if both are specified.
+$$
+
+$$section
 ### Database Name $(id="databaseName")
 
 In OpenMetadata, the Database Service hierarchy works as follows:
