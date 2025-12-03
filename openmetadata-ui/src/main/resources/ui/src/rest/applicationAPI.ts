@@ -26,7 +26,7 @@ import APIClient from './index';
 const BASE_URL = '/apps';
 
 type AppListParams = ListParams & {
-  agentType?: AgentType;
+  agentType?: AgentType[];
   offset?: number;
   startTs?: number;
   endTs?: number;
