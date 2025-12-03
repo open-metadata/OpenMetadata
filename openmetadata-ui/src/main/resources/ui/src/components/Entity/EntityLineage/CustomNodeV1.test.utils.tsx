@@ -34,18 +34,6 @@ export const getInsidePageColumns = (
     : [];
 };
 
-export const getPaginationButtons = (columnsContainer: HTMLElement) => {
-  const buttons = within(columnsContainer).getAllByRole('button');
-  const prevButton = buttons.find((btn) =>
-    btn.querySelector('[data-testid="ChevronLeftIcon"]')
-  ) as HTMLElement;
-  const nextButton = buttons.find((btn) =>
-    btn.querySelector('[data-testid="ChevronRightIcon"]')
-  ) as HTMLElement;
-
-  return { prevButton, nextButton };
-};
-
 export const assertPaginationState = ({
   columnsContainer,
   expectedPageText,
@@ -53,7 +41,8 @@ export const assertPaginationState = ({
   direction,
   shouldBeDisabled,
 }: PaginationAssertionParams): void => {
-  const { prevButton, nextButton } = getPaginationButtons(columnsContainer);
+  const prevButton = within(columnsContainer).getByTestId('prev-btn');
+  const nextButton = within(columnsContainer).getByTestId('next-btn');
   const button = direction === 'next' ? nextButton : prevButton;
 
   expect(screen.getByText(expectedPageText)).toBeInTheDocument();

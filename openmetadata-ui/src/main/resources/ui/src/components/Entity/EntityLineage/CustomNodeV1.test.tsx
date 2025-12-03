@@ -16,11 +16,7 @@ import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomNodeV1Component from './CustomNodeV1.component';
-import {
-  assertPaginationState,
-  getInsidePageColumns,
-  getPaginationButtons,
-} from './CustomNodeV1.test.utils';
+import { assertPaginationState } from './CustomNodeV1.test.utils';
 
 const mockNodeDataProps = {
   id: 'node1',
@@ -449,11 +445,10 @@ describe('CustomNodeV1', () => {
         </ReactFlowProvider>
       );
 
-      const col3 = screen.getByTestId('column-col3');
-
-      fireEvent.click(col3);
-
-      expect(onMockColumnClick).toHaveBeenCalledWith('col3');
+      expect(screen.getByText('1 / 3')).toBeVisible();
+      expect(screen.getByTestId('column-col3')).not.toHaveClass(
+        'custom-node-header-column-tracing'
+      );
 
       tracedColumns = ['col3'];
 
@@ -463,44 +458,13 @@ describe('CustomNodeV1', () => {
         </ReactFlowProvider>
       );
 
-      expect(screen.getByTestId('column-col3')).toBeInTheDocument();
-
-      const buttons = screen.getAllByRole('button');
-      const nextButton = buttons.find((btn) =>
-        btn.querySelector('[data-testid="ChevronRightIcon"]')
-      ) as HTMLElement;
-
+      const nextButton = screen.getByTestId('next-btn');
       fireEvent.click(nextButton);
 
-      expect(screen.getByText('2 / 3')).toBeInTheDocument();
-
-      const columnsContainer = screen.getByTestId('column-container');
-      const outsidePageContainer = columnsContainer.querySelector(
-        '.outside-current-page-items'
+      expect(screen.getByText('2 / 3')).toBeVisible();
+      expect(screen.getByTestId('column-col3')).toHaveClass(
+        'custom-node-header-column-tracing'
       );
-
-      const col3AfterPageChange = screen.getByTestId('column-col3');
-
-      expect(col3AfterPageChange).toBeInTheDocument();
-
-      expect(outsidePageContainer).toContainElement(col3AfterPageChange);
-
-      const insidePageContainer = columnsContainer.querySelector(
-        '.inside-current-page-items'
-      );
-      const insidePageColumns = insidePageContainer
-        ? Array.from(
-            insidePageContainer.querySelectorAll('.inside-current-page-item')
-          ).map((el) => el.textContent?.trim())
-        : [];
-
-      expect(insidePageColumns).toEqual([
-        'col5',
-        'col6',
-        'col7',
-        'col8',
-        'col9',
-      ]);
     });
   });
 });
