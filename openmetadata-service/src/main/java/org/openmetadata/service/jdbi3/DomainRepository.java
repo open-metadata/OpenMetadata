@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -213,7 +214,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     List<Domain> allDomains = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> domainAssetCounts = new HashMap<>();
+    Map<String, Integer> domainAssetCounts = new LinkedHashMap<>();
 
     for (Domain domain : allDomains) {
       InheritedFieldQuery query =

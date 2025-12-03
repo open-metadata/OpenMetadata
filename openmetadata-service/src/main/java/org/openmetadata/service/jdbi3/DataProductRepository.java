@@ -31,6 +31,7 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -261,7 +262,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     List<DataProduct> allDataProducts =
         listAll(getFields("fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> dataProductAssetCounts = new HashMap<>();
+    Map<String, Integer> dataProductAssetCounts = new LinkedHashMap<>();
 
     for (DataProduct dataProduct : allDataProducts) {
       InheritedFieldQuery query =
