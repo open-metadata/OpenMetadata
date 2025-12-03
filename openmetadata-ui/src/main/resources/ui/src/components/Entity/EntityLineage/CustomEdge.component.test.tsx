@@ -17,6 +17,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageLayer } from '../../../generated/settings/settings';
 import { CustomEdge } from './CustomEdge.component';
@@ -64,6 +65,7 @@ const mockCustomEdgeProp = {
       },
     },
     isEditMode: true,
+    dataTestId: 'edge-id1',
   },
   selected: true,
 } as EdgeProps;
@@ -138,5 +140,186 @@ describe('Test CustomEdge Component', () => {
     );
 
     expect(pipelineLabelAsEdge).toBeInTheDocument();
+  });
+
+  it('should display edge when no nodes or columns are traced', () => {
+    render(<CustomEdge {...mockCustomEdgeProp} />, {
+      wrapper: Wrapper,
+    });
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'block' });
+  });
+
+  it('should hide edge when nodes are traced but current edge nodes are not in traced list', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      tracedNodes: ['other-node-1', 'other-node-2'],
+      tracedColumns: [],
+      pipelineStatus: {},
+      activeLayer: [LineageLayer.ColumnLevelLineage],
+      fetchPipelineStatus: jest.fn(),
+      columnsInCurrentPages: [],
+    }));
+
+    render(<CustomEdge {...mockCustomEdgeProp} />, {
+      wrapper: Wrapper,
+    });
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'none' });
+  });
+
+  it('should display edge when both edge nodes are in traced nodes list', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      tracedNodes: ['1', '2'],
+      tracedColumns: [],
+      pipelineStatus: {},
+      activeLayer: [LineageLayer.ColumnLevelLineage],
+      fetchPipelineStatus: jest.fn(),
+      columnsInCurrentPages: [],
+    }));
+
+    render(<CustomEdge {...mockCustomEdgeProp} />, {
+      wrapper: Wrapper,
+    });
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'block' });
+  });
+
+  it('should display column lineage edge when columns are highlighted', () => {
+    const encodedSourceHandle = btoa(encodeURIComponent('column1'));
+    const encodedTargetHandle = btoa(encodeURIComponent('column2'));
+
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      tracedNodes: [],
+      tracedColumns: ['column1', 'column2'],
+      pipelineStatus: {},
+      activeLayer: [LineageLayer.ColumnLevelLineage],
+      fetchPipelineStatus: jest.fn(),
+      columnsInCurrentPages: [],
+    }));
+
+    render(
+      <CustomEdge
+        {...mockCustomEdgeProp}
+        data={{
+          ...mockCustomEdgeProp.data,
+          isColumnLineage: true,
+          sourceHandle: encodedSourceHandle,
+          targetHandle: encodedTargetHandle,
+        }}
+      />,
+      {
+        wrapper: Wrapper,
+      }
+    );
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'block' });
+  });
+
+  it('should hide column lineage edge when columns are traced but not highlighted', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      tracedNodes: [],
+      tracedColumns: ['other-column'],
+      pipelineStatus: {},
+      activeLayer: [LineageLayer.ColumnLevelLineage],
+      fetchPipelineStatus: jest.fn(),
+      columnsInCurrentPages: [],
+    }));
+
+    render(
+      <CustomEdge
+        {...mockCustomEdgeProp}
+        data={{
+          ...mockCustomEdgeProp.data,
+          isColumnLineage: true,
+          sourceHandle: 'column1',
+          targetHandle: 'column2',
+        }}
+      />,
+      {
+        wrapper: Wrapper,
+      }
+    );
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'none' });
+  });
+
+  it('should hide column lineage edge when columns are not in current page', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      tracedNodes: [],
+      tracedColumns: [],
+      pipelineStatus: {},
+      activeLayer: [LineageLayer.ColumnLevelLineage],
+      fetchPipelineStatus: jest.fn(),
+      columnsInCurrentPages: ['other-column'],
+    }));
+
+    render(
+      <CustomEdge
+        {...mockCustomEdgeProp}
+        data={{
+          ...mockCustomEdgeProp.data,
+          isColumnLineage: true,
+          sourceHandle: 'column1',
+          targetHandle: 'column2',
+        }}
+      />,
+      {
+        wrapper: Wrapper,
+      }
+    );
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'none' });
+  });
+
+  it('should display column lineage edge when both columns are in current page', () => {
+    const encodedSourceHandle = btoa(encodeURIComponent('column1'));
+    const encodedTargetHandle = btoa(encodeURIComponent('column2'));
+
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      tracedNodes: [],
+      tracedColumns: [],
+      pipelineStatus: {},
+      activeLayer: [LineageLayer.ColumnLevelLineage],
+      fetchPipelineStatus: jest.fn(),
+      columnsInCurrentPages: ['column1', 'column2'],
+    }));
+
+    render(
+      <CustomEdge
+        {...mockCustomEdgeProp}
+        data={{
+          ...mockCustomEdgeProp.data,
+          isColumnLineage: true,
+          sourceHandle: encodedSourceHandle,
+          targetHandle: encodedTargetHandle,
+        }}
+      />,
+      {
+        wrapper: Wrapper,
+      }
+    );
+
+    const edgePath = screen.getByTestId('edge-id1');
+
+    expect(edgePath).toBeInTheDocument();
+    expect(edgePath).toHaveStyle({ display: 'block' });
   });
 });
