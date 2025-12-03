@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomNodeV1Component from './CustomNodeV1.component';
+import {
+  assertPaginationState,
+  getInsidePageColumns,
+  getPaginationButtons,
+} from './CustomNodeV1.test.utils';
 
 const mockNodeDataProps = {
   id: 'node1',
@@ -378,69 +383,45 @@ describe('CustomNodeV1', () => {
 
       const columnsContainer = screen.getByTestId('column-container');
 
-      const getInsidePageColumns = () => {
-        const insidePageContainer = columnsContainer.querySelector(
-          '.inside-current-page-items'
-        );
+      expect(columnsContainer).toBeInTheDocument();
 
-        return insidePageContainer
-          ? Array.from(
-              insidePageContainer.querySelectorAll('.inside-current-page-item')
-            ).map((el) => el.textContent?.trim())
-          : [];
-      };
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '1 / 3',
+        expectedColumns: ['col0', 'col1', 'col2', 'col3', 'col4'],
+        direction: 'next',
+        shouldBeDisabled: 'prev',
+      });
 
-      expect(screen.getByText('1 / 3')).toBeInTheDocument();
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '2 / 3',
+        expectedColumns: ['col5', 'col6', 'col7', 'col8', 'col9'],
+        direction: 'next',
+      });
 
-      let visibleColumns = getInsidePageColumns();
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '3 / 3',
+        expectedColumns: ['col10', 'col11'],
+        direction: 'prev',
+        shouldBeDisabled: 'next',
+      });
 
-      expect(visibleColumns).toEqual(['col0', 'col1', 'col2', 'col3', 'col4']);
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '2 / 3',
+        expectedColumns: ['col5', 'col6', 'col7', 'col8', 'col9'],
+        direction: 'prev',
+      });
 
-      const buttons = within(columnsContainer).getAllByRole('button');
-      const prevButton = buttons.find((btn) =>
-        btn.querySelector('[data-testid="ChevronLeftIcon"]')
-      ) as HTMLElement;
-      const nextButton = buttons.find((btn) =>
-        btn.querySelector('[data-testid="ChevronRightIcon"]')
-      ) as HTMLElement;
-
-      expect(prevButton).toBeDisabled();
-
-      fireEvent.click(nextButton);
-
-      expect(screen.getByText('2 / 3')).toBeInTheDocument();
-
-      visibleColumns = getInsidePageColumns();
-
-      expect(visibleColumns).toEqual(['col5', 'col6', 'col7', 'col8', 'col9']);
-
-      fireEvent.click(nextButton);
-
-      expect(screen.getByText('3 / 3')).toBeInTheDocument();
-
-      visibleColumns = getInsidePageColumns();
-
-      expect(visibleColumns).toEqual(['col10', 'col11']);
-
-      expect(nextButton).toBeDisabled();
-
-      fireEvent.click(prevButton);
-
-      expect(screen.getByText('2 / 3')).toBeInTheDocument();
-
-      visibleColumns = getInsidePageColumns();
-
-      expect(visibleColumns).toEqual(['col5', 'col6', 'col7', 'col8', 'col9']);
-
-      fireEvent.click(prevButton);
-
-      expect(screen.getByText('1 / 3')).toBeInTheDocument();
-
-      visibleColumns = getInsidePageColumns();
-
-      expect(visibleColumns).toEqual(['col0', 'col1', 'col2', 'col3', 'col4']);
-
-      expect(prevButton).toBeDisabled();
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '1 / 3',
+        expectedColumns: ['col0', 'col1', 'col2', 'col3', 'col4'],
+        direction: 'next',
+        shouldBeDisabled: 'prev',
+      });
     });
 
     it('should select a column when it is clicked', () => {
