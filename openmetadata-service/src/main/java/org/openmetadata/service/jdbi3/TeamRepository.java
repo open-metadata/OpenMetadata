@@ -443,6 +443,34 @@ public class TeamRepository extends EntityRepository<Team> {
     return getTeamAssets(team.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllTeamsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for team asset counts");
+      return new HashMap<>();
+    }
+
+    List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> teamAssetCounts = new HashMap<>();
+
+    for (Team team : allTeams) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for team {} asset count. Returning 0.",
+                    team.getFullyQualifiedName());
+                return 0;
+              });
+
+      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    }
+
+    return teamAssetCounts;
+  }
+
   @Override
   public void storeEntity(Team team, boolean update) {
     // Relationships and fields such as href are derived and not stored as part of json

@@ -253,6 +253,36 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return getDataProductAssets(dataProduct.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllDataProductsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for data product asset counts");
+      return new HashMap<>();
+    }
+
+    List<DataProduct> allDataProducts =
+        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> dataProductAssetCounts = new HashMap<>();
+
+    for (DataProduct dataProduct : allDataProducts) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for data product {} asset count. Returning 0.",
+                    dataProduct.getFullyQualifiedName());
+                return 0;
+              });
+
+      dataProductAssetCounts.put(dataProduct.getFullyQualifiedName(), count);
+    }
+
+    return dataProductAssetCounts;
+  }
+
   @Transaction
   @Override
   protected BulkOperationResult bulkAssetsOperation(

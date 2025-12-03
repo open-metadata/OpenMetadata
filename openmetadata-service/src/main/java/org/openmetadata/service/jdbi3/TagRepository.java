@@ -134,6 +134,34 @@ public class TagRepository extends EntityRepository<Tag> {
     return getTagAssets(tag.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllTagsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for tag asset counts");
+      return new HashMap<>();
+    }
+
+    List<Tag> allTags = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> tagAssetCounts = new HashMap<>();
+
+    for (Tag tag : allTags) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for tag {} asset count. Returning 0.",
+                    tag.getFullyQualifiedName());
+                return 0;
+              });
+
+      tagAssetCounts.put(tag.getFullyQualifiedName(), count);
+    }
+
+    return tagAssetCounts;
+  }
+
   @Override
   public void prepare(Tag entity, boolean update) {
     // Validate parent term
