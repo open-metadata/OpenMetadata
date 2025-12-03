@@ -175,3 +175,11 @@ export const removeFollower = async (dataProductID: string, userId: string) => {
 
   return response.data;
 };
+
+export const getAllDataProductsWithAssetsCount = async () => {
+  const response = await APIClient.get<Record<string, number>>(
+    `${BASE_URL}/assets/counts`
+  );
+
+  return response.data;
+};

@@ -17,6 +17,11 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
 import {
@@ -149,30 +154,48 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
-  test('Admin - Overview Tab - Owners Section - Add and Update', async ({
+  test('Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible', async ({
     adminPage,
   }) => {
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const ownersSection = summaryPanel.locator('.owners-section');
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedUser = new UserClass();
 
-    await expect(ownersSection).toBeVisible();
+    try {
+      await deletedUser.create(apiContext);
 
-    const editButton = ownersSection.getByTestId('edit-owners');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+      const deletedUserDisplayName = deletedUser.getUserDisplayName();
 
-      const popover = adminPage.getByTestId('select-owner-tabs');
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
 
-      await expect(popover).toBeVisible();
+      await expect(ownersSection).toBeVisible();
 
-      await adminPage.getByRole('tab', { name: 'Users' }).click();
+      const editButton = ownersSection.getByTestId('edit-owners');
+      if (await editButton.isVisible()) {
+        await editButton.click();
 
-      const firstOwner = adminPage.getByRole('listitem', {
-        name: 'admin',
-        exact: true,
-      });
-      if (await firstOwner.isVisible()) {
-        await firstOwner.click();
+        const popover = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popover).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+        const searchUserResponse = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${deletedUserDisplayName}*index=user_search_index*`
+        );
+        const searchUserBar = await adminPage.waitForSelector(
+          '[data-testid="owner-select-users-search-bar"]'
+        );
+        await searchUserBar.fill(deletedUserDisplayName);
+        await searchUserResponse;
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        const ownerToAssign = adminPage.getByRole('listitem', {
+          name: deletedUserDisplayName,
+          exact: true,
+        });
+
+        await ownerToAssign.click();
         const updateBtn = adminPage.getByRole('button', { name: 'Update' });
         if (await updateBtn.isVisible()) {
           await updateBtn.click();
@@ -183,6 +206,392 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
           ).toBeVisible();
         }
       }
+
+      await deletedUser.delete(apiContext, false);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const ownersSectionAfterDelete =
+        summaryPanelAfterDelete.locator('.owners-section');
+      await ownersSectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(ownersSectionAfterDelete).toBeVisible();
+
+      const editButtonAfterDelete =
+        ownersSectionAfterDelete.getByTestId('edit-owners');
+      if (await editButtonAfterDelete.isVisible()) {
+        await editButtonAfterDelete.click();
+
+        const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popoverAfterDelete).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+
+        await adminPage.waitForSelector(
+          '[data-testid="owner-select-users-search-bar"]'
+        );
+
+        const searchUserResponse = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${deletedUserDisplayName}*index=user_search_index*`
+        );
+        await adminPage.fill(
+          '[data-testid="owner-select-users-search-bar"]',
+          deletedUserDisplayName
+        );
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        await searchUserResponse;
+
+        const deletedUserItem = await adminPage.getByTitle(
+          deletedUserDisplayName
+        );
+
+        await expect(deletedUserItem).not.toBeVisible();
+
+        await adminPage.waitForSelector('.ant-list-empty-text', {
+          state: 'visible',
+        });
+      }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedTeam = new TeamClass();
+
+    try {
+      await deletedTeam.create(apiContext);
+
+      const deletedTeamDisplayName = deletedTeam.getTeamDisplayName();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
+
+      await expect(ownersSection).toBeVisible();
+
+      const editButton = ownersSection.getByTestId('edit-owners');
+      if (await editButton.isVisible()) {
+        await editButton.click();
+
+        const popover = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popover).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Teams' }).click();
+        const searchTeamResponse = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${deletedTeamDisplayName}*index=team_search_index*`
+        );
+        const searchTeamBar = await adminPage.waitForSelector(
+          '[data-testid="owner-select-teams-search-bar"]'
+        );
+        await searchTeamBar.fill(deletedTeamDisplayName);
+        await searchTeamResponse;
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        const ownerToAssign = adminPage.getByRole('listitem', {
+          name: deletedTeamDisplayName,
+          exact: true,
+        });
+
+        await ownerToAssign.click();
+        const updateBtn = adminPage.getByRole('button', { name: 'Update' });
+        if (await updateBtn.isVisible()) {
+          await updateBtn.click();
+          await waitForPatchResponse(adminPage);
+
+          await expect(
+            adminPage.getByText(/Owners updated successfully/i)
+          ).toBeVisible();
+        }
+      }
+
+      await deletedTeam.delete(apiContext);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const ownersSectionAfterDelete =
+        summaryPanelAfterDelete.locator('.owners-section');
+      await ownersSectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(ownersSectionAfterDelete).toBeVisible();
+
+      const editButtonAfterDelete =
+        ownersSectionAfterDelete.getByTestId('edit-owners');
+      if (await editButtonAfterDelete.isVisible()) {
+        await editButtonAfterDelete.click();
+
+        const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popoverAfterDelete).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Teams' }).click();
+
+        await adminPage.waitForSelector(
+          '[data-testid="owner-select-teams-search-bar"]'
+        );
+
+        const searchTeamResponse = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${deletedTeamDisplayName}*index=team_search_index*`
+        );
+        await adminPage.fill(
+          '[data-testid="owner-select-teams-search-bar"]',
+          deletedTeamDisplayName
+        );
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        await searchTeamResponse;
+
+        const deletedTeamItem = await adminPage.getByTitle(
+          deletedTeamDisplayName
+        );
+
+        await expect(deletedTeamItem).not.toBeVisible();
+
+        await adminPage.waitForSelector('.ant-list-empty-text', {
+          state: 'visible',
+        });
+      }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testClassification = new ClassificationClass();
+    const deletedTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+
+    try {
+      await testClassification.create(apiContext);
+      await deletedTag.create(apiContext);
+
+      const deletedTagDisplayName = deletedTag.getTagDisplayName();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const tagsSection = summaryPanel.locator('.tags-section');
+
+      await tagsSection.scrollIntoViewIfNeeded();
+
+      await expect(tagsSection).toBeVisible();
+
+      await adminPage
+        .locator('[data-testid="edit-icon-tags"]')
+        .scrollIntoViewIfNeeded();
+
+      await adminPage.locator('[data-testid="edit-icon-tags"]').click();
+
+      await adminPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        adminPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchTagResponse = adminPage.waitForResponse(
+        `/api/v1/search/query?q=*${deletedTagDisplayName}*index=tag_search_index*`
+      );
+      const searchBar = adminPage.locator(
+        '[data-testid="tag-select-search-bar"]'
+      );
+
+      await searchBar.fill(deletedTagDisplayName);
+      await searchTagResponse;
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const tagOption = adminPage.getByTitle(deletedTagDisplayName);
+
+      await tagOption.click();
+
+      const updateBtn = adminPage.getByRole('button', { name: 'Update' });
+      if (await updateBtn.isVisible()) {
+        await updateBtn.click();
+        await waitForPatchResponse(adminPage);
+
+        await expect(
+          adminPage.getByText(/Tags updated successfully/i)
+        ).toBeVisible();
+      }
+
+      await deletedTag.delete(apiContext);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tagsSectionAfterDelete =
+        summaryPanelAfterDelete.locator('.tags-section');
+      await tagsSectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(tagsSectionAfterDelete).toBeVisible();
+
+      await adminPage
+        .locator('[data-testid="edit-icon-tags"]')
+        .scrollIntoViewIfNeeded();
+
+      await adminPage.locator('[data-testid="edit-icon-tags"]').click();
+
+      await adminPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        adminPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchBarAfterDelete = await adminPage.waitForSelector(
+        '[data-testid="tag-select-search-bar"]'
+      );
+      const searchTagResponseAfterDelete = adminPage.waitForResponse(
+        `/api/v1/search/query?q=*${deletedTagDisplayName}*index=tag_search_index*`
+      );
+      await searchBarAfterDelete.fill(deletedTagDisplayName);
+      await searchTagResponseAfterDelete;
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const deletedTagItem = adminPage.getByTitle(deletedTagDisplayName);
+
+      await expect(deletedTagItem).not.toBeVisible();
+
+      const cancelBtn = adminPage.getByRole('button', { name: 'Cancel' });
+      if (await cancelBtn.isVisible()) {
+        await cancelBtn.click();
+      }
+    } finally {
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedTerm = new GlossaryTerm();
+
+    try {
+      await deletedTerm.create(apiContext);
+
+      const deletedTermDisplayName = deletedTerm.getTermDisplayName();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const glossarySection = summaryPanel.locator('.glossary-terms-section');
+
+      await glossarySection.scrollIntoViewIfNeeded();
+
+      await expect(glossarySection).toBeVisible();
+
+      await adminPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .scrollIntoViewIfNeeded();
+      await adminPage.waitForSelector('[data-testid="edit-glossary-terms"]', {
+        state: 'visible',
+      });
+
+      await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
+
+      await adminPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        adminPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchBar = adminPage.locator(
+        '[data-testid="glossary-term-select-search-bar"]'
+      );
+
+      await searchBar.fill(deletedTermDisplayName);
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const termOption = adminPage
+        .locator('.ant-list-item')
+        .filter({ hasText: deletedTermDisplayName });
+
+      await termOption.click();
+
+      const patchResp = waitForPatchResponse(adminPage);
+      await adminPage.getByRole('button', { name: 'Update' }).click();
+      await patchResp;
+
+      await expect(
+        adminPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+
+      await deletedTerm.delete(apiContext);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const glossarySectionAfterDelete = summaryPanelAfterDelete.locator(
+        '.glossary-terms-section'
+      );
+      await glossarySectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(glossarySectionAfterDelete).toBeVisible();
+
+      await adminPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .scrollIntoViewIfNeeded();
+      await adminPage.waitForSelector('[data-testid="edit-glossary-terms"]', {
+        state: 'visible',
+      });
+
+      await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
+
+      await adminPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        adminPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchBarAfterDelete = await adminPage.waitForSelector(
+        '[data-testid="glossary-term-select-search-bar"]'
+      );
+
+      await searchBarAfterDelete.fill(deletedTermDisplayName);
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const deletedTermItem = adminPage.getByTitle(deletedTermDisplayName);
+
+      await expect(deletedTermItem).not.toBeVisible();
+
+      await adminPage.waitForSelector('.ant-list-empty-text', {
+        state: 'visible',
+      });
+      const cancelBtn = adminPage.getByRole('button', { name: 'Cancel' });
+      await cancelBtn.click();
+    } finally {
+      await afterAction();
     }
   });
 
@@ -301,6 +710,41 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(domainsSection).toBeVisible();
 
+    const dataProductItems = adminPage.locator(
+      '[data-testid="data-product-item"]'
+    );
+    const dataProductCount = await dataProductItems.count();
+
+    if (dataProductCount >= 1) {
+      const editDataProductsButton = adminPage.locator(
+        '[data-testid="edit-data-products"]'
+      );
+      if (await editDataProductsButton.isVisible()) {
+        await editDataProductsButton.click();
+        await adminPage.waitForTimeout(500);
+
+        const clearAllButton = adminPage.locator(
+          '[data-testid="clear-all-button"]'
+        );
+        if (await clearAllButton.isVisible()) {
+          await clearAllButton.click();
+
+          const updateButton = adminPage.getByRole('button', {
+            name: 'Update',
+          });
+          await updateButton.click();
+          await waitForPatchResponse(adminPage);
+          await adminPage.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await expect(
+            adminPage.getByText(/Data products updated successfully/i)
+          ).toBeVisible();
+        }
+      }
+    }
+
     await domainsSection
       .locator('[data-testid="add-domain"]')
       .scrollIntoViewIfNeeded();
@@ -323,7 +767,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await searchDomain;
 
-    // Wait for the tag element to be visible and ensure page is still valid
     const tagSelector = adminPage.getByTestId('tag-TestDomain');
     await tagSelector.waitFor({ state: 'visible' });
 
@@ -1872,6 +2315,35 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     const glossarySection = summaryPanel.locator('.glossary-terms-section');
 
     await expect(glossarySection).toBeVisible();
+
+    const glossaryTermItems = dataConsumerPage.locator(
+      '.selected-glossary-term-chip'
+    );
+    const glossaryTermsCount = await glossaryTermItems.count();
+
+    if (glossaryTermsCount >= 1) {
+      const editGlossaryTermsButton = dataConsumerPage.locator(
+        '[data-testid="edit-glossary-terms"]'
+      );
+      await editGlossaryTermsButton.click();
+      const clearAllButton = dataConsumerPage.locator(
+        '[data-testid="clear-all-button"]'
+      );
+      await clearAllButton.click();
+
+      const updateButton = dataConsumerPage.getByRole('button', {
+        name: 'Update',
+      });
+      await updateButton.click();
+      await waitForPatchResponse(dataConsumerPage);
+      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        dataConsumerPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+    }
 
     await dataConsumerPage
       .locator('[data-testid="edit-glossary-terms"]')

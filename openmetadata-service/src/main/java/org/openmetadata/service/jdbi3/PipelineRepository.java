@@ -31,9 +31,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -51,7 +50,6 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -83,8 +81,6 @@ import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
-import org.openmetadata.service.search.SearchAggregation;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -412,14 +408,128 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
-  public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) {
+  public ResultList<PipelineStatus> getPipelineStatuses(
+      String fqn,
+      Long starTs,
+      Long endTs,
+      Integer limit,
+      String before,
+      String after,
+      String status,
+      String search,
+      Long minDuration,
+      Long maxDuration) {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
             getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
             PipelineStatus.class);
-    return new ResultList<>(
-        pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
+
+    // Apply multi-value status filter
+    if (status != null && !status.isEmpty()) {
+      List<String> statusValues =
+          Arrays.asList(status.split(",")).stream()
+              .map(String::trim)
+              .collect(java.util.stream.Collectors.toList());
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(
+                  ps ->
+                      ps.getExecutionStatus() != null
+                          && statusValues.contains(ps.getExecutionStatus().value()))
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Apply search filter on taskStatus names
+    if (search != null && !search.isEmpty()) {
+      String searchLower = search.toLowerCase();
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .map(
+                  ps -> {
+                    if (ps.getTaskStatus() == null || ps.getTaskStatus().isEmpty()) {
+                      return ps;
+                    }
+                    List<org.openmetadata.schema.type.Status> filteredTasks =
+                        ps.getTaskStatus().stream()
+                            .filter(
+                                task ->
+                                    task.getName() != null
+                                        && task.getName().toLowerCase().contains(searchLower))
+                            .collect(java.util.stream.Collectors.toList());
+                    return ps.withTaskStatus(filteredTasks);
+                  })
+              .filter(ps -> ps.getTaskStatus() != null && !ps.getTaskStatus().isEmpty())
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Apply duration filters
+    if (minDuration != null || maxDuration != null) {
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(
+                  ps -> {
+                    if (ps.getEndTime() == null || ps.getTimestamp() == null) {
+                      return false;
+                    }
+                    long duration = ps.getEndTime() - ps.getTimestamp();
+                    boolean meetsMin = minDuration == null || duration >= minDuration;
+                    boolean meetsMax = maxDuration == null || duration <= maxDuration;
+                    return meetsMin && meetsMax;
+                  })
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Sort by timestamp (descending - newest first)
+    pipelineStatuses.sort((a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
+
+    // Store total count before pagination
+    int total = pipelineStatuses.size();
+
+    // Apply cursor-based pagination
+    // Note: With DESCENDING sort (newest first), cursor semantics are:
+    // - "before" cursor: get newer records (previous page, higher timestamps)
+    // - "after" cursor: get older records (next page, lower timestamps)
+    if (before != null) {
+      // Pagination BACKWARDS: get newer/previous page records (higher timestamps)
+      // Decode base64-encoded cursor before parsing
+      String decodedBefore = RestUtil.decodeCursor(before);
+      Long beforeTs = Long.parseLong(decodedBefore);
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(ps -> ps.getTimestamp() > beforeTs)
+              .collect(java.util.stream.Collectors.toList());
+    } else if (after != null) {
+      // Pagination FORWARD: get older/next page records (lower timestamps)
+      // Decode base64-encoded cursor before parsing
+      String decodedAfter = RestUtil.decodeCursor(after);
+      Long afterTs = Long.parseLong(decodedAfter);
+      pipelineStatuses =
+          pipelineStatuses.stream()
+              .filter(ps -> ps.getTimestamp() < afterTs)
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Apply limit only if provided
+    List<PipelineStatus> paginatedResults;
+    if (limit != null && limit > 0 && pipelineStatuses.size() > limit) {
+      paginatedResults = pipelineStatuses.subList(0, limit);
+    } else {
+      paginatedResults = pipelineStatuses;
+    }
+
+    // Build cursors for pagination - only when limit is provided
+    String beforeCursor = null;
+    String afterCursor = null;
+
+    // Only generate cursors if pagination is active (limit was provided)
+    if (limit != null && !paginatedResults.isEmpty()) {
+      beforeCursor = String.valueOf(paginatedResults.get(0).getTimestamp());
+      afterCursor =
+          String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getTimestamp());
+    }
+
+    return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
   }
 
   // Validate if a given task exists in the pipeline
@@ -969,22 +1079,33 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(String pipelineFqn) {
-    return getPipelineObservability(pipelineFqn, null, null, null, null, 10);
+    return getPipelineObservability(pipelineFqn, null, null, null, null, null, 10, null, null);
   }
 
   /**
-   * Get pipeline observability data for all tables associated with a pipeline with filters.
+   * Get pipeline observability data for all tables associated with a pipeline with filters and pagination.
    *
    * @param pipelineFqn the pipeline fully qualified name
    * @param status filter by execution status (Successful, Failed, Running, Pending, Skipped)
    * @param startTs filter observability data after this timestamp
    * @param endTs filter observability data before this timestamp
    * @param serviceType filter by pipeline service type (e.g., Airflow, Dagster)
-   * @param limit limit the number of observability records per table
+   * @param search search tables by name or FQN
+   * @param limit limit the number of tables returned
+   * @param before cursor for reverse pagination
+   * @param after cursor for forward pagination
    * @return PipelineObservabilityResponse containing observability data grouped by tables
    */
   public PipelineObservabilityResponse getPipelineObservability(
-      String pipelineFqn, String status, Long startTs, Long endTs, String serviceType, int limit) {
+      String pipelineFqn,
+      String status,
+      Long startTs,
+      Long endTs,
+      String serviceType,
+      String search,
+      int limit,
+      String before,
+      String after) {
     // Get the pipeline entity to retrieve its ID
     Pipeline pipeline = findByName(pipelineFqn, NON_DELETED);
     if (pipeline == null) {
@@ -1113,10 +1234,99 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       throw new RuntimeException("Failed to retrieve pipeline observability data", e);
     }
 
+    // Apply search filter
+    if (search != null && !search.isEmpty()) {
+      String searchLower = search.toLowerCase();
+      tableObservabilityList =
+          tableObservabilityList.stream()
+              .filter(
+                  table ->
+                      table.getTableFqn() != null
+                          && table.getTableFqn().toLowerCase().contains(searchLower))
+              .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Sort by table FQN for consistent pagination
+    tableObservabilityList.sort(
+        (a, b) -> {
+          String fqnA = a.getTableFqn() != null ? a.getTableFqn() : "";
+          String fqnB = b.getTableFqn() != null ? b.getTableFqn() : "";
+          return fqnA.compareTo(fqnB);
+        });
+
+    // Calculate total before pagination
+    int total = tableObservabilityList.size();
+
+    // Apply pagination
+    String beforeCursor = null;
+    String afterCursor = null;
+
+    try {
+      // Decode cursors
+      String decodedBefore = before != null ? RestUtil.decodeCursor(before) : null;
+      String decodedAfter = after != null ? RestUtil.decodeCursor(after) : null;
+
+      // Find position based on cursor
+      int startIndex = 0;
+      if (decodedAfter != null) {
+        // Forward pagination - find position after cursor
+        for (int i = 0; i < tableObservabilityList.size(); i++) {
+          if (tableObservabilityList.get(i).getTableFqn().equals(decodedAfter)) {
+            startIndex = i + 1;
+            break;
+          }
+        }
+      } else if (decodedBefore != null) {
+        // Reverse pagination - find position before cursor
+        for (int i = tableObservabilityList.size() - 1; i >= 0; i--) {
+          if (tableObservabilityList.get(i).getTableFqn().equals(decodedBefore)) {
+            startIndex = Math.max(0, i - limit);
+            break;
+          }
+        }
+      }
+
+      // Get paginated slice (take limit+1 to determine if more pages exist)
+      int endIndex = Math.min(startIndex + limit, tableObservabilityList.size());
+      List<TableObservabilityData> paginatedList =
+          new ArrayList<>(tableObservabilityList.subList(startIndex, endIndex));
+
+      // Generate cursors
+      if (paginatedList.size() > 0) {
+        // Generate before cursor if not at start
+        if (startIndex > 0) {
+          beforeCursor = RestUtil.encodeCursor(paginatedList.get(0).getTableFqn());
+        }
+        // Generate after cursor if not at end
+        if (endIndex < total) {
+          afterCursor =
+              RestUtil.encodeCursor(paginatedList.get(paginatedList.size() - 1).getTableFqn());
+        }
+      }
+
+      tableObservabilityList = paginatedList;
+
+    } catch (Exception e) {
+      LOG.warn("Failed to decode pagination cursors: {}", e.getMessage());
+      // If cursor decoding fails, just return first page
+      int endIndex = Math.min(limit, tableObservabilityList.size());
+      tableObservabilityList = new ArrayList<>(tableObservabilityList.subList(0, endIndex));
+      if (endIndex < total) {
+        afterCursor =
+            RestUtil.encodeCursor(
+                tableObservabilityList.get(tableObservabilityList.size() - 1).getTableFqn());
+      }
+    }
+
     return new PipelineObservabilityResponse()
         .withPipelineId(pipelineId)
         .withPipelineFqn(pipelineFqn)
-        .withTableObservabilityData(tableObservabilityList);
+        .withTableObservabilityData(tableObservabilityList)
+        .withPaging(
+            new org.openmetadata.schema.type.Paging()
+                .withBefore(beforeCursor)
+                .withAfter(afterCursor)
+                .withTotal(total));
   }
 
   private String formatTimestamp(Long timestamp) {
@@ -1139,56 +1349,234 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     requiredFieldSet.addAll(Set.of("service", "serviceType", "scheduleInterval", "pipelineStatus"));
     Fields requiredFields = new Fields(requiredFieldSet);
 
-    // Use correct base method based on pagination direction
-    ResultList<Pipeline> pipelines;
-    if (before != null) {
-      pipelines = listBefore(uriInfo, requiredFields, filter, limit, before);
-    } else {
-      pipelines = listAfter(uriInfo, requiredFields, filter, limit, after);
+    // Extract all filter parameters
+    String statusFilter = filter.getQueryParams().get("status");
+    String searchFilter = filter.getQueryParams().get("search");
+    String startTsFilter = filter.getQueryParams().get("startTs");
+    String endTsFilter = filter.getQueryParams().get("endTs");
+    String service = filter.getQueryParams().get("service");
+    String serviceType = filter.getQueryParams().get("serviceType");
+    String tier = filter.getQueryParams().get("tier");
+
+    // Convert domain and owner to IDs for database filtering
+    String domain = filter.getQueryParams().get("domain");
+    String domainId = domain != null ? resolveDomainToId(domain) : null;
+
+    String owner = filter.getQueryParams().get("owner");
+    String ownerId = owner != null ? resolveOwnerToId(owner) : null;
+
+    // Build filter strings for database query
+    String serviceFilterSql = buildServiceFilter(service);
+
+    // Build database-specific serviceType filters
+    String mysqlServiceTypeFilter =
+        serviceType != null
+            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
+            : "";
+    String postgresServiceTypeFilter =
+        serviceType != null ? "AND pe.json->>'serviceType' = '" + serviceType + "'" : "";
+
+    String domainFilterSql =
+        domainId != null
+            ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
+                + domainId
+                + "' AND relation = 10 AND toEntity = 'pipeline')"
+            : "";
+    String ownerFilterSql =
+        ownerId != null
+            ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
+                + ownerId
+                + "' AND relation IN (8,1) AND toEntity = 'pipeline')"
+            : "";
+
+    // Build tier filter using tag_usage table (works on both MySQL and PostgreSQL)
+    String tierFilterSql =
+        tier != null
+            ? "AND EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = pe.fqnHash AND tu.tagFQN = '"
+                + tier.replace("'", "''")
+                + "')"
+            : "";
+
+    // Parse timestamp filters
+    Long startTs = null;
+    Long endTs = null;
+    try {
+      if (startTsFilter != null && !startTsFilter.isEmpty()) {
+        startTs = Long.parseLong(startTsFilter);
+      }
+      if (endTsFilter != null && !endTsFilter.isEmpty()) {
+        endTs = Long.parseLong(endTsFilter);
+      }
+    } catch (NumberFormatException e) {
+      LOG.warn("Invalid timestamp filter value: {}", e.getMessage());
     }
 
-    List<PipelineSummary> summaries = new ArrayList<>();
-    for (Pipeline pipeline : pipelines.getData()) {
+    // Calculate offset for pagination
+    int offset = 0;
+    if (after != null && !after.isEmpty()) {
       try {
+        String decodedAfter = RestUtil.decodeCursor(after);
+        offset = Integer.parseInt(decodedAfter);
+      } catch (Exception e) {
+        LOG.warn("Invalid after cursor: {}", after);
+      }
+    }
+
+    // Build MySQL-specific status filter
+    String mysqlStatusFilter = "";
+    if (statusFilter != null && (startTs != null || endTs != null)) {
+      // Case 1: Status + timestamps = check latest status in time range
+      mysqlStatusFilter =
+          "AND (SELECT JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
+      }
+      mysqlStatusFilter +=
+          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (statusFilter != null) {
+      // Case 2: Status only = check overall latest status
+      mysqlStatusFilter =
+          "AND (SELECT JSON_UNQUOTE(JSON_EXTRACT(eets_filter.json, '$.executionStatus')) "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (startTs != null || endTs != null) {
+      // Case 3: Timestamps only = check if pipeline ran in time range
+      mysqlStatusFilter =
+          "AND EXISTS (SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
+      }
+      mysqlStatusFilter += ")";
+    }
+
+    // Build PostgreSQL-specific status filter
+    String postgresStatusFilter = "";
+    if (statusFilter != null && (startTs != null || endTs != null)) {
+      // Case 1: Status + timestamps = check latest status in time range
+      postgresStatusFilter =
+          "AND (SELECT eets_filter.json->>'executionStatus' "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
+      }
+      postgresStatusFilter +=
+          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (statusFilter != null) {
+      // Case 2: Status only = check overall latest status
+      postgresStatusFilter =
+          "AND (SELECT eets_filter.json->>'executionStatus' "
+              + "FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
+              + statusFilter.replace("'", "''")
+              + "'";
+    } else if (startTs != null || endTs != null) {
+      // Case 3: Timestamps only = check if pipeline ran in time range
+      postgresStatusFilter =
+          "AND EXISTS (SELECT 1 FROM entity_extension_time_series eets_filter "
+              + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
+              + "  AND eets_filter.extension = 'pipeline.pipelineStatus' ";
+      if (startTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp >= " + startTs + " ";
+      }
+      if (endTs != null) {
+        postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
+      }
+      postgresStatusFilter += ")";
+    }
+
+    // Call database-level filtered query
+    List<CollectionDAO.PipelineSummaryRow> rows =
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .listPipelineSummariesFiltered(
+                serviceFilterSql,
+                mysqlServiceTypeFilter,
+                postgresServiceTypeFilter,
+                domainFilterSql,
+                ownerFilterSql,
+                tierFilterSql,
+                mysqlStatusFilter,
+                postgresStatusFilter,
+                searchFilter,
+                limit,
+                offset);
+
+    // Get total count for pagination
+    int total =
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .countPipelineSummariesFiltered(
+                serviceFilterSql,
+                mysqlServiceTypeFilter,
+                postgresServiceTypeFilter,
+                domainFilterSql,
+                ownerFilterSql,
+                tierFilterSql,
+                mysqlStatusFilter,
+                postgresStatusFilter,
+                searchFilter);
+
+    // Convert rows to Pipeline objects and build summaries
+    List<PipelineSummary> summaries = new ArrayList<>();
+    for (CollectionDAO.PipelineSummaryRow row : rows) {
+      try {
+        // Parse pipeline JSON
+        Pipeline pipeline = JsonUtils.readValue(row.getJson(), Pipeline.class);
+
+        // Parse and attach latest status if available
+        if (row.getLatestStatus() != null && !row.getLatestStatus().isEmpty()) {
+          PipelineStatus status = JsonUtils.readValue(row.getLatestStatus(), PipelineStatus.class);
+          pipeline.setPipelineStatus(status);
+        }
+
+        // Build summary
         PipelineSummary summary = buildPipelineSummary(pipeline);
         summaries.add(summary);
       } catch (Exception e) {
-        LOG.error(
-            "Failed to build summary for pipeline {}: {}",
-            pipeline.getFullyQualifiedName(),
-            e.getMessage());
-        summaries.add(buildFallbackSummary(pipeline));
+        LOG.error("Failed to build summary for pipeline from row: {}", e.getMessage());
       }
     }
 
-    // Extract pagination info correctly
-    String beforeCursor = pipelines.getPaging() != null ? pipelines.getPaging().getBefore() : null;
-    String afterCursor = pipelines.getPaging() != null ? pipelines.getPaging().getAfter() : null;
-    Integer total = pipelines.getPaging() != null ? pipelines.getPaging().getTotal() : 0;
+    // Calculate pagination cursors
+    // Note: ResultList constructor handles Base64 encoding, so pass raw offset strings
+    String beforeCursor = null;
+    String afterCursor = null;
 
-    // Decode the cursors before passing to ResultList constructor to avoid double-encoding
-    // The cursors from pipelines.getPaging() are already Base64-encoded
-    // ResultList constructor will encode them again, so we need to decode first
-    String decodedBefore = null;
-    String decodedAfter = null;
-
-    try {
-      if (beforeCursor != null) {
-        decodedBefore =
-            new String(Base64.getUrlDecoder().decode(beforeCursor), StandardCharsets.UTF_8);
-      }
-      if (afterCursor != null) {
-        decodedAfter =
-            new String(Base64.getUrlDecoder().decode(afterCursor), StandardCharsets.UTF_8);
-      }
-    } catch (IllegalArgumentException e) {
-      LOG.warn("Failed to decode pagination cursors: {}", e.getMessage());
-      // If decoding fails, use the cursors as-is (they might not be encoded)
-      decodedBefore = beforeCursor;
-      decodedAfter = afterCursor;
+    if (offset > 0) {
+      beforeCursor = String.valueOf(Math.max(0, offset - limit));
     }
 
-    return new ResultList<>(summaries, decodedBefore, decodedAfter, total != null ? total : 0);
+    if (offset + summaries.size() < total) {
+      afterCursor = String.valueOf(offset + limit);
+    }
+
+    return new ResultList<>(summaries, beforeCursor, afterCursor, total);
   }
 
   private PipelineSummary buildPipelineSummary(Pipeline pipeline) {
@@ -1217,8 +1605,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     summary.setScheduleInterval(pipeline.getScheduleInterval());
 
-    int impactedCount = getImpactedAssetsCount(pipeline.getFullyQualifiedName());
-    summary.setImpactedAssetsCount(impactedCount);
+    List<String> impactedAssetsFqns = getImpactedAssetsFqns(pipeline.getFullyQualifiedName());
+    summary.setImpactedAssetsCount(impactedAssetsFqns.size());
+    summary.setImpactedAssets(impactedAssetsFqns);
 
     return summary;
   }
@@ -1234,7 +1623,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withLastRunTime(null)
         .withLastRunStatus(null)
         .withScheduleInterval(pipeline.getScheduleInterval())
-        .withImpactedAssetsCount(0);
+        .withImpactedAssetsCount(0)
+        .withImpactedAssets(Collections.emptyList());
   }
 
   private int getImpactedAssetsCount(String pipelineFqn) {
@@ -1262,227 +1652,99 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
   }
 
-  public PipelineMetrics getPipelineMetrics() {
-    return getPipelineMetrics(null);
-  }
-
-  public PipelineMetrics getPipelineMetrics(String query) {
+  public PipelineMetrics getPipelineMetrics(
+      String query,
+      String service,
+      String serviceType,
+      String status,
+      String domain,
+      String owner,
+      String tier,
+      Long startTs,
+      Long endTs) {
     try {
-      return getPipelineMetricsFromES(query);
+      return getPipelineMetricsFromDB(
+          query, service, serviceType, status, domain, owner, tier, startTs, endTs);
     } catch (Exception e) {
-      LOG.warn("Failed to get metrics from Elasticsearch: {}", e.getMessage());
-      return createEmptyMetrics("Elasticsearch unavailable: " + e.getMessage());
+      LOG.warn("Failed to get metrics from database: {}", e.getMessage());
+      return createEmptyMetrics("Database unavailable: " + e.getMessage());
     }
   }
 
-  private PipelineMetrics getPipelineMetricsFromES(String query) throws IOException {
+  private PipelineMetrics getPipelineMetricsFromDB(
+      String query,
+      String service,
+      String serviceType,
+      String status,
+      String domain,
+      String owner,
+      String tier,
+      Long startTs,
+      Long endTs) {
     try {
-      String pipelineIndex = "pipeline_search_index";
-      String pipelineStatusIndex = "pipeline_status_search_index";
-      String q = nullOrEmpty(query) ? "*" : query;
+      String serviceFilter = buildServiceFilter(service);
+      String serviceTypeFilter = buildServiceTypeFilter(serviceType);
+      String mysqlStatusFilter = buildMysqlStatusFilter(status);
+      String postgresStatusFilter = buildPostgresStatusFilter(status);
+      String domainFilter = buildDomainFilter(domain);
+      String ownerFilter = buildOwnerFilter(owner);
+      String tierFilter = buildTierFilter(tier);
+      String startTsFilter = buildStartTsFilter(startTs);
+      String endTsFilter = buildEndTsFilter(endTs);
 
-      // Query pipeline_search_index for service breakdown (which gives us all metrics we need)
-      // terms aggregation returns buckets with service names and pipeline counts
-      String pipelineAggQuery =
-          "bucketName=service_breakdown:aggType=terms:field=service.name.keyword&size=1000";
+      CollectionDAO.PipelineMetricsRow metricsRow =
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .getPipelineMetricsData(
+                  serviceTypeFilter,
+                  serviceFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
+                  domainFilter,
+                  ownerFilter,
+                  tierFilter,
+                  startTsFilter,
+                  endTsFilter);
+      List<CollectionDAO.ServiceBreakdownRow> serviceRows =
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .getServiceBreakdown(
+                  serviceTypeFilter,
+                  serviceFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
+                  domainFilter,
+                  ownerFilter,
+                  tierFilter,
+                  startTsFilter,
+                  endTsFilter);
 
-      SearchAggregation pipelineAgg = SearchIndexUtils.buildAggregationTree(pipelineAggQuery);
+      PipelineMetrics metrics = new PipelineMetrics();
+      metrics.setDataAvailable(true);
 
-      LOG.info(
-          "Executing pipeline metrics aggregation on pipeline_search_index with query: '{}'", q);
-      DataQualityReport pipelineReport =
-          searchRepository.genericAggregation(q, pipelineIndex, pipelineAgg);
-
-      LOG.info(
-          "Pipeline report data: {}", pipelineReport != null ? pipelineReport.getData() : "null");
-
-      // Query 1: Get distinct pipeline count (all pipelines with at least one status)
-      String cardinalityAggQuery =
-          "bucketName=distinct_pipelines:aggType=cardinality:field=pipelineFqn";
-      SearchAggregation cardinalityAgg = SearchIndexUtils.buildAggregationTree(cardinalityAggQuery);
-
-      DataQualityReport cardinalityReport = null;
-      try {
-        cardinalityReport =
-            searchRepository.genericAggregation(
-                "{\"exists\":{\"field\":\"executionId\"}}", pipelineStatusIndex, cardinalityAgg);
-      } catch (Exception e) {
-        LOG.warn("Failed to get cardinality: {}", e.getMessage());
-      }
-
-      // Query 2: Get distinct pipelines with Successful status
-      DataQualityReport successfulReport = null;
-      try {
-        successfulReport =
-            searchRepository.genericAggregation(
-                "{\"bool\":{\"must\":[{\"term\":{\"executionStatus\":\"Successful\"}},{\"exists\":{\"field\":\"executionId\"}}]}}",
-                pipelineStatusIndex,
-                cardinalityAgg);
-      } catch (Exception e) {
-        LOG.warn("Failed to get successful pipelines count: {}", e.getMessage());
-      }
-
-      // Query 3: Get distinct pipelines with Failed status
-      DataQualityReport failedReport = null;
-      try {
-        failedReport =
-            searchRepository.genericAggregation(
-                "{\"bool\":{\"must\":[{\"term\":{\"executionStatus\":\"Failed\"}},{\"exists\":{\"field\":\"executionId\"}}]}}",
-                pipelineStatusIndex,
-                cardinalityAgg);
-      } catch (Exception e) {
-        LOG.warn("Failed to get failed pipelines count: {}", e.getMessage());
-      }
-
-      return parseMetricsFromReports(
-          pipelineReport, cardinalityReport, successfulReport, failedReport);
-
-    } catch (Exception e) {
-      LOG.error("Failed to get pipeline metrics: {}", e.getMessage(), e);
-      throw new IOException("Failed to execute pipeline metrics query", e);
-    }
-  }
-
-  private PipelineMetrics parseMetricsFromReports(
-      DataQualityReport pipelineReport,
-      DataQualityReport cardinalityReport,
-      DataQualityReport successfulReport,
-      DataQualityReport failedReport) {
-    PipelineMetrics metrics = new PipelineMetrics();
-    metrics.setDataAvailable(true);
-
-    try {
-      // Parse pipeline report for total count and service breakdown
-      if (pipelineReport != null && pipelineReport.getData() != null) {
-        List<Map<String, String>> pipelineRows = convertDatumToMapList(pipelineReport.getData());
-
-        int totalPipelines = 0;
-        int serviceCount = pipelineRows.size();
-
-        for (Map<String, String> row : pipelineRows) {
-          String docCountStr = row.get("document_count");
-          if (docCountStr != null) {
-            totalPipelines += Integer.parseInt(docCountStr);
-          }
-        }
-
-        metrics.setTotalPipelines(totalPipelines);
-        metrics.setServiceCount(serviceCount);
-
-        parseServiceBreakdownFromData(pipelineRows, metrics);
-      }
-
-      // Parse cardinality for active pipelines (distinct pipelines with any execution status)
-      int activePipelines = 0;
-      if (cardinalityReport != null && cardinalityReport.getMetadata() != null) {
-        Object valueObj = cardinalityReport.getMetadata().getAdditionalProperties().get("value");
-        if (valueObj != null) {
-          activePipelines = ((Number) valueObj).intValue();
-        }
-      }
-
-      // Parse cardinality for successful pipelines (distinct pipelines with Successful status)
-      int successfulPipelines = 0;
-      if (successfulReport != null && successfulReport.getMetadata() != null) {
-        Object valueObj = successfulReport.getMetadata().getAdditionalProperties().get("value");
-        if (valueObj != null) {
-          successfulPipelines = ((Number) valueObj).intValue();
-        }
-      }
-
-      // Parse cardinality for failed pipelines (distinct pipelines with Failed status)
-      int failedPipelines = 0;
-      if (failedReport != null && failedReport.getMetadata() != null) {
-        Object valueObj = failedReport.getMetadata().getAdditionalProperties().get("value");
-        if (valueObj != null) {
-          failedPipelines = ((Number) valueObj).intValue();
-        }
-      }
-
-      metrics.setActivePipelines(activePipelines);
-      metrics.setSuccessfulPipelines(successfulPipelines);
-      metrics.setFailedPipelines(failedPipelines);
+      metrics.setTotalPipelines(metricsRow.getTotalPipelines());
+      metrics.setActivePipelines(metricsRow.getActivePipelines());
+      metrics.setSuccessfulPipelines(metricsRow.getSuccessfulPipelines());
+      metrics.setFailedPipelines(metricsRow.getFailedPipelines());
       metrics.setInactivePipelines(
-          metrics.getTotalPipelines() != null
-              ? Math.max(0, metrics.getTotalPipelines() - activePipelines)
-              : 0);
+          metricsRow.getTotalPipelines() - metricsRow.getActivePipelines());
       metrics.setPipelinesWithoutStatus(metrics.getInactivePipelines());
 
-    } catch (Exception e) {
-      LOG.warn("Failed to parse metrics reports: {}", e.getMessage(), e);
-      metrics.setErrorMessage("Failed to parse aggregation results");
-    }
-
-    return metrics;
-  }
-
-  private List<Map<String, String>> convertDatumToMapList(
-      List<org.openmetadata.schema.tests.Datum> data) {
-    List<Map<String, String>> rows = new ArrayList<>();
-    for (org.openmetadata.schema.tests.Datum datum : data) {
-      if (datum.getAdditionalProperties() != null) {
-        LOG.debug(
-            "Row data keys: {}, values: {}",
-            datum.getAdditionalProperties().keySet(),
-            datum.getAdditionalProperties());
-        rows.add(datum.getAdditionalProperties());
+      List<ServiceBreakdown> breakdowns = new ArrayList<>();
+      metrics.setServiceCount(serviceRows.size());
+      for (CollectionDAO.ServiceBreakdownRow row : serviceRows) {
+        ServiceBreakdown breakdown = new ServiceBreakdown();
+        breakdown.setServiceType(row.getServiceType());
+        breakdown.setCount(row.getPipelineCount());
+        breakdowns.add(breakdown);
       }
-    }
-    LOG.debug("Total rows converted: {}", rows.size());
-    return rows;
-  }
+      metrics.setServiceBreakdown(breakdowns);
 
-  private void parseServiceBreakdownFromData(
-      List<Map<String, String>> data, PipelineMetrics metrics) {
-    List<ServiceBreakdown> serviceBreakdowns = new ArrayList<>();
-
-    try {
-      // The data structure from aggregations:
-      // - Bucket names become column names (service_breakdown, service_type)
-      // - Values become row values
-      // - document_count is automatically added for terms aggregations
-
-      LOG.info("Parsing service breakdown from {} rows", data.size());
-
-      // Group by service name
-      Map<String, ServiceBreakdown> serviceMap = new HashMap<>();
-
-      for (Map<String, String> row : data) {
-        LOG.info("Processing service breakdown row with keys: {}, values: {}", row.keySet(), row);
-
-        // terms aggregation returns field name as key: service.name.keyword
-        if (row.containsKey("service.name.keyword")) {
-          String serviceName =
-              row.get("service.name.keyword") != null ? row.get("service.name.keyword") : "Unknown";
-          String docCountStr = row.get("document_count") != null ? row.get("document_count") : "0";
-          int count = Integer.parseInt(docCountStr);
-
-          ServiceBreakdown breakdown =
-              serviceMap.computeIfAbsent(
-                  serviceName,
-                  k -> {
-                    ServiceBreakdown sb = new ServiceBreakdown();
-                    sb.setServiceName(serviceName);
-                    sb.setCount(0);
-                    return sb;
-                  });
-
-          breakdown.setCount(breakdown.getCount() + count);
-
-          // Nested aggregation becomes a column in the same row
-          if (row.containsKey("service_type")) {
-            breakdown.setServiceType(row.get("service_type"));
-          }
-        }
-      }
-
-      serviceBreakdowns.addAll(serviceMap.values());
-      LOG.info("Parsed {} service breakdowns: {}", serviceBreakdowns.size(), serviceBreakdowns);
+      return metrics;
     } catch (Exception e) {
-      LOG.warn("Failed to parse service breakdown: {}", e.getMessage(), e);
+      LOG.error("Failed to get pipeline metrics from database: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to get pipeline metrics", e);
     }
-
-    metrics.setServiceBreakdown(serviceBreakdowns);
   }
 
   private PipelineMetrics createEmptyMetrics(String errorMessage) {
@@ -1503,181 +1765,31 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long startTs,
       Long endTs,
       String pipelineFqn,
+      String service,
       String serviceType,
+      String status,
+      String domain,
+      String owner,
+      String tier,
       Integer limit,
       Integer offset) {
     try {
-      return getPipelineExecutionTrendFromES(
-          startTs, endTs, pipelineFqn, serviceType, limit, offset);
+      return getPipelineExecutionTrendFromDB(
+          startTs,
+          endTs,
+          pipelineFqn,
+          service,
+          serviceType,
+          status,
+          domain,
+          owner,
+          tier,
+          limit,
+          offset);
     } catch (Exception e) {
-      LOG.warn("Failed to get execution trend from Elasticsearch: {}", e.getMessage());
-      return createEmptyExecutionTrend("Elasticsearch unavailable: " + e.getMessage());
+      LOG.warn("Failed to get execution trend from database: {}", e.getMessage());
+      return createEmptyExecutionTrend("Database unavailable: " + e.getMessage());
     }
-  }
-
-  private PipelineExecutionTrendList getPipelineExecutionTrendFromES(
-      Long startTs,
-      Long endTs,
-      String pipelineFqn,
-      String serviceType,
-      Integer limit,
-      Integer offset)
-      throws IOException {
-    try {
-      String pipelineStatusIndex = "pipeline_status_search_index";
-
-      StringBuilder queryBuilder = new StringBuilder();
-      queryBuilder.append("{\"bool\":{\"must\":[");
-      queryBuilder
-          .append("{\"range\":{\"timestamp\":{\"gte\":")
-          .append(startTs)
-          .append(",\"lte\":")
-          .append(endTs)
-          .append("}}}");
-
-      if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
-        queryBuilder.append(",{\"term\":{\"pipelineFqn\":\"").append(pipelineFqn).append("\"}}");
-      }
-
-      if (serviceType != null && !serviceType.isEmpty()) {
-        queryBuilder.append(",{\"term\":{\"serviceType\":\"").append(serviceType).append("\"}}");
-      }
-
-      queryBuilder.append("]}}");
-      String filterQuery = queryBuilder.toString();
-
-      // Note: extended_bounds and min_doc_count are not yet supported by
-      // ElasticDateHistogramAggregations
-      // This means only days with actual data will be returned (no zero-count days)
-      String aggregationQuery =
-          "bucketName=execution_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=status_breakdown:aggType=terms:field=executionStatus";
-
-      SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
-
-      DataQualityReport report =
-          searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, searchAggregation);
-
-      return parseExecutionTrendFromReport(report, startTs, endTs, limit, offset);
-
-    } catch (Exception e) {
-      LOG.error("Failed to get pipeline execution trend: {}", e.getMessage(), e);
-      throw new IOException("Failed to execute pipeline execution trend query", e);
-    }
-  }
-
-  private PipelineExecutionTrendList parseExecutionTrendFromReport(
-      DataQualityReport report, Long startTs, Long endTs, Integer limit, Integer offset) {
-    PipelineExecutionTrendList trendList = new PipelineExecutionTrendList();
-    List<PipelineExecutionTrend> trends = new ArrayList<>();
-
-    int totalSuccess = 0;
-    int totalFailed = 0;
-    int totalExecutions = 0;
-
-    try {
-      List<org.openmetadata.schema.tests.Datum> data = report.getData();
-      if (data != null && !data.isEmpty()) {
-        List<Map<String, String>> rows = new ArrayList<>();
-        for (org.openmetadata.schema.tests.Datum datum : data) {
-          if (datum.getAdditionalProperties() != null) {
-            rows.add(datum.getAdditionalProperties());
-          }
-        }
-
-        Map<String, Map<String, Integer>> dateStatusMap = new HashMap<>();
-
-        for (Map<String, String> row : rows) {
-          if (row.containsKey("timestamp")) {
-            String dateKey = row.get("timestamp");
-            String status = row.containsKey("executionStatus") ? row.get("executionStatus") : "";
-            String docCountStr =
-                row.get("document_count") != null ? row.get("document_count") : "0";
-            int count = Integer.parseInt(docCountStr);
-
-            dateStatusMap.putIfAbsent(dateKey, new HashMap<>());
-            dateStatusMap.get(dateKey).put(status, count);
-          }
-        }
-
-        // Convert grouped data to trend objects
-        for (Map.Entry<String, Map<String, Integer>> entry : dateStatusMap.entrySet()) {
-          try {
-            Long timestamp = Long.parseLong(entry.getKey());
-            Map<String, Integer> statusCounts = entry.getValue();
-
-            PipelineExecutionTrend trend = new PipelineExecutionTrend();
-            trend.setTimestamp(timestamp);
-            trend.setDate(java.time.Instant.ofEpochMilli(timestamp).toString());
-
-            // Status values are lowercased by Elasticsearch's lowercase_normalizer
-            int success = statusCounts.getOrDefault("successful", 0);
-            int failed = statusCounts.getOrDefault("failed", 0);
-            int pending = statusCounts.getOrDefault("pending", 0);
-            int skipped = statusCounts.getOrDefault("skipped", 0);
-            int running = statusCounts.getOrDefault("running", 0);
-            int total = success + failed + pending + skipped + running;
-
-            trend.setSuccessCount(success);
-            trend.setFailedCount(failed);
-            trend.setPendingCount(pending);
-            trend.setSkippedCount(skipped);
-            trend.setTotalCount(total);
-
-            totalSuccess += success;
-            totalFailed += failed;
-            totalExecutions += total;
-
-            trends.add(trend);
-          } catch (Exception e) {
-            LOG.warn(
-                "Failed to parse execution trend for date {}: {}", entry.getKey(), e.getMessage());
-          }
-        }
-
-        trends.sort(Comparator.comparing(PipelineExecutionTrend::getTimestamp));
-      }
-
-      // Apply pagination following DashboardDataModelRepository pattern
-      int total = trends.size();
-      int fromIndex = Math.min(offset != null ? offset : 0, total);
-      int toIndex = Math.min(fromIndex + (limit != null ? limit : 30), total);
-
-      List<PipelineExecutionTrend> paginatedTrends = trends.subList(fromIndex, toIndex);
-
-      // Calculate pagination metadata
-      String before =
-          fromIndex > 0
-              ? String.valueOf(Math.max(0, fromIndex - (limit != null ? limit : 30)))
-              : null;
-      String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-      // Set paginated data
-      trendList.setData(paginatedTrends);
-      trendList.setPaging(
-          new org.openmetadata.schema.type.Paging()
-              .withBefore(before)
-              .withAfter(after)
-              .withTotal(total));
-
-      trendList.setTotalSuccessful(totalSuccess);
-      trendList.setTotalFailed(totalFailed);
-      trendList.setTotalExecutions(totalExecutions);
-
-      java.time.Instant startInstant = java.time.Instant.ofEpochMilli(startTs);
-      java.time.Instant endInstant = java.time.Instant.ofEpochMilli(endTs);
-      trendList.setStartDate(startInstant.toString());
-      trendList.setEndDate(endInstant.toString());
-
-      trendList.setDataAvailable(!paginatedTrends.isEmpty());
-
-    } catch (Exception e) {
-      LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);
-      trendList.setErrorMessage("Failed to parse aggregation results: " + e.getMessage());
-      trendList.setDataAvailable(false);
-    }
-
-    return trendList;
   }
 
   private PipelineExecutionTrendList createEmptyExecutionTrend(String errorMessage) {
@@ -1690,283 +1802,165 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withTotalExecutions(0);
   }
 
-  public PipelineRuntimeTrendList getPipelineRuntimeTrend(
+  private PipelineExecutionTrendList getPipelineExecutionTrendFromDB(
       Long startTs,
       Long endTs,
       String pipelineFqn,
+      String service,
       String serviceType,
+      String status,
+      String domain,
+      String owner,
+      String tier,
       Integer limit,
       Integer offset) {
     try {
-      return getPipelineRuntimeTrendFromES(startTs, endTs, pipelineFqn, serviceType, limit, offset);
-    } catch (Exception e) {
-      LOG.warn("Failed to get runtime trend from Elasticsearch: {}", e.getMessage());
-      return createEmptyRuntimeTrend("Elasticsearch unavailable: " + e.getMessage());
-    }
-  }
+      String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
+      String serviceFilter = buildServiceFilter(service);
+      String serviceTypeFilter = buildServiceTypeFilter(serviceType);
+      String mysqlStatusFilter = buildMysqlStatusFilter(status);
+      String postgresStatusFilter = buildPostgresStatusFilter(status);
+      String domainFilter = buildDomainFilter(domain);
+      String ownerFilter = buildOwnerFilter(owner);
+      String tierFilter = buildTierFilter(tier);
 
-  private PipelineRuntimeTrendList getPipelineRuntimeTrendFromES(
-      Long startTs,
-      Long endTs,
-      String pipelineFqn,
-      String serviceType,
-      Integer limit,
-      Integer offset)
-      throws IOException {
-    try {
-      String pipelineStatusIndex = "pipeline_status_search_index";
+      List<CollectionDAO.ExecutionTrendRow> rows =
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .getExecutionTrendData(
+                  startTs,
+                  endTs,
+                  pipelineFqnFilter,
+                  serviceTypeFilter,
+                  serviceFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
+                  domainFilter,
+                  ownerFilter,
+                  tierFilter);
 
-      StringBuilder queryBuilder = new StringBuilder();
-      queryBuilder.append("{\"bool\":{\"must\":[");
-      queryBuilder
-          .append("{\"range\":{\"timestamp\":{\"gte\":")
-          .append(startTs)
-          .append(",\"lte\":")
-          .append(endTs)
-          .append("}}}");
+      Map<String, PipelineExecutionTrend> trendMap = new HashMap<>();
+      int totalSuccess = 0, totalFailed = 0, totalExecutions = 0;
 
-      // Filter to only include documents that have endTime (required for runtime calculation)
-      queryBuilder.append(",{\"exists\":{\"field\":\"endTime\"}}");
+      for (CollectionDAO.ExecutionTrendRow row : rows) {
+        PipelineExecutionTrend trend =
+            trendMap.computeIfAbsent(
+                row.getDateKey(),
+                k -> {
+                  PipelineExecutionTrend t = new PipelineExecutionTrend();
+                  t.setDate(k);
+                  t.setTimestamp(parseTimestampFromDate(k));
+                  return t;
+                });
 
-      // Filter to only include execution records (exclude relationship documents)
-      queryBuilder.append(",{\"exists\":{\"field\":\"executionId\"}}");
+        String executionStatus = row.getStatus() != null ? row.getStatus().toLowerCase() : "";
+        int count = row.getCount();
 
-      if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
-        queryBuilder.append(",{\"term\":{\"pipelineFqn\":\"").append(pipelineFqn).append("\"}}");
-      }
-
-      if (serviceType != null && !serviceType.isEmpty()) {
-        queryBuilder.append(",{\"term\":{\"serviceType\":\"").append(serviceType).append("\"}}");
-      }
-
-      queryBuilder.append("]}}");
-      String filterQuery = queryBuilder.toString();
-
-      // Due to framework limitation with sibling aggregations, we need to query each metric
-      // separately.
-      // The framework's traverseAggregationResults() only processes the first sibling metric.
-
-      // Query 1: Get max runtime and document count
-      String maxQuery =
-          "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=max_runtime:aggType=max:field=runtime";
-      SearchAggregation maxAggregation = SearchIndexUtils.buildAggregationTree(maxQuery);
-      DataQualityReport maxReport =
-          searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, maxAggregation);
-
-      // Query 2: Get min runtime
-      String minQuery =
-          "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=min_runtime:aggType=min:field=runtime";
-      SearchAggregation minAggregation = SearchIndexUtils.buildAggregationTree(minQuery);
-      DataQualityReport minReport =
-          searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, minAggregation);
-
-      // Query 3: Get avg runtime
-      String avgQuery =
-          "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=avg_runtime:aggType=avg:field=runtime";
-      SearchAggregation avgAggregation = SearchIndexUtils.buildAggregationTree(avgQuery);
-      DataQualityReport avgReport =
-          searchRepository.genericAggregation(filterQuery, pipelineStatusIndex, avgAggregation);
-
-      // Query 4: Get cardinality (distinct pipeline count) per day
-      String cardinalityQuery =
-          "bucketName=runtime_by_date:aggType=date_histogram:field=timestamp&calendar_interval=day,"
-              + "bucketName=distinct_pipelines:aggType=cardinality:field=pipelineFqn";
-      SearchAggregation cardinalityAggregation =
-          SearchIndexUtils.buildAggregationTree(cardinalityQuery);
-      DataQualityReport cardinalityReport =
-          searchRepository.genericAggregation(
-              filterQuery, pipelineStatusIndex, cardinalityAggregation);
-
-      return parseRuntimeTrendFromSeparateReports(
-          maxReport, minReport, avgReport, cardinalityReport, startTs, endTs, limit, offset);
-
-    } catch (Exception e) {
-      LOG.error("Failed to get pipeline runtime trend: {}", e.getMessage(), e);
-      throw new IOException("Failed to execute pipeline runtime trend query", e);
-    }
-  }
-
-  private PipelineRuntimeTrendList parseRuntimeTrendFromSeparateReports(
-      DataQualityReport maxReport,
-      DataQualityReport minReport,
-      DataQualityReport avgReport,
-      DataQualityReport cardinalityReport,
-      Long startTs,
-      Long endTs,
-      Integer limit,
-      Integer offset) {
-    PipelineRuntimeTrendList trendList = new PipelineRuntimeTrendList();
-    List<PipelineRuntimeTrend> trends = new ArrayList<>();
-
-    try {
-      LOG.info("Parsing runtime trends from separate reports");
-
-      // Extract max runtime by date
-      Map<String, Double> maxRuntimeByDate = new HashMap<>();
-      if (maxReport.getData() != null) {
-        for (org.openmetadata.schema.tests.Datum datum : maxReport.getData()) {
-          Map<String, String> row = datum.getAdditionalProperties();
-          if (row != null && row.containsKey("timestamp") && row.containsKey("runtime")) {
-            String timestamp = row.get("timestamp");
-            try {
-              maxRuntimeByDate.put(timestamp, Double.parseDouble(row.get("runtime")));
-              LOG.info("Max runtime for {}: {}", timestamp, row.get("runtime"));
-            } catch (NumberFormatException e) {
-              LOG.warn("Invalid max runtime value for timestamp {}: {}", timestamp, e.getMessage());
-            }
-          }
+        switch (executionStatus) {
+          case "successful":
+            trend.setSuccessCount(count);
+            totalSuccess += count;
+            break;
+          case "failed":
+            trend.setFailedCount(count);
+            totalFailed += count;
+            break;
+          case "pending":
+            trend.setPendingCount(count);
+            break;
+          case "skipped":
+            trend.setSkippedCount(count);
+            break;
+          case "running":
+            trend.setRunningCount(count);
+            break;
         }
+        totalExecutions += count;
       }
 
-      // Extract min runtime by date
-      Map<String, Double> minRuntimeByDate = new HashMap<>();
-      if (minReport.getData() != null) {
-        for (org.openmetadata.schema.tests.Datum datum : minReport.getData()) {
-          Map<String, String> row = datum.getAdditionalProperties();
-          if (row != null && row.containsKey("timestamp") && row.containsKey("runtime")) {
-            String timestamp = row.get("timestamp");
-            try {
-              minRuntimeByDate.put(timestamp, Double.parseDouble(row.get("runtime")));
-              LOG.info("Min runtime for {}: {}", timestamp, row.get("runtime"));
-            } catch (NumberFormatException e) {
-              LOG.warn("Invalid min runtime value for timestamp {}: {}", timestamp, e.getMessage());
-            }
-          }
-        }
-      }
+      List<PipelineExecutionTrend> trends = new ArrayList<>(trendMap.values());
+      trends.forEach(
+          t ->
+              t.setTotalCount(
+                  (t.getSuccessCount() != null ? t.getSuccessCount() : 0)
+                      + (t.getFailedCount() != null ? t.getFailedCount() : 0)
+                      + (t.getPendingCount() != null ? t.getPendingCount() : 0)
+                      + (t.getSkippedCount() != null ? t.getSkippedCount() : 0)
+                      + (t.getRunningCount() != null ? t.getRunningCount() : 0)));
 
-      // Extract avg runtime by date
-      Map<String, Double> avgRuntimeByDate = new HashMap<>();
-      if (avgReport.getData() != null) {
-        for (org.openmetadata.schema.tests.Datum datum : avgReport.getData()) {
-          Map<String, String> row = datum.getAdditionalProperties();
-          if (row != null && row.containsKey("timestamp") && row.containsKey("runtime")) {
-            String timestamp = row.get("timestamp");
-            try {
-              avgRuntimeByDate.put(timestamp, Double.parseDouble(row.get("runtime")));
-              LOG.info("Avg runtime for {}: {}", timestamp, row.get("runtime"));
-            } catch (NumberFormatException e) {
-              LOG.warn("Invalid avg runtime value for timestamp {}: {}", timestamp, e.getMessage());
-            }
-          }
-        }
-      }
+      trends.sort(Comparator.comparing(PipelineExecutionTrend::getTimestamp));
 
-      // Extract cardinality (distinct pipeline count) by date
-      // The OpenMetadata aggregation framework doesn't properly return nested cardinality metrics
-      // So we count distinct pipelineFqn values from the data instead
-      Map<String, Integer> cardinalityByDate = new HashMap<>();
-      if (cardinalityReport != null && cardinalityReport.getData() != null) {
-        // Group by timestamp and count distinct pipelineFqn
-        Map<String, Set<String>> pipelinesByDate = new HashMap<>();
-
-        for (org.openmetadata.schema.tests.Datum datum : cardinalityReport.getData()) {
-          Map<String, String> row = datum.getAdditionalProperties();
-          if (row != null && row.containsKey("timestamp") && row.containsKey("pipelineFqn")) {
-            String timestamp = row.get("timestamp");
-            String pipelineFqn = row.get("pipelineFqn");
-
-            pipelinesByDate.computeIfAbsent(timestamp, k -> new HashSet<>()).add(pipelineFqn);
-          }
-        }
-
-        // Convert to cardinality map
-        for (Map.Entry<String, Set<String>> entry : pipelinesByDate.entrySet()) {
-          int distinctCount = entry.getValue().size();
-          cardinalityByDate.put(entry.getKey(), distinctCount);
-          LOG.info("Distinct pipelines for {}: {}", entry.getKey(), distinctCount);
-        }
-      }
-
-      LOG.info(
-          "Parsed data - Max: {} dates, Min: {} dates, Avg: {} dates, Cardinality: {} dates",
-          maxRuntimeByDate.size(),
-          minRuntimeByDate.size(),
-          avgRuntimeByDate.size(),
-          cardinalityByDate.size());
-
-      // Combine all metrics for each date
-      Set<String> allDates = new HashSet<>();
-      allDates.addAll(maxRuntimeByDate.keySet());
-      allDates.addAll(minRuntimeByDate.keySet());
-      allDates.addAll(avgRuntimeByDate.keySet());
-      allDates.addAll(cardinalityByDate.keySet());
-
-      for (String timestampStr : allDates) {
-        try {
-          Long timestamp = Long.parseLong(timestampStr);
-
-          PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
-          trend.setTimestamp(timestamp);
-          trend.setDate(java.time.Instant.ofEpochMilli(timestamp).toString());
-
-          // Get metrics for this date (default to 0 if not present)
-          double maxRuntime = maxRuntimeByDate.getOrDefault(timestampStr, 0.0);
-          double minRuntime = minRuntimeByDate.getOrDefault(timestampStr, 0.0);
-          double avgRuntime = avgRuntimeByDate.getOrDefault(timestampStr, 0.0);
-          int totalPipelines = cardinalityByDate.getOrDefault(timestampStr, 0);
-
-          trend.setMaxRuntime(maxRuntime);
-          trend.setMinRuntime(minRuntime);
-          trend.setAvgRuntime(avgRuntime);
-          trend.setTotalPipelines(totalPipelines);
-
-          LOG.info(
-              "Combined trend for {}: max={}, min={}, avg={}, totalPipelines={}",
-              timestamp,
-              maxRuntime,
-              minRuntime,
-              avgRuntime,
-              totalPipelines);
-
-          trends.add(trend);
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to parse runtime trend for timestamp {}: {}", timestampStr, e.getMessage());
-        }
-      }
-
-      trends.sort(Comparator.comparing(PipelineRuntimeTrend::getTimestamp));
-
-      // Apply pagination following DashboardDataModelRepository pattern
       int total = trends.size();
       int fromIndex = Math.min(offset != null ? offset : 0, total);
       int toIndex = Math.min(fromIndex + (limit != null ? limit : 30), total);
+      List<PipelineExecutionTrend> paginatedTrends = trends.subList(fromIndex, toIndex);
 
-      List<PipelineRuntimeTrend> paginatedTrends = trends.subList(fromIndex, toIndex);
+      PipelineExecutionTrendList trendList = new PipelineExecutionTrendList();
+      trendList.setData(paginatedTrends);
+      trendList.setTotalSuccessful(totalSuccess);
+      trendList.setTotalFailed(totalFailed);
+      trendList.setTotalExecutions(totalExecutions);
+      trendList.setStartDate(java.time.Instant.ofEpochMilli(startTs).toString());
+      trendList.setEndDate(java.time.Instant.ofEpochMilli(endTs).toString());
+      trendList.setDataAvailable(!paginatedTrends.isEmpty());
 
-      // Calculate pagination metadata
       String before =
           fromIndex > 0
               ? String.valueOf(Math.max(0, fromIndex - (limit != null ? limit : 30)))
               : null;
       String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-      // Set paginated data
-      trendList.setData(paginatedTrends);
       trendList.setPaging(
           new org.openmetadata.schema.type.Paging()
               .withBefore(before)
               .withAfter(after)
               .withTotal(total));
 
-      java.time.Instant startInstant = java.time.Instant.ofEpochMilli(startTs);
-      java.time.Instant endInstant = java.time.Instant.ofEpochMilli(endTs);
-      trendList.setStartDate(startInstant.toString());
-      trendList.setEndDate(endInstant.toString());
-
-      trendList.setDataAvailable(!paginatedTrends.isEmpty());
-
+      return trendList;
     } catch (Exception e) {
-      LOG.warn("Failed to parse DataQualityReport: {}", e.getMessage(), e);
-      trendList.setErrorMessage("Failed to parse aggregation results: " + e.getMessage());
-      trendList.setDataAvailable(false);
+      LOG.error("Failed to get execution trend from database: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to get execution trend", e);
     }
+  }
 
-    return trendList;
+  private Long parseTimestampFromDate(String dateStr) {
+    try {
+      java.time.LocalDate date = java.time.LocalDate.parse(dateStr);
+      return date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli();
+    } catch (Exception e) {
+      LOG.warn("Failed to parse date {}: {}", dateStr, e.getMessage());
+      return System.currentTimeMillis();
+    }
+  }
+
+  public PipelineRuntimeTrendList getPipelineRuntimeTrend(
+      Long startTs,
+      Long endTs,
+      String pipelineFqn,
+      String service,
+      String serviceType,
+      String status,
+      String domain,
+      String owner,
+      String tier,
+      Integer limit,
+      Integer offset) {
+    try {
+      return getPipelineRuntimeTrendFromDB(
+          startTs,
+          endTs,
+          pipelineFqn,
+          service,
+          serviceType,
+          status,
+          domain,
+          owner,
+          tier,
+          limit,
+          offset);
+    } catch (Exception e) {
+      LOG.warn("Failed to get runtime trend from database: {}", e.getMessage());
+      return createEmptyRuntimeTrend("Database unavailable: " + e.getMessage());
+    }
   }
 
   private PipelineRuntimeTrendList createEmptyRuntimeTrend(String errorMessage) {
@@ -1974,6 +1968,84 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withData(new ArrayList<>())
         .withDataAvailable(false)
         .withErrorMessage(errorMessage);
+  }
+
+  private PipelineRuntimeTrendList getPipelineRuntimeTrendFromDB(
+      Long startTs,
+      Long endTs,
+      String pipelineFqn,
+      String service,
+      String serviceType,
+      String status,
+      String domain,
+      String owner,
+      String tier,
+      Integer limit,
+      Integer offset) {
+    try {
+      String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
+      String serviceFilter = buildServiceFilter(service);
+      String serviceTypeFilter = buildServiceTypeFilter(serviceType);
+      String mysqlStatusFilter = buildMysqlStatusFilter(status);
+      String postgresStatusFilter = buildPostgresStatusFilter(status);
+      String domainFilter = buildDomainFilter(domain);
+      String ownerFilter = buildOwnerFilter(owner);
+      String tierFilter = buildTierFilter(tier);
+
+      List<CollectionDAO.RuntimeTrendRow> rows =
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .getRuntimeTrendData(
+                  startTs,
+                  endTs,
+                  pipelineFqnFilter,
+                  serviceTypeFilter,
+                  serviceFilter,
+                  mysqlStatusFilter,
+                  postgresStatusFilter,
+                  domainFilter,
+                  ownerFilter,
+                  tierFilter);
+
+      List<PipelineRuntimeTrend> trends = new ArrayList<>();
+      for (CollectionDAO.RuntimeTrendRow row : rows) {
+        PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
+        trend.setDate(row.getDateKey());
+        trend.setTimestamp(row.getFirstTimestamp());
+        trend.setMaxRuntime(row.getMaxRuntime() != null ? row.getMaxRuntime() : 0.0);
+        trend.setMinRuntime(row.getMinRuntime() != null ? row.getMinRuntime() : 0.0);
+        trend.setAvgRuntime(row.getAvgRuntime() != null ? row.getAvgRuntime() : 0.0);
+        trend.setTotalPipelines(row.getTotalPipelines() != null ? row.getTotalPipelines() : 0);
+        trends.add(trend);
+      }
+
+      int total = trends.size();
+      int fromIndex = Math.min(offset != null ? offset : 0, total);
+      int toIndex = Math.min(fromIndex + (limit != null ? limit : 30), total);
+      List<PipelineRuntimeTrend> paginatedTrends = trends.subList(fromIndex, toIndex);
+
+      PipelineRuntimeTrendList trendList = new PipelineRuntimeTrendList();
+      trendList.setData(paginatedTrends);
+      trendList.setStartDate(java.time.Instant.ofEpochMilli(startTs).toString());
+      trendList.setEndDate(java.time.Instant.ofEpochMilli(endTs).toString());
+      trendList.setDataAvailable(!paginatedTrends.isEmpty());
+
+      String before =
+          fromIndex > 0
+              ? String.valueOf(Math.max(0, fromIndex - (limit != null ? limit : 30)))
+              : null;
+      String after = toIndex < total ? String.valueOf(toIndex) : null;
+      trendList.setPaging(
+          new org.openmetadata.schema.type.Paging()
+              .withBefore(before)
+              .withAfter(after)
+              .withTotal(total));
+
+      return trendList;
+    } catch (Exception e) {
+      LOG.error("Failed to get runtime trend from database: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to get runtime trend", e);
+    }
   }
 
   /**
@@ -2027,5 +2099,201 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         "Pipeline execution reindexing completed. Indexed: {}, Failed: {}",
         totalIndexed,
         totalFailed);
+  }
+
+  private String buildPipelineFqnFilter(String pipelineFqn) {
+    if (pipelineFqn != null && !pipelineFqn.isEmpty()) {
+      String fqnHash = FullyQualifiedName.buildHash(pipelineFqn);
+      return "AND pe.fqnHash = '" + fqnHash + "'";
+    }
+    return "";
+  }
+
+  private String buildServiceTypeFilter(String serviceType) {
+    if (serviceType != null && !serviceType.isEmpty()) {
+      String safeServiceType = serviceType.replace("'", "''");
+      String filter =
+          "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + safeServiceType + "'";
+      LOG.debug("buildServiceTypeFilter: input='{}', filter='{}'", serviceType, filter);
+      return filter;
+    }
+    LOG.debug("buildServiceTypeFilter: returning empty filter (serviceType was null or empty)");
+    return "";
+  }
+
+  private String buildMysqlStatusFilter(String status) {
+    if (status != null && !status.isEmpty()) {
+      String safeStatus = status.replace("'", "''");
+      return "AND eets.json IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = '"
+          + safeStatus
+          + "'";
+    }
+    return "";
+  }
+
+  private String buildPostgresStatusFilter(String status) {
+    if (status != null && !status.isEmpty()) {
+      String safeStatus = status.replace("'", "''");
+      return "AND eets.json IS NOT NULL AND eets.json->>'executionStatus' = '" + safeStatus + "'";
+    }
+    return "";
+  }
+
+  private boolean isValidUUID(String value) {
+    try {
+      UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  private String resolveDomainToId(String domain) {
+    if (isValidUUID(domain)) {
+      return domain;
+    }
+    try {
+      EntityReference domainRef =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      return domainRef.getId().toString();
+    } catch (Exception e) {
+      LOG.warn("Could not resolve domain '{}' to ID: {}", domain, e.getMessage());
+      return null;
+    }
+  }
+
+  private String resolveOwnerToId(String owner) {
+    if (isValidUUID(owner)) {
+      return owner;
+    }
+    try {
+      EntityReference ownerRef =
+          Entity.getEntityReferenceByName(Entity.USER, owner, Include.NON_DELETED);
+      return ownerRef.getId().toString();
+    } catch (Exception e) {
+      try {
+        EntityReference teamRef =
+            Entity.getEntityReferenceByName(Entity.TEAM, owner, Include.NON_DELETED);
+        return teamRef.getId().toString();
+      } catch (Exception e2) {
+        LOG.warn("Could not resolve owner '{}' to ID: {}", owner, e2.getMessage());
+        return null;
+      }
+    }
+  }
+
+  private String buildDomainFilter(String domain) {
+    if (domain != null && !domain.isEmpty()) {
+      String domainId = resolveDomainToId(domain);
+      if (domainId == null) {
+        return "";
+      }
+      return "AND EXISTS (SELECT 1 FROM entity_relationship er "
+          + "WHERE er.toId = pe.id AND er.toEntity = 'pipeline' "
+          + "AND er.fromEntity = 'domain' AND er.relation = 10 "
+          + "AND er.fromId = '"
+          + domainId
+          + "')";
+    }
+    return "";
+  }
+
+  private String buildOwnerFilter(String owner) {
+    if (owner != null && !owner.isEmpty()) {
+      String ownerId = resolveOwnerToId(owner);
+      if (ownerId == null) {
+        return "";
+      }
+      return "AND EXISTS (SELECT 1 FROM entity_relationship er "
+          + "WHERE er.toId = pe.id AND er.toEntity = 'pipeline' "
+          + "AND er.fromEntity IN ('user', 'team') AND er.relation = 8 "
+          + "AND er.fromId = '"
+          + ownerId
+          + "')";
+    }
+    return "";
+  }
+
+  private String buildTierFilter(String tier) {
+    if (tier != null && !tier.isEmpty()) {
+      String safeTier = tier.replace("'", "''");
+      return "AND EXISTS (SELECT 1 FROM tag_usage tu "
+          + "WHERE tu.targetFQNHash = pe.fqnHash "
+          + "AND tu.tagFQN = '"
+          + safeTier
+          + "')";
+    }
+    return "";
+  }
+
+  private String buildServiceFilter(String service) {
+    if (service != null && !service.isEmpty()) {
+      String safeService = service.replace("'", "''");
+      return "AND EXISTS (SELECT 1 FROM entity_relationship er "
+          + "JOIN pipeline_service_entity pse ON er.fromId = pse.id "
+          + "WHERE er.toId = pe.id "
+          + "AND er.fromEntity = 'pipelineService' "
+          + "AND er.toEntity = 'pipeline' "
+          + "AND er.relation = 0 "
+          + "AND pse.name = '"
+          + safeService
+          + "')";
+    }
+    LOG.debug("buildServiceFilter: returning empty filter (service was null or empty)");
+    return "";
+  }
+
+  private String buildStartTsFilter(Long startTs) {
+    if (startTs != null) {
+      return "AND eets.timestamp IS NOT NULL AND eets.timestamp >= " + startTs;
+    }
+    return "";
+  }
+
+  private String buildEndTsFilter(Long endTs) {
+    if (endTs != null) {
+      return "AND eets.timestamp IS NOT NULL AND eets.timestamp <= " + endTs;
+    }
+    return "";
+  }
+
+  private List<String> getImpactedAssetsFqns(String pipelineFqn) {
+    if (nullOrEmpty(pipelineFqn)) {
+      return Collections.emptyList();
+    }
+
+    try {
+      String extensionKey = "table.pipelineObservability." + pipelineFqn;
+      List<CollectionDAO.ExtensionWithIdAndSchemaObject> records =
+          daoCollection.entityExtensionDAO().getExtensionsByPrefixBatch(extensionKey);
+
+      // Get unique table IDs
+      Set<String> uniqueTableIds = new HashSet<>();
+      for (CollectionDAO.ExtensionWithIdAndSchemaObject record : records) {
+        uniqueTableIds.add(record.getId());
+      }
+
+      // Convert table IDs to FQNs
+      List<String> tableFqns = new ArrayList<>();
+      for (String tableId : uniqueTableIds) {
+        try {
+          EntityReference tableRef =
+              Entity.getEntityReferenceById(Entity.TABLE, UUID.fromString(tableId), NON_DELETED);
+          if (tableRef != null && tableRef.getFullyQualifiedName() != null) {
+            tableFqns.add(tableRef.getFullyQualifiedName());
+          }
+        } catch (Exception e) {
+          LOG.debug(
+              "Skipping table {} for pipeline '{}': {}", tableId, pipelineFqn, e.getMessage());
+        }
+      }
+
+      return tableFqns;
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to get impacted assets FQNs for pipeline '{}': {}", pipelineFqn, e.getMessage());
+      return Collections.emptyList();
+    }
   }
 }
