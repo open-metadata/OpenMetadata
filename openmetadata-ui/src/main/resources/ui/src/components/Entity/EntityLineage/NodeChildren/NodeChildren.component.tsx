@@ -189,7 +189,11 @@ const CustomPaginatedList = ({
         justifyContent="center"
         mt={2}
         spacing={1}>
-        <IconButton disabled={page === 1} size="small" onClick={handlePrev}>
+        <IconButton
+          data-testId="prev-btn"
+          disabled={page === 1}
+          size="small"
+          onClick={handlePrev}>
           <ChevronLeftIcon />
         </IconButton>
 
@@ -198,6 +202,7 @@ const CustomPaginatedList = ({
         </Typography>
 
         <IconButton
+          data-testId="next-btn"
           disabled={page === totalPages}
           size="small"
           onClick={handleNext}>
