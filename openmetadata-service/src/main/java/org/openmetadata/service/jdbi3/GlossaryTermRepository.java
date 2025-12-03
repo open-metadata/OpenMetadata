@@ -177,6 +177,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return getGlossaryTermAssets(term.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for glossary term asset counts");
+      return new HashMap<>();
+    }
+
+    List<GlossaryTerm> allGlossaryTerms =
+        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
+
+    for (GlossaryTerm term : allGlossaryTerms) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for glossary term {} asset count. Returning 0.",
+                    term.getFullyQualifiedName());
+                return 0;
+              });
+
+      glossaryTermAssetCounts.put(term.getFullyQualifiedName(), count);
+    }
+
+    return glossaryTermAssetCounts;
+  }
+
   @Override
   public void setFields(GlossaryTerm entity, Fields fields) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));

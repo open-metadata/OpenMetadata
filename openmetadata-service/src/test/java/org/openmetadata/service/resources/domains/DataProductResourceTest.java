@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,6 +14,8 @@ import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.HashMap;
@@ -49,6 +52,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -734,5 +738,66 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + dataProductName + "/assets/remove");
     TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_getAllDataProductsWithAssetsCount(TestInfo test) throws IOException {
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct1 =
+          createEntity(
+              createRequest(getEntityName(test, 1))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      DataProduct dataProduct2 =
+          createEntity(
+              createRequest(getEntityName(test, 2))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table1 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+      Table table2 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+      Table table3 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+
+      bulkAddAssets(
+          dataProduct1.getFullyQualifiedName(),
+          new BulkAssets()
+              .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+      bulkAddAssets(
+          dataProduct2.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+
+      Map<String, Integer> assetsCount = getAllDataProductsWithAssetsCount();
+
+      assertNotNull(assetsCount);
+      assertEquals(
+          2,
+          assetsCount.get(dataProduct1.getFullyQualifiedName()),
+          "Data product 1 should have 2 assets");
+      assertEquals(
+          1,
+          assetsCount.get(dataProduct2.getFullyQualifiedName()),
+          "Data product 2 should have 1 asset");
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  private Map<String, Integer> getAllDataProductsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("dataProducts/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

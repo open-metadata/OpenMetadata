@@ -306,9 +306,16 @@ test.describe('Persona customize UI tab', async () => {
           /^Page layout (created|updated) successfully\.$/
         );
 
-        // Reload user page to validate changes
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        // Select navigation persona
+        await redirectToHomePage(userPage);
+        await userPage.getByTestId('dropdown-profile').click();
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await clickOutside(userPage);
+        await userPage.waitForTimeout(500);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [

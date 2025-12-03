@@ -588,3 +588,37 @@ export const verifyWidgetHeaderNavigation = async (
   // Navigate back to home page for next tests
   await redirectToHomePage(page);
 };
+
+export const verifyDomainCountInDomainWidget = async (
+  page: Page,
+  domainId: string,
+  expectedCount: number
+) => {
+  const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+
+  await expect(domainWidget).toBeVisible();
+
+  const domainCountElement = domainWidget.locator(
+    `[data-testid="domain-card-${domainId}"] .domain-card-count`
+  );
+
+  await expect(domainCountElement).toBeVisible();
+  await expect(domainCountElement).toContainText(expectedCount.toString());
+};
+
+export const verifyDataProductCountInDataProductWidget = async (
+  page: Page,
+  dataProductId: string,
+  expectedCount: number
+) => {
+  const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+
+  await expect(dataProductWidget).toBeVisible();
+
+  const dataProductCountElement = dataProductWidget.locator(
+    `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`
+  );
+
+  await expect(dataProductCountElement).toBeVisible();
+  await expect(dataProductCountElement).toContainText(expectedCount.toString());
+};

@@ -94,10 +94,16 @@ test.describe('Service form functionality', async () => {
         testConnection1.request.connection.config.connection.provider
       ).toEqual(supersetFormDetails1.connection.provider);
 
+      const endTestConnection1 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
       await page
         .getByTestId('test-connection-modal')
-        .getByRole('button', { name: 'OK' })
+        .getByRole('button', { name: 'Cancel' })
         .click();
+
+      await endTestConnection1;
 
       await page.waitForSelector(
         '[data-testid="test-connection-modal"] .ant-modal-mask',
@@ -128,10 +134,16 @@ test.describe('Service form functionality', async () => {
         testConnection2.request.connection.config.connection.provider
       ).toEqual(supersetFormDetails2.connection.provider);
 
+      const endTestConnection2 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
       await page
         .getByTestId('test-connection-modal')
-        .getByRole('button', { name: 'OK' })
+        .getByRole('button', { name: 'Cancel' })
         .click();
+
+      await endTestConnection2;
 
       await page.waitForSelector(
         '[data-testid="test-connection-modal"] .ant-modal-mask',
@@ -168,10 +180,16 @@ test.describe('Service form functionality', async () => {
         testConnection3.request.connection.config.connection.scheme
       ).toEqual(supersetFormDetails3.connection.scheme);
 
+      const endTestConnection3 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
       await page
         .getByTestId('test-connection-modal')
-        .getByRole('button', { name: 'OK' })
+        .getByRole('button', { name: 'Cancel' })
         .click();
+
+      await endTestConnection3;
 
       await page.waitForSelector(
         '[data-testid="test-connection-modal"] .ant-modal-mask',

@@ -60,9 +60,8 @@ export const validateLeftSidebarWithHiddenItems = async (
       const items = SIDEBAR_LIST_ITEMS[item as keyof typeof SIDEBAR_LIST_ITEMS];
 
       if (items) {
-        await page.hover('[data-testid="left-sidebar"]');
-        await page.waitForTimeout(300);
         await page.click(`[data-testid="${items[0]}"]`);
+        await page.waitForTimeout(300); // Wait for tooltip to appear
 
         if (hiddenItems.includes(items[1])) {
           await expect(

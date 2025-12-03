@@ -1046,4 +1046,23 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllGlossaryTermsWithAssetsCount",
+      summary = "Get all glossary terms with their asset counts",
+      description =
+          "Get a map of glossary term fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of glossary term FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllGlossaryTermsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount();
+    return Response.ok(result).build();
+  }
 }

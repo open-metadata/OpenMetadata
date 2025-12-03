@@ -18,6 +18,7 @@ import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.openmetadata.schema.type.EntityReference;
 
@@ -27,6 +28,8 @@ public interface InheritedFieldEntitySearch {
       InheritedFieldQuery query, Supplier<InheritedFieldResult> fallback);
 
   Integer getCountForField(InheritedFieldQuery query, Supplier<Integer> fallback);
+
+  Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter);
 
   enum QueryFilterType {
     DOMAIN_ASSETS,

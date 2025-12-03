@@ -60,6 +60,26 @@ public class QueryFilterBuilder {
     return serializeQuery(queryFilter);
   }
 
+  public static String buildDomainAssetsCountFilter(String fieldPath) {
+    ObjectNode queryFilter = MAPPER.createObjectNode();
+    ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
+    ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
+    ArrayNode mustArray = boolNode.putArray(MUST_KEY);
+
+    // Must have domains field
+    ObjectNode existsNode = MAPPER.createObjectNode();
+    existsNode.putObject("exists").put("field", fieldPath);
+    mustArray.add(existsNode);
+
+    // Exclude data products from domain assets
+    ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
+    ObjectNode dataProductNode = MAPPER.createObjectNode();
+    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
+    mustNotArray.add(dataProductNode);
+
+    return serializeQuery(queryFilter);
+  }
+
   public static String buildOwnerAssetsFilter(InheritedFieldQuery query) {
     ObjectNode queryFilter = MAPPER.createObjectNode();
     ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
