@@ -31,6 +31,7 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -141,7 +142,7 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     List<Tag> allTags = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> tagAssetCounts = new HashMap<>();
+    Map<String, Integer> tagAssetCounts = new LinkedHashMap<>();
 
     for (Tag tag : allTags) {
       InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);

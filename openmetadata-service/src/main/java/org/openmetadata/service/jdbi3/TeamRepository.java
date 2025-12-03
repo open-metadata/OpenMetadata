@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -450,7 +451,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> teamAssetCounts = new HashMap<>();
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
 
     for (Team team : allTeams) {
       InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
