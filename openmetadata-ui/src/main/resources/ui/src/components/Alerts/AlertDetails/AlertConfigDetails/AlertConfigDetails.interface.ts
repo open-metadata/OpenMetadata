@@ -17,3 +17,8 @@ export interface AlertConfigDetailsProps {
   alertDetails: EventSubscription;
   isNotificationAlert?: boolean;
 }
+
+export interface AlertConfigLoadingState {
+  templates: boolean;
+  functions: boolean;
+}

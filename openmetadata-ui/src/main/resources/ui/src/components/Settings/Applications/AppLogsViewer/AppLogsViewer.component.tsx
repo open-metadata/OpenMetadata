@@ -88,25 +88,34 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   );
 
   const statsRender = useCallback(
-    (stepStats: StepStats) => (
-      <Card data-testid="stats-component" size="small">
+    (stepStats: StepStats, title?: string, showStatus = true) => (
+      <Card
+        data-testid={`stats-component${title ? `-${title.toLowerCase()}` : ''}`}
+        size="small"
+        title={title}>
         <Row gutter={[16, 8]}>
           <Col span={24}>
             <Space wrap direction="horizontal" size={0}>
-              <div className="flex">
-                <span className="text-grey-muted">{`${t(
-                  'label.status'
-                )}:`}</span>
+              {showStatus && (
+                <>
+                  <div className="flex">
+                    <span className="text-grey-muted">{`${t(
+                      'label.status'
+                    )}:`}</span>
 
-                <Space align="center" className="m-l-xs" size={8}>
-                  <Icon
-                    component={STATUS_ICON[status as keyof typeof STATUS_ICON]}
-                    style={ICON_DIMENSION}
-                  />
-                  <span>{capitalize(status)}</span>
-                </Space>
-              </div>
-              <Divider type="vertical" />
+                    <Space align="center" className="m-l-xs" size={8}>
+                      <Icon
+                        component={
+                          STATUS_ICON[status as keyof typeof STATUS_ICON]
+                        }
+                        style={ICON_DIMENSION}
+                      />
+                      <span>{capitalize(status)}</span>
+                    </Space>
+                  </div>
+                  <Divider type="vertical" />
+                </>
+              )}
               <div className="flex">
                 <span className="text-grey-muted">{`${t(
                   'label.index-states'
@@ -145,21 +154,25 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   </Space>
                 </span>
               </div>
-              <Divider type="vertical" />
-              <div className="flex">
-                <span className="text-grey-muted">{`${t(
-                  'label.last-updated'
-                )}:`}</span>
-                <span className="m-l-xs">
-                  {timestamp ? formatDateTimeWithTimezone(timestamp) : '--'}
-                </span>
-              </div>
+              {showStatus && (
+                <>
+                  <Divider type="vertical" />
+                  <div className="flex">
+                    <span className="text-grey-muted">{`${t(
+                      'label.last-updated'
+                    )}:`}</span>
+                    <span className="m-l-xs">
+                      {timestamp ? formatDateTimeWithTimezone(timestamp) : '--'}
+                    </span>
+                  </div>
+                </>
+              )}
             </Space>
           </Col>
         </Row>
       </Card>
     ),
-    [timestamp, formatDateTimeWithTimezone]
+    [timestamp, formatDateTimeWithTimezone, status]
   );
 
   const tableColumn = useMemo(() => {
@@ -258,9 +271,53 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   return (
     <>
       {successContext?.stats?.jobStats &&
-        statsRender(successContext?.stats.jobStats)}
+        statsRender(
+          successContext?.stats.jobStats,
+          t('label.overall-stat-plural')
+        )}
       {failureContext?.stats?.jobStats &&
-        statsRender(failureContext?.stats.jobStats)}
+        statsRender(
+          failureContext?.stats.jobStats,
+          t('label.overall-stat-plural')
+        )}
+
+      {successContext?.stats?.readerStats && (
+        <div className="m-t-md">
+          {statsRender(
+            successContext.stats.readerStats,
+            t('label.reader-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+      {failureContext?.stats?.readerStats && (
+        <div className="m-t-md">
+          {statsRender(
+            failureContext.stats.readerStats,
+            t('label.reader-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+
+      {successContext?.stats?.sinkStats && (
+        <div className="m-t-md">
+          {statsRender(
+            successContext.stats.sinkStats,
+            t('label.sink-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+      {failureContext?.stats?.sinkStats && (
+        <div className="m-t-md">
+          {statsRender(
+            failureContext.stats.sinkStats,
+            t('label.sink-stat-plural'),
+            false
+          )}
+        </div>
+      )}
 
       {successContext?.stats?.entityStats &&
         entityStatsRenderer(successContext.stats.entityStats)}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
 import { FeedCounts } from '../interface/feed.interface';
 import i18n from '../utils/i18next/LocalUtil';
 import { EntityField } from './Feeds.constants';
@@ -27,11 +26,11 @@ export const FEED_COUNT_INITIAL_DATA: FeedCounts = {
 
 export const STEPS_FOR_IMPORT_ENTITY = [
   {
-    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
+    name: 'label.upload-csv-uppercase-file',
     step: 1,
   },
   {
-    name: startCase(i18n.t('label.preview-data')),
+    name: 'label.preview-data',
     step: 2,
   },
 ];

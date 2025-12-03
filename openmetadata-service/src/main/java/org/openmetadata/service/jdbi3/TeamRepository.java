@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,6 +95,7 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -440,6 +442,34 @@ public class TeamRepository extends EntityRepository<Team> {
   public ResultList<EntityReference> getTeamAssetsByName(String teamName, int limit, int offset) {
     Team team = getByName(null, teamName, getFields("id,fullyQualifiedName"));
     return getTeamAssets(team.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllTeamsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for team asset counts");
+      return new HashMap<>();
+    }
+
+    List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+
+    for (Team team : allTeams) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for team {} asset count. Returning 0.",
+                    team.getFullyQualifiedName());
+                return 0;
+              });
+
+      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    }
+
+    return teamAssetCounts;
   }
 
   @Override
@@ -1115,6 +1145,8 @@ public class TeamRepository extends EntityRepository<Team> {
       updateParents(original, updated);
       updateChildren(original, updated);
       updatePolicies(original, updated);
+      // Invalidate policy cache when team roles/policies/hierarchy changes
+      SubjectCache.invalidateAll();
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {

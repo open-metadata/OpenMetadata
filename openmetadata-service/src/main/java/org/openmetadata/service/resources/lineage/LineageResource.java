@@ -18,7 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
-import es.org.elasticsearch.action.search.SearchResponse;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.v3.oas.annotations.Operation;

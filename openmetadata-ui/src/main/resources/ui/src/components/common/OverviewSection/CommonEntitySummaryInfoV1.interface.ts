@@ -20,10 +20,13 @@ export interface EntityInfoItemV1 {
   isLink?: boolean;
   isExternal?: boolean;
   visible?: string[];
+  excludedItems?: string[];
 }
 
 export interface CommonEntitySummaryInfoV1Props {
   entityInfo: EntityInfoItemV1[];
   componentType: string;
   isDomainVisible?: boolean;
+  excludedItems?: string[];
+  onLinkClick?: () => void;
 }

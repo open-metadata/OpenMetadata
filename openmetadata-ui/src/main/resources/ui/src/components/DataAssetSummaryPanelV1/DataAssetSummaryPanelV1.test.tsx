@@ -519,22 +519,27 @@ describe('DataAssetSummaryPanelV1', () => {
       });
     });
 
-    it('should not render sections for unsupported entity types', async () => {
-      const unsupportedProps = {
+    it('should render simplified sections for USER entity type', async () => {
+      const userProps = {
         ...defaultProps,
-        entityType: EntityType.USER as any, // USER entity type is not supported
+        entityType: EntityType.USER,
       };
 
       await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...unsupportedProps} />);
+        render(<DataAssetSummaryPanelV1 {...userProps} />);
       });
 
       await waitFor(() => {
+        expect(screen.getByTestId('description-section')).toBeInTheDocument();
+        expect(screen.getByTestId('overview-section')).toBeInTheDocument();
+        expect(screen.getByTestId('owners-section')).toBeInTheDocument();
+        expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        // USER entity type should not have glossary terms or data products
         expect(
-          screen.queryByTestId('description-section')
+          screen.queryByTestId('glossary-terms-section')
         ).not.toBeInTheDocument();
         expect(
-          screen.queryByTestId('overview-section')
+          screen.queryByTestId('data-products-section')
         ).not.toBeInTheDocument();
       });
     });
@@ -804,9 +809,18 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('data-quality-section')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId('data-quality-section')).toHaveTextContent(
+          '0'
+        );
+        expect(screen.getByTestId('test-success')).toHaveTextContent(
+          'success: 0'
+        );
+        expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+          'aborted: 0'
+        );
+        expect(screen.getByTestId('test-failed')).toHaveTextContent(
+          'failed: 0'
+        );
       });
     });
 
@@ -820,9 +834,18 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
-        expect(
-          screen.queryByTestId('data-quality-section')
-        ).not.toBeInTheDocument();
+        expect(screen.getByTestId('data-quality-section')).toHaveTextContent(
+          '0'
+        );
+        expect(screen.getByTestId('test-success')).toHaveTextContent(
+          'success: 0'
+        );
+        expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+          'aborted: 0'
+        );
+        expect(screen.getByTestId('test-failed')).toHaveTextContent(
+          'failed: 0'
+        );
       });
     });
   });

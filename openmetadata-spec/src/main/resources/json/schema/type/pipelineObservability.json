@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineObservability.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Observability",
+  "description": "This schema defines pipeline observability data that can be associated with data assets to track pipeline execution information.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineObservability",
+  "properties": {
+    "pipeline": {
+      "description": "Reference to the pipeline that processes this data asset.",
+      "$ref": "entityReference.json"
+    },
+    "serviceType": {
+      "$ref": "../entity/services/pipelineService.json#/definitions/pipelineServiceType",
+      "description": "Type of pipeline service"
+    },
+    "scheduleInterval": {
+      "description": "Schedule interval for the pipeline in cron format.",
+      "type": ["string", "null"]
+    },
+    "startTime": {
+      "description": "Start time of the pipeline schedule.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "End time of the pipeline schedule.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "lastRunTime": {
+      "description": "Timestamp of the last pipeline execution.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "lastRunStatus": {
+      "description": "Status of the last pipeline execution.",
+      "type": "string",
+      "enum": [
+        "Successful",
+        "Failed", 
+        "Pending",
+        "Skipped",
+        "Running"
+      ]
+    }
+  },
+  "required": ["pipeline"],
+  "additionalProperties": false
+}

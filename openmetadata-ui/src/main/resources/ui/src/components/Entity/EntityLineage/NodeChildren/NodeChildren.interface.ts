@@ -20,6 +20,7 @@ import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface'
 export interface NodeChildrenProps {
   node: SearchedDataProps['data'][number]['_source'];
   isConnectable: boolean;
+  isChildrenListExpanded: boolean;
 }
 
 export type EntityChildren =

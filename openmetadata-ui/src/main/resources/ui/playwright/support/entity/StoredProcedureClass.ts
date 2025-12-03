@@ -186,16 +186,22 @@ export class StoredProcedureClass extends EntityClass {
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.databaseResponseData = data.database;
+    this.schemaResponseData = data.schema;
   }
 
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

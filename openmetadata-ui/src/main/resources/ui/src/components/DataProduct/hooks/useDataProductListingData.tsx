@@ -46,6 +46,11 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     []
   );
 
+  const getDomains = useCallback(
+    (dataProduct: DataProduct) => dataProduct.domains || [],
+    []
+  );
+
   const columns: ColumnConfig<DataProduct>[] = useMemo(
     () => [
       { key: 'name', labelKey: 'label.data-product', render: 'entityName' },
@@ -57,6 +62,12 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
         getValue: getGlossaryTags,
       },
       {
+        key: 'domains',
+        labelKey: 'label.domain-plural',
+        render: 'domains',
+        getValue: getDomains,
+      },
+      {
         key: 'classificationTags',
         labelKey: 'label.tag-plural',
         render: 'tags',
@@ -64,7 +75,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
       },
       { key: 'experts', labelKey: 'label.expert-plural', render: 'owners' },
     ],
-    [getGlossaryTags, getClassificationTags]
+    [getGlossaryTags, getClassificationTags, getDomains]
   );
 
   const renderers: CellRenderer<DataProduct> = useMemo(() => ({}), []);
