@@ -199,7 +199,7 @@ const NestedFieldCard: React.FC<{
               </span>
             )}
             <Button
-              className="d-flex p-l-0 p-t-0"
+              className="d-flex p-0 h-auto m-b-xs"
               size="small"
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
