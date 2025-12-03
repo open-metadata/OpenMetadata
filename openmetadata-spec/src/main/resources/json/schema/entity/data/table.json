@@ -174,7 +174,8 @@
         "MEASURE",
         "KPI",
         "HEIRARCHY",
-        "HIERARCHYID"
+        "HIERARCHYID",
+        "CITEXT"
       ]
     },
     "constraint": {

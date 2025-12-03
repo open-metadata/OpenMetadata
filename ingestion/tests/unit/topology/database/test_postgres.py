@@ -17,6 +17,7 @@ import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
@@ -191,6 +192,15 @@ MOCK_COLUMN_VALUE = [
         "comment": None,
         "system_data_type": "polygon",
     },
+    {
+        "name": "citext_c",
+        "type": SqlAlchemyString(),
+        "nullable": True,
+        "default": None,
+        "autoincrement": False,
+        "comment": None,
+        "system_data_type": "citext",
+    },
 ]
 
 
@@ -261,6 +271,25 @@ EXPECTED_COLUMN_VALUE = [
         precision=None,
         scale=None,
         dataTypeDisplay="polygon",
+        description=None,
+        fullyQualifiedName=None,
+        tags=None,
+        constraint=Constraint.NULL,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+    Column(
+        name="citext_c",
+        displayName=None,
+        dataType=DataType.CITEXT,
+        arrayDataType=None,
+        dataLength=1,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="citext",
         description=None,
         fullyQualifiedName=None,
         tags=None,

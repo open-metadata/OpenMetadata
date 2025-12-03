@@ -216,6 +216,7 @@ class ColumnTypeParser:
         "MACADDR8": "MACADDR",
         "CIDR": "CIDR",
         "INET": "INET",
+        "CITEXT": "CITEXT",
         "TSRANGE": "DATETIMERANGE",
         # ORACLE
         "BINARY_DOUBLE": "DOUBLE",
