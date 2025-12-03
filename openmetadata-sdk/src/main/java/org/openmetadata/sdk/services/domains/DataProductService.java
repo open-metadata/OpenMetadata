@@ -1,6 +1,8 @@
 package org.openmetadata.sdk.services.domains;
 
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -26,5 +28,65 @@ public class DataProductService
         basePath,
         request,
         org.openmetadata.schema.entity.domains.DataProduct.class);
+  }
+
+  // Bulk Assets operations
+
+  public BulkOperationResult bulkAddAssets(String name, BulkAssets request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        String.format("%s/%s/assets/add", basePath, name),
+        request,
+        BulkOperationResult.class);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(String name, BulkAssets request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        String.format("%s/%s/assets/remove", basePath, name),
+        request,
+        BulkOperationResult.class);
+  }
+
+  // Input Ports operations
+
+  public BulkOperationResult bulkAddInputPorts(String name, BulkAssets request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        String.format("%s/%s/inputPorts/add", basePath, name),
+        request,
+        BulkOperationResult.class);
+  }
+
+  public BulkOperationResult bulkRemoveInputPorts(String name, BulkAssets request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        String.format("%s/%s/inputPorts/remove", basePath, name),
+        request,
+        BulkOperationResult.class);
+  }
+
+  // Output Ports operations
+
+  public BulkOperationResult bulkAddOutputPorts(String name, BulkAssets request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        String.format("%s/%s/outputPorts/add", basePath, name),
+        request,
+        BulkOperationResult.class);
+  }
+
+  public BulkOperationResult bulkRemoveOutputPorts(String name, BulkAssets request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        String.format("%s/%s/outputPorts/remove", basePath, name),
+        request,
+        BulkOperationResult.class);
   }
 }

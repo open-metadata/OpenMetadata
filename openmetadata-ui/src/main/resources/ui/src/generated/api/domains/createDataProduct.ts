@@ -43,9 +43,17 @@ export interface CreateDataProduct {
      */
     fullyQualifiedName?: string;
     /**
+     * Input ports - data assets consumed by this data product.
+     */
+    inputPorts?: EntityReference[];
+    /**
      * A unique name of the DataProduct
      */
     name: string;
+    /**
+     * Output ports - data assets produced/exposed by this data product.
+     */
+    outputPorts?: EntityReference[];
     /**
      * Owners of this DataProduct.
      */
