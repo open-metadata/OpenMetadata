@@ -347,6 +347,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("directChildrenOf", directChildrenOf);
     filter.addQueryParam("offset", String.valueOf(offset));
+    filter.addQueryParam("hierarchyFilter", "true"); // Enable hierarchy filtering
     ResultList<Domain> resultList = listAfter(null, fields, filter, limit, null);
     List<Domain> domains = resultList.getData();
 
