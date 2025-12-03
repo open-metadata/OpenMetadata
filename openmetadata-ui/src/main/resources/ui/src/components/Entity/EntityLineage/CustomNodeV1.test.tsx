@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
@@ -394,10 +394,9 @@ describe('CustomNodeV1', () => {
 
       let visibleColumns = getInsidePageColumns();
 
-      expect(visibleColumns).toHaveLength(5);
       expect(visibleColumns).toEqual(['col0', 'col1', 'col2', 'col3', 'col4']);
 
-      const buttons = screen.getAllByRole('button');
+      const buttons = within(columnsContainer).getAllByRole('button');
       const prevButton = buttons.find((btn) =>
         btn.querySelector('[data-testid="ChevronLeftIcon"]')
       ) as HTMLElement;
@@ -413,7 +412,6 @@ describe('CustomNodeV1', () => {
 
       visibleColumns = getInsidePageColumns();
 
-      expect(visibleColumns).toHaveLength(5);
       expect(visibleColumns).toEqual(['col5', 'col6', 'col7', 'col8', 'col9']);
 
       fireEvent.click(nextButton);
@@ -422,7 +420,6 @@ describe('CustomNodeV1', () => {
 
       visibleColumns = getInsidePageColumns();
 
-      expect(visibleColumns).toHaveLength(2);
       expect(visibleColumns).toEqual(['col10', 'col11']);
 
       expect(nextButton).toBeDisabled();
@@ -433,7 +430,6 @@ describe('CustomNodeV1', () => {
 
       visibleColumns = getInsidePageColumns();
 
-      expect(visibleColumns).toHaveLength(5);
       expect(visibleColumns).toEqual(['col5', 'col6', 'col7', 'col8', 'col9']);
 
       fireEvent.click(prevButton);
@@ -442,7 +438,6 @@ describe('CustomNodeV1', () => {
 
       visibleColumns = getInsidePageColumns();
 
-      expect(visibleColumns).toHaveLength(5);
       expect(visibleColumns).toEqual(['col0', 'col1', 'col2', 'col3', 'col4']);
 
       expect(prevButton).toBeDisabled();
