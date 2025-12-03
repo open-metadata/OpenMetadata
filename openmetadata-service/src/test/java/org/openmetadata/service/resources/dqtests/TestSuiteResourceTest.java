@@ -817,7 +817,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo) throws IOException {
+  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo)
+      throws IOException, InterruptedException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -849,7 +850,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
         testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
-      validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
+
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("sortField", "id");
+      queryParams.put("sortType", "asc");
+
+      Thread.sleep(3000);
+
+      validateEntityListFromSearchWithPagination(queryParams, testSuites.size());
     }
   }
 

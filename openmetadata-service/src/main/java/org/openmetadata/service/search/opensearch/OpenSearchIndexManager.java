@@ -13,8 +13,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.HealthStatus;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
+import os.org.opensearch.client.opensearch.cluster.HealthRequest;
+import os.org.opensearch.client.opensearch.cluster.HealthResponse;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
@@ -450,5 +453,59 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
+  }
+
+  @Override
+  public boolean waitForIndexReady(String indexName, int timeoutSeconds) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot wait for index.");
+      return false;
+    }
+
+    long startTime = System.currentTimeMillis();
+    long timeoutMillis = timeoutSeconds * 1000L;
+    int pollIntervalMillis = 500;
+
+    LOG.info("Waiting for index '{}' to become ready (timeout: {}s)", indexName, timeoutSeconds);
+
+    while (System.currentTimeMillis() - startTime < timeoutMillis) {
+      try {
+        HealthRequest healthRequest =
+            HealthRequest.of(
+                h ->
+                    h.index(indexName)
+                        .waitForStatus(HealthStatus.Yellow)
+                        .timeout(t -> t.time(pollIntervalMillis + "ms")));
+
+        HealthResponse healthResponse = client.cluster().health(healthRequest);
+
+        if (healthResponse.status() == HealthStatus.Green
+            || healthResponse.status() == HealthStatus.Yellow) {
+          LOG.info(
+              "Index '{}' is ready with status: {} (took {}ms)",
+              indexName,
+              healthResponse.status(),
+              System.currentTimeMillis() - startTime);
+          return true;
+        }
+
+        LOG.debug(
+            "Index '{}' not ready yet, status: {}. Waiting...", indexName, healthResponse.status());
+
+      } catch (Exception e) {
+        LOG.debug("Error checking index '{}' health: {}", indexName, e.getMessage());
+      }
+
+      try {
+        Thread.sleep(pollIntervalMillis);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOG.warn("Interrupted while waiting for index '{}' to be ready", indexName);
+        return false;
+      }
+    }
+
+    LOG.warn("Timeout waiting for index '{}' to become ready after {}s", indexName, timeoutSeconds);
+    return false;
   }
 }
