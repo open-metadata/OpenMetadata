@@ -21,6 +21,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,6 +55,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -790,5 +793,53 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
       return;
     }
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_getAllDomainsWithAssetsCount(TestInfo test) throws IOException {
+    Domain rootDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Domain subDomain =
+        createEntity(
+            createRequest(getEntityName(test, 1)).withParent(rootDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain anotherDomain = createEntity(createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+
+    bulkAddAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+    bulkAddAssets(
+        anotherDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+
+    Map<String, Integer> assetsCount = getAllDomainsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        2,
+        assetsCount.get(rootDomain.getFullyQualifiedName()),
+        "Root domain should have 2 assets (1 direct + 1 from subdomain)");
+    assertEquals(
+        1, assetsCount.get(subDomain.getFullyQualifiedName()), "Subdomain should have 1 asset");
+    assertEquals(
+        1,
+        assetsCount.get(anotherDomain.getFullyQualifiedName()),
+        "Another domain should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllDomainsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("domains/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }
