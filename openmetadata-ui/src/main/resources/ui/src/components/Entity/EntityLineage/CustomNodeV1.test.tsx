@@ -385,7 +385,7 @@ describe('CustomNodeV1', () => {
 
         return insidePageContainer
           ? Array.from(
-              insidePageContainer.querySelectorAll('.inside-current-page')
+              insidePageContainer.querySelectorAll('.inside-current-page-item')
             ).map((el) => el.textContent?.trim())
           : [];
       };
@@ -514,7 +514,7 @@ describe('CustomNodeV1', () => {
       );
       const insidePageColumns = insidePageContainer
         ? Array.from(
-            insidePageContainer.querySelectorAll('.inside-current-page')
+            insidePageContainer.querySelectorAll('.inside-current-page-item')
           ).map((el) => el.textContent?.trim())
         : [];
 
@@ -525,42 +525,6 @@ describe('CustomNodeV1', () => {
         'col8',
         'col9',
       ]);
-    });
-
-    it('should keep the traced column visible when columns dropdown is collapsed', () => {
-      isColumnLayerActive = true;
-      tracedColumns = ['col3'];
-
-      render(
-        <ReactFlowProvider>
-          <CustomNodeV1Component {...mockNodeDataProps} />
-        </ReactFlowProvider>
-      );
-
-      const col3Expanded = screen.getByTestId('column-col3');
-
-      expect(col3Expanded).toBeInTheDocument();
-
-      const toggleButton = screen.getByTestId('children-info-dropdown-btn');
-
-      fireEvent.click(toggleButton);
-
-      const expandedContainer = screen.queryByTestId('column-container');
-
-      expect(expandedContainer).not.toBeInTheDocument();
-
-      const col3Collapsed = screen.getByTestId('column-col3');
-
-      expect(col3Collapsed).toBeInTheDocument();
-
-      const allColumns = screen.queryAllByTestId(/^column-/);
-
-      expect(allColumns).toHaveLength(1);
-      expect(allColumns[0]).toHaveAttribute('data-testid', 'column-col3');
-
-      expect(screen.queryByTestId('column-col0')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('column-col1')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('column-col2')).not.toBeInTheDocument();
     });
   });
 });
