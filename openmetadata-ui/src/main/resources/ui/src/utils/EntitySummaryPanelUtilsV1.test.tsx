@@ -243,8 +243,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the field cards to appear
       await waitFor(() => {
         expect(
           screen.getByTestId('field-card-column_0001')
@@ -267,8 +294,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the buttons to appear
       await waitFor(() => {
         const showNestedButtons = screen.getAllByText(/label.show-nested/);
 
@@ -285,8 +339,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the buttons with counts to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (3)')).toBeInTheDocument();
         expect(screen.getByText('label.show-nested (1)')).toBeInTheDocument();
@@ -302,8 +383,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the field card to appear
       await waitFor(() => {
         expect(
           screen.getByTestId('field-card-column_0001')
@@ -327,8 +435,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (3)')).toBeInTheDocument();
       });
@@ -359,8 +494,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (3)')).toBeInTheDocument();
       });
@@ -385,8 +547,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (3)')).toBeInTheDocument();
       });
@@ -426,8 +615,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (1)')).toBeInTheDocument();
       });
@@ -468,6 +684,33 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
 
       const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (3)')).toBeInTheDocument();
       });
@@ -536,8 +779,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the nested icons to appear
       await waitFor(() => {
         const nestedIcons = screen.getAllByTestId('nested-icon');
 
@@ -554,8 +824,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-nested (3)')).toBeInTheDocument();
       });
@@ -581,9 +878,12 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
 
   describe('Empty State', () => {
     it('should show no data message when no columns are returned', async () => {
+      // Override the beforeEach mock to return empty data
+      // Include limit to match PAGE_SIZE_LARGE (50) to avoid dependency issues
+      getTableColumnsByFQN.mockClear();
       getTableColumnsByFQN.mockResolvedValue({
         data: [],
-        paging: { total: 0, offset: 0 },
+        paging: { total: 0, offset: 0, limit: 50 },
       });
 
       const result = getEntityChildDetailsV1(
@@ -596,16 +896,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
 
       render(<div>{result}</div>);
 
+      // Wait for the API call to be made
       await waitFor(() => {
-        expect(
-          screen.getByText('message.no-data-available')
-        ).toBeInTheDocument();
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
       });
+
+      // Wait for the no-data message to appear
+      // Using findByText which automatically waits and handles async state updates
+      const noDataMessage = await screen.findByText(
+        'message.no-data-available',
+        {},
+        { timeout: 10000 }
+      );
+
+      expect(noDataMessage).toBeInTheDocument();
+      // Verify loader is gone
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     });
   });
 
   describe('Pagination with Nested Columns', () => {
     it('should show load more button when there are more columns', async () => {
+      // Reset and set up the mock to return data with pagination info
+      getTableColumnsByFQN.mockReset();
       getTableColumnsByFQN.mockResolvedValue({
         data: mockColumnsWithNested,
         paging: { total: 200, offset: 0 },
@@ -619,8 +938,35 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
         ''
       );
 
-      render(<div>{result}</div>);
+      const { container } = render(<div>{result}</div>);
 
+      // Wait for the API call to complete first
+      await waitFor(() => {
+        expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+          mockEntityInfo.fullyQualifiedName,
+          expect.objectContaining({
+            offset: 0,
+            fields: 'tags,customMetrics,description',
+          })
+        );
+      });
+
+      // Wait for the loader to disappear, indicating the component has finished loading
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait for the container to appear
+      await waitFor(() => {
+        expect(
+          container.querySelector('.schema-field-cards-container')
+        ).toBeInTheDocument();
+      });
+
+      // Then wait for the load more button to appear
       await waitFor(() => {
         expect(screen.getByText('label.show-more')).toBeInTheDocument();
       });
