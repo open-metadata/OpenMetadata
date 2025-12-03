@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.open-metadata</groupId>
         <artifactId>platform</artifactId>
-        <version>1.10.12</version>
+        <version>1.10.13</version>
     </parent>
 
     <artifactId>openmetadata-sdk</artifactId>
