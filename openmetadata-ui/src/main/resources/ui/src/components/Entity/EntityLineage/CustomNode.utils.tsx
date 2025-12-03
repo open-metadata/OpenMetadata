@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { Fragment, useCallback, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
@@ -24,7 +25,6 @@ import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -113,8 +113,6 @@ const ExpandHandle = ({
         aria-label="expand"
         className="lineage-expand-icon"
         data-testid="plus-icon"
-        role="button"
-        tabIndex={0}
         onClick={handleLineageExpandIconClick}
       />
       {showExpandAll && (

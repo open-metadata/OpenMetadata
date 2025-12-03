@@ -108,8 +108,7 @@ const CustomPaginatedList = ({
             i >= startIdx && i < endIdx
               ? 'inside-current-page-item'
               : 'outside-current-page-item'
-          }
-          key={i}>
+          }>
           {item}
         </div>
       );
@@ -417,6 +416,7 @@ const NodeChildren = ({
               isColumnTraced={isColumnTraced}
               isConnectable={isConnectable}
               isLoading={isLoading}
+              key={fullyQualifiedName}
               showDataObservabilitySummary={showDataObservabilitySummary}
               summary={columnSummary}
             />

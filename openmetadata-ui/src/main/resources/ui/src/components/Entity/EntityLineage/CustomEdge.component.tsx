@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { useTheme } from '@mui/material';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useMemo } from 'react';
@@ -20,7 +21,6 @@ import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-ci
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
-import { RED_3 } from '../../../constants/Color.constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -32,7 +32,6 @@ import {
 } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
-import { useTheme } from '@mui/material';
 
 interface LineageEdgeIconProps {
   children: React.ReactNode;
@@ -173,7 +172,7 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.toEntity.id);
 
     let stroke = '';
-    let display = 'block';
+    let display = '';
 
     // For nodes edges
     if (isNodeTraced) {
@@ -251,7 +250,6 @@ export const CustomEdge = ({
   }, [isColumnLineage, pipeline]);
 
   const isSelectedEditMode = selected && isEditMode;
-  const isSelected = selected;
 
   // Calculate pipeline status for styling
   const currentPipelineStatus = useMemo(() => {
