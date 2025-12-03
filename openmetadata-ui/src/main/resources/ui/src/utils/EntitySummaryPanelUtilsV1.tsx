@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import { FieldCard } from '../components/common/FieldCard';
+import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
@@ -151,14 +152,7 @@ export const getEntityChildDetailsV1 = (
 };
 
 // Recursive component to render nested columns
-const NestedFieldCard: React.FC<{
-  column: Column;
-  highlights?: Record<string, string[]>;
-  tableConstraints?: TableEntity['tableConstraints'];
-  level?: number;
-  expandedRowKeys: string[];
-  onToggleExpand: (key: string) => void;
-}> = ({
+const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
   column,
   highlights,
   tableConstraints,
@@ -173,9 +167,10 @@ const NestedFieldCard: React.FC<{
   const childrenCount = column.children?.length ?? 0;
 
   return (
-    <div key={column.name}>
+    <div>
       <div
         className="nested-field-card-wrapper"
+        key={column.fullyQualifiedName ?? column.name}
         style={{
           paddingLeft: `${level * 24}px`,
           paddingBottom: hasChildren ? '8px' : '0',
@@ -219,7 +214,7 @@ const NestedFieldCard: React.FC<{
               column={child}
               expandedRowKeys={expandedRowKeys}
               highlights={highlights}
-              key={child.name}
+              key={child.fullyQualifiedName ?? child.name}
               level={level + 1}
               tableConstraints={tableConstraints}
               onToggleExpand={onToggleExpand}
@@ -338,7 +333,7 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [entityType, fqn, searchText]);
+  }, [entityType, fqn, searchText, fetchPaginatedColumns]);
 
   const handleToggleExpand = useCallback((key: string) => {
     setExpandedRowKeys((prev) =>
@@ -409,7 +404,7 @@ const SchemaFieldCardsV1: React.FC<{
     <div className="schema-field-cards-container">
       <Row>
         {columns.map((column) => (
-          <Col key={column.name} span={24}>
+          <Col key={column.fullyQualifiedName ?? column.name} span={24}>
             <NestedFieldCard
               column={column}
               expandedRowKeys={expandedRowKeys}
