@@ -195,7 +195,11 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
         directoryExists = false;
       }
 
-      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !directoryExists;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !directoryExists;
+      }
 
       List<FieldChange> fieldsAdded = new ArrayList<>();
       List<FieldChange> fieldsUpdated = new ArrayList<>();
@@ -290,7 +294,10 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       directory
           .withDescription(description)
@@ -308,9 +315,14 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     private void createEntityWithChangeDescription(
         CSVPrinter printer, CSVRecord csvRecord, Directory directory) throws IOException {
       int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated = recordCreateStatusArray[recordIndex];
+      boolean isCreated =
+          (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length)
+              ? recordCreateStatusArray[recordIndex]
+              : false;
       ChangeDescription changeDescription =
-          recordFieldChangesArray[recordIndex] != null
+          (recordFieldChangesArray != null
+                  && recordIndex < recordFieldChangesArray.length
+                  && recordFieldChangesArray[recordIndex] != null)
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 

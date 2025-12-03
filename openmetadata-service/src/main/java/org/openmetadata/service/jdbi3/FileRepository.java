@@ -283,7 +283,11 @@ public class FileRepository extends EntityRepository<File> {
         fileExists = false;
       }
 
-      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !fileExists;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !fileExists;
+      }
 
       List<FieldChange> fieldsAdded = new ArrayList<>();
       List<FieldChange> fieldsUpdated = new ArrayList<>();
@@ -455,7 +459,10 @@ public class FileRepository extends EntityRepository<File> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       newFile
           .withDisplayName(displayName)
@@ -530,9 +537,14 @@ public class FileRepository extends EntityRepository<File> {
     private void createEntityWithChangeDescription(
         CSVPrinter printer, CSVRecord csvRecord, File file) throws IOException {
       int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated = recordCreateStatusArray[recordIndex];
+      boolean isCreated =
+          (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length)
+              ? recordCreateStatusArray[recordIndex]
+              : false;
       ChangeDescription changeDescription =
-          recordFieldChangesArray[recordIndex] != null
+          (recordFieldChangesArray != null
+                  && recordIndex < recordFieldChangesArray.length
+                  && recordFieldChangesArray[recordIndex] != null)
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 

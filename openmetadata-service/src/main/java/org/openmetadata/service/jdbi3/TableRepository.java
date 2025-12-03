@@ -1924,9 +1924,14 @@ public class TableRepository extends EntityRepository<Table> {
 
       for (int i = 1; i < records.size(); i++) {
         CSVRecord record = records.get(i);
-        boolean isCreated = i < recordCreateStatusArray.length && recordCreateStatusArray[i];
+        boolean isCreated =
+            recordCreateStatusArray != null
+                && i < recordCreateStatusArray.length
+                && recordCreateStatusArray[i];
         ChangeDescription changeDescription =
-            i < recordFieldChangesArray.length && recordFieldChangesArray[i] != null
+            recordFieldChangesArray != null
+                    && i < recordFieldChangesArray.length
+                    && recordFieldChangesArray[i] != null
                 ? recordFieldChangesArray[i]
                 : new ChangeDescription();
         String status;
@@ -1936,7 +1941,6 @@ public class TableRepository extends EntityRepository<Table> {
           status = ENTITY_UPDATED;
         }
 
-        // Enhanced import success with ChangeDescription
         importSuccessWithChangeDescription(resultsPrinter, record, status, changeDescription);
       }
     }
@@ -1967,7 +1971,11 @@ public class TableRepository extends EntityRepository<Table> {
       String columnFqn = csvRecord.get(0);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
-      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !columnExists;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !columnExists;
+      }
 
       // Track field changes for Phase 2 using ChangeDescription structure
       List<FieldChange> fieldsAdded = new ArrayList<>();
@@ -2083,7 +2091,10 @@ public class TableRepository extends EntityRepository<Table> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       // Apply the updates
       column.withDisplayName(csvRecord.get(1));

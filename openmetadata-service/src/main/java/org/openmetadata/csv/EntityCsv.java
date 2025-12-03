@@ -713,6 +713,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static String[] getResultHeaders(List<CsvHeader> csvHeaders) {
     List<String> importResultsCsvHeader = listOf(IMPORT_STATUS_HEADER, IMPORT_STATUS_DETAILS);
     importResultsCsvHeader.addAll(CsvUtil.getHeaders(csvHeaders));
+    importResultsCsvHeader.add("changeDescription");
     return importResultsCsvHeader.toArray(new String[0]);
   }
 
@@ -1637,6 +1638,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
     recordList.addAll(inputRecord.toList());
+    recordList.add(""); // Empty changeDescription column for consistency
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
@@ -1646,6 +1648,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<String> recordList = listOf(IMPORT_FAILED, failedReason);
     recordList.addAll(inputRecord.toList());
+    recordList.add(""); // Empty changeDescription column for consistency
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);

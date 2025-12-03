@@ -997,7 +997,11 @@ public class UserRepository extends EntityRepository<User> {
         userExists = false;
       }
 
-      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !userExists;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !userExists;
+      }
 
       List<FieldChange> fieldsAdded = new ArrayList<>();
       List<FieldChange> fieldsUpdated = new ArrayList<>();
@@ -1083,7 +1087,10 @@ public class UserRepository extends EntityRepository<User> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       user.withDisplayName(displayName)
           .withDescription(description)
@@ -1100,9 +1107,14 @@ public class UserRepository extends EntityRepository<User> {
     private void createEntityWithChangeDescription(
         CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
       int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated = recordCreateStatusArray[recordIndex];
+      boolean isCreated =
+          recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length
+              ? recordCreateStatusArray[recordIndex]
+              : false;
       ChangeDescription changeDescription =
-          recordFieldChangesArray[recordIndex] != null
+          recordFieldChangesArray != null
+                  && recordIndex < recordFieldChangesArray.length
+                  && recordFieldChangesArray[recordIndex] != null
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 

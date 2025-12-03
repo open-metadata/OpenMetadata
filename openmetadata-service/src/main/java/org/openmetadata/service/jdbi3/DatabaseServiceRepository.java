@@ -261,11 +261,14 @@ public class DatabaseServiceRepository
 
         int recordIndex = (int) csvRecord.getRecordNumber() - 1;
         boolean isCreated =
-            recordIndex >= 0 && recordIndex < recordCreateStatusArray.length
+            recordCreateStatusArray != null
+                    && recordIndex >= 0
+                    && recordIndex < recordCreateStatusArray.length
                 ? recordCreateStatusArray[recordIndex]
                 : false;
         ChangeDescription changeDescription =
-            recordIndex >= 0
+            recordFieldChangesArray != null
+                    && recordIndex >= 0
                     && recordIndex < recordFieldChangesArray.length
                     && recordFieldChangesArray[recordIndex] != null
                 ? recordFieldChangesArray[recordIndex]
@@ -292,7 +295,11 @@ public class DatabaseServiceRepository
         databaseExists = false;
       }
 
-      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !databaseExists;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !databaseExists;
+      }
 
       // Track field changes for Phase 2 using ChangeDescription structure
       List<FieldChange> fieldsAdded = new ArrayList<>();
@@ -382,7 +389,10 @@ public class DatabaseServiceRepository
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       database
           .withName(csvRecord.get(0))

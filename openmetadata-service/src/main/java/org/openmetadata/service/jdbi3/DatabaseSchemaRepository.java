@@ -709,7 +709,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         tableExists = false;
       }
 
-      recordCreateStatusArray[(int) csvRecord.getRecordNumber() - 1] = !tableExists;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !tableExists;
+      }
 
       // Track field changes for Phase 2 using ChangeDescription structure
       List<FieldChange> fieldsAdded = new ArrayList<>();
@@ -824,7 +828,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      recordFieldChangesArray[(int) csvRecord.getRecordNumber() - 1] = changeDescription;
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       table
           .withName(csvRecord.get(0))
@@ -850,11 +857,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         throws IOException {
       int recordIndex = (int) csvRecord.getRecordNumber() - 1;
       boolean isCreated =
-          recordIndex >= 0 && recordIndex < recordCreateStatusArray.length
+          recordCreateStatusArray != null
+                  && recordIndex >= 0
+                  && recordIndex < recordCreateStatusArray.length
               ? recordCreateStatusArray[recordIndex]
               : false;
       ChangeDescription changeDescription =
-          recordIndex >= 0
+          recordFieldChangesArray != null
+                  && recordIndex >= 0
                   && recordIndex < recordFieldChangesArray.length
                   && recordFieldChangesArray[recordIndex] != null
               ? recordFieldChangesArray[recordIndex]
