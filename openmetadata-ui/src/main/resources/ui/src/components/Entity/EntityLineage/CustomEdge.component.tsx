@@ -186,17 +186,15 @@ export const CustomEdge = ({
 
     // For columns edges
     if (isColumnLineage) {
+      const noTracing = tracedNodes.length === 0 && tracedColumns.length === 0;
+
       if (isColumnHighlighted) {
         display = 'block';
-        stroke = theme.palette.primary.main;
-        if (selectedColumn) {
-          stroke = theme.palette.allShades.indigo[600];
-        }
-      } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
+        stroke = selectedColumn
+          ? theme.palette.allShades.indigo[600]
+          : theme.palette.primary.main;
+      } else if (noTracing && areBothColumnHandlesPresentInCurrentPage) {
         display = 'block';
-        if (!areBothColumnHandlesPresentInCurrentPage) {
-          display = 'none';
-        }
       } else {
         display = 'none';
       }
