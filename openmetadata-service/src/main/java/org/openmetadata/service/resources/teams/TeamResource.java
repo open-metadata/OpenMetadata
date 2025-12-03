@@ -865,4 +865,23 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTeamsWithAssetsCount",
+      summary = "Get all teams with their asset counts",
+      description =
+          "Get a map of team fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of team FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTeamsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount();
+    return Response.ok(result).build();
+  }
 }
