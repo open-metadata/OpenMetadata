@@ -43,6 +43,19 @@ jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
     ),
 }));
 
+const mockOnColumnClick = jest.fn();
+const mockOnColumnMouseEnter = jest.fn();
+const mockOnColumnMouseLeave = jest.fn();
+
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
+  useLineageProvider: jest.fn(() => ({
+    onColumnClick: mockOnColumnClick,
+    onColumnMouseEnter: mockOnColumnMouseEnter,
+    onColumnMouseLeave: mockOnColumnMouseLeave,
+    selectedColumn: '',
+  })),
+}));
+
 describe('Custom Node Utils', () => {
   it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
     const result = getColumnHandle(
@@ -127,7 +140,6 @@ describe('Custom Node Utils', () => {
       name: 'test column',
       constraint: 'NOT NULL',
     } as unknown as Column;
-    const mockOnColumnClick = jest.fn();
 
     beforeEach(() => {
       jest.clearAllMocks();
