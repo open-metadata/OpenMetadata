@@ -178,15 +178,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
         await expect(popover).toBeVisible();
 
-        await adminPage.getByRole('tab', { name: 'Users' }).click();
         const searchUserResponse = adminPage.waitForResponse(
           `/api/v1/search/query?q=*${deletedUserDisplayName}*index=user_search_index*`
         );
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+        await searchUserResponse;
         const searchUserBar = await adminPage.waitForSelector(
           '[data-testid="owner-select-users-search-bar"]'
         );
         await searchUserBar.fill(deletedUserDisplayName);
-        await searchUserResponse;
         await adminPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1811,29 +1811,57 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test('Data Steward - Overview Tab - Owners Section - Add and Update', async ({
     dataStewardPage,
   }) => {
-    const summaryPanel = dataStewardPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const ownersSection = summaryPanel.locator('.owners-section');
+    // Get browser from page context to create admin API context for user creation
+    const browser = dataStewardPage.context().browser();
+    if (!browser) {
+      throw new Error('Browser not available from page context');
+    }
 
-    await expect(ownersSection).toBeVisible();
+    // Use admin context to create the test user (data steward cannot create users)
+    const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+      await performAdminLogin(browser);
+    const testUser = new UserClass();
 
-    const editButton = ownersSection.getByTestId('edit-owners');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+    try {
+      // Create user with admin context
+      await testUser.create(adminApiContext);
+      const testUserDisplayName = testUser.getUserDisplayName();
 
-      const popover = dataStewardPage.getByTestId('select-owner-tabs');
+      const summaryPanel = dataStewardPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const ownersSection = summaryPanel.locator('.owners-section');
 
-      await expect(popover).toBeVisible();
+      await expect(ownersSection).toBeVisible();
 
-      await dataStewardPage.getByRole('tab', { name: 'Users' }).click();
+      const editButton = ownersSection.getByTestId('edit-owners');
+      if (await editButton.isVisible()) {
+        await editButton.click();
 
-      const firstOwner = dataStewardPage.getByRole('listitem', {
-        name: 'admin',
-        exact: true,
-      });
-      if (await firstOwner.isVisible()) {
-        await firstOwner.click();
+        const popover = dataStewardPage.getByTestId('select-owner-tabs');
+
+        await expect(popover).toBeVisible();
+
+        await dataStewardPage.getByRole('tab', { name: 'Users' }).click();
+        const searchUserResponse = dataStewardPage.waitForResponse(
+          '/api/v1/search/query?q=*&index=user_search_index&*'
+        );
+        const searchUserBar = await dataStewardPage.waitForSelector(
+          '[data-testid="owner-select-users-search-bar"]'
+        );
+
+        await searchUserBar.fill(testUserDisplayName);
+        await searchUserResponse;
+        await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ownerToAssign = dataStewardPage.getByRole('listitem', {
+          name: testUserDisplayName,
+          exact: true,
+        });
+
+        await ownerToAssign.click();
         const updateBtn = dataStewardPage.getByRole('button', {
           name: 'Update',
         });
@@ -1846,6 +1874,11 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
           ).toBeVisible();
         }
       }
+
+      // Cleanup: delete the test user using admin context
+      await testUser.delete(adminApiContext);
+    } finally {
+      await adminAfterAction();
     }
   });
 
@@ -1893,33 +1926,67 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test('Data Steward - Overview Tab - Tags Section - Add and Update', async ({
     dataStewardPage,
   }) => {
-    const summaryPanel = dataStewardPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tagsSection = summaryPanel.locator('.tags-section');
+    // Get browser from page context to create admin API context for resource creation
+    const browser = dataStewardPage.context().browser();
+    if (!browser) {
+      throw new Error('Browser not available from page context');
+    }
 
-    await expect(tagsSection).toBeVisible();
-
-    await dataStewardPage
-      .locator('[data-testid="edit-icon-tags"]')
-      .scrollIntoViewIfNeeded();
-
-    await dataStewardPage.waitForSelector('[data-testid="edit-icon-tags"]', {
-      state: 'visible',
+    // Use admin context to create the test classification and tag (data steward cannot create these)
+    const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+      await performAdminLogin(browser);
+    const testClassification = new ClassificationClass();
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
     });
 
-    await dataStewardPage.locator('[data-testid="edit-icon-tags"]').click();
+    try {
+      // Create classification and tag with admin context
+      await testClassification.create(adminApiContext);
+      await testTag.create(adminApiContext);
 
-    await dataStewardPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
+      const testTagDisplayName = testTag.getTagDisplayName();
 
-    await expect(
-      dataStewardPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
+      const summaryPanel = dataStewardPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tagsSection = summaryPanel.locator('.tags-section');
 
-    const tagOption = dataStewardPage.getByTitle('PII.Sensitive');
-    if (await tagOption.isVisible()) {
+      await expect(tagsSection).toBeVisible();
+
+      await dataStewardPage
+        .locator('[data-testid="edit-icon-tags"]')
+        .scrollIntoViewIfNeeded();
+
+      await dataStewardPage.waitForSelector('[data-testid="edit-icon-tags"]', {
+        state: 'visible',
+      });
+
+      await dataStewardPage.locator('[data-testid="edit-icon-tags"]').click();
+
+      await dataStewardPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        dataStewardPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchTagResponse = dataStewardPage.waitForResponse(
+        `/api/v1/search/query?q=*${testTagDisplayName}*index=tag_search_index*`
+      );
+      const searchBar = dataStewardPage.locator(
+        '[data-testid="tag-select-search-bar"]'
+      );
+
+      await searchBar.fill(testTagDisplayName);
+      await searchTagResponse;
+      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const tagOption = dataStewardPage.getByTitle(testTagDisplayName);
+
       await tagOption.click();
 
       const updateBtn = dataStewardPage.getByRole('button', { name: 'Update' });
@@ -1931,54 +1998,91 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
           dataStewardPage.getByText(/Tags updated successfully/i)
         ).toBeVisible();
       }
+
+      // Cleanup: delete the test tag and classification using admin context
+      await testTag.delete(adminApiContext);
+      await testClassification.delete(adminApiContext);
+    } finally {
+      await adminAfterAction();
     }
   });
 
   test('Data Steward - Overview Tab - Glossary Terms Section - Add and Update', async ({
     dataStewardPage,
   }) => {
-    const summaryPanel = dataStewardPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const glossarySection = summaryPanel.locator('.glossary-terms-section');
+    // Get browser from page context to create admin API context for resource creation
+    const browser = dataStewardPage.context().browser();
+    if (!browser) {
+      throw new Error('Browser not available from page context');
+    }
 
-    await expect(glossarySection).toBeVisible();
+    // Use admin context to create the test glossary term (data steward cannot create these)
+    const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+      await performAdminLogin(browser);
+    const testTerm = new GlossaryTerm();
 
-    await dataStewardPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .scrollIntoViewIfNeeded();
-    await dataStewardPage.waitForSelector(
-      '[data-testid="edit-glossary-terms"]',
-      {
-        state: 'visible',
-      }
-    );
+    try {
+      // Create glossary term with admin context
+      await testTerm.create(adminApiContext);
 
-    await dataStewardPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .click();
+      const testTermDisplayName = testTerm.getTermDisplayName();
 
-    await dataStewardPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
+      const summaryPanel = dataStewardPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const glossarySection = summaryPanel.locator('.glossary-terms-section');
 
-    await expect(
-      dataStewardPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
+      await expect(glossarySection).toBeVisible();
 
-    await dataStewardPage.waitForSelector('.ant-list-item', {
-      state: 'visible',
-    });
-    const firstTerm = dataStewardPage.locator('.ant-list-item').first();
-    await firstTerm.click();
+      await dataStewardPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .scrollIntoViewIfNeeded();
+      await dataStewardPage.waitForSelector(
+        '[data-testid="edit-glossary-terms"]',
+        {
+          state: 'visible',
+        }
+      );
 
-    const patchResp = waitForPatchResponse(dataStewardPage);
-    await dataStewardPage.getByRole('button', { name: 'Update' }).click();
-    await patchResp;
+      await dataStewardPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .click();
 
-    await expect(
-      dataStewardPage.getByText(/Glossary terms updated successfully/i)
-    ).toBeVisible();
+      await dataStewardPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        dataStewardPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchBar = dataStewardPage.locator(
+        '[data-testid="glossary-term-select-search-bar"]'
+      );
+
+      await searchBar.fill(testTermDisplayName);
+      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const termOption = dataStewardPage
+        .locator('.ant-list-item')
+        .filter({ hasText: testTermDisplayName });
+
+      await termOption.click();
+
+      const patchResp = waitForPatchResponse(dataStewardPage);
+      await dataStewardPage.getByRole('button', { name: 'Update' }).click();
+      await patchResp;
+
+      await expect(
+        dataStewardPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+
+      // Cleanup: delete the test glossary term using admin context
+      await testTerm.delete(adminApiContext);
+    } finally {
+      await adminAfterAction();
+    }
   });
 
   test('Data Steward - Overview Tab - Should NOT have permissions for Domains', async ({
@@ -2181,29 +2285,55 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Overview Tab - Owners Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const ownersSection = summaryPanel.locator('.owners-section');
+    const { apiContext, afterAction } = await getApiContext(dataConsumerPage);
+    const testUser = new UserClass();
 
-    await expect(ownersSection).toBeVisible();
+    try {
+      await testUser.create(apiContext);
 
-    const editButton = ownersSection.getByTestId('edit-owners');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+      const testUserDisplayName = testUser.getUserDisplayName();
 
-      const popover = dataConsumerPage.getByTestId('select-owner-tabs');
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const ownersSection = summaryPanel.locator('.owners-section');
 
-      await expect(popover).toBeVisible();
+      await expect(ownersSection).toBeVisible();
 
-      await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
+      const editButton = ownersSection.getByTestId('edit-owners');
+      if (await editButton.isVisible()) {
+        await editButton.click();
 
-      const firstOwner = dataConsumerPage.getByRole('listitem', {
-        name: 'admin',
-        exact: true,
-      });
-      if (await firstOwner.isVisible()) {
-        await firstOwner.click();
+        const popover = dataConsumerPage.getByTestId('select-owner-tabs');
+
+        await expect(popover).toBeVisible();
+
+        await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
+        const searchUserBar = await dataConsumerPage.waitForSelector(
+          '[data-testid="owner-select-users-search-bar"]'
+        );
+        const searchUserResponse = dataConsumerPage.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/search/query?q=*${encodeURIComponent(
+                  testUserDisplayName
+                )}*`
+              )
+        );
+        await searchUserBar.fill(testUserDisplayName);
+        await searchUserResponse;
+        await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const ownerToAssign = dataConsumerPage.getByRole('listitem', {
+          name: testUserDisplayName,
+          exact: true,
+        });
+
+        await ownerToAssign.click();
         const updateBtn = dataConsumerPage.getByRole('button', {
           name: 'Update',
         });
@@ -2216,6 +2346,8 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
           ).toBeVisible();
         }
       }
+    } finally {
+      await afterAction();
     }
   });
 
@@ -2263,35 +2395,57 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Overview Tab - Tags Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tagsSection = summaryPanel.locator('.tags-section');
-
-    await expect(tagsSection).toBeVisible();
-
-    await dataConsumerPage
-      .locator('[data-testid="edit-icon-tags"]')
-      .scrollIntoViewIfNeeded();
-    await dataConsumerPage.waitForSelector('[data-testid="edit-icon-tags"]', {
-      state: 'visible',
+    const { apiContext, afterAction } = await getApiContext(dataConsumerPage);
+    const testClassification = new ClassificationClass();
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
     });
 
-    await dataConsumerPage.locator('[data-testid="edit-icon-tags"]').click();
+    try {
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
 
-    await dataConsumerPage.locator('loader').waitFor({
-      state: 'detached',
-    });
-    await dataConsumerPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
+      const testTagDisplayName = testTag.getTagDisplayName();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tagsSection = summaryPanel.locator('.tags-section');
 
-    const tagOption = dataConsumerPage.getByTitle('PersonalData.Personal');
-    if (await tagOption.isVisible()) {
+      await expect(tagsSection).toBeVisible();
+
+      await dataConsumerPage
+        .locator('[data-testid="edit-icon-tags"]')
+        .scrollIntoViewIfNeeded();
+      await dataConsumerPage.waitForSelector('[data-testid="edit-icon-tags"]', {
+        state: 'visible',
+      });
+
+      await dataConsumerPage.locator('[data-testid="edit-icon-tags"]').click();
+
+      await dataConsumerPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchTagResponse = dataConsumerPage.waitForResponse(
+        `/api/v1/search/query?q=*${testTagDisplayName}*index=tag_search_index*`
+      );
+      const searchBar = dataConsumerPage.locator(
+        '[data-testid="tag-select-search-bar"]'
+      );
+
+      await searchBar.fill(testTagDisplayName);
+      await searchTagResponse;
+      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const tagOption = dataConsumerPage.getByTitle(testTagDisplayName);
+
       await tagOption.click();
 
       const updateBtn = dataConsumerPage.getByRole('button', {
@@ -2305,51 +2459,76 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
           dataConsumerPage.getByText(/Tags updated successfully/i)
         ).toBeVisible();
       }
+    } finally {
+      await testClassification.delete(apiContext);
+      await afterAction();
     }
   });
 
   test('Data Consumer - Overview Tab - Glossary Terms Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const glossarySection = summaryPanel.locator('.glossary-terms-section');
+    const { apiContext, afterAction } = await getApiContext(dataConsumerPage);
+    const testTerm = new GlossaryTerm();
 
-    await expect(glossarySection).toBeVisible();
+    try {
+      await testTerm.create(apiContext);
 
-    await dataConsumerPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .scrollIntoViewIfNeeded();
-    await dataConsumerPage.waitForSelector(
-      '[data-testid="edit-glossary-terms"]',
-      {
-        state: 'visible',
-      }
-    );
+      const testTermDisplayName = testTerm.getTermDisplayName();
 
-    await dataConsumerPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .click();
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const glossarySection = summaryPanel.locator('.glossary-terms-section');
 
-    await dataConsumerPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
+      await expect(glossarySection).toBeVisible();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
+      await dataConsumerPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .scrollIntoViewIfNeeded();
+      await dataConsumerPage.waitForSelector(
+        '[data-testid="edit-glossary-terms"]',
+        {
+          state: 'visible',
+        }
+      );
 
-    const firstTerm = dataConsumerPage.locator('.ant-list-item').first();
-    await firstTerm.click();
+      await dataConsumerPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .click();
 
-    const patchResp = waitForPatchResponse(dataConsumerPage);
-    await dataConsumerPage.getByRole('button', { name: 'Update' }).click();
-    await patchResp;
+      await dataConsumerPage
+        .locator('[data-testid="selectable-list"]')
+        .scrollIntoViewIfNeeded();
 
-    await expect(
-      dataConsumerPage.getByText(/Glossary terms updated successfully/i)
-    ).toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="selectable-list"]')
+      ).toBeVisible();
+
+      const searchBar = dataConsumerPage.locator(
+        '[data-testid="glossary-term-select-search-bar"]'
+      );
+
+      await searchBar.fill(testTermDisplayName);
+      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const termOption = dataConsumerPage
+        .locator('.ant-list-item')
+        .filter({ hasText: testTermDisplayName });
+
+      await termOption.click();
+
+      const patchResp = waitForPatchResponse(dataConsumerPage);
+      await dataConsumerPage.getByRole('button', { name: 'Update' }).click();
+      await patchResp;
+
+      await expect(
+        dataConsumerPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+    } finally {
+      await afterAction();
+    }
   });
 
   test('Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products', async ({
