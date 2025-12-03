@@ -93,6 +93,10 @@ export class TeamClass {
     return await response.json();
   }
 
+  getTeamDisplayName() {
+    return this.responseData.displayName;
+  }
+
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
     const response = await apiContext.patch(
       `/api/v1/teams/${this.responseData.id}`,

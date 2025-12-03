@@ -460,6 +460,7 @@ export default function EntitySummaryPanel({
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
         onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
+        onLinkClick={handleClosePanel}
         onOwnerUpdate={handleOwnerUpdate}
         onTagsUpdate={handleTagsUpdate}
         onTierUpdate={handleTierUpdate}

@@ -30,6 +30,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   componentType,
   isDomainVisible = false,
   excludedItems = [],
+  onLinkClick,
 }) => {
   const { t } = useTranslation();
 
@@ -75,7 +76,10 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     }
 
     return (
-      <Link className="summary-item-link" to={info.linkProps ?? info.url ?? ''}>
+      <Link
+        className="summary-item-link"
+        to={info.linkProps ?? info.url ?? ''}
+        onClick={onLinkClick}>
         {info.value}
       </Link>
     );

@@ -24,4 +24,5 @@ export interface OverviewSectionProps {
   }>;
   componentType?: string;
   isDomainVisible?: boolean;
+  onLinkClick?: () => void;
 }
