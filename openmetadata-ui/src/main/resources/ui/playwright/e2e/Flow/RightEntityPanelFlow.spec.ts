@@ -2318,6 +2318,35 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
+    const glossaryTermItems = dataConsumerPage.locator(
+      '.selected-glossary-term-chip'
+    );
+    const glossaryTermsCount = await glossaryTermItems.count();
+
+    if (glossaryTermsCount >= 1) {
+      const editGlossaryTermsButton = dataConsumerPage.locator(
+        '[data-testid="edit-glossary-terms"]'
+      );
+      await editGlossaryTermsButton.click();
+      const clearAllButton = dataConsumerPage.locator(
+        '[data-testid="clear-all-button"]'
+      );
+      await clearAllButton.click();
+
+      const updateButton = dataConsumerPage.getByRole('button', {
+        name: 'Update',
+      });
+      await updateButton.click();
+      await waitForPatchResponse(dataConsumerPage);
+      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        dataConsumerPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+    }
+
     await dataConsumerPage
       .locator('[data-testid="edit-glossary-terms"]')
       .scrollIntoViewIfNeeded();
