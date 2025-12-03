@@ -189,13 +189,14 @@ class DataSource(BaseModel):
             # The source is a CalculationView, AttributeView or AnalyticView
             # package from <resourceUri>/SFLIGHT.MODELING/calculationviews/CV_SFLIGHT_SBOOK</resourceUri>
             package = self.location.split("/")[1]
+            view_name = self.location.split("/")[3]
             fqn_ = fqn.build(
                 metadata=metadata,
                 entity_type=Table,
                 service_name=service_name,
                 database_name=None,
                 schema_name=SYS_BIC_SCHEMA_NAME,
-                table_name=f"{package}/{self.name}",
+                table_name=f"{package}/{view_name}",
             )
 
         return metadata.get_by_name(entity=Table, fqn=fqn_)
