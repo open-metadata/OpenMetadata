@@ -105,6 +105,18 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
   </ThemeProvider>
 );
 
+const mockLineageProvider = (overrides = {}) => {
+  (useLineageProvider as jest.Mock).mockImplementation(() => ({
+    tracedNodes: [],
+    tracedColumns: [],
+    pipelineStatus: {},
+    activeLayer: [LineageLayer.ColumnLevelLineage],
+    fetchPipelineStatus: jest.fn(),
+    columnsInCurrentPages: [],
+    ...overrides,
+  }));
+};
+
 describe('Test CustomEdge Component', () => {
   it('Check if CustomEdge has selected as false', async () => {
     render(<CustomEdge {...mockCustomEdgeProp} selected={false} />, {
@@ -154,14 +166,7 @@ describe('Test CustomEdge Component', () => {
   });
 
   it('should hide edge when nodes are traced but current edge nodes are not in traced list', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      tracedNodes: ['other-node-1', 'other-node-2'],
-      tracedColumns: [],
-      pipelineStatus: {},
-      activeLayer: [LineageLayer.ColumnLevelLineage],
-      fetchPipelineStatus: jest.fn(),
-      columnsInCurrentPages: [],
-    }));
+    mockLineageProvider({ tracedNodes: ['other-node-1', 'other-node-2'] });
 
     render(<CustomEdge {...mockCustomEdgeProp} />, {
       wrapper: Wrapper,
@@ -174,14 +179,7 @@ describe('Test CustomEdge Component', () => {
   });
 
   it('should display edge when both edge nodes are in traced nodes list', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      tracedNodes: ['1', '2'],
-      tracedColumns: [],
-      pipelineStatus: {},
-      activeLayer: [LineageLayer.ColumnLevelLineage],
-      fetchPipelineStatus: jest.fn(),
-      columnsInCurrentPages: [],
-    }));
+    mockLineageProvider({ tracedNodes: ['1', '2'] });
 
     render(<CustomEdge {...mockCustomEdgeProp} />, {
       wrapper: Wrapper,
@@ -197,14 +195,7 @@ describe('Test CustomEdge Component', () => {
     const encodedSourceHandle = btoa(encodeURIComponent('column1'));
     const encodedTargetHandle = btoa(encodeURIComponent('column2'));
 
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      tracedNodes: [],
-      tracedColumns: ['column1', 'column2'],
-      pipelineStatus: {},
-      activeLayer: [LineageLayer.ColumnLevelLineage],
-      fetchPipelineStatus: jest.fn(),
-      columnsInCurrentPages: [],
-    }));
+    mockLineageProvider({ tracedColumns: ['column1', 'column2'] });
 
     render(
       <CustomEdge
@@ -228,14 +219,7 @@ describe('Test CustomEdge Component', () => {
   });
 
   it('should hide column lineage edge when columns are traced but not highlighted', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      tracedNodes: [],
-      tracedColumns: ['other-column'],
-      pipelineStatus: {},
-      activeLayer: [LineageLayer.ColumnLevelLineage],
-      fetchPipelineStatus: jest.fn(),
-      columnsInCurrentPages: [],
-    }));
+    mockLineageProvider({ tracedColumns: ['other-column'] });
 
     render(
       <CustomEdge
@@ -259,14 +243,7 @@ describe('Test CustomEdge Component', () => {
   });
 
   it('should hide column lineage edge when columns are not in current page', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      tracedNodes: [],
-      tracedColumns: [],
-      pipelineStatus: {},
-      activeLayer: [LineageLayer.ColumnLevelLineage],
-      fetchPipelineStatus: jest.fn(),
-      columnsInCurrentPages: ['other-column'],
-    }));
+    mockLineageProvider({ columnsInCurrentPages: ['other-column'] });
 
     render(
       <CustomEdge
@@ -293,14 +270,7 @@ describe('Test CustomEdge Component', () => {
     const encodedSourceHandle = btoa(encodeURIComponent('column1'));
     const encodedTargetHandle = btoa(encodeURIComponent('column2'));
 
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      tracedNodes: [],
-      tracedColumns: [],
-      pipelineStatus: {},
-      activeLayer: [LineageLayer.ColumnLevelLineage],
-      fetchPipelineStatus: jest.fn(),
-      columnsInCurrentPages: ['column1', 'column2'],
-    }));
+    mockLineageProvider({ columnsInCurrentPages: ['column1', 'column2'] });
 
     render(
       <CustomEdge
