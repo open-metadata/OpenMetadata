@@ -204,7 +204,7 @@ export const CustomEdge = ({
     }
 
     if (showDqTracing) {
-      stroke = RED_3;
+      stroke = theme.palette.allShades.error[600];
     }
 
     return {

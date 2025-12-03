@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
@@ -72,13 +75,38 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     pipelineStatus: {},
     activeLayer: [LineageLayer.ColumnLevelLineage],
     fetchPipelineStatus: jest.fn(),
+    columnsInCurrentPages: [],
   })),
 }));
+
+const mockThemeColors: ThemeColors = {
+  indigo: {
+    600: '#4F46E5',
+  },
+  error: {
+    600: '#D92D20',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    primary: {
+      main: '#0958D9',
+    },
+    allShades: mockThemeColors,
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </ThemeProvider>
+);
 
 describe('Test CustomEdge Component', () => {
   it('Check if CustomEdge has selected as false', async () => {
     render(<CustomEdge {...mockCustomEdgeProp} selected={false} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const deleteButton = screen.queryByTestId('delete-button');
@@ -101,7 +129,7 @@ describe('Test CustomEdge Component', () => {
         }}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: Wrapper,
       }
     );
 
