@@ -346,52 +346,37 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       return false;
     }
 
-    long startTime = System.currentTimeMillis();
-    long timeoutMillis = timeoutSeconds * 1000L;
-    int pollIntervalMillis = 500;
-
     LOG.info("Waiting for index '{}' to become ready (timeout: {}s)", indexName, timeoutSeconds);
 
-    while (System.currentTimeMillis() - startTime < timeoutMillis) {
-      try {
-        HealthRequest healthRequest =
-            HealthRequest.of(
-                h ->
-                    h.index(indexName)
-                        .waitForStatus(
-                            es.co.elastic.clients.elasticsearch._types.HealthStatus.Yellow)
-                        .timeout(t -> t.time(pollIntervalMillis + "ms")));
+    try {
+      HealthRequest healthRequest =
+          HealthRequest.of(
+              h ->
+                  h.index(indexName)
+                      .waitForStatus(es.co.elastic.clients.elasticsearch._types.HealthStatus.Yellow)
+                      .timeout(t -> t.time(timeoutSeconds + "s")));
 
-        HealthResponse healthResponse = client.cluster().health(healthRequest);
+      HealthResponse healthResponse = client.cluster().health(healthRequest);
 
-        if (healthResponse.status() == es.co.elastic.clients.elasticsearch._types.HealthStatus.Green
-            || healthResponse.status()
-                == es.co.elastic.clients.elasticsearch._types.HealthStatus.Yellow) {
-          LOG.info(
-              "Index '{}' is ready with status: {} (took {}ms)",
-              indexName,
-              healthResponse.status(),
-              System.currentTimeMillis() - startTime);
-          return true;
-        }
+      boolean isReady =
+          healthResponse.status() == es.co.elastic.clients.elasticsearch._types.HealthStatus.Green
+              || healthResponse.status()
+                  == es.co.elastic.clients.elasticsearch._types.HealthStatus.Yellow;
 
-        LOG.debug(
-            "Index '{}' not ready yet, status: {}. Waiting...", indexName, healthResponse.status());
-
-      } catch (Exception e) {
-        LOG.debug("Error checking index '{}' health: {}", indexName, e.getMessage());
+      if (isReady) {
+        LOG.info("Index '{}' is ready with status: {}", indexName, healthResponse.status());
+      } else {
+        LOG.warn(
+            "Index '{}' not ready after {}s, status: {}",
+            indexName,
+            timeoutSeconds,
+            healthResponse.status());
       }
 
-      try {
-        Thread.sleep(pollIntervalMillis);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOG.warn("Interrupted while waiting for index '{}' to be ready", indexName);
-        return false;
-      }
+      return isReady;
+    } catch (Exception e) {
+      LOG.error("Failed to wait for index '{}' readiness: {}", indexName, e.getMessage(), e);
+      return false;
     }
-
-    LOG.warn("Timeout waiting for index '{}' to become ready after {}s", indexName, timeoutSeconds);
-    return false;
   }
 }
