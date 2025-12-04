@@ -14,7 +14,14 @@ Generic Delimiter-Separated-Values implementation
 """
 import functools
 from functools import singledispatchmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+# Encodings to try when UTF-8 fails
+FALLBACK_ENCODINGS: List[str] = ["utf-8", "latin-1", "cp1252", "iso-8859-1"]
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -59,16 +66,35 @@ class DSVDataFrameReader(DataFrameReader):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         chunk_list = []
-        with pd.read_csv(
-            path,
-            sep=self.separator,
-            chunksize=CHUNKSIZE,
-            storage_options=storage_options,
-        ) as reader:
-            for chunks in reader:
-                chunk_list.append(chunks)
+        last_error = None
 
-        return DatalakeColumnWrapper(dataframes=chunk_list)
+        for encoding in FALLBACK_ENCODINGS:
+            try:
+                chunk_list = []
+                with pd.read_csv(
+                    path,
+                    sep=self.separator,
+                    chunksize=CHUNKSIZE,
+                    storage_options=storage_options,
+                    encoding=encoding,
+                ) as reader:
+                    for chunks in reader:
+                        chunk_list.append(chunks)
+                if encoding != "utf-8":
+                    logger.info(
+                        f"Successfully read file [{path}] using encoding [{encoding}]"
+                    )
+                return DatalakeColumnWrapper(dataframes=chunk_list)
+            except UnicodeDecodeError as err:
+                last_error = err
+                logger.debug(
+                    f"Failed to read file [{path}] with encoding [{encoding}]: {err}"
+                )
+                continue
+
+        # If all encodings fail, log error and return None
+        logger.error(f"Failed to decode file ({path}) with any supported encoding")
+        return None
 
     @singledispatchmethod
     def _read_dsv_dispatch(
@@ -86,8 +112,44 @@ class DSVDataFrameReader(DataFrameReader):
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        path = self.client.get_object(Bucket=bucket_name, Key=key)["Body"]
-        return self.read_from_pandas(path=path)
+        """
+        Read the CSV file from S3 bucket and return a dataframe.
+        For S3, we need to refetch the stream for each encoding attempt
+        since the streaming body can only be read once.
+        """
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        last_error = None
+        for encoding in FALLBACK_ENCODINGS:
+            try:
+                # Get a fresh stream for each attempt
+                path = self.client.get_object(Bucket=bucket_name, Key=key)["Body"]
+                chunk_list = []
+                with pd.read_csv(
+                    path,
+                    sep=self.separator,
+                    chunksize=CHUNKSIZE,
+                    encoding=encoding,
+                ) as reader:
+                    for chunks in reader:
+                        chunk_list.append(chunks)
+                if encoding != "utf-8":
+                    logger.info(
+                        f"Successfully read S3 file [{bucket_name}/{key}] "
+                        f"using encoding [{encoding}]"
+                    )
+                return DatalakeColumnWrapper(dataframes=chunk_list)
+            except UnicodeDecodeError as err:
+                last_error = err
+                logger.debug(
+                    f"Failed to read S3 file [{bucket_name}/{key}] "
+                    f"with encoding [{encoding}]: {err}"
+                )
+                continue
+
+        # If all encodings fail, log error and return None
+        logger.error(f"Failed to decode file ({path}) with any supported encoding")
+        return None
 
     @_read_dsv_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
