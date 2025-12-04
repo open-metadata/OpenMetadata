@@ -391,7 +391,11 @@ export const fillGlossaryRowDetails = async (
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
-  if (!isBulkEdit) {
+  if (isBulkEdit) {
+    await expect(
+      page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
+    ).toContainText(row.name);
+  } else {
     await fillTextInputDetails(page, row.name);
   }
 
@@ -670,7 +674,11 @@ export const fillRowDetails = async (
     await page.locator('.rdg-cell-name').last().click();
   }
 
-  if (!isBulkEdit) {
+  if (isBulkEdit) {
+    await expect(
+      page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
+    ).toContainText(row.name);
+  } else {
     const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
     const isActive = await activeCell.isVisible();
 
