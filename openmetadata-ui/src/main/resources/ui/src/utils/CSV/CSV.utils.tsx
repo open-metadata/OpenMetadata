@@ -116,9 +116,11 @@ export const getColumnConfig = (
     user: boolean;
     team: boolean;
   },
-  editable = false
+  editable = false,
+  isBulkEdit = false
 ): Column<any> => {
   const colType = column.split('.').pop() ?? '';
+  const disabledColumns = isBulkEdit ? ['name*'].includes(colType) : false;
 
   return {
     key: column,
@@ -126,7 +128,7 @@ export const getColumnConfig = (
     sortable: false,
     resizable: true,
     cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
-    editable,
+    editable: editable ? !disabledColumns : false,
     renderEditCell: csvUtilsClassBase.getEditor(
       colType,
       entityType,
@@ -148,13 +150,20 @@ export const getEntityColumnsAndDataSourceFromCSV = (
     user: boolean;
     team: boolean;
   },
-  cellEditable: boolean
+  cellEditable: boolean,
+  isBulkEdit: boolean
 ) => {
   const [cols, ...rows] = csv;
 
   const columns =
     cols?.map((column) =>
-      getColumnConfig(column, entityType, multipleOwner, cellEditable)
+      getColumnConfig(
+        column,
+        entityType,
+        multipleOwner,
+        cellEditable,
+        isBulkEdit
+      )
     ) ?? [];
 
   const dataSource =
