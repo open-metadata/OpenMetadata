@@ -746,7 +746,11 @@ export const testPaginationNavigation = async (
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
 
-export const testTableSorting = async (page: Page, columnHeader: string) => {
+export const testTableSorting = async (
+  page: Page,
+  columnHeader: string,
+  columnIndex = 0
+) => {
   await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
@@ -754,7 +758,7 @@ export const testTableSorting = async (page: Page, columnHeader: string) => {
   const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
 
   const getFirstCellValue = async () => {
-    const firstCell = page.locator(`${visibleRowSelector} td`).first();
+    const firstCell = page.locator(`${visibleRowSelector} td`).nth(columnIndex);
     await firstCell.waitFor({ state: 'visible' });
 
     return (await firstCell.textContent())?.trim();

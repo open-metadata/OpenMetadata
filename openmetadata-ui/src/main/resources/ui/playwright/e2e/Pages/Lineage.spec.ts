@@ -416,11 +416,14 @@ test('Verify function data in edge drawer', async ({ browser }) => {
       )
       .dispatchEvent('click');
 
-    await page.getByTestId('edit-function').click();
+    await page.waitForSelector('.sql-function-section', {
+      state: 'visible',
+    });
 
-    // wait for the modal to be visible
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
+    await page
+      .locator('.sql-function-section')
+      .getByTestId('edit-button')
+      .click();
     await page.getByTestId('sql-function-input').fill('count');
     const saveRes = page.waitForResponse('/api/v1/lineage');
     await page.getByTestId('save').click();
