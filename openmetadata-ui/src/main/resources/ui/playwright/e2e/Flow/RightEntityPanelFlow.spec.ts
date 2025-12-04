@@ -1064,22 +1064,17 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const newCard = incidentStatsContainer.locator(
         '.incident-stat-card.new-card'
       );
-      const ackCard = incidentStatsContainer.locator(
-        '.incident-stat-card.ack-card'
-      );
-      const assignedCard = incidentStatsContainer.locator(
-        '.incident-stat-card.assigned-card'
-      );
 
       await expect(newCard).toBeVisible();
-      await expect(ackCard).toBeVisible();
-      await expect(assignedCard).toBeVisible();
-
-      // Verify resolved section
-      const resolvedSection =
-        incidentStatsContainer.locator('.resolved-section');
-
-      await expect(resolvedSection).toBeVisible();
+      await expect(
+        incidentStatsContainer.locator('.incident-stat-card.ack-card')
+      ).toBeVisible();
+      await expect(
+        incidentStatsContainer.locator('.incident-stat-card.assigned-card')
+      ).toBeVisible();
+      await expect(
+        incidentStatsContainer.locator('.resolved-section')
+      ).toBeVisible();
 
       // Click on a filter to see incidents
       const activeFilter = await newCard.evaluate((el) =>
