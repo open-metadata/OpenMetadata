@@ -32,6 +32,7 @@ import { WorkflowExtraConfig } from '../../components/Settings/Services/AddInges
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { SCHEDULAR_OPTIONS } from '../../constants/Schedular.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../enums/entity.enum';
 import {
@@ -112,6 +113,16 @@ const AppInstall = () => {
       defaultValue: getCronDefaultValue(appData?.name ?? ''),
     };
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
+
+  const translatedSchedularOptions = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -267,6 +278,7 @@ const AppInstall = () => {
             <ScheduleInterval
               defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
+              schedularOptions={translatedSchedularOptions}
               status={isSavingLoading ? 'waiting' : 'initial'}
               onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
