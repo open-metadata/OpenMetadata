@@ -334,6 +334,16 @@ const GlossaryPage = () => {
           prepareType: true,
           isRecursiveDelete: true,
         });
+
+        // check updated glossary list after deletion
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        setGlossaries(updatedGlossaries);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        navigate(glossaryPath);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
