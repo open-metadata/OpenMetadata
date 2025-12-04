@@ -109,9 +109,14 @@ export const ExtraInfoLabel = ({
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <div className={classNames('font-medium extra-info-value')}>
+
+        <Typography.Text
+          className={classNames('font-medium extra-info-value')}
+          ellipsis={{
+            tooltip: true,
+          }}>
           {value ?? NO_DATA_PLACEHOLDER}
-        </div>
+        </Typography.Text>
       </Typography.Text>
     </div>
   );

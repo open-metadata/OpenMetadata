@@ -834,7 +834,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
@@ -858,7 +858,7 @@ export const getEntityTypeAggregationFilter = (
       entityTypes.forEach((entityType) => {
         (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
           term: {
-            entityType: entityType,
+            'entityType.keyword': entityType,
           },
         });
       });

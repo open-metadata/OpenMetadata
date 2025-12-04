@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineSummary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Summary",
+  "description": "Summary information about a pipeline including impacted assets count",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineSummary",
+  "properties": {
+    "pipelineId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier of the pipeline"
+    },
+    "pipelineName": {
+      "type": "string",
+      "description": "Name of the pipeline"
+    },
+    "pipelineFqn": {
+      "type": "string",
+      "description": "Fully qualified name of the pipeline"
+    },
+    "serviceType": {
+      "$ref": "../entity/services/pipelineService.json#/definitions/pipelineServiceType",
+      "description": "Type of pipeline service"
+    },
+    "startTime": {
+      "$ref": "basic.json#/definitions/timestamp",
+      "default": null,
+      "description": "Start time of the pipeline schedule"
+    },
+    "endTime": {
+      "$ref": "basic.json#/definitions/timestamp",
+      "default": null,
+      "description": "End time of the pipeline schedule"
+    },
+    "lastRunTime": {
+      "$ref": "basic.json#/definitions/timestamp",
+      "default": null,
+      "description": "Timestamp of last pipeline execution"
+    },
+    "lastRunStatus": {
+      "type": ["string", "null"],
+      "enum": ["Successful", "Failed", "Pending", "Skipped", "Running", null],
+      "default": null,
+      "description": "Status of last execution"
+    },
+    "scheduleInterval": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Schedule interval as stored in pipeline"
+    },
+    "impactedAssetsCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total count of tables impacted by this pipeline"
+    },
+    "impactedAssets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "List of fully qualified names of tables impacted by this pipeline"
+    }
+  },
+  "required": ["pipelineId", "pipelineName", "pipelineFqn", "serviceType", "impactedAssetsCount"],
+  "additionalProperties": false
+}

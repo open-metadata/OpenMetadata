@@ -17,6 +17,7 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
@@ -35,7 +36,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [editingOwners, setEditingOwners] = useState<EntityReference[]>([]);
-
+  const { entityRules } = useEntityRules(entityType);
   const {
     isEditing,
     isLoading,
@@ -108,7 +109,10 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     () => (
       <UserTeamSelectableList
         hasPermission={hasPermission}
-        multiple={{ user: true, team: true }}
+        multiple={{
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        }}
         owner={editingOwners}
         popoverProps={{
           placement: 'bottomLeft',
@@ -189,8 +193,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     return ownersDisplay;
   }, [isLoading, isEditing, editingState, ownersDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!displayOwners.length) {
     return (
