@@ -162,7 +162,7 @@ export const dragAndDropNode = async (
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
-  const y = box.y + box.height / 2;
+  const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
@@ -229,6 +229,8 @@ export const connectEdgeBetweenNodes = async (
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
+
+  await page.getByTestId(`lineage-node-${fromNodeFqn}`).click();
 };
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
