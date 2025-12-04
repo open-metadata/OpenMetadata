@@ -82,13 +82,22 @@ jobs:
           if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
             echo "🔹 Running DataAssetRules-only tests on shard 1"
 
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            # Run setup first
             npx playwright test \
               --project=setup \
+              --pass-with-no-tests
+
+            # Run DataAssetRulesEnabled (continue even if it fails)
+            npx playwright test \
               --project=DataAssetRulesEnabled \
+              --pass-with-no-tests \
+              || true
+
+            # Run DataAssetRulesDisabled (always run, even if Enabled failed)
+            npx playwright test \
               --project=DataAssetRulesDisabled \
               --pass-with-no-tests \
-              || true  # Continue even on failure
+              || true
 
           else
             # Shards 2-6 handle chromium tests (5 workers total)
