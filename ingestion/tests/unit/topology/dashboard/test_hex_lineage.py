@@ -254,19 +254,21 @@ class TestHexQueryFetcher(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["project_id"], "proj_456")
 
-    @patch("metadata.ingestion.source.dashboard.hex.query_fetcher.LineageParser")
+    @patch(
+        "metadata.ingestion.source.dashboard.hex.query_fetcher.create_lineage_parser"
+    )
     @patch(
         "metadata.ingestion.source.dashboard.hex.query_fetcher.get_table_entities_from_query"
     )
-    def test_extract_tables_from_query(self, mock_get_tables, mock_parser_class):
+    def test_extract_tables_from_query(self, mock_get_tables, mock_parser_factory):
         """Test extracting table references from SQL query"""
-        # Mock LineageParser
+        # Mock parser returned by create_lineage_parser
         mock_parser = MagicMock()
         mock_parser.source_tables = [
             "sales_db.public.sales_data",
             "sales_db.public.customer_data",
         ]
-        mock_parser_class.return_value = mock_parser
+        mock_parser_factory.return_value = mock_parser
 
         # Mock table entities
         mock_table1 = Table(

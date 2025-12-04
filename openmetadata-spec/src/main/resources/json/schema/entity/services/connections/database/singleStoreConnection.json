@@ -9,13 +9,17 @@
     "singleStoreType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["SingleStore"],
+      "enum": [
+        "SingleStore"
+      ],
       "default": "SingleStore"
     },
     "singleStoreScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mysql+pymysql"],
+      "enum": [
+        "mysql+pymysql"
+      ],
       "default": "mysql+pymysql"
     }
   },
@@ -66,7 +70,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -102,8 +106,17 @@
     },
     "supportsViewLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

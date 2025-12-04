@@ -62,7 +62,7 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_fqn_from_query_name,
@@ -626,15 +626,16 @@ class TableauSource(DashboardServiceSource):
                                 db_service_entity = self.metadata.get_by_name(
                                     entity=DatabaseService, fqn=db_service_name
                                 )
-                            lineage_parser = LineageParser(
-                                query,
-                                (
+                            lineage_parser = create_lineage_parser(
+                                query=query,
+                                dialect=(
                                     ConnectionTypeDialectMapper.dialect_of(
                                         db_service_entity.serviceType.value
                                     )
                                     if db_service_entity
                                     else Dialect.ANSI
                                 ),
+                                parser_type=self.source_config.parserType,
                             )
                             for source_table in lineage_parser.source_tables or []:
                                 database_schema_table = fqn.split_table_name(

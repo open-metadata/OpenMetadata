@@ -9,13 +9,18 @@
     "db2Type": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Db2"],
+      "enum": [
+        "Db2"
+      ],
       "default": "Db2"
     },
     "db2Scheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["db2+ibm_db", "ibmi"],
+      "enum": [
+        "db2+ibm_db",
+        "ibmi"
+      ],
       "default": "db2+ibm_db"
     }
   },
@@ -76,7 +81,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -116,8 +121,18 @@
     },
     "supportsViewLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "database"]
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }
