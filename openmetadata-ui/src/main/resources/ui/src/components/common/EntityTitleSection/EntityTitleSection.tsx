@@ -18,7 +18,6 @@ import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import './EntityTitleSection.less';
 
 interface EntityTitleSectionProps {
   entityDetails: {
