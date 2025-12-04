@@ -1562,9 +1562,11 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     );
     const tagsSection = summaryPanel.locator('.tags-section');
 
+    await tagsSection.scrollIntoViewIfNeeded();
+
     await expect(tagsSection).toBeVisible();
 
-    await editTags(dataStewardPage, 'Sensitive');
+    await editTags(dataStewardPage, 'NonSensitive');
 
     await expect(
       dataStewardPage.getByText(/Tags updated successfully/i)
@@ -1815,7 +1817,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tagsSection).toBeVisible();
 
-    await editTags(dataConsumerPage, 'Sensitive');
+    await editTags(dataConsumerPage, 'NonSensitive');
 
     await expect(
       dataConsumerPage.getByText(/Tags updated successfully/i)

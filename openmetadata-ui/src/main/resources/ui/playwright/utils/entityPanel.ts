@@ -163,9 +163,7 @@ export const editTags = async (
   clearExisting = false
 ) => {
   await page.locator('[data-testid="edit-icon-tags"]').scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="edit-icon-tags"]', {
-    state: 'visible',
-  });
+
   await page.locator('[data-testid="edit-icon-tags"]').click();
 
   if (clearExisting) {
@@ -190,10 +188,18 @@ export const editTags = async (
 
   await page
     .locator('[data-testid="selectable-list"]')
+    .waitFor({ state: 'visible' });
+
+  await page
+    .locator('[data-testid="selectable-list"]')
     .scrollIntoViewIfNeeded();
 
+  const searchTagResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${tagName}*index=tag_search_index*`
+  );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
+  await searchTagResponse;
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
