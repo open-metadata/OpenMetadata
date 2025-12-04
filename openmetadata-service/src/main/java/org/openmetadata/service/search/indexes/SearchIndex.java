@@ -194,12 +194,23 @@ public interface SearchIndex {
       EntityReference entity, List<CollectionDAO.EntityRelationshipRecord> records) {
     List<EsLineageData> data = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : records) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(
-              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails =
-          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      data.add(buildEntityLineageData(ref, entity, lineageDetails));
+      try {
+        EntityReference ref =
+            Entity.getEntityReferenceById(
+                entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
+        LineageDetails lineageDetails =
+            JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+        data.add(buildEntityLineageData(ref, entity, lineageDetails));
+      } catch (EntityNotFoundException ex) {
+        // Upstream entity was deleted but lineage relationship still exists
+        // Skip this lineage edge gracefully to prevent search indexing failure
+        LOG.warn(
+            "Upstream entity '{}' (ID: {}) not found for entity '{}'. Skipping lineage edge. Error: {}",
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId(),
+            entity.getFullyQualifiedName(),
+            ex.getMessage());
+      }
     }
     return data;
   }
