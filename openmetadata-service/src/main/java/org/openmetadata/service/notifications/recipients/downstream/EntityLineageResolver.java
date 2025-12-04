@@ -15,6 +15,7 @@ package org.openmetadata.service.notifications.recipients.downstream;
 
 import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 
 /**
@@ -31,7 +32,31 @@ import org.openmetadata.schema.type.EntityReference;
  */
 public interface EntityLineageResolver {
   /**
-   * Resolves an entity to its lineage-capable parent entities.
+   * Resolves an entity to its lineage-capable parent entities using ChangeEvent payload.
+   *
+   * This method is preferred when processing deletion events, as it uses the entity
+   * snapshot captured in the ChangeEvent payload (before deletion). This allows parent
+   * resolution to work even when the source entity has been deleted.
+   *
+   * Returns a set of parent entity references. Empty set means the entity itself
+   * is lineage-capable and should be used for traversal.
+   *
+   * Examples:
+   * - TestCase → {Table} (1:1 relationship)
+   * - Thread → {TestCase} (1:1 relationship)
+   * - TestSuite → {Table1, Table2, ...} (1:N from failed tests)
+   * - Table → {} (empty set, is lineage entity)
+   *
+   * @param changeEvent the ChangeEvent containing the entity snapshot
+   * @return Set of parent EntityReferences, or empty set if entity is lineage-capable
+   */
+  Set<EntityReference> resolveTraversalEntities(ChangeEvent changeEvent);
+
+  /**
+   * Resolves an entity to its lineage-capable parent entities by ID.
+   *
+   * This method is used when traversing lineage from parent entities onwards,
+   * where the entities are known to exist in the repository.
    *
    * Returns a set of parent entity references. Empty set means the entity itself
    * is lineage-capable and should be used for traversal.

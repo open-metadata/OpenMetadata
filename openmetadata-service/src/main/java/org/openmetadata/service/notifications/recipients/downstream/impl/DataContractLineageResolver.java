@@ -19,9 +19,11 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 
 /**
@@ -46,32 +48,58 @@ import org.openmetadata.service.notifications.recipients.downstream.EntityLineag
 public class DataContractLineageResolver implements EntityLineageResolver {
 
   @Override
-  public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
-    Set<EntityReference> parents = new HashSet<>();
+  public Set<EntityReference> resolveTraversalEntities(ChangeEvent changeEvent) {
+    DataContract dataContract = null;
 
     try {
-      // Fetch the DataContract entity
+      if (changeEvent.getEntity() != null) {
+        dataContract = (DataContract) AlertsRuleEvaluator.getEntity(changeEvent);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to deserialize DataContract from ChangeEvent payload", e);
+    }
+
+    return extractEntityFromDataContract(dataContract, changeEvent.getEntityId());
+  }
+
+  @Override
+  public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
+    DataContract dataContract = null;
+
+    try {
       EntityInterface contractEntity =
           Entity.getEntity(Entity.DATA_CONTRACT, entityId, "", Include.NON_DELETED);
 
-      if (contractEntity instanceof DataContract dataContract) {
-        // Extract the referenced entity (the data asset being contracted)
-        EntityReference referencedEntity = dataContract.getEntity();
-
-        if (referencedEntity != null) {
-          LOG.debug(
-              "Resolved DataContract {} to entity {} {}",
-              entityId,
-              referencedEntity.getType(),
-              referencedEntity.getId());
-
-          parents.add(referencedEntity);
-        } else {
-          LOG.warn("DataContract {} has no referenced entity", entityId);
-        }
+      if (contractEntity instanceof DataContract dc) {
+        dataContract = dc;
       }
     } catch (Exception e) {
       LOG.warn("Failed to resolve entity reference for DataContract {}", entityId, e);
+    }
+
+    return extractEntityFromDataContract(dataContract, entityId);
+  }
+
+  private Set<EntityReference> extractEntityFromDataContract(
+      DataContract dataContract, UUID entityId) {
+    Set<EntityReference> parents = new HashSet<>();
+
+    if (dataContract == null) {
+      return parents;
+    }
+
+    EntityReference referencedEntity = dataContract.getEntity();
+
+    if (referencedEntity != null) {
+      LOG.debug(
+          "Resolved DataContract {} to entity {} {}",
+          entityId,
+          referencedEntity.getType(),
+          referencedEntity.getId());
+
+      parents.add(referencedEntity);
+    } else {
+      LOG.warn("DataContract {} has no referenced entity", entityId);
     }
 
     return parents;

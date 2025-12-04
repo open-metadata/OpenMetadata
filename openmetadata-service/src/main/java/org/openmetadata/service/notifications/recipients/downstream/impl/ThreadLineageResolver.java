@@ -18,8 +18,10 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 
 /**
@@ -39,26 +41,48 @@ import org.openmetadata.service.notifications.recipients.downstream.EntityLineag
 public class ThreadLineageResolver implements EntityLineageResolver {
 
   @Override
-  public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
-    Set<EntityReference> parents = new HashSet<>();
+  public Set<EntityReference> resolveTraversalEntities(ChangeEvent changeEvent) {
+    Thread thread = null;
 
     try {
-      Thread thread = Entity.getFeedRepository().get(entityId);
-
-      if (thread != null) {
-        EntityReference parentRef = thread.getEntityRef();
-
-        if (parentRef != null) {
-          LOG.debug(
-              "Resolved THREAD {} to referenced entity {} {}",
-              entityId,
-              parentRef.getType(),
-              parentRef.getId());
-          parents.add(parentRef);
-        }
+      if (changeEvent.getEntity() != null) {
+        thread = AlertsRuleEvaluator.getThread(changeEvent);
       }
     } catch (Exception e) {
+      LOG.warn("Failed to deserialize Thread from ChangeEvent payload", e);
+    }
+
+    return extractParentFromThread(thread, changeEvent.getEntityId());
+  }
+
+  @Override
+  public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
+    Thread thread = null;
+
+    try {
+      thread = Entity.getFeedRepository().get(entityId);
+    } catch (Exception e) {
       LOG.warn("Failed to resolve referenced entity for Thread {}", entityId, e);
+    }
+
+    return extractParentFromThread(thread, entityId);
+  }
+
+  private Set<EntityReference> extractParentFromThread(Thread thread, UUID entityId) {
+    Set<EntityReference> parents = new HashSet<>();
+
+    if (thread == null) {
+      return parents;
+    }
+
+    EntityReference parentRef = thread.getEntityRef();
+    if (parentRef != null) {
+      LOG.debug(
+          "Resolved THREAD {} to referenced entity {} {}",
+          entityId,
+          parentRef.getType(),
+          parentRef.getId());
+      parents.add(parentRef);
     }
 
     return parents;

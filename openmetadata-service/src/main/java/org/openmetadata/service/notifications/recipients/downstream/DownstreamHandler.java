@@ -14,9 +14,9 @@
 package org.openmetadata.service.notifications.recipients.downstream;
 
 import java.util.Set;
-import java.util.UUID;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 /**
@@ -24,22 +24,26 @@ import org.openmetadata.service.notifications.recipients.context.Recipient;
  *
  * When a subscription is configured with notifyDownstream=true, the handler resolves
  * recipients from entities that consume data from the affected entity (downstream in lineage).
+ *
+ * The handler uses the ChangeEvent payload to safely handle both deleted and existing entities,
+ * extracting the entity snapshot captured at event time.
  */
 public interface DownstreamHandler {
   /**
-   * Resolve recipients from downstream entities for lineage propagation.
+   * Resolve recipients from downstream entities for lineage propagation using ChangeEvent.
    *
-   * @param entityId the ID of the entity triggering the notification
-   * @param entityType the type of the entity
+   * Uses the entity snapshot from the ChangeEvent payload, which allows this method to work
+   * correctly for deleted entities (where the repository no longer has the entity data).
+   *
    * @param action the subscription action
    * @param destination the subscription destination with type and configuration
+   * @param changeEvent the ChangeEvent containing entity snapshot and ID/type information
    * @param maxDepth the maximum depth to traverse (null for unlimited with cycle protection)
    * @return set of recipients from downstream entities
    */
   Set<Recipient> resolveDownstreamRecipients(
-      UUID entityId,
-      String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination,
+      ChangeEvent changeEvent,
       Integer maxDepth);
 }

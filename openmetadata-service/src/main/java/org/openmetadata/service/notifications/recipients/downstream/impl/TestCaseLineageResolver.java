@@ -19,9 +19,11 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -37,29 +39,60 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class TestCaseLineageResolver implements EntityLineageResolver {
 
   @Override
-  public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
-    Set<EntityReference> parents = new HashSet<>();
+  public Set<EntityReference> resolveTraversalEntities(ChangeEvent changeEvent) {
+    TestCase testCase = null;
 
     try {
-      EntityInterface testCaseEntity =
-          Entity.getEntity(Entity.TEST_CASE, entityId, "", Include.NON_DELETED);
+      if (changeEvent.getEntity() != null) {
+        testCase = (TestCase) AlertsRuleEvaluator.getEntity(changeEvent);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to deserialize TestCase from ChangeEvent payload", e);
+    }
 
-      if (testCaseEntity instanceof TestCase testCase) {
-        MessageParser.EntityLink parentLink =
-            MessageParser.EntityLink.parse(testCase.getEntityLink());
-        EntityInterface parentEntity = Entity.getEntity(parentLink, "", Include.NON_DELETED);
+    return extractParentFromTestCase(testCase, changeEvent.getEntityId());
+  }
 
-        if (parentEntity != null) {
-          parents.add(
-              new EntityReference()
-                  .withId(parentEntity.getId())
-                  .withType(parentLink.getEntityType())
-                  .withName(parentEntity.getName())
-                  .withFullyQualifiedName(parentEntity.getFullyQualifiedName()));
-        }
+  @Override
+  public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
+    TestCase testCase = null;
+
+    try {
+      EntityInterface entity =
+          Entity.getEntity(Entity.TEST_CASE, entityId, "owners", Include.NON_DELETED);
+
+      if (entity instanceof TestCase tc) {
+        testCase = tc;
       }
     } catch (Exception e) {
       LOG.warn("Failed to resolve parent for TestCase {}", entityId, e);
+    }
+
+    return extractParentFromTestCase(testCase, entityId);
+  }
+
+  private Set<EntityReference> extractParentFromTestCase(TestCase testCase, UUID entityId) {
+    Set<EntityReference> parents = new HashSet<>();
+
+    if (testCase == null) {
+      return parents;
+    }
+
+    try {
+      MessageParser.EntityLink parentLink =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      EntityInterface parentEntity = Entity.getEntity(parentLink, "owners", Include.NON_DELETED);
+
+      if (parentEntity != null) {
+        parents.add(
+            new EntityReference()
+                .withId(parentEntity.getId())
+                .withType(parentLink.getEntityType())
+                .withName(parentEntity.getName())
+                .withFullyQualifiedName(parentEntity.getFullyQualifiedName()));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to extract parent from TestCase {}", entityId, e);
     }
 
     return parents;

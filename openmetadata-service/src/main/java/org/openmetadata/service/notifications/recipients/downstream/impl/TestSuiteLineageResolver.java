@@ -23,9 +23,11 @@ import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -48,19 +50,42 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class TestSuiteLineageResolver implements EntityLineageResolver {
 
   @Override
+  public Set<EntityReference> resolveTraversalEntities(ChangeEvent changeEvent) {
+    TestSuite testSuite = null;
+
+    try {
+      if (changeEvent.getEntity() != null) {
+        testSuite = (TestSuite) AlertsRuleEvaluator.getEntity(changeEvent);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to deserialize TestSuite from ChangeEvent payload", e);
+    }
+
+    return extractParentEntitiesFromTestSuite(testSuite);
+  }
+
+  @Override
   public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {
-    Set<EntityReference> parentEntities = new HashSet<>();
+    TestSuite testSuite = null;
 
     try {
       // Fetch TestSuite with summary field to get testCaseResultSummary
-      TestSuite testSuite =
-          (TestSuite) Entity.getEntity(Entity.TEST_SUITE, entityId, "summary", Include.NON_DELETED);
+      testSuite = Entity.getEntity(Entity.TEST_SUITE, entityId, "summary", Include.NON_DELETED);
+    } catch (Exception e) {
+      LOG.warn("Failed to resolve parent entities for TestSuite {}", entityId, e);
+    }
 
-      if (testSuite == null) {
-        LOG.debug("TestSuite {} not found", entityId);
-        return parentEntities;
-      }
+    return extractParentEntitiesFromTestSuite(testSuite);
+  }
 
+  private Set<EntityReference> extractParentEntitiesFromTestSuite(TestSuite testSuite) {
+    Set<EntityReference> parentEntities = new HashSet<>();
+
+    if (testSuite == null) {
+      return parentEntities;
+    }
+
+    try {
       // Get test case result summaries (populated by TestSuiteRepository when entity is fetched)
       List<ResultSummary> testCaseResults = testSuite.getTestCaseResultSummary();
 
@@ -73,9 +98,8 @@ public class TestSuiteLineageResolver implements EntityLineageResolver {
           }
         }
       }
-
     } catch (Exception e) {
-      LOG.warn("Failed to resolve parent entities for TestSuite {}", entityId, e);
+      LOG.warn("Failed to extract parent entities from TestSuite", e);
     }
 
     return parentEntities;

@@ -16,6 +16,7 @@ package org.openmetadata.service.notifications.recipients.downstream.impl;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 
@@ -27,6 +28,12 @@ import org.openmetadata.service.notifications.recipients.downstream.EntityLineag
  * to specific resolvers.
  */
 public class DefaultLineageResolver implements EntityLineageResolver {
+
+  @Override
+  public Set<EntityReference> resolveTraversalEntities(ChangeEvent changeEvent) {
+    // No transformation needed; return empty set to signal entity is lineage-capable
+    return Collections.emptySet();
+  }
 
   @Override
   public Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType) {

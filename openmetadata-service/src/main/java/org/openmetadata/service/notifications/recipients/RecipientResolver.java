@@ -131,11 +131,7 @@ public class RecipientResolver {
 
         Set<Recipient> downstreamRecipients =
             downstreamHandler.resolveDownstreamRecipients(
-                event.getEntityId(),
-                event.getEntityType(),
-                action,
-                destination,
-                destination.getDownstreamDepth());
+                action, destination, event, destination.getDownstreamDepth());
 
         allRecipients.addAll(downstreamRecipients);
       }
