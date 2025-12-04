@@ -554,7 +554,7 @@ const BulkEntityImportPage = () => {
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                    isEmpty(activeAsyncImportJob.error) ? 'success' : 'error'
                   }
                 />
               )}

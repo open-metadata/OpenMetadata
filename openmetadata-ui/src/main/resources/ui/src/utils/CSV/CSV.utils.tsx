@@ -127,7 +127,7 @@ export const getColumnConfig = (
     name: startCase(column),
     sortable: false,
     resizable: true,
-    cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
+    cellClass: () => `rdg-cell-${column.replaceAll(/[^a-zA-Z0-9-_]/g, '')}`,
     editable: editable ? !disabledColumns : false,
     renderEditCell: csvUtilsClassBase.getEditor(
       colType,
@@ -289,8 +289,8 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       // step 3: convert the rowStringList into objects with column names as keys
       const rows = rowStringList.map((row) => {
         // Step 1: Replace commas inside double quotes with a placeholder
-        const preprocessedInput = row.replace(/"([^"]*)"/g, (_, p1) => {
-          return `${p1.replace(/,/g, '__COMMA__')}`;
+        const preprocessedInput = row.replaceAll(/"([^"]*)"/g, (_, p1) => {
+          return `${p1.replaceAll(/,/g, '__COMMA__')}`;
         });
 
         // Step 2: Split the row by comma
@@ -503,7 +503,7 @@ export const convertEntityExtensionToCustomPropertyString = (
  */
 export const splitCSV = (input: string): string[] => {
   // First, normalize the input by replacing escaped quotes with a temporary marker
-  const normalizedInput = input.replace(/\\"/g, '__ESCAPED_QUOTE__');
+  const normalizedInput = input.replaceAll(/\\"/g, '__ESCAPED_QUOTE__');
 
   const result = parse<string[]>(normalizedInput, {
     delimiter: ',',
@@ -522,6 +522,6 @@ export const splitCSV = (input: string): string[] => {
 
   // Restore the escaped quotes in the result and ensure no trailing spaces
   return (result.data[0] || []).map((value) =>
-    value.replace(/__ESCAPED_QUOTE__/g, '"').trim()
+    value.replaceAll(/__ESCAPED_QUOTE__/g, '"').trim()
   );
 };
