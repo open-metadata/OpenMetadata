@@ -31,6 +31,7 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -132,6 +133,34 @@ public class TagRepository extends EntityRepository<Tag> {
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
     Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
     return getTagAssets(tag.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllTagsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for tag asset counts");
+      return new HashMap<>();
+    }
+
+    List<Tag> allTags = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> tagAssetCounts = new LinkedHashMap<>();
+
+    for (Tag tag : allTags) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for tag {} asset count. Returning 0.",
+                    tag.getFullyQualifiedName());
+                return 0;
+              });
+
+      tagAssetCounts.put(tag.getFullyQualifiedName(), count);
+    }
+
+    return tagAssetCounts;
   }
 
   @Override
