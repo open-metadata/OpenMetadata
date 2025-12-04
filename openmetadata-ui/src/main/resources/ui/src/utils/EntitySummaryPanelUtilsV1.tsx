@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Segmented, Table, Typography } from 'antd';
+import { Typography, useTheme } from '@mui/material';
+import {
+  Button,
+  Col,
+  Row,
+  Segmented,
+  Table,
+  Typography as AntTypography,
+} from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
@@ -42,7 +50,7 @@ import {
 } from '../rest/tableAPI';
 import { t } from './i18next/LocalUtil';
 import { pruneEmptyChildren } from './TableUtils';
-const { Text } = Typography;
+const { Text } = AntTypography;
 
 export const getEntityChildDetailsV1 = (
   entityType: EntityType,
@@ -160,6 +168,8 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
   expandedRowKeys,
   onToggleExpand,
 }) => {
+  const theme = useTheme();
+
   const hasChildren = !isEmpty(column.children);
   const isExpanded = expandedRowKeys.includes(column.fullyQualifiedName ?? '');
   const isHighlighted = highlights?.column?.includes(column.name);
@@ -198,11 +208,11 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               size="small"
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
-              <Typography.Text className="show-nested-text">
+              <Typography color={theme.palette.primary.main} variant="caption">
                 {isExpanded
                   ? t('label.show-less')
                   : `${t('label.show-nested')} (${childrenCount})`}
-              </Typography.Text>
+              </Typography>
             </Button>
           </div>
         )}
@@ -259,7 +269,7 @@ const SchemaFieldCardsV1: React.FC<{
         };
 
         let data: Column[] = [];
-        let paging: Paging = {
+        let paging = {
           offset: 0,
           total: 0,
           limit: PAGE_SIZE_LARGE,
@@ -904,9 +914,9 @@ const APIEndpointSchemaV1: React.FC<{
       key: 'dataType',
       width: 150,
       render: (dataType: string, record: Record<string, any>) => (
-        <Typography.Text>
+        <Typography variant="caption">
           {record.dataTypeDisplay || dataType || 'Unknown'}
-        </Typography.Text>
+        </Typography>
       ),
     },
     {
