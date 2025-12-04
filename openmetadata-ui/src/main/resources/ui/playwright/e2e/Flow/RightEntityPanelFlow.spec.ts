@@ -31,14 +31,16 @@ import {
 } from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
+  addOwnerWithoutValidation,
+  assignTier,
+  updateDescription,
+} from '../../utils/entity';
+import {
   clearAndAddGlossaryTerms,
   clearDataProducts,
   clickDataQualityStatCard,
-  editDescription,
   editDomain,
-  editOwners,
   editTags,
-  editTier,
   navigateToEntityPanelTab,
   navigateToIncidentsTab,
   openEntitySummaryPanel,
@@ -113,7 +115,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(descriptionSection).toBeVisible();
 
-    await editDescription(adminPage, 'Admin updated description');
+    await updateDescription(adminPage, 'Admin updated description', false, '');
 
     await expect(adminPage.getByTestId('markdown-editor')).not.toBeVisible();
     await expect(
@@ -137,7 +139,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(ownersSection).toBeVisible();
 
-      await editOwners(adminPage, [deletedUserDisplayName], 'Users');
+      await addOwnerWithoutValidation({
+        page: adminPage,
+        owner: deletedUserDisplayName,
+        type: 'Users',
+        initiatorId: 'edit-owners',
+      });
 
       await expect(
         adminPage.getByText(/Owners updated successfully/i)
@@ -204,7 +211,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(ownersSection).toBeVisible();
 
-      await editOwners(adminPage, [deletedTeamDisplayName], 'Teams');
+      await addOwnerWithoutValidation({
+        page: adminPage,
+        owner: deletedTeamDisplayName,
+        type: 'Teams',
+        initiatorId: 'edit-owners',
+      });
 
       await expect(
         adminPage.getByText(/Owners updated successfully/i)
@@ -510,7 +522,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await editTier(adminPage, 'Tier1');
+    await assignTier(
+      adminPage,
+      'Tier1',
+      EntityTypeEndpoint.Table,
+      'edit-icon-tier'
+    );
 
     await expect(
       adminPage.getByText(/Tier updated successfully/i)
@@ -1510,7 +1527,12 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(descriptionSection).toBeVisible();
 
-    await editDescription(dataStewardPage, 'Data Steward updated description');
+    await updateDescription(
+      dataStewardPage,
+      'Data Steward updated description',
+      false,
+      ''
+    );
 
     await expect(
       dataStewardPage.getByTestId('markdown-editor')
@@ -1530,7 +1552,12 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(ownersSection).toBeVisible();
 
-    await editOwners(dataStewardPage, ['admin'], 'Users');
+    await addOwnerWithoutValidation({
+      page: dataStewardPage,
+      owner: 'admin',
+      type: 'Users',
+      initiatorId: 'edit-owners',
+    });
 
     await expect(
       dataStewardPage.getByText(/Owners updated successfully/i)
@@ -1547,7 +1574,12 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await editTier(dataStewardPage, 'Tier2');
+    await assignTier(
+      dataStewardPage,
+      'Tier2',
+      EntityTypeEndpoint.Table,
+      'edit-icon-tier'
+    );
 
     await expect(
       dataStewardPage.getByText(/Tier updated successfully/i)
@@ -1760,9 +1792,11 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(descriptionSection).toBeVisible();
 
-    await editDescription(
+    await updateDescription(
       dataConsumerPage,
-      'Data Consumer updated description'
+      'Data Consumer updated description',
+      false,
+      ''
     );
 
     await expect(
@@ -1783,7 +1817,12 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(ownersSection).toBeVisible();
 
-    await editOwners(dataConsumerPage, ['admin'], 'Users');
+    await addOwnerWithoutValidation({
+      page: dataConsumerPage,
+      owner: 'admin',
+      type: 'Users',
+      initiatorId: 'edit-owners',
+    });
 
     await expect(
       dataConsumerPage.getByText(/Owners updated successfully/i)
@@ -1800,7 +1839,12 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await editTier(dataConsumerPage, 'Tier3');
+    await assignTier(
+      dataConsumerPage,
+      'Tier3',
+      EntityTypeEndpoint.Table,
+      'edit-icon-tier'
+    );
 
     await expect(
       dataConsumerPage.getByText(/Tier updated successfully/i)
