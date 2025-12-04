@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import * as useEditableSectionHook from '../../../hooks/useEditableSection';
@@ -88,18 +87,18 @@ jest.mock('react-i18next', () => ({
 describe('TierSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: false,
       isLoading: false,
       popoverOpen: false,
-      displayData: undefined,
+      displayData: initialData,
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
       setPopoverOpen: mockSetPopoverOpen,
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
   });
 
   it('should render tier section with tier', () => {
@@ -194,18 +193,18 @@ describe('TierSection', () => {
   });
 
   it('should not show edit button when isLoading is true', () => {
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: false,
       isLoading: true,
       popoverOpen: false,
-      displayData: undefined,
+      displayData: initialData,
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
       setPopoverOpen: mockSetPopoverOpen,
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -226,9 +225,7 @@ describe('TierSection', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  it('should call startEditing when edit button is clicked', async () => {
-    const user = userEvent.setup();
-
+  it('should call startEditing when edit button is clicked', () => {
     render(
       <TierSection
         hasPermission
@@ -246,17 +243,17 @@ describe('TierSection', () => {
 
     const editButton = screen.getByTestId('edit-icon-tier');
 
-    await user.click(editButton);
+    fireEvent.click(editButton);
 
     expect(mockStartEditing).toHaveBeenCalledTimes(1);
   });
 
   it('should render editing state when isEditing is true', () => {
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: true,
       isLoading: false,
       popoverOpen: true,
-      displayData: {
+      displayData: initialData || {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
@@ -268,7 +265,7 @@ describe('TierSection', () => {
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -289,18 +286,18 @@ describe('TierSection', () => {
   });
 
   it('should render loading state when isLoading is true', () => {
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: false,
       isLoading: true,
       popoverOpen: false,
-      displayData: undefined,
+      displayData: initialData,
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
       setPopoverOpen: mockSetPopoverOpen,
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -363,11 +360,11 @@ describe('TierSection', () => {
       success: true,
     });
 
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: true,
       isLoading: false,
       popoverOpen: true,
-      displayData: {
+      displayData: initialData || {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
@@ -379,7 +376,7 @@ describe('TierSection', () => {
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -406,19 +403,19 @@ describe('TierSection', () => {
 
     const updateButton = screen.getByTestId('update-tier');
 
-    await userEvent.click(updateButton);
+    fireEvent.click(updateButton);
 
     await waitFor(() => {
       expect(mockUpdateEntityField).toHaveBeenCalled();
     });
   });
 
-  it('should handle cancel editing', async () => {
-    mockUseEditableSection.mockReturnValue({
+  it('should handle cancel editing', () => {
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: true,
       isLoading: false,
       popoverOpen: true,
-      displayData: {
+      displayData: initialData || {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
@@ -430,7 +427,7 @@ describe('TierSection', () => {
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -448,7 +445,7 @@ describe('TierSection', () => {
 
     const closeButton = screen.getByTestId('close-tier');
 
-    await userEvent.click(closeButton);
+    fireEvent.click(closeButton);
 
     expect(mockSetPopoverOpen).toHaveBeenCalledWith(false);
     expect(mockCancelEditing).toHaveBeenCalledTimes(1);
@@ -459,11 +456,11 @@ describe('TierSection', () => {
       success: true,
     });
 
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: true,
       isLoading: false,
       popoverOpen: true,
-      displayData: {
+      displayData: initialData || {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
@@ -475,7 +472,7 @@ describe('TierSection', () => {
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -507,7 +504,7 @@ describe('TierSection', () => {
 
     const updateButton = screen.getByTestId('update-tier');
 
-    await userEvent.click(updateButton);
+    fireEvent.click(updateButton);
 
     await waitFor(() => {
       expect(mockUpdateEntityField).toHaveBeenCalled();
@@ -529,11 +526,11 @@ describe('TierSection', () => {
       success: false,
     });
 
-    mockUseEditableSection.mockReturnValue({
+    mockUseEditableSection.mockImplementation((initialData) => ({
       isEditing: true,
       isLoading: false,
       popoverOpen: true,
-      displayData: {
+      displayData: initialData || {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
@@ -545,7 +542,7 @@ describe('TierSection', () => {
       startEditing: mockStartEditing,
       completeEditing: mockCompleteEditing,
       cancelEditing: mockCancelEditing,
-    });
+    }));
 
     render(
       <TierSection
@@ -563,7 +560,7 @@ describe('TierSection', () => {
 
     const updateButton = screen.getByTestId('update-tier');
 
-    await userEvent.click(updateButton);
+    fireEvent.click(updateButton);
 
     await waitFor(() => {
       expect(mockUpdateEntityField).toHaveBeenCalled();
