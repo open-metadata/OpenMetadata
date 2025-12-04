@@ -108,7 +108,7 @@ const TeamsPage = () => {
     try {
       const { data } = await getTeams({
         parentTeam: parentTeam ?? 'organization',
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
       });
 
       const modifiedTeams: Team[] = data.map((team) => ({
@@ -134,7 +134,7 @@ const TeamsPage = () => {
     try {
       const { data } = await getTeams({
         parentTeam: parentTeam ?? 'organization',
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
         fields: [
           TabSpecificField.USER_COUNT,
           TabSpecificField.CHILDREN_COUNT,
@@ -173,7 +173,7 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(name, {
         fields: TabSpecificField.PARENTS,
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
       });
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
@@ -216,7 +216,7 @@ const TeamsPage = () => {
           TabSpecificField.PROFILE,
           TabSpecificField.OWNERS,
         ],
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
       });
 
       setSelectedTeam(data);
@@ -242,7 +242,7 @@ const TeamsPage = () => {
           TabSpecificField.CHILDREN_COUNT,
           TabSpecificField.DOMAINS,
         ],
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
       });
 
       setSelectedTeam((prev) => ({ ...prev, ...data }));
@@ -480,6 +480,13 @@ const TeamsPage = () => {
   useEffect(() => {
     init();
   }, [fqn]);
+
+  useEffect(() => {
+    if (hasViewPermission && fqn) {
+      // fetchTeamAdvancedDetails(fqn);
+      fetchAllTeamsBasicDetails(fqn);
+    }
+  }, [showDeletedTeam]);
 
   useEffect(() => {
     if (isFetchAllTeamAdvancedDetails && fqn) {

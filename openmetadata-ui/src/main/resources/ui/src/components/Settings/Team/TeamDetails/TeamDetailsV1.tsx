@@ -75,10 +75,7 @@ import {
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
-import {
-  filterChildTeams,
-  getDeleteMessagePostFix,
-} from '../../../../utils/TeamUtils';
+import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -361,7 +358,7 @@ const TeamDetailsV1 = ({
     if (value) {
       searchTeams(value);
     } else {
-      setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+      setChildTeamList(childTeams);
     }
   };
 
@@ -464,7 +461,7 @@ const TeamDetailsV1 = ({
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
-    setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setChildTeamList(childTeams);
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
 
