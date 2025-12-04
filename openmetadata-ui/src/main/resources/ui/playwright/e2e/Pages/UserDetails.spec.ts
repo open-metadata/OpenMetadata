@@ -93,7 +93,11 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
-    await adminPage.getByText('Accounting').click();
+    await adminPage
+      .locator('.ant-select-tree-title')
+      .filter({ hasText: 'Accounting' })
+      .first()
+      .click();
 
     await adminPage.getByTestId('teams-edit-save-btn').click();
 
@@ -152,6 +156,21 @@ test.describe('User with different Roles', () => {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    const searchDomain = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill(domain.responseData.displayName);
+    await searchDomain;
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await adminPage.getByText(domain.responseData.displayName).click();
 
     const teamsResponse = adminPage.waitForResponse(
@@ -167,6 +186,17 @@ test.describe('User with different Roles', () => {
     await redirectToUserPage(adminPage);
 
     await adminPage.waitForLoadState('networkidle');
+
+    // Wait for the team to be visible in the teams section
+    await adminPage
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await adminPage
+      .getByTestId('user-profile-teams')
+      .getByText(team.responseData.displayName)
+      .waitFor({ state: 'visible' });
 
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       team.responseData.displayName

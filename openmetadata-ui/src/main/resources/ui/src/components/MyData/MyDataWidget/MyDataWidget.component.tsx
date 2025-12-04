@@ -272,6 +272,15 @@ const MyDataWidgetInternal = ({
     [data, isLoading]
   );
 
+  const translatedSortOptions = useMemo(
+    () =>
+      MY_DATA_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -281,10 +290,9 @@ const MyDataWidgetInternal = ({
         icon={<MyDataIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
-        sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.my-data')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.MY_DATA))
@@ -301,6 +309,7 @@ const MyDataWidgetInternal = ({
       widgetKey,
       widgetData?.w,
       handleFilterChange,
+      translatedSortOptions,
     ]
   );
 

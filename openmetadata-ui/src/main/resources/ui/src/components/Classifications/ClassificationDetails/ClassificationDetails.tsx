@@ -97,6 +97,7 @@ const ClassificationDetails = forwardRef(
       currentPage,
       paging,
       pageSize,
+      pagingCursor,
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
@@ -142,8 +143,12 @@ const ClassificationDetails = forwardRef(
             [cursorType]: paging[cursorType],
           }
         );
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     };
 
     const {
@@ -325,9 +330,20 @@ const ClassificationDetails = forwardRef(
 
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
-        fetchClassificationChildren(currentClassification.fullyQualifiedName);
+        const { cursorType, cursorValue } = pagingCursor ?? {};
+
+        if (cursorType && cursorValue) {
+          fetchClassificationChildren(
+            currentClassification.fullyQualifiedName,
+            {
+              [cursorType]: cursorValue,
+            }
+          );
+        } else {
+          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+        }
       }
-    }, [currentClassification?.fullyQualifiedName, pageSize]);
+    }, [currentClassification?.fullyQualifiedName, pageSize, pagingCursor]);
 
     useImperativeHandle(ref, () => ({
       refreshClassificationTags() {
@@ -375,7 +391,6 @@ const ClassificationDetails = forwardRef(
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
-                      className="h-10"
                       data-testid="add-new-tag-button"
                       disabled={isClassificationDisabled}
                       type="primary"

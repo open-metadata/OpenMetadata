@@ -65,74 +65,119 @@ jest.mock(
   })
 );
 
+const multipleOwner = {
+  user: true,
+  team: false,
+};
+
 describe('CSV utils ClassBase', () => {
   describe('getEditor', () => {
     it('should return the editor component for the specified column', () => {
       const column = 'owner';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return default textEditor for unknown columns', () => {
       const column = 'unknown';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBe(textEditor);
     });
 
     it('should return the editor component for the "description" column', () => {
       const column = 'description';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "tags" column', () => {
       const column = 'tags';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "glossaryTerms" column', () => {
       const column = 'glossaryTerms';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "tiers" column', () => {
       const column = 'tiers';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "extension" column', () => {
       const column = 'extension';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "reviewers" column', () => {
       const column = 'reviewers';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "domains" column', () => {
       const column = 'domains';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });
 
     it('should return the editor component for the "relatedTerms" column', () => {
       const column = 'relatedTerms';
-      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+      const editor = csvUtilsClassBase.getEditor(
+        column,
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
 
       expect(editor).toBeDefined();
     });

@@ -16,7 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -248,6 +248,7 @@ public final class Entity {
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String TEST_CASE_DIMENSION_RESULT = "testCaseDimensionResult";
+  public static final String PIPELINE_EXECUTION = "pipelineExecution";
   public static final String ENTITY_PROFILE = "entityProfile";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
@@ -427,6 +428,17 @@ public final class Entity {
 
   public static EntityReference getEntityReferenceById(
       @NonNull String entityType, @NonNull UUID id, Include include) {
+    // Check if this is a time-series entity
+    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
+      // For time-series entities, create a minimal EntityReference
+      // since they don't have full entity repositories
+      return new EntityReference()
+          .withId(id)
+          .withType(entityType)
+          .withFullyQualifiedName(entityType + "." + id);
+    }
+
+    // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReference(id, include);
@@ -434,6 +446,20 @@ public final class Entity {
 
   public static List<EntityReference> getEntityReferencesByIds(
       @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
+    // Check if this is a time-series entity
+    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
+      // For time-series entities, create minimal EntityReferences
+      return ids.stream()
+          .map(
+              id ->
+                  new EntityReference()
+                      .withId(id)
+                      .withType(entityType)
+                      .withFullyQualifiedName(entityType + "." + id))
+          .collect(Collectors.toList());
+    }
+
+    // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReferences(ids, include);
@@ -474,6 +500,9 @@ public final class Entity {
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
+    if (ref == null) {
+      return null;
+    }
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
@@ -759,7 +788,7 @@ public final class Entity {
         if (columnTag == null) {
           c.setTags(new ArrayList<>());
         } else {
-          c.setTags(addDerivedTags(columnTag));
+          c.setTags(addDerivedTagsGracefully(columnTag));
         }
       } else {
         c.setTags(c.getTags());

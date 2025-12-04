@@ -95,6 +95,11 @@ const MyFeedWidgetInternal = ({
     [entityThread, loading]
   );
 
+  const userActivityFeedLink = useMemo(
+    () => getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED),
+    [currentUser?.name]
+  );
+
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
@@ -142,6 +147,15 @@ const MyFeedWidgetInternal = ({
     isFullSizeWidget,
   ]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      FEED_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -151,12 +165,11 @@ const MyFeedWidgetInternal = ({
         icon={<ActivityFeedIcon height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
-        sortOptions={FEED_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.activity-feed')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange(key)}
-        onTitleClick={() => navigate(ROUTES.EXPLORE)}
+        onTitleClick={() => navigate(userActivityFeedLink)}
       />
     ),
     [
@@ -169,6 +182,7 @@ const MyFeedWidgetInternal = ({
       widgetKey,
       widgetData?.w,
       handleFilterChange,
+      translatedSortOptions,
     ]
   );
 
@@ -181,10 +195,7 @@ const MyFeedWidgetInternal = ({
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter
-            moreButtonLink={getUserPath(
-              currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
-            )}
+            moreButtonLink={userActivityFeedLink}
             moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />

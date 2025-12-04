@@ -32,7 +32,38 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.CONTAINER;
+import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.SEARCH_INDEX;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_DEFINITION;
+import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.TOPIC;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -44,36 +75,49 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
-import static org.openmetadata.service.util.RdfTestUtils.*;
-import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.RdfTestUtils.verifyContainsRelationshipInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyEntityNotInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyOwnerInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyTagsInRdf;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CREATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
+import static org.openmetadata.service.util.TestUtils.assertEventually;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.assertStyle;
+import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.service.util.TestUtils.get;
+import static org.openmetadata.service.util.TestUtils.getWithResponse;
+import static org.openmetadata.service.util.TestUtils.patch;
+import static org.openmetadata.service.util.TestUtils.putCsv;
+import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
-import es.org.elasticsearch.action.get.GetResponse;
-import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.search.SearchHit;
-import es.org.elasticsearch.search.aggregations.Aggregation;
-import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import es.org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
-import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
-import es.org.elasticsearch.xcontent.ContextParser;
-import es.org.elasticsearch.xcontent.DeprecationHandler;
-import es.org.elasticsearch.xcontent.NamedXContentRegistry;
-import es.org.elasticsearch.xcontent.ParseField;
-import es.org.elasticsearch.xcontent.XContentParser;
-import es.org.elasticsearch.xcontent.json.JsonXContent;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
@@ -251,7 +295,10 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.SecurityServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
-import org.openmetadata.service.resources.teams.*;
+import org.openmetadata.service.resources.teams.PersonaResourceTest;
+import org.openmetadata.service.resources.teams.RoleResourceTest;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -303,6 +350,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsExperts;
   protected final boolean supportsReviewers;
   protected final boolean supportsCertification;
+  protected boolean supportsBulkAPI = false;
 
   // SDK client for new API calls
   protected OpenMetadataClient sdkClient;
@@ -2865,7 +2913,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addDeleteFollower_200(TestInfo test) throws IOException {
+  protected void put_addDeleteFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -2897,7 +2945,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
+  protected void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -4222,10 +4270,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
-    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
+    SearchResultResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
+    SearchResultResponse.Hit[] hits = response.getHits().getHits();
+    for (SearchResultResponse.Hit hit : hits) {
       Map<String, Object> sourceAsMap = hit.getSourceAsMap();
       entityIds.add(sourceAsMap.get("id").toString());
     }
@@ -4247,10 +4295,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
-    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
+    SearchResultResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
+    SearchResultResponse.Hit[] hits = response.getHits().getHits();
+    for (SearchResultResponse.Hit hit : hits) {
       Map<String, Object> sourceAsMap = hit.getSourceAsMap();
       entityIds.add(sourceAsMap.get("id").toString());
     }
@@ -4268,10 +4316,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .atMost(Duration.ofSeconds(30))
         .until(
             () -> {
-              SearchResponse deleteCheckResponse =
+              SearchResultResponse deleteCheckResponse =
                   getResponseFormSearch(indexMapping.getIndexName(null));
               List<String> currentIds = new ArrayList<>();
-              for (SearchHit hit : deleteCheckResponse.getHits().getHits()) {
+              for (SearchResultResponse.Hit hit : deleteCheckResponse.getHits().getHits()) {
                 currentIds.add(hit.getSourceAsMap().get("id").toString());
               }
               return !currentIds.contains(entity.getId().toString());
@@ -4559,53 +4607,56 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return patchEntity;
   }
 
-  private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
-    Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
-    map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
-    map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
-    return map.entrySet().stream()
-        .map(
-            entry ->
-                new NamedXContentRegistry.Entry(
-                    Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
-        .collect(Collectors.toList());
-  }
-
-  private static SearchResponse getResponseFormSearch(String indexName)
+  private static SearchResultResponse getResponseFormSearch(String indexName)
       throws HttpResponseException {
     WebTarget target =
         getResource(
             String.format("search/query?q=&index=%s&from=0&deleted=false&size=1000", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    SearchResponse response = null;
     try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(
-              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = SearchResponse.fromXContent(parser);
+      ObjectMapper mapper = new ObjectMapper();
+      return mapper.readValue(result, SearchResultResponse.class);
     } catch (Exception e) {
-      System.out.println("exception " + e);
+      LOG.error("Failed to parse search response", e);
+      return new SearchResultResponse();
     }
-    return response;
   }
 
-  private static GetResponse getEntityFromSearchWithId(String indexName, UUID entityId)
-      throws HttpResponseException {
-    WebTarget target =
-        getResource(String.format("search/get/%s/doc/%s", indexName, entityId.toString()));
-    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    GetResponse response = null;
-    try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(
-              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = GetResponse.fromXContent(parser);
-    } catch (Exception e) {
-      System.out.println("exception " + e);
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private static class SearchResultResponse {
+    public long took;
+    public boolean timed_out;
+    public Map<String, Object> _shards;
+    public Hits hits = new Hits();
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Hits {
+      public Map<String, Object> total;
+      public double max_score;
+      public List<Hit> hits = new ArrayList<>();
+
+      public Hit[] getHits() {
+        return hits.toArray(new Hit[0]);
+      }
     }
-    return response;
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Hit {
+      public String _index;
+      public String _id;
+      public Double _score;
+
+      @SuppressWarnings("unchecked")
+      public Map<String, Object> _source = new HashMap<>();
+
+      public Map<String, Object> getSourceAsMap() {
+        return _source;
+      }
+    }
+
+    public Hits getHits() {
+      return hits;
+    }
   }
 
   public static String getResponseFormSearchWithHierarchy(String indexName, String query)
@@ -6948,11 +6999,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
@@ -6976,11 +7028,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
@@ -8149,6 +8202,120 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     } finally {
       // Clean up
       deleteEntity(entityId, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  protected Object prepareBulkRequest(List<K> createRequests, boolean dryRun) {
+    return createRequests;
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_entity_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk");
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        TestUtils.put(
+            target,
+            requestBody,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(5, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertNotNull(result.getSuccessRequest());
+    assertEquals(5, result.getSuccessRequest().size());
+
+    for (org.openmetadata.schema.type.api.BulkResponse bulkResponse : result.getSuccessRequest()) {
+      String fqn = (String) bulkResponse.getRequest();
+      assertNotNull(fqn, "FQN should not be null in success response");
+
+      T retrievedEntity = getEntityByName(fqn, "", ADMIN_AUTH_HEADERS);
+      assertNotNull(retrievedEntity, "Entity should be retrievable by FQN: " + fqn);
+      assertEquals(
+          fqn, retrievedEntity.getFullyQualifiedName(), "Retrieved entity FQN should match");
+    }
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_partialFailure() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      K createRequest = createRequest("bulk_partial_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    K invalidCreate = createRequest("", "", "", null);
+    createRequests.add(invalidCreate);
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk");
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        TestUtils.put(
+            target,
+            requestBody,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertTrue(result.getNumberOfRowsProcessed() >= 3);
+    assertTrue(result.getNumberOfRowsPassed() >= 3);
+    assertTrue(result.getNumberOfRowsFailed() >= 1);
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_async() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_async_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk").queryParam("async", "true");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .method(
+                "PUT", jakarta.ws.rs.client.Entity.entity(requestBody, MediaType.APPLICATION_JSON));
+
+    assertEquals(Status.ACCEPTED.getStatusCode(), response.getStatus());
+
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        response.readEntity(org.openmetadata.schema.type.api.BulkOperationResult.class);
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    TestUtils.simulateWork(2000);
+
+    for (int i = 0; i < 5; i++) {
+      String entityName = "bulk_async_" + i;
+      try {
+        T entity = getEntityByName(entityName, "", ADMIN_AUTH_HEADERS);
+        assertNotNull(entity, "Async created entity should exist: " + entityName);
+      } catch (Exception e) {
+      }
     }
   }
 

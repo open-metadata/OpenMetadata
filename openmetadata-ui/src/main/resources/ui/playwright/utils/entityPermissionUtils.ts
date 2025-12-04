@@ -393,7 +393,7 @@ export const testPipelineSpecificOperations = async (
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
 
@@ -448,7 +448,7 @@ export const testDashboardDataModelSpecificOperations = async (
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
 

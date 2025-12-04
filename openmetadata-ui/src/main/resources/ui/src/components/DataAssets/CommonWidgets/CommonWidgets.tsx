@@ -33,6 +33,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -49,6 +50,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -56,6 +58,7 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';
 import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -89,7 +92,7 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, onUpdate, permissions, isVersionView } =
+  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
     useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
@@ -196,7 +199,7 @@ export const CommonWidgets = ({
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
@@ -218,8 +221,11 @@ export const CommonWidgets = ({
         permissions.ViewAll ||
         permissions.ViewDataProfile ||
         permissions.ViewTests,
-      viewAllPermission: permissions.ViewAll,
       viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [permissions, deleted]
   );
@@ -278,6 +284,7 @@ export const CommonWidgets = ({
         activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
+        multiple={entityRules.canAddMultipleDataProducts}
         onSave={handleDataProductsSave}
       />
     );
@@ -320,6 +327,7 @@ export const CommonWidgets = ({
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
+        multiSelect={entityRules.canAddMultipleGlossaryTerm}
         permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
         showTaskHandler={showTaskHandler && !isVersionView}
@@ -342,6 +350,7 @@ export const CommonWidgets = ({
         showSuggestions
         wrapInCard
         description={description}
+        entityFullyQualifiedName={data?.fullyQualifiedName ?? ''}
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}
@@ -389,7 +398,7 @@ export const CommonWidgets = ({
           isRenderedInRightPanel
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
-          hasPermission={Boolean(viewAllPermission)}
+          hasPermission={viewCustomPropertiesPermission}
           maxDataCap={5}
         />
       );
@@ -400,9 +409,14 @@ export const CommonWidgets = ({
     ) {
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-      return <OwnerLabelV2<GenericEntity> />;
+      return <DomainExpertWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 multiple showDomainHeading />;
+      return (
+        <DomainLabelV2
+          showDomainHeading
+          multiple={entityRules.canAddMultipleDomains}
+        />
+      );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

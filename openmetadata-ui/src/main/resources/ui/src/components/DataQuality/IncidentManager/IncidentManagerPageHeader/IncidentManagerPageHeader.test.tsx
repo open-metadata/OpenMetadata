@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import React, { act } from 'react';
+import * as reactRouterDom from 'react-router-dom';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TEST_CASE_DATA,
@@ -24,6 +25,7 @@ import {
   getListTestCaseIncidentByStateId,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
+import '../../../../test/unit/mocks/mui.mock';
 import IncidentManagerPageHeader from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
@@ -169,6 +171,26 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('Incident Manager Page Header component', () => {
   it('getFeedData should be call on mount', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
@@ -289,5 +311,25 @@ describe('Incident Manager Page Header component', () => {
     // If Column is present
     expect(screen.getByText('label.column')).toBeInTheDocument();
     expect(screen.getByText('getColumnNameFromEntityLink')).toBeInTheDocument();
+  });
+
+  it('should handle FQN from URL params without double decoding', async () => {
+    const mockUseParamsWithSpecialChars = jest.fn().mockReturnValue({
+      fqn: 'database.schema.table%test',
+    });
+
+    jest
+      .spyOn(reactRouterDom, 'useParams')
+      .mockImplementation(mockUseParamsWithSpecialChars);
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      'Task',
+      'testCase',
+      'database.schema.table%test'
+    );
   });
 });

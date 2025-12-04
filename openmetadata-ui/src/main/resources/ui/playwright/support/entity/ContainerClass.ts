@@ -25,65 +25,47 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ContainerClass extends EntityClass {
-  private containerName = `pw-container-${uuid()}`;
-  private childContainerName = `pw-container-${uuid()}`;
-  service = {
-    name: `pw-storage-service-${uuid()}`,
-    serviceType: 'S3',
+  private containerName: string;
+  private childContainerName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'S3',
+        type: string;
         awsConfig: {
-          awsAccessKeyId: 'admin',
-          awsSecretAccessKey: 'key',
-          awsRegion: 'us-east-2',
-          assumeRoleSessionName: 'OpenMetadataSession',
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
+          awsAccessKeyId: string;
+          awsSecretAccessKey: string;
+          awsRegion: string;
+          assumeRoleSessionName: string;
+        };
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
-  entity = {
-    name: this.containerName,
-    displayName: this.containerName,
-    service: this.service.name,
+  entity: {
+    name: string;
+    displayName: string;
+    description: string;
+    service: string;
     dataModel: {
-      isPartitioned: true,
-      columns: [
-        {
-          name: `merchant${uuid()}`,
-          dataType: 'VARCHAR',
-          dataLength: 100,
-          dataTypeDisplay: 'varchar',
-          description: 'The merchant for this transaction.',
-          tags: [],
-          ordinalPosition: 2,
-        },
-        {
-          name: `columbia${uuid()}`,
-          dataType: 'NUMERIC',
-          dataTypeDisplay: 'numeric',
-          description:
-            'The ID of the executed transaction. This column is the primary key for this table.',
-          tags: [],
-          constraint: 'PRIMARY_KEY',
-          ordinalPosition: 1,
-        },
-        {
-          name: `delivery${uuid()}`,
-          dataType: 'TIMESTAMP',
-          dataTypeDisplay: 'timestamp',
-          description: 'The time the transaction took place.',
-          tags: [],
-          ordinalPosition: 3,
-        },
-      ],
-    },
+      isPartitioned: boolean;
+      columns: Array<{
+        name: string;
+        dataType: string;
+        dataLength?: number;
+        dataTypeDisplay: string;
+        description: string;
+        tags: unknown[];
+        ordinalPosition: number;
+        constraint?: string;
+      }>;
+    };
   };
-  childContainer = {
-    name: this.childContainerName,
-    displayName: this.childContainerName,
-    service: this.service.name,
+  childContainer: {
+    name: string;
+    displayName: string;
+    service: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -94,7 +76,72 @@ export class ContainerClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Container);
-    this.service.name = name ?? this.service.name;
+
+    this.containerName = `pw-container-${uuid()}`;
+    this.childContainerName = `pw-container-${uuid()}`;
+
+    this.service = {
+      name: name ?? `pw-storage-service-${uuid()}`,
+      serviceType: 'S3',
+      connection: {
+        config: {
+          type: 'S3',
+          awsConfig: {
+            awsAccessKeyId: 'admin',
+            awsSecretAccessKey: 'key',
+            awsRegion: 'us-east-2',
+            assumeRoleSessionName: 'OpenMetadataSession',
+          },
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.entity = {
+      name: this.containerName,
+      displayName: this.containerName,
+      service: this.service.name,
+      description: `Description for ${this.containerName}`,
+      dataModel: {
+        isPartitioned: true,
+        columns: [
+          {
+            name: `merchant${uuid()}`,
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar',
+            description: 'The merchant for this transaction.',
+            tags: [],
+            ordinalPosition: 2,
+          },
+          {
+            name: `columbia${uuid()}`,
+            dataType: 'NUMERIC',
+            dataTypeDisplay: 'numeric',
+            description:
+              'The ID of the executed transaction. This column is the primary key for this table.',
+            tags: [],
+            constraint: 'PRIMARY_KEY',
+            ordinalPosition: 1,
+          },
+          {
+            name: `delivery${uuid()}`,
+            dataType: 'TIMESTAMP',
+            dataTypeDisplay: 'timestamp',
+            description: 'The time the transaction took place.',
+            tags: [],
+            ordinalPosition: 3,
+          },
+        ],
+      },
+    };
+
+    this.childContainer = {
+      name: this.childContainerName,
+      displayName: this.childContainerName,
+      service: this.service.name,
+    };
+
     this.serviceType = ServiceTypes.STORAGE_SERVICES;
     this.type = 'Container';
     this.serviceCategory = SERVICE_TYPE.Storage;
@@ -182,18 +229,28 @@ export class ContainerClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

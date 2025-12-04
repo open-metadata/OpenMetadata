@@ -13,15 +13,19 @@
 import { Button, Stack, Tab, Tabs, useTheme } from '@mui/material';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { getDataQualityReport } from '../../../../rest/testAPI';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import profilerClassBase from '../TableProfiler/ProfilerClassBase';
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
@@ -30,6 +34,7 @@ import './data-observability-tab.less';
 import TabFilters from './TabFilters/TabFilters';
 
 const DataObservabilityTab = (props: TableProfilerProps) => {
+  const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
@@ -37,6 +42,9 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   const { fqn: tableFqn } = useFqn();
   const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
     useParams<{ subTab: ProfilerTabPath }>();
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({
+    [ProfilerTabPath.INCIDENTS]: 0,
+  });
 
   const searchData = useMemo(() => {
     const param = location.search;
@@ -56,6 +64,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   const activeTabComponent = useMemo(() => {
     const tabComponents = profilerClassBase.getProfilerTabs();
     const ActiveComponent = tabComponents[activeTab];
+
+    if (!ActiveComponent) {
+      return null;
+    }
 
     return <ActiveComponent />;
   }, [activeTab]);
@@ -81,6 +93,72 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
       }
     );
   };
+
+  const fetchNewIncidentCount = async () => {
+    const { data: newIncidentData } = await getDataQualityReport({
+      q: JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  testCaseResolutionStatusType:
+                    TestCaseResolutionStatusTypes.New,
+                },
+              },
+              {
+                wildcard: {
+                  'testCase.entityFQN.keyword': `${tableFqn}*`,
+                },
+              },
+            ],
+          },
+        },
+      }),
+      index: 'testCaseResolutionStatus',
+      aggregationQuery:
+        'bucketName=newIncidents:aggType=cardinality:field=stateId',
+    });
+
+    const { data: resolvedIncidentData } = await getDataQualityReport({
+      q: JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  testCaseResolutionStatusType:
+                    TestCaseResolutionStatusTypes.Resolved,
+                },
+              },
+              {
+                wildcard: {
+                  'testCase.entityFQN.keyword': `${tableFqn}*`,
+                },
+              },
+            ],
+          },
+        },
+      }),
+      index: 'testCaseResolutionStatus',
+      aggregationQuery:
+        'bucketName=newIncidents:aggType=cardinality:field=stateId',
+    });
+
+    const newIncidentCount =
+      newIncidentData.length > 0 ? +newIncidentData[0].stateId : 0;
+    const resolvedIncidentCount =
+      resolvedIncidentData.length > 0 ? +resolvedIncidentData[0].stateId : 0;
+
+    setTabCounts((prevCounts) => ({
+      ...prevCounts,
+      [ProfilerTabPath.INCIDENTS]: newIncidentCount - resolvedIncidentCount,
+    }));
+  };
+
+  useEffect(() => {
+    fetchNewIncidentCount();
+  }, []);
 
   return (
     <TableProfilerProvider {...props}>
@@ -122,11 +200,20 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                 '.MuiTab-root:not(:first-of-type)': {
                   marginLeft: '4px',
                 },
+                '& .tabs-label-container': {
+                  lineHeight: '18px',
+                },
               })}
               value={activeTab}
               onChange={handleTabChangeMUI}>
               {tabOptions.map(({ label, key }) => (
-                <Tab key={key} label={label} value={key} />
+                <Tab
+                  key={key}
+                  label={
+                    <TabsLabel count={tabCounts?.[key]} id={key} name={label} />
+                  }
+                  value={key}
+                />
               ))}
             </Tabs>
           ) : (
@@ -157,7 +244,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   }),
                 });
               }}>
-              {PAGE_HEADERS.COLUMN_PROFILE.header}
+              {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
             </Button>
           )}
           <TabFilters />

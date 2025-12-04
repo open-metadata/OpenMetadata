@@ -194,7 +194,11 @@ export class UserClass {
   }
 
   getUserName() {
-    return `${this.data.firstName}${this.data.lastName}`;
+    return this.responseData.name;
+  }
+
+  getUserDisplayName() {
+    return this.responseData.displayName;
   }
 
   async login(
@@ -239,6 +243,14 @@ export class UserClass {
 
   async logout(page: Page) {
     await page.getByRole('menuitem', { name: 'Logout' }).click();
+
+    const waitLogout = page.waitForResponse('/api/v1/users/logout');
+
     await page.getByTestId('confirm-logout').click();
+
+    await waitLogout;
+
+    // Confirm the signin redirection to ensure the token is cleared
+    await page.waitForURL('**/signin');
   }
 }

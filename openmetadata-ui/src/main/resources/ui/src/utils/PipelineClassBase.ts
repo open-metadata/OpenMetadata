@@ -42,6 +42,7 @@ export interface PipelineDetailPageTabProps {
   pipelineDetails: Pipeline;
   pipelineFQN: string;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   deleted: boolean;
@@ -84,6 +85,7 @@ class PipelineClassBase {
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.EXECUTIONS,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

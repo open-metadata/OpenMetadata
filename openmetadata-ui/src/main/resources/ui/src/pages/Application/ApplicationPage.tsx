@@ -49,6 +49,7 @@ const ApplicationPage = () => {
     handlePageChange,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +63,7 @@ const ApplicationPage = () => {
   );
 
   const fetchApplicationList = useCallback(
-    async (showDisabled = false, pagingOffset?: Paging) => {
+    async (showDisabled = false, pagingOffset?: Partial<Paging>) => {
       try {
         setIsLoading(true);
         const { data, paging } = await getApplicationList({
@@ -87,12 +88,17 @@ const ApplicationPage = () => {
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    cursorType &&
+    if (cursorType) {
       fetchApplicationList(showDisabled, {
         [cursorType]: paging[cursorType],
         total: paging.total,
       });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
+    }
   };
 
   const viewAppDetails = (item: App) => {
@@ -129,8 +135,14 @@ const ApplicationPage = () => {
   };
 
   useEffect(() => {
-    fetchApplicationList();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchApplicationList(showDisabled, { [cursorType]: cursorValue });
+    } else {
+      fetchApplicationList(showDisabled);
+    }
+  }, [pageSize, pagingCursor, showDisabled]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
@@ -139,7 +151,12 @@ const ApplicationPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={16}>
-          <PageHeader data={PAGE_HEADERS.APPLICATION} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.APPLICATION.header),
+              subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+            }}
+          />
         </Col>
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">

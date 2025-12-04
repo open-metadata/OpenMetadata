@@ -7,46 +7,140 @@ import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
-import os.org.opensearch.action.search.SearchResponse;
-import os.org.opensearch.client.RequestOptions;
-import os.org.opensearch.client.RestHighLevelClient;
-import os.org.opensearch.common.settings.Settings;
-import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import os.org.opensearch.common.xcontent.NamedXContentRegistry;
-import os.org.opensearch.common.xcontent.XContentParser;
-import os.org.opensearch.common.xcontent.XContentType;
-import os.org.opensearch.index.query.BoolQueryBuilder;
-import os.org.opensearch.index.query.QueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
-import os.org.opensearch.search.SearchHit;
-import os.org.opensearch.search.SearchModule;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.builder.SearchSourceBuilder;
-import os.org.opensearch.search.sort.FieldSortBuilder;
-import os.org.opensearch.search.sort.SortOrder;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.SortOrder;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.mapping.FieldType;
+import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch.core.SearchRequest;
+import os.org.opensearch.client.opensearch.core.SearchResponse;
+import os.org.opensearch.client.opensearch.core.search.Hit;
 
 @Slf4j
 public class OsUtils {
-  public static final NamedXContentRegistry osXContentRegistry;
+
+  public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
+    try {
+      // Convert JsonData to JSON string, then parse it with Jackson
+      String jsonString = jsonData.toJson().toString();
+      return JsonUtils.readValue(jsonString, new TypeReference<>() {});
+    } catch (Exception e) {
+      LOG.error("Failed to convert JsonData to Map", e);
+      return new HashMap<>();
+    }
+  }
+
+  public static JsonData toJsonData(String doc) {
+    Map<String, Object> docMap;
+    try {
+      docMap = mapper.readValue(doc, new TypeReference<>() {});
+    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid JSON input", e);
+    }
+    return JsonData.of(docMap);
+  }
+
+  public static String parseJsonQuery(String jsonQuery) throws JsonProcessingException {
+    JsonNode rootNode = mapper.readTree(jsonQuery);
+    String queryToProcess = jsonQuery;
+    try {
+      if (rootNode.has("query")) {
+        queryToProcess = rootNode.get("query").toString();
+      }
+    } catch (Exception e) {
+      LOG.debug("Query does not contain outer 'query' wrapper, using as-is");
+    }
+    return Base64.getEncoder().encodeToString(queryToProcess.getBytes());
+  }
+
+  private static final ObjectMapper mapper;
 
   static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
-    osXContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
+    mapper = new ObjectMapper();
+  }
+
+  public static String getEntityRelationshipAggregationField(
+      EntityRelationshipDirection direction) {
+    return direction == EntityRelationshipDirection.UPSTREAM
+        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+        : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
+  }
+
+  public static SearchResponse<JsonData> searchEntitiesWithLimitOffset(
+      os.org.opensearch.client.opensearch.OpenSearchClient client,
+      String index,
+      String queryFilter,
+      int offset,
+      int limit,
+      boolean deleted)
+      throws IOException {
+    Query baseQuery =
+        Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("deleted")
+                            .value(FieldValue.of(!CommonUtil.nullOrEmpty(deleted) && deleted))));
+
+    SearchRequest.Builder searchRequestBuilder =
+        new SearchRequest.Builder()
+            .index(index)
+            .from(offset)
+            .size(limit)
+            .query(baseQuery)
+            .sort(
+                s ->
+                    s.field(
+                        f ->
+                            f.field("name.keyword")
+                                .order(SortOrder.Asc)
+                                .unmappedType(FieldType.Keyword)));
+
+    // Apply query filter if present
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        Query filterQuery;
+        if (queryFilter.trim().startsWith("{")) {
+          String queryToProcess = parseJsonQuery(queryFilter);
+          filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        } else {
+          filterQuery = Query.of(q -> q.queryString(qs -> qs.query(queryFilter)));
+        }
+        searchRequestBuilder.query(q -> q.bool(b -> b.must(baseQuery).filter(filterQuery)));
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    return client.search(
+        searchRequestBuilder.build(), os.org.opensearch.client.json.JsonData.class);
   }
 
   public static Map<String, Object> searchEREntityByKey(
+      OpenSearchClient client,
       EntityRelationshipDirection direction,
       String indexAlias,
       String keyName,
@@ -55,7 +149,14 @@ public class OsUtils {
       throws IOException {
     Map<String, Object> result =
         searchEREntitiesByKey(
-            direction, indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
+            client,
+            direction,
+            indexAlias,
+            keyName,
+            Set.of(hasToFqnPair.getLeft()),
+            0,
+            1,
+            fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
@@ -67,6 +168,7 @@ public class OsUtils {
   }
 
   public static Map<String, Object> searchEREntitiesByKey(
+      OpenSearchClient client,
       EntityRelationshipDirection direction,
       String indexAlias,
       String keyName,
@@ -75,10 +177,8 @@ public class OsUtils {
       int size,
       List<String> fieldsToRemove)
       throws IOException {
-    RestHighLevelClient client =
-        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
     Map<String, Object> result = new HashMap<>();
-    os.org.opensearch.action.search.SearchRequest searchRequest =
+    SearchRequest searchRequest =
         getSearchRequest(
             direction,
             indexAlias,
@@ -90,15 +190,19 @@ public class OsUtils {
             null,
             null,
             fieldsToRemove);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (SearchHit hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> esDoc = hit.getSourceAsMap();
-      result.put(esDoc.get(FQN_FIELD).toString(), hit.getSourceAsMap());
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() != null) {
+        Map<String, Object> esDoc = jsonDataToMap(hit.source());
+        String fqn = esDoc.get(FQN_FIELD).toString();
+        result.put(fqn, esDoc);
+      }
     }
     return result;
   }
 
-  public static os.org.opensearch.action.search.SearchRequest getSearchRequest(
+  public static SearchRequest getSearchRequest(
       EntityRelationshipDirection direction,
       String indexAlias,
       String queryFilter,
@@ -109,43 +213,50 @@ public class OsUtils {
       Boolean deleted,
       List<String> fieldsToInclude,
       List<String> fieldsToRemove) {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(indexAlias));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(
-        listOrEmpty(fieldsToInclude).toArray(String[]::new),
-        listOrEmpty(fieldsToRemove).toArray(String[]::new));
 
-    searchSourceBuilder.query(getBoolQueriesWithShould(keysAndValues));
+    String index = Entity.getSearchRepository().getIndexOrAliasName(indexAlias);
+
+    SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().index(index);
+
+    // Build source filter
+    if (!listOrEmpty(fieldsToInclude).isEmpty() || !listOrEmpty(fieldsToRemove).isEmpty()) {
+      searchRequestBuilder.source(
+          s ->
+              s.filter(
+                  f ->
+                      f.includes(listOrEmpty(fieldsToInclude))
+                          .excludes(listOrEmpty(fieldsToRemove))));
+    }
+
+    // Build bool query with should clauses
+    Query baseQuery = buildBoolQueriesWithShould(keysAndValues);
+
     if (!CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(getBoolQueriesWithShould(keysAndValues))
-              .must(QueryBuilders.termQuery("deleted", deleted)));
+      Query deletedQuery =
+          Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(deleted))));
+      final Query finalBaseQuery = baseQuery;
+      baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
-    searchSourceBuilder.from(from);
-    searchSourceBuilder.size(size);
 
+    searchRequestBuilder.query(baseQuery);
+    searchRequestBuilder.from(from);
+    searchRequestBuilder.size(size);
+
+    // Add aggregation if needed
     if (!nullOrEmpty(aggName)) {
-      searchSourceBuilder.aggregation(
-          AggregationBuilders.terms(aggName)
-              .field(getEntityRelationshipAggregationField(direction)));
+      String aggField = getEntityRelationshipAggregationField(direction);
+      searchRequestBuilder.aggregations(
+          aggName, Aggregation.of(a -> a.terms(t -> t.field(aggField))));
     }
 
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
-  }
+    // Apply query filter
+    buildSearchSourceFilter(queryFilter, searchRequestBuilder);
 
-  public static String getEntityRelationshipAggregationField(
-      EntityRelationshipDirection direction) {
-    return direction == EntityRelationshipDirection.UPSTREAM
-        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
-        : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
+    return searchRequestBuilder.build();
   }
 
   public static Map<String, Object> searchEntityByKey(
+      OpenSearchClient client,
       LineageDirection direction,
       String indexAlias,
       String keyName,
@@ -154,7 +265,14 @@ public class OsUtils {
       throws IOException {
     Map<String, Object> result =
         searchEntitiesByKey(
-            direction, indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
+            client,
+            direction,
+            indexAlias,
+            keyName,
+            Set.of(hasToFqnPair.getLeft()),
+            0,
+            1,
+            fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
@@ -166,6 +284,7 @@ public class OsUtils {
   }
 
   public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
       LineageDirection direction,
       String indexAlias,
       String keyName,
@@ -174,10 +293,8 @@ public class OsUtils {
       int size,
       List<String> fieldsToRemove)
       throws IOException {
-    RestHighLevelClient client =
-        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
     Map<String, Object> result = new HashMap<>();
-    os.org.opensearch.action.search.SearchRequest searchRequest =
+    SearchRequest searchRequest =
         getSearchRequest(
             direction,
             indexAlias,
@@ -189,15 +306,19 @@ public class OsUtils {
             null,
             null,
             fieldsToRemove);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (SearchHit hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> esDoc = hit.getSourceAsMap();
-      result.put(esDoc.get(FQN_FIELD).toString(), hit.getSourceAsMap());
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() != null) {
+        Map<String, Object> esDoc = jsonDataToMap(hit.source());
+        String fqn = esDoc.get(FQN_FIELD).toString();
+        result.put(fqn, esDoc);
+      }
     }
     return result;
   }
 
-  public static os.org.opensearch.action.search.SearchRequest getSearchRequest(
+  public static SearchRequest getSearchRequest(
       LineageDirection direction,
       String indexAlias,
       String queryFilter,
@@ -208,97 +329,159 @@ public class OsUtils {
       Boolean deleted,
       List<String> fieldsToInclude,
       List<String> fieldsToRemove) {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(indexAlias));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(
-        listOrEmpty(fieldsToInclude).toArray(String[]::new),
-        listOrEmpty(fieldsToRemove).toArray(String[]::new));
 
-    searchSourceBuilder.query(getBoolQueriesWithShould(keysAndValues));
+    String index = Entity.getSearchRepository().getIndexOrAliasName(indexAlias);
+
+    SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().index(index);
+
+    // Build source filter
+    if (!listOrEmpty(fieldsToInclude).isEmpty() || !listOrEmpty(fieldsToRemove).isEmpty()) {
+      searchRequestBuilder.source(
+          s ->
+              s.filter(
+                  f ->
+                      f.includes(listOrEmpty(fieldsToInclude))
+                          .excludes(listOrEmpty(fieldsToRemove))));
+    }
+
+    // Build bool query with should clauses
+    Query baseQuery = buildBoolQueriesWithShould(keysAndValues);
+
     if (!CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(getBoolQueriesWithShould(keysAndValues))
-              .must(QueryBuilders.termQuery("deleted", deleted)));
+      Query deletedQuery =
+          Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(deleted))));
+      final Query finalBaseQuery = baseQuery;
+      baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
-    searchSourceBuilder.from(from);
-    searchSourceBuilder.size(size);
 
-    // This assumes here that the key has a keyword field
+    searchRequestBuilder.query(baseQuery);
+    searchRequestBuilder.from(from);
+    searchRequestBuilder.size(size);
+
+    // Add aggregation if needed
     if (!nullOrEmpty(aggName)) {
-      searchSourceBuilder.aggregation(
-          AggregationBuilders.terms(aggName).field(getLineageDirectionAggregationField(direction)));
+      String aggField = getLineageDirectionAggregationField(direction);
+      searchRequestBuilder.aggregations(
+          aggName, Aggregation.of(a -> a.terms(t -> t.field(aggField))));
     }
 
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
+    // Apply query filter
+    buildSearchSourceFilter(queryFilter, searchRequestBuilder);
+
+    return searchRequestBuilder.build();
   }
 
-  private static BoolQueryBuilder getBoolQueriesWithShould(Map<String, Set<String>> keysAndValues) {
-    BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-    keysAndValues.forEach((key, values) -> boolQuery.should(QueryBuilders.termsQuery(key, values)));
-    boolQuery.minimumShouldMatch(1);
-    return boolQuery;
-  }
-
-  public static SearchResponse searchEntities(String index, String queryFilter, Boolean deleted)
+  public static SearchResponse<JsonData> searchEntities(
+      OpenSearchClient client, String index, String queryFilter, Boolean deleted)
       throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
+    String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
 
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder.size(10000));
+    Query deletedQuery =
+        Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("deleted").value(FieldValue.of(!nullOrEmpty(deleted) && deleted))));
 
-    RestHighLevelClient client =
-        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
-    return client.search(searchRequest, RequestOptions.DEFAULT);
+    SearchRequest.Builder searchRequestBuilder =
+        new SearchRequest.Builder().index(indexName).query(deletedQuery).size(10000);
+
+    // Apply query filter
+    buildSearchSourceFilter(queryFilter, searchRequestBuilder);
+
+    return client.search(searchRequestBuilder.build(), JsonData.class);
   }
 
-  public static void buildSearchSourceFilter(
-      String queryFilter, SearchSourceBuilder searchSourceBuilder) {
+  private static Query buildBoolQueriesWithShould(Map<String, Set<String>> keysAndValues) {
+    BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+
+    keysAndValues.forEach(
+        (key, values) -> {
+          List<FieldValue> fieldValues =
+              values.stream().map(FieldValue::of).collect(Collectors.toList());
+          boolQuery.should(
+              Query.of(q -> q.terms(t -> t.field(key).terms(tv -> tv.value(fieldValues)))));
+        });
+
+    boolQuery.minimumShouldMatch("1");
+    return Query.of(q -> q.bool(boolQuery.build()));
+  }
+
+  private static void buildSearchSourceFilter(
+      String queryFilter, SearchRequest.Builder searchRequestBuilder) {
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
       try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
+        Query filterQuery;
+        if (queryFilter.trim().startsWith("{")) {
+          String queryToProcess = parseJsonQuery(queryFilter);
+          filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        } else {
+          filterQuery = Query.of(q -> q.queryString(qs -> qs.query(queryFilter)));
+        }
+        searchRequestBuilder.postFilter(filterQuery);
       } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
   }
 
-  public static SearchResponse searchEntitiesWithLimitOffset(
-      String index, String queryFilter, int offset, int limit, boolean deleted) throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(index);
-    os.org.opensearch.search.builder.SearchSourceBuilder searchSourceBuilder =
-        new os.org.opensearch.search.builder.SearchSourceBuilder();
-    searchSourceBuilder.from(offset).size(limit);
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
-    FieldSortBuilder nameSort =
-        new FieldSortBuilder("name.keyword").order(SortOrder.ASC).unmappedType("keyword");
-    searchSourceBuilder.sort(nameSort);
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder);
+  public static JsonNode transformStemmerForOpenSearch(JsonNode settingsNode) {
+    try {
+      // Clone the settings to avoid modifying the original
+      ObjectNode transformedNode = (ObjectNode) JsonUtils.readTree(settingsNode.toString());
 
-    // Execute the search
-    RestHighLevelClient client =
-        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
-    return client.search(searchRequest, RequestOptions.DEFAULT);
+      // Navigate to the filters section if it exists
+      JsonNode analysisNode = transformedNode.path("analysis");
+      if (!analysisNode.isMissingNode() && analysisNode.isObject()) {
+        ObjectNode analysisObj = (ObjectNode) analysisNode;
+
+        JsonNode filtersNode = analysisObj.path("filter");
+        if (!filtersNode.isMissingNode() && filtersNode.isObject()) {
+          ObjectNode filtersObj = (ObjectNode) filtersNode;
+
+          // Transform stemmer configuration from Elasticsearch to OpenSearch format
+          JsonNode omStemmerNode = filtersObj.path("om_stemmer");
+          if (!omStemmerNode.isMissingNode() && omStemmerNode.has("type")) {
+            String type = omStemmerNode.get("type").asText();
+            if ("stemmer".equals(type) && omStemmerNode.has("name")) {
+              String name = omStemmerNode.get("name").asText();
+              // OpenSearch uses "language" instead of "name" for stemmer configuration
+              ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
+              newStemmerNode.put("type", "stemmer");
+              newStemmerNode.put("language", name);
+
+              // Replace the om_stemmer configuration
+              filtersObj.set("om_stemmer", newStemmerNode);
+            }
+          } else {
+            LOG.debug("No om_stemmer filter found in settings");
+          }
+        } else {
+          LOG.debug("No filter section found in analysis settings");
+        }
+      } else {
+        LOG.debug("No analysis section found in settings");
+      }
+
+      return transformedNode;
+    } catch (Exception e) {
+      LOG.warn("Failed to transform stemmer settings for OpenSearch, using original settings", e);
+      return settingsNode;
+    }
+  }
+
+  public static String enrichIndexMappingWithStemmer(String indexMappingContent) {
+    if (nullOrEmpty(indexMappingContent)) {
+      throw new IllegalArgumentException("Empty Index Mapping Content.");
+    }
+    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+    JsonNode settingsNode = rootNode.get("settings");
+
+    if (settingsNode != null && !settingsNode.isNull()) {
+      JsonNode transformedSettings = transformStemmerForOpenSearch(settingsNode);
+      ((ObjectNode) rootNode).set("settings", transformedSettings);
+    }
+
+    return rootNode.toString();
   }
 }
