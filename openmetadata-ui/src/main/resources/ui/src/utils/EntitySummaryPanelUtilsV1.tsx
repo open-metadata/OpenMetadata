@@ -37,8 +37,8 @@ import {
   getTableList,
   searchTableColumnsByFQN,
 } from '../rest/tableAPI';
+import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-
 const { Text } = Typography;
 
 export const getEntityChildDetailsV1 = (
@@ -373,7 +373,7 @@ const TopicFieldCardsV1: React.FC<{
               <FieldCard
                 dataType={field.dataType || 'Unknown'}
                 description={field.description}
-                fieldName={field.name}
+                fieldName={getEntityName(field)}
                 glossaryTerms={field.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={field.tags}
@@ -421,7 +421,7 @@ const ContainerFieldCardsV1: React.FC<{
               <FieldCard
                 dataType={column.dataType || 'Unknown'}
                 description={column.description}
-                fieldName={column.name}
+                fieldName={getEntityName(column)}
                 glossaryTerms={column.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={column.tags}
@@ -469,7 +469,7 @@ const PipelineTasksV1: React.FC<{
               <FieldCard
                 dataType={task.taskType || t('label.task')}
                 description={task.description}
-                fieldName={task.displayName || task.name}
+                fieldName={getEntityName(task)}
                 glossaryTerms={task.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={task.tags}
@@ -583,7 +583,7 @@ const APICollectionEndpointsV1: React.FC<{
               <FieldCard
                 dataType={endpoint.requestMethod || t('label.api-endpoint')}
                 description={endpoint.description}
-                fieldName={endpoint.displayName || endpoint.name}
+                fieldName={getEntityName(endpoint)}
                 isHighlighted={isHighlighted}
                 tags={endpoint.tags}
               />
@@ -680,7 +680,7 @@ const DatabaseSchemaTablesV1: React.FC<{
               <FieldCard
                 dataType={table.tableType || 'Table'}
                 description={table.description}
-                fieldName={table.name}
+                fieldName={getEntityName(table)}
                 isHighlighted={isHighlighted}
                 tags={table.tags}
               />
@@ -728,7 +728,7 @@ const DashboardChartsV1: React.FC<{
               <FieldCard
                 dataType="Chart"
                 description={chart.description}
-                fieldName={chart.displayName || chart.name}
+                fieldName={getEntityName(chart)}
                 isHighlighted={isHighlighted}
                 tags={chart.tags}
               />
@@ -950,7 +950,7 @@ const DatabaseSchemasV1: React.FC<{
               <FieldCard
                 dataType={schema.type || 'Database Schema'}
                 description={schema.description || ''}
-                fieldName={schema.displayName || schema.name}
+                fieldName={getEntityName(schema)}
                 tags={schema.tags || []}
               />
             </Col>
