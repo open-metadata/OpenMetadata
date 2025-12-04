@@ -264,7 +264,7 @@ const TeamDetailsV1 = ({
               must_not: [
                 {
                   term: {
-                    'name.keyword': 'Organization',
+                    'name.keyword': currentTeam.name,
                   },
                 },
               ],
@@ -272,6 +272,7 @@ const TeamDetailsV1 = ({
           },
         },
         searchIndex: SearchIndex.TEAM,
+        includeDeleted: showDeletedTeam,
       });
 
       const data = res.hits.hits.map((value) => value._source as Team);
