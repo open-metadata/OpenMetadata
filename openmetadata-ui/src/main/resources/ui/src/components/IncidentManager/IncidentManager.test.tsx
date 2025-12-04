@@ -79,6 +79,11 @@ jest.mock('../../rest/incidentManagerAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
   updateTestCaseIncidentById: jest.fn(),
+  postTestCaseIncidentStatus: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {},
+    })
+  ),
 }));
 jest.mock('../../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest

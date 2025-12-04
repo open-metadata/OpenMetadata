@@ -362,7 +362,6 @@ const InlineTestCaseIncidentStatus = ({
             )
           ) : undefined
         }
-        disabled={!hasEditPermission}
         label={statusType}
         sx={{
           px: 1,
@@ -380,23 +379,23 @@ const InlineTestCaseIncidentStatus = ({
             color: statusColor.color,
             fontSize: '16px',
             margin: '0 4px 0 -4px',
+            height: '18px',
+            width: '18px',
           },
-          '&:hover': hasEditPermission
-            ? {
-                backgroundColor: statusColor.bg,
-                opacity: 0.8,
-              }
-            : {},
+          '&:hover': {
+            backgroundColor: statusColor.bg,
+            opacity: 0.8,
+          },
         }}
         onClick={handleStatusClick}
-        onDelete={handleStatusClick}
+        onDelete={hasEditPermission ? handleStatusClick : undefined}
       />
 
       <Menu
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         open={showStatusMenu}
         sx={{
@@ -406,7 +405,7 @@ const InlineTestCaseIncidentStatus = ({
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         onClose={handleCloseStatusMenu}>
         {Object.values(TestCaseResolutionStatusTypes).map((status) => (
@@ -435,7 +434,7 @@ const InlineTestCaseIncidentStatus = ({
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         data-testid={`${data.testCaseReference?.name}-assignee-popover`}
         open={showAssigneePopover}
@@ -451,7 +450,7 @@ const InlineTestCaseIncidentStatus = ({
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         onClose={handleCloseAllPopovers}>
         <Box

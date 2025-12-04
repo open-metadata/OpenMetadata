@@ -52,6 +52,7 @@ import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
   getListTestCaseIncidentStatusFromSearch,
+  postTestCaseIncidentStatus,
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
@@ -327,6 +328,50 @@ const IncidentManager = ({
     }
   };
 
+  const handleAssigneeUpdate = async (
+    record: TestCaseResolutionStatus,
+    assignee?: EntityReference[]
+  ) => {
+    const assigneeData = assignee?.[0];
+
+    const updatedData: TestCaseResolutionStatus = {
+      ...record,
+      testCaseResolutionStatusDetails: {
+        ...record?.testCaseResolutionStatusDetails,
+        assignee: assigneeData,
+      },
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+    };
+
+    try {
+      await postTestCaseIncidentStatus({
+        severity: record.severity,
+        testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+        testCaseResolutionStatusDetails: {
+          assignee: assigneeData,
+        },
+      });
+
+      setTestCaseListData((prev) => {
+        const testCaseList = prev.data.map((item) => {
+          if (item.stateId === updatedData.stateId) {
+            return updatedData;
+          }
+
+          return item;
+        });
+
+        return {
+          ...prev,
+          data: testCaseList,
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const fetchUserFilterOptions = async (query: string) => {
     if (!query) {
       return;
@@ -506,7 +551,7 @@ const IncidentManager = ({
         title: t('label.last-updated'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        width: 200,
+        width: 150,
         render: (value: number) => {
           return <DateTimeDisplay timestamp={value} />;
         },
@@ -515,7 +560,7 @@ const IncidentManager = ({
         title: t('label.status'),
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
-        width: 120,
+        width: 100,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton height={24} variant="rectangular" width={100} />;
@@ -540,7 +585,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 120,
+        width: 100,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton height={24} variant="rectangular" width={100} />;
@@ -566,13 +611,42 @@ const IncidentManager = ({
         title: t('label.assignee'),
         dataIndex: 'testCaseResolutionStatusDetails',
         key: 'testCaseResolutionStatusDetails',
-        width: 150,
-        render: (value?: Assigned) => (
-          <OwnerLabel
-            owners={value?.assignee ? [value.assignee] : []}
-            placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
-          />
-        ),
+        width: 200,
+        render: (value?: Assigned, record?: TestCaseResolutionStatus) => {
+          if (isPermissionLoading) {
+            return <Skeleton height={24} variant="rectangular" width={100} />;
+          }
+
+          const hasPermission = testCasePermissions.find(
+            (item) =>
+              item.fullyQualifiedName ===
+              record?.testCaseReference?.fullyQualifiedName
+          );
+
+          return (
+            <Box data-testid="assignee">
+              <OwnerLabel
+                isCompactView
+                className="m-0"
+                hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+                multiple={{
+                  user: false,
+                  team: false,
+                }}
+                owners={value?.assignee ? [value.assignee] : []}
+                placeHolder={t('label.no-entity', {
+                  entity: t('label.assignee'),
+                })}
+                tooltipText={t('label.edit-entity', {
+                  entity: t('label.assignee'),
+                })}
+                onUpdate={(assignees) =>
+                  record && handleAssigneeUpdate(record, assignees)
+                }
+              />
+            </Box>
+          );
+        },
       },
     ],
     [

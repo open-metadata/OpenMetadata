@@ -85,7 +85,7 @@ const InlineSeverity = ({
             )
           ) : undefined
         }
-        disabled={!hasEditPermission || isLoading}
+        disabled={isLoading}
         label={severity ? startCase(severity) : 'No Severity'}
         sx={{
           px: 1,
@@ -103,17 +103,17 @@ const InlineSeverity = ({
             color: severityColor.color,
             fontSize: '16px',
             margin: '0 4px 0 -4px',
+            height: '18px',
+            width: '18px',
           },
-          '&:hover': hasEditPermission
-            ? {
-                backgroundColor: severityColor.bg,
-                color: severityColor.color,
-                opacity: 0.8,
-              }
-            : {},
+          '&:hover': {
+            backgroundColor: severityColor.bg,
+            color: severityColor.color,
+            opacity: 0.8,
+          },
         }}
         onClick={handleSeverityClick}
-        onDelete={handleSeverityClick}
+        onDelete={hasEditPermission ? handleSeverityClick : undefined}
       />
 
       <Menu
