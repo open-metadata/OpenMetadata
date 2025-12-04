@@ -23,7 +23,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import { clickOutside, redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
