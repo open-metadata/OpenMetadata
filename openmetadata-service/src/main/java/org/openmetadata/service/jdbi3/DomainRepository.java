@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -206,6 +207,35 @@ public class DomainRepository extends EntityRepository<Domain> {
     return getDomainAssets(domain.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllDomainsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for domain asset counts");
+      return new HashMap<>();
+    }
+
+    List<Domain> allDomains = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> domainAssetCounts = new LinkedHashMap<>();
+
+    for (Domain domain : allDomains) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for domain {} asset count. Returning 0.",
+                    domain.getFullyQualifiedName());
+                return 0;
+              });
+
+      domainAssetCounts.put(domain.getFullyQualifiedName(), count);
+    }
+
+    return domainAssetCounts;
+  }
+
   @Transaction
   @Override
   protected BulkOperationResult bulkAssetsOperation(
@@ -347,6 +377,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("directChildrenOf", directChildrenOf);
     filter.addQueryParam("offset", String.valueOf(offset));
+    filter.addQueryParam("hierarchyFilter", "true"); // Enable hierarchy filtering
     ResultList<Domain> resultList = listAfter(null, fields, filter, limit, null);
     List<Domain> domains = resultList.getData();
 

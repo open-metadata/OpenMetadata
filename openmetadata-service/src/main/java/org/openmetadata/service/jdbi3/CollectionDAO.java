@@ -3063,6 +3063,7 @@ public interface CollectionDAO {
     default int listCount(ListFilter filter) {
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
+      String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
       if (!nullOrEmpty(directChildrenOf)) {
         String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
@@ -3071,7 +3072,8 @@ public interface CollectionDAO {
 
         condition +=
             " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
-      } else {
+      } else if (Boolean.TRUE.toString().equals(hierarchyFilter)) {
+        // For hierarchy API, when directChildrenOf is null, show only root domains
         condition +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = domain_entity.id AND er.fromEntity = 'domain' AND er.toEntity = 'domain' AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
@@ -3086,6 +3088,7 @@ public interface CollectionDAO {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
+      String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
       if (!nullOrEmpty(directChildrenOf)) {
         String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
@@ -3094,7 +3097,8 @@ public interface CollectionDAO {
 
         condition +=
             " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
-      } else {
+      } else if (Boolean.TRUE.toString().equals(hierarchyFilter)) {
+        // For hierarchy API, when directChildrenOf is null, show only root domains
         condition +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = domain_entity.id AND er.fromEntity = 'domain' AND er.toEntity = 'domain' AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
@@ -3109,6 +3113,7 @@ public interface CollectionDAO {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
+      String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
       String offsetParam = filter.getQueryParam("offset");
 
       if (!nullOrEmpty(directChildrenOf)) {
@@ -3118,7 +3123,8 @@ public interface CollectionDAO {
 
         condition +=
             " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
-      } else {
+      } else if (Boolean.TRUE.toString().equals(hierarchyFilter)) {
+        // For hierarchy API, when directChildrenOf is null, show only root domains
         condition +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = domain_entity.id AND er.fromEntity = 'domain' AND er.toEntity = 'domain' AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
