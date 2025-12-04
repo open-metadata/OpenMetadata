@@ -206,7 +206,7 @@ test.describe(
               .getByTestId(
                 `tag-${glossaryTerm.responseData.fullyQualifiedName}`
               )
-          ).not.toBeVisible();
+          ).toBeVisible();
         }
       });
     }
