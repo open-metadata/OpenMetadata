@@ -221,17 +221,17 @@ describe('Test EntityLineageUtils utility', () => {
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '2' } },
+        data: { node: { fullyQualifiedName: '2' }, nodeDepth: 2 },
       },
       {
         id: '3',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '3' } },
+        data: { node: { fullyQualifiedName: '3' }, nodeDepth: 3 },
       },
     ];
     const edges = [
@@ -308,19 +308,20 @@ describe('Test EntityLineageUtils utility', () => {
     const selectedNode = {
       id: '1',
       position: { x: 0, y: 0 },
-      data: { node: { fullyQualifiedName: '1' } },
+      data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
     };
     const nodes = [
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '2' },
+          nodeDepth: 0, // nodeDepth 0 indicates root node
           isRootNode: true, // This should be filtered out
         },
       },
@@ -329,6 +330,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '3' },
+          nodeDepth: 1,
           isRootNode: false, // This should be included
         },
       },
@@ -337,6 +339,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '4' },
+          nodeDepth: 1,
           // No isRootNode property - should be included
         },
       },
@@ -376,19 +379,20 @@ describe('Test EntityLineageUtils utility', () => {
     const selectedNode = {
       id: '1',
       position: { x: 0, y: 0 },
-      data: { node: { fullyQualifiedName: '1' } },
+      data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
     };
     const nodes = [
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '2' },
+          nodeDepth: 1,
           isRootNode: undefined, // Should be treated as falsy and included
         },
       },
@@ -397,6 +401,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '3' },
+          nodeDepth: 1,
           isRootNode: null, // Should be treated as falsy and included
         },
       },

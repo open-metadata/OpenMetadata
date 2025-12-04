@@ -13,7 +13,7 @@
 
 import { Grid, Stack, Typography, useTheme } from '@mui/material';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isUndefined, round } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +39,7 @@ import {
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
 import {
+  calculatePercentage,
   formatNumberWithComma,
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
@@ -175,8 +176,9 @@ const ColumnProfileTable = () => {
         key: 'nullProportion',
         width: 200,
         render: (profile: ColumnProfile) => {
-          return profile?.nullProportion
-            ? `${round(profile?.nullProportion, 2) * 100}%`
+          return profile?.nullProportion !== undefined &&
+            profile?.nullProportion !== null
+            ? calculatePercentage(profile.nullProportion, 1, 2, true)
             : '--';
         },
         sorter: (col1, col2) =>
@@ -189,8 +191,9 @@ const ColumnProfileTable = () => {
         key: 'uniqueProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.uniqueProportion
-            ? `${round(profile?.uniqueProportion, 2) * 100}%`
+          profile?.uniqueProportion !== undefined &&
+          profile?.uniqueProportion !== null
+            ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.uniqueProportion || 0) -
@@ -202,8 +205,9 @@ const ColumnProfileTable = () => {
         key: 'distinctProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.distinctProportion
-            ? `${round(profile?.distinctProportion, 2) * 100}%`
+          profile?.distinctProportion !== undefined &&
+          profile?.distinctProportion !== null
+            ? calculatePercentage(profile.distinctProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.distinctProportion || 0) -
@@ -215,8 +219,8 @@ const ColumnProfileTable = () => {
         key: 'valuesCount',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.valuesCount
-            ? formatNumberWithComma(profile?.valuesCount)
+          profile?.valuesCount !== undefined && profile?.valuesCount !== null
+            ? formatNumberWithComma(profile.valuesCount)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
@@ -225,7 +229,7 @@ const ColumnProfileTable = () => {
         title: t('label.success'),
         dataIndex: 'success',
         key: 'success',
-        width: 100,
+        width: 110,
         render: (_, record) => {
           const testCounts =
             testCaseSummary?.[
@@ -434,7 +438,7 @@ const ColumnProfileTable = () => {
           }}
           pagination={false}
           rowKey="name"
-          scroll={{ x: true }}
+          scroll={{ x: true, y: 500 }}
           searchProps={searchProps}
         />
       ) : (

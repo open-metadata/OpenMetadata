@@ -381,7 +381,11 @@ const APICollectionPage: FunctionComponent = () => {
     apiCollection,
   ]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
     () => ({
       editTagsPermission:
         getPrioritizedEditPermission(
@@ -404,8 +408,12 @@ const APICollectionPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !apiCollection.deleted,
       viewAllPermission: apiCollectionPermission.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        apiCollectionPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-    [apiCollectionPermission, apiCollection, getPrioritizedEditPermission]
+    [apiCollectionPermission, apiCollection]
   );
 
   const handleAPICollectionUpdate = async (updatedData: APICollection) => {
@@ -428,6 +436,7 @@ const APICollectionPage: FunctionComponent = () => {
       handleFeedCount,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       apiEndpointCount,
       labelMap: tabLabelMap,
     });
@@ -448,6 +457,7 @@ const APICollectionPage: FunctionComponent = () => {
     editCustomAttributePermission,
     viewAllPermission,
     apiEndpointCount,
+    viewCustomPropertiesPermission,
   ]);
 
   const updateVote = async (data: QueryVote, id: string) => {

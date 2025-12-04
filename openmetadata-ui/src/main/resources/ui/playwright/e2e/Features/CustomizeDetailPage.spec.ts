@@ -10,20 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
+} from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
@@ -40,23 +48,6 @@ const persona = new PersonaClass();
 const navigationPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
-
-const creationConfig: EntityDataClassCreationConfig = {
-  table: true,
-  entityDetails: true,
-  topic: true,
-  dashboard: true,
-  mlModel: true,
-  pipeline: true,
-  dashboardDataModel: true,
-  apiCollection: true,
-  searchIndex: true,
-  container: true,
-  storedProcedure: true,
-  apiEndpoint: true,
-  database: true,
-  databaseSchema: true,
-};
 
 const test = base.extend<{
   adminPage: Page;
@@ -190,6 +181,15 @@ test.describe('Persona customize UI tab', async () => {
   test('customize navigation should work', async ({ adminPage, userPage }) => {
     test.slow();
 
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
+    await adminPage.goBack();
+    await personaListResponse;
+    await adminPage.waitForLoadState('networkidle');
+    await navigateToPersonaWithPagination(
+      adminPage,
+      navigationPersona.data.name,
+      true
+    );
     await adminPage.getByText('Navigation').click();
 
     await test.step(
@@ -232,8 +232,13 @@ test.describe('Persona customize UI tab', async () => {
 
         // Select navigation persona
         await redirectToHomePage(userPage);
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        await userPage.getByTestId('dropdown-profile').click();
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await clickOutside(userPage);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [
@@ -301,9 +306,16 @@ test.describe('Persona customize UI tab', async () => {
           /^Page layout (created|updated) successfully\.$/
         );
 
-        // Reload user page to validate changes
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        // Select navigation persona
+        await redirectToHomePage(userPage);
+        await userPage.getByTestId('dropdown-profile').click();
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await clickOutside(userPage);
+        await userPage.waitForTimeout(500);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [
@@ -316,32 +328,26 @@ test.describe('Persona customize UI tab', async () => {
 });
 
 test.describe('Persona customization', () => {
-  test.beforeAll(async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
   Object.values(ECustomizedDataAssets).forEach(async (type) => {
     test(`${type} - customization should work`, async ({
       adminPage,
       userPage,
     }) => {
       test.slow();
+
+      let entity:
+        | {
+            create: (context: APIRequestContext) => Promise<unknown>;
+            visitEntityPage: (page: Page) => Promise<unknown>;
+          }
+        | undefined = undefined;
+
+      await test.step('pre-requisite', async () => {
+        entity = getCustomizeDetailsEntity(type);
+        const { apiContext } = await getApiContext(adminPage);
+        // Ensure entity is created
+        await entity.create(apiContext);
+      });
 
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
@@ -430,8 +436,7 @@ test.describe('Persona customization', () => {
       await test.step('Validate customization', async () => {
         await redirectToHomePage(userPage);
 
-        const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPage(userPage);
+        await entity?.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -458,6 +463,20 @@ test.describe('Persona customization', () => {
       userPage,
     }) => {
       test.slow();
+
+      let entity:
+        | {
+            create: (context: APIRequestContext) => Promise<unknown>;
+            visitEntityPage: (page: Page) => Promise<unknown>;
+          }
+        | undefined = undefined;
+
+      await test.step('pre-requisite', async () => {
+        entity = getCustomizeDetailsEntity(type);
+        const { apiContext } = await getApiContext(adminPage);
+        // Ensure entity is created
+        await entity.create(apiContext);
+      });
 
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
@@ -541,8 +560,7 @@ test.describe('Persona customization', () => {
       await test.step('Validate customization', async () => {
         await redirectToHomePage(userPage);
 
-        const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPage(userPage);
+        await entity?.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -566,6 +584,20 @@ test.describe('Persona customization', () => {
     userPage,
   }) => {
     test.slow();
+
+    let entity:
+      | {
+          create: (context: APIRequestContext) => Promise<unknown>;
+          visitEntityPage: (page: Page) => Promise<unknown>;
+        }
+      | undefined = undefined;
+
+    await test.step('pre-requisite', async () => {
+      entity = getCustomizeDetailsEntity(ECustomizedGovernance.GLOSSARY_TERM);
+      const { apiContext } = await getApiContext(adminPage);
+      // Ensure entity is created
+      await entity.create(apiContext);
+    });
 
     await test.step('apply customization', async () => {
       const personaListResponse =
@@ -602,10 +634,7 @@ test.describe('Persona customization', () => {
     await test.step('Validate customization', async () => {
       await redirectToHomePage(userPage);
 
-      const entity = getCustomizeDetailsEntity(
-        ECustomizedGovernance.GLOSSARY_TERM
-      );
-      await entity.visitEntityPage(userPage);
+      await entity?.visitEntityPage(userPage);
       await userPage.waitForLoadState('networkidle');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -639,6 +668,20 @@ test.describe('Persona customization', () => {
     adminPage,
     userPage,
   }) => {
+    let entity:
+      | {
+          create: (context: APIRequestContext) => Promise<unknown>;
+          visitEntityPage: (page: Page) => Promise<unknown>;
+        }
+      | undefined = undefined;
+
+    await test.step('pre-requisite', async () => {
+      const { apiContext } = await getApiContext(adminPage);
+      // Ensure entity is created
+      entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
+      await entity.create(apiContext);
+    });
+
     await test.step('apply tab label customization for Table', async () => {
       const personaListResponse =
         adminPage.waitForResponse(`/api/v1/personas?*`);
@@ -701,8 +744,7 @@ test.describe('Persona customization', () => {
       async () => {
         await redirectToHomePage(userPage);
 
-        const entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
-        await entity.visitEntityPage(userPage);
+        await entity?.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',

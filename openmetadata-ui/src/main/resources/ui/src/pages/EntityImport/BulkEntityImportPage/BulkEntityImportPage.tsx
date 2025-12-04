@@ -12,7 +12,7 @@
  */
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -36,6 +36,7 @@ import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
 import {
@@ -83,6 +84,16 @@ const BulkEntityImportPage = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
+
+  const translatedSteps = useMemo(
+    () =>
+      ENTITY_IMPORT_STEPS.map((step) => ({
+        ...step,
+        name: startCase(t(step.name)),
+      })),
+    [t]
+  );
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
     []
@@ -172,6 +183,10 @@ const BulkEntityImportPage = () => {
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         results.data as string[][],
         importedEntityType,
+        {
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        },
         cellEditable
       );
       setDataSource(dataSource);
@@ -179,7 +194,7 @@ const BulkEntityImportPage = () => {
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
-    [setDataSource, setColumns, handleActiveStepChange]
+    [entityRules, setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
@@ -271,6 +286,10 @@ const BulkEntityImportPage = () => {
                 getEntityColumnsAndDataSourceFromCSV(
                   results.data as string[][],
                   importedEntityType,
+                  {
+                    user: entityRules.canAddMultipleUserOwners,
+                    team: entityRules.canAddMultipleTeamOwner,
+                  },
                   false
                 )
               );
@@ -301,6 +320,10 @@ const BulkEntityImportPage = () => {
               getEntityColumnsAndDataSourceFromCSV(
                 results.data as string[][],
                 importedEntityType,
+                {
+                  user: entityRules.canAddMultipleUserOwners,
+                  team: entityRules.canAddMultipleTeamOwner,
+                },
                 false
               )
             );
@@ -314,6 +337,7 @@ const BulkEntityImportPage = () => {
       activeStepRef,
       entityType,
       fqn,
+      entityRules,
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
@@ -513,7 +537,7 @@ const BulkEntityImportPage = () => {
               <TitleBreadcrumb titleLinks={breadcrumbList} />
             </Col>
             <Col span={24}>
-              <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
+              <Stepper activeStep={activeStep} steps={translatedSteps} />
             </Col>
             <Col span={24}>
               {activeAsyncImportJob?.jobId && (

@@ -416,7 +416,7 @@ describe('Test UserListPage component', () => {
       expect(mockTableComponent).toHaveBeenCalledWith(
         expect.objectContaining({
           searchProps: expect.objectContaining({
-            typingInterval: 400,
+            typingInterval: 350,
           }),
         }),
         expect.anything()

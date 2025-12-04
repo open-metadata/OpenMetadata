@@ -512,6 +512,9 @@ services:
       # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
       # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
+      # AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: true
+
     entrypoint: /bin/bash
     command:
       - "/opt/airflow/ingestion_dependency.sh"

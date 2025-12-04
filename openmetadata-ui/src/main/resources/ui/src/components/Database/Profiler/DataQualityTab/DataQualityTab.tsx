@@ -17,7 +17,9 @@ import {
   Menu,
   MenuItem,
   Skeleton,
+  Tooltip,
   Typography as MuiTypography,
+  useTheme,
 } from '@mui/material';
 import { Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
@@ -29,6 +31,8 @@ import { PagingResponse } from 'Models';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
+import { ReactComponent as MenuIcon } from '../../../../assets/svg/menu.svg';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -40,6 +44,7 @@ import {
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
+import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
@@ -57,8 +62,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-
-import { ReactComponent as MenuIcon } from '../../../../assets/svg/menu.svg';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
@@ -88,6 +91,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
 }: DataQualityTabProps) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
@@ -211,18 +215,33 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (result: TestCaseResult, record: TestCase) => {
           return result?.result &&
             record.testCaseStatus !== TestCaseStatus.Success ? (
-            <MuiTypography
-              sx={{
-                wordBreak: 'break-word',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                fontSize: '14px',
-              }}>
-              {result.result}
-            </MuiTypography>
+            <Tooltip
+              arrow
+              placement="top"
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    maxWidth: 400,
+                    wordBreak: 'break-word',
+                  },
+                },
+              }}
+              title={result.result}>
+              <MuiTypography
+                data-testid={`reason-text-${record.name}`}
+                sx={{
+                  wordBreak: 'break-word',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}>
+                {result.result}
+              </MuiTypography>
+            </Tooltip>
           ) : (
             '--'
           );
@@ -250,7 +269,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             pathname: getTestCaseDetailPagePath(
               record.fullyQualifiedName ?? ''
             ),
-            state: { breadcrumbData },
           };
 
           return (
@@ -258,7 +276,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="m-0"
               data-testid={name}
               style={{ maxWidth: 280 }}>
-              <Link to={urlData}>{getEntityName(record)}</Link>
+              <Link state={{ breadcrumbData }} to={urlData}>
+                {getEntityName(record)}
+              </Link>
             </Typography.Paragraph>
           );
         },
@@ -387,6 +407,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             return <Skeleton height={30} width={30} />;
           }
 
+          const dimensions = record.dimensionColumns ?? [];
+
           const testCasePermission = testCasePermissions.find(
             (permission) =>
               permission.fullyQualifiedName === record.fullyQualifiedName
@@ -406,7 +428,51 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             testCaseEditPermission || testCaseDeletePermission;
 
           return (
-            <Box>
+            <Box
+              alignItems="center"
+              display="flex"
+              gap={2.5}
+              justifyContent="end">
+              {dimensions.length > 0 && (
+                <Tooltip
+                  arrow
+                  placement="top"
+                  title={t(
+                    dimensions.length === 1
+                      ? 'label.number-dimension-associated'
+                      : 'label.number-dimension-plural-associated',
+                    {
+                      number: dimensions.length,
+                    }
+                  )}>
+                  <Link
+                    to={getTestCaseDetailPagePath(
+                      record.fullyQualifiedName ?? '',
+                      TestCasePageTabs.DIMENSIONALITY
+                    )}>
+                    <Box
+                      data-testid={`dimension-count-${record.name}`}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        padding: 1,
+                        backgroundColor: theme.palette.allShades.blueGray[50],
+                        borderRadius: '6px',
+                        color: theme.palette.primary.main,
+                      }}>
+                      <DimensionIcon height={12} width={12} />
+                      <MuiTypography
+                        sx={{
+                          fontSize: '12px',
+                          fontWeight: 500,
+                        }}>
+                        {dimensions.length}
+                      </MuiTypography>
+                    </Box>
+                  </Link>
+                </Tooltip>
+              )}
               <IconButton
                 data-testid={`action-dropdown-${record.name}`}
                 disabled={!hasAnyPermission}
@@ -625,7 +691,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {selectedTestCase?.action === 'UPDATE' && (
         <EditTestCaseModalV1
           open
-          testCase={selectedTestCase?.data as TestCase}
+          testCase={selectedTestCase?.data}
           onCancel={handleCancel}
           onUpdate={onTestUpdate}
         />

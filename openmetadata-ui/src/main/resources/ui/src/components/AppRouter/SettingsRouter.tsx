@@ -201,7 +201,7 @@ const SettingsRouter = () => {
             <NotificationListPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPathRelative(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+        path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
       />
 
       <Route

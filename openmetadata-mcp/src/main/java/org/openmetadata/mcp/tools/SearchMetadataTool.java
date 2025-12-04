@@ -6,9 +6,6 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import es.org.elasticsearch.xcontent.XContentParser;
-import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,7 +19,6 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -46,7 +42,8 @@ public class SearchMetadataTool implements McpTool {
           "owners",
           "tier",
           "tableType",
-          "columnNames");
+          "columnNames",
+          "deleted");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
       List.of(
@@ -56,7 +53,6 @@ public class SearchMetadataTool implements McpTool {
           "updatedBy",
           "usageSummary",
           "followers",
-          "deleted",
           "votes",
           "lifeCycle",
           "sourceHash",
@@ -334,16 +330,5 @@ public class SearchMetadataTool implements McpTool {
   @SuppressWarnings("unchecked")
   private static List<Object> safeGetList(Object obj) {
     return (obj instanceof List) ? (List<Object>) obj : null;
-  }
-
-  private XContentParser createXContentParser(String query) throws IOException {
-    try {
-      return XContentType.JSON
-          .xContent()
-          .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-    } catch (IOException e) {
-      LOG.error("Failed to create XContentParser", e);
-      throw e;
-    }
   }
 }

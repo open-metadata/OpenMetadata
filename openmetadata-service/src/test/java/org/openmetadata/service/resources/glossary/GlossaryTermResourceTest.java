@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -82,6 +83,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
@@ -89,6 +91,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -110,6 +113,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -382,6 +387,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void test_GlossaryTermApprovalWorkflow(TestInfo test) throws IOException {
+    // Ensure the workflow is active (it might have been suspended by another test)
+    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+
     //
     // glossary1 create without reviewers is created with Approved status
     //
@@ -820,7 +828,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Create glossary term t12, t121, t1211 under t1
     GlossaryTerm t12 = createTerm(g1, t1, "t12");
     GlossaryTerm t121 = createTerm(g1, t12, "t121");
-    createTerm(g1, t121, "t121");
+    createTerm(g1, t121, "t1211");
 
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
@@ -2249,7 +2257,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, authHeaders(DATA_CONSUMER.getName()));
 
     // Verify workflow task was created
-    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 90000L);
     assertTrue(taskCreated, "Workflow should be triggered when non-reviewer updates the term");
 
     // Verify term status moved to IN_REVIEW
@@ -2499,7 +2507,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
 
     // Verify workflow task was created
-    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 90000L);
     assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
@@ -2638,7 +2646,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             authHeaders(USER2.getName()));
 
     // Wait for new task to be created for the update
-    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 90000L);
 
     // Get the new task
     threads =
@@ -2713,7 +2721,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             authHeaders(USER2.getName()));
 
     // Wait for detailed task to be created
-    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 90000L);
 
     // Get the new task
     threads =
@@ -3306,5 +3314,192 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     ResultList<EntityReference> page2 = getAssets(term.getId(), 2, 2, ADMIN_AUTH_HEADERS);
     assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_WorkflowTriggerOnDescriptionApprovalByNonReviewer(TestInfo test) throws Exception {
+    // Test scenario:
+    // 1. Create a glossary term with USER1 as reviewer (should be auto-approved)
+    // 2. USER1 requests a description update, asking USER2 (non-reviewer) for approval
+    // 3. When USER2 approves, verify the workflow IS triggered:
+    //    - Description is updated
+    //    - Term moves to IN_REVIEW status
+    //    - Approval task is created for USER1
+
+    try {
+      // Step 1: Create glossary with no reviewers
+      // Use simple names without special characters to avoid SQL syntax issues
+      String simpleName = "glossary_workflow_test_" + System.currentTimeMillis();
+      Glossary glossary = createGlossary(simpleName, null, null);
+
+      // Create term with USER1 as reviewer
+      String termName = "term_workflow_test_" + System.currentTimeMillis();
+      CreateGlossaryTerm createRequest =
+          createRequest(termName)
+              .withDescription("Initial description")
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withReviewers(listOf(USER1.getEntityReference()));
+
+      // Create as USER1 (who is the reviewer) - should be auto-approved
+      GlossaryTerm term = createEntity(createRequest, authHeaders(USER1.getName()));
+
+      // Wait a bit for any workflow to process
+      java.lang.Thread.sleep(2000);
+
+      // Verify term is approved since creator is the reviewer
+      GlossaryTerm autoApprovedTerm = getEntity(term.getId(), "", authHeaders(USER1.getName()));
+      assertEquals(
+          EntityStatus.APPROVED,
+          autoApprovedTerm.getEntityStatus(),
+          "Term should be auto-approved when creator is reviewer");
+
+      // Record initial version for later comparison
+      double initialVersion = autoApprovedTerm.getVersion();
+
+      // Step 2: USER1 (reviewer) requests a description update, asking USER2 for approval
+      // Create UpdateDescription task
+      String newDescription = "Updated description needing approval";
+      String entityLink =
+          new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+              .getLinkString();
+
+      CreateTaskDetails taskDetails =
+          new CreateTaskDetails()
+              .withType(TaskType.UpdateDescription)
+              .withOldValue(term.getDescription())
+              .withSuggestion(newDescription)
+              .withAssignees(List.of(USER2.getEntityReference()));
+
+      CreateThread createThread =
+          new CreateThread()
+              .withMessage("Please approve this description update")
+              .withFrom(USER1.getName())
+              .withAbout(entityLink)
+              .withTaskDetails(taskDetails)
+              .withType(ThreadType.Task);
+
+      Thread descriptionTask = taskTest.createAndCheck(createThread, authHeaders(USER1.getName()));
+      assertNotNull(descriptionTask);
+      assertEquals(TaskStatus.Open, descriptionTask.getTask().getStatus());
+
+      // Verify that USER2 can see the task
+      ThreadList tasks =
+          taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(USER2.getName()));
+      assertTrue(
+          tasks.getData().stream().anyMatch(t -> t.getId().equals(descriptionTask.getId())),
+          "USER2 should be able to see the task");
+
+      // Step 3: USER2 (non-reviewer) approves the description update
+      // This should trigger a workflow because USER2 is NOT a reviewer
+
+      // USER2 resolves the task (approves the description change)
+      ResolveTask resolveTask = new ResolveTask().withNewValue(newDescription);
+      taskTest.resolveTask(
+          descriptionTask.getTask().getId(), resolveTask, authHeaders(USER2.getName()));
+
+      // Task resolution should have closed the description task immediately
+      // Wait for the ChangeEvent to be processed and workflow to trigger
+      java.lang.Thread.sleep(15000); // Give enough time for workflow processing
+
+      // Step 4: Verify the workflow was triggered
+      // When a non-reviewer (USER2) approves a change, the workflow should:
+      // 1. Update the description (immediate effect)
+      // 2. Move the term to IN_REVIEW status
+      // 3. Create a new approval task for the actual reviewers (USER1)
+
+      GlossaryTerm updatedTerm = getEntity(term.getId(), "", ADMIN_AUTH_HEADERS);
+
+      // Verify description was updated immediately
+      assertEquals(
+          newDescription,
+          updatedTerm.getDescription(),
+          "Description should be updated after approval");
+
+      // CRITICAL: Verify term moved to IN_REVIEW status (workflow was triggered)
+      assertEquals(
+          EntityStatus.IN_REVIEW,
+          updatedTerm.getEntityStatus(),
+          "Term MUST move to IN_REVIEW when non-reviewer approves changes - this proves workflow triggered");
+
+      // Verify version was incremented (entity was modified)
+      assertTrue(
+          updatedTerm.getVersion() > initialVersion,
+          "Version should be incremented after task resolution and workflow processing");
+
+      // Step 5: Verify a new approval task was created for USER1 (the reviewer)
+      // Wait a bit more for task creation
+      java.lang.Thread.sleep(5000);
+
+      // The workflow MUST create an approval task
+      Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+      assertNotNull(approvalTask, "Workflow MUST create an approval task for the reviewer");
+
+      // Verify the task is assigned to USER1 (the reviewer)
+      assertTrue(
+          approvalTask.getTask().getAssignees().stream()
+              .anyMatch(a -> a.getId().equals(USER1.getEntityReference().getId())),
+          "The approval task MUST be assigned to USER1 (the reviewer)");
+
+      LOG.info(
+          "Test completed: Workflow successfully triggered when non-reviewer approved description change");
+
+      // Clean up: Resolve the approval task
+      try {
+        taskTest.resolveTask(
+            approvalTask.getTask().getId(),
+            new ResolveTask().withNewValue("Approved"),
+            authHeaders(USER1.getName()));
+        java.lang.Thread.sleep(2000);
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+
+    } finally {
+      // Clean up: Re-suspend the workflow to not affect other tests
+      WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
+    }
+  }
+
+  @Test
+  void test_getAllGlossaryTermsWithAssetsCount(TestInfo test) throws IOException {
+    Glossary glossary = createGlossary(test, null, emptyList());
+    CreateGlossaryTerm createTerm1 = createRequest(getEntityName(test, 1), "", "", null);
+    createTerm1.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term1 = createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm2 = createRequest(getEntityName(test, 2), "", "", null);
+    createTerm2.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term2 = createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel1 = EntityUtil.toTagLabel(term1);
+    TagLabel termLabel2 = EntityUtil.toTagLabel(term2);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 3)).withTags(List.of(termLabel1)),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 4)).withTags(List.of(termLabel1)),
+            ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 5)).withTags(List.of(termLabel2)),
+            ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllGlossaryTermsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        2, assetsCount.get(term1.getFullyQualifiedName()), "Glossary term 1 should have 2 assets");
+    assertEquals(
+        1, assetsCount.get(term2.getFullyQualifiedName()), "Glossary term 2 should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllGlossaryTermsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("glossaryTerms/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

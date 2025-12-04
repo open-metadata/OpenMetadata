@@ -50,6 +50,10 @@ export interface ManifestMetadataEntry {
      * What's the schema format for the container, eg. avro, parquet, csv.
      */
     structureFormat?: string;
+    /**
+     * What's the schema formats for the container, eg. avro, parquet, csv.
+     */
+    unstructuredFormats?: string[];
     [property: string]: any;
 }
 
@@ -465,6 +469,11 @@ export interface ColumnProfile {
  * Cardinality distribution showing top categories with an 'Others' bucket.
  */
 export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
     /**
      * List of category names including 'Others'.
      */

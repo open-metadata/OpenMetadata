@@ -183,6 +183,11 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSelfSignup?: boolean;
     /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
@@ -393,6 +398,10 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -400,7 +409,11 @@ export interface PipelineServiceClientConfiguration {
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
      */
-    signingSecret?:       string;
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?:           string;
     metricConfiguration?: MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
@@ -930,6 +943,11 @@ export interface AuthenticationConfiguration {
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */

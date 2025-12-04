@@ -74,6 +74,48 @@ EXPECTED_MODELS = [
     ),
 ]
 
+REGISTERED_MODELS_SUMMARY_MOCK = [
+    {"ModelPackageGroupName": "registered_model_1"},
+    {"ModelPackageGroupName": "registered_model_2"},
+]
+
+REGISTERED_MODELS_DESCRIPTION_MOCK = {
+    "registered_model_1": {
+        "ModelPackageGroupName": "registered_model_1",
+        "ModelPackageGroupArn": "arn::registered_model_1",
+        "ModelPackageGroupDescription": "Test registered model 1",
+        "CreationTime": "2024-01-01 00:00:00",
+    },
+    "registered_model_2": {
+        "ModelPackageGroupName": "registered_model_2",
+        "ModelPackageGroupArn": "arn::registered_model_2",
+        "CreationTime": "2024-01-02 00:00:00",
+    },
+}
+
+EXPECTED_REGISTERED_MODELS = [
+    {
+        "ModelName": "registered_model_1",
+        "ModelArn": "arn::registered_model_1",
+        "description": "Test registered model 1",
+        "CreationTime": "2024-01-01 00:00:00",
+    },
+    {
+        "ModelName": "registered_model_2",
+        "ModelArn": "arn::registered_model_2",
+        "description": None,
+        "CreationTime": "2024-01-02 00:00:00",
+    },
+]
+
+
+class PaginatorMock:
+    def __init__(self, data):
+        self.data = data
+
+    def paginate(self):
+        yield self.data
+
 
 class SagemakerClientMock:
     def __init__(self):
@@ -84,6 +126,16 @@ class SagemakerClientMock:
 
     def describe_model(self, modelName: str, *args, **kwargs):
         return MODEL_DESCRIPTIONS_MOCK.get(modelName)
+
+    def get_paginator(self, operation_name: str):
+        if operation_name == "list_model_package_groups":
+            return PaginatorMock(
+                {"ModelPackageGroupSummaryList": REGISTERED_MODELS_SUMMARY_MOCK}
+            )
+        return None
+
+    def describe_model_package_group(self, ModelPackageGroupName: str):
+        return REGISTERED_MODELS_DESCRIPTION_MOCK.get(ModelPackageGroupName)
 
 
 sagemaker_config = {
@@ -146,4 +198,15 @@ class SagemakerTest(TestCase):
         for i, mlmodel in enumerate(self.sagemaker_source.get_mlmodels()):
             assert self.sagemaker_source.yield_mlmodel(mlmodel) == Either(
                 right=EXPECTED_MODELS[i]
+            )
+
+    def test_list_registered_models(self):
+        registered_models = self.sagemaker_source.list_registered_models()
+        assert len(registered_models) == len(EXPECTED_REGISTERED_MODELS)
+        for i, model in enumerate(registered_models):
+            assert model["ModelName"] == EXPECTED_REGISTERED_MODELS[i]["ModelName"]
+            assert model["ModelArn"] == EXPECTED_REGISTERED_MODELS[i]["ModelArn"]
+            assert model["description"] == EXPECTED_REGISTERED_MODELS[i]["description"]
+            assert (
+                model["CreationTime"] == EXPECTED_REGISTERED_MODELS[i]["CreationTime"]
             )

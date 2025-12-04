@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Box, Typography, useTheme } from '@mui/material';
 import classNames from 'classnames';
-import { reverse } from 'lodash';
-import { useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
-import { EntityReference } from '../../../generated/entity/type';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
-import { OwnerItem } from '../OwnerItem/OwnerItem';
-import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
+import { OwnerTeamList } from '../OwnerTeamList/OwnerTeamList.component';
+import OwnerUserList from '../OwnerUserList/OwnerUserList.component';
+import OwnerUserTeamList from '../OwnerUserTeamList/OwnerUserTeamList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './owner-label.less';
 import { OwnerLabelProps } from './OwnerLabel.interface';
@@ -42,27 +41,53 @@ export const OwnerLabel = ({
   },
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
-  avatarSize = 32,
+  avatarSize = 24,
   isAssignee = false,
   onEditClick,
+  ownerLabelClassName,
+  placement,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
-  const [showAllOwners, setShowAllOwners] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const theme = useTheme();
+
+  const { isMultipleTeam, isMultipleUser, isMultipleUserAndTeam } =
+    useMemo(() => {
+      const isMultipleTeam = owners.every(
+        (item) => item.type === OwnerType.TEAM
+      );
+      const isMultipleUser = owners.every(
+        (item) => item.type === OwnerType.USER
+      );
+
+      return {
+        isMultipleTeam,
+        isMultipleUser,
+        isMultipleUserAndTeam: !isMultipleTeam && !isMultipleUser,
+      };
+    }, [owners]);
 
   const ownerElementsNonCompactView = useMemo(() => {
     if (!isCompactView) {
       if (showLabel || onUpdate) {
         return (
-          <div className="d-flex items-center gap-2 m-b-xs">
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '8px',
+              gap: '8px',
+            }}>
             {showLabel && (
-              <Typography.Text
-                className={classNames(
-                  'no-owner-heading font-medium text-sm',
-                  className
-                )}>
+              <Typography
+                className={className}
+                sx={{
+                  marginBottom: 0,
+                  fontWeight: 500,
+                  fontSize: '14px',
+                  color: theme.palette.allShades.brand[700],
+                }}>
                 {placeHolder ?? t('label.owner-plural')}
-              </Typography.Text>
+              </Typography>
             )}
             {onUpdate && (
               <UserTeamSelectableList
@@ -73,7 +98,7 @@ export const OwnerLabel = ({
                 onUpdate={onUpdate}
               />
             )}
-          </div>
+          </Box>
         );
       }
     }
@@ -91,217 +116,82 @@ export const OwnerLabel = ({
     className,
   ]);
 
-  const showMultipleTypeTeam = owners.filter(
-    (owner) => owner.type === OwnerType.TEAM
-  );
-  const showMultipleTypeVisibleUser = owners
-    .filter((owner) => owner.type === OwnerType.USER)
-    .slice(0, maxVisibleOwners)
-    .reverse();
-  const showMultipleTypeRemainingUser = owners
-    .filter((owner) => owner.type === OwnerType.USER)
-    .slice(maxVisibleOwners);
-  const renderMultipleType = useMemo(() => {
+  if (isEmpty(owners)) {
     return (
-      <div className="w-max-full d-flex relative items-center">
-        <div className="flex w-full gap-2 relative">
-          {showMultipleTypeTeam.map((owner, index) => (
-            <div className="w-max-full" key={owner.id}>
-              <OwnerItem
-                avatarSize={avatarSize}
-                className={className}
-                isAssignee={isAssignee}
-                isCompactView={isCompactView}
-                owner={owner}
-                ownerDisplayName={ownerDisplayName?.[index]}
-              />
-            </div>
-          ))}
-          <div className="flex">
-            <div className="flex relative m-l-xs justify-end flex-row-reverse">
-              {showMultipleTypeVisibleUser.map((owner, index) => (
-                <div className="relative" key={owner.id}>
-                  <OwnerItem
-                    avatarSize={avatarSize}
-                    className={className}
-                    isAssignee={isAssignee}
-                    isCompactView={isCompactView}
-                    owner={owner}
-                    ownerDisplayName={ownerDisplayName?.[index]}
-                  />
-                </div>
-              ))}
-            </div>
-            {showMultipleTypeRemainingUser.length > 0 && (
-              <div className="m-l-xs">
-                <OwnerReveal
-                  avatarSize={isCompactView ? 24 : avatarSize}
-                  isCompactView={false}
-                  isDropdownOpen={isDropdownOpen}
-                  owners={showMultipleTypeRemainingUser}
-                  remainingCount={showMultipleTypeRemainingUser.length}
-                  setIsDropdownOpen={setIsDropdownOpen}
-                  setShowAllOwners={setShowAllOwners}
-                  showAllOwners={showAllOwners}
-                />
-              </div>
-            )}
-            {hasPermission && (
-              <Button
-                className="p-0 flex-center h-auto"
-                data-testid="edit-assignees"
-                icon={<EditIcon width="14px" />}
-                type="text"
-                onClick={onEditClick}
-              />
-            )}
-          </div>
-        </div>
-      </div>
+      <NoOwnerFound
+        className={className}
+        hasPermission={hasPermission}
+        isCompactView={isCompactView}
+        multiple={multiple}
+        owners={owners}
+        placeHolder={placeHolder}
+        showDashPlaceholder={showDashPlaceholder}
+        showLabel={showLabel}
+        tooltipText={tooltipText}
+        onUpdate={onUpdate}
+      />
     );
-  }, [
-    showMultipleTypeTeam,
-    showMultipleTypeVisibleUser,
-    showMultipleTypeRemainingUser,
-    avatarSize,
-    className,
-    isCompactView,
-    ownerDisplayName,
-    hasPermission,
-    onEditClick,
-    isDropdownOpen,
-    owners,
-    setIsDropdownOpen,
-    setShowAllOwners,
-    showAllOwners,
-  ]);
-  const ownerElements = useMemo(() => {
-    const hasOwners = owners && owners.length > 0;
-    // Show all owners when "more" is clicked, regardless of view mode
-    const visibleOwners = showAllOwners
-      ? owners
-      : owners.slice(0, maxVisibleOwners);
-    const remainingOwnersCount = owners.length - maxVisibleOwners;
-    const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
+  }
 
-    const renderVisibleOwners = isCompactView
-      ? visibleOwners
-      : reverse(visibleOwners);
+  return (
+    <Box
+      className={classNames({
+        'owner-label-container d-flex flex-col items-start flex-start':
+          !isCompactView,
+        'd-flex owner-label-heading gap-2 items-center': isCompactView,
+      })}
+      data-testid="owner-label">
+      {ownerElementsNonCompactView}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          maxWidth: '100%',
+        }}>
+        {isMultipleUserAndTeam && (
+          <OwnerUserTeamList
+            avatarSize={avatarSize}
+            className={className}
+            hasPermission={hasPermission}
+            isAssignee={isAssignee}
+            isCompactView={isCompactView}
+            ownerDisplayName={ownerDisplayName}
+            owners={owners}
+            placement={placement}
+            onEditClick={onEditClick}
+          />
+        )}
 
-    // If no owners, render the empty state
-    if (!hasOwners) {
-      return (
-        <NoOwnerFound
-          className={className}
-          hasPermission={hasPermission}
-          isCompactView={isCompactView}
+        {isMultipleTeam && (
+          <OwnerTeamList
+            avatarSize={avatarSize}
+            ownerDisplayName={ownerDisplayName}
+            owners={owners}
+          />
+        )}
+
+        {isMultipleUser && (
+          <OwnerUserList
+            avatarSize={avatarSize}
+            className={className}
+            isCompactView={isCompactView}
+            maxVisibleOwners={maxVisibleOwners}
+            ownerDisplayName={ownerDisplayName}
+            ownerLabelClassName={ownerLabelClassName}
+            owners={owners}
+          />
+        )}
+      </Box>
+      {isCompactView && onUpdate && (
+        <UserTeamSelectableList
+          hasPermission={Boolean(hasPermission)}
           multiple={multiple}
-          owners={owners}
-          placeHolder={placeHolder}
-          showDashPlaceholder={showDashPlaceholder}
-          showLabel={showLabel}
+          owner={owners}
           tooltipText={tooltipText}
           onUpdate={onUpdate}
         />
-      );
-    }
-
-    if (isAssignee) {
-      return renderMultipleType;
-    }
-
-    return (
-      <div
-        className={classNames({
-          'owner-label-container d-flex flex-col items-start flex-start':
-            !isCompactView,
-          'd-flex owner-label-heading gap-2 items-center': isCompactView,
-        })}
-        data-testid="owner-label">
-        {ownerElementsNonCompactView}
-        <div className="d-flex w-max-full items-center  flex-center">
-          <div
-            className={classNames(
-              'avatar-group w-full d-flex relative items-center m-l-xss',
-              {
-                'gap-2 flex-wrap': isCompactView,
-                'flex-row-reverse': !isCompactView,
-                inherited: Boolean(owners.some((owner) => owner?.inherited)),
-              },
-              className
-            )}>
-            {renderVisibleOwners.map(
-              (owner: EntityReference, index: number) => (
-                <div
-                  className={classNames({
-                    'w-full': owner.type === OwnerType.TEAM,
-                    'w-max-full': isCompactView,
-                  })}
-                  key={owner.id}>
-                  <OwnerItem
-                    avatarSize={avatarSize}
-                    className={className}
-                    isCompactView={isCompactView}
-                    owner={owner}
-                    ownerDisplayName={ownerDisplayName?.[index]}
-                  />
-                </div>
-              )
-            )}
-            {showMoreButton && isCompactView && (
-              <OwnerReveal
-                avatarSize={isCompactView ? 24 : avatarSize}
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
-            )}
-          </div>
-
-          {showMoreButton && !isCompactView && (
-            <OwnerReveal
-              avatarSize={isCompactView ? 24 : avatarSize}
-              isCompactView={isCompactView}
-              isDropdownOpen={isDropdownOpen}
-              owners={owners.slice(maxVisibleOwners)}
-              remainingCount={remainingOwnersCount}
-              setIsDropdownOpen={setIsDropdownOpen}
-              setShowAllOwners={setShowAllOwners}
-              showAllOwners={showAllOwners}
-            />
-          )}
-        </div>
-        {isCompactView && onUpdate && (
-          <UserTeamSelectableList
-            hasPermission={Boolean(hasPermission)}
-            multiple={multiple}
-            owner={owners}
-            tooltipText={tooltipText}
-            onUpdate={onUpdate}
-          />
-        )}
-      </div>
-    );
-  }, [
-    owners,
-    className,
-    onUpdate,
-    hasPermission,
-    showAllOwners,
-    maxVisibleOwners,
-    placeHolder,
-    ownerDisplayName,
-    isCompactView,
-    isDropdownOpen,
-    tooltipText,
-    multiple,
-    ownerElementsNonCompactView,
-    avatarSize,
-  ]);
-
-  return ownerElements;
+      )}
+    </Box>
+  );
 };

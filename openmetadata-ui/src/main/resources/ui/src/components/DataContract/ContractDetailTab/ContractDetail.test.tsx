@@ -26,6 +26,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import '../../../test/unit/mocks/mui.mock';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 

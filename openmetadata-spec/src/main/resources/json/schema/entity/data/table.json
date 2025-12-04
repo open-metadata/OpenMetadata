@@ -680,6 +680,10 @@
               "items": {
                 "type": "number"
               }
+            },
+            "allValuesUnique": {
+              "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1290,17 +1294,24 @@
       "default": false
     },
     "queries": {
-      "description": "List of queries that are used to create this table.", 
+      "description": "List of queries that are used to create this table.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
       },
       "default": null
     },
+    "pipelineObservability": {
+      "description": "Pipeline observability information for the table. Multiple pipelines can process the same table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/pipelineObservability.json"
+      },
+      "default": null
+    },
     "entityStatus": {
       "description": "Status of the Table.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [
