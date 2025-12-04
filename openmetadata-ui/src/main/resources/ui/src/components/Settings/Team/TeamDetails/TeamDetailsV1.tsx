@@ -124,6 +124,7 @@ const TeamDetailsV1 = ({
   entityPermissions,
   isFetchingAdvancedDetails,
   isFetchingAllTeamAdvancedDetails,
+  isTeamBasicDataLoading,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -663,6 +664,7 @@ const TeamDetailsV1 = ({
         handleAddTeamButtonClick={handleAddTeamButtonClick}
         handleTeamSearch={handleTeamSearch}
         isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isTeamBasicDataLoading={isTeamBasicDataLoading}
         isTeamDeleted={isTeamDeleted}
         searchTerm={searchTerm}
         showDeletedTeam={showDeletedTeam}

@@ -66,6 +66,9 @@ const TeamsPage = () => {
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
 
+  const [isTeamBasicDataLoading, setIsTeamBasicDataLoading] =
+    useState<boolean>(true);
+
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<number>(0);
@@ -105,6 +108,7 @@ const TeamsPage = () => {
   };
 
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
+    setIsTeamBasicDataLoading(true);
     try {
       const { data } = await getTeams({
         parentTeam: parentTeam ?? 'organization',
@@ -121,6 +125,8 @@ const TeamsPage = () => {
       setFetchAllTeamAdvancedDetails(true);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setIsTeamBasicDataLoading(false);
     }
   };
 
@@ -533,6 +539,7 @@ const TeamsPage = () => {
         handleLeaveTeamClick={handleLeaveTeamClick}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
+        isTeamBasicDataLoading={isTeamBasicDataLoading}
         isTeamMemberLoading={isDataLoading}
         parentTeams={parentTeams}
         removeUserFromTeam={removeUserFromTeam}

@@ -33,6 +33,7 @@ export interface TeamHierarchyProps {
   createTeamPermission: boolean;
   isTeamDeleted: boolean;
   handleTeamSearch: (text: string) => void;
+  isTeamBasicDataLoading: boolean;
 }
 
 export interface MovedTeamProps {
