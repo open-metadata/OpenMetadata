@@ -3,8 +3,8 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.common.utils.CommonUtil.collectionOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
-import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.GRAPH_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.buildDirectionToFqnSet;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
@@ -129,7 +129,7 @@ public class ESLineageGraphBuilder {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             lineageRequest.getUpstreamDepth() == remainingDepth
                 ? null
                 : lineageRequest.getQueryFilter(),
@@ -216,7 +216,7 @@ public class ESLineageGraphBuilder {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -396,7 +396,7 @@ public class ESLineageGraphBuilder {
     Map<String, Object> rootEntityMap =
         EsUtils.searchEntityByKey(
             null,
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
             Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
             SOURCE_FIELDS_TO_EXCLUDE);
@@ -432,7 +432,7 @@ public class ESLineageGraphBuilder {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             LineageDirection.DOWNSTREAM,
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -622,7 +622,7 @@ public class ESLineageGraphBuilder {
       SearchRequest searchRequest =
           EsUtils.getSearchRequest(
               direction,
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               depth == 0 ? null : queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
@@ -691,7 +691,7 @@ public class ESLineageGraphBuilder {
       SearchRequest searchRequest =
           EsUtils.getSearchRequest(
               direction,
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
@@ -738,7 +738,7 @@ public class ESLineageGraphBuilder {
       Map<String, Object> entityDoc =
           EsUtils.searchEntityByKey(
               null,
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
               Pair.of(FullyQualifiedName.buildHash(entityFqn), entityFqn),
               SOURCE_FIELDS_TO_EXCLUDE);
@@ -838,7 +838,7 @@ public class ESLineageGraphBuilder {
       SearchRequest searchRequest =
           EsUtils.getSearchRequest(
               request.getDirection(),
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               depth == 0 ? null : request.getQueryFilter(),
               GRAPH_AGGREGATION,
               directionKeyAndValues,
