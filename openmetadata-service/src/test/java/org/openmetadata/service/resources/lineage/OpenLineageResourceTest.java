@@ -65,12 +65,17 @@ import org.openmetadata.schema.api.lineage.openlineage.RunFacets;
 import org.openmetadata.schema.api.lineage.openlineage.SchemaFacet;
 import org.openmetadata.schema.api.lineage.openlineage.SchemaField;
 import org.openmetadata.schema.api.lineage.openlineage.SqlJobFacet;
+import org.openmetadata.schema.configuration.OpenLineageEventType;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -401,6 +406,121 @@ public class OpenLineageResourceTest extends OpenMetadataApplicationTest {
     assertTrue(
         response.getSummary().getSkipped() >= 3,
         "At least 3 non-COMPLETE events should be skipped");
+  }
+
+  @Order(18)
+  @Test
+  void post_openLineageEvent_withCustomEventTypeFilter_processesConfiguredTypes()
+      throws HttpResponseException {
+    OpenLineageSettings originalSettings = getOpenLineageSettings();
+
+    try {
+      updateOpenLineageSettingsViaApi(
+          new OpenLineageSettings()
+              .withEnabled(true)
+              .withAutoCreateEntities(true)
+              .withDefaultPipelineService("openlineage")
+              .withEventTypeFilter(
+                  List.of(
+                      OpenLineageEventType.COMPLETE,
+                      OpenLineageEventType.START,
+                      OpenLineageEventType.FAIL)));
+
+      Table sourceTable = TABLES.get(0);
+      Table targetTable = TABLES.get(1);
+
+      OpenLineageRunEvent startEvent =
+          createOpenLineageEvent(sourceTable, targetTable, EventType.START);
+      OpenLineageResponse startResponse = postOpenLineageEvent(startEvent, ADMIN_AUTH_HEADERS);
+
+      assertNotNull(startResponse);
+      assertEquals(OpenLineageResponse.Status.SUCCESS, startResponse.getStatus());
+
+    } finally {
+      updateOpenLineageSettingsViaApi(originalSettings);
+    }
+  }
+
+  @Order(19)
+  @Test
+  void post_openLineageEvent_whenDisabled_returns503() throws HttpResponseException {
+    // Update settings to disable the OpenLineage API
+    updateOpenLineageSettingsViaApi(
+        new OpenLineageSettings()
+            .withEnabled(false)
+            .withAutoCreateEntities(true)
+            .withDefaultPipelineService("openlineage"));
+
+    try {
+      OpenLineageRunEvent event = createSimpleOpenLineageEvent();
+      WebTarget target = getResource("openlineage/lineage");
+
+      TestUtils.assertResponse(
+          () -> TestUtils.post(target, event, OpenLineageResponse.class, ADMIN_AUTH_HEADERS),
+          Status.SERVICE_UNAVAILABLE,
+          "OpenLineage API is disabled");
+    } finally {
+      // Re-enable the API
+      updateOpenLineageSettingsViaApi(
+          new OpenLineageSettings()
+              .withEnabled(true)
+              .withAutoCreateEntities(true)
+              .withDefaultPipelineService("openlineage"));
+    }
+  }
+
+  @Order(20)
+  @Test
+  void post_openLineageBatchEvent_whenDisabled_returns503() throws HttpResponseException {
+    // Update settings to disable the OpenLineage API
+    updateOpenLineageSettingsViaApi(
+        new OpenLineageSettings()
+            .withEnabled(false)
+            .withAutoCreateEntities(true)
+            .withDefaultPipelineService("openlineage"));
+
+    try {
+      Table sourceTable = TABLES.get(0);
+      Table targetTable = TABLES.get(1);
+
+      List<OpenLineageRunEvent> events = new ArrayList<>();
+      events.add(createOpenLineageEvent(sourceTable, targetTable, EventType.COMPLETE));
+
+      OpenLineageBatchRequest batchRequest = new OpenLineageBatchRequest().withEvents(events);
+      WebTarget target = getResource("openlineage/lineage/batch");
+
+      TestUtils.assertResponse(
+          () -> TestUtils.post(target, batchRequest, OpenLineageResponse.class, ADMIN_AUTH_HEADERS),
+          Status.SERVICE_UNAVAILABLE,
+          "OpenLineage API is disabled");
+    } finally {
+      // Re-enable the API
+      updateOpenLineageSettingsViaApi(
+          new OpenLineageSettings()
+              .withEnabled(true)
+              .withAutoCreateEntities(true)
+              .withDefaultPipelineService("openlineage"));
+    }
+  }
+
+  private OpenLineageSettings getOpenLineageSettings() {
+    return SettingsCache.getSettingOrDefault(
+        SettingsType.OPEN_LINEAGE_SETTINGS,
+        new OpenLineageSettings()
+            .withEnabled(true)
+            .withAutoCreateEntities(true)
+            .withDefaultPipelineService("openlineage"),
+        OpenLineageSettings.class);
+  }
+
+  private void updateOpenLineageSettingsViaApi(OpenLineageSettings newSettings)
+      throws HttpResponseException {
+    Settings setting =
+        new Settings()
+            .withConfigType(SettingsType.OPEN_LINEAGE_SETTINGS)
+            .withConfigValue(newSettings);
+    WebTarget target = getResource("system/settings");
+    TestUtils.put(target, setting, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
   private OpenLineageRunEvent createSimpleOpenLineageEvent() {

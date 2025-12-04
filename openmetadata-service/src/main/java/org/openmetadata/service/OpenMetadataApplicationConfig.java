@@ -33,7 +33,6 @@ import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.configuration.OpenLineageConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -154,16 +153,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("rdf")
   private RdfConfiguration rdfConfiguration = new RdfConfiguration();
-
-  @JsonProperty("openLineageConfiguration")
-  private OpenLineageConfiguration openLineageConfiguration = new OpenLineageConfiguration();
-
-  public OpenLineageConfiguration getOpenLineageConfiguration() {
-    if (openLineageConfiguration == null) {
-      openLineageConfiguration = new OpenLineageConfiguration();
-    }
-    return openLineageConfiguration;
-  }
 
   @JsonProperty("cache")
   private org.openmetadata.service.cache.CacheConfig cacheConfig;

@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.openlineage.FailedEvent;
@@ -36,13 +37,15 @@ import org.openmetadata.schema.api.lineage.openlineage.OpenLineageBatchRequest;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageResponse;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageRunEvent;
 import org.openmetadata.schema.api.lineage.openlineage.ProcessingSummary;
-import org.openmetadata.schema.configuration.OpenLineageConfiguration;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.openlineage.OpenLineageEntityResolver;
 import org.openmetadata.service.openlineage.OpenLineageMapper;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -62,34 +65,40 @@ public class OpenLineageResource {
 
   private final LineageRepository lineageRepository;
   private final Authorizer authorizer;
-  private final OpenLineageMapper mapper;
-  private final OpenLineageEntityResolver entityResolver;
-  private final OpenLineageConfiguration config;
 
   public OpenLineageResource(Authorizer authorizer) {
-    this(authorizer, null);
+    this.authorizer = authorizer;
+    this.lineageRepository = Entity.getLineageRepository();
   }
 
-  public OpenLineageResource(Authorizer authorizer, OpenLineageConfiguration config) {
-    this.authorizer = authorizer;
-    this.config = config != null ? config : new OpenLineageConfiguration();
-    this.lineageRepository = Entity.getLineageRepository();
+  private OpenLineageSettings getSettings() {
+    return SettingsCache.getSettingOrDefault(
+        SettingsType.OPEN_LINEAGE_SETTINGS,
+        new OpenLineageSettings()
+            .withEnabled(true)
+            .withAutoCreateEntities(true)
+            .withDefaultPipelineService(DEFAULT_PIPELINE_SERVICE),
+        OpenLineageSettings.class);
+  }
+
+  private OpenLineageMapper createMapper() {
+    OpenLineageSettings settings = getSettings();
 
     boolean autoCreate =
-        this.config.getAutoCreateEntities() != null ? this.config.getAutoCreateEntities() : true;
+        settings.getAutoCreateEntities() != null ? settings.getAutoCreateEntities() : true;
     String pipelineService =
-        this.config.getDefaultPipelineService() != null
-            ? this.config.getDefaultPipelineService()
+        settings.getDefaultPipelineService() != null
+            ? settings.getDefaultPipelineService()
             : DEFAULT_PIPELINE_SERVICE;
 
-    this.entityResolver =
-        new OpenLineageEntityResolver(
-            autoCreate,
-            pipelineService,
-            this.config.getNamespaceToServiceMapping() != null
-                ? this.config.getNamespaceToServiceMapping().getAdditionalProperties()
-                : null);
-    this.mapper = new OpenLineageMapper(entityResolver, this.config);
+    Map<String, String> namespaceMapping =
+        settings.getNamespaceToServiceMapping() != null
+            ? settings.getNamespaceToServiceMapping().getAdditionalProperties()
+            : null;
+
+    OpenLineageEntityResolver entityResolver =
+        new OpenLineageEntityResolver(autoCreate, pipelineService, namespaceMapping);
+    return new OpenLineageMapper(entityResolver, settings);
   }
 
   @POST
@@ -119,7 +128,19 @@ public class OpenLineageResource {
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(Entity.TABLE));
 
+    OpenLineageSettings settings = getSettings();
+    if (!Boolean.TRUE.equals(settings.getEnabled())) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(
+              new OpenLineageResponse()
+                  .withStatus(OpenLineageResponse.Status.FAILURE)
+                  .withMessage("OpenLineage API is disabled")
+                  .withLineageEdgesCreated(0))
+          .build();
+    }
+
     String updatedBy = securityContext.getUserPrincipal().getName();
+    OpenLineageMapper mapper = createMapper();
 
     try {
       List<AddLineage> lineageRequests = mapper.mapRunEvent(event, updatedBy);
@@ -184,7 +205,19 @@ public class OpenLineageResource {
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(Entity.TABLE));
 
+    OpenLineageSettings settings = getSettings();
+    if (!Boolean.TRUE.equals(settings.getEnabled())) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(
+              new OpenLineageResponse()
+                  .withStatus(OpenLineageResponse.Status.FAILURE)
+                  .withMessage("OpenLineage API is disabled")
+                  .withLineageEdgesCreated(0))
+          .build();
+    }
+
     String updatedBy = securityContext.getUserPrincipal().getName();
+    OpenLineageMapper mapper = createMapper();
 
     int received = batch.getEvents().size();
     int successful = 0;

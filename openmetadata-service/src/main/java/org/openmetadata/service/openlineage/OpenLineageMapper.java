@@ -37,8 +37,8 @@ import org.openmetadata.schema.api.lineage.openlineage.OpenLineageRunEvent;
 import org.openmetadata.schema.api.lineage.openlineage.OutputDatasetFacets;
 import org.openmetadata.schema.api.lineage.openlineage.ParentRunFacet;
 import org.openmetadata.schema.api.lineage.openlineage.RunFacets;
-import org.openmetadata.schema.configuration.EventTypeFilter;
-import org.openmetadata.schema.configuration.OpenLineageConfiguration;
+import org.openmetadata.schema.configuration.OpenLineageEventType;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
@@ -51,17 +51,16 @@ public class OpenLineageMapper {
   private final Set<String> allowedEventTypes;
 
   public OpenLineageMapper(OpenLineageEntityResolver entityResolver) {
-    this(entityResolver, null);
+    this(entityResolver, (OpenLineageSettings) null);
   }
 
-  public OpenLineageMapper(
-      OpenLineageEntityResolver entityResolver, OpenLineageConfiguration config) {
+  public OpenLineageMapper(OpenLineageEntityResolver entityResolver, OpenLineageSettings settings) {
     this.entityResolver = entityResolver;
 
-    if (config != null && config.getEventTypeFilter() != null) {
+    if (settings != null && settings.getEventTypeFilter() != null) {
       this.allowedEventTypes =
-          config.getEventTypeFilter().stream()
-              .map(EventTypeFilter::value)
+          settings.getEventTypeFilter().stream()
+              .map(OpenLineageEventType::value)
               .collect(Collectors.toSet());
     } else {
       this.allowedEventTypes = Set.of("COMPLETE");

@@ -44,8 +44,8 @@ import org.openmetadata.schema.api.lineage.openlineage.ParentJobFacet;
 import org.openmetadata.schema.api.lineage.openlineage.ParentRunFacet;
 import org.openmetadata.schema.api.lineage.openlineage.RunFacets;
 import org.openmetadata.schema.api.lineage.openlineage.SqlJobFacet;
-import org.openmetadata.schema.configuration.EventTypeFilter;
-import org.openmetadata.schema.configuration.OpenLineageConfiguration;
+import org.openmetadata.schema.configuration.OpenLineageEventType;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
@@ -494,12 +494,15 @@ class OpenLineageMapperTest {
 
   @Test
   void mapRunEvent_configuredEventFilter_processesMultipleEventTypes() {
-    OpenLineageConfiguration config =
-        new OpenLineageConfiguration()
+    OpenLineageSettings settings =
+        new OpenLineageSettings()
             .withEventTypeFilter(
-                List.of(EventTypeFilter.COMPLETE, EventTypeFilter.START, EventTypeFilter.FAIL));
+                List.of(
+                    OpenLineageEventType.COMPLETE,
+                    OpenLineageEventType.START,
+                    OpenLineageEventType.FAIL));
 
-    mapper = new OpenLineageMapper(entityResolver, config);
+    mapper = new OpenLineageMapper(entityResolver, settings);
 
     OpenLineageInputDataset input = createInputDataset("ns", "input_table");
     OpenLineageOutputDataset output = createOutputDataset("ns", "output_table");
