@@ -736,7 +736,7 @@ export const addCustomPropertiesForEntity = async ({
   await page.waitForSelector('[data-testid="custom-property-form"]', {
     state: 'detached',
   });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
@@ -857,7 +857,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   entityType: string
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);

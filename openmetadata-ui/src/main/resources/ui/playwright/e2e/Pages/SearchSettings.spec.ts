@@ -163,7 +163,7 @@ test.describe('Search Preview test', () => {
       new RegExp(mockEntitySearchSettings.url + '$')
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -187,7 +187,7 @@ test.describe('Search Preview test', () => {
     await searchInput.fill(table1.entity.name);
     await previewResponse;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

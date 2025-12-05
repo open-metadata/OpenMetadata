@@ -102,7 +102,7 @@ test.describe('Teams drag and drop should work properly', () => {
   test('Add teams in hierarchy', async ({ page }) => {
     for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
       await addTeamHierarchy(page, teamDetails);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

@@ -757,7 +757,7 @@ test.describe('Glossary tests', () => {
         );
         await page.getByTestId('assets').click();
         await queryRes;
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1237,7 +1237,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -1285,7 +1285,7 @@ test.describe('Glossary tests', () => {
           await verifyColumnsVisibility(page, checkboxLabels, true);
 
           await page.reload();
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await verifyColumnsVisibility(page, checkboxLabels, true);
         }
       );
@@ -1299,7 +1299,7 @@ test.describe('Glossary tests', () => {
           await verifyColumnsVisibility(page, checkboxLabels, false);
 
           await page.reload();
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await verifyColumnsVisibility(page, checkboxLabels, false);
         }
       );
@@ -1318,7 +1318,7 @@ test.describe('Glossary tests', () => {
         await verifyAllColumns(page, tableColumns, true);
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await verifyAllColumns(page, tableColumns, true);
       });
 
@@ -1334,7 +1334,7 @@ test.describe('Glossary tests', () => {
         await verifyAllColumns(page, tableColumns, false);
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await verifyAllColumns(page, tableColumns, false);
       });
     } finally {
@@ -1478,7 +1478,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -1747,7 +1747,7 @@ test.describe('Glossary tests', () => {
 
         await page1.getByTestId(`tag-"${domain.data.name}"`).click();
 
-        await page1.waitForLoadState('networkidle');
+        await page1.waitForLoadState('domcontentloaded');
         await page1.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1806,10 +1806,10 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await selectActiveGlossary(page, glossary.data.displayName);
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(page.getByTestId('entity-header-display-name')).toHaveText(
           glossary.data.displayName
@@ -1818,7 +1818,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Change application language to German', async () => {
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
           .filter({ hasText: 'EN' })
@@ -1831,7 +1831,7 @@ test.describe('Glossary tests', () => {
         await germanOption.click();
 
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
       });
 
       await test.step(
@@ -1839,10 +1839,10 @@ test.describe('Glossary tests', () => {
         async () => {
           await sidebarClick(page, SidebarItem.GLOSSARY);
           await waitForAllLoadersToDisappear(page);
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await selectActiveGlossary(page, glossary.data.displayName);
           await waitForAllLoadersToDisappear(page);
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
 
           await page.getByTestId('manage-button').click();
           await page.getByTestId('delete-button').click();
@@ -1871,7 +1871,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Change language back to English', async () => {
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
           .filter({ hasText: 'DE' })

@@ -45,7 +45,7 @@ export const updatePersonaDisplayName = async ({
 export const navigateToPersonaSettings = async (page: Page) => {
   await redirectToHomePage(page);
   await settingClick(page, GlobalSettingOptions.PERSONA);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -63,7 +63,7 @@ export const checkPersonaInProfile = async (
     state: 'visible',
   });
   await page.getByTestId('user-name').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
@@ -139,7 +139,7 @@ export const navigateToPersonaWithPagination = async (
     await nextBtn.click();
     await getPersonas;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
   }
 };

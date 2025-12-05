@@ -1014,7 +1014,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should verify the removed value from entity', async () => {
       await page.getByTestId('column-name').first().click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(
         page

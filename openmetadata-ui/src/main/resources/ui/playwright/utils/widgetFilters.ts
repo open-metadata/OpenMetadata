@@ -331,7 +331,7 @@ export const verifyDataAssetsFilters = async (
   await aToZFilter;
 
   // Wait for UI to update
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Test Z to A sorting
   const zToAFilter = page.waitForResponse(
@@ -344,7 +344,7 @@ export const verifyDataAssetsFilters = async (
   await zToAFilter;
 
   // Wait for UI to update
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Test High to Low sorting
   const highToLowFilter = page.waitForResponse(
@@ -357,7 +357,7 @@ export const verifyDataAssetsFilters = async (
   await highToLowFilter;
 
   // Wait for UI to update
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Test Low to High sorting
   const lowToHighFilter = page.waitForResponse(
@@ -370,5 +370,5 @@ export const verifyDataAssetsFilters = async (
   await lowToHighFilter;
 
   // Wait for UI to update
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };

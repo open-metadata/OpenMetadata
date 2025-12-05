@@ -241,7 +241,7 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
     await adminPage.waitForSelector('.user-list-table [data-testid="loader"]', {
       state: 'detached',
     });
@@ -297,7 +297,7 @@ test.describe('User with Data Consumer Roles', () => {
     // Check CRUD for Glossary
     await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
-    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForLoadState('domcontentloaded');
     await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -577,7 +577,7 @@ test.describe('User Profile Feed Interactions', () => {
     );
     await adminPage.getByTestId('user-name').click();
     await userResponse;
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     await expect(
       adminPage.locator('.user-profile-dropdown-overlay')
@@ -826,7 +826,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Refresh the page
       await adminPage.reload();
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       // Open dropdown again after refresh
       await adminPage.locator('[data-testid="dropdown-profile"]').click();
@@ -1082,7 +1082,7 @@ test.describe('User Profile Persona Interactions', () => {
 
         // Click the persona link to navigate
         await personaLink.click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         // Verify we're on the persona page
         await expect(adminPage.url()).toContain('/persona/');
@@ -1159,7 +1159,7 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
       });
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       // Select specific persona for default - try test ID first, fallback to role selector
       const defaultPersonaOptionTestId = adminPage.getByTitle(
@@ -1204,7 +1204,7 @@ test.describe('User Profile Persona Interactions', () => {
 
         // Click the persona link to navigate
         await personaLink.click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         // Verify we're on the persona page
         await expect(adminPage.url()).toContain('/persona/');
@@ -1353,7 +1353,7 @@ base.describe(
 
         for (const entity of entities) {
           await entity.visitEntityPage(page);
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });

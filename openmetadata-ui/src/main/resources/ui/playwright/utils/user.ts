@@ -615,7 +615,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-icon-tier"]')).toBeVisible();

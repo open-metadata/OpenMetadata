@@ -110,7 +110,7 @@ services.forEach((ServiceClass) => {
 
         // Wait for the service details page to load
         await page.waitForURL('**/service/**');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -125,7 +125,7 @@ services.forEach((ServiceClass) => {
 
         if (service.serviceType === 'Mysql') {
           await page.reload();
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });

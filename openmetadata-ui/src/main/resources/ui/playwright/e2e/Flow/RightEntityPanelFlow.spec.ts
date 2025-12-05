@@ -625,7 +625,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
@@ -845,7 +845,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
@@ -1024,7 +1024,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
@@ -1140,7 +1140,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
@@ -1390,7 +1390,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     // Click on custom properties tab to set values
     await adminPage.click('[data-testid="custom_properties"]');
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Set values for each property type through the UI
     for (const type of propertyTypesToTest) {

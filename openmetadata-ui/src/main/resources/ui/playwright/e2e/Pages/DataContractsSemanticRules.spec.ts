@@ -157,7 +157,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -273,7 +273,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -390,7 +390,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -505,7 +505,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -596,7 +596,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -684,7 +684,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -790,7 +790,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -895,7 +895,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -994,7 +994,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1096,7 +1096,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1200,7 +1200,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1291,7 +1291,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1383,7 +1383,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1473,7 +1473,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1556,7 +1556,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1643,7 +1643,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1734,7 +1734,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1827,7 +1827,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1921,7 +1921,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2016,7 +2016,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2112,7 +2112,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2209,7 +2209,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2337,7 +2337,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2450,7 +2450,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2564,7 +2564,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2676,7 +2676,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2778,7 +2778,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2883,7 +2883,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
           await page.reload();
 
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -2985,7 +2985,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -3089,7 +3089,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -3191,7 +3191,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -3295,7 +3295,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -3392,7 +3392,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -3491,7 +3491,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

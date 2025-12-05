@@ -166,7 +166,7 @@ test.describe('Domains', () => {
     await test.step('Create domain', async () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -226,7 +226,7 @@ test.describe('Domains', () => {
 
     await test.step('Create DataProducts', async () => {
       await createDataProduct(page, dataProduct1.data);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -280,7 +280,7 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct1.data);
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(
           page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
@@ -288,7 +288,7 @@ test.describe('Domains', () => {
 
         await page.getByTestId('assets').getByText('Assets').click();
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(page.getByTestId('no-data-placeholder')).toContainText(
           "Looks like you haven't added any data assets yet."
@@ -297,7 +297,7 @@ test.describe('Domains', () => {
         await page.getByTestId('data-assets-add-button').click();
 
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(page.getByTestId('form-heading')).toContainText(
           'Add Assets'
@@ -326,7 +326,7 @@ test.describe('Domains', () => {
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
       await page.reload();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await checkAssetsCount(page, 0);
     });
 
@@ -353,7 +353,7 @@ test.describe('Domains', () => {
     await redirectToHomePage(page);
     await followingSearchResponse;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check that the followed domain is shown in the following widget
     await expect(
@@ -439,7 +439,7 @@ test.describe('Domains', () => {
 
     await redirectToExplorePage(page);
     await waitForAllLoadersToDisappear(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
     await page.getByTestId('domain-dropdown').click();
@@ -457,7 +457,7 @@ test.describe('Domains', () => {
       .click();
     await waitForAllLoadersToDisappear(page);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await redirectToHomePage(page);
 
@@ -550,7 +550,7 @@ test.describe('Domains', () => {
       );
       await redirectToHomePage(page);
       await followingSearchResponse;
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Check that the followed domain is shown in the following widget
       await expect(
@@ -778,7 +778,7 @@ test.describe('Domains', () => {
       await domain.create(apiContext);
       await page.reload();
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector(`[data-testid="loader"]`, {
         state: 'hidden',
       });
@@ -791,13 +791,13 @@ test.describe('Domains', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector(`[data-testid="loader"]`, {
         state: 'hidden',
       });
       await selectDomain(page, domain.data);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(
         page.locator(
@@ -1381,7 +1381,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForLoadState('domcontentloaded');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1400,7 +1400,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       const subDomainTableFqn =
         testResources.subDomainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`);
-      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForLoadState('domcontentloaded');
 
       // Verify no permission error
       await expect(
@@ -1453,7 +1453,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
         const domainTableFqn =
           testResources.domainTable.entityResponseData.fullyQualifiedName;
         await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForLoadState('domcontentloaded');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1474,7 +1474,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
         const noDomainTableFqn =
           testResources.noDomainTable.entityResponseData.fullyQualifiedName;
         await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
-        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForLoadState('domcontentloaded');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1529,11 +1529,11 @@ test.describe('Domain Tree View Functionality', () => {
     test.slow(true);
 
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('button', { name: 'tree' }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     await page
@@ -1549,7 +1549,7 @@ test.describe('Domain Tree View Functionality', () => {
       .getByRole('textbox', { name: 'Search' })
       .fill(domainDisplayName);
     await searchDomain;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -1613,7 +1613,7 @@ test.describe('Domain Tree View Functionality', () => {
     ).toContainText('1');
 
     await page.getByTestId('subdomains').getByText('Sub Domains').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     await expect(

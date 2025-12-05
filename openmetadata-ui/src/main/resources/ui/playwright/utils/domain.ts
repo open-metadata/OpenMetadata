@@ -163,7 +163,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -186,7 +186,7 @@ export const selectSubDomain = async (
     );
     await menuItem.click();
     await subDomainRes;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   const subDomainRes = page.waitForResponse(
@@ -200,7 +200,7 @@ export const selectSubDomain = async (
   });
 
   await page.getByTestId(subDomain.name).click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 export const selectDataProductFromTab = async (
@@ -280,7 +280,7 @@ const goToAssetsTab = async (
     page.waitForResponse('/api/v1/search/query?q=&index=all*'),
   ]);
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
@@ -483,7 +483,7 @@ export const addAssetsToDomain = async (
 
   await page.reload();
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await checkAssetsCount(page, assets.length);
 };
@@ -571,7 +571,7 @@ export const addAssetsToDataProduct = async (
       )
       .click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(
       page
@@ -581,7 +581,7 @@ export const addAssetsToDataProduct = async (
     ).toBeVisible();
 
     await page.goBack();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 };
 

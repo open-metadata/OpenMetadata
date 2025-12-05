@@ -58,7 +58,7 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
 
   await createTeamResponse;
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -395,7 +395,7 @@ export const addEmailTeam = async (page: Page, email: string) => {
   // Reload the page
   await page.reload();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -485,7 +485,7 @@ export const executionOnOwnerTeam = async (
 
   const newTeamData = await createTeam(page);
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',

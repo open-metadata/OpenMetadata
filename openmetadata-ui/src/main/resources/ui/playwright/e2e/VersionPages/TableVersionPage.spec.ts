@@ -24,7 +24,7 @@ test.describe('Table Version Page', () => {
       '/table/sample_data.ecommerce_db.shopify.performance_test_table/versions/0.1'
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

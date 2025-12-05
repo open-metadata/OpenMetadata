@@ -96,7 +96,7 @@ test.describe.serial('Persona operations', () => {
     const personaListResponse = page.waitForResponse(`/api/v1/personas?*`);
     await settingClick(page, GlobalSettingOptions.PERSONA);
     await personaListResponse;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
@@ -140,7 +140,7 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByRole('button', { name: 'Create' }).click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await navigateToPersonaSettings(page);
 
@@ -394,7 +394,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         await adminPage.getByRole('button', { name: 'Create' }).click();
 
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         await navigateToPersonaSettings(adminPage);
 
@@ -459,7 +459,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
           `persona-details-card-${persona1.responseData.fullyQualifiedName}`
         )
         .click();
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
       await setPersonaAsDefault(adminPage);
     });
 

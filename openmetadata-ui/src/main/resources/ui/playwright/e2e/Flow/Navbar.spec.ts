@@ -25,7 +25,7 @@ for (const searchItem of navbarSearchItems) {
   test(`Search Term - ${label}`, async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await selectOption(page, page.getByTestId('global-search-selector'), label);
 

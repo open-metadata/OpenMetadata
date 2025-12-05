@@ -110,7 +110,7 @@ test.describe('User with different Roles', () => {
     adminPage,
   }) => {
     await redirectToUserPage(adminPage);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
 
@@ -142,7 +142,7 @@ test.describe('User with different Roles', () => {
 
     await adminPage.getByText(team.responseData.displayName).first().click();
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     const domainResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/domains/hierarchy')
@@ -185,7 +185,7 @@ test.describe('User with different Roles', () => {
 
     await redirectToUserPage(adminPage);
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Wait for the team to be visible in the teams section
     await adminPage

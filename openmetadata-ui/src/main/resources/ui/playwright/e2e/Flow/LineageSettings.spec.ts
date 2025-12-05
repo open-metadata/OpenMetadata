@@ -269,7 +269,7 @@ test.describe('Lineage Settings Tests', () => {
     );
     await pipeline.visitEntityPage(dataStewardPage);
     await dataStewardPage.getByRole('tab', { name: 'Lineage' }).click();
-    await dataStewardPage.waitForLoadState('networkidle');
+    await dataStewardPage.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(dataStewardPage);
     await dataStewardPage.getByTestId('fit-screen').click();
 
@@ -288,7 +288,7 @@ test.describe('Lineage Settings Tests', () => {
     await settingsUpdate;
 
     await dataStewardPage.reload();
-    await dataStewardPage.waitForLoadState('networkidle');
+    await dataStewardPage.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(dataStewardPage);
     await dataStewardPage.getByTestId('fit-screen').click();
 

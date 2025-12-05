@@ -34,7 +34,7 @@ import {
   descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
-  reloadAndWaitForNetworkIdle,
+  reloadAndWaitFordomcontentloaded,
   toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
@@ -155,7 +155,7 @@ test.describe('Entity Version pages', () => {
       const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       const versionDetailResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/versions/0.2') && response.status() === 200
@@ -210,7 +210,7 @@ test.describe('Entity Version pages', () => {
           ],
         });
 
-        await reloadAndWaitForNetworkIdle(page);
+        await reloadAndWaitFordomcontentloaded(page);
 
         const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
@@ -278,7 +278,7 @@ test.describe('Entity Version pages', () => {
           ],
         });
 
-        await reloadAndWaitForNetworkIdle(page);
+        await reloadAndWaitFordomcontentloaded(page);
 
         const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();

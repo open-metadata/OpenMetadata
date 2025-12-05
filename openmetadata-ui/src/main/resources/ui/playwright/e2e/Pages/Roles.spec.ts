@@ -302,7 +302,7 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await getElementWithPagination(page, roleLocator);
 

@@ -61,7 +61,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
 
     await page.click(`[data-testid="service-name-${serviceName}"]`);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
     const headerText = await page.textContent(

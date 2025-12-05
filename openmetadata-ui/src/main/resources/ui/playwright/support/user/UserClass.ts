@@ -208,7 +208,7 @@ export class UserClass {
   ) {
     await page.goto('/');
     await page.waitForURL('**/signin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const emailInput = page.locator('input[id="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);

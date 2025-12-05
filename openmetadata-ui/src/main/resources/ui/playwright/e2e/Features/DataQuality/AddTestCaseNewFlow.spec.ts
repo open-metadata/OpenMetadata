@@ -168,13 +168,13 @@ test.describe('Add TestCase New Flow', () => {
       state: 'visible',
     });
     await testCaseDoc;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
   };
 
   const visitDataQualityPage = async (page: Page) => {
     await page.goto('/data-quality/test-cases');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
   };
 
@@ -208,7 +208,7 @@ test.describe('Add TestCase New Flow', () => {
         page,
         ...tableTestCaseDetails,
       });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -310,12 +310,12 @@ test.describe('Add TestCase New Flow', () => {
       })
       .click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
     await page.getByRole('menuitem', { name: 'Test case' }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await createTestCase({
       page,
@@ -328,7 +328,7 @@ test.describe('Add TestCase New Flow', () => {
       .getByTestId('select-table-card')
       .getByText('Column Level')
       .click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await selectColumn(page, table.entity.columns[0].name);
 
@@ -373,7 +373,7 @@ test.describe('Add TestCase New Flow', () => {
       .getByTestId('edit-button')
       .click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

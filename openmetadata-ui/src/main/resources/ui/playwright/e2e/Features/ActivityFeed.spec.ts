@@ -81,12 +81,12 @@ test.describe('FeedWidget on landing page', () => {
           if (await saveButton.isEnabled()) {
             const saveResponse = adminPage.waitForResponse('/api/v1/docStore*');
             await saveButton.click();
-            await adminPage.waitForLoadState('networkidle');
+            await adminPage.waitForLoadState('domcontentloaded');
             await saveResponse;
           }
 
           await redirectToHomePage(adminPage);
-          await adminPage.waitForLoadState('networkidle');
+          await adminPage.waitForLoadState('domcontentloaded');
         } finally {
           await adminPage.close();
         }
@@ -116,7 +116,7 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('renders widget wrapper and header with sort dropdown', async ({
@@ -165,7 +165,7 @@ test.describe('FeedWidget on landing page', () => {
       .getByTestId('widget-header')
       .getByText('Activity Feed');
     await titleLink.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify navigation to user activity feed
     await expect(page.url()).toContain('/users/');
@@ -213,7 +213,7 @@ test.describe('FeedWidget on landing page', () => {
 
     const feedResponse = page.waitForResponse('/api/v1/feed*');
     await myDataOption.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await feedResponse;
 
     // Switch back to All Activity
@@ -226,7 +226,7 @@ test.describe('FeedWidget on landing page', () => {
     if (await allActivityOption.isVisible()) {
       const feedResponse = page.waitForResponse('/api/v1/feed*');
       await allActivityOption.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await feedResponse;
     }
   });
@@ -243,7 +243,7 @@ test.describe('FeedWidget on landing page', () => {
 
     // Click and verify navigation
     await viewMoreLink.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should navigate away from home page
     expect(page.url()).not.toMatch(/home|welcome/i);
@@ -344,7 +344,7 @@ test.describe('FeedWidget on landing page', () => {
 
     if (await commentInput.count()) {
       await commentInput.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Fill in the editor
       const editorField = page.locator(
@@ -358,7 +358,7 @@ test.describe('FeedWidget on landing page', () => {
       await expect(sendButton).toBeEnabled();
 
       const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await sendButton.click();
       await sendReply;
 
@@ -437,13 +437,13 @@ test.describe('Mention notifications in Notification Box', () => {
             // wait for 2s before querying again
             await adminPage.waitForTimeout(2000);
             await adminPage.reload();
-            await adminPage.waitForLoadState('networkidle');
+            await adminPage.waitForLoadState('domcontentloaded');
             await waitForAllLoadersToDisappear(adminPage);
           }
         }
 
         await adminPage.getByTestId('activity_feed').click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         await adminPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -479,7 +479,7 @@ test.describe('Mention notifications in Notification Box', () => {
       await entity.visitEntityPage(user1Page);
 
       await user1Page.getByTestId('activity_feed').click();
-      await user1Page.waitForLoadState('networkidle');
+      await user1Page.waitForLoadState('domcontentloaded');
 
       await user1Page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -525,7 +525,7 @@ test.describe('Mention notifications in Notification Box', () => {
       'Admin user checks notification for correct user and timestamp',
       async () => {
         await adminPage.reload();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
         const notificationBell = adminPage.getByTestId('task-notifications');
 
         await expect(notificationBell).toBeVisible();
@@ -578,7 +578,7 @@ test.describe('Mention notifications in Notification Box', () => {
         const navigationPromise = adminPage.waitForURL(/activity_feed/);
         await mentionNotificationLink.click();
         await navigationPromise;
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         expect(adminPage.url()).toContain('activity_feed');
         expect(adminPage.url()).toContain('/all');

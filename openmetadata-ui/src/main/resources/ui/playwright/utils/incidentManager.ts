@@ -39,7 +39,7 @@ export const acknowledgeTask = async (data: {
 
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=New`);
   await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
@@ -50,7 +50,7 @@ export const acknowledgeTask = async (data: {
   await page.click('#update-status-button');
   await statusChangeResponse;
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=Ack`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await expect(
     page.locator(
@@ -66,7 +66,7 @@ export const assignIncident = async (data: {
 }) => {
   const { testCaseName, page, user } = data;
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector(`[data-testid="test-case-${testCaseName}"]`);
   await page.click(`[data-testid="${testCaseName}-status"]`);
   await page.getByRole('menuitem', { name: 'Assigned' }).click();

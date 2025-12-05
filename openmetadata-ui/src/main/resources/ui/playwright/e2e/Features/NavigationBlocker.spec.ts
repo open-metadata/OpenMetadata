@@ -135,7 +135,7 @@ test.describe('Navigation Blocker Tests', () => {
     // Modal should disappear and navigate to settings
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Should navigate to the settings page
     expect(adminPage.url()).toContain('settings');
@@ -188,7 +188,7 @@ test.describe('Navigation Blocker Tests', () => {
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
     // Should navigate to the settings page
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Verify URL changed from customize page
     expect(adminPage.url()).not.toBe(originalUrl);
@@ -234,7 +234,7 @@ test.describe('Navigation Blocker Tests', () => {
       .click();
 
     // Navigation should happen immediately without modal
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     expect(adminPage.url()).toContain('settings');
 

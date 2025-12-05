@@ -56,7 +56,7 @@ test.describe.serial('User profile works after persona deletion', () => {
     await test.step('Create persona with user', async () => {
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -111,7 +111,7 @@ test.describe.serial('User profile works after persona deletion', () => {
     await test.step('Verify persona appears on user profile', async () => {
       // Go directly to user profile URL
       await page.goto(`/users/${user.responseData.name}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -136,7 +136,7 @@ test.describe.serial('User profile works after persona deletion', () => {
     // Step 3: Delete the persona
     await test.step('Delete the persona', async () => {
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -144,7 +144,7 @@ test.describe.serial('User profile works after persona deletion', () => {
       await page
         .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
         .click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="delete-button-title"]');
@@ -183,7 +183,7 @@ test.describe.serial('User profile works after persona deletion', () => {
       async () => {
         // Go directly to user profile URL again
         await page.goto(`/users/${user.responseData.name}`);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // User profile should load without errors
         // Check if the user name is displayed (this means the page loaded)
@@ -227,7 +227,7 @@ test.describe.serial('User profile works after persona deletion', () => {
     await test.step('Create default persona with user', async () => {
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -285,14 +285,14 @@ test.describe.serial('User profile works after persona deletion', () => {
       await page
         .getByTestId(`persona-details-card-${DEFAULT_PERSONA_DETAILS.name}`)
         .click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Use the helper function to set as default
       await setPersonaAsDefault(page);
 
       // Go back to personas list
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
     });
 
     // Step 2: Navigate directly to user profile and verify default persona is shown
@@ -303,7 +303,7 @@ test.describe.serial('User profile works after persona deletion', () => {
         await page.goto(
           `http://localhost:8585/users/${user.responseData.name}`
         );
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Check if persona appears on the user profile
         const personaCard = page.getByTestId('persona-details-card');
@@ -339,7 +339,7 @@ test.describe.serial('User profile works after persona deletion', () => {
     // Step 3: Delete the default persona
     await test.step('Delete the default persona', async () => {
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -347,7 +347,7 @@ test.describe.serial('User profile works after persona deletion', () => {
       await page
         .getByTestId(`persona-details-card-${DEFAULT_PERSONA_DETAILS.name}`)
         .click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="delete-button-title"]');
@@ -388,7 +388,7 @@ test.describe.serial('User profile works after persona deletion', () => {
         await page.goto(
           `http://localhost:8585/users/${user.responseData.name}`
         );
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // User profile should load without errors
         // Check if the user name is displayed (this means the page loaded)

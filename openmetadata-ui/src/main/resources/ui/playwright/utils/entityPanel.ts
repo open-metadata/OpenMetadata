@@ -25,7 +25,7 @@ export const openEntitySummaryPanel = async (
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
@@ -33,7 +33,7 @@ export const openEntitySummaryPanel = async (
     .first();
   if (await entityCard.isVisible()) {
     await entityCard.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 };
 

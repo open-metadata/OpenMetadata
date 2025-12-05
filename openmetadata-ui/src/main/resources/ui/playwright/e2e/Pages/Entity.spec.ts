@@ -558,7 +558,7 @@ entities.forEach((EntityClass) => {
 
         // Navigate to the table entity page
         await entity.visitEntityPage(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -579,7 +579,7 @@ entities.forEach((EntityClass) => {
           await profilerTab.click();
           await profilerResponse;
 
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -613,7 +613,7 @@ entities.forEach((EntityClass) => {
           await activityFeedTab.click();
           await activityFeedResponse;
 
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });

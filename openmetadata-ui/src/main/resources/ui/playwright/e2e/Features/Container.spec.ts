@@ -126,7 +126,7 @@ test.describe('Container entity specific tests ', () => {
   }) => {
     await page.goto('/container/s3_storage_sample.departments.finance');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

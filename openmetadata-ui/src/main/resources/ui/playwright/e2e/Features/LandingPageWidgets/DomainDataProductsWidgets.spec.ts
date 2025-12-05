@@ -182,7 +182,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     // Check assets count is now 1
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await checkAssetsCount(page, 1);
 
     await redirectToHomePage(page);
@@ -203,7 +203,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     // Click assets tab - data product should have some assets from previous test
     await page.getByTestId('assets').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for assets to load
     await page
@@ -245,13 +245,13 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       await removeRes;
 
       // Wait for search to refresh
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(500);
     }
 
     // Refresh and check the assets tab shows 0
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await checkAssetsCount(page, 0);
 
     await redirectToHomePage(page);

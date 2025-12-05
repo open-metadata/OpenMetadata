@@ -195,7 +195,7 @@ export const updateRelatedMetric = async (
 
   await metricsResponsePromise1;
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('entity-header-display-name')).toContainText(
@@ -212,7 +212,7 @@ export const updateRelatedMetric = async (
   await page.getByRole('button', { name: title, exact: true }).click();
   await metricsResponsePromise2;
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('entity-header-display-name')).toContainText(

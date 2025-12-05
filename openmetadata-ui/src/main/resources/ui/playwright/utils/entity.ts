@@ -58,7 +58,7 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Unified loader handling
   await waitForAllLoadersToDisappear(page);
@@ -69,7 +69,7 @@ export const visitEntityPage = async (data: {
 
   if (isWelcomeScreenVisible) {
     await page.getByTestId('welcome-screen-close-btn').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   const waitForSearchResponse = page.waitForResponse(
@@ -79,7 +79,7 @@ export const visitEntityPage = async (data: {
   await waitForSearchResponse;
 
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -1057,7 +1057,7 @@ export const unFollowEntity = async (
   page: Page,
   endpoint: EntityTypeEndpoint
 ) => {
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const followButton = page.getByTestId('entity-follow-button');
 
@@ -1082,7 +1082,7 @@ export const validateFollowedEntityToWidget = async (
   isFollowing: boolean
 ) => {
   await redirectToHomePage(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -1156,7 +1156,7 @@ export const createAnnouncement = async (
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -1246,7 +1246,7 @@ export const deleteAnnouncement = async (page: Page) => {
   await getFeed;
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -1494,7 +1494,7 @@ export const checkForEditActions = async ({
     if (entityType.startsWith('services/')) {
       await page.getByRole('tab').nth(1).click();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       continue;
     }
@@ -1731,7 +1731,7 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await toastNotification(
     page,
@@ -1740,7 +1740,7 @@ export const softDeleteEntity = async (
   );
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   // Retry mechanism for checking deleted badge
   let deletedBadge = page.locator('[data-testid="deleted-badge"]');
@@ -1756,7 +1756,7 @@ export const softDeleteEntity = async (
     attempts++;
     if (attempts < maxAttempts) {
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1792,7 +1792,7 @@ export const softDeleteEntity = async (
 
   await restoreEntity(page);
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await deletedEntityCommonChecks({
     page,
@@ -1928,7 +1928,7 @@ export const checkItemNotExistsInQuickFilter = async (
   filterValue: string
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
   const testId = filterValue.toLowerCase();
 
