@@ -477,6 +477,8 @@ export const addColumnLineage = async (
   );
   await lineageRes;
 
+  await page.getByTestId(`column-${toColumnNode}`).click();
+
   if (exitEditMode) {
     await editLineageClick(page);
   }
