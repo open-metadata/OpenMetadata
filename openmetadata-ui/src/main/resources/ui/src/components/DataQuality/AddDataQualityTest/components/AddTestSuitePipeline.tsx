@@ -17,7 +17,10 @@ import QueryString from 'qs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import {
+  DEFAULT_SCHEDULE_CRON_DAILY,
+  SCHEDULAR_OPTIONS,
+} from '../../../../constants/Schedular.constants';
 import { TestCase } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -140,6 +143,16 @@ const AddTestSuitePipeline = ({
 
   const raiseOnErrorFormField = useMemo(() => getRaiseOnErrorFormField(), []);
 
+  const schedularOptionsTranslated = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
   return (
     <Form.Provider onFormChange={handleFromChange}>
       <ScheduleInterval
@@ -151,6 +164,7 @@ const AddTestSuitePipeline = ({
         includePeriodOptions={includePeriodOptions}
         initialData={initialData}
         isEditMode={isEditMode}
+        schedularOptions={schedularOptionsTranslated}
         status={isLoading ? 'waiting' : 'initial'}
         topChildren={
           <>
