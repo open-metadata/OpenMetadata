@@ -347,7 +347,9 @@ test.describe(
             retentionPeriod: undefined,
             sourceUrl: undefined,
           },
-          page
+          page,
+          undefined,
+          true
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
@@ -476,7 +478,9 @@ test.describe(
             teamOwners: [team.responseData?.['displayName']],
             domains: domain.responseData,
           },
-          page
+          page,
+          undefined,
+          true
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
@@ -612,7 +616,9 @@ test.describe(
             teamOwners: [team.responseData?.['displayName']],
             domains: domain.responseData,
           },
-          page
+          page,
+          undefined,
+          true
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
