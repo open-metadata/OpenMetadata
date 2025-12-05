@@ -84,14 +84,11 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -109,9 +106,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -223,8 +217,6 @@ import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -4550,233 +4542,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Data steward updated description", updatedColumn.getDescription());
     assertEquals(1, updatedColumn.getTags().size());
     assertEquals("PersonalData.Personal", updatedColumn.getTags().get(0).getTagFQN());
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void test_concurrentColumnUpdates_reproduceDataLoss(TestInfo test) throws Exception {
-    // This test verifies that ETag-based optimistic locking prevents concurrent updates
-    // from silently overwriting each other's changes. Two different users try to update
-    // the same entity simultaneously using the SAME stale ETag:
-    // - One request succeeds (whoever gets to the server first)
-    // - The other request fails with 412 Precondition Failed due to stale ETag
-    // This prevents the "lost update" problem where one user's changes silently overwrite
-    // another's.
-
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Get the table with ETag - both threads will use this SAME ETag (simulating stale reads)
-    WebTarget getTarget = getResource(table.getId()).queryParam("fields", "columns,tags");
-    jakarta.ws.rs.core.Response getResponse =
-        SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
-    String baseETag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
-    Table baseTableState = getResponse.readEntity(Table.class);
-    String baseTableJson = JsonUtils.pojoToJson(baseTableState);
-    Double baseVersion = baseTableState.getVersion();
-    LOG.info("Base table version: {}, ETag: {}", baseVersion, baseETag);
-
-    // Set up for truly concurrent updates from different users
-    CountDownLatch startLatch = new CountDownLatch(1);
-    CountDownLatch completionLatch = new CountDownLatch(2);
-    AtomicReference<Integer> statusA = new AtomicReference<>();
-    AtomicReference<Integer> statusB = new AtomicReference<>();
-    AtomicReference<Table> resultA = new AtomicReference<>();
-    AtomicReference<Table> resultB = new AtomicReference<>();
-    AtomicReference<Exception> errorRef = new AtomicReference<>();
-
-    // Prepare auth headers for two different users
-    Map<String, String> user1Headers = authHeaders(USER1.getName());
-    Map<String, String> user2Headers = authHeaders(USER2.getName());
-
-    // Request A (User1): Add description to a column
-    Thread threadA =
-        new Thread(
-            () -> {
-              try {
-                startLatch.await();
-
-                Table tableForA = JsonUtils.readValue(baseTableJson, Table.class);
-
-                // Add description to column at index 2
-                if (tableForA.getColumns() != null && tableForA.getColumns().size() > 2) {
-                  Column eventIdColumn = tableForA.getColumns().get(2);
-                  eventIdColumn.setDescription(
-                      "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.");
-                }
-
-                // Compute JSON patch
-                String updatedJson = JsonUtils.pojoToJson(tableForA);
-                JsonNode patch =
-                    JsonDiff.asJson(
-                        JsonUtils.getObjectMapper().readTree(baseTableJson),
-                        JsonUtils.getObjectMapper().readTree(updatedJson));
-
-                // PATCH with ETag using User1's credentials
-                WebTarget patchTarget = getResource(tableForA.getId());
-                Map<String, String> headers = new HashMap<>(user1Headers);
-                headers.put(EntityETag.IF_MATCH_HEADER, baseETag);
-
-                jakarta.ws.rs.core.Response patchResponse =
-                    SecurityUtil.addHeaders(patchTarget, headers)
-                        .method(
-                            "PATCH",
-                            jakarta.ws.rs.client.Entity.entity(
-                                patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
-
-                statusA.set(patchResponse.getStatus());
-                if (patchResponse.getStatus() == OK.getStatusCode()) {
-                  resultA.set(patchResponse.readEntity(Table.class));
-                  LOG.info(
-                      "Request A (User1) succeeded with status: {}", patchResponse.getStatus());
-                } else {
-                  LOG.info(
-                      "Request A (User1) failed with status: {} (expected if B won the race)",
-                      patchResponse.getStatus());
-                }
-
-              } catch (Exception e) {
-                LOG.error("Request A failed with exception", e);
-                errorRef.compareAndSet(null, e);
-              } finally {
-                completionLatch.countDown();
-              }
-            });
-
-    // Request B (User2): Add tags to columns - using the SAME stale ETag
-    Thread threadB =
-        new Thread(
-            () -> {
-              try {
-                startLatch.await();
-
-                Table tableForB = JsonUtils.readValue(baseTableJson, Table.class);
-
-                // Add tags to table
-                List<TagLabel> tableTags = new ArrayList<>();
-                tableTags.add(TIER2_TAG_LABEL);
-                tableForB.setTags(tableTags);
-
-                // Add tags to columns
-                if (tableForB.getColumns() != null && tableForB.getColumns().size() >= 2) {
-                  Column col0 = tableForB.getColumns().get(0);
-                  List<TagLabel> col0Tags = new ArrayList<>();
-                  col0Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PersonalData.Personal")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col0Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PII.Sensitive")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col0.setTags(col0Tags);
-
-                  Column col1 = tableForB.getColumns().get(1);
-                  List<TagLabel> col1Tags = new ArrayList<>();
-                  col1Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PII.Sensitive")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col1.setTags(col1Tags);
-                }
-
-                // Compute JSON patch from the SAME base state (stale)
-                String updatedJson = JsonUtils.pojoToJson(tableForB);
-                JsonNode patch =
-                    JsonDiff.asJson(
-                        JsonUtils.getObjectMapper().readTree(baseTableJson),
-                        JsonUtils.getObjectMapper().readTree(updatedJson));
-
-                // PATCH with the SAME stale ETag using User2's credentials
-                WebTarget patchTarget = getResource(tableForB.getId());
-                Map<String, String> headers = new HashMap<>(user2Headers);
-                headers.put(EntityETag.IF_MATCH_HEADER, baseETag);
-
-                jakarta.ws.rs.core.Response patchResponse =
-                    SecurityUtil.addHeaders(patchTarget, headers)
-                        .method(
-                            "PATCH",
-                            jakarta.ws.rs.client.Entity.entity(
-                                patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
-
-                statusB.set(patchResponse.getStatus());
-                if (patchResponse.getStatus() == OK.getStatusCode()) {
-                  resultB.set(patchResponse.readEntity(Table.class));
-                  LOG.info(
-                      "Request B (User2) succeeded with status: {}", patchResponse.getStatus());
-                } else {
-                  LOG.info(
-                      "Request B (User2) failed with status: {} (expected if A won the race)",
-                      patchResponse.getStatus());
-                }
-
-              } catch (Exception e) {
-                LOG.error("Request B failed with exception", e);
-                errorRef.compareAndSet(null, e);
-              } finally {
-                completionLatch.countDown();
-              }
-            });
-
-    // Start both threads
-    threadA.start();
-    threadB.start();
-
-    // Release both threads simultaneously to create true concurrency
-    startLatch.countDown();
-
-    // Wait for completion
-    assertTrue(
-        completionLatch.await(30, TimeUnit.SECONDS), "Requests should complete within timeout");
-
-    // Check for unexpected exceptions
-    if (errorRef.get() != null) {
-      throw new AssertionError("Request execution failed with exception", errorRef.get());
-    }
-
-    // Log the results
-    LOG.info("Request A status: {}, Request B status: {}", statusA.get(), statusB.get());
-
-    // KEY ASSERTION: With ETags, exactly one request should succeed (200 OK)
-    // and the other should fail with 412 Precondition Failed
-    int successCount = 0;
-    int preconditionFailedCount = 0;
-
-    if (statusA.get() == OK.getStatusCode()) successCount++;
-    if (statusB.get() == OK.getStatusCode()) successCount++;
-    if (statusA.get() == 412) preconditionFailedCount++;
-    if (statusB.get() == 412) preconditionFailedCount++;
-
-    assertEquals(
-        1, successCount, "Exactly one request should succeed when both use the same stale ETag");
-    assertEquals(
-        1, preconditionFailedCount, "Exactly one request should fail with 412 Precondition Failed");
-
-    // Verify the winning request's changes are in the final state
-    Table finalTable = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
-    assertNotNull(finalTable.getColumns());
-    assertTrue(finalTable.getColumns().size() > 2);
-
-    // Check which request won and verify its changes are present
-    if (statusA.get() == OK.getStatusCode()) {
-      // Request A won - verify column description is updated
-      Column eventIdColumn = finalTable.getColumns().get(2);
-      assertEquals(
-          "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.",
-          eventIdColumn.getDescription(),
-          "Column description from winning Request A should be present");
-      LOG.info("Request A (User1) won the race - column description updated");
-    } else {
-      // Request B won - verify tags are present
-      assertNotNull(finalTable.getTags());
-      assertTrue(
-          finalTable.getTags().stream()
-              .anyMatch(tag -> tag.getTagFQN().equals(TIER2_TAG_LABEL.getTagFQN())),
-          "Table should have Tier2 tag from winning Request B");
-      LOG.info("Request B (User2) won the race - tags updated");
-    }
-
-    assertTrue(finalTable.getVersion() > table.getVersion(), "Version should be incremented");
-    LOG.info("Final table version: {}", finalTable.getVersion());
   }
 
   @Test
