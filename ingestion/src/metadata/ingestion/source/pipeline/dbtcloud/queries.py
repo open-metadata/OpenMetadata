@@ -12,6 +12,33 @@
 GraphQL Queries used during ingestion
 """
 
+DBT_GET_MODELS_WITH_LINEAGE = """
+query Query($jobId: BigInt!, $runId: BigInt) {
+  job(id: $jobId, runId: $runId) {
+    models {
+      uniqueId
+      name
+      database
+      schema
+      dependsOn
+    }
+    seeds {
+      uniqueId
+      name
+      schema
+      database
+    }
+    sources {
+      uniqueId
+      name
+      schema
+      database
+    }
+  }
+}
+"""
+
+# Deprecated: Use DBT_GET_MODELS_WITH_LINEAGE instead
 DBT_GET_MODEL_DEPENDS_ON = """
 query Query($jobId: BigInt!, $runId: BigInt) {
   job(id: $jobId, runId: $runId) {
@@ -25,6 +52,7 @@ query Query($jobId: BigInt!, $runId: BigInt) {
 }
 """
 
+# Deprecated: Use DBT_GET_MODELS_WITH_LINEAGE instead
 DBT_GET_MODELS_SEEDS = """
 query Query($jobId: BigInt!, $runId: BigInt) {
   job(id: $jobId, runId: $runId) {
@@ -35,6 +63,12 @@ query Query($jobId: BigInt!, $runId: BigInt) {
       schema
     }
     seeds {
+      uniqueId
+      name
+      schema
+      database
+    }
+    sources {
       uniqueId
       name
       schema
