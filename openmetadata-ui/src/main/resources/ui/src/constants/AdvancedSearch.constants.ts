@@ -302,17 +302,6 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   },
 ];
 
-export const COLUMN_DROPDOWN_ITEMS = [
-  {
-    label: t('label.tag'),
-    key: EntityFields.TAG,
-  },
-  {
-    label: t('label.glossary-term'),
-    key: EntityFields.GLOSSARY_TERMS,
-  },
-];
-
 export const TEXT_FIELD_OPERATORS = [
   'equal',
   'not_equal',

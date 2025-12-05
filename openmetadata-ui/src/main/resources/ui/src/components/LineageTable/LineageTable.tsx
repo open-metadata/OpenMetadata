@@ -24,10 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
-import {
-  COLUMN_DROPDOWN_ITEMS,
-  LINEAGE_DROPDOWN_ITEMS,
-} from '../../constants/AdvancedSearch.constants';
+import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
   NO_DATA,
@@ -745,21 +742,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const dropdownItems =
-      impactLevel === EImpactLevel.TableLevel
-        ? LINEAGE_DROPDOWN_ITEMS
-        : COLUMN_DROPDOWN_ITEMS;
-    const updatedQuickFilters = dropdownItems.map((selectedFilterItem) => {
-      const originalFilterItem = selectedQuickFilters?.find(
-        (filter) => filter.key === selectedFilterItem.key
-      );
+    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.map(
+      (selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
 
-      return {
-        ...(originalFilterItem || selectedFilterItem),
-        // preserve original values if exists else set to empty array
-        value: originalFilterItem?.value || [],
-      };
-    });
+        return {
+          ...(originalFilterItem || selectedFilterItem),
+          // preserve original values if exists else set to empty array
+          value: originalFilterItem?.value || [],
+        };
+      }
+    );
 
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
@@ -774,16 +769,15 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataSource: filterNodes,
       };
     } else {
-      const source =
+      const nodes =
         lineageDirection === LineageDirection.Downstream
           ? downstreamColumnLineageNodes.slice(
               currentPage - 1,
               currentPage - 1 + pageSize
             )
-          : upstreamColumnLineageNodes.slice(
-              currentPage - 1,
-              currentPage - 1 + pageSize
-            );
+          : upstreamColumnLineageNodes;
+
+      const source = nodes.slice(currentPage - 1, currentPage - 1 + pageSize);
 
       return {
         columns: columnImpactColumns,
