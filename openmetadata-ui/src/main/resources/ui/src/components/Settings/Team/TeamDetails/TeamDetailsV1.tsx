@@ -265,7 +265,7 @@ const TeamDetailsV1 = ({
               must_not: [
                 {
                   term: {
-                    'name.keyword': currentTeam.name,
+                    'name.keyword': 'Organization',
                   },
                 },
               ],

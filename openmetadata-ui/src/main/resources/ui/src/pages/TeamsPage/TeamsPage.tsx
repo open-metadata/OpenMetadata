@@ -488,7 +488,7 @@ const TeamsPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (hasViewPermission && fqn) {     
+    if (hasViewPermission && fqn) {
       fetchAllTeamsBasicDetails(fqn);
     }
   }, [showDeletedTeam]);
