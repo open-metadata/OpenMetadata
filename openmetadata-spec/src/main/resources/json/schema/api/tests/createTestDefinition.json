@@ -47,6 +47,14 @@
         "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
       }
     },
+    "supportedServices": {
+      "description": "List of services that this test definition supports. When empty, it implies all services are supported.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
     "domains" : {
       "description": "Fully qualified names of the domains the Test Definition belongs to.",
       "type": "array",
