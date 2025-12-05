@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Skeleton } from 'antd';
+import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './tabs-label.less';
 import { TabsLabelProps } from './TabsLabel.interface';
+import Loader from '../Loader/Loader';
 
 const TabsLabel = ({
   name,
@@ -33,14 +34,9 @@ const TabsLabel = ({
       <div className="d-flex justify-between gap-1">
         {name}
         {isLoading ? (
-          <Skeleton.Button
-            active
-            aria-label="Loading"
-            className="d-flex justify-center items-center"
-            data-testid="loading-skeleton"
-            size="small"
-            style={{ width: 15, minWidth: 15, height: 15 }}
-          />
+          <span data-testid="loading-skeleton" className="d-flex justify-center items-center">
+            <Loader size="small" />
+          </span>
         ) : (
           !isNil(count) && (
             <span data-testid="count">
