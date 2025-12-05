@@ -94,6 +94,7 @@ import {
   getClassificationDetailsPath,
   getClassificationTagPath,
 } from '../../utils/RouterUtils';
+import tagClassBase from '../../utils/TagClassBase';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
@@ -542,6 +543,11 @@ const TagPage = () => {
         ),
       },
     ];
+
+    const recognizerTab = tagClassBase.getRecognizerTab(tagItem, activeTab, t);
+    if (recognizerTab) {
+      items.push(recognizerTab);
+    }
 
     return items;
   }, [

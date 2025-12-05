@@ -28,6 +28,7 @@ export interface MUIFormItemLabelProps {
   overlayInnerStyle?: React.CSSProperties;
   align?: TooltipProps['placement'];
   isBeta?: boolean;
+  required?: boolean;
   slotProps?: Partial<TooltipProps>;
 }
 
@@ -37,6 +38,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
   isBeta = false,
   label,
   placement = 'top',
+  required = false,
   showHelperText = true,
   slotProps,
 }) => {
@@ -49,6 +51,16 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
         data-testid="mui-form-item-label"
         variant="body2">
         {label}
+        {required && (
+          <Typography
+            color="error"
+            component="span"
+            sx={{ ml: 0.5 }}
+            // eslint-disable-next-line i18next/no-literal-string
+            variant="body2">
+            *
+          </Typography>
+        )}
       </Typography>
       {helperTextType === HelperTextType.Tooltip &&
         helperText &&

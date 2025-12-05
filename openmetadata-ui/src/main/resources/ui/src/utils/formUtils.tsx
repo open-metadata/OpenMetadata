@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Autocomplete, Switch as MUISwitch } from '@mui/material';
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
@@ -30,7 +31,7 @@ import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compact, startCase, toString } from 'lodash';
-import { Fragment, ReactNode } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -448,6 +449,96 @@ export const getField = (field: FieldProp) => {
       );
     }
 
+    case FieldTypes.AUTOCOMPLETE_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      const AutocompleteWrapper = ({
+        value,
+        onChange,
+      }: {
+        value?: string[];
+        onChange?: (value: string[]) => void;
+      }) => {
+        const handleChange = (_event: unknown, newValue: string[]) => {
+          onChange?.(newValue);
+        };
+
+        const hasValue = value && value.length > 0;
+
+        return (
+          <Autocomplete
+            freeSolo
+            multiple
+            options={[]}
+            renderInput={(params) => (
+              <MUITextField
+                {...params}
+                label={muiLabel}
+                placeholder={hasValue ? undefined : placeholder}
+                required={isRequired}
+                slotProps={{
+                  inputLabel: {
+                    shrink: true,
+                  },
+                }}
+              />
+            )}
+            value={value || []}
+            onChange={handleChange}
+            {...(props as Record<string, unknown>)}
+          />
+        );
+      };
+
+      return (
+        <Form.Item {...formProps}>
+          <AutocompleteWrapper />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.SWITCH_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      const MUISwitchWrapper = ({
+        checked = false,
+        onChange,
+      }: {
+        checked?: boolean;
+        onChange?: (checked: boolean) => void;
+      }) => {
+        const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+          onChange?.(event.target.checked);
+        };
+
+        return (
+          <div className="d-flex gap-2 items-center">
+            <MUISwitch
+              checked={checked}
+              required={isRequired}
+              onChange={handleChange}
+              {...(props as Record<string, unknown>)}
+            />
+            {muiLabel && (
+              <Typography.Text className="font-medium">
+                {muiLabel}
+              </Typography.Text>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <Form.Item {...formProps} valuePropName="checked">
+          <MUISwitchWrapper />
+        </Form.Item>
+      );
+    }
+
     default:
       break;
   }
@@ -468,11 +559,14 @@ export const getField = (field: FieldProp) => {
 
   if (type === FieldTypes.SWITCH && newLook) {
     return (
-      <div className="d-flex gap-2 form-switch-container">
+      <div className="d-flex gap-2 form-switch-container items-center">
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+        <Typography.Text
+          className={`font-medium ${props.labelClassName ?? ''}`}>
+          {labelValue}
+        </Typography.Text>
       </div>
     );
   }
