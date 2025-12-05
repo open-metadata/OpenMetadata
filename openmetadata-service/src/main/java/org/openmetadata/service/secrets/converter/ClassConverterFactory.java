@@ -36,6 +36,7 @@ import org.openmetadata.schema.services.connections.database.DeltaLakeConnection
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.IcebergConnection;
+import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.services.connections.database.deltalake.StorageCo
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
+import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
@@ -69,6 +71,7 @@ public final class ClassConverterFactory {
   static {
     converterMap =
         Map.ofEntries(
+            Map.entry(AirbyteConnection.class, new AirbyteConnectionClassConverter()),
             Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
             Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
             Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
@@ -85,6 +88,7 @@ public final class ClassConverterFactory {
             Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
+            Map.entry(MssqlConnection.class, new MssqlConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
             Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),
             Map.entry(GreenplumConnection.class, new GreenplumConnectionClassConverter()),

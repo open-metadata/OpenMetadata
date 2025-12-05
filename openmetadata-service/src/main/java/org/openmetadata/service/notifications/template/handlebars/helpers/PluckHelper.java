@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to deserialize and extract data from objects or lists of objects.
@@ -140,5 +142,21 @@ public class PluckHelper implements HandlebarsHelper {
 
     // For other objects, return null (property not accessible)
     return null;
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("pluck")
+        .withDescription("Extract property from objects in array")
+        .withCursorOffset(8)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{pluck }}")
+                    .withExample("{{pluck tags \"tagFQN\"}}"),
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{pluck }}")
+                    .withExample("{{#with (pluck certification \"tagLabel\")}}{{name}}{{/with}}")));
   }
 }

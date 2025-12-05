@@ -275,3 +275,33 @@ def calculate_impact_score_pandas(
     )
 
     return df
+
+
+def calculate_impact_score(
+    failed_count: int,
+    total_count: int,
+    sample_weight_threshold: float = DEFAULT_SAMPLE_WEIGHT_THRESHOLD,
+    normalization_factor: float = DEFAULT_NORMALIZATION_FACTOR,
+) -> float:
+    """Calculate impact score for a dimension.
+
+    Args:
+        failed_count: Number of failed rows
+        total_count: Total number of rows (excluding unknowns)
+        sample_weight_threshold: Threshold for full sample weight
+        normalization_factor: Normalization divisor
+
+    Returns:
+        float: Impact score between 0.0 and 1.0
+    """
+    if total_count <= 0:
+        return 0.0
+
+    failure_rate = failed_count / total_count
+    failure_severity = failure_rate**2
+    volume_factor = get_volume_factor(total_count)
+    sample_weight = min(1.0, total_count / sample_weight_threshold)
+    raw_impact = failure_severity * volume_factor * sample_weight
+    normalized_impact = raw_impact / normalization_factor
+
+    return min(1.0, max(0.0, normalized_impact))

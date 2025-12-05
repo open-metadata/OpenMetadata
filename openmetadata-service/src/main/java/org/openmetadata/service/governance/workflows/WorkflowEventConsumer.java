@@ -25,6 +25,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
+  public static final String GOVERNANCE_BOT = "governance-bot";
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -72,13 +73,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.INGESTION_PIPELINE,
           Entity.TEST_SUITE,
           Entity.TEST_CASE,
-          Entity.TEST_DEFINITION,
-          Entity.WEB_ANALYTIC_EVENT,
-          Entity.KPI,
-          Entity.TYPE,
-          Entity.THREAD,
           Entity.QUERY,
-          Entity.REPORT,
           Entity.METRIC,
           Entity.DATA_INSIGHT_CHART,
           Entity.DATA_CONTRACT,
@@ -104,6 +99,18 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     try {
       EventType eventType = event.getEventType();
       String entityType = event.getEntityType();
+
+      // Skip events from governance-bot to prevent infinite loops
+      // These are system-initiated workflow changes that shouldn't trigger new workflows
+      if (GOVERNANCE_BOT.equals(event.getUserName())
+          || (event.getImpersonatedBy() != null
+              && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
+        LOG.debug(
+            "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+            event.getEntityFullyQualifiedName(),
+            event.getEntityType());
+        return;
+      }
 
       if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
         String signal = String.format("%s-%s", entityType, eventType.toString());

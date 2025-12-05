@@ -6,20 +6,28 @@ source:
       type: Snowflake
       username: username
       password: password
-      database: database_name
-      warehouse: warehouse_name
       account: account.region_name.cloud_service
-      connectionArguments:
-        private_key: private_key
+      warehouse: warehouse_name
+      role: role_name
+      database: database_name
+      queryTag: openmetadata
+      accountUsageSchema: SNOWFLAKE.ACCOUNT_USAGE
+      privateKey: private_key # only used when password is not given
+      snowflakePrivatekeyPassphrase: private_key_passphrase # only used when password is not given
+      includeTransientTables: true
+      includeStreams: false
+      clientSessionKeepAlive: false
+      connectionOptions: {}
+      connectionArguments: {}
   sourceConfig:
     config:
       type: DatabaseMetadata
       schemaFilterPattern:
         excludes:
-        - mysql.*
-        - information_schema.*
-        - performance_schema.*
-        - sys.*
+        - "^information_schema$"
+      databaseFilterPattern:
+        excludes:
+        - "^snowflake$"
 sink:
   type: metadata-rest
   config: {}

@@ -27,6 +27,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
@@ -58,12 +59,14 @@ import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -84,6 +87,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   public PipelineResourceTest() {
     super(
         Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS);
+    supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
   }
@@ -819,6 +823,22 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
   }
 
+  public ResultList<org.openmetadata.schema.type.PipelineSummary> listPipelineSummaries(
+      String status, Long startTs, Long endTs, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("pipelines/summary");
+    if (status != null) {
+      target = target.queryParam("status", status);
+    }
+    if (startTs != null) {
+      target = target.queryParam("startTs", startTs);
+    }
+    if (endTs != null) {
+      target = target.queryParam("endTs", endTs);
+    }
+    return TestUtils.get(target, PipelineResource.PipelineSummaryList.class, authHeaders);
+  }
+
   // Check that the inserted status are properly stored
   private void verifyPipelineStatuses(
       ResultList<PipelineStatus> actualStatuses,
@@ -1053,5 +1073,276 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         }
       }
     }
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial pipeline (using regular create, not bulk)
+    CreatePipeline botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Pipeline entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Pipeline userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreatePipeline botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Pipeline verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create pipeline with initial tags
+    CreatePipeline createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Pipeline entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreatePipeline updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Pipeline updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates pipeline
+    CreatePipeline createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    Pipeline entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreatePipeline adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Pipeline updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_listPipelineSummaries_statusFilter(TestInfo test) throws IOException, ParseException {
+    // Setup: Create 3 pipelines with different status histories
+    CreatePipeline create1 =
+        createRequest(test, 1).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline1 = createEntity(create1, ADMIN_AUTH_HEADERS);
+
+    CreatePipeline create2 =
+        createRequest(test, 2).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline2 = createEntity(create2, ADMIN_AUTH_HEADERS);
+
+    CreatePipeline create3 =
+        createRequest(test, 3).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline3 = createEntity(create3, ADMIN_AUTH_HEADERS);
+
+    // Create timestamps: 2 hours ago, 1 hour ago, now
+    long now = System.currentTimeMillis();
+    long twoHoursAgo = now - (2 * 60 * 60 * 1000);
+    long oneHourAgo = now - (60 * 60 * 1000);
+
+    // Pipeline 1: Failed (oldest) -> Successful (latest)
+    PipelineStatus status1Old =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withTimestamp(twoHoursAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline1.getFullyQualifiedName(), status1Old, ADMIN_AUTH_HEADERS);
+
+    PipelineStatus status1New =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline1.getFullyQualifiedName(), status1New, ADMIN_AUTH_HEADERS);
+
+    // Pipeline 2: Successful (oldest) -> Failed (latest)
+    PipelineStatus status2Old =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(twoHoursAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline2.getFullyQualifiedName(), status2Old, ADMIN_AUTH_HEADERS);
+
+    PipelineStatus status2New =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline2.getFullyQualifiedName(), status2New, ADMIN_AUTH_HEADERS);
+
+    // Pipeline 3: Successful (only status)
+    PipelineStatus status3 =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline3.getFullyQualifiedName(), status3, ADMIN_AUTH_HEADERS);
+
+    // Test Case 1: Filter by status="Successful" only
+    // Expected: Pipeline 1 and Pipeline 3 (latest status = Successful)
+    ResultList<org.openmetadata.schema.type.PipelineSummary> successfulPipelines =
+        listPipelineSummaries("Successful", null, null, ADMIN_AUTH_HEADERS);
+
+    List<UUID> successfulIds =
+        successfulPipelines.getData().stream()
+            .map(org.openmetadata.schema.type.PipelineSummary::getPipelineId)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        successfulIds.contains(pipeline1.getId()),
+        "Pipeline 1 should be included (latest status is Successful)");
+    assertTrue(
+        successfulIds.contains(pipeline3.getId()),
+        "Pipeline 3 should be included (latest status is Successful)");
+    assertFalse(
+        successfulIds.contains(pipeline2.getId()),
+        "Pipeline 2 should NOT be included (latest status is Failed)");
+
+    // Test Case 2: Filter by status="Failed" only
+    // Expected: Pipeline 2 (latest status = Failed)
+    ResultList<org.openmetadata.schema.type.PipelineSummary> failedPipelines =
+        listPipelineSummaries("Failed", null, null, ADMIN_AUTH_HEADERS);
+
+    List<UUID> failedIds =
+        failedPipelines.getData().stream()
+            .map(org.openmetadata.schema.type.PipelineSummary::getPipelineId)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        failedIds.contains(pipeline2.getId()),
+        "Pipeline 2 should be included (latest status is Failed)");
+    assertFalse(
+        failedIds.contains(pipeline1.getId()),
+        "Pipeline 1 should NOT be included (latest status is Successful)");
+    assertFalse(
+        failedIds.contains(pipeline3.getId()),
+        "Pipeline 3 should NOT be included (latest status is Successful)");
+
+    // Test Case 3: Filter by status + time range
+    // Filter for Failed status in the time range that includes the old statuses
+    ResultList<org.openmetadata.schema.type.PipelineSummary> failedInRange =
+        listPipelineSummaries("Failed", twoHoursAgo - 1000, twoHoursAgo + 1000, ADMIN_AUTH_HEADERS);
+
+    List<UUID> failedInRangeIds =
+        failedInRange.getData().stream()
+            .map(org.openmetadata.schema.type.PipelineSummary::getPipelineId)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        failedInRangeIds.contains(pipeline1.getId()),
+        "Pipeline 1 should be included (latest status in range is Failed)");
+    assertFalse(
+        failedInRangeIds.contains(pipeline2.getId()),
+        "Pipeline 2 should NOT be included (latest status in range is Successful)");
+
+    // Cleanup
+    deleteEntity(pipeline1.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(pipeline2.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(pipeline3.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

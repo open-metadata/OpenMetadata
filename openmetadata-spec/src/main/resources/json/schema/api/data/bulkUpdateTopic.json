@@ -1,0 +1,103 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/bulkUpdateTopic.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkUpdateTopic",
+  "description": "Schema for bulk updating multiple topics with differential updates",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BulkUpdateTopic",
+  "definitions": {
+    "topicUpdate": {
+      "javaType": "org.openmetadata.schema.api.data.TopicUpdate",
+      "description": "Partial topic update - only include fields that have changed",
+      "type": "object",
+      "properties": {
+        "fqn": {
+          "description": "Fully qualified name of the topic to update",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "messageSchema": {
+          "description": "Updated message schema",
+          "$ref": "../../type/schema.json"
+        },
+        "partitions": {
+          "description": "Updated number of partitions",
+          "type": "integer",
+          "minimum": 1
+        },
+        "retentionTime": {
+          "description": "Updated retention time in milliseconds",
+          "type": "number"
+        },
+        "retentionSize": {
+          "description": "Updated maximum size of a partition in bytes",
+          "type": "number"
+        },
+        "maximumMessageSize": {
+          "description": "Updated maximum message size in bytes",
+          "type": "integer"
+        },
+        "minInsyncReplicas": {
+          "description": "Updated minimum number of in-sync replicas",
+          "type": "integer"
+        },
+        "replicationFactor": {
+          "description": "Updated replication factor",
+          "type": "integer"
+        },
+        "cleanupPolicies": {
+          "description": "Updated cleanup policies",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/topic.json#/definitions/cleanupPolicy"
+          }
+        },
+        "topicConfig": {
+          "description": "Updated topic configuration",
+          "$ref": "../../entity/data/topic.json#/definitions/topicConfig"
+        },
+        "description": {
+          "description": "Updated description",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Updated tags",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "owner": {
+          "description": "Updated owner",
+          "$ref": "../../type/entityReference.json"
+        },
+        "sourceUrl": {
+          "description": "Updated source URL",
+          "$ref": "../../type/basic.json#/definitions/sourceUrl"
+        },
+        "extension": {
+          "description": "Updated custom properties",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
+        }
+      },
+      "required": ["fqn"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "updates": {
+      "description": "List of topic update requests",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/topicUpdate"
+      },
+      "minItems": 1
+    },
+    "dryRun": {
+      "description": "If true, validate without persisting",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["updates"],
+  "additionalProperties": false
+}

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Drawer } from '@mui/material';
+import { Home02 } from '@untitledui/icons';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -52,7 +54,6 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
-import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
   ElementLoadingState,
@@ -60,6 +61,7 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -554,14 +556,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const loadChildNodesHandler = useCallback(
-    async (node: SourceType, direction: LineageDirection) => {
+    async (node: SourceType, direction: LineageDirection, depth = 1) => {
       try {
         const res = await getLineageDataByFQN({
           fqn: node.fullyQualifiedName ?? '',
           entityType: node.entityType ?? '',
           config: {
-            upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
-            downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
+            upstreamDepth: direction === LineageDirection.Upstream ? depth : 0,
+            downstreamDepth:
+              direction === LineageDirection.Downstream ? depth : 0,
             nodesPerLayer: lineageConfig.nodesPerLayer,
             pipelineViewMode: lineageConfig.pipelineViewMode,
           }, // load only one level of child nodes
@@ -1071,6 +1074,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setIsEditMode((pre) => !pre);
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
+    setSelectedEdge(undefined);
     setIsDrawerOpen(false);
   }, []);
 
@@ -1454,8 +1458,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         (item) => !nodeFqn.includes(item.fullyQualifiedName ?? '')
       );
       const updatedEdges = (entityLineage.edges ?? []).filter((val) => {
-        return !connectedEdges.some(
-          (connectedEdge) => connectedEdge.data.edge === val
+        return !connectedEdges.some((connectedEdge) =>
+          isEqual(connectedEdge.data.edge, val)
         );
       });
 
@@ -1851,6 +1855,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               activeTitle: true,
             },
           ]
+        : platformView
+        ? [
+            {
+              name: '',
+              icon: <Home02 size={12} />,
+              url: '/',
+              activeTitle: true,
+            },
+            {
+              name: t('label.lineage'),
+              url: '',
+            },
+          ]
         : [],
     [entity, isFullScreen, entityType]
   );
@@ -1864,31 +1881,65 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
         {isFullScreen && breadcrumbs.length > 0 && (
-          <TitleBreadcrumb className="p-b-sm" titleLinks={breadcrumbs} />
+          <TitleBreadcrumb
+            useCustomArrow
+            className="p-b-sm"
+            titleLinks={breadcrumbs}
+          />
         )}
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
-        {isDrawerOpen &&
-          !isEditMode &&
-          (selectedEdge ? (
+        {!isEditMode && selectedEdge && (
+          <Drawer
+            anchor="right"
+            className="lineage-entity-panel"
+            data-testid="lineage-entity-panel"
+            open={isDrawerOpen}
+            sx={{
+              zIndex: 999,
+              '& .MuiDrawer-paper': {
+                width: 576,
+              },
+            }}
+            transitionDuration={300}
+            onClose={onCloseDrawer}>
             <EdgeInfoDrawer
               hasEditAccess
-              edge={selectedEdge} // handle this access
+              edge={selectedEdge}
               nodes={nodes}
               visible={isDrawerOpen}
               onClose={onCloseDrawer}
               onEdgeDetailsUpdate={onEdgeDetailsUpdate}
             />
-          ) : (
-            !isEmpty(selectedNode) && (
-              <EntityInfoDrawer
-                selectedNode={selectedNode}
-                show={isDrawerOpen}
-                onCancel={onCloseDrawer}
-              />
-            )
-          ))}
+          </Drawer>
+        )}
+
+        {!isEditMode && !isEmpty(selectedNode) && (
+          <Drawer
+            anchor="right"
+            className="lineage-entity-panel"
+            data-testid="lineage-entity-panel"
+            open={isDrawerOpen && !selectedEdge}
+            sx={{
+              zIndex: 999,
+              '& .MuiDrawer-paper': {
+                width: 576,
+              },
+            }}
+            transitionDuration={300}
+            onClose={onCloseDrawer}>
+            <EntitySummaryPanel
+              isSideDrawer
+              downstreamDepth={lineageConfig.downstreamDepth}
+              entityDetails={{ details: selectedNode }}
+              handleClosePanel={onCloseDrawer}
+              nodesPerLayer={lineageConfig.nodesPerLayer}
+              pipelineViewMode={lineageConfig.pipelineViewMode}
+              upstreamDepth={lineageConfig.upstreamDepth}
+            />
+          </Drawer>
+        )}
 
         {showDeleteModal && (
           <Modal

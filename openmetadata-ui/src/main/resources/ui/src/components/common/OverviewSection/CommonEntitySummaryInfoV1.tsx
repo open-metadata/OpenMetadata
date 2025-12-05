@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Typography } from '@mui/material';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
@@ -27,14 +29,32 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   entityInfo,
   componentType,
   isDomainVisible = false,
+  excludedItems = [],
+  onLinkClick,
 }) => {
   const { t } = useTranslation();
 
-  const isItemVisible = (item: EntityInfoItemV1) => {
-    const isDomain = isDomainVisible && item.name === t('label.domain-plural');
+  const visibleEntityInfo = useMemo(() => {
+    return entityInfo.filter((info) => {
+      if (excludedItems.includes(info.name)) {
+        return false;
+      }
 
-    return (item.visible || []).includes(componentType) || isDomain;
-  };
+      const isDomain =
+        isDomainVisible && info.name === t('label.domain-plural');
+
+      // If componentType is empty and item has no visible field, show it
+      // Otherwise, check if componentType is included in visible array
+      const hasVisibleField =
+        info.visible !== undefined && info.visible.length > 0;
+      const isVisibleInComponent =
+        componentType === '' && !hasVisibleField
+          ? true
+          : (info.visible ?? []).includes(componentType);
+
+      return isVisibleInComponent || isDomain;
+    });
+  }, [entityInfo, componentType, isDomainVisible, excludedItems]);
 
   const renderInfoValue = (info: EntityInfoItemV1) => {
     if (!info.isLink) {
@@ -56,7 +76,10 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     }
 
     return (
-      <Link className="summary-item-link" to={info.linkProps ?? info.url ?? ''}>
+      <Link
+        className="summary-item-link"
+        to={info.linkProps ?? info.url ?? ''}
+        onClick={onLinkClick}>
         {info.value}
       </Link>
     );
@@ -64,20 +87,30 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <div className="overview-section">
-      {entityInfo.filter(isItemVisible).map((info) => (
-        <div className="overview-row" key={info.name}>
-          <span
-            className={classNames('overview-label')}
-            data-testid={`${info.name}-label`}>
-            {info.name}
-          </span>
-          <span
-            className={classNames('overview-value text-grey-body')}
-            data-testid={`${info.name}-value`}>
-            {renderInfoValue(info)}
-          </span>
+      {visibleEntityInfo.length === 0 ? (
+        <div className="overview-row">
+          <Typography
+            className="no-data-placeholder"
+            data-testid="no-data-placeholder">
+            {t('label.no-overview-available')}
+          </Typography>
         </div>
-      ))}
+      ) : (
+        visibleEntityInfo.map((info) => (
+          <div className="overview-row" key={info.name}>
+            <span
+              className={classNames('overview-label')}
+              data-testid={`${info.name}-label`}>
+              {info.name}
+            </span>
+            <span
+              className={classNames('overview-value text-grey-body')}
+              data-testid={`${info.name}-value`}>
+              {renderInfoValue(info)}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   );
 };

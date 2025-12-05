@@ -41,7 +41,7 @@ class DataFrameValidator:
     Provides a simple interface to configure and execute data quality tests
     on pandas DataFrames using OpenMetadata test definitions.
 
-    Example:
+    Examples:
         validator = DataFrameValidator()
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
         validator.add_test(ColumnValuesToBeUnique(column="customer_id"))
