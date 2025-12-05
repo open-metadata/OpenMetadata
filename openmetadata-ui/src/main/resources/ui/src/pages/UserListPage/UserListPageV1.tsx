@@ -328,7 +328,7 @@ const UserListPageV1 = () => {
                     ? t('label.restore-entity', {
                         entity: t('label.user'),
                       })
-                    : ADMIN_ONLY_ACTION
+                    : t(ADMIN_ONLY_ACTION)
                 }>
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
@@ -349,7 +349,7 @@ const UserListPageV1 = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
-                  : ADMIN_ONLY_ACTION
+                  : t(ADMIN_ONLY_ACTION)
               }>
               <Button
                 disabled={!isAdminUser}
@@ -482,7 +482,17 @@ const UserListPageV1 = () => {
         </Col>
         <Col span={12}>
           <PageHeader
-            data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
+            data={
+              isAdminPage
+                ? {
+                    header: t(PAGE_HEADERS.ADMIN.header),
+                    subHeader: t(PAGE_HEADERS.ADMIN.subHeader),
+                  }
+                : {
+                    header: t(PAGE_HEADERS.USERS.header),
+                    subHeader: t(PAGE_HEADERS.USERS.subHeader),
+                  }
+            }
           />
         </Col>
         <Col span={12}>

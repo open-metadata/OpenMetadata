@@ -517,7 +517,6 @@ services:
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
       # AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: true
-      AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: 15
 
       ## Secrets Manager
       # To integrate Azure Key Vault

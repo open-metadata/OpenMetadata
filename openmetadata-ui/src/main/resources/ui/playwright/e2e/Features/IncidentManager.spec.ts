@@ -60,7 +60,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     for (const user of users) {
       await user.create(apiContext);
     }
-    const { pipeline } = await table1.createTestSuiteAndPipelines(apiContext);
+
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
         parameterValues: [
@@ -70,6 +70,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testDefinition: 'tableColumnCountToBeBetween',
       });
     }
+
+    const pipeline = await table1.createTestSuitePipeline(apiContext);
 
     await makeRetryRequest({
       page,
@@ -486,16 +488,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
     await incidentCountResponse;
 
-    await page.waitForSelector("[role='dialog']", { state: 'visible' });
-
     await expect(page.getByTestId('Incidents-label')).toBeVisible();
     await expect(page.getByTestId('Incidents-value')).toContainText('3');
 
-    const incidentResponse = page.waitForResponse(
+    const incidentTabResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
-    await page.getByTestId('Incidents-value').click();
-    await incidentResponse;
+
+    await page.getByTestId('Incidents-value').locator('a').click();
+
+    await incidentTabResponse;
 
     for (const testCase of testCases) {
       await expect(

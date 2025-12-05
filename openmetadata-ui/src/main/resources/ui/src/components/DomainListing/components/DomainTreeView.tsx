@@ -941,7 +941,7 @@ const DomainTreeView = ({
               borderRadius: 1,
               gap: 2,
               p: 0,
-              mb: 4,
+              mb: 2,
               display: 'flex',
               alignItems: 'center',
               position: 'relative',
@@ -984,7 +984,7 @@ const DomainTreeView = ({
                 position: 'absolute',
                 left: '-4.5px',
                 top: '-24px',
-                bottom: '32px',
+                bottom: '24px',
                 width: '1px',
                 background: theme.palette.allShades?.gray?.[200],
                 zIndex: 0,
@@ -1037,10 +1037,6 @@ const DomainTreeView = ({
                 borderLeft: `1px solid ${BORDER_COLOR}`,
                 backgroundColor: 'transparent',
               },
-            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content:not(:has(.MuiTreeItem-iconContainer:not(:empty)))':
-              {
-                marginBottom: 2.5,
-              },
             'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
               {
                 borderBottom: `1px dashed ${BORDER_COLOR}`,
@@ -1050,7 +1046,7 @@ const DomainTreeView = ({
               {
                 borderLeft: `1px dashed ${BORDER_COLOR}`,
                 backgroundColor: 'transparent',
-                bottom: '26px',
+                bottom: '24px',
               },
           }}
           onExpandedItemsChange={handleExpandedChange}
@@ -1099,7 +1095,7 @@ const DomainTreeView = ({
   return (
     <ResizableLeftPanels
       firstPanel={{
-        className: 'domain-tree-panel',
+        className: 'domain-tree-panel border-right border-gray-200',
         minWidth: 280,
         flex: 0.25,
         children: (
@@ -1110,7 +1106,6 @@ const DomainTreeView = ({
               pr: 3,
               overflowY: 'auto',
               maxHeight: 'calc(80vh - 160px)',
-              borderRight: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
             }}
             onScroll={handleScroll}>
             {hierarchySection}

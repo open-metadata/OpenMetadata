@@ -22,7 +22,7 @@ const props = {
   showDescription: true,
 };
 
-jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
