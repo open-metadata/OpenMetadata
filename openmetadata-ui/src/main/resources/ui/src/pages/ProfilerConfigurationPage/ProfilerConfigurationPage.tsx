@@ -139,7 +139,7 @@ const ProfilerConfigurationPage = () => {
           ? DEFAULT_PROFILER_CONFIG_VALUE
           : data?.config_value
       );
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsLoading(false);
