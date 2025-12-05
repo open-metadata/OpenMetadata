@@ -322,7 +322,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                         disabled={disabled}
                         key={`${label}-${optionValue}`}
                         value={optionValue}>
-                        {t(label[0])}
+                        {t(label).slice(0, 1)}
                       </Radio.Button>
                     ))}
                   </Radio.Group>
