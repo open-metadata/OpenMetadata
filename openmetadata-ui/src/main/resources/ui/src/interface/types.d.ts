@@ -267,6 +267,7 @@ declare module 'Models' {
     {
       days: number;
       title: string;
+      titleData?: Record<string, string | number | boolean>;
     }
   >;
 
