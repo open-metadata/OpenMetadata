@@ -369,7 +369,7 @@ const IncidentManager = ({
         showErrorToast(error as AxiosError);
       }
     },
-    []
+    [setTestCaseListData]
   );
 
   const fetchUserFilterOptions = async (query: string) => {
@@ -448,7 +448,7 @@ const IncidentManager = ({
         };
       });
     },
-    []
+    [setTestCaseListData]
   );
 
   const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
