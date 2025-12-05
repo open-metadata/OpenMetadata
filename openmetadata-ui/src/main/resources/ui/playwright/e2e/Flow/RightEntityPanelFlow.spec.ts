@@ -45,7 +45,6 @@ import {
   navigateToIncidentsTab,
   openEntitySummaryPanel,
   verifyDeletedEntityNotVisible,
-  waitForPatchResponse,
 } from '../../utils/entityPanel';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
 
@@ -289,67 +288,11 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(tagsSection).toBeVisible();
 
-      const tagsItem = adminPage.locator('[data-testid="tag-item"]');
-      const tagsItemCount = await tagsItem.count();
-      if (tagsItemCount >= 1) {
-        const editTagIcon = tagsItem.locator('[data-testid="edit-icon-tags"]');
-        await editTagIcon.click();
-        const clearAllButton = adminPage.locator(
-          '[data-testid="clear-all-button"]'
-        );
-        await clearAllButton.click();
-        const updateButton = adminPage.getByRole('button', {
-          name: 'Update',
-        });
-        await updateButton.click();
-        await waitForPatchResponse(adminPage);
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await expect(
-          adminPage.getByText(/Tags updated successfully/i)
-        ).toBeVisible();
-      }
-      await adminPage
-        .locator('[data-testid="edit-icon-tags"]')
-        .scrollIntoViewIfNeeded();
-
-      await adminPage.locator('[data-testid="edit-icon-tags"]').click();
-
-      await adminPage
-        .locator('[data-testid="selectable-list"]')
-        .scrollIntoViewIfNeeded();
+      await editTags(adminPage, deletedTagDisplayName, true);
 
       await expect(
-        adminPage.locator('[data-testid="selectable-list"]')
+        adminPage.getByText(/Tags updated successfully/i)
       ).toBeVisible();
-
-      const searchTagResponse = adminPage.waitForResponse(
-        `/api/v1/search/query?q=*${deletedTagDisplayName}*index=tag_search_index*`
-      );
-      const searchBar = adminPage.locator(
-        '[data-testid="tag-select-search-bar"]'
-      );
-
-      await searchBar.fill(deletedTagDisplayName);
-      await searchTagResponse;
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      const tagOption = adminPage.getByTitle(deletedTagDisplayName);
-
-      await tagOption.click();
-
-      const updateBtn = adminPage.getByRole('button', { name: 'Update' });
-      if (await updateBtn.isVisible()) {
-        await updateBtn.click();
-        await waitForPatchResponse(adminPage);
-
-        await expect(
-          adminPage.getByText(/Tags updated successfully/i)
-        ).toBeVisible();
-      }
 
       await deletedTag.delete(apiContext);
 
@@ -370,26 +313,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await adminPage.locator('[data-testid="edit-icon-tags"]').click();
 
-      await adminPage
-        .locator('[data-testid="selectable-list"]')
-        .scrollIntoViewIfNeeded();
-
-      await expect(
-        adminPage.locator('[data-testid="selectable-list"]')
-      ).toBeVisible();
-
-      const searchBarAfterDelete = await adminPage.waitForSelector(
-        '[data-testid="tag-select-search-bar"]'
+      const deletedTagItem = await verifyDeletedEntityNotVisible(
+        adminPage,
+        deletedTagDisplayName,
+        'tag-select-search-bar',
+        'tag'
       );
-      const searchTagResponseAfterDelete = adminPage.waitForResponse(
-        `/api/v1/search/query?q=*${deletedTagDisplayName}*index=tag_search_index*`
-      );
-      await searchBarAfterDelete.fill(deletedTagDisplayName);
-      await searchTagResponseAfterDelete;
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      const deletedTagItem = adminPage.getByTitle(deletedTagDisplayName);
 
       await expect(deletedTagItem).not.toBeVisible();
 
@@ -421,40 +350,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(glossarySection).toBeVisible();
 
-      await adminPage
-        .locator('[data-testid="edit-glossary-terms"]')
-        .scrollIntoViewIfNeeded();
-      await adminPage.waitForSelector('[data-testid="edit-glossary-terms"]', {
-        state: 'visible',
-      });
-
-      await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
-
-      await adminPage
-        .locator('[data-testid="selectable-list"]')
-        .scrollIntoViewIfNeeded();
-
-      await expect(
-        adminPage.locator('[data-testid="selectable-list"]')
-      ).toBeVisible();
-
-      const searchBar = adminPage.locator(
-        '[data-testid="glossary-term-select-search-bar"]'
-      );
-
-      await searchBar.fill(deletedTermDisplayName);
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      const termOption = adminPage
-        .locator('.ant-list-item')
-        .filter({ hasText: deletedTermDisplayName });
-
-      await termOption.click();
-
-      const patchResp = waitForPatchResponse(adminPage);
-      await adminPage.getByRole('button', { name: 'Update' }).click();
-      await patchResp;
+      await clearAndAddGlossaryTerms(adminPage, deletedTermDisplayName);
 
       await expect(
         adminPage.getByText(/Glossary terms updated successfully/i)
@@ -477,30 +373,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await adminPage
         .locator('[data-testid="edit-glossary-terms"]')
         .scrollIntoViewIfNeeded();
-      await adminPage.waitForSelector('[data-testid="edit-glossary-terms"]', {
-        state: 'visible',
-      });
 
       await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
 
-      await adminPage
-        .locator('[data-testid="selectable-list"]')
-        .scrollIntoViewIfNeeded();
-
-      await expect(
-        adminPage.locator('[data-testid="selectable-list"]')
-      ).toBeVisible();
-
-      const searchBarAfterDelete = await adminPage.waitForSelector(
-        '[data-testid="glossary-term-select-search-bar"]'
+      const deletedTermItem = await verifyDeletedEntityNotVisible(
+        adminPage,
+        deletedTermDisplayName,
+        'glossary-term-select-search-bar',
+        'glossaryTerm'
       );
-
-      await searchBarAfterDelete.fill(deletedTermDisplayName);
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      const deletedTermItem = adminPage.getByTitle(deletedTermDisplayName);
 
       await expect(deletedTermItem).not.toBeVisible();
 
@@ -1593,7 +1474,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tagsSection).toBeVisible();
 
-    await editTags(dataStewardPage, 'NonSensitive');
+    await editTags(dataStewardPage, 'NonSensitive', true);
 
     await expect(
       dataStewardPage.getByText(/Tags updated successfully/i)
@@ -1856,7 +1737,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tagsSection).toBeVisible();
 
-    await editTags(dataConsumerPage, 'NonSensitive');
+    await editTags(dataConsumerPage, 'NonSensitive', true);
 
     await expect(
       dataConsumerPage.getByText(/Tags updated successfully/i)
