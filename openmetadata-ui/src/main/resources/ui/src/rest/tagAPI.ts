@@ -195,3 +195,29 @@ export const getClassificationVersionData = async (
 
   return response.data;
 };
+
+// export const getTagAssets = async (tagId: string, limit = 10, offset = 0) => {
+//   const response = await APIClient.get<{ data: EntityReference[] }>(
+//     `/tags/${tagId}/assets`,
+//     {
+//       params: { limit, offset },
+//     }
+//   );
+
+//   return response.data;
+// };
+
+// export const getTagAssetsByName = async (
+//   fqn: string,
+//   limit = 10,
+//   offset = 0
+// ) => {
+//   const response = await APIClient.get<{ data: EntityReference[] }>(
+//     `/tags/name/${getEncodedFqn(fqn)}/assets`,
+//     {
+//       params: { limit, offset },
+//     }
+//   );
+
+//   return response.data;
+// };

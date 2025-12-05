@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
+import { FormInstance } from 'antd';
 import { LoadingState } from 'Models';
-import { Classification } from '../../generated/entity/classification/classification';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
+import {
+  AutoClassificationConfig,
+  Classification,
+  ConflictResolution,
+} from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 
 export type DeleteTagDetailsType = {
@@ -28,6 +34,13 @@ export type DeleteTagsType = {
   state: boolean;
 };
 
+export type FormAutoClassificationConfig = {
+  enabled?: boolean;
+  conflictResolution?: ConflictResolution;
+  minimumConfidence?: number;
+  requireExplicitMatch?: boolean;
+};
+
 export interface SubmitProps {
   name: string;
   description: string;
@@ -35,20 +48,24 @@ export interface SubmitProps {
   mutuallyExclusive?: boolean;
   iconURL?: string;
   color?: string;
+  domains?: string[];
+  autoClassificationConfig?: FormAutoClassificationConfig | null;
+  autoClassificationEnabled?: boolean;
+  autoClassificationPriority?: number;
 }
 
 export interface RenameFormProps {
-  visible: boolean;
+  formRef: FormInstance<SubmitProps>;
   isEditing: boolean;
   isTier: boolean;
-  onCancel: () => void;
-  header: string;
-  initialValues?: Omit<Tag, 'id'>;
-  onSubmit: (value: SubmitProps) => Promise<void>;
+  initialValues?: Omit<
+    Tag & { autoClassificationConfig: AutoClassificationConfig },
+    'id'
+  >;
+  onSubmit: (value: CreateClassification) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
   data?: Classification[];
-  isLoading: boolean;
   isSystemTag?: boolean;
   permissions?: {
     createTags?: boolean;

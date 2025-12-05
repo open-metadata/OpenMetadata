@@ -34,6 +34,7 @@ import {
   Home02,
   Image01,
   Laptop01,
+  LayersThree01,
   Link01,
   Lock01,
   Mail01,
@@ -65,6 +66,11 @@ export const DEFAULT_DOMAIN_ICON: IconDefinition = {
 export const DEFAULT_DATA_PRODUCT_ICON: IconDefinition = {
   name: 'Cube01',
   component: Cube01,
+  category: 'default',
+};
+export const DEFAULT_TAG_ICON: IconDefinition = {
+  name: 'LayersThree01',
+  component: LayersThree01,
   category: 'default',
 };
 
@@ -114,4 +120,5 @@ export const AVAILABLE_ICONS: IconDefinition[] = [
   { name: 'Rss01', component: Rss01, category: 'icons' },
   { name: 'Browser', component: Browser, category: 'icons' },
   { name: 'Calendar', component: Calendar, category: 'icons' },
+  { name: 'LayersThree01', component: Cube01, category: 'icons' },
 ];

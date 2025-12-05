@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import drawerHeaderBg from '../assets/img/drawer-header-bg.png';
-
 export const DRAWER_HEADER_STYLING = {
   '&::before': {
     content: '""',
@@ -21,9 +19,6 @@ export const DRAWER_HEADER_STYLING = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundImage: `url(${drawerHeaderBg})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     opacity: 0.3,
     zIndex: 0,

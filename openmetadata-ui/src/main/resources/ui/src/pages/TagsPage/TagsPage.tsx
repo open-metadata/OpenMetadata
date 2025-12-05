@@ -12,6 +12,7 @@
  */
 
 import { Badge, Button, Space, Typography } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -22,14 +23,15 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
+import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
+import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -65,24 +67,26 @@ import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
-import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
+import { DeleteTagsType } from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
+  const [tagForm] = useForm();
+  const [classificationForm] = useForm();
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
   const [currentClassification, setCurrentClassification] =
     useState<Classification>();
-  const [isAddingClassification, setIsAddingClassification] =
-    useState<boolean>(false);
-  const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isTagFormLoading, setIsTagFormLoading] = useState<boolean>(false);
+  const [isClassificationFormLoading, setIsClassificationFormLoading] =
+    useState<boolean>(false);
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -91,8 +95,6 @@ const TagsPage = () => {
   });
   const [classificationPermissions, setClassificationPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
-  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
   const createClassificationPermission = useMemo(
     () =>
@@ -208,7 +210,6 @@ const TagsPage = () => {
   };
 
   const handleCreateClassification = async (data: CreateClassification) => {
-    setIsButtonLoading(true);
     try {
       const res = await createClassification(data);
       await fetchClassifications();
@@ -232,17 +233,8 @@ const TagsPage = () => {
           })
         );
       }
-    } finally {
-      setIsAddingClassification(false);
-      setIsButtonLoading(false);
     }
   };
-
-  const handleCancel = useCallback(() => {
-    setEditTag(undefined);
-    setIsAddingTag(false);
-    setIsAddingClassification(false);
-  }, []);
 
   const handleAfterDeleteAction = useCallback(() => {
     if (!isUndefined(currentClassification)) {
@@ -417,14 +409,11 @@ const TagsPage = () => {
           })
         );
       }
-    } finally {
-      setIsAddingTag(false);
     }
   };
 
   const handleUpdatePrimaryTag = async (updatedData: Tag) => {
     if (!isUndefined(editTag)) {
-      setIsButtonLoading(true);
       const patchData = compare(editTag, updatedData);
       try {
         await patchTag(editTag.id ?? '', patchData);
@@ -448,9 +437,6 @@ const TagsPage = () => {
             })
           );
         }
-      } finally {
-        setIsButtonLoading(false);
-        handleCancel();
       }
     }
   };
@@ -460,7 +446,7 @@ const TagsPage = () => {
       if (currentClassification) {
         setDeleteTags({
           data: {
-            id: record.id as string,
+            id: record.id,
             name: record.name,
             categoryName: currentClassification?.fullyQualifiedName,
             isCategory: false,
@@ -472,34 +458,6 @@ const TagsPage = () => {
     },
     [currentClassification]
   );
-
-  const handleEditTagClick = useCallback((selectedTag: Tag) => {
-    setIsAddingTag(true);
-    setEditTag(selectedTag);
-  }, []);
-
-  const handleAddNewTagClick = useCallback(() => {
-    setIsAddingTag(true);
-  }, []);
-
-  const handleToggleDisable = useCallback(async (tag: Tag) => {
-    try {
-      const updatedTag = {
-        ...tag,
-        disabled: !tag.disabled,
-      };
-      const patchData = compare(tag, updatedTag);
-      await patchTag(tag.id ?? '', patchData);
-      classificationDetailsRef.current?.refreshClassificationTags();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-lowercase'),
-        })
-      );
-    }
-  }, []);
 
   useEffect(() => {
     if (currentClassification) {
@@ -532,7 +490,7 @@ const TagsPage = () => {
   };
 
   const handleAddTagSubmit = useCallback(
-    async (data: SubmitProps) => {
+    async (data: CreateTag) => {
       const updatedData = omit(data, 'color', 'iconURL');
       const style = {
         color: data.color,
@@ -551,81 +509,6 @@ const TagsPage = () => {
   const handleCancelClassificationDelete = useCallback(() => {
     setDeleteTags({ data: undefined, state: false });
   }, []);
-
-  const leftPanelLayout = useMemo(
-    () => (
-      <LeftPanelCard id="tags">
-        <TagsLeftPanelSkeleton loading={isLoading}>
-          <div className="p-y-xs" data-testid="data-summary-container">
-            <Space
-              className="w-full p-x-sm m-b-sm"
-              direction="vertical"
-              size="middle">
-              {createClassificationPermission && (
-                <Button
-                  block
-                  className=" text-primary"
-                  data-testid="add-classification"
-                  icon={<PlusIcon className="align-middle" />}
-                  onClick={() => {
-                    setIsAddingClassification((prevState) => !prevState);
-                  }}>
-                  <Typography.Text
-                    className="p-l-xss"
-                    ellipsis={{ tooltip: true }}>
-                    {t('label.add-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </Typography.Text>
-                </Button>
-              )}
-            </Space>
-
-            {classifications.map((category: Classification) => (
-              <div
-                className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
-                  {
-                    activeCategory:
-                      currentClassification?.name === category.name,
-                  }
-                )}
-                data-testid="side-panel-classification"
-                key={category.name}
-                onClick={() => onClickClassifications(category)}>
-                <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
-                  data-testid="tag-name"
-                  ellipsis={{ rows: 1, tooltip: true }}>
-                  {getEntityName(category)}
-                  {category.disabled && (
-                    <Badge
-                      className="m-l-xs badge-grey "
-                      count={t('label.disabled')}
-                      data-testid="disabled"
-                    />
-                  )}
-                </Typography.Paragraph>
-
-                {getCountBadge(
-                  category.termCount,
-                  'self-center m-l-auto',
-                  currentClassification?.fullyQualifiedName ===
-                    category.fullyQualifiedName
-                )}
-              </div>
-            ))}
-          </div>
-        </TagsLeftPanelSkeleton>
-      </LeftPanelCard>
-    ),
-    [
-      isLoading,
-      classifications,
-      currentClassification,
-      createClassificationPermission,
-    ]
-  );
 
   const createTagsPermission = useMemo(
     () =>
@@ -703,6 +586,184 @@ const TagsPage = () => {
     [editTag, currentClassification]
   );
 
+  const {
+    formDrawer: tagFormDrawer,
+    openDrawer: openTagDrawer,
+    closeDrawer: closeTagDrawer,
+  } = useFormDrawerWithRef({
+    title: tagsFormHeader,
+    anchor: 'right',
+    width: 670,
+    closeOnEscape: false,
+    header: {
+      sx: { ...DRAWER_HEADER_STYLING, py: 5 },
+    },
+    onCancel: () => {
+      tagForm.resetFields();
+      setEditTag(undefined);
+    },
+    form: (
+      <TagsForm
+        formRef={tagForm}
+        initialValues={editTag}
+        isEditing={!isUndefined(editTag)}
+        isSystemTag={editTag?.provider === ProviderType.System}
+        isTier={isTier}
+        key={editTag?.id ?? 'new-tag'}
+        permissions={tagsFormPermissions}
+        onSubmit={async (formData: CreateTag) => {
+          setIsTagFormLoading(true);
+          try {
+            await handleAddTagSubmit(formData);
+            closeTagDrawer();
+          } finally {
+            setIsTagFormLoading(false);
+          }
+        }}
+      />
+    ),
+    formRef: tagForm,
+    onSubmit: () => {
+      // This is called by the drawer button, actual submission happens via formRef.submit()
+    },
+    loading: isTagFormLoading,
+  });
+
+  const {
+    formDrawer: classificationFormDrawer,
+    openDrawer: openClassificationDrawer,
+    closeDrawer: closeClassificationDrawer,
+  } = useFormDrawerWithRef({
+    title: t('label.adding-new-classification'),
+    anchor: 'right',
+    width: 670,
+    closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
+    onCancel: () => {
+      classificationForm.resetFields();
+    },
+    form: (
+      <TagsForm
+        isClassification
+        showMutuallyExclusive
+        data={classifications}
+        formRef={classificationForm}
+        isEditing={false}
+        isTier={isTier}
+        onSubmit={async (formData: CreateClassification) => {
+          setIsClassificationFormLoading(true);
+          try {
+            await handleCreateClassification(formData);
+            closeClassificationDrawer();
+          } finally {
+            setIsClassificationFormLoading(false);
+          }
+        }}
+      />
+    ),
+    formRef: classificationForm,
+    onSubmit: () => {
+      // This is called by the drawer button, actual submission happens via formRef.submit()
+    },
+    loading: isClassificationFormLoading,
+  });
+
+  const handleEditTagClick = useCallback(
+    (selectedTag: Tag) => {
+      setEditTag(selectedTag);
+      openTagDrawer();
+    },
+    [openTagDrawer]
+  );
+
+  const handleAddNewTagClick = useCallback(() => {
+    setEditTag(undefined);
+    tagForm.resetFields();
+    openTagDrawer();
+  }, [openTagDrawer, tagForm]);
+
+  const leftPanelLayout = useMemo(
+    () => (
+      <div className="h-full" data-testid="tags-left-panel">
+        <TagsLeftPanelSkeleton loading={isLoading}>
+          <div className="p-y-xs" data-testid="data-summary-container">
+            <Space
+              className="w-full p-x-sm m-b-sm"
+              direction="vertical"
+              size="middle">
+              {createClassificationPermission && (
+                <Button
+                  block
+                  className=" text-primary"
+                  data-testid="add-classification"
+                  icon={<PlusIcon className="align-middle" />}
+                  onClick={() => {
+                    classificationForm.resetFields();
+                    openClassificationDrawer();
+                  }}>
+                  <Typography.Text
+                    className="p-l-xss"
+                    ellipsis={{ tooltip: true }}>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </Typography.Text>
+                </Button>
+              )}
+            </Space>
+
+            {classifications.map((category: Classification) => (
+              <div
+                className={classNames(
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  {
+                    activeCategory:
+                      currentClassification?.name === category.name,
+                  }
+                )}
+                data-testid="side-panel-classification"
+                key={category.name}
+                onClick={() => onClickClassifications(category)}>
+                <Typography.Paragraph
+                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
+                  data-testid="tag-name"
+                  ellipsis={{ rows: 1, tooltip: true }}>
+                  {getEntityName(category)}
+                  {category.disabled && (
+                    <Badge
+                      className="m-l-xs badge-grey opacity-60"
+                      count={t('label.disabled')}
+                      data-testid="disabled"
+                      size="small"
+                    />
+                  )}
+                </Typography.Paragraph>
+
+                {getCountBadge(
+                  category.termCount,
+                  'self-center m-l-auto',
+                  currentClassification?.fullyQualifiedName ===
+                    category.fullyQualifiedName
+                )}
+              </div>
+            ))}
+          </div>
+        </TagsLeftPanelSkeleton>
+      </div>
+    ),
+    [
+      isLoading,
+      classifications,
+      currentClassification,
+      createClassificationPermission,
+      openClassificationDrawer,
+      classificationForm,
+      t,
+    ]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -740,43 +801,10 @@ const TagsPage = () => {
                 handleAddNewTagClick={handleAddNewTagClick}
                 handleAfterDeleteAction={handleAfterDeleteAction}
                 handleEditTagClick={handleEditTagClick}
-                handleToggleDisable={handleToggleDisable}
                 handleUpdateClassification={handleUpdateClassification}
-                isAddingTag={isAddingTag}
+                isAddingTag={false}
                 ref={classificationDetailsRef}
               />
-
-              {/* Classification Form */}
-              {isAddingClassification && (
-                <TagsForm
-                  isClassification
-                  showMutuallyExclusive
-                  data={classifications}
-                  header={t('label.adding-new-classification')}
-                  isEditing={false}
-                  isLoading={isButtonLoading}
-                  isTier={isTier}
-                  visible={isAddingClassification}
-                  onCancel={handleCancel}
-                  onSubmit={handleCreateClassification}
-                />
-              )}
-
-              {/* Tags Form */}
-              {isAddingTag && (
-                <TagsForm
-                  header={tagsFormHeader}
-                  initialValues={editTag}
-                  isEditing={!isUndefined(editTag)}
-                  isLoading={isButtonLoading}
-                  isSystemTag={editTag?.provider === ProviderType.System}
-                  isTier={isTier}
-                  permissions={tagsFormPermissions}
-                  visible={isAddingTag}
-                  onCancel={handleCancel}
-                  onSubmit={handleAddTagSubmit}
-                />
-              )}
 
               <EntityDeleteModal
                 bodyText={getEntityDeleteMessage(
@@ -796,6 +824,8 @@ const TagsPage = () => {
           flex: 0.87,
         }}
       />
+      {tagFormDrawer}
+      {classificationFormDrawer}
     </div>
   );
 };
