@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from 'antd';
+import { Typography, useTheme } from '@mui/material';
+import { Typography as AntTypography } from 'antd';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +27,7 @@ import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewer
 import { FieldCardProps } from './FieldCard.interface';
 import './FieldCard.less';
 
-const { Text, Paragraph } = Typography;
+const { Text } = AntTypography;
 
 const FieldCard: React.FC<FieldCardProps> = ({
   fieldName,
@@ -38,6 +39,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
   isHighlighted = false,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -289,28 +291,39 @@ const FieldCard: React.FC<FieldCardProps> = ({
       className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
       data-testid={`field-card-${fieldName}`}>
       <div className="field-card-header" data-testid="field-card-header">
-        <Badge
-          className="data-type-badge"
-          data-testid={`data-type-badge-${dataType}`}>
-          {dataTypeDisplay}
-        </Badge>
         <div className="field-name-container">
           {constraintIcon && (
             <span className="constraint-icon">{constraintIcon}</span>
           )}
-          <Typography.Text
-            strong
-            className="field-name"
-            data-testid={`field-name-${fieldName}`}>
+          <Typography
+            color={theme.palette.grey[900]}
+            data-testid={`field-name-${fieldName}`}
+            fontSize="13px"
+            fontWeight="600"
+            marginBottom="4px"
+            sx={{
+              wordBreak: 'break-word',
+            }}>
             {fieldName}
-          </Typography.Text>
+          </Typography>
         </div>
+        <Typography
+          alignContent="center"
+          color={theme.palette.grey[700]}
+          data-testid={`data-type-text-${dataType}`}
+          fontSize="12px"
+          fontWeight="400"
+          lineHeight="19px"
+          marginBottom="8px">
+          {startCase(dataTypeDisplay)}
+        </Typography>
       </div>
 
       <div className="field-card-content" data-testid="field-card-content">
-        <Paragraph
+        <Typography
           className="field-description"
-          data-testid={`field-description-${fieldName}`}>
+          data-testid={`field-description-${fieldName}`}
+          variant="body1">
           {description ? (
             <div className="description-display">
               <div
@@ -338,7 +351,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
               {t('label.no-entity', { entity: t('label.description') })}
             </Text>
           )}
-        </Paragraph>
+        </Typography>
 
         <div className="field-metadata">
           {nonGlossaryTags.length > 0 && (

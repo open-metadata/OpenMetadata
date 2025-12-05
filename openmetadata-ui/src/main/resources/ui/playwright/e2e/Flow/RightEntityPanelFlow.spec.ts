@@ -558,7 +558,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(fieldCard).toBeVisible();
 
       const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-badge-${child.dataType}"]`
+        `[data-testid="data-type-text-${child.dataType}"]`
       );
 
       await expect(dataTypeBadge).toBeVisible();
@@ -1623,7 +1623,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       await expect(fieldCard).toBeVisible();
 
       const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-badge-${child.dataType}"]`
+        `[data-testid="data-type-text-${child.dataType}"]`
       );
 
       await expect(dataTypeBadge).toBeVisible();
@@ -1876,7 +1876,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       await expect(fieldCard).toBeVisible();
 
       const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-badge-${child.dataType}"]`
+        `[data-testid="data-type-text-${child.dataType}"]`
       );
 
       await expect(dataTypeBadge).toBeVisible();

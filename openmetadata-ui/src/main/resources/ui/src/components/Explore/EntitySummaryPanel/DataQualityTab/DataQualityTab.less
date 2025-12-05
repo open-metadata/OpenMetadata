@@ -97,7 +97,7 @@
     .ant-tabs-nav {
       padding-left: 16px;
       position: sticky;
-      top: 56px;
+      top: 54px;
       z-index: 3;
       background-color: @white;
       .ant-tabs-nav-wrap {
@@ -305,18 +305,23 @@
       padding-right: 12px;
       border-bottom-right-radius: 8px;
       border-bottom-left-radius: 8px;
-
-      background-color: @alert-success-bg;
+      background-color: @white;
+      &.active {
+        background-color: @green-9;
+      }
+      &:hover {
+        background-color: @green-9;
+      }
       .resolved-label {
         font-size: 12px;
         font-weight: 400;
-        color: @grey-700;
+        color: @green-600;
       }
 
       .resolved-value {
         font-size: 12px;
         font-weight: 600;
-        color: @grey-900;
+        color: @green-600;
       }
     }
 
@@ -356,7 +361,7 @@
         display: flex;
         background-color: @grey-9;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         gap: 24px;
         padding-bottom: 12px;
         .test-case-title-section {
