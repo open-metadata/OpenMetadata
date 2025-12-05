@@ -640,6 +640,15 @@ const SchemaTable = () => {
     ]
   );
 
+  const constraintOptionsTranslated = useMemo(
+    () =>
+      COLUMN_CONSTRAINT_TYPE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const additionalFieldsInEntityNameModal = (
     <Form.Item
       label={t('label.entity-type-plural', {
@@ -649,7 +658,7 @@ const SchemaTable = () => {
       <Select
         allowClear
         data-testid="constraint-type-select"
-        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),

@@ -3086,6 +3086,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "from": "checkTask",
           "to": "end",
           "condition": "true"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "false"
         }
       ]
     }
@@ -3465,7 +3470,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         },
         {
           "from": "userApproval",
-          "to": "setTask"
+          "to": "setTask",
+          "condition": "true"
+        },
+        {
+          "from": "userApproval",
+          "to": "setTask",
+          "condition": "false"
         },
         {
           "from": "setTask",
@@ -4022,6 +4033,233 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         endWithOutgoingResponseBody.contains("cannot have outgoing edges"),
         "Expected cannot have outgoing edges error message, got: " + endWithOutgoingResponseBody);
     LOG.debug("End node with outgoing edges correctly rejected: {}", endWithOutgoingResponseBody);
+
+    // Test 8: Conditional task with missing FALSE condition should fail
+    String missingFalseConditionJson =
+        """
+    {
+      "name": "missingFalseConditionWorkflow",
+      "displayName": "Missing False Condition Workflow",
+      "description": "Workflow with conditional task missing FALSE condition",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "true"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition missingFalseConditionWorkflow =
+        JsonUtils.readValue(missingFalseConditionJson, CreateWorkflowDefinition.class);
+
+    Response missingFalseResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(missingFalseConditionWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), missingFalseResponse.getStatus());
+    String missingFalseResponseBody = missingFalseResponse.readEntity(String.class);
+    assertTrue(
+        missingFalseResponseBody.contains("must have both TRUE and FALSE outgoing sequence flows"),
+        "Expected conditional task validation error, got: " + missingFalseResponseBody);
+    LOG.debug(
+        "Conditional task missing FALSE condition correctly rejected: {}",
+        missingFalseResponseBody);
+
+    // Test 9: UserApprovalTask with missing TRUE condition should fail
+    String missingTrueConditionJson =
+        """
+    {
+      "name": "missingTrueConditionWorkflow",
+      "displayName": "Missing True Condition Workflow",
+      "description": "Workflow with UserApprovalTask missing TRUE condition",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "approvalTask",
+          "displayName": "Approval Task",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            }
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "approvalTask"
+        },
+        {
+          "from": "approvalTask",
+          "to": "end",
+          "condition": "false"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition missingTrueConditionWorkflow =
+        JsonUtils.readValue(missingTrueConditionJson, CreateWorkflowDefinition.class);
+
+    Response missingTrueResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(missingTrueConditionWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), missingTrueResponse.getStatus());
+    String missingTrueResponseBody = missingTrueResponse.readEntity(String.class);
+    assertTrue(
+        missingTrueResponseBody.contains("must have both TRUE and FALSE outgoing sequence flows"),
+        "Expected conditional task validation error, got: " + missingTrueResponseBody);
+    LOG.debug(
+        "UserApprovalTask missing TRUE condition correctly rejected: {}", missingTrueResponseBody);
+
+    // Test 10: Valid conditional task with both TRUE and FALSE conditions should pass
+    String validConditionalJson =
+        """
+    {
+      "name": "validConditionalWorkflow",
+      "displayName": "Valid Conditional Workflow",
+      "description": "Workflow with proper conditional task setup",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "endTrue",
+          "displayName": "End True",
+          "type": "endEvent",
+          "subType": "endEvent"
+        },
+        {
+          "name": "endFalse",
+          "displayName": "End False",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "endTrue",
+          "condition": "true"
+        },
+        {
+          "from": "checkTask",
+          "to": "endFalse",
+          "condition": "false"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition validConditionalWorkflow =
+        JsonUtils.readValue(validConditionalJson, CreateWorkflowDefinition.class);
+
+    Response validConditionalResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(validConditionalWorkflow));
+
+    assertEquals(Response.Status.OK.getStatusCode(), validConditionalResponse.getStatus());
+    String validConditionalResponseBody = validConditionalResponse.readEntity(String.class);
+    assertTrue(validConditionalResponseBody.contains("valid"));
+    LOG.debug("Valid conditional workflow passed validation: {}", validConditionalResponseBody);
 
     LOG.info("test_WorkflowValidationEndpoint completed successfully");
   }

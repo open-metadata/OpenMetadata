@@ -742,47 +742,57 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
   @Test
   void test_getAllDataProductsWithAssetsCount(TestInfo test) throws IOException {
-    DomainResourceTest domainTest = new DomainResourceTest();
-    Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
 
-    DataProduct dataProduct1 =
-        createEntity(
-            createRequest(getEntityName(test, 1))
-                .withDomains(List.of(domain.getFullyQualifiedName())),
-            ADMIN_AUTH_HEADERS);
-    DataProduct dataProduct2 =
-        createEntity(
-            createRequest(getEntityName(test, 2))
-                .withDomains(List.of(domain.getFullyQualifiedName())),
-            ADMIN_AUTH_HEADERS);
+    try {
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
 
-    TableResourceTest tableTest = new TableResourceTest();
-    Table table1 =
-        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
-    Table table2 =
-        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
-    Table table3 =
-        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+      DataProduct dataProduct1 =
+          createEntity(
+              createRequest(getEntityName(test, 1))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      DataProduct dataProduct2 =
+          createEntity(
+              createRequest(getEntityName(test, 2))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
 
-    bulkAddAssets(
-        dataProduct1.getFullyQualifiedName(),
-        new BulkAssets()
-            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
-    bulkAddAssets(
-        dataProduct2.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table1 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+      Table table2 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+      Table table3 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
 
-    Map<String, Integer> assetsCount = getAllDataProductsWithAssetsCount();
+      bulkAddAssets(
+          dataProduct1.getFullyQualifiedName(),
+          new BulkAssets()
+              .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+      bulkAddAssets(
+          dataProduct2.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table3.getEntityReference())));
 
-    assertNotNull(assetsCount);
-    assertEquals(
-        2,
-        assetsCount.get(dataProduct1.getFullyQualifiedName()),
-        "Data product 1 should have 2 assets");
-    assertEquals(
-        1,
-        assetsCount.get(dataProduct2.getFullyQualifiedName()),
-        "Data product 2 should have 1 asset");
+      Map<String, Integer> assetsCount = getAllDataProductsWithAssetsCount();
+
+      assertNotNull(assetsCount);
+      assertEquals(
+          2,
+          assetsCount.get(dataProduct1.getFullyQualifiedName()),
+          "Data product 1 should have 2 assets");
+      assertEquals(
+          1,
+          assetsCount.get(dataProduct2.getFullyQualifiedName()),
+          "Data product 2 should have 1 asset");
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
   }
 
   private Map<String, Integer> getAllDataProductsWithAssetsCount() throws HttpResponseException {
