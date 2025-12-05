@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
-} from '@mui/icons-material';
 import { Box, Chip, Divider, Menu, MenuItem } from '@mui/material';
+import {
+  ChevronDown as ArrowDownIcon,
+  ChevronUp as ArrowUpIcon,
+} from '@untitledui/icons';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -103,8 +103,8 @@ const InlineSeverity = ({
             color: severityColor.color,
             fontSize: '16px',
             margin: '0 4px 0 -4px',
-            height: '18px',
-            width: '18px',
+            height: '16px',
+            width: '16px',
           },
           '&:hover': {
             backgroundColor: severityColor.bg,

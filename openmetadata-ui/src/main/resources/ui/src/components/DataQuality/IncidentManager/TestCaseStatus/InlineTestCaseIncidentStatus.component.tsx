@@ -12,16 +12,10 @@
  */
 
 import {
-  ArrowBack as ArrowBackIcon,
-  Check as CheckIcon,
-  Close as CloseIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
-} from '@mui/icons-material';
-import {
   Box,
   Chip,
   Divider,
+  Icon,
   IconButton,
   List,
   ListItem,
@@ -32,6 +26,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import {
+  ArrowLeft as ArrowBackIcon,
+  ChevronDown as ArrowDownIcon,
+  ChevronUp as ArrowUpIcon,
+  Check as CheckIcon,
+  XClose as CloseIcon,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -433,8 +434,8 @@ const InlineTestCaseIncidentStatus = ({
             color: statusColor.color,
             fontSize: '16px',
             margin: '0 4px 0 -4px',
-            height: '18px',
-            width: '18px',
+            height: '16px',
+            width: '16px',
           },
           '&:hover': {
             backgroundColor: statusColor.bg,
@@ -527,7 +528,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
             onClick={handleCloseAllPopovers}>
-            <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CloseIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
             data-testid="submit-assignee-popover-button"
@@ -535,7 +536,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
             onClick={handleAssigneeSubmit}>
-            <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CheckIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>
         <Divider sx={{ borderColor: 'grey.300' }} />
@@ -597,7 +598,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
             onClick={handleCloseAllPopovers}>
-            <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CloseIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
             data-testid="submit-resolved-popover-button"
@@ -605,7 +606,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
             onClick={handleResolvedSubmit}>
-            <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CheckIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>
 
@@ -618,7 +619,8 @@ const InlineTestCaseIncidentStatus = ({
                 data-testid={`reason-chip-${reason}`}
                 icon={
                   selectedReason === reason ? (
-                    <CheckIcon
+                    <Icon
+                      component={CheckIcon}
                       sx={{ fontSize: 14, color: 'common.white', mx: 0.5 }}
                     />
                   ) : undefined

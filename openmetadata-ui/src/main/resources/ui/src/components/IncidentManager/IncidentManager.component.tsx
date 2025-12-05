@@ -15,7 +15,15 @@ import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, isUndefined, omit, pick, startCase } from 'lodash';
+import {
+  isEqual,
+  isString,
+  isUndefined,
+  omit,
+  parseInt,
+  pick,
+  startCase,
+} from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -132,10 +140,10 @@ const IncidentManager = ({
       ...urlParams,
     };
 
-    if (params.startTs && typeof params.startTs === 'string') {
+    if (params.startTs && isString(params.startTs)) {
       params.startTs = parseInt(params.startTs, 10);
     }
-    if (params.endTs && typeof params.endTs === 'string') {
+    if (params.endTs && isString(params.endTs)) {
       params.endTs = parseInt(params.endTs, 10);
     }
 
@@ -497,6 +505,45 @@ const IncidentManager = ({
     }
   }, [testCaseListData.data]);
 
+  const testCaseResolutionStatusDetailsRender = (
+    value?: Assigned,
+    record?: TestCaseResolutionStatus
+  ) => {
+    if (isPermissionLoading) {
+      return <Skeleton height={24} variant="rectangular" width={100} />;
+    }
+
+    const hasPermission = testCasePermissions.find(
+      (item) =>
+        item.fullyQualifiedName ===
+        record?.testCaseReference?.fullyQualifiedName
+    );
+
+    return (
+      <Box data-testid="assignee">
+        <OwnerLabel
+          isCompactView
+          className="m-0"
+          hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+          multiple={{
+            user: false,
+            team: false,
+          }}
+          owners={value?.assignee ? [value.assignee] : []}
+          placeHolder={t('label.no-entity', {
+            entity: t('label.assignee'),
+          })}
+          tooltipText={t('label.edit-entity', {
+            entity: t('label.assignee'),
+          })}
+          onUpdate={(assignees) =>
+            record && handleAssigneeUpdate(record, assignees)
+          }
+        />
+      </Box>
+    );
+  };
+
   const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
     () => [
       {
@@ -619,41 +666,7 @@ const IncidentManager = ({
         dataIndex: 'testCaseResolutionStatusDetails',
         key: 'testCaseResolutionStatusDetails',
         width: 200,
-        render: (value?: Assigned, record?: TestCaseResolutionStatus) => {
-          if (isPermissionLoading) {
-            return <Skeleton height={24} variant="rectangular" width={100} />;
-          }
-
-          const hasPermission = testCasePermissions.find(
-            (item) =>
-              item.fullyQualifiedName ===
-              record?.testCaseReference?.fullyQualifiedName
-          );
-
-          return (
-            <Box data-testid="assignee">
-              <OwnerLabel
-                isCompactView
-                className="m-0"
-                hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
-                multiple={{
-                  user: false,
-                  team: false,
-                }}
-                owners={value?.assignee ? [value.assignee] : []}
-                placeHolder={t('label.no-entity', {
-                  entity: t('label.assignee'),
-                })}
-                tooltipText={t('label.edit-entity', {
-                  entity: t('label.assignee'),
-                })}
-                onUpdate={(assignees) =>
-                  record && handleAssigneeUpdate(record, assignees)
-                }
-              />
-            </Box>
-          );
-        },
+        render: testCaseResolutionStatusDetailsRender,
       },
     ],
     [
