@@ -521,6 +521,7 @@ export default function EntitySummaryPanel({
           <>
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
+                className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
               />
@@ -533,6 +534,7 @@ export default function EntitySummaryPanel({
           <>
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
+                className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
               />
@@ -552,6 +554,7 @@ export default function EntitySummaryPanel({
           <>
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
+                className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
               />
@@ -566,6 +569,7 @@ export default function EntitySummaryPanel({
           <>
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
+                className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
               />
@@ -581,6 +585,7 @@ export default function EntitySummaryPanel({
           <>
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
+                className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
               />
