@@ -22,7 +22,9 @@ from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import TableType
-from metadata.ingestion.source.dashboard.hex.query_fetcher import SnowflakeConnection
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
