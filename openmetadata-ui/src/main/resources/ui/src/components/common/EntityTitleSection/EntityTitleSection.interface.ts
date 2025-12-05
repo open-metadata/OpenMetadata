@@ -10,11 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
 
-.glossary-term-select-popover {
-  .ant-list-sm .ant-list-item {
-    padding: 8px 12px;
-    align-items: center;
-  }
+import { TooltipPlacement } from 'antd/es/tooltip';
+
+export interface EntityTitleSectionProps {
+  entityDetails: {
+    entityType?: string;
+    name?: string;
+    displayName?: string;
+    fullyQualifiedName?: string;
+    [key: string]: unknown;
+  };
+  entityLink: string | { pathname: string };
+  tooltipPlacement?: TooltipPlacement;
+  testId?: string;
+  className?: string;
 }

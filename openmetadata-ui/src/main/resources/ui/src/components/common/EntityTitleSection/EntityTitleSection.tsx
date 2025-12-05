@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,27 +11,13 @@
  *  limitations under the License.
  */
 
-import { Link } from '@mui/material';
+import { Box, Link, useTheme } from '@mui/material';
 import { Tooltip } from 'antd';
-import { TooltipPlacement } from 'antd/es/tooltip';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-
-interface EntityTitleSectionProps {
-  entityDetails: {
-    entityType?: string;
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-    [key: string]: unknown;
-  };
-  entityLink: string;
-  tooltipPlacement?: TooltipPlacement;
-  testId?: string;
-  className?: string;
-}
+import { EntityTitleSectionProps } from './EntityTitleSection.interface';
 
 export const EntityTitleSection = ({
   entityDetails,
@@ -40,33 +26,90 @@ export const EntityTitleSection = ({
   testId = 'entity-link',
   className = '',
 }: EntityTitleSectionProps) => {
+  const theme = useTheme();
   const entityName = getEntityName(entityDetails);
   const entityType = entityDetails.entityType ?? '';
+  const linkHref =
+    typeof entityLink === 'string' ? entityLink : entityLink.pathname;
 
   return (
-    <div className={`title-section ${className}`}>
-      <div className="title-container">
+    <Box
+      className={className}
+      sx={{
+        position: 'sticky',
+        padding: '4px',
+        zIndex: 999,
+        top: 0,
+        flex: 1,
+        backgroundColor: theme.palette.background.paper,
+        ...(className.includes('drawer-title-section') && {
+          backgroundColor: 'transparent',
+        }),
+      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderRadius: '8px',
+          height: '46px',
+          paddingLeft: '4px',
+          paddingRight: '4px',
+          backgroundColor: theme.palette.allShades.blueGray[50],
+        }}>
         <Tooltip
           mouseEnterDelay={0.5}
           placement={tooltipPlacement}
           title={getTextFromHtmlString(entityName)}
           trigger="hover">
-          <div className="d-flex items-center">
-            <span className="entity-icon">
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+            }}>
+            <Box
+              sx={{
+                color: theme.palette.allShades.blue[600],
+                width: '18px',
+                height: '18px',
+                marginLeft: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                flexShrink: 0,
+                marginRight: '8px',
+              }}>
               {searchClassBase.getEntityIcon(entityType)}
-            </span>
+            </Box>
             <Link
-              className="entity-title-link"
               data-testid={testId}
-              href={entityLink}
+              href={linkHref}
               rel="noopener noreferrer"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                fontSize: '15px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                textDecoration: 'none',
+                color: theme.palette.allShades.blue[700],
+                display: 'block',
+                '& .text-highlighter': {
+                  color: theme.palette.allShades.blue[700],
+                },
+              }}
               target="_blank"
               underline="hover">
               {stringToHTML(entityName)}
             </Link>
-          </div>
+          </Box>
         </Tooltip>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };

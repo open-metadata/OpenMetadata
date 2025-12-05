@@ -24,7 +24,6 @@ import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { EntitySelectableList } from '../EntitySelectableList/EntitySelectableList.component';
 import { EntitySelectableListConfig } from '../EntitySelectableList/EntitySelectableList.interface';
 import { GlossaryTermSelectableListProps } from './GlossaryTermSelectableList.interface';
-import './GlossaryTermSelectableList.less';
 
 const fetchGlossaryTermOptions = async (searchText: string, after?: string) => {
   try {

@@ -522,7 +522,7 @@ export default function EntitySummaryPanel({
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
                 entityDetails={entityDetails.details}
-                entityLink={entityLink as string}
+                entityLink={entityLink}
               />
             )}
             <div className="overview-tab-content">{summaryComponentV1}</div>
@@ -534,7 +534,7 @@ export default function EntitySummaryPanel({
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
                 entityDetails={entityDetails.details}
-                entityLink={entityLink as string}
+                entityLink={entityLink}
               />
             )}
             <div className="entity-summary-panel-tab-content">
@@ -553,7 +553,7 @@ export default function EntitySummaryPanel({
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
                 entityDetails={entityDetails.details}
-                entityLink={entityLink as string}
+                entityLink={entityLink}
               />
             )}
             <div className="entity-summary-panel-tab-content">
@@ -567,7 +567,7 @@ export default function EntitySummaryPanel({
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
                 entityDetails={entityDetails.details}
-                entityLink={entityLink as string}
+                entityLink={entityLink}
               />
             )}
             <DataQualityTab
@@ -582,7 +582,7 @@ export default function EntitySummaryPanel({
             {viewPermission && !isSideDrawer && (
               <EntityTitleSection
                 entityDetails={entityDetails.details}
-                entityLink={entityLink as string}
+                entityLink={entityLink}
               />
             )}
             <CustomPropertiesSection
@@ -611,7 +611,7 @@ export default function EntitySummaryPanel({
           <EntityTitleSection
             className="drawer-title-section"
             entityDetails={entityDetails.details}
-            entityLink={entityLink as string}
+            entityLink={entityLink}
             testId="entity-header-title"
             tooltipPlacement="bottomLeft"
           />
