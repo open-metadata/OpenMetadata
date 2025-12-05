@@ -242,7 +242,7 @@ test.describe('Glossary Bulk Import Export', () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await page.getByTestId('loader').waitFor({ state: 'detached' });
 

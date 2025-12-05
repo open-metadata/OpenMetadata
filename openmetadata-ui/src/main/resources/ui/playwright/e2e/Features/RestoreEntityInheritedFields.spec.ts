@@ -78,7 +78,7 @@ entities.forEach((EntityClass) => {
       test.slow();
 
       await entity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
         ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())

@@ -173,7 +173,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.locator('button[type="submit"]').click();
     await updateColor;
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     await expect(adminPage.getByText(tag.data.name)).toBeVisible();
   });
@@ -289,7 +289,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     // Verify in My Data page
     await visitUserProfilePage(adminPage, user1.responseData.name);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     const myDataRes = adminPage.waitForResponse(
       `/api/v1/search/query?q=*&index=all&*`

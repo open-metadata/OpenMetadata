@@ -762,7 +762,7 @@ test(
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await test.step('Update profiler setting', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
@@ -1014,7 +1014,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1282,7 +1282,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1341,7 +1341,7 @@ test('Pagination functionality in test cases list', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     await page.click('[data-testid="test-cases"]');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

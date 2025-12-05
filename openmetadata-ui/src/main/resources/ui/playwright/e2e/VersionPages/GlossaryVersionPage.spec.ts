@@ -187,7 +187,7 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
     );
@@ -216,7 +216,7 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify the reviewer was actually added before checking version diff
     await expect(
@@ -230,7 +230,7 @@ test('GlossaryTerm', async ({ page }) => {
 
     // Wait for the version dialog to be fully loaded
     await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(
       page.locator('[data-testid="glossary-reviewer"]')

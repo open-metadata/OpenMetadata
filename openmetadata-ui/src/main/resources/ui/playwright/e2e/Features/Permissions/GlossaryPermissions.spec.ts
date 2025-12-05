@@ -101,7 +101,7 @@ test('Glossary allow operations', async ({ testUserPage, browser }) => {
 
   const manageButtonElements = ['delete-button', 'rename-button'];
 
-  await testUserPage.waitForLoadState('networkidle');
+  await testUserPage.waitForLoadState('domcontentloaded');
 
   for (const testId of directElements) {
     let element;
@@ -165,7 +165,7 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
 
   const manageButtonElements = ['delete-button', 'rename-button'];
 
-  await testUserPage.waitForLoadState('networkidle');
+  await testUserPage.waitForLoadState('domcontentloaded');
 
   for (const testId of directElements) {
     let element;

@@ -171,7 +171,7 @@ test.describe('Large Glossary Performance Tests', () => {
     // Click to collapse all
     await expandAllButton.click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(

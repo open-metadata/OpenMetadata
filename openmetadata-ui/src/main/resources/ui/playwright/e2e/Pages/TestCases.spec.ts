@@ -94,9 +94,9 @@ test('Table difference test case', async ({ page }) => {
       );
       await page.fill(`#testCaseFormV1_params_table2`, testCase.table2);
       await tableSearchResponse;
-      // The 'networkidle' parameter tells Playwright to wait until there are no network connections
+      // The 'domcontentloaded' parameter tells Playwright to wait until there are no network connections
       // for at least 500 ms.
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(
         page

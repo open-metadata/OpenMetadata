@@ -38,7 +38,7 @@ test('Table custom metric', async ({ page }) => {
     );
     await table.visitEntityPage(page);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
     await page.click('[data-testid="profiler"]');

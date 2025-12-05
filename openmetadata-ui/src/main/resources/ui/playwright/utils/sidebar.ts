@@ -69,5 +69,5 @@ export const settingClick = async (
     await page.click(`[data-testid="${path}"]`);
   }
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };

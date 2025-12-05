@@ -126,7 +126,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await redirectToHomePage(adminPage);
 
       await table1.visitEntityPage(adminPage);
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -219,11 +219,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           .innerText();
         await addMentionCommentInFeed(page, 'admin', true);
 
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
         await waitForAllLoadersToDisappear(adminPage);
         await adminPage.getByRole('button', { name: 'Notifications' }).click();
         await adminPage.getByText('Mentions').click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
         await waitForAllLoadersToDisappear(adminPage);
 
         await expect(adminPage.getByLabel('Mentions')).toContainText(

@@ -167,7 +167,7 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       await applyAdvanceFilter;
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',

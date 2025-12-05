@@ -117,7 +117,7 @@ for (const EntityClass of entities) {
         await page.reload();
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
         await lineageRes;
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="edit-lineage"]', {
           state: 'visible',
         });
@@ -281,7 +281,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
@@ -443,7 +443,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     await page.reload();
     await lineageReq1;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await activateColumnLayer(page);
     await page
@@ -529,7 +529,7 @@ test('Verify table search with special characters as handled', async ({
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
     await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(
       page.locator('.lineage-entity-panel').getByTestId('entity-header-title')
@@ -584,7 +584,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
     await rearrangeNodes(page);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await performZoomOut(page);
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();

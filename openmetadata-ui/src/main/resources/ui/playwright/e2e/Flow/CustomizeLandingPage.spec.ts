@@ -191,7 +191,7 @@ test.describe('Customize Landing Page Flow', () => {
 
       // Navigate to the landing page
       await redirectToHomePage(adminPage);
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       // Check if removed widgets are not present on the landing page
       await expect(
@@ -253,7 +253,7 @@ test.describe('Customize Landing Page Flow', () => {
         await redirectToHomePage(adminPage);
 
         // Ensures the page is fully loaded
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         await checkAllDefaultWidgets(adminPage);
       }
