@@ -59,7 +59,8 @@ public class OpenMetadataAuthenticationProvider implements AuthenticationProvide
 
   @Override
   public void apply(RequestTemplate requestTemplate) {
-    if (requestTemplate.url().contains("version")) {
+    String url = requestTemplate.url();
+    if (url.endsWith("/system/version") || url.contains("/system/version?")) {
       return;
     }
     if (requestTemplate.headers().containsKey("Authorization")) {
