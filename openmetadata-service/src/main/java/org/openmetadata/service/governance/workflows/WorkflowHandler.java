@@ -1132,10 +1132,11 @@ public class WorkflowHandler {
 
   public boolean isWorkflowSuspended(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
     ProcessDefinition processDefinition =
         repositoryService
             .createProcessDefinitionQuery()
-            .processDefinitionKey(getTriggerWorkflowId(workflowName))
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
             .latestVersion()
             .singleResult();
 
@@ -1152,8 +1153,20 @@ public class WorkflowHandler {
     if (isWorkflowSuspended(workflowName)) {
       LOG.debug(String.format("Workflow '%s' is already suspended.", workflowName));
     } else {
-      repositoryService.suspendProcessDefinitionByKey(
-          getTriggerWorkflowId(workflowName), true, null);
+      String triggerWorkflowId = getTriggerWorkflowId(workflowName);
+      ProcessDefinition processDefinition =
+          repositoryService
+              .createProcessDefinitionQuery()
+              .processDefinitionKeyLike(triggerWorkflowId + "%")
+              .latestVersion()
+              .singleResult();
+
+      if (processDefinition != null) {
+        repositoryService.suspendProcessDefinitionByKey(processDefinition.getKey(), true, null);
+      } else {
+        throw new IllegalArgumentException(
+            "Process Definition not found for workflow: " + workflowName);
+      }
     }
   }
 
@@ -1162,16 +1175,29 @@ public class WorkflowHandler {
     if (!isWorkflowSuspended(workflowName)) {
       LOG.debug(String.format("Workflow '%s' is already active.", workflowName));
     } else {
-      repositoryService.activateProcessDefinitionByKey(
-          getTriggerWorkflowId(workflowName), true, null);
+      String triggerWorkflowId = getTriggerWorkflowId(workflowName);
+      ProcessDefinition processDefinition =
+          repositoryService
+              .createProcessDefinitionQuery()
+              .processDefinitionKeyLike(triggerWorkflowId + "%")
+              .latestVersion()
+              .singleResult();
+
+      if (processDefinition != null) {
+        repositoryService.activateProcessDefinitionByKey(processDefinition.getKey(), true, null);
+      } else {
+        throw new IllegalArgumentException(
+            "Process Definition not found for workflow: " + workflowName);
+      }
     }
   }
 
   public void terminateWorkflow(String workflowName) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
     runtimeService
         .createProcessInstanceQuery()
-        .processDefinitionKey(getTriggerWorkflowId(workflowName))
+        .processDefinitionKeyLike(triggerWorkflowId + "%")
         .list()
         .forEach(
             instance ->

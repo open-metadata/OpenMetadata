@@ -31,6 +31,7 @@ import {
   getEpochMillisForPastDays,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
@@ -50,7 +51,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         endTs: getEndOfDayInMillis(getCurrentMillis()),
       },
       key: 'last30days',
-      title: PROFILER_FILTER_RANGE.last30days.title,
+      title: translateWithNestedKeys(
+        PROFILER_FILTER_RANGE.last30days.title,
+        PROFILER_FILTER_RANGE.last30days.titleData
+      ),
     }),
     []
   );

@@ -488,7 +488,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   const addButton = (
     <Tooltip
       placement="top"
-      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}>
+      title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
       <Button
         data-testid="add-query-btn"
         disabled={!permissions?.query.Create}
