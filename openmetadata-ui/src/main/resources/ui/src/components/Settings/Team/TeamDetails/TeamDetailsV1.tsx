@@ -197,10 +197,7 @@ const TeamDetailsV1 = ({
     [currentTeam]
   );
 
-  const teamCount = useMemo(
-    () => currentTeam.childrenCount ?? childTeamList.length,
-    [childTeamList, currentTeam.childrenCount]
-  );
+  const teamCount = useMemo(() => childTeamList.length, [childTeamList]);
   const updateActiveTab = (key: string) => {
     navigate({ search: Qs.stringify({ activeTab: key }) });
   };

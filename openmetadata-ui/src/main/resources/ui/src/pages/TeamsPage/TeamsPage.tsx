@@ -179,7 +179,7 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(name, {
         fields: TabSpecificField.PARENTS,
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+        include: Include.All,
       });
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
@@ -222,7 +222,7 @@ const TeamsPage = () => {
           TabSpecificField.PROFILE,
           TabSpecificField.OWNERS,
         ],
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+        include: Include.All,
       });
 
       setSelectedTeam(data);
@@ -248,7 +248,7 @@ const TeamsPage = () => {
           TabSpecificField.CHILDREN_COUNT,
           TabSpecificField.DOMAINS,
         ],
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+        include: Include.All,
       });
 
       setSelectedTeam((prev) => ({ ...prev, ...data }));
