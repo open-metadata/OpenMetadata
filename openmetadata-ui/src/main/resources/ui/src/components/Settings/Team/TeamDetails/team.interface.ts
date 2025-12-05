@@ -75,3 +75,10 @@ export interface TeamsHeadingLabelProps {
   entityPermissions: OperationPermission;
   updateTeamHandler: (data: Team) => Promise<void>;
 }
+
+export interface TeamTab {
+  name: string;
+  count?: number;
+  key: TeamsPageTab;
+  isLoading?: boolean;
+}

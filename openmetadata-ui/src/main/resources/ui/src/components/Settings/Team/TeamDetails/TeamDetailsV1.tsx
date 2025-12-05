@@ -197,7 +197,10 @@ const TeamDetailsV1 = ({
     [currentTeam]
   );
 
-  const teamCount = useMemo(() => childTeamList.length, [childTeamList]);
+  const teamCount = useMemo(
+    () => (isTeamBasicDataLoading ? 0 : childTeamList.length),
+    [childTeamList, isTeamBasicDataLoading]
+  );
   const updateActiveTab = (key: string) => {
     navigate({ search: Qs.stringify({ activeTab: key }) });
   };
@@ -1063,7 +1066,8 @@ const TeamDetailsV1 = ({
         isGroupType,
         isOrganization,
         teamCount,
-        assetsCount
+        assetsCount,
+        isTeamBasicDataLoading
       ).map((tab) => ({
         ...tab,
         label: (
@@ -1071,6 +1075,7 @@ const TeamDetailsV1 = ({
             count={tab.count}
             id={tab.key}
             isActive={currentTab === tab.key}
+            isLoading={tab?.isLoading}
             name={tab.name}
           />
         ),
@@ -1085,6 +1090,7 @@ const TeamDetailsV1 = ({
       assetsCount,
       getTabChildren,
       tabsChildrenRender,
+      isTeamBasicDataLoading,
     ]
   );
 

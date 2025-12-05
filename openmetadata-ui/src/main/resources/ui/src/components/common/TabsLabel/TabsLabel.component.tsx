@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from 'antd';
+import { Badge, Skeleton } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
@@ -24,6 +24,7 @@ const TabsLabel = ({
   id,
   description,
   isBeta,
+  isLoading,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
 
@@ -31,8 +32,21 @@ const TabsLabel = ({
     <div className="w-full tabs-label-container" data-testid={id}>
       <div className="d-flex justify-between gap-1">
         {name}
-        {!isNil(count) && (
-          <span data-testid="count">{getCountBadge(count, '', isActive)}</span>
+        {isLoading ? (
+          <Skeleton.Button
+            active
+            aria-label="Loading"
+            className="d-flex justify-center items-center"
+            data-testid="loading-skeleton"
+            size="small"
+            style={{ width: 15, minWidth: 15, height: 15 }}
+          />
+        ) : (
+          !isNil(count) && (
+            <span data-testid="count">
+              {getCountBadge(count, '', isActive)}
+            </span>
+          )
         )}
         {isBeta && (
           <Badge className="service-beta-tag" count={t('label.beta')} />
