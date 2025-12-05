@@ -236,6 +236,79 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  public void testWorkflowInstancesApiWithSpecialCharacters() throws Exception {
+    // Test for the specific bug fix - glossary terms with single quotes in the name
+    // This test verifies the API can handle entityLink parameters with special characters
+
+    // Create glossary with stable name
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName("SpecialCharsGlossary")
+            .withDescription("Glossary for testing special characters");
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create term with single quote in name (this was causing SQL injection issues)
+    String termNameWithQuote = "Glo'ddd";
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(termNameWithQuote)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term with single quote");
+    GlossaryTerm term = glossaryTermTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    // Verify the term was created successfully
+    assertEquals(EntityStatus.APPROVED, term.getEntityStatus());
+
+    // Construct the entityLink exactly as it would appear in the UI
+    String termFqn = glossary.getFullyQualifiedName() + "." + termNameWithQuote;
+    String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
+
+    // Wait for potential workflow instance to be created
+    try {
+      UUID workflowInstanceId = waitForWorkflowInstanceByEntityLink(entityLink);
+      // If we get here, a workflow instance was created - that's fine, continue testing
+      LOG.info(
+          "Workflow instance created for term with special characters: {}", workflowInstanceId);
+    } catch (AssertionError e) {
+      // If no workflow instance is created, that's also fine - the main point is testing the API
+      LOG.info("No automatic workflow instance created, testing API call directly");
+    }
+
+    // The main test: Call the workflow instances API with entityLink containing single quote
+    // This should NOT throw a SQL exception after our fix
+    long now = System.currentTimeMillis();
+    long oneHourAgo = now - 3600_000L;
+
+    String url =
+        String.format(
+            "governance/workflowInstances?startTs=%d&endTs=%d&entityLink=%s&workflowDefinitionName=GlossaryTermApprovalWorkflow",
+            oneHourAgo, now, URLEncoder.encode(entityLink, StandardCharsets.UTF_8));
+
+    WebTarget target = getResource(url);
+    Invocation.Builder builder = target.request();
+    for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
+      builder = builder.header(entry.getKey(), entry.getValue());
+    }
+
+    // This should succeed without throwing UnableToCreateStatementException
+    String rawJson = builder.get(String.class);
+    assertNotNull(rawJson, "API response should not be null");
+
+    // Parse the response to ensure it's valid JSON
+    ResultList<WorkflowInstance> result =
+        JsonUtils.readValue(
+            rawJson,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
+    assertNotNull(result, "Parsed result should not be null");
+
+    // The result may be empty (no workflow instances) or contain instances - both are valid
+    // The important thing is that the API call succeeded without SQL errors
+    LOG.info(
+        "Successfully called workflow instances API with special character entityLink. Found {} instances.",
+        result.getData().size());
+  }
+
+  @Test
   public void testGlossaryApprovalWorkflowWithReviewer() throws Exception {
     // Create glossary with reviewer and stable name
     CreateGlossary createGlossary =

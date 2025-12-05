@@ -112,7 +112,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
-    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+    return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
   private String getAgentTypeCondition() {
