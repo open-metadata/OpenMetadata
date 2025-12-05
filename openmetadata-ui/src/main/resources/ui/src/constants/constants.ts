@@ -66,6 +66,13 @@ export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const SCROLL_TRIGGER_THRESHOLD = 200;
+export const INITIAL_PAGING_STATE = {
+  offset: 0,
+  limit: PAGE_SIZE_BASE,
+  total: 0,
+};
+
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;

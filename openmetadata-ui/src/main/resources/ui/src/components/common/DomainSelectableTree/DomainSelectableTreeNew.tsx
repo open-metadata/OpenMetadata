@@ -29,6 +29,11 @@ import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.sv
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../assets/svg/ic-popover-save.svg';
+import {
+  INITIAL_PAGING_STATE,
+  PAGE_SIZE_BASE,
+  SCROLL_TRIGGER_THRESHOLD,
+} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
@@ -53,10 +58,6 @@ import {
   DomainSelectableTreeProps,
   TreeListItem,
 } from './DomainSelectableTree.interface';
-
-const INITIAL_PAGE_SIZE = 15;
-const SCROLL_TRIGGER_THRESHOLD = 200;
-const INITIAL_PAGING_STATE = { offset: 0, limit: INITIAL_PAGE_SIZE, total: 0 };
 
 const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   onSubmit,
@@ -146,7 +147,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       try {
         const currentPaging = childPaging[parentFqn] || {
           offset: 0,
-          limit: INITIAL_PAGE_SIZE,
+          limit: PAGE_SIZE_BASE,
           total: 0,
         };
 
@@ -156,7 +157,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
         const response = await getDomainChildrenPaginated(
           parentFqn,
-          INITIAL_PAGE_SIZE,
+          PAGE_SIZE_BASE,
           currentOffset
         );
         const children = response.data ?? [];
@@ -166,7 +167,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           ...prev,
           [parentFqn]: {
             offset: currentOffset,
-            limit: INITIAL_PAGE_SIZE,
+            limit: PAGE_SIZE_BASE,
             total,
           },
         }));
@@ -267,21 +268,21 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     [childPaging, loadingChildren, domainMapper, t]
   );
 
-  useEffect(() => {
-    const buildIndex = (domainList: Domain[]) => {
-      const map: Record<string, Domain> = {};
-      for (const d of domainList) {
-        map[d.fullyQualifiedName as string] = d;
+  const buildIndex = (domainList: Domain[]) => {
+    const map: Record<string, Domain> = {};
+    for (const d of domainList) {
+      map[d.fullyQualifiedName as string] = d;
 
-        if (d.children?.length) {
-          const childMap = buildIndex(d.children as unknown as Domain[]);
-          Object.assign(map, childMap);
-        }
+      if (d.children?.length) {
+        const childMap = buildIndex(d.children as unknown as Domain[]);
+        Object.assign(map, childMap);
       }
+    }
 
-      return map;
-    };
+    return map;
+  };
 
+  useEffect(() => {
     const newMap = buildIndex(domains);
 
     setDomainMapper((prev) => {
