@@ -196,9 +196,9 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text>{`${type} :`}</Typography.Text>
+          <Typography.Text>{`${t(type)} :`}</Typography.Text>
           <Typography.Paragraph className="m-0 text-grey-muted">
-            {description}
+            {t(description)}
           </Typography.Paragraph>
         </Space>
 
